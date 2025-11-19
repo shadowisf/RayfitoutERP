@@ -1,5 +1,5 @@
 export default function Home() {
   return (
-    <main>test</main>
+    <main>this is the main dashboard</main>
   );
 }
