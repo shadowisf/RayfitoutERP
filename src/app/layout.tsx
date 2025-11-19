@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.scss";
 import Header from "./components/Header";
+import SideBar from "./components/SideBar";
 
 export const metadata: Metadata = {
   title: "Rayfitout - ERP",
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Header />
+        <SideBar />
 
         {children}
       </body>

@@ -2,7 +2,9 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background-color: white;
+  font-size: 12px;
+
+  background-color: rgba(248, 249, 251, 1);
 }
 
 body {
@@ -10,10 +12,10 @@ body {
   font-family: "Mont", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
 
-main {
-  margin: 0px 40px;
+  padding-top: 100px;
+  margin-left: 325px;
+  margin-right: 40px;
 }
 
 * {
@@ -30,6 +32,7 @@ a {
 button {
   border: none;
   box-shadow: none;
+  font-family: "Mont", sans-serif;
 
   &:hover {
     cursor: pointer;
@@ -45,16 +48,27 @@ button {
 @font-face {
   font-family: "Mont";
   src: url("/fonts/Mont-Regular.otf") format("opentype");
-  font-weight: 700;
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Mont";
+  src: url("/fonts/Mont-SemiBold.otf") format("opentype");
+  font-weight: 600;
   font-style: normal;
 }
 
 .header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
   display: flex;
   justify-content: space-between;
   background-color: black;
   padding: 10px 40px;
-  margin-bottom: 75px;
 
   .left {
     display: flex;
@@ -130,6 +144,84 @@ button {
 
     p {
       color: white;
+    }
+  }
+}
+
+.side-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 300px;
+  background: white;
+  padding-top: 100px;
+
+  p {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    margin-left: 40px;
+  }
+
+  .nav-container {
+    display: flex;
+    flex-direction: column;
+
+    button {
+      text-align: left;
+      padding-left: 40px;
+      padding: 15px 40px;
+      background: none;
+      border: none;
+      color: black;
+      cursor: pointer;
+    }
+
+    .nav-active {
+      background-color: rgba(245, 242, 242, 1);
+    }
+  }
+}
+
+.dashboard {
+  p {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .widget-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+
+    .item {
+      /* width: 250px; */
+      height: 200px;
+      border: 1px solid rgba(217, 217, 217, 1);
+      padding: 20px;
+      border-radius: 5px;
+
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+
+      background-color: white;
+
+      .icon {
+        display: flex;
+        justify-content: end;
+      }
+
+      .number {
+        font-size: 24px;
+        font-weight: 700;
+      }
+
+      .label {
+        font-size: 16px;
+        font-weight: 400;
+      }
     }
   }
 }
