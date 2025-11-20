@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, SetStateAction } from "react";
+import { useState, useEffect } from "react";
 import FormPopUp from "./FormPopup";
 import InputItem from "./InputItem";
 
@@ -15,22 +15,20 @@ type ScopeType = {
 };
 
 export default function NewProjectButton() {
-  const cross_icon = "/icons/cross.svg";
-
   const [isOpen, setIsOpen] = useState(false);
 
   const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
   const [scopeTypes, setScopeTypes] = useState<ScopeType[]>([]);
 
   const [name, setName] = useState("");
-  const [propertyTypeID, setPropertyTypeID] = useState<number | "">("");
-  const [id, setID] = useState<number | "">("");
+  const [propertyTypeID, setPropertyTypeID] = useState<number>(0);
+  const [id, setID] = useState<number | string>("");
   const [boqID, setBoqID] = useState(0);
   const [status, setStatus] = useState("");
-  const [scopeID, setScopeID] = useState("");
+  const [scopeID, setScopeID] = useState(0);
   const [type, setType] = useState("");
-  const [quotedBudget, setQuotedBudget] = useState("");
-  const [allocatedBudget, setAllocatedBudget] = useState("");
+  const [quotedBudget, setQuotedBudget] = useState<number | string>("");
+  const [allocatedBudget, setAllocatedBudget] = useState<number | string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
@@ -61,8 +59,8 @@ export default function NewProjectButton() {
           status,
           scope_id: scopeID,
           type,
-          quoted_budget: parseFloat(quotedBudget),
-          allocated_budget: parseFloat(allocatedBudget),
+          quoted_budget: Number(quotedBudget),
+          allocated_budget: Number(allocatedBudget),
           start_date: startDate || null,
           end_date: endDate || null,
         }),
@@ -72,14 +70,14 @@ export default function NewProjectButton() {
     if (res.ok) {
       alert("Project added!");
       setName("");
-      setPropertyTypeID("");
+      setPropertyTypeID(0);
       setID("");
       setBoqID(0);
       setStatus("");
-      setScopeID("");
+      setScopeID(0);
       setType("");
-      setQuotedBudget("");
-      setAllocatedBudget("");
+      setQuotedBudget(0);
+      setAllocatedBudget(0);
       setStartDate("");
       setEndDate("");
       setIsOpen(false);
@@ -109,346 +107,200 @@ export default function NewProjectButton() {
               type={"text"}
               placeholder={"ENTER PROJECT NAME"}
               onChange={(e) => setName(e.target.value)}
+              required
             />
 
-            <div className="input-item">
-              <label htmlFor="propertyTypeId">PROPERTY</label>
-              <select
-                value={propertyTypeID}
-                onChange={(e) => setPropertyTypeID(parseInt(e.target.value))}
-                required
-              >
-                <option value="" disabled>
-                  SELECT PROPETY TYPE
+            <InputItem
+              label={"PROPERTY"}
+              value={propertyTypeID}
+              type={"select"}
+              placeholder={"SELECT PROPETY TYPE"}
+              onChange={(e) => setPropertyTypeID(Number(e.target.value))}
+              dbMap={propertyTypes.map((pt) => (
+                <option key={pt.id} value={pt.id}>
+                  {pt.value}
                 </option>
-                {propertyTypes.map((pt) => (
-                  <option key={pt.id} value={pt.id}>
-                    {pt.value}
-                  </option>
-                ))}
-              </select>
-            </div>
+              ))}
+              required
+            />
           </div>
 
           {/* 2nd row */}
           <div className="input-row">
             <div className="input-item">
-              <label htmlFor="id">PROJECT ID</label>
-              <div className="input-prefix">
+              <label>PROJECT ID</label>
+              <div className="input-prefix left">
                 <span>RAY</span>
                 <input
-                  type="number"
+                  type="text"
                   value={id}
-                  onChange={(e) => setID(Number(e.target.value))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "" || /^\d+$/.test(val)) {
+                      setID(Number(val));
+                    }
+                  }}
                   placeholder="000"
                   required
                 />
               </div>
             </div>
 
-            <div className="input-item">
-              <label htmlFor="boq">BOQ</label>
-              <select
-                value={boqID}
-                onChange={(e) => setBoqID(Number(e.target.value))}
-              >
-                <option value={0} disabled>
-                  SELECT BOQ
-                </option>
-              </select>
-            </div>
+            <InputItem
+              label={"BOQ"}
+              value={boqID}
+              type={"select"}
+              placeholder={"SELECT BOQ"}
+              onChange={(e) => setBoqID(Number(e.target.value))}
+              selectOptions={[]}
+              required={false}
+            />
           </div>
 
           {/* 3rd row */}
           <div className="input-row three-col">
-            <div className="input-item">
-              <label htmlFor="status">STATUS</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                <option value="" disabled>
-                  SELECT STATUS
-                </option>
-                <option value="in progress">In Progress</option>
-                <option value="complete">Complete</option>
-                <option value="mobilization">Mobilization</option>
-              </select>
-            </div>
+            <InputItem
+              label={"STATUS"}
+              value={status}
+              type={"select"}
+              placeholder={"SELECT STATUS"}
+              onChange={(e) => setStatus(e.target.value)}
+              selectOptions={["In progress", "Complete", "Mobilization"]}
+              required
+            />
 
-            <div className="input-item">
-              <label htmlFor="scope">SCOPE</label>
-              <select
-                value={scopeID}
-                onChange={(e) => setScopeID(e.target.value)}
-              >
-                <option value="" disabled>
-                  SELECT SCOPE
+            <InputItem
+              label={"SCOPE"}
+              value={scopeID}
+              type={"select"}
+              placeholder={"SELECT SCOPE"}
+              onChange={(e) => setScopeID(Number(e.target.value))}
+              dbMap={scopeTypes.map((st) => (
+                <option key={st.id} value={st.id}>
+                  {st.value}
                 </option>
-                {scopeTypes.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    {st.value}
-                  </option>
-                ))}
-              </select>
-            </div>
+              ))}
+              required
+            />
 
-            <div className="input-item">
-              <label htmlFor="type">TYPE OF WORKS</label>
-              <select value={type} onChange={(e) => setType(e.target.value)}>
-                <option value="">SELECT TYPE</option>
-                <option value="renovation">Renovation</option>
-                <option value="new construction">New Construction</option>
-              </select>
-            </div>
+            <InputItem
+              label={"TYPE OF WORKS"}
+              value={type}
+              type={"select"}
+              placeholder={"SELECT TYPE"}
+              onChange={(e) => setType(e.target.value)}
+              selectOptions={["Renovation", "New construction"]}
+              required
+            />
           </div>
 
           {/* 4th row */}
           <div className="input-row full">
             <div className="input-item">
-              <label htmlFor="quotedBudget">QUOTED BUDGET</label>
-              <input
-                type="number"
-                placeholder="ENTER QUOTED BUDGET"
-                value={quotedBudget}
-                onChange={(e) => setQuotedBudget(e.target.value)}
-                required
-              />
+              <label>QUOTED BUDGET</label>
+              <div className="input-prefix right">
+                <span>AED</span>
+                <input
+                  type="text"
+                  value={quotedBudget}
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    val = val.replace(/,/g, "");
+
+                    if (val === "") {
+                      setAllocatedBudget("");
+                      return;
+                    }
+
+                    if (!/^\d*\.?\d*$/.test(val)) {
+                      return;
+                    }
+
+                    const parts = val.split(".");
+                    const integer = parts[0];
+                    const decimal = parts[1];
+
+                    const formattedInt =
+                      Number(integer).toLocaleString("en-US");
+
+                    const finalValue =
+                      decimal !== undefined
+                        ? `${formattedInt}.${decimal}`
+                        : formattedInt;
+
+                    setQuotedBudget(finalValue);
+                  }}
+                  placeholder="ENTER QUOTED BUDGET"
+                  required
+                />
+              </div>
             </div>
           </div>
 
           {/* 5th row */}
           <div className="input-row full">
             <div className="input-item">
-              <label htmlFor="allocatedBudget">ALLOCATED BUDGET</label>
-              <input
-                type="number"
-                placeholder="ENTER ALLOCATED BUDGET"
-                value={allocatedBudget}
-                onChange={(e) => setAllocatedBudget(e.target.value)}
-                required
-              />
+              <label>ALLOCATED BUDGET</label>
+              <div className="input-prefix right">
+                <span>AED</span>
+                <input
+                  type="text"
+                  value={allocatedBudget}
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    val = val.replace(/,/g, "");
+
+                    if (val === "") {
+                      setAllocatedBudget("");
+                      return;
+                    }
+
+                    if (!/^\d*\.?\d*$/.test(val)) {
+                      return;
+                    }
+
+                    const parts = val.split(".");
+                    const integer = parts[0];
+                    const decimal = parts[1];
+
+                    const formattedInt =
+                      Number(integer).toLocaleString("en-US");
+
+                    const finalValue =
+                      decimal !== undefined
+                        ? `${formattedInt}.${decimal}`
+                        : formattedInt;
+
+                    setAllocatedBudget(finalValue);
+                  }}
+                  placeholder="ENTER ALLOCATED BUDGET"
+                />
+              </div>
             </div>
           </div>
 
           {/* 6th row */}
           <div className="input-row three-col" style={{ marginBottom: "40px" }}>
-            <div className="input-item">
-              <label htmlFor="startDate">START DATE (OPTIONAL)</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                placeholder="ENTER START DATE"
-              />
-            </div>
+            <InputItem
+              label={"START DATE (OPTIONAL)"}
+              value={startDate}
+              type={"date"}
+              placeholder={"ENTER START DATE"}
+              onChange={(e) => setStartDate(e.target.value)}
+              required={false}
+            />
 
-            <div className="input-item">
-              <label htmlFor="endDate">END DATE (OPTIONAL)</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                placeholder="ENTER END DATE"
-                onFocus={(e) => (e.target.type = "date")}
-              />
-            </div>
+            <InputItem
+              label={"END DATE (OPTIONAL)"}
+              value={endDate}
+              type={"date"}
+              placeholder={"ENTER END DATE"}
+              onChange={(e) => setEndDate(e.target.value)}
+              required={false}
+            />
           </div>
         </FormPopUp>
       )}
     </>
   );
 }
-
-/* {isOpen && (
-        <div className="form-outer-container">
-          <div className="form-inner-container">
-            <div className="form-header" style={{ marginBottom: "40px" }}>
-              <h2>CREATE PROJECT</h2>
-
-              <img
-                src={cross_icon}
-                alt="cross"
-                style={{ cursor: "pointer" }}
-                onClick={() => setIsOpen(false)}
-              />
-            </div>
-
-            <form onSubmit={handleSubmit}>
-              
-              <div className="input-row">
-                <div className="input-item">
-                  <label htmlFor="name">PROJECT NAME</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="ENTER PROJECT NAME"
-                    required
-                  />
-                </div>
-
-                <div className="input-item">
-                  <label htmlFor="propertyTypeId">PROPERTY</label>
-                  <select
-                    value={propertyTypeID}
-                    onChange={(e) =>
-                      setPropertyTypeID(parseInt(e.target.value))
-                    }
-                    required
-                  >
-                    <option value="" disabled>
-                      SELECT PROPETY TYPE
-                    </option>
-                    {propertyTypes.map((pt) => (
-                      <option key={pt.id} value={pt.id}>
-                        {pt.value}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              
-              <div className="input-row">
-                <div className="input-item">
-                  <label htmlFor="id">PROJECT ID</label>
-                  <div className="input-prefix">
-                    <span>RAY</span>
-                    <input
-                      type="number"
-                      value={id}
-                      onChange={(e) => setID(Number(e.target.value))}
-                      placeholder="000"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="input-item">
-                  <label htmlFor="boq">BOQ</label>
-                  <select
-                    value={boqID}
-                    onChange={(e) => setBoqID(Number(e.target.value))}
-                  >
-                    <option value={0} disabled>
-                      SELECT BOQ
-                    </option>
-                  </select>
-                </div>
-              </div>
-
-              
-              <div className="input-row three-col">
-                <div className="input-item">
-                  <label htmlFor="status">STATUS</label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                  >
-                    <option value="" disabled>
-                      SELECT STATUS
-                    </option>
-                    <option value="in progress">In Progress</option>
-                    <option value="complete">Complete</option>
-                    <option value="mobilization">Mobilization</option>
-                  </select>
-                </div>
-
-                <div className="input-item">
-                  <label htmlFor="scope">SCOPE</label>
-                  <select
-                    value={scopeID}
-                    onChange={(e) => setScopeID(e.target.value)}
-                  >
-                    <option value="" disabled>
-                      SELECT SCOPE
-                    </option>
-                    {scopeTypes.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {st.value}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="input-item">
-                  <label htmlFor="type">TYPE OF WORKS</label>
-                  <select
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                  >
-                    <option value="">SELECT TYPE</option>
-                    <option value="renovation">Renovation</option>
-                    <option value="new construction">New Construction</option>
-                  </select>
-                </div>
-              </div>
-
-              
-              <div className="input-row full">
-                <div className="input-item">
-                  <label htmlFor="quotedBudget">QUOTED BUDGET</label>
-                  <input
-                    type="number"
-                    placeholder="ENTER QUOTED BUDGET"
-                    value={quotedBudget}
-                    onChange={(e) => setQuotedBudget(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              
-              <div className="input-row full">
-                <div className="input-item">
-                  <label htmlFor="allocatedBudget">ALLOCATED BUDGET</label>
-                  <input
-                    type="number"
-                    placeholder="ENTER ALLOCATED BUDGET"
-                    value={allocatedBudget}
-                    onChange={(e) => setAllocatedBudget(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              
-              <div
-                className="input-row three-col"
-                style={{ marginBottom: "40px" }}
-              >
-                <div className="input-item">
-                  <label htmlFor="startDate">START DATE (OPTIONAL)</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    placeholder="ENTER START DATE"
-                  />
-                </div>
-
-                <div className="input-item">
-                  <label htmlFor="endDate">END DATE (OPTIONAL)</label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    placeholder="ENTER END DATE"
-                    onFocus={(e) => (e.target.type = "date")}
-                  />
-                </div>
-              </div>
-
-              <div className="button-container">
-                <button className="save-draft-button">SAVE DRAFT</button>
-
-                <button className="add-project-button" type="submit">
-                  ADD PROJECT
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
- */

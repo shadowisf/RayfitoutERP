@@ -305,7 +305,6 @@ button {
 
           span {
             position: absolute;
-            left: 12px;
             top: 50%;
             transform: translateY(-50%);
             font-size: 13px;
@@ -313,7 +312,22 @@ button {
 
           input {
             width: 100%;
-            padding-left: 40px;
+          }
+
+          &.left {
+            span {
+              left: 12px;
+            }
+
+            input {
+              padding-left: 40px;
+            }
+          }
+
+          &.right {
+            span {
+              right: 12px;
+            }
           }
         }
       }
