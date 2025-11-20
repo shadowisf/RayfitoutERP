@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import FormPopUp from "./FormPopup";
 import InputItem from "./InputItem";
+import CustomSelect, { BoqItem } from "./CustomSelect";
 
 type PropertyType = {
   id: number;
@@ -23,7 +24,6 @@ export default function NewProjectButton() {
   const [name, setName] = useState("");
   const [propertyTypeID, setPropertyTypeID] = useState<number>(0);
   const [id, setID] = useState<number | string>("");
-  const [boqID, setBoqID] = useState(0);
   const [status, setStatus] = useState("");
   const [scopeID, setScopeID] = useState(0);
   const [type, setType] = useState("");
@@ -59,8 +59,8 @@ export default function NewProjectButton() {
           status,
           scope_id: scopeID,
           type,
-          quoted_budget: Number(quotedBudget),
-          allocated_budget: Number(allocatedBudget),
+          quoted_budget: Number(String(quotedBudget).replace(/,/g, "")),
+          allocated_budget: Number(String(allocatedBudget).replace(/,/g, "")),
           start_date: startDate || null,
           end_date: endDate || null,
         }),
@@ -72,7 +72,6 @@ export default function NewProjectButton() {
       setName("");
       setPropertyTypeID(0);
       setID("");
-      setBoqID(0);
       setStatus("");
       setScopeID(0);
       setType("");
@@ -126,7 +125,7 @@ export default function NewProjectButton() {
           </div>
 
           {/* 2nd row */}
-          <div className="input-row">
+          <div className="input-row full">
             <div className="input-item">
               <label>PROJECT ID</label>
               <div className="input-prefix left">
@@ -145,16 +144,6 @@ export default function NewProjectButton() {
                 />
               </div>
             </div>
-
-            <InputItem
-              label={"BOQ"}
-              value={boqID}
-              type={"select"}
-              placeholder={"SELECT BOQ"}
-              onChange={(e) => setBoqID(Number(e.target.value))}
-              selectOptions={[]}
-              required={false}
-            />
           </div>
 
           {/* 3rd row */}
@@ -197,7 +186,7 @@ export default function NewProjectButton() {
           {/* 4th row */}
           <div className="input-row full">
             <div className="input-item">
-              <label>QUOTED BUDGET</label>
+              <label>QUOTED BUDGET (OPTIONAL)</label>
               <div className="input-prefix right">
                 <span>AED</span>
                 <input
@@ -208,7 +197,7 @@ export default function NewProjectButton() {
                     val = val.replace(/,/g, "");
 
                     if (val === "") {
-                      setAllocatedBudget("");
+                      setQuotedBudget("");
                       return;
                     }
 
@@ -240,7 +229,7 @@ export default function NewProjectButton() {
           {/* 5th row */}
           <div className="input-row full">
             <div className="input-item">
-              <label>ALLOCATED BUDGET</label>
+              <label>ALLOCATED BUDGET (OPTIONAL)</label>
               <div className="input-prefix right">
                 <span>AED</span>
                 <input

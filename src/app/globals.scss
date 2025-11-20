@@ -224,6 +224,40 @@ button {
       }
     }
   }
+
+  .widget-grid.active-projects {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+
+    .item {
+      min-width: 350px;
+      min-height: 200px;
+      border: 1px solid rgba(217, 217, 217, 1);
+      background-color: white;
+      border-radius: 5px;
+      padding: 15px;
+      position: relative;
+
+      span {
+        font-size: 8px;
+        color: rgba(89, 89, 89, 1);
+      }
+
+      p {
+        text-transform: uppercase;
+      }
+
+      .status {
+        font-size: 8px;
+        padding: 5px 10px;
+        border-radius: 20px;
+        position: absolute;
+        top: 15px;
+        right: 15px;
+      }
+    }
+  }
 }
 
 .form-outer-container {

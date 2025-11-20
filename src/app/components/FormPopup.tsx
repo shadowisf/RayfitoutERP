@@ -33,7 +33,7 @@ export default function FormPopUp({
           {children}
 
           <div className="button-container">
-            <button className="save-draft-button">SAVE DRAFT</button>
+            {/* <button className="save-draft-button">SAVE DRAFT</button> */}
 
             <button className="add-project-button" type="submit">
               {addButtonLabel}
