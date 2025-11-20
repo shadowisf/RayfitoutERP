@@ -1,0 +1,15 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+
+export async function GET(req: NextRequest) {
+  try {
+    const [types] = await db.query("SELECT * FROM lut_projects_scope");
+    return NextResponse.json(types, { status: 200 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json(
+      { error: "Database query failed" },
+      { status: 500 }
+    );
+  }
+}

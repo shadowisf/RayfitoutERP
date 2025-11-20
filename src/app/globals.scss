@@ -130,22 +130,22 @@ button {
       border-radius: 5px;
     }
 
-    .new-project {
-      background-color: transparent;
-      border: 1px solid white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      font-weight: 700;
-      padding: 5px 15px;
-      border-radius: 5px;
-    }
-
     p {
       color: white;
     }
   }
+}
+
+.new-project-button {
+  background-color: transparent;
+  border: 1px solid white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-weight: 700;
+  padding: 5px 15px;
+  border-radius: 5px;
 }
 
 .side-bar {
@@ -190,7 +190,7 @@ button {
     font-weight: 600;
   }
 
-  .widget-grid {
+  .widget-grid.overview {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 20px;
@@ -221,6 +221,129 @@ button {
       .label {
         font-size: 16px;
         font-weight: 400;
+      }
+    }
+  }
+}
+
+.form-outer-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100dvw;
+  height: 100dvh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+
+  .form-inner-container {
+    background-color: white;
+    padding: 30px;
+    border-radius: 5px;
+    position: relative;
+    max-height: 90dvh;
+    min-width: 900px;
+
+    .form-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    input,
+    select {
+      background: none;
+      border: 1px solid rgba(217, 217, 217, 1);
+      border-radius: 5px;
+      padding: 10px;
+      color: black;
+      font-family: "Mont", sans-serif;
+
+      &:focus {
+        outline: none;
+        box-shadow: none;
+      }
+    }
+
+    select {
+      /* appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none; */
+      background-color: rgba(248, 249, 251, 1);
+    }
+
+    label {
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 0.5fr;
+      gap: 20px;
+
+      &.three-col {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+
+      &.full {
+        grid-template-columns: 1fr;
+      }
+
+      .input-item {
+        display: flex;
+        gap: 10px;
+        flex-direction: column;
+        margin-bottom: 20px;
+
+        .input-prefix {
+          position: relative;
+          display: inline-block;
+          width: 100%;
+
+          span {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 13px;
+          }
+
+          input {
+            width: 100%;
+            padding-left: 40px;
+          }
+        }
+      }
+    }
+
+    .button-container {
+      display: flex;
+      gap: 15px;
+      justify-content: flex-end;
+
+      .add-project-button {
+        background-color: black;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-weight: 700;
+        padding: 10px 30px;
+        border-radius: 5px;
+      }
+
+      .save-draft-button {
+        background-color: rgba(241, 241, 241, 1);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: black;
+        font-weight: 700;
+        padding: 10px 30px;
+        border-radius: 5px;
       }
     }
   }

@@ -1,4 +1,4 @@
-import AddProjectForm from "./components/AddProjectForm";
+import AddProjectForm from "../components/NewProjectButton";
 
 type Project = {
   id: number;
@@ -12,12 +12,6 @@ type Project = {
   end_date: string | null;
   created_at: string;
 };
-
-type BillOfQuantity = {
-  id: number;
-  project_id: number;
-
-}
 
 export default async function ProjectsPage() {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
@@ -68,9 +62,7 @@ export default async function ProjectsPage() {
       <div>
         <h1>Bill of Quantity</h1>
 
-        <ul>
-          
-        </ul>
+        <ul></ul>
       </div>
     </>
   );

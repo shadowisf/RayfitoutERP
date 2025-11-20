@@ -20,17 +20,19 @@ export async function POST(req: Request) {
 
     const query = `
       INSERT INTO projects 
-      (name, status, type, quoted_budget, allocated_budget, property_type_id, start_date, end_date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (name, property_type_id, id, status, scope_id, type, quoted_budget, allocated_budget, start_date, end_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       body.name,
+      Number(body.property_type_id),
+      Number(body.id),
       body.status,
+      Number(body.scope_id),
       body.type,
       Number(body.quoted_budget),
       Number(body.allocated_budget),
-      Number(body.property_type_id),
       body.start_date || null,
       body.end_date || null,
     ];
