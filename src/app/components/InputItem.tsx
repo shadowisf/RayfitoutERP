@@ -8,9 +8,11 @@ type InputItemProps = {
     e:
       | React.ChangeEvent<HTMLInputElement>
       | React.ChangeEvent<HTMLSelectElement>
+      | React.ChangeEvent<HTMLTextAreaElement>
   ) => void;
   selectOptions?: string[];
   dbMap?: React.ReactNode;
+  disabled?: boolean;
 };
 
 export default function InputItem({
@@ -22,6 +24,7 @@ export default function InputItem({
   required,
   selectOptions,
   dbMap,
+  disabled,
 }: InputItemProps) {
   switch (type) {
     case "date":
@@ -34,6 +37,7 @@ export default function InputItem({
             onChange={onChange}
             placeholder={placeholder}
             required={required}
+            disabled={disabled}
           />
         </div>
       );
@@ -48,6 +52,7 @@ export default function InputItem({
             onChange={onChange}
             placeholder={placeholder}
             required={required}
+            disabled={disabled}
           />
         </div>
       );
@@ -62,6 +67,7 @@ export default function InputItem({
             onChange={onChange}
             placeholder={placeholder}
             required={required}
+            disabled={disabled}
           />
         </div>
       );
@@ -78,6 +84,20 @@ export default function InputItem({
               ? selectOptions.map((o) => <option key={o}>{o}</option>)
               : dbMap}
           </select>
+        </div>
+      );
+
+    case "textarea":
+      return (
+        <div className="input-item">
+          <label>{label}</label>
+          <textarea
+            value={value}
+            onChange={onChange}
+            required={required}
+            placeholder={placeholder}
+            disabled={disabled}
+          ></textarea>
         </div>
       );
   }

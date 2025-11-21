@@ -15,7 +15,9 @@ export default function Header() {
     <>
       <div className="header">
         <div className="left">
-          <img src={logo_icon} alt="rayfitout logo" />
+          <a href="/" className="logo-link">
+            <img src={logo_icon} alt="rayfitout logo" />
+          </a>
 
           <p>PROCUREMENT MANAGEMENT</p>
 

@@ -3,8 +3,8 @@ import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
-    const [types] = await db.query("SELECT * FROM lut_projects_property_type");
-    return NextResponse.json(types, { status: 200 });
+    const [res] = await db.query("SELECT * FROM lut_material_subcategories");
+    return NextResponse.json(res, { status: 200 });
   } catch (err) {
     console.error(err);
     return NextResponse.json(

@@ -1,7 +1,6 @@
-import CustomSelect from "./components/CustomSelect";
-
 export default async function Home() {
   const file_icon = "/icons/file.svg";
+  const external_link_icon = "/icons/external-link.svg";
 
   // Fetch projects from your API
   const res = await fetch(
@@ -13,7 +12,7 @@ export default async function Home() {
 
   return (
     <main className="dashboard">
-      <p>OVERVIEW</p>
+      <h2>OVERVIEW</h2>
       <br />
 
       <div className="widget-grid overview">
@@ -61,7 +60,7 @@ export default async function Home() {
       <br />
       <br />
 
-      <p>ACTIVE PROJECTS</p>
+      <h2>ACTIVE PROJECTS</h2>
       <br />
 
       <div className="widget-grid active-projects">
@@ -85,21 +84,32 @@ export default async function Home() {
             </span>
 
             <div>
-              <span>Name</span>
-              <p>{proj.name}</p>
+              <div>
+                <span>Name</span>
+                <p>{proj.name}</p>
+              </div>
+
+              <br />
+
+              <div>
+                <span>Budget</span>
+                <p>
+                  AED{" "}
+                  {Number(proj.quoted_budget).toLocaleString(undefined, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
             </div>
 
             <br />
 
             <div>
-              <span>Budget</span>
-              <p>
-                AED{" "}
-                {Number(proj.quoted_budget).toLocaleString(undefined, {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 2,
-                })}
-              </p>
+              <a className="gray-button" href={`boq/${proj.id}`}>
+                CREATE BOQ
+                <img src={external_link_icon} alt="external link icon" />
+              </a>
             </div>
           </div>
         ))}

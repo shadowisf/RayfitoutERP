@@ -3,23 +3,12 @@
 import { useState, useEffect } from "react";
 import FormPopUp from "./FormPopup";
 import InputItem from "./InputItem";
-import CustomSelect, { BoqItem } from "./CustomSelect";
-
-type PropertyType = {
-  id: number;
-  value: string;
-};
-
-type ScopeType = {
-  id: number;
-  value: string;
-};
 
 export default function NewProjectButton() {
   const [isOpen, setIsOpen] = useState(false);
 
-  const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
-  const [scopeTypes, setScopeTypes] = useState<ScopeType[]>([]);
+  const [propertyTypes, setPropertyTypes] = useState<[]>([]);
+  const [scopeTypes, setScopeTypes] = useState<[]>([]);
 
   const [name, setName] = useState("");
   const [propertyTypeID, setPropertyTypeID] = useState<number>(0);
@@ -33,14 +22,16 @@ export default function NewProjectButton() {
   const [endDate, setEndDate] = useState<string>("");
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/property_type`)
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getPropertyTypeValues`
+    )
       .then((res) => res.json())
-      .then((data: PropertyType[]) => setPropertyTypes(data))
+      .then((data: []) => setPropertyTypes(data))
       .catch((err) => console.error(err));
 
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/scope`)
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getScopeValues`)
       .then((res) => res.json())
-      .then((data: ScopeType[]) => setScopeTypes(data))
+      .then((data: []) => setScopeTypes(data))
       .catch((err) => console.error(err));
   }, []);
 
@@ -59,8 +50,9 @@ export default function NewProjectButton() {
           status,
           scope_id: scopeID,
           type,
-          quoted_budget: Number(String(quotedBudget).replace(/,/g, "")),
-          allocated_budget: Number(String(allocatedBudget).replace(/,/g, "")),
+          quoted_budget: Number(String(quotedBudget).replace(/,/g, "")) | 0,
+          allocated_budget:
+            Number(String(allocatedBudget).replace(/,/g, "")) | 0,
           start_date: startDate || null,
           end_date: endDate || null,
         }),
@@ -68,7 +60,7 @@ export default function NewProjectButton() {
     );
 
     if (res.ok) {
-      alert("Project added!");
+      alert("Project added");
       setName("");
       setPropertyTypeID(0);
       setID("");
@@ -115,7 +107,7 @@ export default function NewProjectButton() {
               type={"select"}
               placeholder={"SELECT PROPETY TYPE"}
               onChange={(e) => setPropertyTypeID(Number(e.target.value))}
-              dbMap={propertyTypes.map((pt) => (
+              dbMap={propertyTypes.map((pt: any) => (
                 <option key={pt.id} value={pt.id}>
                   {pt.value}
                 </option>
@@ -135,8 +127,9 @@ export default function NewProjectButton() {
                   value={id}
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (val === "" || /^\d+$/.test(val)) {
-                      setID(Number(val));
+
+                    if (val === "" || (/^\d+$/.test(val) && val.length <= 3)) {
+                      setID(val === "" ? "" : Number(val));
                     }
                   }}
                   placeholder="000"
@@ -164,7 +157,7 @@ export default function NewProjectButton() {
               type={"select"}
               placeholder={"SELECT SCOPE"}
               onChange={(e) => setScopeID(Number(e.target.value))}
-              dbMap={scopeTypes.map((st) => (
+              dbMap={scopeTypes.map((st: any) => (
                 <option key={st.id} value={st.id}>
                   {st.value}
                 </option>

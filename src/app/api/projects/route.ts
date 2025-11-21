@@ -3,8 +3,8 @@ import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
-    const [rows] = await db.query("SELECT * FROM vw_projects");
-    return NextResponse.json(rows, { status: 200 });
+    const [res] = await db.query("SELECT * FROM vw_projects");
+    return NextResponse.json(res, { status: 200 });
   } catch (err) {
     console.error(err);
     return NextResponse.json(

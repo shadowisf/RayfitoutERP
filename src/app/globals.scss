@@ -76,6 +76,10 @@ button {
 
     gap: 10px;
 
+    a {
+      display: flex;
+    }
+
     p {
       color: white;
     }
@@ -184,12 +188,12 @@ button {
   }
 }
 
-.dashboard {
-  p {
-    font-size: 16px;
-    font-weight: 600;
-  }
+h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
 
+.dashboard {
   .widget-grid.overview {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -238,6 +242,9 @@ button {
       border-radius: 5px;
       padding: 15px;
       position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
 
       span {
         font-size: 8px;
@@ -256,6 +263,19 @@ button {
         top: 15px;
         right: 15px;
       }
+
+      .gray-button {
+        display: flex;
+        align-items: center;
+        gap: 25px;
+        color: black;
+        background-color: rgba(239, 239, 239, 1);
+        border: 1px solid rgba(223, 223, 223, 1);
+        border-radius: 5px;
+        padding: 5px 10px;
+        font-size: 12px;
+        font-weight: 700;
+      }
     }
   }
 }
@@ -271,128 +291,138 @@ button {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+}
 
-  .form-inner-container {
-    background-color: white;
-    padding: 30px;
+.form-inner-container {
+  background-color: white;
+  padding: 30px;
+  border-radius: 5px;
+  position: relative;
+  max-height: 90dvh;
+  min-width: 900px;
+
+  .form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  input,
+  select,
+  textarea {
+    background: none;
+    border: 1px solid rgba(217, 217, 217, 1);
     border-radius: 5px;
-    position: relative;
-    max-height: 90dvh;
-    min-width: 900px;
+    padding: 10px;
+    color: black;
+    font-family: "Mont", sans-serif;
 
-    .form-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    &:focus {
+      outline: none;
+      box-shadow: none;
     }
+  }
 
-    input,
-    select {
-      background: none;
-      border: 1px solid rgba(217, 217, 217, 1);
-      border-radius: 5px;
-      padding: 10px;
-      color: black;
-      font-family: "Mont", sans-serif;
+  textarea {
+    min-height: 150px;
+    resize: none;
+  }
 
-      &:focus {
-        outline: none;
-        box-shadow: none;
-      }
-    }
-
-    select {
-      /* appearance: none;
+  select {
+    /* appearance: none;
       -webkit-appearance: none;
       -moz-appearance: none; */
-      background-color: rgba(248, 249, 251, 1);
+    background-color: rgba(248, 249, 251, 1);
+  }
+
+  label {
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr 0.5fr;
+    gap: 20px;
+
+    &.three-col {
+      grid-template-columns: 1fr 1fr 1fr;
     }
 
-    label {
-      font-size: 10px;
-      font-weight: 700;
+    &.full {
+      grid-template-columns: 1fr;
     }
 
-    .input-row {
-      display: grid;
-      grid-template-columns: 1fr 0.5fr;
-      gap: 20px;
+    &.half {
+      grid-template-columns: 1fr 1fr;
+    }
 
-      &.three-col {
-        grid-template-columns: 1fr 1fr 1fr;
-      }
+    .input-item {
+      display: flex;
+      gap: 10px;
+      flex-direction: column;
+      margin-bottom: 20px;
 
-      &.full {
-        grid-template-columns: 1fr;
-      }
+      .input-prefix {
+        position: relative;
+        display: inline-block;
+        width: 100%;
 
-      .input-item {
-        display: flex;
-        gap: 10px;
-        flex-direction: column;
-        margin-bottom: 20px;
+        span {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 13px;
+        }
 
-        .input-prefix {
-          position: relative;
-          display: inline-block;
+        input {
           width: 100%;
+        }
 
+        &.left {
           span {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 13px;
+            left: 12px;
           }
 
           input {
-            width: 100%;
+            padding-left: 40px;
           }
+        }
 
-          &.left {
-            span {
-              left: 12px;
-            }
-
-            input {
-              padding-left: 40px;
-            }
-          }
-
-          &.right {
-            span {
-              right: 12px;
-            }
+        &.right {
+          span {
+            right: 12px;
           }
         }
       }
     }
+  }
 
-    .button-container {
+  .button-container {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+
+    .add-project-button {
+      background-color: black;
       display: flex;
-      gap: 15px;
-      justify-content: flex-end;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-weight: 700;
+      padding: 10px 30px;
+      border-radius: 5px;
+    }
 
-      .add-project-button {
-        background-color: black;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        color: white;
-        font-weight: 700;
-        padding: 10px 30px;
-        border-radius: 5px;
-      }
-
-      .save-draft-button {
-        background-color: rgba(241, 241, 241, 1);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        color: black;
-        font-weight: 700;
-        padding: 10px 30px;
-        border-radius: 5px;
-      }
+    .save-draft-button {
+      background-color: rgba(241, 241, 241, 1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: black;
+      font-weight: 700;
+      padding: 10px 30px;
+      border-radius: 5px;
     }
   }
 }
