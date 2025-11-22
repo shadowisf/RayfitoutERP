@@ -129,8 +129,9 @@ export default function NewProjectButton() {
             <div className="input-item">
               <label>ID</label>
               <div className="input-prefix left">
-                <span>RAY</span>
+                <span>RAY-</span>
                 <input
+                  style={{ paddingLeft: "42px" }}
                   type="text"
                   value={id}
                   onChange={(e) => {

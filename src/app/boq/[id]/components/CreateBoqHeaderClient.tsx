@@ -17,7 +17,7 @@ export default function CreateBoqHeaderClient({
 
   const [companyName, setCompanyName] = useState("RAYFITOUT CONTRACTING LLC");
   const [clientName, setClientName] = useState("");
-  const [boqRefNumber, setBoqRefNumber] = useState(`BOQ-${projectID}`);
+  const [boqRefNumber, setBoqRefNumber] = useState<number | string>(projectID);
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
   /* const [materialCategoryID, setMaterialCategoryID] = useState(0);
@@ -51,10 +51,10 @@ export default function CreateBoqHeaderClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "createBoqHeader",
-        projectID,
+        project_id: projectID,
         company_name: companyName,
         client_name: clientName,
-        id: projectID,
+        id: boqRefNumber,
         location,
         date,
         /* material_category_id: materialCategoryID,
@@ -95,7 +95,7 @@ export default function CreateBoqHeaderClient({
 
   return (
     <>
-      <h2>CREATE BOQ</h2>
+      <h2>CREATE BOQ HEADER</h2>
 
       <br />
 
@@ -124,17 +124,37 @@ export default function CreateBoqHeaderClient({
           </div>
 
           <div className="input-row three-col">
-            <InputItem
-              label={"BOQ REF NUMBER"}
+            {/* <InputItem
+              label={"REF NUMBER"}
               value={boqRefNumber}
               type={"text"}
-              placeholder={"ENTER BOQ REF NUMBER"}
+              placeholder={"ENTER REF NUMBER"}
               required
-              disabled
               onChange={(e) => {
                 setBoqRefNumber(e.target.value);
               }}
-            />
+            /> */}
+
+            <div className="input-item">
+              <label>ID</label>
+              <div className="input-prefix left">
+                <span>BOQ-</span>
+                <input
+                  style={{ paddingLeft: "47px" }}
+                  type="text"
+                  value={boqRefNumber}
+                  onChange={(e) => {
+                    const val = e.target.value;
+
+                    if (val === "" || (/^\d+$/.test(val) && val.length <= 3)) {
+                      setBoqRefNumber(val === "" ? "" : Number(val));
+                    }
+                  }}
+                  placeholder="000"
+                  required
+                />
+              </div>
+            </div>
 
             <InputItem
               label={"LOCATION"}

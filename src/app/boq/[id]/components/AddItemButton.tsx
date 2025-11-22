@@ -95,10 +95,10 @@ export default function AddItemButton({
           {/* 1st row */}
           <div className="input-row three-col">
             <InputItem
-              label={"ITEM NAME"}
+              label={"NAME"}
               value={itemName}
               type={"text"}
-              placeholder={"ENTER ITEM NAME"}
+              placeholder={"ENTER NAME"}
               onChange={(e) => {
                 setItemName(e.target.value);
               }}
@@ -129,10 +129,10 @@ export default function AddItemButton({
           {/* 2nd row */}
           <div className="input-row three-col">
             <InputItem
-              label={"ITEM CODE"}
+              label={"CODE"}
               value={itemCode}
               type={"text"}
-              placeholder={"ENTER ITEM CODE"}
+              placeholder={"ENTER CODE"}
               onChange={(e) => {
                 setItemCode(e.target.value);
               }}
