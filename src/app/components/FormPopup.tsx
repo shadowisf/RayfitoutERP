@@ -1,3 +1,5 @@
+import Button from "./Button";
+
 type FormPopUpProps = {
   header: string;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -33,11 +35,15 @@ export default function FormPopUp({
           {children}
 
           <div className="button-container">
-            {/* <button className="save-draft-button">SAVE DRAFT</button> */}
-
-            <button className="add-project-button" type="submit">
+            <Button
+              componentType={"button"}
+              bgColor={"black"}
+              borderColor={"black"}
+              textColor={"white"}
+              type="submit"
+            >
               {addButtonLabel}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

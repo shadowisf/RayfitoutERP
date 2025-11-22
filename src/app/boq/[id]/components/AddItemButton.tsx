@@ -1,0 +1,259 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import FormPopUp from "@/app/components/FormPopup";
+import InputItem from "@/app/components/InputItem";
+import Button from "@/app/components/Button";
+import UploadFilesButton from "./UploadFilesButton";
+
+export default function AddItemButton({
+  boqHeaderID,
+}: {
+  boqHeaderID: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const [locationValues, setLocationValues] = useState<[]>([]);
+
+  const [itemName, setItemName] = useState("");
+  const [category, setCategory] = useState("");
+  const [subCategory, setSubCategory] = useState("");
+  const [itemCode, setItemCode] = useState("");
+  const [scopeOfWork, setScopeOfWork] = useState("");
+  const [locationID, setLocationID] = useState<string | number>("");
+  const [quantity, setQuantity] = useState<string | number>("");
+  const [unit, setUnit] = useState("");
+  const [ratePerQuantity, setRatePerQuantity] = useState<string | number>("");
+  const [totalCost, setTotalCost] = useState<string | number>("");
+  const [itemDescription, setItemDescription] = useState("");
+  const [attachments, setAttachments] = useState<File[]>([]);
+
+  useEffect(() => {
+    fetch("/api/boq/getLocationValues")
+      .then((res) => res.json())
+      .then((data) => {
+        setLocationValues(data);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "createBoqLine",
+        boq_id: boqHeaderID,
+        item_name: itemName,
+        category,
+        sub_category: subCategory,
+        item_code: itemCode,
+        scope_of_work: scopeOfWork,
+        location_id: locationID,
+        quantity,
+        unit,
+        rate_per_quantity: ratePerQuantity,
+        total_cost: totalCost,
+        item_description: itemDescription,
+        attachments,
+      }),
+    });
+
+    if (res.ok) {
+      alert("Item added");
+
+      setIsOpen(false);
+    } else {
+      alert("Failed to add item");
+    }
+  }
+
+  return (
+    <>
+      <Button
+        componentType={"button"}
+        bgColor={"rgba(239, 239, 239, 1)"}
+        borderColor={"rgba(239, 239, 239, 1)"}
+        textColor={"black"}
+        full
+        onClick={() => setIsOpen(true)}
+      >
+        ADD ITEM +
+      </Button>
+
+      {isOpen && (
+        <FormPopUp
+          header={"ADD ITEM"}
+          setIsOpen={setIsOpen}
+          handleSubmit={handleSubmit}
+          addButtonLabel={"ADD ITEM"}
+        >
+          {/* 1st row */}
+          <div className="input-row three-col">
+            <InputItem
+              label={"ITEM NAME"}
+              value={itemName}
+              type={"text"}
+              placeholder={"ENTER ITEM NAME"}
+              onChange={(e) => {
+                setItemName(e.target.value);
+              }}
+              required
+            />
+            <InputItem
+              label={"CATEGORY"}
+              value={category}
+              type={"text"}
+              placeholder={"ENTER CATEGORY"}
+              onChange={(e) => {
+                setCategory(e.target.value);
+              }}
+              required
+            />
+            <InputItem
+              label={"SUB CATEGORY"}
+              value={subCategory}
+              type={"text"}
+              placeholder={"ENTER SUB CATEGORY"}
+              onChange={(e) => {
+                setSubCategory(e.target.value);
+              }}
+              required
+            />
+          </div>
+
+          {/* 2nd row */}
+          <div className="input-row three-col">
+            <InputItem
+              label={"ITEM CODE"}
+              value={itemCode}
+              type={"text"}
+              placeholder={"ENTER ITEM CODE"}
+              onChange={(e) => {
+                setItemCode(e.target.value);
+              }}
+              required
+            />
+            <InputItem
+              label={"SCOPE OF WORK"}
+              value={scopeOfWork}
+              type={"select"}
+              placeholder={"SELECT SCOPE OF WORK"}
+              onChange={(e) => {
+                setScopeOfWork(e.target.value);
+              }}
+              selectOptions={[
+                "Supply only",
+                "Supply + install",
+                "Installation method",
+              ]}
+              required
+            />
+            <InputItem
+              label={"LOCATION"}
+              value={locationID}
+              type={"select"}
+              placeholder={"SELECT LOCATION"}
+              onChange={(e) => {
+                setLocationID(Number(e.target.value));
+              }}
+              dbMap={locationValues.map((location: any) => (
+                <option key={location.id} value={location.id}>
+                  {location.value}
+                </option>
+              ))}
+              required
+            />
+          </div>
+
+          {/* 3rd row */}
+          <div className="input-row half">
+            <InputItem
+              label={"QUANTITY"}
+              value={quantity}
+              type={"text"}
+              placeholder={"ENTER QUANTITY"}
+              onChange={(e) => {
+                const val = e.target.value;
+
+                if (val === "" || /^\d+$/.test(val)) {
+                  setQuantity(val === "" ? "" : Number(val));
+                }
+              }}
+              required
+            />
+            <InputItem
+              label={"UNIT"}
+              value={unit}
+              type={"text"}
+              placeholder={"ENTER UNIT"}
+              onChange={(e) => {
+                setUnit(e.target.value);
+              }}
+              required
+            />
+          </div>
+
+          {/* 4th row */}
+          <div className="input-row half">
+            <InputItem
+              label={"RATE / QUANTITY"}
+              value={ratePerQuantity}
+              type={"text"}
+              placeholder={"ENTER RATE / QUANTITY"}
+              onChange={(e) => {
+                const val = e.target.value;
+
+                if (val === "" || /^\d+$/.test(val)) {
+                  setRatePerQuantity(val === "" ? "" : Number(val));
+                }
+              }}
+              required
+            />
+            <InputItem
+              label={"TOTAL COST"}
+              value={totalCost}
+              type={"text"}
+              placeholder={"ENTER TOTAL COST"}
+              onChange={(e) => {
+                const val = e.target.value;
+
+                if (val === "" || /^\d+$/.test(val)) {
+                  setTotalCost(val === "" ? "" : Number(val));
+                }
+              }}
+              required
+            />
+          </div>
+
+          {/* 5th row */}
+          <div className="input-row full">
+            <InputItem
+              label={"ITEM DESCRIPTION"}
+              value={itemDescription}
+              type={"textarea"}
+              placeholder={"ENTER ITEM DESCRIPTION"}
+              onChange={(e) => {
+                setItemDescription(e.target.value);
+              }}
+              required={false}
+            />
+          </div>
+
+          {/* 6th row */}
+          <div className="input-row">
+            <div className="input-item">
+              <label>ATTACHMENTS</label>
+
+              <UploadFilesButton />
+            </div>
+          </div>
+        </FormPopUp>
+      )}
+    </>
+  );
+}

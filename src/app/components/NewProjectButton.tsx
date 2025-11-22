@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import FormPopUp from "./FormPopup";
 import InputItem from "./InputItem";
+import Button from "./Button";
+import MultiSelectDropdown from "./MultiselectDropdown";
 
 export default function NewProjectButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,8 +16,8 @@ export default function NewProjectButton() {
   const [propertyTypeID, setPropertyTypeID] = useState<number>(0);
   const [id, setID] = useState<number | string>("");
   const [status, setStatus] = useState("");
-  const [scopeID, setScopeID] = useState(0);
-  const [type, setType] = useState("");
+  const [scopeIDs, setScopeIDs] = useState<(string | number)[]>([]);
+  const [typeOfWork, setTypeOfWork] = useState("");
   const [quotedBudget, setQuotedBudget] = useState<number | string>("");
   const [allocatedBudget, setAllocatedBudget] = useState<number | string>("");
   const [startDate, setStartDate] = useState<string>("");
@@ -48,8 +50,8 @@ export default function NewProjectButton() {
           property_type_id: propertyTypeID,
           id,
           status,
-          scope_id: scopeID,
-          type,
+          scope_ids: scopeIDs,
+          type_of_work: typeOfWork,
           quoted_budget: Number(String(quotedBudget).replace(/,/g, "")) | 0,
           allocated_budget:
             Number(String(allocatedBudget).replace(/,/g, "")) | 0,
@@ -65,8 +67,8 @@ export default function NewProjectButton() {
       setPropertyTypeID(0);
       setID("");
       setStatus("");
-      setScopeID(0);
-      setType("");
+      setScopeIDs([0]);
+      setTypeOfWork("");
       setQuotedBudget(0);
       setAllocatedBudget(0);
       setStartDate("");
@@ -79,9 +81,15 @@ export default function NewProjectButton() {
 
   return (
     <>
-      <button onClick={() => setIsOpen(true)} className="new-project-button">
+      <Button
+        componentType={"button"}
+        bgColor={"black"}
+        borderColor={"white"}
+        textColor={"white"}
+        onClick={() => setIsOpen(true)}
+      >
         + NEW PROJECT
-      </button>
+      </Button>
 
       {isOpen && (
         <FormPopUp
@@ -93,16 +101,16 @@ export default function NewProjectButton() {
           {/* 1st row */}
           <div className="input-row">
             <InputItem
-              label={"PROJECT NAME"}
+              label={"NAME"}
               value={name}
               type={"text"}
-              placeholder={"ENTER PROJECT NAME"}
+              placeholder={"ENTER NAME"}
               onChange={(e) => setName(e.target.value)}
               required
             />
 
             <InputItem
-              label={"PROPERTY"}
+              label={"PROPERTY TYPE"}
               value={propertyTypeID}
               type={"select"}
               placeholder={"SELECT PROPETY TYPE"}
@@ -119,7 +127,7 @@ export default function NewProjectButton() {
           {/* 2nd row */}
           <div className="input-row full">
             <div className="input-item">
-              <label>PROJECT ID</label>
+              <label>ID</label>
               <div className="input-prefix left">
                 <span>RAY</span>
                 <input
@@ -151,7 +159,7 @@ export default function NewProjectButton() {
               required
             />
 
-            <InputItem
+            {/* <InputItem
               label={"SCOPE"}
               value={scopeID}
               type={"select"}
@@ -163,14 +171,22 @@ export default function NewProjectButton() {
                 </option>
               ))}
               required
+            /> */}
+
+            <MultiSelectDropdown
+              label="SCOPE"
+              dbData={scopeTypes}
+              selectedValues={scopeIDs}
+              onChange={setScopeIDs}
+              placeholder="SELECT SCOPE"
             />
 
             <InputItem
-              label={"TYPE OF WORKS"}
-              value={type}
+              label={"TYPE OF WORK"}
+              value={typeOfWork}
               type={"select"}
               placeholder={"SELECT TYPE"}
-              onChange={(e) => setType(e.target.value)}
+              onChange={(e) => setTypeOfWork(e.target.value)}
               selectOptions={["Renovation", "New construction"]}
               required
             />
@@ -213,7 +229,6 @@ export default function NewProjectButton() {
                     setQuotedBudget(finalValue);
                   }}
                   placeholder="ENTER QUOTED BUDGET"
-                  required
                 />
               </div>
             </div>

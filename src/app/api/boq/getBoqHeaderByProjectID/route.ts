@@ -6,16 +6,13 @@ export async function POST(req: NextRequest) {
     const { id } = await req.json();
 
     const [rows] = await db.query(
-      "SELECT * FROM projects_boq_headers WHERE project_id = ?",
+      "SELECT * FROM boq_headers WHERE project_id = ?",
       [id]
     );
 
     return NextResponse.json(rows, { status: 200 });
-  } catch (err) {
-    console.error("API Error:", err);
-    return NextResponse.json(
-      { error: "Database query failed" },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    console.error(err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

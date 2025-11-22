@@ -7,7 +7,9 @@ export default function SideBar() {
 
   return (
     <div className="side-bar">
-      <p>MENU</p>
+      <h2>MENU</h2>
+
+      <br />
 
       <div className="nav-container">
         {[

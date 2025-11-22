@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const [rows] = await db.query("SELECT * FROM lut_material_subcategories");
+    const { id } = await req.json();
+
+    const [rows] = await db.query("SELECT * FROM boq_lines WHERE boq_id = ?", [
+      id,
+    ]);
 
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {
-    console.error(err);
+    console.error(err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

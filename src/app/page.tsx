@@ -1,18 +1,39 @@
+import Button from "./components/Button";
+
 export default async function Home() {
   const file_icon = "/icons/file.svg";
   const external_link_icon = "/icons/external-link.svg";
 
-  // Fetch projects from your API
-  const res = await fetch(
+  const projects = await fetch(
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`,
-    { cache: "no-store" } // ensures fresh data always
-  );
+    { cache: "no-store" }
+  ).then((res) => res.json());
 
-  const projects = await res.json();
+  const projectsWithBOQ = await Promise.all(
+    projects.map(async (proj: any) => {
+      const boq = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getBoqHeaderByProjectID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: proj.id }),
+          cache: "no-store",
+        }
+      )
+        .then((res) => res.json())
+        .catch(() => []);
+
+      return {
+        ...proj,
+        hasBOQ: boq && boq.length > 0,
+      };
+    })
+  );
 
   return (
     <main className="dashboard">
       <h2>OVERVIEW</h2>
+
       <br />
 
       <div className="widget-grid overview">
@@ -64,19 +85,19 @@ export default async function Home() {
       <br />
 
       <div className="widget-grid active-projects">
-        {projects.map((proj: any) => (
+        {projectsWithBOQ.map((proj: any) => (
           <div className="item" key={proj.id}>
             <span
               className="status"
               style={
                 proj.status === "Completed"
                   ? {
-                      backgroundColor: "rgba(134, 241, 181, 1)",
-                      color: "rgba(52, 100, 73, 1)",
+                      backgroundColor: "rgba(134,241,181,1)",
+                      color: "rgba(52,100,73,1)",
                     }
                   : {
-                      backgroundColor: "rgba(255, 244, 93, 1)",
-                      color: "rgba(132, 107, 26, 1)",
+                      backgroundColor: "rgba(255,244,93,1)",
+                      color: "rgba(132,107,26,1)",
                     }
               }
             >
@@ -106,10 +127,19 @@ export default async function Home() {
             <br />
 
             <div>
-              <a className="gray-button" href={`boq/${proj.id}`}>
-                CREATE BOQ
-                <img src={external_link_icon} alt="external link icon" />
-              </a>
+              <Button
+                componentType={"link"}
+                bgColor={"rgba(239, 239, 239, 1)"}
+                borderColor={"rgba(223, 223, 223, 1)"}
+                textColor={"black"}
+                href={`boq/${proj.id}`}
+                full={false}
+              >
+                <>
+                  {proj.hasBOQ ? "VIEW BOQ" : "CREATE BOQ"}
+                  <img src={external_link_icon} alt="external link icon" />
+                </>
+              </Button>
             </div>
           </div>
         ))}

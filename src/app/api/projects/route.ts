@@ -3,12 +3,13 @@ import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
-    const [res] = await db.query("SELECT * FROM vw_projects");
-    return NextResponse.json(res, { status: 200 });
-  } catch (err) {
-    console.error(err);
+    const [rows] = await db.query("SELECT * FROM vw_projects");
+
+    return NextResponse.json(rows, { status: 200 });
+  } catch (err: any) {
+    console.error("SQL Error:", err.sqlMessage || err.message);
     return NextResponse.json(
-      { error: "Database query failed" },
+      { error: err.sqlMessage || err.message },
       { status: 500 }
     );
   }
@@ -20,8 +21,8 @@ export async function POST(req: Request) {
 
     const query = `
       INSERT INTO projects 
-      (name, property_type_id, id, status, scope_id, type, quoted_budget, allocated_budget, start_date, end_date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (name, property_type_id, id, status, type_of_work, quoted_budget, allocated_budget, start_date, end_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -29,19 +30,31 @@ export async function POST(req: Request) {
       Number(body.property_type_id),
       Number(body.id),
       body.status,
-      Number(body.scope_id),
-      body.type,
-      Number(body.quoted_budget),
-      Number(body.allocated_budget),
+      body.type_of_work,
+      Number(body.quoted_budget) || 0,
+      Number(body.allocated_budget) || 0,
       body.start_date || null,
       body.end_date || null,
     ];
 
     const [result]: any = await db.query(query, values);
 
+    // Insert scopes using a loop (simpler and works)
+    if (body.scope_ids && body.scope_ids.length > 0) {
+      for (const scopeId of body.scope_ids) {
+        await db.query(
+          "INSERT INTO jt_projects_scopes (project_id, scope_id) VALUES (?, ?)",
+          [Number(result.insertId), Number(scopeId)]
+        );
+      }
+    }
+
     return NextResponse.json({ success: true, id: result.insertId });
   } catch (err: any) {
-    console.error("POST /api/projects ERROR:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("SQL Error:", err.sqlMessage || err.message);
+    return NextResponse.json(
+      { error: err.sqlMessage || err.message },
+      { status: 500 }
+    );
   }
 }
