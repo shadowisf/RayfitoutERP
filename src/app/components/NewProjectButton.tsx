@@ -15,6 +15,7 @@ export default function NewProjectButton() {
   const [name, setName] = useState("");
   const [propertyTypeID, setPropertyTypeID] = useState<number>(0);
   const [id, setID] = useState<number | string>("");
+  const [size, setSize] = useState<number | string>("");
   const [status, setStatus] = useState("");
   const [scopeIDs, setScopeIDs] = useState<(string | number)[]>([]);
   const [typeOfWork, setTypeOfWork] = useState("");
@@ -49,6 +50,7 @@ export default function NewProjectButton() {
           name,
           property_type_id: propertyTypeID,
           id,
+          size: Number(String(size).replace(/,/g, "")) | 0,
           status,
           scope_ids: scopeIDs,
           type_of_work: typeOfWork,
@@ -125,13 +127,13 @@ export default function NewProjectButton() {
           </div>
 
           {/* 2nd row */}
-          <div className="input-row full">
+          <div className="input-row">
             <div className="input-item">
               <label>ID</label>
               <div className="input-prefix left">
                 <span>RAY-</span>
                 <input
-                  style={{ paddingLeft: "42px" }}
+                  style={{ padding: "10px 42px" }}
                   type="text"
                   value={id}
                   onChange={(e) => {
@@ -142,6 +144,54 @@ export default function NewProjectButton() {
                     }
                   }}
                   placeholder="000"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="input-item">
+              <label>SIZE</label>
+              <div className="input-prefix right">
+                <span>SQFT</span>
+                <input
+                  style={{ paddingRight: "50px" }}
+                  type="text"
+                  value={size}
+                  /* onChange={(e) => {
+                    const val = e.target.value;
+
+                    if (val === "" || /^\d+$/.test(val)) {
+                      setSize(val === "" ? "" : Number(val));
+                    }
+                  }} */
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    val = val.replace(/,/g, "");
+
+                    if (val === "") {
+                      setSize("");
+                      return;
+                    }
+
+                    if (!/^\d*\.?\d*$/.test(val)) {
+                      return;
+                    }
+
+                    const parts = val.split(".");
+                    const integer = parts[0];
+                    const decimal = parts[1];
+
+                    const formattedInt =
+                      Number(integer).toLocaleString("en-US");
+
+                    const finalValue =
+                      decimal !== undefined
+                        ? `${formattedInt}.${decimal}`
+                        : formattedInt;
+
+                    setSize(finalValue);
+                  }}
+                  placeholder="ENTER SIZE"
                   required
                 />
               </div>
@@ -200,6 +250,7 @@ export default function NewProjectButton() {
               <div className="input-prefix right">
                 <span>AED</span>
                 <input
+                  style={{ paddingRight: "50px" }}
                   type="text"
                   value={quotedBudget}
                   onChange={(e) => {
@@ -242,6 +293,7 @@ export default function NewProjectButton() {
               <div className="input-prefix right">
                 <span>AED</span>
                 <input
+                  style={{ paddingRight: "50px" }}
                   type="text"
                   value={allocatedBudget}
                   onChange={(e) => {

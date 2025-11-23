@@ -9,39 +9,15 @@ export default function CreateBoqHeaderClient({
 }: {
   projectID: string;
 }) {
-  /* const [locationValues, setLocationValues] = useState<[]>([]); */
-  /* const [materialCategoryValues, setMaterialCategoryValues] = useState<[]>([]);
-  const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
-    []
-  >([]); */
-
   const [companyName, setCompanyName] = useState("RAYFITOUT CONTRACTING LLC");
   const [clientName, setClientName] = useState("");
   const [boqRefNumber, setBoqRefNumber] = useState<number | string>(projectID);
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
-  /* const [materialCategoryID, setMaterialCategoryID] = useState(0);
-  const [materialSubCategoryID, setMaterialSubCategoryID] = useState(0); */
+  const [currency, setCurrency] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [validityTerms, setValidityTerms] = useState("");
   const [termsAndConditions, setTermsAndConditions] = useState("");
-
-  /*   useEffect(() => {
-    fetch("/api/boq/getLocationValues")
-      .then((res) => res.json())
-      .then((data) => setLocationValues(data))
-      .catch((err) => console.error(err));
-
-    fetch("/api/boq/getMaterialCategoryValues")
-      .then((res) => res.json())
-      .then((data) => setMaterialCategoryValues(data))
-      .catch((err) => console.error(err));
-
-    fetch("/api/boq/getMaterialSubCategoryValues")
-      .then((res) => res.json())
-      .then((data) => setMaterialSubCategoryValues(data))
-      .catch((err) => console.error(err));
-  }, [project_id]); */
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,8 +33,7 @@ export default function CreateBoqHeaderClient({
         id: boqRefNumber,
         location,
         date,
-        /* material_category_id: materialCategoryID,
-        material_subcategory_id: materialSubCategoryID, */
+        currency,
         payment_terms: paymentTerms,
         validity_terms: validityTerms,
         terms_and_conditions: termsAndConditions,
@@ -72,8 +47,6 @@ export default function CreateBoqHeaderClient({
       setClientName("");
       setLocation("");
       setDate("");
-      /* setMaterialCategoryID(0);
-      setMaterialSubCategoryID(0); */
       setPaymentTerms("");
       setValidityTerms("");
       setTermsAndConditions("");
@@ -81,17 +54,6 @@ export default function CreateBoqHeaderClient({
       alert("Failed to add BOQ header");
     }
   }
-
-  /* async function handleCategoryChange(id: number) {
-    fetch("/api/boq/getMaterialSubCategoryByCategoryID", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: id }),
-    })
-      .then((res) => res.json())
-      .then((data) => setMaterialSubCategoryValues(data))
-      .catch((err) => console.error(err));
-  } */
 
   return (
     <>
@@ -109,31 +71,8 @@ export default function CreateBoqHeaderClient({
               placeholder={"ENTER COMPANY NAME"}
               required
               onChange={(e) => setCompanyName(e.target.value)}
+              disabled
             />
-
-            <InputItem
-              label={"CLIENT NAME"}
-              value={clientName}
-              type={"text"}
-              placeholder={"ENTER CLIENT NAME"}
-              required
-              onChange={(e) => {
-                setClientName(e.target.value);
-              }}
-            />
-          </div>
-
-          <div className="input-row three-col">
-            {/* <InputItem
-              label={"REF NUMBER"}
-              value={boqRefNumber}
-              type={"text"}
-              placeholder={"ENTER REF NUMBER"}
-              required
-              onChange={(e) => {
-                setBoqRefNumber(e.target.value);
-              }}
-            /> */}
 
             <div className="input-item">
               <label>ID</label>
@@ -152,9 +91,23 @@ export default function CreateBoqHeaderClient({
                   }}
                   placeholder="000"
                   required
+                  disabled
                 />
               </div>
             </div>
+          </div>
+
+          <div className="input-row three-col">
+            <InputItem
+              label={"CLIENT NAME"}
+              value={clientName}
+              type={"text"}
+              placeholder={"ENTER CLIENT NAME"}
+              required
+              onChange={(e) => {
+                setClientName(e.target.value);
+              }}
+            />
 
             <InputItem
               label={"LOCATION"}
@@ -179,45 +132,31 @@ export default function CreateBoqHeaderClient({
             />
           </div>
 
-          {/* <div className="input-row half">
-                <InputItem
-                  label={"MATERIAL CATEGORY"}
-                  value={materialCategoryID}
-                  type={"select"}
-                  placeholder={"SELECT CATEGORY"}
-                  required
-                  onChange={(e) => {
-                    const newID = Number(e.target.value);
+          <div className="input-row three-col">
+            <InputItem
+              label={"CURRENCY"}
+              value={currency}
+              type={"select"}
+              placeholder={"SELECT CURRENCY"}
+              required
+              onChange={(e) => {
+                setCurrency(e.target.value);
+              }}
+              selectOptions={[
+                "AED",
+                "USD",
+                "EUR",
+                "GBP",
+                "SAR",
+                "KES",
+                "JPY",
+                "CAD",
+                "CHF",
+                "AUD",
+                "CNY",
+              ]}
+            />
 
-                    setMaterialCategoryID(newID);
-
-                    handleCategoryChange(newID);
-                  }}
-                  dbMap={materialCategoryValues.map((category: any) => (
-                    <option key={category.id} value={category.id}>
-                      {category.value}
-                    </option>
-                  ))}
-                />
-
-                <InputItem
-                  label={"MATERIAL SUBCATEGORY"}
-                  value={materialSubCategoryID}
-                  type={"select"}
-                  placeholder={"SELECT SUBCATEGORY"}
-                  required
-                  onChange={(e) => {
-                    setMaterialSubCategoryID(Number(e.target.value));
-                  }}
-                  dbMap={materialSubCategoryValues.map((subCategory: any) => (
-                    <option key={subCategory.id} value={subCategory.id}>
-                      {subCategory.value}
-                    </option>
-                  ))}
-                />
-              </div> */}
-
-          <div className="input-row half">
             <InputItem
               label={"PAYMENT TERMS"}
               value={paymentTerms}

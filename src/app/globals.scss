@@ -33,6 +33,10 @@ textarea {
     outline: none;
     box-shadow: none;
   }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
 }
 
 a {
@@ -321,6 +325,12 @@ button {
     border-radius: 5px;
     padding: 10px;
     color: black;
+    color-scheme: light;
+
+    &[type="date"] {
+      text-transform: uppercase;
+      background-color: rgba(248, 249, 251, 1);
+    }
   }
 
   textarea {
@@ -402,9 +412,6 @@ button {
   }
 }
 
-.category-grid {
-}
-
 .no-items-container {
   background-color: white;
   padding: 60px;
@@ -423,98 +430,99 @@ button {
   }
 }
 
+/* UPLOADED FILES */
 .upload-files-container {
   display: block;
   width: 100%;
   overflow: hidden;
-}
 
-.uploaded-files-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-  width: 100%;
-  max-height: 250px;
-  overflow-y: auto;
-  margin-bottom: 10px;
-}
+  .uploaded-files-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    width: 100%;
+    max-height: 250px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+  }
 
-.uploaded-file-item {
-  position: relative;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #f9f9f9;
-  min-width: 0;
-}
+  .uploaded-file-item {
+    position: relative;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f9f9f9;
+    min-width: 0;
+  }
 
-.file-preview-wrapper {
-  position: relative;
-  width: 100%;
-  height: 80px;
-  overflow: hidden;
-}
+  .file-preview-wrapper {
+    position: relative;
+    width: 100%;
+    height: 80px;
+    overflow: hidden;
+  }
 
-.file-preview-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
+  .file-preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
 
-.file-preview-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #e8e8e8;
-}
+  .file-preview-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e8e8e8;
+  }
 
-.file-extension {
-  font-size: 14px;
-  font-weight: 600;
-  color: #666;
-}
+  .file-extension {
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+  }
 
-.file-info {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
+  .file-info {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
 
-.file-name {
-  font-size: 11px;
-  font-weight: 500;
-  color: #333;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+  .file-name {
+    font-size: 11px;
+    font-weight: 500;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
-.file-size {
-  font-size: 10px;
-  color: #888;
-}
+  .file-size {
+    font-size: 10px;
+    color: #888;
+  }
 
-.remove-file-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  padding: 0;
+  .remove-file-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+  }
 }
 
 /* MULTI-SELECT DROPDOWN */
@@ -593,5 +601,68 @@ button {
     padding: 10px;
     color: #888;
     text-align: center;
+  }
+}
+
+/* BOQ LINES VIEW */
+.category-grid {
+  display: flex;
+  justify-content: space-between;
+
+  .item {
+    padding: 10px;
+    border-radius: 5px;
+    background-color: rgba(239, 239, 239, 1);
+    color: black;
+    font-size: 14px;
+    font-weight: 700;
+    width: fit-content;
+    margin-right: 10px;
+
+    &.active {
+      background-color: black;
+      color: white;
+    }
+  }
+}
+
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 20px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+
+  td {
+    vertical-align: top;
+    background-color: white;
+  }
+
+  th {
+    background: rgba(239, 239, 239, 1);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .attachments-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 60px);
+    gap: 5px;
+
+    img {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 5px;
+    }
+  }
+
+  .toggle-btn {
+    font-weight: 700;
+    cursor: pointer;
   }
 }

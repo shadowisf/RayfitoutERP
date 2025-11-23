@@ -6,11 +6,23 @@ import InputItem from "@/app/components/InputItem";
 import Button from "@/app/components/Button";
 import UploadFilesButton from "./UploadFilesButton";
 
+type AddItemButtonProps = {
+  boqHeaderID: string;
+  bgColor?: string;
+  textColor?: string;
+  borderColor?: string;
+  autoCategory?: string;
+  autoSubCategory?: string;
+};
+
 export default function AddItemButton({
   boqHeaderID,
-}: {
-  boqHeaderID: string;
-}) {
+  bgColor = "rgba(239, 239, 239, 1)",
+  textColor = "black",
+  borderColor = "rgba(239, 239, 239, 1)",
+  autoCategory = "",
+  autoSubCategory = "",
+}: AddItemButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const [locationValues, setLocationValues] = useState<[]>([]);
@@ -18,7 +30,7 @@ export default function AddItemButton({
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
-  const [itemCode, setItemCode] = useState("");
+  /*   const [itemCode, setItemCode] = useState(""); */
   const [scopeOfWork, setScopeOfWork] = useState("");
   const [locationID, setLocationID] = useState<string | number>("");
   const [quantity, setQuantity] = useState<string | number>("");
@@ -51,7 +63,7 @@ export default function AddItemButton({
         item_name: itemName,
         category,
         sub_category: subCategory,
-        item_code: itemCode,
+        /* item_code: itemCode, */
         scope_of_work: scopeOfWork,
         location_id: locationID,
         quantity,
@@ -68,18 +80,28 @@ export default function AddItemButton({
 
       setIsOpen(false);
     } else {
-      alert("Failed to add item");
+      alert("Failed to add item. Something went wrong");
     }
   }
+
+  useEffect(
+    function () {
+      if (ratePerQuantity && quantity) {
+        setTotalCost(Number(ratePerQuantity) * Number(quantity));
+      } else {
+        setTotalCost("");
+      }
+    },
+    [ratePerQuantity, quantity]
+  );
 
   return (
     <>
       <Button
         componentType={"button"}
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(239, 239, 239, 1)"}
-        textColor={"black"}
-        full
+        bgColor={bgColor}
+        borderColor={borderColor}
+        textColor={textColor}
         onClick={() => setIsOpen(true)}
       >
         ADD ITEM +
@@ -95,18 +117,8 @@ export default function AddItemButton({
           {/* 1st row */}
           <div className="input-row three-col">
             <InputItem
-              label={"NAME"}
-              value={itemName}
-              type={"text"}
-              placeholder={"ENTER NAME"}
-              onChange={(e) => {
-                setItemName(e.target.value);
-              }}
-              required
-            />
-            <InputItem
               label={"CATEGORY"}
-              value={category}
+              value={autoCategory ? autoCategory : category}
               type={"text"}
               placeholder={"ENTER CATEGORY"}
               onChange={(e) => {
@@ -116,7 +128,7 @@ export default function AddItemButton({
             />
             <InputItem
               label={"SUB CATEGORY"}
-              value={subCategory}
+              value={autoSubCategory ? autoSubCategory : subCategory}
               type={"text"}
               placeholder={"ENTER SUB CATEGORY"}
               onChange={(e) => {
@@ -124,11 +136,21 @@ export default function AddItemButton({
               }}
               required
             />
+            <InputItem
+              label={"NAME"}
+              value={itemName}
+              type={"text"}
+              placeholder={"ENTER NAME"}
+              onChange={(e) => {
+                setItemName(e.target.value);
+              }}
+              required
+            />
           </div>
 
           {/* 2nd row */}
-          <div className="input-row three-col">
-            <InputItem
+          <div className="input-row half">
+            {/* <InputItem
               label={"CODE"}
               value={itemCode}
               type={"text"}
@@ -137,7 +159,7 @@ export default function AddItemButton({
                 setItemCode(e.target.value);
               }}
               required
-            />
+            /> */}
             <InputItem
               label={"SCOPE OF WORK"}
               value={scopeOfWork}
@@ -218,15 +240,17 @@ export default function AddItemButton({
               label={"TOTAL COST"}
               value={totalCost}
               type={"text"}
-              placeholder={"ENTER TOTAL COST"}
-              onChange={(e) => {
+              placeholder={"CALCULATING..."}
+              /* onChange={(e) => {
                 const val = e.target.value;
 
                 if (val === "" || /^\d+$/.test(val)) {
                   setTotalCost(val === "" ? "" : Number(val));
                 }
-              }}
+              }} */
+              onChange={() => {}}
               required
+              disabled
             />
           </div>
 
@@ -249,7 +273,7 @@ export default function AddItemButton({
             <div className="input-item">
               <label>ATTACHMENTS</label>
 
-              <UploadFilesButton />
+              <UploadFilesButton onFilesChange={setAttachments} />
             </div>
           </div>
         </FormPopUp>

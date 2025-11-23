@@ -19,16 +19,19 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
+    console.log(body);
+
     const query = `
       INSERT INTO projects 
-      (name, property_type_id, id, status, type_of_work, quoted_budget, allocated_budget, start_date, end_date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (name, property_type_id, id, size, status, type_of_work, quoted_budget, allocated_budget, start_date, end_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       body.name,
       Number(body.property_type_id),
       Number(body.id),
+      Number(body.size),
       body.status,
       body.type_of_work,
       Number(body.quoted_budget) || 0,
@@ -51,10 +54,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, id: result.insertId });
   } catch (err: any) {
-    console.error("SQL Error:", err.sqlMessage || err.message);
-    return NextResponse.json(
-      { error: err.sqlMessage || err.message },
-      { status: 500 }
-    );
+    console.error(err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
   }
 }

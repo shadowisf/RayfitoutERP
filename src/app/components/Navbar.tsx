@@ -3,7 +3,7 @@
 import Button from "./Button";
 import NewProjectButton from "./NewProjectButton";
 
-export default function Header() {
+export default function Navbar() {
   const logo_icon = "/icons/logo.svg";
   const search_icon = "/icons/search.svg";
   const notification_icon = "/icons/notification.svg";
