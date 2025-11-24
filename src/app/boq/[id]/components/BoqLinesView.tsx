@@ -1,12 +1,12 @@
 "use client";
 
-import Button from "@/app/components/Button";
 import { useState, useEffect } from "react";
 import AddItemButton from "./_AddItemButton";
-import { useRouter } from "next/navigation";
 import EditItemButton from "./_EditItemButton";
 import { BoqLine } from "../types/types";
 import DeleteItemButton from "./_DeleteItemButton";
+import DeleteSubCategoryButton from "./_DeleteSubCategoryButton";
+import RenameSubCategoryButton from "./_RenameSubCategory";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -23,8 +23,6 @@ export default function BoqLinesView({
   boqLines,
   boqHeaderID,
 }: BoqLinesViewProps) {
-  const router = useRouter();
-
   const pencilIcon = "/icons/pencil.svg";
   const trashIcon = "/icons/trash.svg";
 
@@ -102,9 +100,32 @@ export default function BoqLinesView({
       ) {
         return (
           <div key={subCategory} className="subcategory-section">
-            <h2>
-              {categories.indexOf(activeCategory) + 1}.{index + 1} {subCategory}
-            </h2>
+            <div className="subcategory-header">
+              <h2>
+                <span style={{ marginRight: "25px" }}>
+                  {categories.indexOf(activeCategory) + 1}.{index + 1}{" "}
+                </span>
+                {subCategory}
+              </h2>
+
+              <div className="right">
+                <DeleteSubCategoryButton
+                  item={items[0]}
+                  category={activeCategory}
+                  subCategory={subCategory}
+                >
+                  DELETE
+                </DeleteSubCategoryButton>
+
+                <RenameSubCategoryButton
+                  item={items[0]}
+                  category={activeCategory}
+                  subCategory={subCategory}
+                >
+                  RENAME
+                </RenameSubCategoryButton>
+              </div>
+            </div>
 
             <br />
             <br />
@@ -117,10 +138,10 @@ export default function BoqLinesView({
                   <th>QTY</th>
                   <th>UNIT</th>
                   <th>RATE</th>
+                  <th>TOTAL COST</th>
                   <th>LOCATION</th>
                   <th>ITEM DESCRIPTION</th>
                   <th>ATTACHMENT(S)</th>
-                  <th>TOTAL COST</th>
                   <th>ACTION</th>
                 </tr>
               </thead>
@@ -142,6 +163,7 @@ export default function BoqLinesView({
                       <td>{item.quantity}</td>
                       <td>{item.unit}</td>
                       <td>{item.rate_per_quantity?.toLocaleString()}</td>
+                      <td>AED {item.total_cost?.toLocaleString()}</td>
                       <td>{item.location_name?.split(" - ").pop()}</td>
                       <td
                         className="item-description"
@@ -175,7 +197,6 @@ export default function BoqLinesView({
                           })}
                         </div>
                       </td>
-                      <td>AED {item.total_cost?.toLocaleString()}</td>
                       <td>
                         <div style={{ display: "flex", gap: "10px" }}>
                           <EditItemButton
@@ -218,12 +239,25 @@ export default function BoqLinesView({
             </AddItemButton>
 
             <br />
+
+            <br />
             <br />
             <br />
             <br />
           </div>
         );
       })}
+
+      <AddItemButton
+        boqHeaderID={boqHeaderID}
+        bgColor="rgba(239, 239, 239, 1)"
+        borderColor="rgba(239, 239, 239, 1)"
+        textColor="black"
+        full
+        autoCategory={activeCategory}
+      >
+        ADD SUBCATEGORY +
+      </AddItemButton>
     </>
   );
 }

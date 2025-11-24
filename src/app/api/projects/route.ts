@@ -23,8 +23,8 @@ export async function POST(req: Request) {
 
     const query = `
       INSERT INTO projects 
-      (name, property_type_id, id, size, status, type_of_work, quoted_budget, allocated_budget, start_date, end_date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (name, property_type_id, id, size, status, type_of_work, quoted_budget, currency, allocated_budget, start_date, end_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -35,6 +35,7 @@ export async function POST(req: Request) {
       body.status,
       body.type_of_work,
       Number(body.quoted_budget) || 0,
+      body.currency,
       Number(body.allocated_budget) || 0,
       body.start_date || null,
       body.end_date || null,
@@ -42,7 +43,6 @@ export async function POST(req: Request) {
 
     const [result]: any = await db.query(query, values);
 
-    // Insert scopes using a loop (simpler and works)
     if (body.scope_ids && body.scope_ids.length > 0) {
       for (const scopeId of body.scope_ids) {
         await db.query(

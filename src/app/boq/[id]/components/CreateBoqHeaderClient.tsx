@@ -17,7 +17,6 @@ export default function CreateBoqHeaderClient({
   const [boqRefNumber, setBoqRefNumber] = useState<number | string>(projectID);
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
-  const [currency, setCurrency] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [validityTerms, setValidityTerms] = useState("");
   const [termsAndConditions, setTermsAndConditions] = useState("");
@@ -36,7 +35,6 @@ export default function CreateBoqHeaderClient({
         id: boqRefNumber,
         location,
         date,
-        currency,
         payment_terms: paymentTerms,
         validity_terms: validityTerms,
         terms_and_conditions: termsAndConditions,
@@ -137,31 +135,7 @@ export default function CreateBoqHeaderClient({
             />
           </div>
 
-          <div className="input-row three-col">
-            <InputItem
-              label={"CURRENCY"}
-              value={currency}
-              type={"select"}
-              placeholder={"SELECT CURRENCY"}
-              required
-              onChange={(e) => {
-                setCurrency(e.target.value);
-              }}
-              selectOptions={[
-                "AED",
-                "USD",
-                "EUR",
-                "GBP",
-                "SAR",
-                "KES",
-                "JPY",
-                "CAD",
-                "CHF",
-                "AUD",
-                "CNY",
-              ]}
-            />
-
+          <div className="input-row half">
             <InputItem
               label={"PAYMENT TERMS"}
               value={paymentTerms}

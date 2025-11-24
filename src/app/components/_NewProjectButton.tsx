@@ -23,6 +23,7 @@ export default function NewProjectButton() {
   const [scopeIDs, setScopeIDs] = useState<(string | number)[]>([]);
   const [typeOfWork, setTypeOfWork] = useState("");
   const [quotedBudget, setQuotedBudget] = useState<number | string>("");
+  const [currency, setCurrency] = useState("");
   const [allocatedBudget, setAllocatedBudget] = useState<number | string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -58,6 +59,7 @@ export default function NewProjectButton() {
           scope_ids: scopeIDs,
           type_of_work: typeOfWork,
           quoted_budget: Number(String(quotedBudget).replace(/,/g, "")) | 0,
+          currency,
           allocated_budget:
             Number(String(allocatedBudget).replace(/,/g, "")) | 0,
           start_date: startDate || null,
@@ -76,6 +78,7 @@ export default function NewProjectButton() {
       setScopeIDs([0]);
       setTypeOfWork("");
       setQuotedBudget(0);
+      setCurrency("");
       setAllocatedBudget(0);
       setStartDate("");
       setEndDate("");
@@ -250,11 +253,11 @@ export default function NewProjectButton() {
           </div>
 
           {/* 4th row */}
-          <div className="input-row full">
+          <div className="input-row">
             <div className="input-item">
               <label>QUOTED BUDGET (OPTIONAL)</label>
               <div className="input-prefix right">
-                <span>AED</span>
+                <span>{currency}</span>
                 <input
                   style={{ paddingRight: "50px" }}
                   type="text"
@@ -290,6 +293,30 @@ export default function NewProjectButton() {
                 />
               </div>
             </div>
+
+            <InputItem
+              label={"CURRENCY"}
+              value={currency}
+              type={"select"}
+              placeholder={"SELECT CURRENCY"}
+              required
+              onChange={(e) => {
+                setCurrency(e.target.value);
+              }}
+              selectOptions={[
+                "AED",
+                "USD",
+                "EUR",
+                "GBP",
+                "SAR",
+                "KES",
+                "JPY",
+                "CAD",
+                "CHF",
+                "AUD",
+                "CNY",
+              ]}
+            />
           </div>
 
           {/* 5th row */}
@@ -297,7 +324,7 @@ export default function NewProjectButton() {
             <div className="input-item">
               <label>ALLOCATED BUDGET (OPTIONAL)</label>
               <div className="input-prefix right">
-                <span>AED</span>
+                <span>{currency}</span>
                 <input
                   style={{ paddingRight: "50px" }}
                   type="text"

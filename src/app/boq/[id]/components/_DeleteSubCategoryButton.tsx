@@ -6,22 +6,27 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { BoqLine } from "../types/types";
 
-type DeleteItemButtonProps = {
+type DeleteSubCategoryButtonProps = {
   item: BoqLine;
+  category: string;
+  subCategory: string;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
   children?: React.ReactNode;
 };
 
-export default function DeleteItemButton({
+export default function DeleteSubCategoryButton({
   item,
+  category,
+  subCategory,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: DeleteItemButtonProps) {
+}: DeleteSubCategoryButtonProps) {
   const router = useRouter();
+
   const [isOpen, setIsOpen] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -31,19 +36,21 @@ export default function DeleteItemButton({
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "deleteItem",
-        id: item.id,
+        action: "deleteSubCategory",
+        category: category,
+        sub_category: subCategory,
+        boq_id: Number(item.boq_id),
       }),
     });
 
     if (res.ok) {
-      alert("Item deleted");
+      alert("Subcategory deleted");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      alert("Failed to delete item. Something went wrong");
+      alert("Failed to delete subcategory. Something went wrong");
     }
   }
 
@@ -61,12 +68,12 @@ export default function DeleteItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE ITEM"}
+          header={"DELETE SUBCATEGORY"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"DELETE ITEM"}
+          addButtonLabel={"DELETE SUBCATEGORY"}
         >
-          <p>Are you sure you want to delete this item?</p>
+          <p>Are you sure you want to delete this subcategory?</p>
         </FormPopUp>
       )}
     </>

@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 
-type MultiSelectInputProps = {
+type SingleSelectInputProps = {
   label: string;
-  selectedValues: (string | number)[];
-  onChange: (selected: (string | number)[]) => void;
+  selectedValue: string | number;
+  onChange: (selected: string | number) => void;
   placeholder: string;
   disabled?: boolean;
   required?: boolean;
@@ -15,9 +15,9 @@ type MultiSelectInputProps = {
   labelField?: string;
 };
 
-export default function MultiSelectDropdown({
+export default function SingleSelectDropdown({
   label,
-  selectedValues,
+  selectedValue,
   onChange,
   placeholder,
   disabled,
@@ -26,7 +26,7 @@ export default function MultiSelectDropdown({
   dbData,
   idField = "id",
   labelField = "value",
-}: MultiSelectInputProps) {
+}: SingleSelectInputProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -89,37 +89,26 @@ export default function MultiSelectDropdown({
     }
   }
 
-  function handleCheckboxChange(optionId: string | number) {
-    const isSelected = selectedValues.includes(optionId);
-
-    if (isSelected) {
-      onChange(
-        selectedValues.filter(function (id) {
-          return id !== optionId;
-        })
-      );
-    } else {
-      onChange([...selectedValues, optionId]);
-    }
+  function handleOptionClick(optionId: string | number) {
+    onChange(optionId);
+    setIsOpen(false); // Close dropdown after selection
+    setSearchQuery(""); // Clear search
   }
 
   function getDisplayText() {
-    if (selectedValues.length === 0) {
+    if (!selectedValue) {
       return placeholder;
     }
 
-    if (selectedValues.length === 1) {
-      const selectedOption = options.find(function (option) {
-        return selectedValues.includes(option.id);
-      });
-      return selectedOption ? selectedOption.label : "1 selected";
-    }
+    const selectedOption = options.find(function (option) {
+      return option.id === selectedValue;
+    });
 
-    return `${selectedValues.length} selected`;
+    return selectedOption ? selectedOption.label : placeholder;
   }
 
   const displayText = getDisplayText();
-  const isPlaceholder = selectedValues.length === 0;
+  const isPlaceholder = !selectedValue;
 
   return (
     <div className="input-item" ref={containerRef}>
@@ -164,21 +153,20 @@ export default function MultiSelectDropdown({
             <div className="options-list">
               {filteredOptions.length > 0 ? (
                 filteredOptions.map(function (option) {
-                  const isChecked = selectedValues.includes(option.id);
+                  const isSelected = option.id === selectedValue;
 
                   return (
                     <div
                       key={option.id}
-                      className={`select-option ${isChecked ? "selected" : ""}`}
+                      className={`select-option ${
+                        isSelected ? "selected" : ""
+                      }`}
                       role="option"
-                      aria-selected={isChecked}
+                      aria-selected={isSelected}
                       onClick={function () {
-                        handleCheckboxChange(option.id);
+                        handleOptionClick(option.id);
                       }}
                     >
-                      <span className="checkbox">
-                        {isChecked && <span className="checkmark">✓</span>}
-                      </span>
                       <span className="option-text">{option.label}</span>
                     </div>
                   );

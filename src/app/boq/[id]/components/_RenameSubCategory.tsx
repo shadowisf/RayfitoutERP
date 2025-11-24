@@ -1,51 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
+import InputItem from "@/app/components/InputItem";
 import { BoqLine } from "../types/types";
 
-type DeleteItemButtonProps = {
+type RenameSubCategoryButtonProps = {
   item: BoqLine;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
   children?: React.ReactNode;
+  category: string;
+  subCategory: string;
 };
 
-export default function DeleteItemButton({
+export default function RenameSubCategoryButton({
   item,
+  category,
+  subCategory,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: DeleteItemButtonProps) {
+}: RenameSubCategoryButtonProps) {
   const router = useRouter();
+
   const [isOpen, setIsOpen] = useState(false);
+
+  const [newSubCategory, setNewSubCategory] = useState(subCategory);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
-      method: "DELETE",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "deleteItem",
-        id: item.id,
+        action: "updateSubCategory",
+        new_sub_category: newSubCategory,
+        old_sub_category: subCategory,
+        category: category,
+        boq_id: item.boq_id,
       }),
     });
 
     if (res.ok) {
-      alert("Item deleted");
+      alert("Subcategory renamed");
+
+      setNewSubCategory("");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      alert("Failed to delete item. Something went wrong");
+      alert("Failed to renamed subcategory. Something went wrong");
     }
   }
+
+  useEffect(() => {}, []);
 
   return (
     <>
@@ -61,12 +76,21 @@ export default function DeleteItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE ITEM"}
+          header={"RENAME SUBCATEGORY"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"DELETE ITEM"}
+          addButtonLabel={"RENAME SUBCATEGORY"}
         >
-          <p>Are you sure you want to delete this item?</p>
+          <div className="input-row full">
+            <InputItem
+              label={"SUB CATEGORY"}
+              value={newSubCategory}
+              type={"text"}
+              placeholder={"ENTER SUB CATEGORY"}
+              onChange={(e) => setNewSubCategory(e.target.value)}
+              required
+            />
+          </div>
         </FormPopUp>
       )}
     </>

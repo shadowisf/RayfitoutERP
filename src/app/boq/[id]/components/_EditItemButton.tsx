@@ -194,9 +194,32 @@ export default function EditItemButton({
             <InputItem
               label={"UNIT"}
               value={unit}
-              type={"text"}
-              placeholder={"ENTER UNIT"}
-              onChange={(e) => setUnit(e.target.value)}
+              type={"select"}
+              placeholder={"SELECT UNIT"}
+              onChange={(e) => {
+                setUnit(e.target.value);
+              }}
+              selectOptions={[
+                "ITEM",
+                "NOS",
+                "SQM",
+                "SQFT",
+                "M",
+                "LM",
+                "FT",
+                "CUM",
+                "KG",
+                "TON",
+                "LTR",
+                "GAL",
+                "SET",
+                "LOT",
+                "LS",
+                "PAIR",
+                "BOX",
+                "BAG",
+                "ROLL",
+              ]}
               required
             />
           </div>

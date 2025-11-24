@@ -20,7 +20,7 @@ export default function FormPopUp({
   return (
     <div className="form-outer-container">
       <div className="form-inner-container">
-        <div className="form-header" style={{ marginBottom: "40px" }}>
+        <div className="form-header">
           <h2>{header}</h2>
 
           <img
@@ -31,8 +31,15 @@ export default function FormPopUp({
           />
         </div>
 
+        <br />
+        <br />
+
         <form onSubmit={handleSubmit}>
           {children}
+
+          <br />
+          <br />
+          <br />
 
           <div className="button-container">
             <Button

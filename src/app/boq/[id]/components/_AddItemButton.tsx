@@ -6,6 +6,8 @@ import InputItem from "@/app/components/InputItem";
 import Button from "@/app/components/Button";
 import UploadFilesButton from "./_UploadFilesButton";
 import { useRouter } from "next/navigation";
+import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
+import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 
 type AddItemButtonProps = {
   boqHeaderID: string;
@@ -212,20 +214,13 @@ export default function AddItemButton({
               ]}
               required
             />
-            <InputItem
+
+            <SingleSelectDropdown
               label={"LOCATION"}
-              value={locationID}
-              type={"select"}
-              placeholder={"SELECT LOCATION"}
-              onChange={(e) => {
-                setLocationID(Number(e.target.value));
-              }}
-              dbMap={locationValues.map((location: any) => (
-                <option key={location.id} value={location.id}>
-                  {location.value}
-                </option>
-              ))}
-              required
+              selectedValue={locationID}
+              onChange={setLocationID}
+              placeholder={"SET LOCATION"}
+              dbData={locationValues}
             />
           </div>
 
@@ -248,11 +243,32 @@ export default function AddItemButton({
             <InputItem
               label={"UNIT"}
               value={unit}
-              type={"text"}
-              placeholder={"ENTER UNIT"}
+              type={"select"}
+              placeholder={"SELECT UNIT"}
               onChange={(e) => {
                 setUnit(e.target.value);
               }}
+              selectOptions={[
+                "ITEM",
+                "NOS",
+                "SQM",
+                "SQFT",
+                "M",
+                "LM",
+                "FT",
+                "CUM",
+                "KG",
+                "TON",
+                "LTR",
+                "GAL",
+                "SET",
+                "LOT",
+                "LS",
+                "PAIR",
+                "BOX",
+                "BAG",
+                "ROLL",
+              ]}
               required
             />
           </div>
