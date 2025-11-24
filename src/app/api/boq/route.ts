@@ -31,12 +31,10 @@ export async function POST(req: Request) {
     }
 
     if (body.action === "createBoqLine") {
-      console.log("Request body:", body); // Debug incoming data
-
       const query = `
       INSERT INTO boq_lines 
-      (boq_id, item_name, category, sub_category, item_code, scope_of_work, location_id, quantity, unit, rate_per_quantity, total_cost, item_description, attachments)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (boq_id, item_name, category, sub_category, scope_of_work, location_id, quantity, unit, rate_per_quantity, total_cost, item_description, attachments)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const values = [
@@ -44,7 +42,7 @@ export async function POST(req: Request) {
         body.item_name,
         body.category,
         body.sub_category,
-        body.item_code,
+        /* body.item_code, */
         body.scope_of_work,
         Number(body.location_id),
         Number(body.quantity),
@@ -63,6 +61,57 @@ export async function POST(req: Request) {
     }
   } catch (err: any) {
     console.error(err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+
+    const query = `
+      UPDATE boq_lines 
+      SET item_name = ?, category = ?, sub_category = ?, scope_of_work = ?, location_id = ?, quantity = ?, unit = ?, rate_per_quantity = ?, total_cost = ?, item_description = ?, attachments = ?
+      WHERE id = ?
+    `;
+
+    const values = [
+      body.item_name,
+      body.category,
+      body.sub_category,
+      /* body.item_code, */
+      body.scope_of_work,
+      Number(body.location_id),
+      Number(body.quantity),
+      body.unit,
+      Number(body.rate_per_quantity) || 0,
+      Number(body.total_cost) || 0,
+      body.item_description || null,
+      body.attachments && body.attachments.length > 0
+        ? JSON.stringify(body.attachments)
+        : null,
+      Number(body.id),
+    ];
+
+    await db.query(query, values);
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error(err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const body = await req.json();
+
+    const query = "DELETE FROM boq_lines WHERE id = ?";
+    await db.query(query, [Number(body.id)]);
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error("SQL Error:", err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
   }
 }

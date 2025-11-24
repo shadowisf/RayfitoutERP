@@ -2,6 +2,7 @@
 
 import Button from "@/app/components/Button";
 import InputItem from "@/app/components/InputItem";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function CreateBoqHeaderClient({
@@ -9,6 +10,8 @@ export default function CreateBoqHeaderClient({
 }: {
   projectID: string;
 }) {
+  const router = useRouter();
+
   const [companyName, setCompanyName] = useState("RAYFITOUT CONTRACTING LLC");
   const [clientName, setClientName] = useState("");
   const [boqRefNumber, setBoqRefNumber] = useState<number | string>(projectID);
@@ -50,6 +53,8 @@ export default function CreateBoqHeaderClient({
       setPaymentTerms("");
       setValidityTerms("");
       setTermsAndConditions("");
+
+      router.refresh();
     } else {
       alert("Failed to add BOQ header");
     }

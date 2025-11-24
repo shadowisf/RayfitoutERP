@@ -15,7 +15,7 @@ type MultiSelectInputProps = {
   labelField?: string;
 };
 
-export default function MultiSelectInput({
+export default function MultiSelectDropdown({
   label,
   selectedValues,
   onChange,

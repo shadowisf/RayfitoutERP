@@ -51,6 +51,8 @@ export async function POST(req: Request) {
         id: row.id,
         boq_id: row.boq_id,
         item_name: row.item_name,
+        category: row.category,
+        sub_category: row.sub_category,
         item_code: row.item_code,
         scope_of_work: row.scope_of_work,
         location_id: row.location_id,
@@ -66,7 +68,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(grouped);
   } catch (err: any) {
-    console.error(err.sqlMessage || err.message);
+    console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
   }
 }

@@ -4,9 +4,12 @@ import { useState, useEffect } from "react";
 import FormPopUp from "./FormPopup";
 import InputItem from "./InputItem";
 import Button from "./Button";
-import MultiSelectDropdown from "./MultiselectDropdown";
+import MultiSelectDropdown from "./MultiSelectDropdown";
+import { useRouter } from "next/navigation";
 
 export default function NewProjectButton() {
+  const router = useRouter();
+
   const [isOpen, setIsOpen] = useState(false);
 
   const [propertyTypes, setPropertyTypes] = useState<[]>([]);
@@ -65,6 +68,7 @@ export default function NewProjectButton() {
 
     if (res.ok) {
       alert("Project added");
+
       setName("");
       setPropertyTypeID(0);
       setID("");
@@ -76,6 +80,8 @@ export default function NewProjectButton() {
       setStartDate("");
       setEndDate("");
       setIsOpen(false);
+
+      router.refresh();
     } else {
       alert("Failed to add project");
     }

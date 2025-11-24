@@ -1,7 +1,7 @@
 "use client";
 
 import Button from "./Button";
-import NewProjectButton from "./NewProjectButton";
+import NewProjectButton from "./_NewProjectButton";
 
 export default function Navbar() {
   const logo_icon = "/icons/logo.svg";

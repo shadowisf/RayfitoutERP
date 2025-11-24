@@ -2,23 +2,11 @@
 
 import Button from "@/app/components/Button";
 import { useState, useEffect } from "react";
-import AddItemButton from "./AddItemButton";
-
-type BoqLine = {
-  id: number;
-  boq_id: number;
-  item_name: string;
-  item_code: string;
-  scope_of_work: string;
-  location_id: number;
-  location_name: string;
-  quantity: number;
-  unit: string;
-  rate_per_quantity: number;
-  total_cost: number;
-  item_description: string;
-  attachments: string[];
-};
+import AddItemButton from "./_AddItemButton";
+import { useRouter } from "next/navigation";
+import EditItemButton from "./_EditItemButton";
+import { BoqLine } from "../types/types";
+import DeleteItemButton from "./_DeleteItemButton";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -35,6 +23,8 @@ export default function BoqLinesView({
   boqLines,
   boqHeaderID,
 }: BoqLinesViewProps) {
+  const router = useRouter();
+
   const pencilIcon = "/icons/pencil.svg";
   const trashIcon = "/icons/trash.svg";
 
@@ -42,6 +32,9 @@ export default function BoqLinesView({
   const [expandedDescriptions, setExpandedDescriptions] = useState<number[]>(
     []
   );
+
+  const categories = Object.keys(boqLines);
+  const subCategories = boqLines[activeCategory] || {};
 
   useEffect(
     function () {
@@ -68,9 +61,6 @@ export default function BoqLinesView({
   function isExpanded(itemId: number) {
     return expandedDescriptions.includes(itemId);
   }
-
-  const categories = Object.keys(boqLines);
-  const subCategories = boqLines[activeCategory] || {};
 
   return (
     <>
@@ -188,25 +178,23 @@ export default function BoqLinesView({
                       <td>AED {item.total_cost?.toLocaleString()}</td>
                       <td>
                         <div style={{ display: "flex", gap: "10px" }}>
-                          <Button
-                            componentType={"button"}
+                          <EditItemButton
+                            item={item}
                             bgColor={"rgba(239, 239, 239, 1)"}
                             borderColor={"rgba(223, 223, 223, 1)"}
                             textColor={"black"}
-                            onClick={() => {}}
                           >
                             <img src={pencilIcon} alt="pencil icon" />
-                          </Button>
+                          </EditItemButton>
 
-                          <Button
-                            componentType={"button"}
+                          <DeleteItemButton
+                            item={item}
                             bgColor={"rgba(239, 239, 239, 1)"}
                             borderColor={"rgba(223, 223, 223, 1)"}
                             textColor={"black"}
-                            onClick={() => {}}
                           >
                             <img src={trashIcon} alt="trash icon" />
-                          </Button>
+                          </DeleteItemButton>
                         </div>
                       </td>
                     </tr>
