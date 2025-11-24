@@ -27,7 +27,7 @@ export default function CreateBoqLineClient({
       <br />
       <br />
 
-      <AddItemButton boqHeaderID={boqHeaderID} />
+      <AddItemButton full boqHeaderID={boqHeaderID}>ADD ITEM +</AddItemButton>
     </div>
   );
 }

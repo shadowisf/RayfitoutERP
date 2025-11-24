@@ -98,7 +98,9 @@ export default function BoqLinesView({
           bgColor="black"
           borderColor="black"
           textColor="white"
-        />
+        >
+          ADD ITEM & SUBCATEGORY +
+        </AddItemButton>
       </div>
 
       <br />
@@ -212,6 +214,20 @@ export default function BoqLinesView({
                 })}
               </tbody>
             </table>
+
+            <br />
+
+            <AddItemButton
+              boqHeaderID={boqHeaderID}
+              bgColor="rgba(239, 239, 239, 1)"
+              borderColor="rgba(239, 239, 239, 1)"
+              textColor="black"
+              full
+              autoCategory={activeCategory}
+              autoSubCategory={subCategory}
+            >
+              ADD ITEM +
+            </AddItemButton>
 
             <br />
             <br />

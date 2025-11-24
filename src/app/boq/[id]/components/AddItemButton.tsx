@@ -13,6 +13,8 @@ type AddItemButtonProps = {
   borderColor?: string;
   autoCategory?: string;
   autoSubCategory?: string;
+  children: React.ReactNode;
+  full?: boolean;
 };
 
 export default function AddItemButton({
@@ -22,6 +24,8 @@ export default function AddItemButton({
   borderColor = "rgba(239, 239, 239, 1)",
   autoCategory = "",
   autoSubCategory = "",
+  children,
+  full,
 }: AddItemButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -50,6 +54,29 @@ export default function AddItemButton({
         console.error(err);
       });
   }, []);
+
+  useEffect(
+    function () {
+      if (ratePerQuantity && quantity) {
+        setTotalCost(Number(ratePerQuantity) * Number(quantity));
+      } else {
+        setTotalCost("");
+      }
+    },
+    [ratePerQuantity, quantity]
+  );
+
+  useEffect(
+    function () {
+      if (isOpen && autoCategory) {
+        setCategory(autoCategory);
+      }
+      if (isOpen && autoSubCategory) {
+        setSubCategory(autoSubCategory);
+      }
+    },
+    [isOpen, autoCategory, autoSubCategory]
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -84,17 +111,6 @@ export default function AddItemButton({
     }
   }
 
-  useEffect(
-    function () {
-      if (ratePerQuantity && quantity) {
-        setTotalCost(Number(ratePerQuantity) * Number(quantity));
-      } else {
-        setTotalCost("");
-      }
-    },
-    [ratePerQuantity, quantity]
-  );
-
   return (
     <>
       <Button
@@ -103,8 +119,9 @@ export default function AddItemButton({
         borderColor={borderColor}
         textColor={textColor}
         onClick={() => setIsOpen(true)}
+        full={full ? true : false}
       >
-        ADD ITEM +
+        {children}
       </Button>
 
       {isOpen && (
@@ -118,23 +135,25 @@ export default function AddItemButton({
           <div className="input-row three-col">
             <InputItem
               label={"CATEGORY"}
-              value={autoCategory ? autoCategory : category}
+              value={category}
               type={"text"}
               placeholder={"ENTER CATEGORY"}
               onChange={(e) => {
                 setCategory(e.target.value);
               }}
               required
+              disabled={autoCategory ? true : false}
             />
             <InputItem
               label={"SUB CATEGORY"}
-              value={autoSubCategory ? autoSubCategory : subCategory}
+              value={subCategory}
               type={"text"}
               placeholder={"ENTER SUB CATEGORY"}
               onChange={(e) => {
                 setSubCategory(e.target.value);
               }}
               required
+              disabled={autoSubCategory ? true : false}
             />
             <InputItem
               label={"NAME"}
