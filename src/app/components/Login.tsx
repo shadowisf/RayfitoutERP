@@ -5,12 +5,14 @@ import InputItem from "./InputItem";
 import Button from "./Button";
 import { login, completeNewPassword } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext";
 
 export default function Login() {
   const logo = "/icons/logo.svg";
   const backgroundImg = "/images/hq.jpg";
 
   const router = useRouter();
+  const { checkAuth } = useAuth();
 
   const [userID, setUserID] = useState("");
   const [password, setPassword] = useState("");
@@ -26,6 +28,7 @@ export default function Login() {
 
   async function handleSubmit(e: any) {
     e.preventDefault();
+
     setError("");
     setLoading(true);
 
@@ -41,6 +44,8 @@ export default function Login() {
       }
 
       if (result.status === "SUCCESS") {
+        // Re-check auth before redirecting
+        await checkAuth();
         router.push("/dashboard");
       }
     } catch (err: any) {
@@ -69,6 +74,8 @@ export default function Login() {
 
       await completeNewPassword(cognitoUser, newPassword, updatedAttributes);
 
+      // Re-check auth before redirecting
+      await checkAuth();
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Password update failed");

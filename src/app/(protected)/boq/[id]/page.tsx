@@ -40,7 +40,7 @@ export default async function BOQ({
     .catch((err) => console.error(err));
 
   return (
-    <main>
+    <div>
       {boqHeader && boqHeader.length > 0 ? (
         boqLines && Object.keys(boqLines).length > 0 ? (
           <BoqLinesView boqLines={boqLines} boqHeaderID={id} />
@@ -50,6 +50,6 @@ export default async function BOQ({
       ) : (
         <CreateBoqHeaderClient projectID={id} />
       )}
-    </main>
+    </div>
   );
 }

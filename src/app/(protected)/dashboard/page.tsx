@@ -1,5 +1,4 @@
 import Button from "@/app/components/Button";
-import ProtectedRoute from "@/app/components/ProtectedRoute";
 
 export default async function Dashboard() {
   const file_icon = "/icons/file.svg";
@@ -32,121 +31,119 @@ export default async function Dashboard() {
   );
 
   return (
-    <ProtectedRoute>
-      <main className="dashboard">
-        <h2>OVERVIEW</h2>
+    <div className="dashboard">
+      <h2>OVERVIEW</h2>
 
-        <br />
+      <br />
 
-        <div className="widget-grid overview">
-          <div className="item">
-            <div className="icon">
-              <img src={file_icon} alt="file icon" />
-            </div>
-            <div>
-              <p className="number">17</p>
-              <p className="label">TOTAL MRS THIS WEEK</p>
-            </div>
+      <div className="widget-grid overview">
+        <div className="item">
+          <div className="icon">
+            <img src={file_icon} alt="file icon" />
           </div>
-          <div className="item">
-            <div className="icon">
-              <img src={file_icon} alt="file icon" />
-            </div>
-            <div>
-              <p className="number">17</p>
-              <p className="label">TOTAL MRS THIS WEEK</p>
-            </div>
-          </div>
-          <div className="item">
-            <div className="icon">
-              <img src={file_icon} alt="file icon" />
-            </div>
-            <div>
-              <p className="number">17</p>
-              <p className="label">TOTAL MRS THIS WEEK</p>
-            </div>
-          </div>
-          <div className="item">
-            <div className="icon">
-              <img src={file_icon} alt="file icon" />
-            </div>
-            <div>
-              <p className="number">17</p>
-              <p className="label">TOTAL MRS THIS WEEK</p>
-            </div>
+          <div>
+            <p className="number">17</p>
+            <p className="label">TOTAL MRS THIS WEEK</p>
           </div>
         </div>
+        <div className="item">
+          <div className="icon">
+            <img src={file_icon} alt="file icon" />
+          </div>
+          <div>
+            <p className="number">17</p>
+            <p className="label">TOTAL MRS THIS WEEK</p>
+          </div>
+        </div>
+        <div className="item">
+          <div className="icon">
+            <img src={file_icon} alt="file icon" />
+          </div>
+          <div>
+            <p className="number">17</p>
+            <p className="label">TOTAL MRS THIS WEEK</p>
+          </div>
+        </div>
+        <div className="item">
+          <div className="icon">
+            <img src={file_icon} alt="file icon" />
+          </div>
+          <div>
+            <p className="number">17</p>
+            <p className="label">TOTAL MRS THIS WEEK</p>
+          </div>
+        </div>
+      </div>
 
-        <br />
-        <br />
-        <br />
-        <br />
-        <br />
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
 
-        <h2>ACTIVE PROJECTS</h2>
-        <br />
+      <h2>ACTIVE PROJECTS</h2>
+      <br />
 
-        <div className="widget-grid active-projects">
-          {projectsWithBOQ.map((proj: any) => (
-            <div className="item" key={proj.id}>
-              <span
-                className="status"
-                style={
-                  proj.status === "Completed"
-                    ? {
-                        backgroundColor: "rgba(134,241,181,1)",
-                        color: "rgba(52,100,73,1)",
-                      }
-                    : {
-                        backgroundColor: "rgba(255,244,93,1)",
-                        color: "rgba(132,107,26,1)",
-                      }
-                }
-              >
-                {proj.status === "Completed" ? "COMPLETED" : "ONGOING"}
-              </span>
+      <div className="widget-grid active-projects">
+        {projectsWithBOQ.map((proj: any) => (
+          <div className="item" key={proj.id}>
+            <span
+              className="status"
+              style={
+                proj.status === "Completed"
+                  ? {
+                      backgroundColor: "rgba(134,241,181,1)",
+                      color: "rgba(52,100,73,1)",
+                    }
+                  : {
+                      backgroundColor: "rgba(255,244,93,1)",
+                      color: "rgba(132,107,26,1)",
+                    }
+              }
+            >
+              {proj.status === "Completed" ? "COMPLETED" : "ONGOING"}
+            </span>
 
+            <div>
               <div>
-                <div>
-                  <span>Name</span>
-                  <p>{proj.name}</p>
-                </div>
-
-                <br />
-
-                <div>
-                  <span>Budget</span>
-                  <p>
-                    AED{" "}
-                    {Number(proj.quoted_budget).toLocaleString(undefined, {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 2,
-                    })}
-                  </p>
-                </div>
+                <span>Name</span>
+                <p>{proj.name}</p>
               </div>
 
               <br />
 
               <div>
-                <Button
-                  componentType={"link"}
-                  bgColor={"rgba(239, 239, 239, 1)"}
-                  borderColor={"rgba(223, 223, 223, 1)"}
-                  textColor={"black"}
-                  href={`boq/${proj.id}`}
-                  full={false}
-                >
-                  <>
-                    {proj.hasBOQ ? "VIEW BOQ" : "CREATE BOQ"}
-                    <img src={external_link_icon} alt="external link icon" />
-                  </>
-                </Button>
+                <span>Budget</span>
+                <p>
+                  AED{" "}
+                  {Number(proj.quoted_budget).toLocaleString(undefined, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
               </div>
             </div>
-          ))}
-        </div>
-      </main>
-    </ProtectedRoute>
+
+            <br />
+
+            <div>
+              <Button
+                componentType={"link"}
+                bgColor={"rgba(239, 239, 239, 1)"}
+                borderColor={"rgba(223, 223, 223, 1)"}
+                textColor={"black"}
+                href={`boq/${proj.id}`}
+                full={false}
+              >
+                <>
+                  {proj.hasBOQ ? "VIEW BOQ" : "CREATE BOQ"}
+                  <img src={external_link_icon} alt="external link icon" />
+                </>
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

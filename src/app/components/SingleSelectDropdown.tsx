@@ -50,7 +50,6 @@ export default function SingleSelectDropdown({
 
   const options = getOptions();
 
-  // Filter options based on search query
   const filteredOptions = options.filter(function (option) {
     return option.label.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -62,7 +61,7 @@ export default function SingleSelectDropdown({
         !containerRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
-        setSearchQuery(""); // Clear search when closing
+        setSearchQuery("");
       }
     }
 
@@ -72,7 +71,6 @@ export default function SingleSelectDropdown({
     };
   }, []);
 
-  // Focus search input when dropdown opens
   useEffect(
     function () {
       if (isOpen && searchInputRef.current) {
@@ -91,8 +89,8 @@ export default function SingleSelectDropdown({
 
   function handleOptionClick(optionId: string | number) {
     onChange(optionId);
-    setIsOpen(false); // Close dropdown after selection
-    setSearchQuery(""); // Clear search
+    setIsOpen(false);
+    setSearchQuery("");
   }
 
   function getDisplayText() {
@@ -132,7 +130,6 @@ export default function SingleSelectDropdown({
 
         {isOpen && (
           <div className="select-dropdown" role="listbox">
-            {/* Search Input */}
             <div className="search-wrapper">
               <input
                 ref={searchInputRef}
@@ -144,12 +141,11 @@ export default function SingleSelectDropdown({
                   setSearchQuery(e.target.value);
                 }}
                 onClick={function (e) {
-                  e.stopPropagation(); // Prevent dropdown from closing
+                  e.stopPropagation();
                 }}
               />
             </div>
 
-            {/* Options List */}
             <div className="options-list">
               {filteredOptions.length > 0 ? (
                 filteredOptions.map(function (option) {

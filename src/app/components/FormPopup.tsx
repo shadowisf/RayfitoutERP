@@ -6,6 +6,7 @@ type FormPopUpProps = {
   handleSubmit: (e: React.FormEvent) => void;
   children: React.ReactNode;
   addButtonLabel: string;
+  style?: React.CSSProperties;
 };
 
 export default function FormPopUp({
@@ -14,12 +15,13 @@ export default function FormPopUp({
   handleSubmit,
   addButtonLabel,
   children,
+  style,
 }: FormPopUpProps) {
   const cross_icon = "/icons/cross.svg";
 
   return (
     <div className="form-outer-container">
-      <div className="form-inner-container">
+      <div className="form-inner-container" style={style}>
         <div className="form-header">
           <h2>{header}</h2>
 

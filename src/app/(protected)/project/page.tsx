@@ -1,6 +1,5 @@
 import Button from "@/app/components/Button";
 
-
 export default async function Project() {
   const external_link_icon = "/icons/external-link.svg";
 
@@ -31,7 +30,7 @@ export default async function Project() {
   );
 
   return (
-    <main className="dashboard">
+    <div className="dashboard">
       <h2>ACTIVE PROJECTS</h2>
       <br />
 
@@ -106,6 +105,6 @@ export default async function Project() {
           </div>
         ))}
       </div>
-    </main>
+    </div>
   );
 }

@@ -5,9 +5,12 @@ import FormPopUp from "./FormPopup";
 import Button from "./Button";
 import { useRouter } from "next/navigation";
 import InputItem from "./InputItem";
-import SingleSelectDropdown from "./SingleSelectDropdown";
+import { useAuth } from "../context/AuthContext";
+import MultiSelectDropdown from "./MultiSelectDropdown";
 
 export default function NewMrButton() {
+  const { userInfo } = useAuth();
+
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -15,11 +18,11 @@ export default function NewMrButton() {
   const [boqLines, setBoqLines] = useState<any[]>([]);
   const [purposeReasonValues, setPurposeReasonValues] = useState<[]>([]);
 
-  const [boqLineID, setBoqLineID] = useState<string | number>("");
   const [purposeReasonID, setPurposeReasonID] = useState("");
-  const [requestedBy, setRequestedBy] = useState("");
+  const [boqLineID, setBoqLineID] = useState<(string | number)[]>([]);
+
+  const [requestedBy, setRequestedBy] = useState(userInfo?.name || "");
   const [neededBy, setNeededBy] = useState("");
-  const [priority, setPriority] = useState("");
 
   useEffect(function () {
     fetch("/api/boq/getAllBoqLinesWithNumberRef")
@@ -51,6 +54,12 @@ export default function NewMrButton() {
       });
   }, []);
 
+  useEffect(() => {
+    if (purposeReasonID === "6") {
+      setBoqLineID([]);
+    }
+  }, [purposeReasonID]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -62,7 +71,6 @@ export default function NewMrButton() {
         department_id: 1,
         requested_by: requestedBy,
         required_date: neededBy,
-        priority,
         purpose_id: purposeReasonID,
       }),
     });
@@ -85,7 +93,10 @@ export default function NewMrButton() {
         bgColor={"white"}
         borderColor={"black"}
         textColor={"black"}
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          router.refresh();
+          setIsOpen(true);
+        }}
       >
         + NEW MATERIAL REQUEST
       </Button>
@@ -96,16 +107,9 @@ export default function NewMrButton() {
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"ADD MATERIAL REQUEST HEADER"}
+          style={{ minWidth: "80%" }}
         >
           <div className="input-row half">
-            <SingleSelectDropdown
-              label={"BOQ LINE ID"}
-              selectedValue={boqLineID}
-              onChange={setBoqLineID}
-              placeholder={"SELECT BOQ LINE ID"}
-              dbData={boqLines}
-            />
-
             <InputItem
               label={"PURPOSE/REASON"}
               value={purposeReasonID}
@@ -119,9 +123,28 @@ export default function NewMrButton() {
               ))}
               required
             />
+
+            {/* <SingleSelectDropdown
+              label={"BOQ LINE ID"}
+              selectedValue={boqLineID}
+              onChange={setBoqLineID}
+              placeholder={purposeReasonID === "6" ? "" : "SELECT BOQ LINE ID"}
+              dbData={boqLines}
+              disabled={purposeReasonID === "6"}
+            /> */}
+
+            <MultiSelectDropdown
+              label={"BOQ LINE ID"}
+              selectedValues={boqLineID}
+              onChange={setBoqLineID}
+              placeholder={purposeReasonID === "6" ? "" : "SELECT BOQ LINE ID"}
+              dbData={boqLines}
+              disabled={purposeReasonID === "6"}
+              /* style={{ minWidth: "600px" }} */
+            />
           </div>
 
-          <div className="input-row three-col">
+          <div className="input-row half">
             <InputItem
               label={"REQUESTED BY"}
               value={requestedBy}
@@ -129,6 +152,7 @@ export default function NewMrButton() {
               placeholder={"ENTER NAME"}
               onChange={(e) => setRequestedBy(e.target.value)}
               required
+              disabled
             />
 
             <InputItem
@@ -137,16 +161,6 @@ export default function NewMrButton() {
               type={"date"}
               placeholder={"ENTER DATE"}
               onChange={(e) => setNeededBy(e.target.value)}
-              required
-            />
-
-            <InputItem
-              label={"PRIORITY"}
-              value={priority}
-              type={"select"}
-              placeholder={"SELECT PRIORITY"}
-              onChange={(e) => setPriority(e.target.value)}
-              selectOptions={["Normal", "Medium", "High", "Critical"]}
               required
             />
           </div>

@@ -1,33 +1,52 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
 import { getSession, logout as authLogout } from "@/lib/auth";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: any;
+  userInfo: {
+    name?: string;
+    email?: string;
+    sub?: string;
+  } | null;
   logout: () => void;
+  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: true,
   user: null,
+  userInfo: null,
   logout: () => {},
+  checkAuth: async () => {},
 });
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+function decodeJWT(token: string) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error("Error decoding JWT:", error);
+    return null;
+  }
+}
 
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  const [userInfo, setUserInfo] = useState<any>(null);
 
   async function checkAuth() {
     try {
@@ -35,29 +54,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session) {
         setIsAuthenticated(true);
         setUser(session);
+
+        // Decode the ID token to get user info
+        const decoded = decodeJWT(session.idToken);
+        if (decoded) {
+          setUserInfo({
+            name: decoded.name,
+            email: decoded.email,
+            sub: decoded.sub,
+          });
+        }
       } else {
         setIsAuthenticated(false);
         setUser(null);
+        setUserInfo(null);
       }
     } catch (error) {
       console.error("Auth check failed:", error);
       setIsAuthenticated(false);
       setUser(null);
+      setUserInfo(null);
     } finally {
       setIsLoading(false);
     }
   }
 
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
   function logout() {
     authLogout();
     setIsAuthenticated(false);
     setUser(null);
-
-    router.replace("/");
+    setUserInfo(null);
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, logout }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, isLoading, user, userInfo, logout, checkAuth }}
+    >
       {children}
     </AuthContext.Provider>
   );

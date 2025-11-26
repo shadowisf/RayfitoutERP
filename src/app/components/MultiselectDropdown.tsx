@@ -13,6 +13,7 @@ type MultiSelectInputProps = {
   dbData?: any[];
   idField?: string;
   labelField?: string;
+  style?: React.CSSProperties;
 };
 
 export default function MultiSelectDropdown({
@@ -26,6 +27,7 @@ export default function MultiSelectDropdown({
   dbData,
   idField = "id",
   labelField = "value",
+  style,
 }: MultiSelectInputProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,7 +52,6 @@ export default function MultiSelectDropdown({
 
   const options = getOptions();
 
-  // Filter options based on search query
   const filteredOptions = options.filter(function (option) {
     return option.label.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -62,7 +63,7 @@ export default function MultiSelectDropdown({
         !containerRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
-        setSearchQuery(""); // Clear search when closing
+        setSearchQuery("");
       }
     }
 
@@ -72,7 +73,6 @@ export default function MultiSelectDropdown({
     };
   }, []);
 
-  // Focus search input when dropdown opens
   useEffect(
     function () {
       if (isOpen && searchInputRef.current) {
@@ -135,6 +135,7 @@ export default function MultiSelectDropdown({
           value="display"
           onMouseDown={handleSelectClick}
           onChange={function () {}}
+          style={style}
         >
           <option value="display" disabled hidden>
             {displayText}
