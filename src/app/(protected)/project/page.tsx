@@ -1,4 +1,5 @@
-import Button from "../components/Button";
+import Button from "@/app/components/Button";
+
 
 export default async function Project() {
   const external_link_icon = "/icons/external-link.svg";

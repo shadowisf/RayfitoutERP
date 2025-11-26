@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.scss";
-import Navbar from "./components/Navbar";
-import SideBar from "./components/SideBar";
+import { AuthProvider } from "./context/AuthContext";
 
 export const metadata: Metadata = {
   title: "Rayfitout - ERP",
@@ -16,10 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Navbar />
-        <SideBar />
-
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

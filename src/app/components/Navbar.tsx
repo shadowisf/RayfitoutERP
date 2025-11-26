@@ -1,10 +1,13 @@
 "use client";
 
+import { useAuth } from "../context/AuthContext";
 import Button from "./Button";
 import NewMrButton from "./_NewMaterialRequestButton";
 import NewProjectButton from "./_NewProjectButton";
 
 export default function Navbar() {
+  const { user, logout } = useAuth();
+
   const logo_icon = "/icons/logo.svg";
   const search_icon = "/icons/search.svg";
   const notification_icon = "/icons/notification.svg";
@@ -17,7 +20,7 @@ export default function Navbar() {
     <>
       <div className="header">
         <div className="left">
-          <a href="/" className="logo-link">
+          <a href="/dashboard" className="logo-link">
             <img src={logo_icon} alt="rayfitout logo" />
           </a>
 
@@ -43,6 +46,8 @@ export default function Navbar() {
           <NewProjectButton />
 
           <span>DEPARTMENT</span>
+
+          <button onClick={logout}>LOG OUT</button>
         </div>
       </div>
     </>

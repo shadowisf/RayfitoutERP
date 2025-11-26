@@ -100,5 +100,20 @@ export default function InputItem({
           ></textarea>
         </div>
       );
+
+    case "password":
+      return (
+        <div className="input-item">
+          <label>{label}</label>
+          <input
+            type={"password"}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            required={required}
+            disabled={disabled}
+          />
+        </div>
+      );
   }
 }

@@ -7,7 +7,7 @@ export default function SideBar() {
   const pathname = usePathname();
 
   const menuItems = [
-    { label: "Dashboard", path: "/" },
+    { label: "Dashboard", path: "/dashboard" },
     { label: "Material Request", path: "/mr" },
     { label: "Inventory", path: "/inventory" },
     { label: "Project Management", path: "/project" },
