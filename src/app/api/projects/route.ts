@@ -7,11 +7,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {
-    console.error("SQL Error:", err.sqlMessage || err.message);
-    return NextResponse.json(
-      { error: err.sqlMessage || err.message },
-      { status: 500 }
-    );
+    console.error("SQL Error:", err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
   }
 }
 

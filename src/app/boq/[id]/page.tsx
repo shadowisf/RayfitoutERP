@@ -2,7 +2,7 @@ import BoqLinesView from "./components/BoqLinesView";
 import CreateBoqHeaderClient from "./components/CreateBoqHeaderClient";
 import CreateBoqLineClient from "./components/CreateBoqLineClient";
 
-export default async function Boq({
+export default async function BOQ({
   params,
 }: {
   params: Promise<{ id: string }>;

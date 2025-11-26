@@ -284,6 +284,18 @@ button {
       }
     }
   }
+
+  .project-with-id {
+    padding: 20px;
+    background-color: white;
+    border-radius: 5px;
+
+    .status {
+      padding: 5px 10px;
+      border-radius: 20px;
+      width: fit-content;
+    }
+  }
 }
 
 .form-outer-container {

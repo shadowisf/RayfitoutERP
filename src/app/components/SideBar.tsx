@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function SideBar() {
-  const [active, setActive] = useState("Dashboard");
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const menuItems = [
+    { label: "Dashboard", path: "/" },
+    { label: "Material Request", path: "/mr" },
+    { label: "Inventory", path: "/inventory" },
+    { label: "Project Management", path: "/project" },
+  ];
 
   return (
     <div className="side-bar">
@@ -12,18 +20,13 @@ export default function SideBar() {
       <br />
 
       <div className="nav-container">
-        {[
-          "Dashboard",
-          "Material Request",
-          "Inventory",
-          "Project Management",
-        ].map((item) => (
+        {menuItems.map((item) => (
           <button
-            key={item}
-            className={active === item ? "nav-active" : ""}
-            onClick={() => setActive(item)}
+            key={item.label}
+            className={pathname === item.path ? "nav-active" : ""}
+            onClick={() => router.push(item.path)}
           >
-            {item}
+            {item.label}
           </button>
         ))}
       </div>

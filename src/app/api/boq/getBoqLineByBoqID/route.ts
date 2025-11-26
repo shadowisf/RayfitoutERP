@@ -1,20 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-
-/* export async function POST(req: NextRequest) {
-  try {
-    const { id } = await req.json();
-
-    const [rows] = await db.query("SELECT * FROM boq_lines WHERE boq_id = ?", [
-      id,
-    ]);
-
-    return NextResponse.json(rows, { status: 200 });
-  } catch (err: any) {
-    console.error(err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-} */
 
 export async function POST(req: Request) {
   try {
@@ -22,14 +7,7 @@ export async function POST(req: Request) {
     const boqId = body.boq_id;
 
     const [rows]: any = await db.query(
-      `
-      SELECT 
-        bl.*,
-        lbl.value as location_name
-      FROM boq_lines bl
-      LEFT JOIN lut_boq_headers_location lbl ON bl.location_id = lbl.id
-      WHERE bl.boq_id = ?
-    `,
+      "SELECT * FROM vw_boq_lines WHERE boq_id = ?",
       [boqId]
     );
 
@@ -56,7 +34,7 @@ export async function POST(req: Request) {
         item_code: row.item_code,
         scope_of_work: row.scope_of_work,
         location_id: row.location_id,
-        location_name: row.location_name,
+        location: row.location,
         quantity: row.quantity,
         unit: row.unit,
         rate_per_quantity: row.rate_per_quantity,

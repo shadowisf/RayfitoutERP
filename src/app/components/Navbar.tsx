@@ -1,6 +1,7 @@
 "use client";
 
 import Button from "./Button";
+import NewMrButton from "./_NewMaterialRequestButton";
 import NewProjectButton from "./_NewProjectButton";
 
 export default function Navbar() {
@@ -37,15 +38,7 @@ export default function Navbar() {
             <img src={notification_icon} alt="notification icon" />
           </button>
 
-          <Button
-            componentType={"button"}
-            bgColor={"rgba(239, 239, 239, 1)"}
-            borderColor={"rgba(239, 239, 239, 1)"}
-            textColor={"black"}
-            onClick={() => {}}
-          >
-            + NEW MR
-          </Button>
+          <NewMrButton />
 
           <NewProjectButton />
 

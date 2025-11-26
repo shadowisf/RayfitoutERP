@@ -7,7 +7,7 @@ export type BoqLine = {
   /* item_code: string; */
   scope_of_work: string;
   location_id: number;
-  location_name: string;
+  location: string;
   quantity: number;
   unit: string;
   rate_per_quantity: number;

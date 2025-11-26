@@ -219,7 +219,7 @@ export default function AddItemButton({
               label={"LOCATION"}
               selectedValue={locationID}
               onChange={setLocationID}
-              placeholder={"SET LOCATION"}
+              placeholder={"SELECT LOCATION"}
               dbData={locationValues}
             />
           </div>

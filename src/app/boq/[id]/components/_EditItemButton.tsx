@@ -7,6 +7,7 @@ import Button from "@/app/components/Button";
 import UploadFilesButton from "./_UploadFilesButton";
 import { useRouter } from "next/navigation";
 import { BoqLine } from "../types/types";
+import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 
 type EditItemButtonProps = {
   item: BoqLine;
@@ -161,7 +162,7 @@ export default function EditItemButton({
               ]}
               required
             />
-            <InputItem
+            {/* <InputItem
               label={"LOCATION"}
               value={locationID}
               type={"select"}
@@ -173,6 +174,13 @@ export default function EditItemButton({
                 </option>
               ))}
               required
+            /> */}
+            <SingleSelectDropdown
+              label={"LOCATION"}
+              selectedValue={locationID}
+              onChange={setLocationID}
+              placeholder={"SELECT LOCATION"}
+              dbData={locationValues}
             />
           </div>
 

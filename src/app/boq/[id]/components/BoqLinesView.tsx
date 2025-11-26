@@ -164,7 +164,7 @@ export default function BoqLinesView({
                       <td>{item.unit}</td>
                       <td>{item.rate_per_quantity?.toLocaleString()}</td>
                       <td>AED {item.total_cost?.toLocaleString()}</td>
-                      <td>{item.location_name?.split(" - ").pop()}</td>
+                      <td>{item.location?.split(" - ").pop()}</td>
                       <td
                         className="item-description"
                         style={{ whiteSpace: "pre-wrap", width: "300px" }}
