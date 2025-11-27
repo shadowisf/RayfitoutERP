@@ -23,27 +23,86 @@ export default function DeleteBoqItemButton({
 }: DeleteBoqItemButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "deleteItem",
-        id: item.id,
-      }),
-    });
+    setIsDeleting(true);
 
-    if (res.ok) {
-      alert("Item deleted");
+    try {
+      // Step 1: Parse attachments from item
+      let attachments: string[] = [];
+      try {
+        if (item.attachments) {
+          if (Array.isArray(item.attachments)) {
+            attachments = item.attachments;
+          } else if (
+            typeof item.attachments === "string" &&
+            item.attachments.trim() !== ""
+          ) {
+            const parsed = JSON.parse(item.attachments);
+            if (Array.isArray(parsed)) {
+              attachments = parsed;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to parse attachments:", error);
+      }
 
-      setIsOpen(false);
+      // Step 2: Delete all attachments from S3
+      if (attachments.length > 0) {
+        console.log("Deleting", attachments.length, "attachments from S3");
 
-      router.refresh();
-    } else {
-      alert("Failed to delete item. Something went wrong");
+        for (const url of attachments) {
+          try {
+            const deleteResponse = await fetch("/api/s3", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "delete",
+                url: url,
+              }),
+            });
+
+            if (!deleteResponse.ok) {
+              console.error("Failed to delete file from S3:", url);
+              // Continue with other files even if one fails
+            } else {
+              console.log("Deleted from S3:", url);
+            }
+          } catch (error) {
+            console.error("Error deleting file from S3:", url, error);
+            // Continue with other files even if one fails
+          }
+        }
+      }
+
+      // Step 3: Delete the BOQ item from database
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "deleteItem",
+          id: item.id,
+        }),
+      });
+
+      if (res.ok) {
+        alert("Item and attachments deleted");
+
+        setIsOpen(false);
+
+        router.refresh();
+      } else {
+        throw new Error("Failed to delete item from database");
+      }
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      alert(`Failed to delete item. Something went wrong`);
+    } finally {
+      setIsDeleting(false);
     }
   }
 

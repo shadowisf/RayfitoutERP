@@ -33,13 +33,13 @@ export default function AddBoqItemButton({
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [locationValues, setLocationValues] = useState<[]>([]);
 
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
-  /*   const [itemCode, setItemCode] = useState(""); */
   const [scopeOfWork, setScopeOfWork] = useState("");
   const [locationID, setLocationID] = useState<string | number>("");
   const [quantity, setQuantity] = useState<string | number>("");
@@ -47,7 +47,7 @@ export default function AddBoqItemButton({
   const [ratePerQuantity, setRatePerQuantity] = useState<string | number>("");
   const [totalCost, setTotalCost] = useState<string | number>("");
   const [itemDescription, setItemDescription] = useState("");
-  const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]); // Store File objects
 
   useEffect(() => {
     fetch("/api/boq/getLocationValues")
@@ -86,48 +86,78 @@ export default function AddBoqItemButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "createBoqLine",
-        boq_id: boqHeaderID,
-        item_name: itemName,
-        category,
-        sub_category: subCategory,
-        /* item_code: itemCode, */
-        scope_of_work: scopeOfWork,
-        location_id: locationID,
-        quantity,
-        unit,
-        rate_per_quantity: ratePerQuantity,
-        total_cost: totalCost,
-        item_description: itemDescription,
-        attachments,
-      }),
-    });
+    setIsSubmitting(true);
 
-    if (res.ok) {
-      alert("Item added");
+    try {
+      // Step 1: Upload files to S3 if there are any
+      let attachmentUrls: string[] = [];
 
-      setItemName("");
-      setCategory("");
-      setSubCategory("");
-      /* setItemCode(""); */
-      setScopeOfWork("");
-      setLocationID("");
-      setQuantity("");
-      setUnit("");
-      setRatePerQuantity("");
-      setTotalCost("");
-      setItemDescription("");
-      setAttachments([]);
+      if (attachmentFiles.length > 0) {
+        const formData = new FormData();
+        attachmentFiles.forEach((file) => {
+          formData.append("files", file);
+        });
 
-      setIsOpen(false);
+        const uploadResponse = await fetch("/api/s3", {
+          method: "POST",
+          body: formData,
+        });
 
-      router.refresh();
-    } else {
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload files");
+        }
+
+        const uploadData = await uploadResponse.json();
+        attachmentUrls = uploadData.urls;
+      }
+
+      // Step 2: Create BOQ item with attachment URLs
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "createBoqLine",
+          boq_id: boqHeaderID,
+          item_name: itemName,
+          category,
+          sub_category: subCategory,
+          scope_of_work: scopeOfWork,
+          location_id: locationID,
+          quantity,
+          unit,
+          rate_per_quantity: ratePerQuantity,
+          total_cost: totalCost,
+          item_description: itemDescription,
+          attachments: JSON.stringify(attachmentUrls),
+        }),
+      });
+
+      if (res.ok) {
+        alert("Item added");
+
+        // Reset form
+        setItemName("");
+        setCategory("");
+        setSubCategory("");
+        setScopeOfWork("");
+        setLocationID("");
+        setQuantity("");
+        setUnit("");
+        setRatePerQuantity("");
+        setTotalCost("");
+        setItemDescription("");
+        setAttachmentFiles([]);
+
+        setIsOpen(false);
+
+        router.refresh();
+      } else {
+        alert("Failed to add item. Something went wrong");
+      }
+    } catch (error: any) {
       alert("Failed to add item. Something went wrong");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -189,16 +219,6 @@ export default function AddBoqItemButton({
 
           {/* 2nd row */}
           <div className="input-row half">
-            {/* <InputItem
-              label={"CODE"}
-              value={itemCode}
-              type={"text"}
-              placeholder={"ENTER CODE"}
-              onChange={(e) => {
-                setItemCode(e.target.value);
-              }}
-              required
-            /> */}
             <InputItem
               label={"SCOPE OF WORK"}
               value={scopeOfWork}
@@ -217,6 +237,7 @@ export default function AddBoqItemButton({
               onChange={setLocationID}
               placeholder={"SELECT LOCATION"}
               dbData={locationValues}
+              required
             />
           </div>
 
@@ -290,13 +311,6 @@ export default function AddBoqItemButton({
               value={totalCost}
               type={"text"}
               placeholder={"CALCULATING..."}
-              /* onChange={(e) => {
-                const val = e.target.value;
-
-                if (val === "" || /^\d+$/.test(val)) {
-                  setTotalCost(val === "" ? "" : Number(val));
-                }
-              }} */
               onChange={() => {}}
               required
               disabled
@@ -322,7 +336,7 @@ export default function AddBoqItemButton({
             <div className="input-item">
               <label>ATTACHMENTS</label>
 
-              <UploadFilesButton onFilesChange={setAttachments} />
+              <UploadFilesButton onFilesChange={setAttachmentFiles} />
             </div>
           </div>
         </FormPopUp>

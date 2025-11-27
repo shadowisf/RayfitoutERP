@@ -26,6 +26,7 @@ export default function EditBoqItemButton({
 }: EditBoqItemButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [locationValues, setLocationValues] = useState<[]>([]);
 
@@ -43,7 +44,11 @@ export default function EditBoqItemButton({
   );
   const [totalCost, setTotalCost] = useState<string | number>(item.total_cost);
   const [itemDescription, setItemDescription] = useState(item.item_description);
-  const [attachments, setAttachments] = useState<File[]>([]);
+
+  // Existing attachments (S3 keys)
+  const [existingAttachments, setExistingAttachments] = useState<string[]>([]);
+  // New files to upload
+  const [newAttachmentFiles, setNewAttachmentFiles] = useState<File[]>([]);
 
   useEffect(() => {
     fetch("/api/boq/getLocationValues")
@@ -51,6 +56,30 @@ export default function EditBoqItemButton({
       .then((data) => setLocationValues(data))
       .catch((err) => console.error(err));
   }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Parse existing attachments when modal opens
+      try {
+        if (item.attachments) {
+          if (Array.isArray(item.attachments)) {
+            setExistingAttachments(item.attachments);
+          } else if (
+            typeof item.attachments === "string" &&
+            item.attachments.trim() !== ""
+          ) {
+            const parsed = JSON.parse(item.attachments);
+            if (Array.isArray(parsed)) {
+              setExistingAttachments(parsed);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to parse existing attachments:", error);
+        setExistingAttachments([]);
+      }
+    }
+  }, [isOpen, item.attachments]);
 
   useEffect(
     function () {
@@ -70,34 +99,76 @@ export default function EditBoqItemButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "updateAll",
-        id: item.id,
-        item_name: itemName,
-        category: category,
-        sub_category: subCategory,
-        scope_of_work: scopeOfWork,
-        location_id: locationID,
-        quantity,
-        unit,
-        rate_per_quantity: ratePerQuantity,
-        total_cost: totalCost,
-        item_description: itemDescription,
-        attachments,
-      }),
-    });
+    setIsSubmitting(true);
 
-    if (res.ok) {
-      alert("Item updated");
+    try {
+      // Step 1: Upload new files to S3 if there are any
+      let newAttachmentUrls: string[] = [];
 
-      setIsOpen(false);
+      if (newAttachmentFiles.length > 0) {
+        const formData = new FormData();
+        newAttachmentFiles.forEach((file) => {
+          formData.append("files", file);
+        });
 
-      router.refresh();
-    } else {
-      alert("Failed to update item. Something went wrong");
+        const uploadResponse = await fetch("/api/s3", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload files");
+        }
+
+        const uploadData = await uploadResponse.json();
+        console.log("Upload response:", uploadData); // Debug log
+
+        // Change from .keys to .urls
+        newAttachmentUrls = uploadData.urls || [];
+
+        if (!Array.isArray(newAttachmentUrls)) {
+          throw new Error("Invalid response from upload API");
+        }
+      }
+
+      // Step 2: Combine existing and new attachments
+      const allAttachments = [...existingAttachments, ...newAttachmentUrls];
+
+      // Step 3: Update BOQ item
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updateAll",
+          id: item.id,
+          item_name: itemName,
+          category: category,
+          sub_category: subCategory,
+          scope_of_work: scopeOfWork,
+          location_id: locationID,
+          quantity,
+          unit,
+          rate_per_quantity: ratePerQuantity,
+          total_cost: totalCost,
+          item_description: itemDescription,
+          attachments: JSON.stringify(allAttachments),
+        }),
+      });
+
+      if (res.ok) {
+        alert("Item updated");
+
+        setIsOpen(false);
+
+        router.refresh();
+      } else {
+        throw new Error("Failed to update item");
+      }
+    } catch (error: any) {
+      console.error("Update error:", error);
+      alert(`Failed to update item. Something went wrong`);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -118,7 +189,7 @@ export default function EditBoqItemButton({
           header={"EDIT ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"CONFIRM"}
+          addButtonLabel={isSubmitting ? "UPDATING..." : "CONFIRM"}
         >
           {/* 1st row */}
           <div className="input-row three-col">
@@ -160,19 +231,6 @@ export default function EditBoqItemButton({
               selectOptions={["Supply only", "Supply + install"]}
               required
             />
-            {/* <InputItem
-              label={"LOCATION"}
-              value={locationID}
-              type={"select"}
-              placeholder={"SELECT LOCATION"}
-              onChange={(e) => setLocationID(Number(e.target.value))}
-              dbMap={locationValues.map((location: any) => (
-                <option key={location.id} value={location.id}>
-                  {location.value}
-                </option>
-              ))}
-              required
-            /> */}
             <SingleSelectDropdown
               label={"LOCATION"}
               selectedValue={locationID}
@@ -268,11 +326,17 @@ export default function EditBoqItemButton({
             />
           </div>
 
-          {/* 6th row */}
+          {/* 6th row - Attachments */}
           <div className="input-row">
             <div className="input-item">
               <label>ATTACHMENTS</label>
-              <UploadFilesButton onFilesChange={setAttachments} />
+              <UploadFilesButton
+                onFilesChange={setNewAttachmentFiles}
+                onExistingFilesChange={setExistingAttachments}
+                existingFiles={existingAttachments}
+                itemId={item.id}
+                updateEndpoint="/api/boq"
+              />
             </div>
           </div>
         </FormPopUp>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Button from "@/app/components/Button";
+import { useRouter } from "next/navigation";
 
 type UploadedFile = {
   file: File;
@@ -10,22 +11,42 @@ type UploadedFile = {
 
 type UploadFilesButtonProps = {
   onFilesChange?: (files: File[]) => void;
+  onExistingFilesChange?: (urls: string[]) => void;
+  existingFiles?: string[];
   maxFiles?: number;
   acceptedTypes?: string;
-  /* storeInState: React.Dispatch<React.SetStateAction<[]>>; */
+  itemId?: number;
+  updateEndpoint?: string;
 };
 
 export default function UploadFilesButton({
   onFilesChange,
+  onExistingFilesChange,
+  existingFiles = [],
   maxFiles = 10,
   acceptedTypes = "image/*,.pdf,.doc,.docx",
-  /* storeInState, */
+  itemId,
+  updateEndpoint,
 }: UploadFilesButtonProps) {
+  const router = useRouter();
+
   const uploadIcon = "/icons/upload.svg";
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [existingFilesList, setExistingFilesList] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Only update if the arrays are actually different
+    const currentJson = JSON.stringify(existingFilesList);
+    const newJson = JSON.stringify(existingFiles);
+
+    if (currentJson !== newJson) {
+      setExistingFilesList(existingFiles);
+    }
+  }, [existingFiles, existingFilesList]);
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
@@ -38,7 +59,9 @@ export default function UploadFilesButton({
     const newFiles: UploadedFile[] = [];
 
     Array.from(files).forEach((file) => {
-      if (uploadedFiles.length + newFiles.length >= maxFiles) return;
+      const totalFiles =
+        uploadedFiles.length + existingFilesList.length + newFiles.length;
+      if (totalFiles >= maxFiles) return;
 
       const preview = file.type.startsWith("image/")
         ? URL.createObjectURL(file)
@@ -57,12 +80,82 @@ export default function UploadFilesButton({
     e.target.value = "";
   };
 
-  const removeFile = (index: number) => {
+  const removeNewFile = (index: number) => {
     const updatedFiles = uploadedFiles.filter((_, i) => i !== index);
     setUploadedFiles(updatedFiles);
 
     if (onFilesChange) {
       onFilesChange(updatedFiles.map((f) => f.file));
+    }
+  };
+
+  const removeExistingFile = async (index: number) => {
+    const urlToDelete = existingFilesList[index];
+
+    // Ask for confirmation
+    if (!confirm("Are you sure you want to delete this file?")) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      // Step 1: Delete from S3
+      const s3Response = await fetch("/api/s3", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          url: urlToDelete,
+        }),
+      });
+
+      if (!s3Response.ok) {
+        const errorData = await s3Response.json();
+        throw new Error(errorData.error || "Failed to delete file from S3");
+      }
+
+      console.log("File deleted from S3:", urlToDelete);
+
+      // Step 2: Update database if itemId and endpoint are provided
+      const updatedExisting = existingFilesList.filter((_, i) => i !== index);
+
+      if (itemId && updateEndpoint) {
+        const dbResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}${updateEndpoint}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "updateAttachments",
+              id: itemId,
+              attachments: JSON.stringify(updatedExisting),
+            }),
+          }
+        );
+
+        if (!dbResponse.ok) {
+          throw new Error("Failed to update database");
+        }
+
+        console.log("Database updated with new attachments list");
+      }
+
+      // Step 3: Update local state
+      setExistingFilesList(updatedExisting);
+
+      if (onExistingFilesChange) {
+        onExistingFilesChange(updatedExisting);
+      }
+
+      alert("File deleted");
+
+      router.refresh();
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      alert(`Failed to delete file: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -72,9 +165,23 @@ export default function UploadFilesButton({
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
 
+  const getFileNameFromUrl = (url: string) => {
+    const urlParts = url.split("/");
+    return urlParts[urlParts.length - 1] || "file";
+  };
+
+  const getFileExtension = (fileName: string) => {
+    return fileName.split(".").pop()?.toUpperCase() || "FILE";
+  };
+
+  const isImageFile = (url: string) => {
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+  };
+
+  const totalFiles = uploadedFiles.length + existingFilesList.length;
+
   return (
     <div className="upload-files-container">
-      {/* Hidden file input */}
       <input
         type="file"
         ref={fileInputRef}
@@ -82,13 +189,66 @@ export default function UploadFilesButton({
         accept={acceptedTypes}
         multiple
         style={{ display: "none" }}
+        disabled={isDeleting}
       />
 
-      {/* File previews */}
-      {uploadedFiles.length > 0 && (
+      {totalFiles > 0 && (
         <div className="uploaded-files-grid">
+          {/* Existing files */}
+          {existingFilesList.map((url, index) => {
+            const fileName = getFileNameFromUrl(url);
+            const fileExtension = getFileExtension(fileName);
+            const isImage = isImageFile(url);
+
+            return (
+              <div key={`existing-${index}`} className="uploaded-file-item">
+                <div className="file-preview-wrapper">
+                  {isImage ? (
+                    <img
+                      src={url}
+                      alt={fileName}
+                      className="file-preview-image"
+                      onError={(e) => {
+                        console.error("Failed to load image:", url);
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div className="file-preview-placeholder">
+                      <span className="file-extension">{fileExtension}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    className="remove-file-btn"
+                    onClick={() => removeExistingFile(index)}
+                    disabled={isDeleting}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="file-info">
+                  <span className="file-name" title={fileName}>
+                    {fileName.length > 15
+                      ? fileName.substring(0, 12) + "..."
+                      : fileName}
+                  </span>
+                  <span
+                    className="file-size"
+                    style={{ fontSize: "10px", color: "#666" }}
+                  >
+                    Existing
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* New uploaded files */}
           {uploadedFiles.map((uploadedFile, index) => (
-            <div key={index} className="uploaded-file-item">
+            <div key={`new-${index}`} className="uploaded-file-item">
               <div className="file-preview-wrapper">
                 {uploadedFile.preview ? (
                   <img
@@ -107,7 +267,8 @@ export default function UploadFilesButton({
                 <button
                   type="button"
                   className="remove-file-btn"
-                  onClick={() => removeFile(index)}
+                  onClick={() => removeNewFile(index)}
+                  disabled={isDeleting}
                 >
                   ×
                 </button>
@@ -138,8 +299,7 @@ export default function UploadFilesButton({
       >
         <>
           <img src={uploadIcon} alt="upload icon" />
-
-          <span>UPLOAD FILES</span>
+          <span>SELECT FILES</span>
         </>
       </Button>
     </div>

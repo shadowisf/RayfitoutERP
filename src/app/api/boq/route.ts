@@ -113,6 +113,18 @@ export async function PUT(req: Request) {
       await db.query(query, values);
     }
 
+    if (body.action === "updateAttachments") {
+      const query = `
+    UPDATE boq_lines 
+    SET attachments = ?
+    WHERE id = ?
+  `;
+
+      const values = [body.attachments, Number(body.id)];
+
+      await db.query(query, values);
+    }
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error(err.sqlMessage);

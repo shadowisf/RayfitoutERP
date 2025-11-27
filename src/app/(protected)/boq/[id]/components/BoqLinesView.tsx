@@ -192,9 +192,59 @@ export default function BoqLinesView({
                       </td>
                       <td className="attachments">
                         <div className="attachments-grid">
-                          {item.attachments.map(function (url, i) {
-                            return <img key={i} src={url} alt="attachment" />;
-                          })}
+                          {(() => {
+                            try {
+                              // Check if attachments exists and is not null/undefined
+                              if (!item.attachments) {
+                                return null;
+                              }
+
+                              // If it's already an array, use it directly
+                              if (Array.isArray(item.attachments)) {
+                                return item.attachments.map(function (
+                                  url: string,
+                                  i: number
+                                ) {
+                                  return (
+                                    <img key={i} src={url} alt="attachment" />
+                                  );
+                                });
+                              }
+
+                              // If it's a string, parse it
+                              if (typeof item.attachments === "string") {
+                                if (item.attachments.trim() === "") {
+                                  return null;
+                                }
+
+                                const attachments = JSON.parse(
+                                  item.attachments
+                                );
+
+                                if (!Array.isArray(attachments)) {
+                                  return null;
+                                }
+
+                                return attachments.map(function (
+                                  url: string,
+                                  i: number
+                                ) {
+                                  return (
+                                    <img key={i} src={url} alt="attachment" />
+                                  );
+                                });
+                              }
+
+                              return null;
+                            } catch (error) {
+                              console.error(
+                                "Failed to parse attachments:",
+                                error,
+                                item.attachments
+                              );
+                              return null;
+                            }
+                          })()}
                         </div>
                       </td>
                       <td>
