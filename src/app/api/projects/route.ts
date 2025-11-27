@@ -16,8 +16,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    console.log(body);
-
     const query = `
       INSERT INTO projects 
       (name, property_type_id, id, size, status, type_of_work, quoted_budget, currency, allocated_budget, start_date, end_date)

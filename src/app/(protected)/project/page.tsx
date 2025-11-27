@@ -31,7 +31,7 @@ export default async function Project() {
 
   return (
     <div className="dashboard">
-      <h2>ACTIVE PROJECTS</h2>
+      <h2>PROJECTS</h2>
       <br />
 
       <div className="widget-grid active-projects">

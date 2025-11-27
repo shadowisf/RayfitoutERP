@@ -23,57 +23,150 @@ function calculatePriority(requiredDate: string): string {
   }
 }
 
+export async function GET(req: Request) {
+  try {
+    const [rows]: any = await db.query(`SELECT * FROM vw_mr_headers`);
+
+    return NextResponse.json(rows, { status: 200 });
+  } catch (err: any) {
+    console.error("SQL Error:", err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const calculatedPriority = calculatePriority(body.required_date);
+    if (body.action === "createMrHeader") {
+      const calculatedPriority = calculatePriority(body.required_date);
 
-    const headerQuery = `
+      const headerQuery = `
       INSERT INTO mr_headers 
-      (department_id, requested_by, required_date, priority, purpose_id)
-      VALUES (?, ?, ?, ?, ?)
+      (project_id, department_id, requested_by, required_date, priority, purpose_id)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
 
-    const headerValues = [
-      Number(body.department_id),
-      body.requested_by,
-      body.required_date,
-      calculatedPriority,
-      Number(body.purpose_id),
-    ];
+      const headerValues = [
+        Number(body.project_id) || 0,
+        Number(body.department_id),
+        body.requested_by,
+        body.required_date,
+        calculatedPriority,
+        Number(body.purpose_id),
+      ];
 
-    const [headerResult] = await db.query<ResultSetHeader>(
-      headerQuery,
-      headerValues
-    );
-    const mrHeaderId = headerResult.insertId;
+      const [headerResult] = await db.query<ResultSetHeader>(
+        headerQuery,
+        headerValues
+      );
+      const mrHeaderId = headerResult.insertId;
 
-    const boqLineIds = Array.isArray(body.boq_line_id)
-      ? body.boq_line_id
-      : [body.boq_line_id];
+      return NextResponse.json({
+        success: true,
+        mrHeaderId: mrHeaderId,
+      });
+    }
 
-    const junctionValues = boqLineIds.map((boqLineId: number) => [
-      mrHeaderId,
-      Number(boqLineId),
-    ]);
+    if (body.action === "createMrLine") {
+      const lineQuery = `
+  INSERT INTO mr_lines 
+  (boq_line_id, mr_header_id, material_category_id, material_subcategory_id, material_description, quantity, unit, notes)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`;
 
-    const junctionQuery = `
-      INSERT INTO jt_mr_headers_boq_lines 
-      (mr_header_id, boq_line_id)
-      VALUES ?
-    `;
+      const lineValues = [
+        Number(body.boq_line_id),
+        Number(body.mr_header_id),
+        Number(body.material_category_id),
+        Number(body.material_subcategory_id),
+        body.material_description,
+        Number(body.quantity),
+        body.unit,
+        body.notes,
+      ];
 
-    await db.query<ResultSetHeader>(junctionQuery, [junctionValues]);
+      await db.query(lineQuery, lineValues);
 
-    return NextResponse.json({
-      success: true,
-      mrHeaderId: mrHeaderId,
-      boqLinesLinked: boqLineIds.length,
-      priority: calculatedPriority,
-    });
+      return NextResponse.json({
+        success: true,
+      });
+    }
   } catch (err: any) {
-    console.error("SQL Error:", err.sqlMessage);
+    console.error(err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+
+    if (body.action === "updateAll") {
+      const query = `
+      UPDATE mr_lines 
+      SET boq_line_id = ?, material_category_id = ?, material_subcategory_id = ?, material_description = ?, quantity = ?, unit = ?, notes = ?
+      WHERE id = ?
+    `;
+
+      const values = [
+        Number(body.boq_line_id),
+        Number(body.material_category_id),
+        Number(body.material_subcategory_id),
+        body.material_description,
+        Number(body.quantity),
+        body.unit,
+        body.notes,
+        Number(body.id),
+      ];
+
+      await db.query(query, values);
+    }
+
+    if (body.action === "updateSubCategory") {
+      const query = `
+    UPDATE mr_lines 
+    SET material_subcategory_id = ?
+    WHERE id IN (?)
+  `;
+
+      const values = [Number(body.new_material_subcategory_id), body.item_ids];
+
+      await db.query(query, values);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error(err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const body = await req.json();
+
+    if (body.action === "deleteItem") {
+      const query = "DELETE FROM mr_lines WHERE id = ?";
+      await db.query(query, [Number(body.id)]);
+    }
+
+    if (body.action === "deleteSubCategory") {
+      const query = `
+    DELETE FROM mr_lines 
+    WHERE id IN (?)
+  `;
+
+      const values = [body.item_ids];
+
+      await db.query(query, values);
+
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
   }
 }

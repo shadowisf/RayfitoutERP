@@ -22,7 +22,7 @@ export default async function ProjectWithID({
     });
 
   return (
-    <main className="dashboard">
+    <div className="dashboard">
       <h2>PROJECTS</h2>
 
       <br />
@@ -60,10 +60,8 @@ export default async function ProjectWithID({
           </p>
         </div>
 
-        <div>
-            
-        </div>
+        <div></div>
       </div>
-    </main>
+    </div>
   );
 }

@@ -19,7 +19,14 @@ export default function CreateBoqHeaderClient({
   const [date, setDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [validityTerms, setValidityTerms] = useState("");
-  const [termsAndConditions, setTermsAndConditions] = useState("");
+  const [termsAndConditions, setTermsAndConditions] =
+    useState(`i. Unconditional round the clock site access shall be ensured by the client.
+ii. Final billing will be based on the actual quantities.
+iii. Any deviation from the agreed scope shall be subjected to variation on time and cost.
+iv. Progress of work will be according to the timely payment of the client.
+v. Any delay in taking decisions/ approval from the clients side will not be our responsibility.
+vi. Payments for the variations shall be issued on prorate basis as per the main payment terms.
+vii. Contractor reserve the right to request for an extension of time for reasons beyond its control.`);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +49,7 @@ export default function CreateBoqHeaderClient({
     });
 
     if (res.ok) {
-      alert("BOQ header added");
+      alert("Bill of quantity header added");
 
       setCompanyName("RAYFITOUT CONTRACTING LLC");
       setClientName("");
@@ -54,13 +61,13 @@ export default function CreateBoqHeaderClient({
 
       router.refresh();
     } else {
-      alert("Failed to add BOQ header");
+      alert("Failed to add bill of quantity header");
     }
   }
 
   return (
     <>
-      <h2>CREATE BOQ HEADER</h2>
+      <h2>CREATE BILL OF QUANTITY HEADER</h2>
 
       <br />
 
@@ -102,11 +109,11 @@ export default function CreateBoqHeaderClient({
 
           <div className="input-row three-col">
             <InputItem
-              label={"CLIENT NAME"}
+              label={"CLIENT NAME (OPTIONAL)"}
               value={clientName}
               type={"text"}
               placeholder={"ENTER CLIENT NAME"}
-              required
+              required={false}
               onChange={(e) => {
                 setClientName(e.target.value);
               }}
@@ -124,11 +131,11 @@ export default function CreateBoqHeaderClient({
             />
 
             <InputItem
-              label={"DATE"}
+              label={"DATE (OPTIONAL)"}
               value={date}
               type={"date"}
               placeholder={"ENTER DATE"}
-              required
+              required={false}
               onChange={(e) => {
                 setDate(e.target.value);
               }}
@@ -181,7 +188,7 @@ export default function CreateBoqHeaderClient({
               textColor={"white"}
               type="submit"
             >
-              ADD BOQ HEADER
+              ADD BILL OF QUANTITY HEADER
             </Button>
           </div>
         </form>

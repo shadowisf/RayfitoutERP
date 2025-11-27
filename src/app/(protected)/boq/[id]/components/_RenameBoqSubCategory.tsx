@@ -5,9 +5,9 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import InputItem from "@/app/components/InputItem";
-import { BoqLine } from "../types/types";
+import { BoqLine } from "../types/boqLine";
 
-type RenameSubCategoryButtonProps = {
+type RenameBoqSubCategoryButtonProps = {
   item: BoqLine;
   bgColor?: string;
   textColor?: string;
@@ -17,7 +17,7 @@ type RenameSubCategoryButtonProps = {
   subCategory: string;
 };
 
-export default function RenameSubCategoryButton({
+export default function RenameBoqSubCategoryButton({
   item,
   category,
   subCategory,
@@ -25,7 +25,7 @@ export default function RenameSubCategoryButton({
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: RenameSubCategoryButtonProps) {
+}: RenameBoqSubCategoryButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -56,11 +56,9 @@ export default function RenameSubCategoryButton({
 
       router.refresh();
     } else {
-      alert("Failed to renamed subcategory. Something went wrong");
+      alert("Failed to rename subcategory. Something went wrong");
     }
   }
-
-  useEffect(() => {}, []);
 
   return (
     <>
@@ -79,7 +77,7 @@ export default function RenameSubCategoryButton({
           header={"RENAME SUBCATEGORY"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"RENAME SUBCATEGORY"}
+          addButtonLabel={"CONFIRM"}
         >
           <div className="input-row full">
             <InputItem

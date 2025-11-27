@@ -68,6 +68,8 @@ export default function NewProjectButton() {
       }
     );
 
+    const data = await res.json();
+
     if (res.ok) {
       alert("Project added");
 
@@ -85,6 +87,8 @@ export default function NewProjectButton() {
       setIsOpen(false);
 
       router.refresh();
+
+      router.push(`/boq/${data.id}`);
     } else {
       alert("Failed to add project");
     }

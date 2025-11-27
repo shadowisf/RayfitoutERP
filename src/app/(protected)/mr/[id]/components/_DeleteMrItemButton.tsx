@@ -4,27 +4,23 @@ import { useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
-import { BoqLine } from "../types/types";
+import { MrLine } from "../types/mrLine";
 
-type DeleteSubCategoryButtonProps = {
-  item: BoqLine;
-  category: string;
-  subCategory: string;
+type DeleteMrItemButtonProps = {
+  item: MrLine;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
   children?: React.ReactNode;
 };
 
-export default function DeleteSubCategoryButton({
+export default function DeleteMrItemButton({
   item,
-  category,
-  subCategory,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: DeleteSubCategoryButtonProps) {
+}: DeleteMrItemButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -32,25 +28,23 @@ export default function DeleteSubCategoryButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "deleteSubCategory",
-        category: category,
-        sub_category: subCategory,
-        boq_id: Number(item.boq_id),
+        action: "deleteItem",
+        id: item.id,
       }),
     });
 
     if (res.ok) {
-      alert("Subcategory deleted");
+      alert("Item deleted");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      alert("Failed to delete subcategory. Something went wrong");
+      alert("Failed to delete item. Something went wrong");
     }
   }
 
@@ -68,12 +62,12 @@ export default function DeleteSubCategoryButton({
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE SUBCATEGORY"}
+          header={"DELETE ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"DELETE SUBCATEGORY"}
+          addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to delete this subcategory?</p>
+          <p>Are you sure you want to delete this item?</p>
         </FormPopUp>
       )}
     </>

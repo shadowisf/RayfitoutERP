@@ -76,7 +76,7 @@ export default function InputItem({
       return (
         <div className="input-item">
           <label>{label}</label>
-          <select value={value} onChange={onChange} required={required}>
+          <select value={value} onChange={onChange} required={required} disabled={disabled}>
             <option value={typeof value === "string" ? "" : 0} disabled>
               {placeholder}
             </option>

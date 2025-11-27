@@ -94,19 +94,20 @@ export default function SingleSelectDropdown({
   }
 
   function getDisplayText() {
-    if (!selectedValue) {
+    if (!selectedValue && selectedValue !== 0) {
       return placeholder;
     }
 
     const selectedOption = options.find(function (option) {
-      return option.id === selectedValue;
+      // Handle both string and number comparison
+      return String(option.id) === String(selectedValue);
     });
 
     return selectedOption ? selectedOption.label : placeholder;
   }
 
   const displayText = getDisplayText();
-  const isPlaceholder = !selectedValue;
+  const isPlaceholder = !selectedValue && selectedValue !== 0;
 
   return (
     <div className="input-item" ref={containerRef}>
@@ -149,7 +150,9 @@ export default function SingleSelectDropdown({
             <div className="options-list">
               {filteredOptions.length > 0 ? (
                 filteredOptions.map(function (option) {
-                  const isSelected = option.id === selectedValue;
+                  // Handle both string and number comparison
+                  const isSelected =
+                    String(option.id) === String(selectedValue);
 
                   return (
                     <div

@@ -17,46 +17,35 @@ export default function NewMrButton() {
 
   const [boqLines, setBoqLines] = useState<any[]>([]);
   const [purposeReasonValues, setPurposeReasonValues] = useState<[]>([]);
+  const [projects, setProjects] = useState<[]>([]);
 
   const [purposeReasonID, setPurposeReasonID] = useState("");
-  const [boqLineID, setBoqLineID] = useState<(string | number)[]>([]);
-
+  /* const [boqLineID, setBoqLineID] = useState<(string | number)[]>([]); */
+  const [projectID, setProjectID] = useState("");
   const [requestedBy, setRequestedBy] = useState(userInfo?.name || "");
   const [neededBy, setNeededBy] = useState("");
 
   useEffect(function () {
-    fetch("/api/boq/getAllBoqLinesWithNumberRef")
-      .then((res) => res.json())
-      .then(function (data) {
-        setBoqLines(data);
-
-        const map = data.reduce(function (acc: any, boqL: any) {
-          acc[
-            boqL.id
-          ] = `${boqL.project_name} (RAY-${boqL.project_id}) - ${boqL.item_name} (${boqL.item_number})`;
-          return acc;
-        }, {});
-
-        const array = Object.entries(map).map(function ([id, label]) {
-          return {
-            id: Number(id),
-            value: label,
-          };
-        });
-
-        setBoqLines(array);
-      });
+    
 
     fetch("/api/mr/getPurposeReasonValues")
       .then((res) => res.json())
       .then(function (data) {
         setPurposeReasonValues(data);
       });
+
+    fetch("/api/projects", {
+      method: "GET",
+    })
+      .then((res) => res.json())
+      .then(function (data) {
+        setProjects(data);
+      });
   }, []);
 
   useEffect(() => {
     if (purposeReasonID === "6") {
-      setBoqLineID([]);
+      setProjectID("");
     }
   }, [purposeReasonID]);
 
@@ -67,7 +56,8 @@ export default function NewMrButton() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        boq_line_id: boqLineID,
+        action: "createMrHeader",
+        project_id: projectID,
         department_id: 1,
         requested_by: requestedBy,
         required_date: neededBy,
@@ -75,12 +65,16 @@ export default function NewMrButton() {
       }),
     });
 
+    const data = await res.json();
+
     if (res.ok) {
       alert("Material request header added");
 
       setIsOpen(false);
 
       router.refresh();
+
+      router.push(`/mr/${data.mrHeaderId}`);
     } else {
       alert("Failed to add material request header");
     }
@@ -107,7 +101,6 @@ export default function NewMrButton() {
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"ADD MATERIAL REQUEST HEADER"}
-          style={{ minWidth: "80%" }}
         >
           <div className="input-row half">
             <InputItem
@@ -124,6 +117,21 @@ export default function NewMrButton() {
               required
             />
 
+            <InputItem
+              label={"PROJECT"}
+              value={projectID}
+              type={"select"}
+              placeholder={purposeReasonID === "6" ? "" : "SELECT PROJECT"}
+              onChange={(e) => setProjectID(e.target.value)}
+              dbMap={projects.map((pr: any) => (
+                <option key={pr.id} value={pr.id}>
+                  RAY-{pr.id} - {pr.name}
+                </option>
+              ))}
+              required={false}
+              disabled={purposeReasonID === "6"}
+            />
+
             {/* <SingleSelectDropdown
               label={"BOQ LINE ID"}
               selectedValue={boqLineID}
@@ -133,15 +141,14 @@ export default function NewMrButton() {
               disabled={purposeReasonID === "6"}
             /> */}
 
-            <MultiSelectDropdown
+            {/* <MultiSelectDropdown
               label={"BOQ LINE ID"}
               selectedValues={boqLineID}
               onChange={setBoqLineID}
               placeholder={purposeReasonID === "6" ? "" : "SELECT BOQ LINE ID"}
               dbData={boqLines}
               disabled={purposeReasonID === "6"}
-              /* style={{ minWidth: "600px" }} */
-            />
+            /> */}
           </div>
 
           <div className="input-row half">

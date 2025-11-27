@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.940.0",
     "amazon-cognito-identity-js": "^6.3.16",
     "mysql2": "^3.15.3",
     "next": "16.0.3",

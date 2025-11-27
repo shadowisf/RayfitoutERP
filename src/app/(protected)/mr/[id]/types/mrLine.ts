@@ -1,0 +1,22 @@
+export type MrLine = {
+  id: number;
+  mr_header_id: number;
+  material_category_id: number;
+  material_category: string;
+  material_subcategory_id: number;
+  material_subcategory: string;
+  material_description: string;
+  quantity: number;
+  unit: string;
+  notes: string;
+  boq_line_id: number;
+  boq_item_name: string;
+  boq_item_number: string;
+  boq_item_description: string;
+  boq_quantity: number;
+  boq_unit: string;
+  boq_category: string;
+  boq_sub_category: string;
+  boq_rate: number;
+  boq_total_cost: number;
+};

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AddItemButton from "./_AddItemButton";
-import EditItemButton from "./_EditItemButton";
-import { BoqLine } from "../types/types";
-import DeleteItemButton from "./_DeleteItemButton";
-import DeleteSubCategoryButton from "./_DeleteSubCategoryButton";
-import RenameSubCategoryButton from "./_RenameSubCategory";
+import AddBoqItemButton from "./_AddBoqItemButton";
+import EditBoqItemButton from "./_EditBoqItemButton";
+import { BoqLine } from "../types/boqLine";
+import DeleteBoqItemButton from "./_DeleteBoqItemButton";
+import DeleteBoqSubCategoryButton from "./_DeleteBoqSubCategoryButton";
+import RenameBoqSubCategoryButton from "./_RenameBoqSubCategory";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -81,14 +81,14 @@ export default function BoqLinesView({
           })}
         </div>
 
-        <AddItemButton
+        <AddBoqItemButton
           boqHeaderID={boqHeaderID}
           bgColor="black"
           borderColor="black"
           textColor="white"
         >
-          ADD ITEM & SUBCATEGORY +
-        </AddItemButton>
+          ADD CATEGORY & ITEM +
+        </AddBoqItemButton>
       </div>
 
       <br />
@@ -109,21 +109,21 @@ export default function BoqLinesView({
               </h2>
 
               <div className="right">
-                <DeleteSubCategoryButton
+                <DeleteBoqSubCategoryButton
                   item={items[0]}
                   category={activeCategory}
                   subCategory={subCategory}
                 >
                   DELETE
-                </DeleteSubCategoryButton>
+                </DeleteBoqSubCategoryButton>
 
-                <RenameSubCategoryButton
+                <RenameBoqSubCategoryButton
                   item={items[0]}
                   category={activeCategory}
                   subCategory={subCategory}
                 >
                   RENAME
-                </RenameSubCategoryButton>
+                </RenameBoqSubCategoryButton>
               </div>
             </div>
 
@@ -199,23 +199,23 @@ export default function BoqLinesView({
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: "10px" }}>
-                          <EditItemButton
+                          <EditBoqItemButton
                             item={item}
                             bgColor={"rgba(239, 239, 239, 1)"}
                             borderColor={"rgba(223, 223, 223, 1)"}
                             textColor={"black"}
                           >
                             <img src={pencilIcon} alt="pencil icon" />
-                          </EditItemButton>
+                          </EditBoqItemButton>
 
-                          <DeleteItemButton
+                          <DeleteBoqItemButton
                             item={item}
                             bgColor={"rgba(239, 239, 239, 1)"}
                             borderColor={"rgba(223, 223, 223, 1)"}
                             textColor={"black"}
                           >
                             <img src={trashIcon} alt="trash icon" />
-                          </DeleteItemButton>
+                          </DeleteBoqItemButton>
                         </div>
                       </td>
                     </tr>
@@ -226,7 +226,7 @@ export default function BoqLinesView({
 
             <br />
 
-            <AddItemButton
+            <AddBoqItemButton
               boqHeaderID={boqHeaderID}
               bgColor="rgba(239, 239, 239, 1)"
               borderColor="rgba(239, 239, 239, 1)"
@@ -236,7 +236,7 @@ export default function BoqLinesView({
               autoSubCategory={subCategory}
             >
               ADD ITEM +
-            </AddItemButton>
+            </AddBoqItemButton>
 
             <br />
 
@@ -248,7 +248,7 @@ export default function BoqLinesView({
         );
       })}
 
-      <AddItemButton
+      <AddBoqItemButton
         boqHeaderID={boqHeaderID}
         bgColor="rgba(239, 239, 239, 1)"
         borderColor="rgba(239, 239, 239, 1)"
@@ -256,8 +256,8 @@ export default function BoqLinesView({
         full
         autoCategory={activeCategory}
       >
-        ADD SUBCATEGORY +
-      </AddItemButton>
+        ADD SUBCATEGORY & ITEM +
+      </AddBoqItemButton>
     </>
   );
 }

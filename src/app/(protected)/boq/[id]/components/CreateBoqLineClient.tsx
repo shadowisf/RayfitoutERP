@@ -1,4 +1,4 @@
-import AddItemButton from "./_AddItemButton";
+import AddBoqItemButton from "./_AddBoqItemButton";
 
 export default function CreateBoqLineClient({
   boqHeaderID,
@@ -20,16 +20,17 @@ export default function CreateBoqLineClient({
       <br />
 
       <span>
-        Begin by adding items or subcategories to start structuring your BOQ
+        Begin by adding items or subcategories to start structuring your bill of
+        quantity
       </span>
 
       <br />
       <br />
       <br />
 
-      <AddItemButton full boqHeaderID={boqHeaderID}>
-        ADD ITEM +
-      </AddItemButton>
+      <AddBoqItemButton full boqHeaderID={boqHeaderID}>
+        ADD CATEGORY & ITEM +
+      </AddBoqItemButton>
     </div>
   );
 }

@@ -108,14 +108,18 @@ export default function MultiSelectDropdown({
       return placeholder;
     }
 
-    if (selectedValues.length === 1) {
-      const selectedOption = options.find(function (option) {
-        return selectedValues.includes(option.id);
+    const selectedLabels = selectedValues
+      .map(function (value) {
+        const option = options.find(function (opt) {
+          return opt.id === value;
+        });
+        return option ? option.label : "";
+      })
+      .filter(function (label) {
+        return label !== "";
       });
-      return selectedOption ? selectedOption.label : "1 selected";
-    }
 
-    return `${selectedValues.length} selected`;
+    return selectedLabels.join(", ");
   }
 
   const displayText = getDisplayText();
@@ -125,7 +129,7 @@ export default function MultiSelectDropdown({
     <div className="input-item" ref={containerRef}>
       <label>{label}</label>
 
-      <div className="select-wrapper">
+      <div className="select-wrapper" style={{ position: "relative" }}>
         <select
           className={`native-select ${disabled ? "disabled" : ""} ${
             isPlaceholder ? "placeholder" : ""
@@ -135,9 +139,20 @@ export default function MultiSelectDropdown({
           value="display"
           onMouseDown={handleSelectClick}
           onChange={function () {}}
-          style={style}
+          style={{
+            ...style,
+          }}
         >
-          <option value="display" disabled hidden>
+          <option
+            value="display"
+            disabled
+            hidden
+            style={{
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+            }}
+          >
             {displayText}
           </option>
         </select>
