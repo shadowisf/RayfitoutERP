@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { MrLine } from "../types/mrLine";
+import { toast } from "@/app/components/Toast";
 
 type DeleteMrItemButtonProps = {
   item: MrLine;
@@ -38,13 +39,13 @@ export default function DeleteMrItemButton({
     });
 
     if (res.ok) {
-      alert("Item deleted");
+      toast("Material request item deleted", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      alert("Failed to delete item. Something went wrong");
+      toast("Failed to delete material request item", "error");
     }
   }
 
@@ -62,7 +63,7 @@ export default function DeleteMrItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE ITEM"}
+          header={"DELETE MATERIAL REQUEST ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

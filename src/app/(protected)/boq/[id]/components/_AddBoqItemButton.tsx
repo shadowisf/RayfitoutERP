@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import Button from "@/app/components/Button";
@@ -8,6 +8,7 @@ import UploadFilesButton from "./_UploadFilesButton";
 import { useRouter } from "next/navigation";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
+import { toast } from "@/app/components/Toast";
 
 type AddBoqItemButtonProps = {
   boqHeaderID: string;
@@ -133,9 +134,8 @@ export default function AddBoqItemButton({
       });
 
       if (res.ok) {
-        alert("Item added");
+        toast("Bill of quantity item created", "success");
 
-        // Reset form
         setItemName("");
         setCategory("");
         setSubCategory("");
@@ -152,10 +152,16 @@ export default function AddBoqItemButton({
 
         router.refresh();
       } else {
-        alert("Failed to add item. Something went wrong");
+        toast(
+          "Failed to create bill of quantity item. Something went wrong",
+          "error"
+        );
       }
     } catch (error: any) {
-      alert("Failed to add item. Something went wrong");
+      toast(
+        "Failed to create bill of quantity item. Something went wrong",
+        "error"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -176,7 +182,7 @@ export default function AddBoqItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"ADD ITEM"}
+          header={"CREATE BILL OF QUANTITY ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
@@ -332,7 +338,7 @@ export default function AddBoqItemButton({
           </div>
 
           {/* 6th row */}
-          <div className="input-row">
+          <div className="input-row full">
             <div className="input-item">
               <label>ATTACHMENTS</label>
 

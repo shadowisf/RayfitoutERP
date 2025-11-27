@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
+import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
@@ -125,7 +126,7 @@ export default function AddMrItemButton({
     });
 
     if (res.ok) {
-      alert("Material added");
+      toast("Material request item created", "success");
 
       setIsOpen(false);
 
@@ -139,7 +140,7 @@ export default function AddMrItemButton({
 
       router.refresh();
     } else {
-      alert("Failed to add material. Something went wrong");
+      toast("Failed to create material request item", "error");
     }
   }
 
@@ -158,7 +159,7 @@ export default function AddMrItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"ADD MATERIAL"}
+          header={"CREATE MATERIAL REQUEST ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

@@ -2,6 +2,7 @@
 
 import Button from "@/app/components/Button";
 import InputItem from "@/app/components/InputItem";
+import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -49,7 +50,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
     });
 
     if (res.ok) {
-      alert("Bill of quantity header added");
+      toast("Bill of quantity header created", "success");
 
       setCompanyName("RAYFITOUT CONTRACTING LLC");
       setClientName("");
@@ -61,7 +62,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
 
       router.refresh();
     } else {
-      alert("Failed to add bill of quantity header");
+      toast("Failed to create bill of quantity header", "error");
     }
   }
 

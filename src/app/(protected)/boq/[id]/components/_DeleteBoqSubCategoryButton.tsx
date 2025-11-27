@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { BoqLine } from "../types/boqLine";
+import { toast } from "@/app/components/Toast";
 
 type DeleteBoqSubCategoryButtonProps = {
   item: BoqLine;
@@ -44,13 +45,16 @@ export default function DeleteBoqSubCategoryButton({
     });
 
     if (res.ok) {
-      alert("Subcategory deleted");
+      toast("Bill of quantity subcategory deleted", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      alert("Failed to delete subcategory. Something went wrong");
+      toast(
+        "Failed to delete bill of quantity subcategory. Something went wrong",
+        "error"
+      );
     }
   }
 
@@ -68,7 +72,7 @@ export default function DeleteBoqSubCategoryButton({
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE SUBCATEGORY"}
+          header={"DELETE BILL OF QUANTITY SUBCATEGORY"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

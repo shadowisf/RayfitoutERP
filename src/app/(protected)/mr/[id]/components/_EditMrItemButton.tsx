@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { MrLine } from "../types/mrLine";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
+import { toast } from "@/app/components/Toast";
 
 type EditMrItemButtonProps = {
   projectID: string;
@@ -126,7 +127,7 @@ export default function EditMrItemButton({
     });
 
     if (res.ok) {
-      alert("Item edited");
+      toast("Material request item updated", "success");
 
       setIsOpen(false);
 
@@ -140,7 +141,10 @@ export default function EditMrItemButton({
 
       router.refresh();
     } else {
-      alert("Failed to edit item. Something went wrong");
+      toast(
+        "Failed to update material request item. Something went wrong",
+        "error"
+      );
     }
   }
 
@@ -159,7 +163,7 @@ export default function EditMrItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"EDIT MATERIAL"}
+          header={"UPDATE MATERIAL REQUEST ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

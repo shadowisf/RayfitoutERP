@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { BoqLine } from "../types/boqLine";
+import { toast } from "@/app/components/Toast";
 
 type DeleteBoqItemButtonProps = {
   item: BoqLine;
@@ -90,17 +91,23 @@ export default function DeleteBoqItemButton({
       });
 
       if (res.ok) {
-        alert("Item and attachments deleted");
+        toast("Bill of quantity item deleted", "success");
 
         setIsOpen(false);
 
         router.refresh();
       } else {
-        throw new Error("Failed to delete item from database");
+        toast(
+          "Failed to delete bill of quantity item. Something went wrong",
+          "error"
+        );
       }
     } catch (error: any) {
       console.error("Delete error:", error);
-      alert(`Failed to delete item. Something went wrong`);
+      toast(
+        "Failed to delete bill of quantity item. Something went wrong",
+        "error"
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -120,7 +127,7 @@ export default function DeleteBoqItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE ITEM"}
+          header={"DELETE BILL OF QUANTITY ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

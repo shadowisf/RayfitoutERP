@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import InputItem from "@/app/components/InputItem";
 import { BoqLine } from "../types/boqLine";
+import { toast } from "@/app/components/Toast";
 
 type RenameBoqSubCategoryButtonProps = {
   item: BoqLine;
@@ -48,7 +49,7 @@ export default function RenameBoqSubCategoryButton({
     });
 
     if (res.ok) {
-      alert("Subcategory renamed");
+      toast("Bill of quantity subcategory updated", "success");
 
       setNewSubCategory("");
 
@@ -56,7 +57,10 @@ export default function RenameBoqSubCategoryButton({
 
       router.refresh();
     } else {
-      alert("Failed to rename subcategory. Something went wrong");
+      toast(
+        "Failed to update bill of quantity subcategory. Something went wrong",
+        "error"
+      );
     }
   }
 
@@ -74,7 +78,7 @@ export default function RenameBoqSubCategoryButton({
 
       {isOpen && (
         <FormPopUp
-          header={"RENAME SUBCATEGORY"}
+          header={"RENAME BILL OF QUANTITY SUBCATEGORY"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

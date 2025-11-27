@@ -1,6 +1,7 @@
 import Navbar from "../components/Navbar";
 import SideBar from "../components/SideBar";
 import ProtectedRoute from "../components/ProtectedRoute";
+import GlobalToast from "../components/Toast";
 
 export default function ProtectedLayout({
   children,
@@ -11,6 +12,7 @@ export default function ProtectedLayout({
     <ProtectedRoute>
       <Navbar />
       <SideBar />
+
       <main
         style={{
           paddingTop: "100px",
@@ -19,6 +21,8 @@ export default function ProtectedLayout({
           marginRight: "40px",
         }}
       >
+        <GlobalToast />
+
         {children}
       </main>
     </ProtectedRoute>

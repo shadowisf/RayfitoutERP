@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { MrLine } from "../types/mrLine";
+import { toast } from "@/app/components/Toast";
 
 type DeleteMrSubCategoryButtonProps = {
   items: MrLine[];
@@ -42,13 +43,15 @@ export default function DeleteMrSubCategoryButton({
     });
 
     if (res.ok) {
-      alert("Subcategory deleted");
+      toast("Material request subcategory deleted", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      alert("Failed to delete subcategory. Something went wrong");
+      toast(
+        "Failed to delete material request subcategory. Something went wrong"
+      );
     }
   }
 
@@ -66,7 +69,7 @@ export default function DeleteMrSubCategoryButton({
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE SUBCATEGORY"}
+          header={"DELETE MATERIAL REQUEST SUBCATEGORY"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

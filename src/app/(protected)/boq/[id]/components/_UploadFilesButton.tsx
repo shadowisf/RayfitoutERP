@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
+import { toast } from "@/app/components/Toast";
 
 type UploadedFile = {
   file: File;
@@ -148,12 +149,12 @@ export default function UploadFilesButton({
         onExistingFilesChange(updatedExisting);
       }
 
-      alert("File deleted");
+      toast("Attachment deleted", "success");
 
       router.refresh();
     } catch (error: any) {
       console.error("Delete error:", error);
-      alert(`Failed to delete file: ${error.message}`);
+      toast("Failed to delete attachment. Something went wrong", "error");
     } finally {
       setIsDeleting(false);
     }

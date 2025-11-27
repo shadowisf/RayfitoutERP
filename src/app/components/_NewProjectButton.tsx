@@ -6,6 +6,7 @@ import InputItem from "./InputItem";
 import Button from "./Button";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import { useRouter } from "next/navigation";
+import { toast } from "./Toast";
 
 export default function NewProjectButton() {
   const router = useRouter();
@@ -71,7 +72,7 @@ export default function NewProjectButton() {
     const data = await res.json();
 
     if (res.ok) {
-      alert("Project added");
+      toast("Project created", "success");
 
       setName("");
       setPropertyTypeID(0);
@@ -90,7 +91,7 @@ export default function NewProjectButton() {
 
       router.push(`/boq/${data.id}`);
     } else {
-      alert("Failed to add project");
+      toast("Failed to create project. Something went wrong", "error");
     }
   }
 
@@ -111,7 +112,7 @@ export default function NewProjectButton() {
           header={"ADD PROJECT"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"ADD PROJECT"}
+          addButtonLabel={"CONFIRM"}
         >
           {/* 1st row */}
           <div className="input-row">

@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { MrLine } from "../types/mrLine";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
+import { toast } from "@/app/components/Toast";
 
 type RenameMrSubCategoryButtonProps = {
   items: MrLine[];
@@ -72,7 +73,7 @@ export default function RenameMrSubCategoryButton({
     });
 
     if (res.ok) {
-      alert("Subcategory renamed");
+      toast("Material request subcategory updated", "success");
 
       setNewSubCategory("");
 
@@ -80,7 +81,10 @@ export default function RenameMrSubCategoryButton({
 
       router.refresh();
     } else {
-      alert("Failed to rename subcategory. Something went wrong");
+      toast(
+        "Failed to update material request subcategory. Something went wrong",
+        "error"
+      );
     }
   }
 
@@ -98,7 +102,7 @@ export default function RenameMrSubCategoryButton({
 
       {isOpen && (
         <FormPopUp
-          header={"RENAME SUBCATEGORY"}
+          header={"UPDATE MATERIAL REQUEST SUBCATEGORY"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

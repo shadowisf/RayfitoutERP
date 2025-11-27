@@ -8,6 +8,7 @@ import UploadFilesButton from "./_UploadFilesButton";
 import { useRouter } from "next/navigation";
 import { BoqLine } from "../types/boqLine";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
+import { toast } from "@/app/components/Toast";
 
 type EditBoqItemButtonProps = {
   item: BoqLine;
@@ -156,17 +157,23 @@ export default function EditBoqItemButton({
       });
 
       if (res.ok) {
-        alert("Item updated");
+        toast("Bill of quantity item updated", "success");
 
         setIsOpen(false);
 
         router.refresh();
       } else {
-        throw new Error("Failed to update item");
+        toast(
+          "Failed to update bill of quantity item. Something went wrong",
+          "error"
+        );
       }
     } catch (error: any) {
       console.error("Update error:", error);
-      alert(`Failed to update item. Something went wrong`);
+      toast(
+        "Failed to update bill of quantity item. Something went wrong",
+        "error"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -186,10 +193,10 @@ export default function EditBoqItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"EDIT ITEM"}
+          header={"UPDATE BILL OF QUANTITY ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={isSubmitting ? "UPDATING..." : "CONFIRM"}
+          addButtonLabel={"CONFIRM"}
         >
           {/* 1st row */}
           <div className="input-row three-col">

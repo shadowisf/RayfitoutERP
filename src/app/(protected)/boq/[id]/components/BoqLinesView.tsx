@@ -194,12 +194,10 @@ export default function BoqLinesView({
                         <div className="attachments-grid">
                           {(() => {
                             try {
-                              // Check if attachments exists and is not null/undefined
                               if (!item.attachments) {
                                 return null;
                               }
 
-                              // If it's already an array, use it directly
                               if (Array.isArray(item.attachments)) {
                                 return item.attachments.map(function (
                                   url: string,
@@ -211,7 +209,6 @@ export default function BoqLinesView({
                                 });
                               }
 
-                              // If it's a string, parse it
                               if (typeof item.attachments === "string") {
                                 if (item.attachments.trim() === "") {
                                   return null;
@@ -230,7 +227,9 @@ export default function BoqLinesView({
                                   i: number
                                 ) {
                                   return (
-                                    <img key={i} src={url} alt="attachment" />
+                                    <a href={url} key={i} target="_blank">
+                                      <img key={i} src={url} alt="attachment" />
+                                    </a>
                                   );
                                 });
                               }

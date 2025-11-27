@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import InputItem from "./InputItem";
 import { useAuth } from "../context/AuthContext";
 import MultiSelectDropdown from "./MultiSelectDropdown";
+import { toast } from "./Toast";
 
 export default function NewMrButton() {
   const { userInfo } = useAuth();
@@ -15,7 +16,6 @@ export default function NewMrButton() {
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const [boqLines, setBoqLines] = useState<any[]>([]);
   const [purposeReasonValues, setPurposeReasonValues] = useState<[]>([]);
   const [projects, setProjects] = useState<[]>([]);
 
@@ -26,8 +26,6 @@ export default function NewMrButton() {
   const [neededBy, setNeededBy] = useState("");
 
   useEffect(function () {
-    
-
     fetch("/api/mr/getPurposeReasonValues")
       .then((res) => res.json())
       .then(function (data) {
@@ -68,15 +66,20 @@ export default function NewMrButton() {
     const data = await res.json();
 
     if (res.ok) {
-      alert("Material request header added");
+      toast("Material request header created", "success");
 
       setIsOpen(false);
+
+      setPurposeReasonID("");
+      setProjectID("");
+      setRequestedBy("");
+      setNeededBy("");
 
       router.refresh();
 
       router.push(`/mr/${data.mrHeaderId}`);
     } else {
-      alert("Failed to add material request header");
+      toast("Failed to create material request header", "error");
     }
   }
 
@@ -97,10 +100,10 @@ export default function NewMrButton() {
 
       {isOpen && (
         <FormPopUp
-          header={"ADD MATERIAL REQUEST HEADER"}
+          header={"CREATE MATERIAL REQUEST HEADER"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"ADD MATERIAL REQUEST HEADER"}
+          addButtonLabel={"CONFIRM"}
         >
           <div className="input-row half">
             <InputItem
