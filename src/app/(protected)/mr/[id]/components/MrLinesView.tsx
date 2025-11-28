@@ -7,6 +7,7 @@ import EditMrItemButton from "./_EditMrItemButton";
 import DeleteMrItemButton from "./_DeleteMrItemButton";
 import RenameMrSubCategoryButton from "./_RenameMrSubCategoryButton";
 import DeleteMrSubCategoryButton from "./_DeleteMrSubCategoryButton";
+import BoqRefPopUp from "./BoqRefPopUp";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -62,6 +63,15 @@ export default function MrLinesView({
     return expandedDescriptions.includes(itemId);
   }
 
+  // Helper function to get the category ID from the active category
+  function getActiveCategoryID() {
+    const firstSubCategory = Object.values(subCategories)[0];
+    if (firstSubCategory && firstSubCategory.length > 0) {
+      return String(firstSubCategory[0].material_category_id);
+    }
+    return undefined;
+  }
+
   return (
     <>
       <div className="category-grid">
@@ -91,7 +101,7 @@ export default function MrLinesView({
           borderColor="black"
           textColor="white"
         >
-          ADD ITEM & SUBCATEGORY +
+          ADD CATEGORY & ITEM +
         </AddMrItemButton>
       </div>
 
@@ -140,7 +150,8 @@ export default function MrLinesView({
                   <th>#</th>
                   <th>DESCRIPTION</th>
                   <th>QUANTITY</th>
-                  <th>BOQ ITEM</th>
+                  <th>UNIT</th>
+                  <th>BOQ REF</th>
                   <th>NOTES</th>
                   <th>ACTION</th>
                 </tr>
@@ -158,9 +169,16 @@ export default function MrLinesView({
                         <td>{itemIndex + 1}</td>
                         <td>{item.material_description}</td>
                         <td>{item.quantity}</td>
-                        <td>
-                          {item.boq_item_number && `${item.boq_item_number} - `}
-                          {item.boq_item_name}
+                        <td>{item.unit}</td>
+                        <td
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                          }}
+                        >
+                          {item.boq_item_number}
+                          <BoqRefPopUp item={item} />
                         </td>
                         <td
                           className="item-description"
@@ -216,20 +234,20 @@ export default function MrLinesView({
 
             <br />
 
-            {/* <AddMrLineButton
+            <AddMrItemButton
+              projectID={projectID}
               mrHeaderID={mrHeaderID}
               bgColor="rgba(239, 239, 239, 1)"
               borderColor="rgba(239, 239, 239, 1)"
               textColor="black"
               full
-              autoCategory={activeCategory}
-              autoSubCategory={subCategory}
+              autoCategoryID={String(items[0].material_category_id)}
+              autoSubCategoryID={String(items[0].material_subcategory_id)}
             >
               ADD ITEM +
-            </AddMrLineButton> */}
+            </AddMrItemButton>
 
             <br />
-
             <br />
             <br />
             <br />
@@ -238,16 +256,23 @@ export default function MrLinesView({
         );
       })}
 
-      {/* <AddMrLineButton
+      <AddMrItemButton
+        projectID={projectID}
         mrHeaderID={mrHeaderID}
         bgColor="rgba(239, 239, 239, 1)"
-        borderColor="rgba(239, 239, 239, 1)"
+        borderColor="rsgba(239, 239, 239, 1)"
         textColor="black"
         full
-        autoCategory={activeCategory}
+        autoCategoryID={getActiveCategoryID()}
       >
-        ADD SUBCATEGORY +
-      </AddMrLineButton> */}
+        ADD SUBCATEGORY & ITEM +
+      </AddMrItemButton>
+
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
     </>
   );
 }

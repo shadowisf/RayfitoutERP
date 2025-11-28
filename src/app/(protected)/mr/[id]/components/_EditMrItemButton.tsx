@@ -157,6 +157,7 @@ export default function EditMrItemButton({
         textColor={textColor}
         onClick={() => setIsOpen(true)}
         full={full ? true : false}
+        style={{ padding: "7px 7px" }}
       >
         {children}
       </Button>

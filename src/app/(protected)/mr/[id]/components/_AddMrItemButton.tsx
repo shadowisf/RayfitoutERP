@@ -15,8 +15,8 @@ type AddMrItemButtonProps = {
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
-  autoCategory?: string;
-  autoSubCategory?: string;
+  autoCategoryID?: string;
+  autoSubCategoryID?: string;
   children: React.ReactNode;
   full?: boolean;
 };
@@ -27,6 +27,8 @@ export default function AddMrItemButton({
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
+  autoCategoryID,
+  autoSubCategoryID,
   children,
   full,
 }: AddMrItemButtonProps) {
@@ -51,6 +53,17 @@ export default function AddMrItemButton({
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      if (autoCategoryID) {
+        setMaterialCategoryID(autoCategoryID);
+      }
+      if (autoSubCategoryID) {
+        setMaterialSubCategoryID(autoSubCategoryID);
+      }
+    }
+  }, [isOpen, autoCategoryID, autoSubCategoryID]);
 
   useEffect(() => {
     fetch("/api/mr/getMaterialCategoryValues")
@@ -87,23 +100,25 @@ export default function AddMrItemButton({
 
         setBoqLineValues(array);
       });
-  }, []);
+  }, [projectID]);
 
   useEffect(() => {
-    fetch("/api/mr/getMaterialSubCategoryValuesByCategoryID", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        category_id: materialCategoryID,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setMaterialSubCategoryValues(data);
+    if (materialCategoryID) {
+      fetch("/api/mr/getMaterialSubCategoryValuesByCategoryID", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category_id: materialCategoryID,
+        }),
       })
-      .catch((err) => {
-        console.error(err);
-      });
+        .then((res) => res.json())
+        .then((data) => {
+          setMaterialSubCategoryValues(data);
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    }
   }, [materialCategoryID]);
 
   async function handleSubmit(e: React.FormEvent) {

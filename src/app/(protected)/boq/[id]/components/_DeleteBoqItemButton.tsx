@@ -121,6 +121,7 @@ export default function DeleteBoqItemButton({
         borderColor={borderColor}
         textColor={textColor}
         onClick={() => setIsOpen(true)}
+        style={{ padding: "7px 7px" }}
       >
         {children}
       </Button>

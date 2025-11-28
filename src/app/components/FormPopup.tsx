@@ -3,9 +3,9 @@ import Button from "./Button";
 type FormPopUpProps = {
   header: string;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  handleSubmit: (e: React.FormEvent) => void;
+  handleSubmit?: (e: React.FormEvent) => void;
   children: React.ReactNode;
-  addButtonLabel: string;
+  addButtonLabel?: string;
   style?: React.CSSProperties;
 };
 
@@ -39,21 +39,25 @@ export default function FormPopUp({
         <form onSubmit={handleSubmit}>
           {children}
 
-          <br />
-          <br />
-          <br />
+          {addButtonLabel && (
+            <>
+              <br />
+              <br />
+              <br />
 
-          <div className="button-container">
-            <Button
-              componentType={"button"}
-              bgColor={"black"}
-              borderColor={"black"}
-              textColor={"white"}
-              type="submit"
-            >
-              {addButtonLabel}
-            </Button>
-          </div>
+              <div className="button-container">
+                <Button
+                  componentType={"button"}
+                  bgColor={"black"}
+                  borderColor={"black"}
+                  textColor={"white"}
+                  type="submit"
+                >
+                  {addButtonLabel}
+                </Button>
+              </div>
+            </>
+          )}
         </form>
       </div>
     </div>

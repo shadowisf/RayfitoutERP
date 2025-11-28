@@ -9,6 +9,7 @@ type ButtonProps = {
   onClick?: () => void;
   href?: string;
   type?: "button" | "submit" | "reset";
+  style?: React.CSSProperties;
 };
 
 export default function Button({
@@ -21,6 +22,7 @@ export default function Button({
   children,
   href,
   type,
+  style,
 }: ButtonProps) {
   if (componentType === "button") {
     return (
@@ -31,6 +33,7 @@ export default function Button({
           border: `1px solid ${borderColor}`,
           color: textColor,
           width: full ? "100%" : "fit-content",
+          ...style,
         }}
         onClick={onClick}
         type={type ? type : undefined}
