@@ -42,6 +42,7 @@ a {
   &.custom {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
     border-radius: 5px;
     padding: 10px 20px;
@@ -306,6 +307,18 @@ button {
       gap: 40px;
     }
   }
+
+  .widget-grid.material-requests {
+    display: flex;
+    gap: 20px;
+
+    .item {
+      padding: 15px;
+      background-color: white;
+      border: 1px solid rgba(217, 217, 217, 1);
+      width: 350px;
+    }
+  }
 }
 
 .status {
@@ -468,17 +481,17 @@ label {
 
   .uploaded-files-grid {
     display: flex;
-    flex-wrap: nowrap; // Keep items in a single row
+    flex-wrap: nowrap;
     gap: 12px;
     width: 100%;
     max-height: 250px;
-    overflow-x: auto; // Horizontal scroll
-    overflow-y: hidden; // Prevent vertical scroll
+    overflow-x: auto;
+    overflow-y: hidden;
     margin-bottom: 10px;
 
     .uploaded-file-item {
-      flex-shrink: 0; // Prevent items from shrinking
-      width: 120px; // Fixed width for each item
+      flex-shrink: 0;
+      width: 120px;
     }
   }
 
@@ -673,7 +686,7 @@ label {
   }
 }
 
-/* BOQ LINES VIEW */
+/* BOQ AND MR LINES VIEW */
 .category-grid {
   display: flex;
   justify-content: space-between;
@@ -796,4 +809,28 @@ label {
     padding: 0px;
     background-color: transparent;
   }
+}
+
+.approval-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 20px;
+  width: 200px;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: black;
+  padding: 10px 40px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 15px;
+  margin-left: 300px;
 }

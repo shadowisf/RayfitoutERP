@@ -11,11 +11,9 @@ export async function POST(req: Request) {
       [Number(body.id)]
     );
 
-    // Get project_id from MR header to fetch all BOQ lines for proper numbering
     let boqNumbering = new Map();
 
     if (rows.length > 0) {
-      // First, get the project_id from the MR header
       const [mrHeader]: any = await db.query(
         `SELECT project_id FROM mr_headers WHERE id = ?`,
         [Number(body.id)]
@@ -24,7 +22,6 @@ export async function POST(req: Request) {
       if (mrHeader.length > 0) {
         const projectId = mrHeader[0].project_id;
 
-        // Get ALL BOQ lines for this project to calculate correct numbering
         const [boqRows]: any = await db.query(
           `
           SELECT bl.*, bh.project_id 
@@ -36,7 +33,6 @@ export async function POST(req: Request) {
           [projectId]
         );
 
-        // Calculate BOQ numbering for ALL items in the project
         const projectCategories = new Map();
         const projectSubCategories = new Map();
         const projectItemCounts = new Map();
@@ -122,6 +118,9 @@ export async function POST(req: Request) {
         boq_sub_category: row.boq_sub_category,
         boq_rate: row.boq_rate,
         boq_total_cost: row.boq_total_cost,
+        approval_status: row.approval_status,
+        reject_comment: row.rejection_comment,
+        normal_comment: row.normal_comment,
       });
     });
 

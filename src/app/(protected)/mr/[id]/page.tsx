@@ -104,7 +104,7 @@ export default async function MrWithID({
               <h2>{new Date(mrHeader.required_date).toLocaleDateString()}</h2>
               <h2
                 style={{
-                  padding: "5px",
+                  padding: "5px 15px",
                   backgroundColor: "rgba(231, 231, 231, 1)",
                   textTransform: "uppercase",
                   borderRadius: "5px",
@@ -141,13 +141,12 @@ export default async function MrWithID({
       <br />
 
       {mrLines && Object.keys(mrLines).length > 0 ? (
-        <MrLinesView
-          mrLines={mrLines}
+        <MrLinesView mrLines={mrLines} mrHeader={mrHeader} />
+      ) : (
+        <CreateMrLineClient
           mrHeaderID={mrHeader.id}
           projectID={mrHeader.project_id}
         />
-      ) : (
-        <CreateMrLineClient mrHeaderID={id} projectID={mrHeader.project_id} />
       )}
     </div>
   );

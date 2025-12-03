@@ -38,6 +38,15 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
+    if (body.action === "getMrHeaders") {
+      const [rows]: any = await db.query(
+        `SELECT * FROM vw_mr_headers WHERE department_id = ?`,
+        [body.department_id]
+      );
+
+      return NextResponse.json(rows, { status: 200 });
+    }
+
     if (body.action === "createMrHeader") {
       const calculatedPriority = calculatePriority(body.required_date);
 
@@ -92,6 +101,66 @@ export async function POST(req: Request) {
         success: true,
       });
     }
+
+    if (body.action === "submitForInitialApproval") {
+      await db.query(`UPDATE mr_headers SET progress_id = 3 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "approveItem") {
+      await db.query(
+        `UPDATE mr_lines SET approval_status = 'Approved' WHERE id = ?`,
+        [body.id]
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "clarifyItem") {
+      await db.query(
+        `UPDATE mr_lines SET approval_status = 'Clarified', normal_comment = ? WHERE id = ?`,
+        [body.comment, body.id]
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "rejectItem") {
+      await db.query(
+        `UPDATE mr_lines SET approval_status = 'Rejected', reject_comment = ? WHERE id = ?`,
+        [body.comment, body.id]
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "resetItem") {
+      await db.query(
+        `UPDATE mr_lines SET approval_status = null, normal_comment = null, reject_comment = null WHERE id = ?`,
+        [body.id]
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForResubmission") {
+      await db.query(`UPDATE mr_headers SET progress_id = 5 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForQuotations") {
+      await db.query(`UPDATE mr_headers SET progress_id = 7 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
   } catch (err: any) {
     console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
@@ -105,8 +174,17 @@ export async function PUT(req: Request) {
     if (body.action === "updateAll") {
       const query = `
       UPDATE mr_lines 
-      SET boq_line_id = ?, material_category_id = ?, material_subcategory_id = ?, material_description = ?, quantity = ?, unit = ?, notes = ?
-      WHERE id = ?
+SET boq_line_id = ?, 
+    material_category_id = ?, 
+    material_subcategory_id = ?, 
+    material_description = ?, 
+    quantity = ?, 
+    unit = ?, 
+    notes = ?,
+    approval_status = NULL,
+    normal_comment = NULL,
+    reject_comment = NULL
+WHERE id = ?
     `;
 
       const values = [

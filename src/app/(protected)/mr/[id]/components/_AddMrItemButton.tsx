@@ -10,8 +10,8 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
 type AddMrItemButtonProps = {
-  mrHeaderID: string;
-  projectID: string;
+  mrHeaderID: number;
+  projectID: number;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
@@ -283,7 +283,7 @@ export default function AddMrItemButton({
               value={notes}
               type={"textarea"}
               placeholder={"ENTER NOTES"}
-              required
+              required={false}
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>

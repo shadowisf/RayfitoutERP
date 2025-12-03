@@ -5,11 +5,11 @@ import { useState } from "react";
 import { MrLine } from "../types/mrLine";
 import Button from "@/app/components/Button";
 
-type BoqRefPopUpProps = {
+type NotesPopUpProps = {
   item: MrLine;
 };
 
-export default function BoqRefPopUp({ item }: BoqRefPopUpProps) {
+export default function NotesPopUp({ item }: NotesPopUpProps) {
   const externalLinkIcon = "/icons/external-link.svg";
 
   const [isOpen, setIsOpen] = useState(false);
@@ -29,21 +29,11 @@ export default function BoqRefPopUp({ item }: BoqRefPopUpProps) {
 
       {isOpen && (
         <FormPopUp
-          header={`${item.boq_item_number} - ${item.boq_item_name}`}
+          header={"NOTES"}
           setIsOpen={setIsOpen}
           style={{ whiteSpace: "pre-wrap", width: "500px" }}
         >
-          <span>QUANTITY & UNIT</span>
-          <h2>
-            {item.boq_quantity} {item.boq_unit}
-          </h2>
-          <br />
-          <br />
-          <span>TOTAL COST</span>
-          <h2>{item.boq_total_cost} AED</h2>
-          <br />
-          <br />
-          {item.boq_item_description}
+          {item.notes}
         </FormPopUp>
       )}
     </>

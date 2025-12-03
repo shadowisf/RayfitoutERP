@@ -3,8 +3,8 @@
 import AddMrItemButton from "./_AddMrItemButton";
 
 type CreateMrLineClientProps = {
-  mrHeaderID: string;
-  projectID: string;
+  mrHeaderID: number;
+  projectID: number;
 };
 
 export default function CreateMrLineClient({
@@ -35,7 +35,7 @@ export default function CreateMrLineClient({
       <br />
 
       <AddMrItemButton full mrHeaderID={mrHeaderID} projectID={projectID}>
-        ADD CATEGORY & MATERIAL +
+        ADD CATEGORY & ITEM +
       </AddMrItemButton>
     </div>
   );

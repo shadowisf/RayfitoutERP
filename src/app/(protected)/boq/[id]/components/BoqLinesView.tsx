@@ -7,6 +7,7 @@ import { BoqLine } from "../types/boqLine";
 import DeleteBoqItemButton from "./_DeleteBoqItemButton";
 import DeleteBoqSubCategoryButton from "./_DeleteBoqSubCategoryButton";
 import RenameBoqSubCategoryButton from "./_RenameBoqSubCategory";
+import { useAuth } from "@/app/context/AuthContext";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -23,6 +24,8 @@ export default function BoqLinesView({
   boqLines,
   boqHeaderID,
 }: BoqLinesViewProps) {
+  const { userInfo } = useAuth();
+
   const pencilIcon = "/icons/pencil.svg";
   const trashIcon = "/icons/trash.svg";
 
@@ -81,14 +84,16 @@ export default function BoqLinesView({
           })}
         </div>
 
-        <AddBoqItemButton
-          boqHeaderID={boqHeaderID}
-          bgColor="black"
-          borderColor="black"
-          textColor="white"
-        >
-          ADD CATEGORY & ITEM +
-        </AddBoqItemButton>
+        {userInfo?.departmentID === 8 && (
+          <AddBoqItemButton
+            boqHeaderID={boqHeaderID}
+            bgColor="black"
+            borderColor="black"
+            textColor="white"
+          >
+            ADD CATEGORY & ITEM +
+          </AddBoqItemButton>
+        )}
       </div>
 
       <br />
@@ -108,23 +113,25 @@ export default function BoqLinesView({
                 {subCategory}
               </h2>
 
-              <div className="right">
-                <DeleteBoqSubCategoryButton
-                  item={items[0]}
-                  category={activeCategory}
-                  subCategory={subCategory}
-                >
-                  DELETE
-                </DeleteBoqSubCategoryButton>
+              {userInfo?.departmentID === 8 && (
+                <div className="right">
+                  <DeleteBoqSubCategoryButton
+                    item={items[0]}
+                    category={activeCategory}
+                    subCategory={subCategory}
+                  >
+                    DELETE
+                  </DeleteBoqSubCategoryButton>
 
-                <RenameBoqSubCategoryButton
-                  item={items[0]}
-                  category={activeCategory}
-                  subCategory={subCategory}
-                >
-                  RENAME
-                </RenameBoqSubCategoryButton>
-              </div>
+                  <RenameBoqSubCategoryButton
+                    item={items[0]}
+                    category={activeCategory}
+                    subCategory={subCategory}
+                  >
+                    RENAME
+                  </RenameBoqSubCategoryButton>
+                </div>
+              )}
             </div>
 
             <br />
@@ -142,7 +149,7 @@ export default function BoqLinesView({
                   <th>LOCATION</th>
                   <th>ITEM DESCRIPTION</th>
                   <th>ATTACHMENT(S)</th>
-                  <th>ACTION</th>
+                  {userInfo?.departmentID === 8 && <th>ACTION</th>}
                 </tr>
               </thead>
               <tbody>
@@ -246,27 +253,30 @@ export default function BoqLinesView({
                           })()}
                         </div>
                       </td>
-                      <td>
-                        <div style={{ display: "flex", gap: "10px" }}>
-                          <EditBoqItemButton
-                            item={item}
-                            bgColor={"rgba(239, 239, 239, 1)"}
-                            borderColor={"rgba(223, 223, 223, 1)"}
-                            textColor={"black"}
-                          >
-                            <img src={pencilIcon} alt="pencil icon" />
-                          </EditBoqItemButton>
 
-                          <DeleteBoqItemButton
-                            item={item}
-                            bgColor={"rgba(239, 239, 239, 1)"}
-                            borderColor={"rgba(223, 223, 223, 1)"}
-                            textColor={"black"}
-                          >
-                            <img src={trashIcon} alt="trash icon" />
-                          </DeleteBoqItemButton>
-                        </div>
-                      </td>
+                      {userInfo?.departmentID === 8 && (
+                        <td>
+                          <div style={{ display: "flex", gap: "10px" }}>
+                            <EditBoqItemButton
+                              item={item}
+                              bgColor={"rgba(239, 239, 239, 1)"}
+                              borderColor={"rgba(223, 223, 223, 1)"}
+                              textColor={"black"}
+                            >
+                              <img src={pencilIcon} alt="pencil icon" />
+                            </EditBoqItemButton>
+
+                            <DeleteBoqItemButton
+                              item={item}
+                              bgColor={"rgba(239, 239, 239, 1)"}
+                              borderColor={"rgba(223, 223, 223, 1)"}
+                              textColor={"black"}
+                            >
+                              <img src={trashIcon} alt="trash icon" />
+                            </DeleteBoqItemButton>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -275,17 +285,19 @@ export default function BoqLinesView({
 
             <br />
 
-            <AddBoqItemButton
-              boqHeaderID={boqHeaderID}
-              bgColor="rgba(239, 239, 239, 1)"
-              borderColor="rgba(239, 239, 239, 1)"
-              textColor="black"
-              full
-              autoCategory={activeCategory}
-              autoSubCategory={subCategory}
-            >
-              ADD ITEM +
-            </AddBoqItemButton>
+            {userInfo?.departmentID === 8 && (
+              <AddBoqItemButton
+                boqHeaderID={boqHeaderID}
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="rgba(239, 239, 239, 1)"
+                textColor="black"
+                full
+                autoCategory={activeCategory}
+                autoSubCategory={subCategory}
+              >
+                ADD ITEM +
+              </AddBoqItemButton>
+            )}
 
             <br />
 
@@ -297,16 +309,18 @@ export default function BoqLinesView({
         );
       })}
 
-      <AddBoqItemButton
-        boqHeaderID={boqHeaderID}
-        bgColor="rgba(239, 239, 239, 1)"
-        borderColor="rgba(239, 239, 239, 1)"
-        textColor="black"
-        full
-        autoCategory={activeCategory}
-      >
-        ADD SUBCATEGORY & ITEM +
-      </AddBoqItemButton>
+      {userInfo?.departmentID === 8 && (
+        <AddBoqItemButton
+          boqHeaderID={boqHeaderID}
+          bgColor="rgba(239, 239, 239, 1)"
+          borderColor="rgba(239, 239, 239, 1)"
+          textColor="black"
+          full
+          autoCategory={activeCategory}
+        >
+          ADD SUBCATEGORY & ITEM +
+        </AddBoqItemButton>
+      )}
     </>
   );
 }

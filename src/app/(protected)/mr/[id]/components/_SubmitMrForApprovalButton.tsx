@@ -4,24 +4,23 @@ import { useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
-import { MrLine } from "../types/mrLine";
 import { toast } from "@/app/components/Toast";
 
-type DeleteMrItemButtonProps = {
-  item: MrLine;
+type SubitMrForApprovalButtonProps = {
+  mrHeaderID: number;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
   children?: React.ReactNode;
 };
 
-export default function DeleteMrItemButton({
-  item,
+export default function SubmitMrForApprovalButton({
+  mrHeaderID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: DeleteMrItemButtonProps) {
+}: SubitMrForApprovalButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -30,22 +29,22 @@ export default function DeleteMrItemButton({
     e.preventDefault();
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "DELETE",
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "deleteItem",
-        id: item.id,
+        action: "submitForInitialApproval",
+        id: mrHeaderID,
       }),
     });
 
     if (res.ok) {
-      toast("Material request item deleted", "success");
+      toast("Material request submitted for approval", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast("Failed to delete material request item", "error");
+      toast("Failed to submit material request for approval", "error");
     }
   }
 
@@ -57,19 +56,19 @@ export default function DeleteMrItemButton({
         borderColor={borderColor}
         textColor={textColor}
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 7px" }}
+        style={{ padding: "7px 20px" }}
       >
         {children}
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE MATERIAL REQUEST ITEM"}
+          header={"SUBMIT MATERIAL REQUEST FOR APPROVAL"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to delete this item?</p>
+          <p>Are you sure you want to submit this material request?</p>
         </FormPopUp>
       )}
     </>

@@ -56,7 +56,7 @@ export default function NewMrButton() {
       body: JSON.stringify({
         action: "createMrHeader",
         project_id: projectID,
-        department_id: 1,
+        department_id: userInfo?.departmentID,
         requested_by: requestedBy,
         required_date: neededBy,
         purpose_id: purposeReasonID,

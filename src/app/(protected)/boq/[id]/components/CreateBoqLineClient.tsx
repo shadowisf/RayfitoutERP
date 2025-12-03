@@ -1,3 +1,6 @@
+"use client";
+
+import { useAuth } from "@/app/context/AuthContext";
 import AddBoqItemButton from "./_AddBoqItemButton";
 
 export default function CreateBoqLineClient({
@@ -5,6 +8,8 @@ export default function CreateBoqLineClient({
 }: {
   boqHeaderID: string;
 }) {
+  const { userInfo } = useAuth();
+
   const no_item_img = "/images/no-items.svg";
 
   return (
@@ -28,9 +33,11 @@ export default function CreateBoqLineClient({
       <br />
       <br />
 
-      <AddBoqItemButton full boqHeaderID={boqHeaderID}>
-        ADD CATEGORY & ITEM +
-      </AddBoqItemButton>
+      {userInfo?.departmentID === 8 && (
+        <AddBoqItemButton full boqHeaderID={boqHeaderID}>
+          ADD CATEGORY & ITEM +
+        </AddBoqItemButton>
+      )}
     </div>
   );
 }

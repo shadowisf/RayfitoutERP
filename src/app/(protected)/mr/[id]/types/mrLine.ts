@@ -19,4 +19,7 @@ export type MrLine = {
   boq_sub_category: string;
   boq_rate: number;
   boq_total_cost: number;
+  approval_status: string;
+  reject_comment: string;
+  normal_comment: string;
 };

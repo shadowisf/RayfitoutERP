@@ -11,7 +11,7 @@ import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import { toast } from "@/app/components/Toast";
 
 type EditMrItemButtonProps = {
-  projectID: string;
+  projectID: number;
   item: MrLine;
   bgColor?: string;
   textColor?: string;
@@ -188,6 +188,7 @@ export default function EditMrItemButton({
               onChange={setMaterialSubCategoryID}
               placeholder="SELECT SUB CATEGORY"
               required
+              disabled
             />
           </div>
 
@@ -267,7 +268,7 @@ export default function EditMrItemButton({
               value={notes}
               type={"textarea"}
               placeholder={"ENTER NOTES"}
-              required
+              required={false}
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>

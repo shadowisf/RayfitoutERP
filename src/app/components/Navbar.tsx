@@ -1,13 +1,13 @@
 "use client";
 
 import { useAuth } from "../context/AuthContext";
-import Button from "./Button";
 
 import NewMrButton from "./_NewMaterialRequestButton";
 import NewProjectButton from "./_NewProjectButton";
+import Button from "./Button";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { userInfo, logout } = useAuth();
 
   const logo_icon = "/icons/logo.svg";
   const search_icon = "/icons/search.svg";
@@ -41,14 +41,23 @@ export default function Navbar() {
           <button className="notifications">
             <img src={notification_icon} alt="notification icon" />
           </button>
-
           <NewMrButton />
 
-          <NewProjectButton />
+          {userInfo?.departmentID === 8 && <NewProjectButton />}
 
-          <span>DEPARTMENT</span>
+          <span style={{ textTransform: "uppercase" }}>
+            {userInfo?.role} - {userInfo?.departmentID}
+          </span>
 
-          <button onClick={logout}>LOG OUT</button>
+          <Button
+            componentType={"button"}
+            bgColor={"black"}
+            borderColor={"white"}
+            textColor={"white"}
+            onClick={logout}
+          >
+            LOGOUT
+          </Button>
         </div>
       </div>
     </>

@@ -11,6 +11,8 @@ interface AuthContextType {
     name?: string;
     email?: string;
     sub?: string;
+    role?: string;
+    departmentID?: number;
   } | null;
   logout: () => void;
   checkAuth: () => Promise<void>;
@@ -55,13 +57,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         setUser(session);
 
-        // Decode the ID token to get user info
         const decoded = decodeJWT(session.idToken);
         if (decoded) {
+          const departmentResp = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getDepartmentIdByUserRole`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ role: decoded["custom:role"] }),
+            }
+          );
+          const departmentData = await departmentResp.json();
+          const departmentID = departmentData?.id ?? null;
+
           setUserInfo({
             name: decoded.name,
             email: decoded.email,
             sub: decoded.sub,
+            role: decoded["custom:role"],
+            departmentID,
           });
         }
       } else {
