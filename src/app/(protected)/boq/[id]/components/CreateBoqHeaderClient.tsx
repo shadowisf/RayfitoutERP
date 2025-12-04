@@ -42,7 +42,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
         client_name: clientName,
         id: boqRefNumber,
         location,
-        date,
+        date: date || null,
         payment_terms: paymentTerms,
         validity_terms: validityTerms,
         terms_and_conditions: termsAndConditions,

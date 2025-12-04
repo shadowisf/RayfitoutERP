@@ -18,7 +18,7 @@ export async function POST(req: Request) {
         body.client_name,
         Number(body.id),
         body.location,
-        body.date,
+        body.date || null,
         body.payment_terms,
         body.validity_terms,
         body.terms_and_conditions,

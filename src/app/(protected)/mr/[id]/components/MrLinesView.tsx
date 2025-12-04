@@ -14,6 +14,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import ApprovalMrItemButton from "./_ApprovalMrItemButtons";
 import SubmitMrForResubmissionButton from "./_SubmitMrForResubmissionButton";
 import SubmitMrForQuotationsButton from "./_SubmitMrForQuotations";
+import AddMrSupplierAndQuotationButton from "./_AddMrSupplierAndQuotationButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -110,12 +111,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         for (const item of items) {
           const status = item.approval_status?.toLowerCase();
 
-          // Check if item has been reviewed
           if (!status || status === "pending") {
             allReviewed = false;
           }
 
-          // Check if item is approved
           if (status !== "approved") {
             allApproved = false;
           }
@@ -229,6 +228,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   {/* MANAGER REVIEW */}
                   {mrHeader.progress_id === 3 &&
                     userInfo?.departmentID === 8 && <th>ACTIONS</th>}
+
+                  {/* PROCUREMENT */}
+                  {mrHeader.progress_id === 7 &&
+                    userInfo?.departmentID === 9 && (
+                      <th>SUPPLIER & QUOTATION</th>
+                    )}
                 </tr>
               </thead>
               <tbody>
@@ -333,6 +338,25 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   </>
                                 )}
                               </div>
+                            </td>
+                          )}
+
+                        {/* PROCUREMENT */}
+                        {mrHeader.progress_id === 7 &&
+                          userInfo?.departmentID === 9 && (
+                            <td>
+                              <AddMrSupplierAndQuotationButton
+                                mrHeaderID={mrHeader.id}
+                                bgColor="black"
+                                textColor="white"
+                                borderColor="black"
+                                style={{
+                                  padding: "7px 14px",
+                                  borderRadius: "25px",
+                                }}
+                              >
+                                ADD SUPPLIER & QUOTATION +
+                              </AddMrSupplierAndQuotationButton>
                             </td>
                           )}
                       </tr>
