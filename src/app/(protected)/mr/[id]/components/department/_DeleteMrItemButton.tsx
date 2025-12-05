@@ -4,28 +4,24 @@ import { useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
-import { MrLine } from "../types/mrLine";
+import { MrLine } from "../../types/mrLine";
 import { toast } from "@/app/components/Toast";
 
-type DeleteMrSubCategoryButtonProps = {
-  items: MrLine[];
-  category: string;
-  subCategory: string;
+type DeleteMrItemButtonProps = {
+  item: MrLine;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
   children?: React.ReactNode;
 };
 
-export default function DeleteMrSubCategoryButton({
-  items,
-  category,
-  subCategory,
+export default function DeleteMrItemButton({
+  item,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: DeleteMrSubCategoryButtonProps) {
+}: DeleteMrItemButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -37,21 +33,19 @@ export default function DeleteMrSubCategoryButton({
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "deleteSubCategory",
-        item_ids: items.map((item) => item.id),
+        action: "deleteItem",
+        id: item.id,
       }),
     });
 
     if (res.ok) {
-      toast("Material request subcategory deleted", "success");
+      toast("Material request item deleted", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast(
-        "Failed to delete material request subcategory. Something went wrong"
-      );
+      toast("Failed to delete material request item", "error");
     }
   }
 
@@ -63,18 +57,19 @@ export default function DeleteMrSubCategoryButton({
         borderColor={borderColor}
         textColor={textColor}
         onClick={() => setIsOpen(true)}
+        style={{ padding: "7px 7px" }}
       >
         {children}
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE MATERIAL REQUEST SUBCATEGORY"}
+          header={"DELETE MATERIAL REQUEST ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to delete this subcategory? .</p>
+          <p>Are you sure you want to delete this item?</p>
         </FormPopUp>
       )}
     </>

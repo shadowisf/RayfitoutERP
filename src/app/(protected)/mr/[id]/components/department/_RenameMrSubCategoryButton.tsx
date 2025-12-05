@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
-import { MrLine } from "../types/mrLine";
+import { MrLine } from "../../types/mrLine";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 

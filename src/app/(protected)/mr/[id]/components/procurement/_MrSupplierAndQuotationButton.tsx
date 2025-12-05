@@ -13,7 +13,7 @@ import { createPortal } from "react-dom";
 type SupplierQuotation = {
   supplier_id: string | number;
   quotation_file: File | null;
-  quotation_url: string; // Add this to store the S3 URL
+  quotation_url: string;
   rating: string;
   unit_price: string;
   total_price: string;
@@ -192,12 +192,15 @@ export default function AddMrSupplierAndQuotationButton({
   }
 
   function handleRemoveRow(index: number) {
-    if (supplierQuotations.length > 3) {
-      const newQuotations = supplierQuotations.filter(
-        (_: SupplierQuotation, i: number) => i !== index
-      );
-      setSupplierQuotations(newQuotations);
+    if (supplierQuotations.length <= 3) {
+      toast("You must have at least 3 rows", "error");
+      return;
     }
+
+    const newQuotations = supplierQuotations.filter(
+      (_: SupplierQuotation, i: number) => i !== index
+    );
+    setSupplierQuotations(newQuotations);
   }
 
   function updateQuotation(
@@ -214,7 +217,10 @@ export default function AddMrSupplierAndQuotationButton({
   }
 
   function handleFileSelection(index: number, file: File | null) {
-    if (!file) return;
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
 
     const allowedTypes = [
       "application/pdf",
@@ -230,12 +236,11 @@ export default function AddMrSupplierAndQuotationButton({
       return;
     }
 
-    // Just store the file locally, don't upload yet
     updateQuotation(index, "quotation_file", file);
+    console.log("File stored successfully:", file.name);
   }
 
   function handleRemoveFile(index: number) {
-    // Clear the file locally since it hasn't been uploaded to S3 yet
     const newQuotations = [...supplierQuotations];
     newQuotations[index] = {
       ...newQuotations[index],
@@ -251,12 +256,7 @@ export default function AddMrSupplierAndQuotationButton({
   }
 
   function handleViewFile(quotation: SupplierQuotation) {
-    // If file has been uploaded to S3, use the S3 URL
-    if (quotation.quotation_url) {
-      window.open(quotation.quotation_url, "_blank");
-    }
-    // Fallback to local file preview if S3 URL doesn't exist yet
-    else if (quotation.quotation_file) {
+    if (quotation.quotation_file) {
       const fileUrl = URL.createObjectURL(quotation.quotation_file);
       window.open(fileUrl, "_blank");
     }
@@ -309,13 +309,6 @@ export default function AddMrSupplierAndQuotationButton({
 
       setIsSupplierModalOpen(false);
 
-      fetch("/api/supplier", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      })
-        .then((res) => res.json())
-        .then((data) => setSuppliers(data));
-
       router.refresh();
     } else {
       toast("Failed to create supplier", "error");
@@ -328,8 +321,7 @@ export default function AddMrSupplierAndQuotationButton({
     for (let i = 0; i < updatedQuotations.length; i++) {
       const quotation = updatedQuotations[i];
 
-      // Skip if no file or already has URL
-      if (!quotation.quotation_file || quotation.quotation_url) {
+      if (!quotation.quotation_file) {
         continue;
       }
 
@@ -361,7 +353,6 @@ export default function AddMrSupplierAndQuotationButton({
           throw new Error("No URL returned from upload");
         }
 
-        // Update the quotation with S3 URL
         updatedQuotations[i].quotation_url = fileUrl;
         console.log("Upload successful:", fileUrl);
       } catch (error: any) {
@@ -378,25 +369,71 @@ export default function AddMrSupplierAndQuotationButton({
   async function handleQuotationSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    // Filter out empty rows
     const validQuotations = supplierQuotations.filter(
       (q: SupplierQuotation) => q.supplier_id !== ""
     );
 
+    // Check minimum 3 suppliers requirement
+    if (validQuotations.length < 3) {
+      toast("Please fill in at least 3 suppliers", "error");
+      return;
+    }
+
+    // Validate each valid quotation
+    for (let i = 0; i < validQuotations.length; i++) {
+      const quotation = validQuotations[i];
+      const originalIndex = supplierQuotations.findIndex(
+        (q) => q === quotation
+      );
+
+      if (!quotation.supplier_id) {
+        toast(`Row ${originalIndex + 1}: Please select a supplier`, "error");
+        return;
+      }
+
+      if (!quotation.quotation_file) {
+        toast(
+          `Row ${originalIndex + 1}: Please attach a quotation file`,
+          "error"
+        );
+        return;
+      }
+
+      if (!quotation.unit_price || quotation.unit_price.trim() === "") {
+        toast(`Row ${originalIndex + 1}: Please enter unit price`, "error");
+        return;
+      }
+
+      if (!quotation.total_price || quotation.total_price.trim() === "") {
+        toast(`Row ${originalIndex + 1}: Please enter total price`, "error");
+        return;
+      }
+    }
+
+    setIsUploading(true);
+
     try {
+      // Upload all files to S3 first
       const quotationsWithUrls = await uploadFilesToS3(validQuotations);
 
-      // Send to API to insert into database
+      console.log(
+        "All files uploaded, quotations with S3 URLs:",
+        quotationsWithUrls
+      );
+
+      // Send to API to insert in database
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action: "addSupplierAndQuotations",
+            action: "addSupplierAndQuotation",
             mr_line_id: mrLineID,
             quotations: quotationsWithUrls.map((q) => ({
               supplier_id: q.supplier_id,
-              quotation_file: q.quotation_url, // S3 URL
+              quotation_file: q.quotation_url,
               rating: q.rating || null,
               unit_price: q.unit_price,
               total_price: q.total_price,
@@ -406,9 +443,10 @@ export default function AddMrSupplierAndQuotationButton({
       );
 
       if (res.ok) {
-        toast("Supplier and quotation added", "success");
+        toast("Quotations added successfully", "success");
         setIsOpen(false);
 
+        // Reset form
         setSupplierQuotations([
           {
             supplier_id: "",
@@ -465,7 +503,7 @@ export default function AddMrSupplierAndQuotationButton({
 
       {isOpen && (
         <FormPopUp
-          header={"ADD SUPPLIER & QUOTATION"}
+          header="ADD SUPPLIER & QUOTATION"
           setIsOpen={setIsOpen}
           handleSubmit={handleQuotationSubmit}
           addButtonLabel={"CONFIRM"}
@@ -560,18 +598,9 @@ export default function AddMrSupplierAndQuotationButton({
                         accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
                         onChange={(e) => {
                           const file = e.target.files?.[0] || null;
-                          console.log(
-                            "File selected:",
-                            file ? file.name : "none"
-                          );
                           if (file) {
-                            console.log("File details:", {
-                              name: file.name,
-                              size: file.size,
-                              type: file.type,
-                            });
+                            handleFileSelection(index, file);
                           }
-                          handleFileSelection(index, file);
                         }}
                         disabled={isUploading}
                       />
@@ -582,7 +611,12 @@ export default function AddMrSupplierAndQuotationButton({
                           bgColor={"black"}
                           borderColor={"black"}
                           textColor={"white"}
-                          onClick={() => fileInputRefs.current[index]?.click()}
+                          onClick={(e: React.MouseEvent) => {
+                            e.preventDefault();
+                            if (!isUploading && fileInputRefs.current[index]) {
+                              fileInputRefs.current[index]?.click();
+                            }
+                          }}
                           full
                           style={{
                             padding: "5px 20px",
@@ -592,6 +626,9 @@ export default function AddMrSupplierAndQuotationButton({
                             justifyContent: "center",
                             gap: "10px",
                             textWrap: "nowrap",
+                            opacity: isUploading ? 0.5 : 1,
+                            cursor: isUploading ? "not-allowed" : "pointer",
+                            pointerEvents: isUploading ? "none" : "auto",
                           }}
                         >
                           Attach Quotation
@@ -692,7 +729,6 @@ export default function AddMrSupplierAndQuotationButton({
             handleSubmit={handleSupplierSubmit}
             addButtonLabel="CONFIRM"
           >
-            {/* Keep all your supplier form fields */}
             <div className="input-row full">
               <InputItem
                 label="NAME"

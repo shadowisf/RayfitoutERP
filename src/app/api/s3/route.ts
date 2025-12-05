@@ -82,6 +82,14 @@ export async function POST(req: Request) {
           );
         }
 
+        // Validate that url is a string
+        if (typeof url !== 'string') {
+          return NextResponse.json(
+            { error: "URL must be a string" },
+            { status: 400 }
+          );
+        }
+
         // Extract the key from the S3 URL
         // URL format: https://bucket-name.s3.region.amazonaws.com/key
         const urlParts = url.split(".amazonaws.com/");

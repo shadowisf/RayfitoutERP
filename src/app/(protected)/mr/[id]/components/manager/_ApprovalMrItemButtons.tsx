@@ -5,18 +5,17 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useState, useEffect } from "react";
-import ClarifyCommentPopUp from "./ClarifyCommentPopUp";
 import RejectCommentPopUp from "./RejectCommentPopUp";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
-import { MrLine } from "../types/mrLine";
+import { MrLine } from "../../types/mrLine";
 
 type ApprovalMrItemButton = {
   item: MrLine;
   progressID: number;
 };
 
-type StatusType = "pending" | "approved" | "rejected" | "clarified";
+type StatusType = "pending" | "approved" | "rejected";
 
 export default function ApprovalMrItemButton({
   item,
@@ -47,7 +46,6 @@ export default function ApprovalMrItemButton({
     const status = item.approval_status.toLowerCase();
     if (status === "approved") return "approved";
     if (status === "rejected") return "rejected";
-    if (status === "clarified") return "clarified";
     return "pending";
   }
 
@@ -69,31 +67,6 @@ export default function ApprovalMrItemButton({
       router.refresh();
     } else {
       toast("Failed to approve material request item", "error");
-      setStatus("pending");
-    }
-  }
-
-  async function handleClarify() {
-    setStatus("clarified");
-
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "clarifyItem",
-        id: item.id,
-        comment: clarifyText,
-      }),
-    });
-
-    if (res.ok) {
-      toast("Comment added to material request item", "success");
-
-      setClarifyText("");
-
-      router.refresh();
-    } else {
-      toast("Failed to add comment to material request item", "error");
       setStatus("pending");
     }
   }
@@ -190,31 +163,6 @@ export default function ApprovalMrItemButton({
     );
   }
 
-  if (status === "clarified") {
-    return (
-      <div
-        className="approval-pill"
-        style={{
-          backgroundColor: "rgba(133, 108, 61, 1)",
-          color: "rgba(230, 220, 200, 1)",
-        }}
-      >
-        <span>Comments Added</span>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <ClarifyCommentPopUp item={item} />
-          {userInfo?.departmentID === 8 && progressID === 3 && (
-            <img
-              src={crossIcon}
-              alt="close"
-              style={{ filter: "invert(1)", cursor: "pointer", width: "10px" }}
-              onClick={handleReset}
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
-
   if (status === "rejected") {
     return (
       <div
@@ -258,42 +206,12 @@ export default function ApprovalMrItemButton({
           bgColor={"white"}
           borderColor={"rgba(207, 207, 207, 1)"}
           textColor={"black"}
-          onClick={() => setIsClarifyOpen(true)}
-          style={{ borderRadius: "20px", padding: "5px 20px", flexGrow: 1 }}
-        >
-          ?
-        </Button>
-        <Button
-          componentType={"button"}
-          bgColor={"white"}
-          borderColor={"rgba(207, 207, 207, 1)"}
-          textColor={"black"}
           onClick={() => setIsRejectOpen(true)}
           style={{ borderRadius: "20px", padding: "5px 20px", flexGrow: 1 }}
         >
           <img src={crossIcon} alt="reject" />
         </Button>
       </div>
-
-      {isClarifyOpen && (
-        <FormPopUp
-          header="CLARIFY MATERIAL REQUEST ITEM"
-          setIsOpen={setIsClarifyOpen}
-          handleSubmit={handleClarify}
-          addButtonLabel="CONFIRM"
-        >
-          <div className="input-row full">
-            <InputItem
-              label={"COMMENTS"}
-              value={clarifyText}
-              type={"textarea"}
-              placeholder={"ENTER COMMENTS"}
-              required
-              onChange={(e) => setClarifyText(e.target.value)}
-            />
-          </div>
-        </FormPopUp>
-      )}
 
       {isRejectOpen && (
         <FormPopUp

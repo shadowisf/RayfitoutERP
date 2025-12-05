@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    if (body.action === "addSupplierAndQuotations") {
+    if (body.action === "addSupplierAndQuotation") {
       const { mr_line_id, quotations } = body;
 
       const insertQuery = `

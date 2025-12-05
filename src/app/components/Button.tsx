@@ -6,7 +6,7 @@ type ButtonProps = {
   full?: boolean;
   icon?: React.ReactNode;
   children: React.ReactNode;
-  onClick?: () => void;
+  onClick?: (() => void) | ((e: React.MouseEvent<HTMLButtonElement>) => void);
   href?: string;
   target?: string;
   type?: "button" | "submit" | "reset";

@@ -1,6 +1,6 @@
 import BoqLinesView from "./components/BoqLinesView";
-import CreateBoqHeaderClient from "./components/CreateBoqHeaderClient";
-import CreateBoqLineClient from "./components/CreateBoqLineClient";
+import CreateBoqHeaderClient from "./components/CreateBoqHeader";
+import CreateBoqLineClient from "./components/CreateBoqLine";
 
 export default async function BOQ({
   params,

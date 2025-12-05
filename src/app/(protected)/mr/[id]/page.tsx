@@ -1,4 +1,4 @@
-import CreateMrLineClient from "./components/CreateMrLineClient";
+import CreateMrLineClient from "./components/CreateMrLine";
 import MrLinesView from "./components/MrLinesView";
 
 export default async function MrWithID({

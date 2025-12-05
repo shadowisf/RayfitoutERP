@@ -1,20 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AddMrItemButton from "./_AddMrItemButton";
+import AddMrItemButton from "./department/_AddMrItemButton";
 import { MrLine } from "../types/mrLine";
-import EditMrItemButton from "./_EditMrItemButton";
-import DeleteMrItemButton from "./_DeleteMrItemButton";
-import RenameMrSubCategoryButton from "./_RenameMrSubCategoryButton";
-import DeleteMrSubCategoryButton from "./_DeleteMrSubCategoryButton";
+import EditMrItemButton from "./department/_EditMrItemButton";
+import DeleteMrItemButton from "./department/_DeleteMrItemButton";
+import RenameMrSubCategoryButton from "./department/_RenameMrSubCategoryButton";
+import DeleteMrSubCategoryButton from "./department/_DeleteMrSubCategoryButton";
 import BoqReferencePopUp from "./BoqReferencePopUp";
-import SubmitMrForApprovalButton from "./_SubmitMrForApprovalButton";
+import SubmitMrForApprovalButton from "./department/_SubmitMrForApprovalButton";
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
-import ApprovalMrItemButton from "./_ApprovalMrItemButtons";
-import SubmitMrForResubmissionButton from "./_SubmitMrForResubmissionButton";
-import SubmitMrForQuotationsButton from "./_SubmitMrForQuotations";
-import AddMrSupplierAndQuotationButton from "./_AddMrSupplierAndQuotationButton";
+import ApprovalMrItemButton from "./manager/_ApprovalMrItemButtons";
+import SubmitMrForResubmissionButton from "./manager/_SubmitMrForResubmissionButton";
+import SubmitMrForQuotationsButton from "./manager/_SubmitMrForQuotations";
+import MrSupplierAndQuotationButton from "./procurement/_MrSupplierAndQuotationButton";
+import AddMrSupplierAndQuotationButton from "./procurement/_MrSupplierAndQuotationButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -351,11 +352,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 textColor="white"
                                 borderColor="black"
                                 style={{
-                                  padding: "7px 14px",
+                                  padding: "7px 10px",
                                   borderRadius: "25px",
                                 }}
                               >
-                                ADD SUPPLIER & QUOTATION +
+                                + ADD SUPPLIER & QUOTATION
                               </AddMrSupplierAndQuotationButton>
                             </td>
                           )}

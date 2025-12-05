@@ -1,6 +1,6 @@
 "use client";
 
-import AddMrItemButton from "./_AddMrItemButton";
+import AddMrItemButton from "./department/_AddMrItemButton";
 
 type CreateMrLineClientProps = {
   mrHeaderID: number;
