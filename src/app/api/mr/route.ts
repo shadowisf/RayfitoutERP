@@ -161,6 +161,14 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ status: 200 });
     }
+
+    if (body.action === "submitForPricingApproval") {
+      await db.query(`UPDATE mr_headers SET progress_id = 10 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
   } catch (err: any) {
     console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });

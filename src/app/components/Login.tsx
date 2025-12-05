@@ -105,9 +105,13 @@ export default function Login() {
 
         {error && <p style={{ color: "red", marginBottom: "20px" }}>{error}</p>}
 
-        <div className="form-inner-container">
+        <div>
           {!isNewPasswordRequired && (
-            <form className="form-inner-container" onSubmit={handleSubmit}>
+            <form
+              className="form-inner-container"
+              onSubmit={handleSubmit}
+              style={{ margin: "0px" }}
+            >
               <div className="input-row">
                 <InputItem
                   placeholder="ENTER EMAIL"

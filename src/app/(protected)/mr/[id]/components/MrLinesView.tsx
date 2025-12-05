@@ -15,7 +15,8 @@ import ApprovalMrItemButton from "./manager/_ApprovalMrItemButtons";
 import SubmitMrForResubmissionButton from "./manager/_SubmitMrForResubmissionButton";
 import SubmitMrForQuotationsButton from "./manager/_SubmitMrForQuotations";
 import MrSupplierAndQuotationButton from "./procurement/_MrSupplierAndQuotationButton";
-import AddMrSupplierAndQuotationButton from "./procurement/_MrSupplierAndQuotationButton";
+import SubmitMrForPricingApprovalButton from "./procurement/_SubmitMrForPriceApprovalButton";
+import NotesPopUp from "./NotesPopUp";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -38,6 +39,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const [expandedDescriptions, setExpandedDescriptions] = useState<number[]>(
     []
   );
+  const [itemsWithQuotations, setItemsWithQuotations] = useState<Set<number>>(
+    new Set()
+  );
+  const [isCheckingQuotations, setIsCheckingQuotations] =
+    useState<boolean>(true);
 
   const categories = Object.keys(mrLines);
   const subCategories = mrLines[activeCategory] || {};
@@ -51,6 +57,66 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     },
     [mrLines]
   );
+
+  // Check which items have supplier quotations
+  useEffect(() => {
+    async function checkAllQuotations() {
+      if (mrHeader.progress_id !== 7) {
+        setIsCheckingQuotations(false);
+        return;
+      }
+
+      setIsCheckingQuotations(true);
+      const itemsWithQuotes = new Set<number>();
+
+      try {
+        // Get all item IDs
+        const allItemIds: number[] = [];
+        for (const category in mrLines) {
+          for (const subCategory in mrLines[category]) {
+            const items = mrLines[category][subCategory];
+            items.forEach((item) => allItemIds.push(item.id));
+          }
+        }
+
+        // Check each item for quotations
+        const checkPromises = allItemIds.map(async (itemId) => {
+          try {
+            const response = await fetch(
+              "/api/supplier/getAllSupplierAndQuotationByMrLineID",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: itemId }),
+              }
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              // Check if there are at least 3 quotations
+              if (data && Array.isArray(data) && data.length >= 3) {
+                itemsWithQuotes.add(itemId);
+              }
+            }
+          } catch (error) {
+            console.error(
+              `Error checking quotations for item ${itemId}:`,
+              error
+            );
+          }
+        });
+
+        await Promise.all(checkPromises);
+        setItemsWithQuotations(itemsWithQuotes);
+      } catch (error) {
+        console.error("Error checking quotations:", error);
+      } finally {
+        setIsCheckingQuotations(false);
+      }
+    }
+
+    checkAllQuotations();
+  }, [mrLines, mrHeader.progress_id]);
 
   function toggleDescription(itemId: number) {
     setExpandedDescriptions(function (prev) {
@@ -124,6 +190,23 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     }
 
     return allReviewed && allApproved;
+  }
+
+  function allItemsHaveSupplierQuotations() {
+    // Get total count of items
+    let totalItems = 0;
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        totalItems += mrLines[category][subCategory].length;
+      }
+    }
+
+    // Check if all items have quotations
+    return (
+      totalItems > 0 &&
+      itemsWithQuotations.size === totalItems &&
+      !isCheckingQuotations
+    );
   }
 
   return (
@@ -244,6 +327,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     const maxLength = 100;
                     const needsCollapse =
                       item.notes && item.notes.length > maxLength;
+                    const hasQuotations = itemsWithQuotations.has(item.id);
 
                     return (
                       <tr key={item.id}>
@@ -263,7 +347,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             <BoqReferencePopUp item={item} />
                           </div>
                         </td>
-                        <td
+                        {/* <td
                           className="item-description"
                           style={{ whiteSpace: "pre-wrap", width: "300px" }}
                         >
@@ -286,6 +370,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           ) : (
                             item.notes
                           )}
+                        </td> */}
+                        <td>
+                          <NotesPopUp item={item} />
                         </td>
 
                         {/* MANAGER & DEPARTMENT VIEW */}
@@ -346,17 +433,24 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                         {mrHeader.progress_id === 7 &&
                           userInfo?.departmentID === 9 && (
                             <td>
-                              <MrSupplierAndQuotationButton
-                                mrLineID={item.id}
-                                bgColor="black"
-                                textColor="white"
-                                borderColor="black"
+                              <div
                                 style={{
-                                  padding: "7px 10px",
-                                  borderRadius: "25px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "10px",
                                 }}
-                              />
-                              
+                              >
+                                <MrSupplierAndQuotationButton
+                                  mrLineID={item.id}
+                                  bgColor="black"
+                                  textColor="white"
+                                  borderColor="black"
+                                  style={{
+                                    padding: "7px 10px",
+                                    borderRadius: "25px",
+                                  }}
+                                />
+                              </div>
                             </td>
                           )}
                       </tr>
@@ -454,6 +548,21 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             >
               SUBMIT FOR QUOTATIONS
             </SubmitMrForQuotationsButton>
+          </div>
+        )}
+
+      {allItemsHaveSupplierQuotations() &&
+        userInfo?.departmentID === 9 &&
+        mrHeader.progress_id === 7 && (
+          <div className="bottom-nav">
+            <SubmitMrForPricingApprovalButton
+              mrHeaderID={mrHeader.id}
+              bgColor="white"
+              borderColor="white"
+              textColor="black"
+            >
+              SUBMIT FOR PRICING APPROVAL
+            </SubmitMrForPricingApprovalButton>
           </div>
         )}
     </>

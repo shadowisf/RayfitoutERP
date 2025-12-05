@@ -93,11 +93,6 @@ export default function UploadFilesButton({
   const removeExistingFile = async (index: number) => {
     const urlToDelete = existingFilesList[index];
 
-    // Ask for confirmation
-    if (!confirm("Are you sure you want to delete this file?")) {
-      return;
-    }
-
     setIsDeleting(true);
 
     try {
@@ -223,7 +218,10 @@ export default function UploadFilesButton({
                   <button
                     type="button"
                     className="remove-file-btn"
-                    onClick={() => removeExistingFile(index)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      removeExistingFile(index);
+                    }}
                     disabled={isDeleting}
                   >
                     ×
@@ -235,12 +233,6 @@ export default function UploadFilesButton({
                     {fileName.length > 15
                       ? fileName.substring(0, 12) + "..."
                       : fileName}
-                  </span>
-                  <span
-                    className="file-size"
-                    style={{ fontSize: "10px", color: "#666" }}
-                  >
-                    Existing
                   </span>
                 </div>
               </div>

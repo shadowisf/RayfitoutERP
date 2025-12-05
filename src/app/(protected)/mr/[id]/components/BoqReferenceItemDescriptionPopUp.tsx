@@ -2,14 +2,16 @@
 
 import FormPopUp from "@/app/components/FormPopup";
 import { useState } from "react";
-import { MrLine } from "../types/mrLine";
 import Button from "@/app/components/Button";
+import { MrLine } from "../types/mrLine";
 
-type NotesPopUpProps = {
+type BoqReferenceItemDescriptionPopUpProps = {
   item: MrLine;
 };
 
-export default function NotesPopUp({ item }: NotesPopUpProps) {
+export default function BoqReferenceItemDescriptionPopUp({
+  item,
+}: BoqReferenceItemDescriptionPopUpProps) {
   const externalLinkIcon = "/icons/external-link.svg";
 
   const [isOpen, setIsOpen] = useState(false);
@@ -32,11 +34,11 @@ export default function NotesPopUp({ item }: NotesPopUpProps) {
 
       {isOpen && (
         <FormPopUp
-          header={"NOTES"}
+          header={"ITEM DESCRIPTION"}
           setIsOpen={setIsOpen}
           style={{ whiteSpace: "pre-wrap", width: "500px" }}
         >
-          {item.notes}
+          {item.boq_item_description}
         </FormPopUp>
       )}
     </>

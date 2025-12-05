@@ -118,9 +118,10 @@ export async function POST(req: Request) {
         boq_sub_category: row.boq_sub_category,
         boq_rate: row.boq_rate,
         boq_total_cost: row.boq_total_cost,
+        boq_attachments: row.boq_attachments,
+        boq_location: row.boq_location,
         approval_status: row.approval_status,
         reject_comment: row.rejection_comment,
-        normal_comment: row.normal_comment,
       });
     });
 

@@ -8,6 +8,7 @@ import DeleteBoqItemButton from "./_DeleteBoqItemButton";
 import DeleteBoqSubCategoryButton from "./_DeleteBoqSubCategoryButton";
 import RenameBoqSubCategoryButton from "./_RenameBoqSubCategory";
 import { useAuth } from "@/app/context/AuthContext";
+import ItemDescriptionPopUp from "./ItemDescriptionPopUp";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -172,7 +173,7 @@ export default function BoqLinesView({
                       <td>{item.rate_per_quantity?.toLocaleString()}</td>
                       <td>AED {item.total_cost?.toLocaleString()}</td>
                       <td>{item.location?.split(" - ").pop()}</td>
-                      <td
+                      {/* <td
                         className="item-description"
                         style={{ whiteSpace: "pre-wrap", width: "300px" }}
                       >
@@ -196,7 +197,15 @@ export default function BoqLinesView({
                         ) : (
                           item.item_description
                         )}
+                      </td> */}
+                      <td>
+                        <ItemDescriptionPopUp item={item} />
                       </td>
+                      {/* <td>
+                        <div style={{ whiteSpace: "pre-wrap" }}>
+                          {item.item_description}
+                        </div>
+                      </td> */}
                       <td className="attachments">
                         <div className="attachments-grid">
                           {(() => {
