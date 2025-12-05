@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { ResultSetHeader, RowDataPacket } from "mysql2";
 
 export async function GET(req: Request) {
   try {
@@ -44,6 +45,92 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "updateSupplierAndQuotation") {
+      const { mr_line_id, quotations } = body;
+
+      if (!quotations || quotations.length === 0) {
+        return NextResponse.json(
+          { error: "No quotations provided" },
+          { status: 400 }
+        );
+      }
+
+      // Get existing quotation IDs for this MR line
+      const [existingRows] = await db.query<RowDataPacket[]>(
+        "SELECT id FROM mr_line_supplier_quotation WHERE mr_line_id = ?",
+        [mr_line_id]
+      );
+
+      const existingIds = existingRows.map((row) => row.id);
+      const updatedIds: number[] = [];
+
+      // Process each quotation
+      for (const quotation of quotations) {
+        if (quotation.id && existingIds.includes(quotation.id)) {
+          // Update existing quotation
+          await db.query(
+            `UPDATE mr_line_supplier_quotation 
+            SET supplier_id = ?, 
+                quotation_file = ?, 
+                rating = ?, 
+                unit_price = ?, 
+                total_price = ?
+            WHERE id = ?`,
+            [
+              quotation.supplier_id,
+              JSON.stringify([quotation.quotation_file]), // Store as JSON array
+              quotation.rating,
+              quotation.unit_price,
+              quotation.total_price,
+              quotation.id,
+            ]
+          );
+          updatedIds.push(quotation.id);
+        } else {
+          // Insert new quotation
+          const [result] = await db.query<ResultSetHeader>(
+            `INSERT INTO mr_line_supplier_quotation 
+            (supplier_id, mr_line_id, quotation_file, rating, unit_price, total_price) 
+            VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+              quotation.supplier_id,
+              mr_line_id,
+              JSON.stringify([quotation.quotation_file]), // Store as JSON array
+              quotation.rating,
+              quotation.unit_price,
+              quotation.total_price,
+            ]
+          );
+          updatedIds.push(result.insertId);
+        }
+      }
+
+      // Delete quotations that were removed (exist in DB but not in the update)
+      const idsToDelete = existingIds.filter((id) => !updatedIds.includes(id));
+
+      if (idsToDelete.length > 0) {
+        // First, get the quotation files to delete from S3
+        const [quotationsToDelete] = await db.query<RowDataPacket[]>(
+          "SELECT quotation_file FROM mr_line_supplier_quotation WHERE id IN (?)",
+          [idsToDelete]
+        );
+
+        // Note: You might want to delete files from S3 here
+        // For now, just delete the database records
+        await db.query(
+          "DELETE FROM mr_line_supplier_quotation WHERE id IN (?)",
+          [idsToDelete]
+        );
+
+        console.log("Deleted quotation IDs:", idsToDelete);
+      }
+
+      return NextResponse.json(
+        { message: "Quotations updated successfully" },
+        { status: 200 }
+      );
     }
 
     if (body.action === "createSupplier") {

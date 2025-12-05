@@ -11,6 +11,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
 type SupplierQuotation = {
+  id?: number;
   supplier_id: string | number;
   quotation_file: File | null;
   quotation_url: string;
@@ -19,25 +20,23 @@ type SupplierQuotation = {
   total_price: string;
 };
 
-type AddMrSupplierAndQuotationButtonProps = {
+type MrSupplierAndQuotationButtonProps = {
   mrLineID: number;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
-  children: React.ReactNode;
   full?: boolean;
   style?: React.CSSProperties;
 };
 
-export default function AddMrSupplierAndQuotationButton({
+export default function MrSupplierAndQuotationButton({
   mrLineID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
-  children,
   full,
   style,
-}: AddMrSupplierAndQuotationButtonProps) {
+}: MrSupplierAndQuotationButtonProps) {
   const router = useRouter();
 
   const trashIcon = "/icons/trash.svg";
@@ -50,10 +49,18 @@ export default function AddMrSupplierAndQuotationButton({
     useState<boolean>(false);
   const [isMounted, setIsMounted] = useState<boolean>(false);
   const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isCheckingExisting, setIsCheckingExisting] = useState<boolean>(true);
+  const [deletingFileIndex, setDeletingFileIndex] = useState<number | null>(
+    null
+  );
+
+  const [mode, setMode] = useState<"add" | "edit">("add");
+  const [hasExistingQuotations, setHasExistingQuotations] =
+    useState<boolean>(false);
 
   const [suppliers, setSuppliers] = useState<any[]>([]);
 
-  // Array of supplier quotations (starts with 3 empty rows)
   const [supplierQuotations, setSupplierQuotations] = useState<
     SupplierQuotation[]
   >([
@@ -108,12 +115,13 @@ export default function AddMrSupplierAndQuotationButton({
   const [address, setAddress] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
 
-  // Refs for file inputs
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Check if quotations exist on mount
   useEffect(() => {
     setIsMounted(true);
 
+    // Fetch suppliers
     fetch("/api/supplier", {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -122,6 +130,7 @@ export default function AddMrSupplierAndQuotationButton({
       .then((data) => setSuppliers(data))
       .catch((err) => console.error(err));
 
+    // Fetch material categories
     fetch("/api/mr/getMaterialCategoryValues")
       .then((res) => res.json())
       .then((data) => {
@@ -130,7 +139,45 @@ export default function AddMrSupplierAndQuotationButton({
       .catch((err) => {
         console.error(err);
       });
-  }, []);
+
+    // Check for existing quotations
+    checkExistingQuotations();
+  }, [mrLineID]);
+
+  // Check if quotations already exist for this MR line
+  async function checkExistingQuotations() {
+    setIsCheckingExisting(true);
+    try {
+      const res = await fetch(
+        "/api/supplier/getAllSupplierAndQuotationByMrLineID",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: mrLineID }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to check quotations");
+      }
+
+      const data = await res.json();
+
+      if (data && data.length > 0) {
+        setHasExistingQuotations(true);
+        setMode("edit");
+      } else {
+        setHasExistingQuotations(false);
+        setMode("add");
+      }
+    } catch (error) {
+      console.error("Error checking quotations:", error);
+      setHasExistingQuotations(false);
+      setMode("add");
+    } finally {
+      setIsCheckingExisting(false);
+    }
+  }
 
   useEffect(() => {
     if (materialCategoryID.length > 0) {
@@ -163,7 +210,99 @@ export default function AddMrSupplierAndQuotationButton({
     }
   }, [materialCategoryID]);
 
-  // Get available suppliers for a specific row
+  // Fetch existing quotations when modal opens in edit mode
+  async function fetchExistingQuotations() {
+    if (mode !== "edit") return;
+
+    setIsLoading(true);
+    try {
+      const res = await fetch(
+        "/api/supplier/getAllSupplierAndQuotationByMrLineID",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: mrLineID }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch quotations");
+      }
+
+      const data = await res.json();
+
+      if (data && data.length > 0) {
+        const formattedQuotations = data.map((item: any) => ({
+          id: item.id,
+          supplier_id: item.supplier_id,
+          quotation_file: null,
+          quotation_url: Array.isArray(item.quotation_file)
+            ? item.quotation_file[0]
+            : item.quotation_file,
+          rating: item.rating || "",
+          unit_price: item.unit_price || "",
+          total_price: item.total_price || "",
+        }));
+
+        // Ensure at least 3 rows
+        while (formattedQuotations.length < 3) {
+          formattedQuotations.push({
+            supplier_id: "",
+            quotation_file: null,
+            quotation_url: "",
+            rating: "",
+            unit_price: "",
+            total_price: "",
+          });
+        }
+
+        setSupplierQuotations(formattedQuotations);
+      }
+    } catch (error) {
+      console.error("Error fetching quotations:", error);
+      toast("Failed to load existing quotations", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // Load data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (mode === "edit") {
+        fetchExistingQuotations();
+      } else {
+        // Reset to default empty rows for add mode
+        setSupplierQuotations([
+          {
+            supplier_id: "",
+            quotation_file: null,
+            quotation_url: "",
+            rating: "",
+            unit_price: "",
+            total_price: "",
+          },
+          {
+            supplier_id: "",
+            quotation_file: null,
+            quotation_url: "",
+            rating: "",
+            unit_price: "",
+            total_price: "",
+          },
+          {
+            supplier_id: "",
+            quotation_file: null,
+            quotation_url: "",
+            rating: "",
+            unit_price: "",
+            total_price: "",
+          },
+        ]);
+      }
+    }
+  }, [isOpen, mode]);
+
   function getAvailableSuppliers(currentIndex: number) {
     const selectedSupplierIds = supplierQuotations
       .map((q: SupplierQuotation, idx: number) => {
@@ -240,7 +379,48 @@ export default function AddMrSupplierAndQuotationButton({
     console.log("File stored successfully:", file.name);
   }
 
-  function handleRemoveFile(index: number) {
+  async function handleRemoveFile(index: number) {
+    const quotation = supplierQuotations[index];
+
+    // If there's an existing URL (file from S3), delete it
+    if (quotation.quotation_url && !quotation.quotation_file) {
+      setDeletingFileIndex(index);
+      try {
+        const deleteResponse = await fetch("/api/s3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "delete",
+            url: quotation.quotation_url,
+          }),
+        });
+
+        if (!deleteResponse.ok) {
+          const errorText = await deleteResponse.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || "Failed to delete file" };
+          }
+          console.error("Failed to delete file from S3:", errorData);
+          toast("Failed to delete file from storage", "error");
+          return;
+        }
+
+        const result = await deleteResponse.json();
+        console.log("File deleted from S3:", result);
+        toast("File deleted successfully", "success");
+      } catch (error) {
+        console.error("Error deleting file:", error);
+        toast("Failed to delete file", "error");
+        return;
+      } finally {
+        setDeletingFileIndex(null);
+      }
+    }
+
+    // Clear the quotation file data
     const newQuotations = [...supplierQuotations];
     newQuotations[index] = {
       ...newQuotations[index],
@@ -259,7 +439,21 @@ export default function AddMrSupplierAndQuotationButton({
     if (quotation.quotation_file) {
       const fileUrl = URL.createObjectURL(quotation.quotation_file);
       window.open(fileUrl, "_blank");
+    } else if (quotation.quotation_url) {
+      window.open(quotation.quotation_url, "_blank");
     }
+  }
+
+  function getFileName(quotation: SupplierQuotation): string {
+    if (quotation.quotation_file) {
+      return quotation.quotation_file.name;
+    } else if (quotation.quotation_url) {
+      const urlParts = quotation.quotation_url.split("/");
+      const fileName = urlParts[urlParts.length - 1];
+      // Decode URL-encoded filename
+      return decodeURIComponent(fileName) || "View File";
+    }
+    return "";
   }
 
   async function handleSupplierSubmit(e: React.FormEvent) {
@@ -308,6 +502,15 @@ export default function AddMrSupplierAndQuotationButton({
       setNotes("");
 
       setIsSupplierModalOpen(false);
+
+      // Refresh suppliers list
+      fetch("/api/supplier", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
+        .then((res) => res.json())
+        .then((data) => setSuppliers(data))
+        .catch((err) => console.error(err));
 
       router.refresh();
     } else {
@@ -369,18 +572,15 @@ export default function AddMrSupplierAndQuotationButton({
   async function handleQuotationSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    // Filter out empty rows
     const validQuotations = supplierQuotations.filter(
       (q: SupplierQuotation) => q.supplier_id !== ""
     );
 
-    // Check minimum 3 suppliers requirement
     if (validQuotations.length < 3) {
       toast("Please fill in at least 3 suppliers", "error");
       return;
     }
 
-    // Validate each valid quotation
     for (let i = 0; i < validQuotations.length; i++) {
       const quotation = validQuotations[i];
       const originalIndex = supplierQuotations.findIndex(
@@ -389,14 +589,6 @@ export default function AddMrSupplierAndQuotationButton({
 
       if (!quotation.supplier_id) {
         toast(`Row ${originalIndex + 1}: Please select a supplier`, "error");
-        return;
-      }
-
-      if (!quotation.quotation_file) {
-        toast(
-          `Row ${originalIndex + 1}: Please attach a quotation file`,
-          "error"
-        );
         return;
       }
 
@@ -414,36 +606,52 @@ export default function AddMrSupplierAndQuotationButton({
     setIsUploading(true);
 
     try {
-      // Upload all files to S3 first
       const quotationsWithUrls = await uploadFilesToS3(validQuotations);
 
-      console.log(
-        "All files uploaded, quotations with S3 URLs:",
-        quotationsWithUrls
-      );
+      console.log("Files processed, quotations with URLs:", quotationsWithUrls);
 
-      // Send to API to insert in database
+      const apiPayload =
+        mode === "edit"
+          ? {
+              action: "updateSupplierAndQuotation",
+              mr_line_id: mrLineID,
+              quotations: quotationsWithUrls.map((q) => ({
+                id: q.id,
+                supplier_id: q.supplier_id,
+                quotation_file: q.quotation_url,
+                rating: q.rating || null,
+                unit_price: q.unit_price,
+                total_price: q.total_price,
+              })),
+            }
+          : {
+              action: "addSupplierAndQuotation",
+              mr_line_id: mrLineID,
+              quotations: quotationsWithUrls.map((q) => ({
+                supplier_id: q.supplier_id,
+                quotation_file: q.quotation_url,
+                rating: q.rating || null,
+                unit_price: q.unit_price,
+                total_price: q.total_price,
+              })),
+            };
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "addSupplierAndQuotation",
-            mr_line_id: mrLineID,
-            quotations: quotationsWithUrls.map((q) => ({
-              supplier_id: q.supplier_id,
-              quotation_file: q.quotation_url,
-              rating: q.rating || null,
-              unit_price: q.unit_price,
-              total_price: q.total_price,
-            })),
-          }),
+          body: JSON.stringify(apiPayload),
         }
       );
 
       if (res.ok) {
-        toast("Quotations added successfully", "success");
+        toast(
+          mode === "edit"
+            ? "Quotations updated successfully"
+            : "Quotations added successfully",
+          "success"
+        );
         setIsOpen(false);
 
         // Reset form
@@ -474,18 +682,33 @@ export default function AddMrSupplierAndQuotationButton({
           },
         ]);
 
+        // Re-check if quotations exist after submit
+        await checkExistingQuotations();
+
         router.refresh();
       } else {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to add quotations");
+        throw new Error(
+          errorData.error ||
+            `Failed to ${mode === "edit" ? "update" : "add"} quotations`
+        );
       }
     } catch (error: any) {
       console.error("Submit error:", error);
-      toast(error.message || "Failed to submit quotations", "error");
+      toast(
+        error.message ||
+          `Failed to ${mode === "edit" ? "update" : "submit"} quotations`,
+        "error"
+      );
     } finally {
       setIsUploading(false);
     }
   }
+
+  const buttonLabel =
+    mode === "edit"
+      ? "EDIT SUPPLIER & QUOTATION"
+      : "+ ADD SUPPLIER & QUOTATION";
 
   return (
     <>
@@ -497,226 +720,255 @@ export default function AddMrSupplierAndQuotationButton({
         onClick={() => setIsOpen(true)}
         full={full ? true : false}
         style={style}
+        /* disabled={isCheckingExisting} */
       >
-        {children}
+        {isCheckingExisting ? "Loading..." : buttonLabel}
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header="ADD SUPPLIER & QUOTATION"
+          header={
+            mode === "edit"
+              ? "EDIT SUPPLIER & QUOTATION"
+              : "ADD SUPPLIER & QUOTATION"
+          }
           setIsOpen={setIsOpen}
           handleSubmit={handleQuotationSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <table className="items-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>SUPPLIER</th>
-                <th>QUOTATION</th>
-                <th>RATING</th>
-                <th>UNIT PRICE</th>
-                <th>TOTAL PRICE</th>
-                {supplierQuotations.length > 3 && <th>ACTION</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {supplierQuotations.map(
-                (quotation: SupplierQuotation, index: number) => (
-                  <tr key={index}>
-                    <td>{index + 1}</td>
-                    <td style={{ minWidth: "250px" }}>
-                      <SingleSelectDropdown
-                        label={"SUPPLIER"}
-                        selectedValue={quotation.supplier_id}
-                        onChange={(value) =>
-                          updateQuotation(index, "supplier_id", value)
-                        }
-                        placeholder={"SELECT SUPPLIER"}
-                        dbData={getAvailableSuppliers(index)}
-                        idField="id"
-                        labelField="name"
-                        noLabel
-                        showCreateButton={true}
-                        createButtonLabel="+ NEW SUPPLIER"
-                        onCreateClick={() => setIsSupplierModalOpen(true)}
-                        required
-                      />
-                    </td>
-                    <td>
-                      {quotation.quotation_file && (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            padding: "5px 20px",
-                            border: "1px solid rgba(223, 223, 223, 1)",
-                            borderRadius: "25px",
-                            backgroundColor: "white",
-                            gap: "10px",
-                          }}
-                        >
-                          <span
-                            style={{
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              maxWidth: "100px",
-                              display: "inline-block",
+          {isLoading ? (
+            <div style={{ textAlign: "center", padding: "20px" }}>
+              Loading...
+            </div>
+          ) : (
+            <>
+              <table className="items-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>SUPPLIER</th>
+                    <th>QUOTATION</th>
+                    <th>RATING</th>
+                    <th>UNIT PRICE</th>
+                    <th>TOTAL PRICE</th>
+                    {supplierQuotations.length > 3 && <th>ACTION</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {supplierQuotations.map(
+                    (quotation: SupplierQuotation, index: number) => (
+                      <tr key={index}>
+                        <td>{index + 1}</td>
+                        <td style={{ minWidth: "250px" }}>
+                          <SingleSelectDropdown
+                            label={"SUPPLIER"}
+                            selectedValue={quotation.supplier_id}
+                            onChange={(value) =>
+                              updateQuotation(index, "supplier_id", value)
+                            }
+                            placeholder={"SELECT SUPPLIER"}
+                            dbData={getAvailableSuppliers(index)}
+                            idField="id"
+                            labelField="name"
+                            noLabel
+                            showCreateButton={true}
+                            createButtonLabel="+ NEW SUPPLIER"
+                            onCreateClick={() => setIsSupplierModalOpen(true)}
+                            required
+                          />
+                        </td>
+                        <td>
+                          {(quotation.quotation_file ||
+                            quotation.quotation_url) && (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                padding: "5px 20px",
+                                border: "1px solid rgba(223, 223, 223, 1)",
+                                borderRadius: "25px",
+                                backgroundColor: "white",
+                                gap: "10px",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  maxWidth: "100px",
+                                  display: "inline-block",
+                                }}
+                              >
+                                {getFileName(quotation)}
+                              </span>
+                              <div style={{ display: "flex", gap: "10px" }}>
+                                <img
+                                  src={externalLinkIcon}
+                                  alt="view"
+                                  style={{
+                                    cursor: "pointer",
+                                    opacity:
+                                      deletingFileIndex === index ? 0.5 : 1,
+                                    pointerEvents:
+                                      deletingFileIndex === index
+                                        ? "none"
+                                        : "auto",
+                                  }}
+                                  onClick={() => handleViewFile(quotation)}
+                                />
+                                <img
+                                  src={closeIcon}
+                                  alt="remove"
+                                  onClick={() => handleRemoveFile(index)}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <input
+                            ref={(el) => {
+                              fileInputRefs.current[index] = el;
                             }}
-                          >
-                            {quotation.quotation_file.name}
-                          </span>
-                          <div style={{ display: "flex", gap: "10px" }}>
-                            <img
-                              src={externalLinkIcon}
-                              alt="view"
-                              style={{
-                                cursor: "pointer",
-                              }}
-                              onClick={() => handleViewFile(quotation)}
-                            />
-                            <img
-                              src={closeIcon}
-                              alt="remove"
-                              style={{
-                                cursor: "pointer",
-                              }}
-                              onClick={() => handleRemoveFile(index)}
+                            type="file"
+                            style={{ display: "none" }}
+                            accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              if (file) {
+                                handleFileSelection(index, file);
+                              }
+                            }}
+                            disabled={isUploading}
+                          />
+
+                          {!quotation.quotation_file &&
+                            !quotation.quotation_url && (
+                              <Button
+                                componentType={"button"}
+                                bgColor={"black"}
+                                borderColor={"black"}
+                                textColor={"white"}
+                                onClick={(e: React.MouseEvent) => {
+                                  e.preventDefault();
+                                  if (
+                                    !isUploading &&
+                                    fileInputRefs.current[index]
+                                  ) {
+                                    fileInputRefs.current[index]?.click();
+                                  }
+                                }}
+                                full
+                                style={{
+                                  padding: "5px 20px",
+                                  borderRadius: "25px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "10px",
+                                  textWrap: "nowrap",
+                                  opacity: isUploading ? 0.5 : 1,
+                                  cursor: isUploading
+                                    ? "not-allowed"
+                                    : "pointer",
+                                  pointerEvents: isUploading ? "none" : "auto",
+                                }}
+                              >
+                                Attach Quotation
+                                <img src={uploadIcon} alt="upload icon" />
+                              </Button>
+                            )}
+                        </td>
+                        <td style={{ minWidth: "150px" }}>
+                          <input
+                            type="number"
+                            value={quotation.rating}
+                            onChange={(e) =>
+                              updateQuotation(index, "rating", e.target.value)
+                            }
+                            placeholder="RATING"
+                            step="1"
+                            min="0"
+                            max="5"
+                            disabled
+                          />
+                        </td>
+                        <td>
+                          <div className="input-prefix right">
+                            <span>AED</span>
+                            <input
+                              style={{ paddingRight: "50px" }}
+                              type="text"
+                              placeholder="ENTER UNIT PRICE"
+                              value={quotation.unit_price}
+                              onChange={(e) =>
+                                updateQuotation(
+                                  index,
+                                  "unit_price",
+                                  e.target.value
+                                )
+                              }
                             />
                           </div>
-                        </div>
-                      )}
+                        </td>
+                        <td>
+                          <div className="input-prefix right">
+                            <span>AED</span>
+                            <input
+                              style={{ paddingRight: "50px" }}
+                              type="text"
+                              placeholder="ENTER TOTAL PRICE"
+                              value={quotation.total_price}
+                              onChange={(e) =>
+                                updateQuotation(
+                                  index,
+                                  "total_price",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </div>
+                        </td>
 
-                      <input
-                        ref={(el) => {
-                          fileInputRefs.current[index] = el;
-                        }}
-                        type="file"
-                        style={{ display: "none" }}
-                        accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null;
-                          if (file) {
-                            handleFileSelection(index, file);
-                          }
-                        }}
-                        disabled={isUploading}
-                      />
+                        {supplierQuotations.length > 3 && index >= 3 && (
+                          <td>
+                            <Button
+                              componentType={"button"}
+                              bgColor={"rgba(239, 239, 239, 1)"}
+                              borderColor={"rgba(223, 223, 223, 1)"}
+                              textColor={"black"}
+                              style={{ padding: "7px 7px" }}
+                              onClick={() => handleRemoveRow(index)}
+                            >
+                              <img src={trashIcon} alt="trash icon" />
+                            </Button>
+                          </td>
+                        )}
 
-                      {!quotation.quotation_file && (
-                        <Button
-                          componentType={"button"}
-                          bgColor={"black"}
-                          borderColor={"black"}
-                          textColor={"white"}
-                          onClick={(e: React.MouseEvent) => {
-                            e.preventDefault();
-                            if (!isUploading && fileInputRefs.current[index]) {
-                              fileInputRefs.current[index]?.click();
-                            }
-                          }}
-                          full
-                          style={{
-                            padding: "5px 20px",
-                            borderRadius: "25px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "10px",
-                            textWrap: "nowrap",
-                            opacity: isUploading ? 0.5 : 1,
-                            cursor: isUploading ? "not-allowed" : "pointer",
-                            pointerEvents: isUploading ? "none" : "auto",
-                          }}
-                        >
-                          Attach Quotation
-                          <img src={uploadIcon} alt="upload icon" />
-                        </Button>
-                      )}
-                    </td>
-                    <td style={{ minWidth: "150px" }}>
-                      <input
-                        type="number"
-                        value={quotation.rating}
-                        onChange={(e) =>
-                          updateQuotation(index, "rating", e.target.value)
-                        }
-                        placeholder="RATING"
-                        step="1"
-                        min="0"
-                        max="5"
-                        disabled
-                      />
-                    </td>
-                    <td>
-                      <div className="input-prefix right">
-                        <span>AED</span>
-                        <input
-                          style={{ paddingRight: "50px" }}
-                          type="text"
-                          placeholder="ENTER UNIT PRICE"
-                          value={quotation.unit_price}
-                          onChange={(e) =>
-                            updateQuotation(index, "unit_price", e.target.value)
-                          }
-                        />
-                      </div>
-                    </td>
-                    <td>
-                      <div className="input-prefix right">
-                        <span>AED</span>
-                        <input
-                          style={{ paddingRight: "50px" }}
-                          type="text"
-                          placeholder="ENTER TOTAL PRICE"
-                          value={quotation.total_price}
-                          onChange={(e) =>
-                            updateQuotation(
-                              index,
-                              "total_price",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </div>
-                    </td>
+                        {supplierQuotations.length > 3 && index < 3 && (
+                          <td></td>
+                        )}
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
 
-                    {supplierQuotations.length > 3 && index >= 3 && (
-                      <td>
-                        <Button
-                          componentType={"button"}
-                          bgColor={"rgba(239, 239, 239, 1)"}
-                          borderColor={"rgba(223, 223, 223, 1)"}
-                          textColor={"black"}
-                          style={{ padding: "7px 7px" }}
-                          onClick={() => handleRemoveRow(index)}
-                        >
-                          <img src={trashIcon} alt="trash icon" />
-                        </Button>
-                      </td>
-                    )}
+              <br />
 
-                    {supplierQuotations.length > 3 && index < 3 && <td></td>}
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
-
-          <br />
-
-          <Button
-            componentType={"button"}
-            bgColor={"rgba(239, 239, 239, 1)"}
-            borderColor={"rgba(239, 239, 239, 1)"}
-            textColor={"black"}
-            onClick={handleAddRow}
-            full
-          >
-            + ADD MORE
-          </Button>
+              <Button
+                componentType={"button"}
+                bgColor={"rgba(239, 239, 239, 1)"}
+                borderColor={"rgba(239, 239, 239, 1)"}
+                textColor={"black"}
+                onClick={handleAddRow}
+                full
+              >
+                + ADD MORE
+              </Button>
+            </>
+          )}
         </FormPopUp>
       )}
 

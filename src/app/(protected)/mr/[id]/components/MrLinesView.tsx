@@ -346,7 +346,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                         {mrHeader.progress_id === 7 &&
                           userInfo?.departmentID === 9 && (
                             <td>
-                              <AddMrSupplierAndQuotationButton
+                              <MrSupplierAndQuotationButton
                                 mrLineID={item.id}
                                 bgColor="black"
                                 textColor="white"
@@ -355,9 +355,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   padding: "7px 10px",
                                   borderRadius: "25px",
                                 }}
-                              >
-                                + ADD SUPPLIER & QUOTATION
-                              </AddMrSupplierAndQuotationButton>
+                              />
+                              
                             </td>
                           )}
                       </tr>
