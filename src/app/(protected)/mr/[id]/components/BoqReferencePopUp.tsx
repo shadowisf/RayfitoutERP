@@ -4,10 +4,6 @@ import FormPopUp from "@/app/components/FormPopup";
 import { useState } from "react";
 import { MrLine } from "../types/mrLine";
 import Button from "@/app/components/Button";
-import NotesPopUp from "./NotesPopUp";
-import { BoqLine } from "@/app/(protected)/boq/[id]/types/boqLine";
-import ItemDescriptionPopUp from "@/app/(protected)/boq/[id]/components/ItemDescriptionPopUp";
-import BoqReferenceItemDescriptionPopUp from "./BoqReferenceItemDescriptionPopUp";
 
 type BoqReferencePopUpProps = {
   item: MrLine;

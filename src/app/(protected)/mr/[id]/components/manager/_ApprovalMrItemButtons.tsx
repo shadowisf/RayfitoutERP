@@ -62,7 +62,7 @@ export default function ApprovalMrItemButton({
     });
 
     if (res.ok) {
-      toast("Material request item approved", "success");
+      toast(`${item.boq_item_name} approved`, "success");
 
       router.refresh();
     } else {
@@ -85,7 +85,7 @@ export default function ApprovalMrItemButton({
     });
 
     if (res.ok) {
-      toast("Material request item rejected", "success");
+      toast(`${item.boq_item_name} rejected`, "success");
 
       setRejectText("");
 

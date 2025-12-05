@@ -46,10 +46,12 @@ export default function EditBoqItemButton({
   const [totalCost, setTotalCost] = useState<string | number>(item.total_cost);
   const [itemDescription, setItemDescription] = useState(item.item_description);
 
-  // Existing attachments (S3 keys)
+  // Existing attachments (S3 URLs)
   const [existingAttachments, setExistingAttachments] = useState<string[]>([]);
   // New files to upload
   const [newAttachmentFiles, setNewAttachmentFiles] = useState<File[]>([]);
+  // Files marked for deletion
+  const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/boq/getLocationValues")
@@ -79,6 +81,9 @@ export default function EditBoqItemButton({
         console.error("Failed to parse existing attachments:", error);
         setExistingAttachments([]);
       }
+    } else {
+      // Reset filesToDelete when modal closes
+      setFilesToDelete([]);
     }
   }, [isOpen, item.attachments]);
 
@@ -97,13 +102,51 @@ export default function EditBoqItemButton({
     [ratePerQuantity, quantity]
   );
 
+  async function deleteFilesFromS3(urls: string[]) {
+    const deletePromises = urls.map(async (url) => {
+      try {
+        const deleteResponse = await fetch("/api/s3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "delete",
+            url: url,
+          }),
+        });
+
+        if (!deleteResponse.ok) {
+          const errorText = await deleteResponse.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || "Failed to delete file" };
+          }
+          console.error("Failed to delete file from S3:", errorData);
+          throw new Error(`Failed to delete ${url}`);
+        }
+      } catch (error) {
+        console.error(`Error deleting ${url}:`, error);
+        throw error;
+      }
+    });
+
+    await Promise.all(deletePromises);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     setIsSubmitting(true);
 
     try {
-      // Step 1: Upload new files to S3 if there are any
+      // Step 1: Delete marked files from S3
+      if (filesToDelete.length > 0) {
+        await deleteFilesFromS3(filesToDelete);
+        console.log(`${filesToDelete.length} file(s) deleted from S3`);
+      }
+
+      // Step 2: Upload new files to S3 if there are any
       let newAttachmentUrls: string[] = [];
 
       if (newAttachmentFiles.length > 0) {
@@ -122,9 +165,8 @@ export default function EditBoqItemButton({
         }
 
         const uploadData = await uploadResponse.json();
-        console.log("Upload response:", uploadData); // Debug log
+        console.log("Upload response:", uploadData);
 
-        // Change from .keys to .urls
         newAttachmentUrls = uploadData.urls || [];
 
         if (!Array.isArray(newAttachmentUrls)) {
@@ -132,10 +174,10 @@ export default function EditBoqItemButton({
         }
       }
 
-      // Step 2: Combine existing and new attachments
+      // Step 3: Combine existing and new attachments
       const allAttachments = [...existingAttachments, ...newAttachmentUrls];
 
-      // Step 3: Update BOQ item
+      // Step 4: Update BOQ item
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -160,6 +202,10 @@ export default function EditBoqItemButton({
         toast("Bill of quantity item updated", "success");
 
         setIsOpen(false);
+
+        // Reset states
+        setFilesToDelete([]);
+        setNewAttachmentFiles([]);
 
         router.refresh();
       } else {
@@ -341,9 +387,9 @@ export default function EditBoqItemButton({
               <UploadFilesButton
                 onFilesChange={setNewAttachmentFiles}
                 onExistingFilesChange={setExistingAttachments}
+                onFilesToDeleteChange={setFilesToDelete}
                 existingFiles={existingAttachments}
-                itemId={item.id}
-                updateEndpoint="/api/boq"
+                stageDeletion={true}
               />
             </div>
           </div>

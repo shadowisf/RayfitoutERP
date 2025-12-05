@@ -48,7 +48,7 @@ export default function AddBoqItemButton({
   const [ratePerQuantity, setRatePerQuantity] = useState<string | number>("");
   const [totalCost, setTotalCost] = useState<string | number>("");
   const [itemDescription, setItemDescription] = useState("");
-  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]); // Store File objects
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
   useEffect(() => {
     fetch("/api/boq/getLocationValues")
@@ -99,6 +99,8 @@ export default function AddBoqItemButton({
           formData.append("files", file);
         });
 
+        console.log(`Uploading ${attachmentFiles.length} file(s) to S3...`);
+
         const uploadResponse = await fetch("/api/s3", {
           method: "POST",
           body: formData,
@@ -109,7 +111,13 @@ export default function AddBoqItemButton({
         }
 
         const uploadData = await uploadResponse.json();
-        attachmentUrls = uploadData.urls;
+        attachmentUrls = uploadData.urls || [];
+
+        if (!Array.isArray(attachmentUrls)) {
+          throw new Error("Invalid response from upload API");
+        }
+
+        console.log(`Successfully uploaded ${attachmentUrls.length} file(s)`);
       }
 
       // Step 2: Create BOQ item with attachment URLs
@@ -158,6 +166,7 @@ export default function AddBoqItemButton({
         );
       }
     } catch (error: any) {
+      console.error("Create error:", error);
       toast(
         "Failed to create bill of quantity item. Something went wrong",
         "error"
@@ -342,7 +351,10 @@ export default function AddBoqItemButton({
             <div className="input-item">
               <label>ATTACHMENTS</label>
 
-              <UploadFilesButton onFilesChange={setAttachmentFiles} />
+              <UploadFilesButton
+                onFilesChange={setAttachmentFiles}
+                stageDeletion={true}
+              />
             </div>
           </div>
         </FormPopUp>

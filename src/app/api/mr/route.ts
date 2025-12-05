@@ -139,7 +139,7 @@ export async function POST(req: Request) {
 
     if (body.action === "resetItem") {
       await db.query(
-        `UPDATE mr_lines SET approval_status = null, normal_comment = null, reject_comment = null WHERE id = ?`,
+        `UPDATE mr_lines SET approval_status = null, reject_comment = null WHERE id = ?`,
         [body.id]
       );
 

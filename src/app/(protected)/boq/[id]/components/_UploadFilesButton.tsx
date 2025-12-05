@@ -13,21 +13,25 @@ type UploadedFile = {
 type UploadFilesButtonProps = {
   onFilesChange?: (files: File[]) => void;
   onExistingFilesChange?: (urls: string[]) => void;
+  onFilesToDeleteChange?: (urls: string[]) => void;
   existingFiles?: string[];
   maxFiles?: number;
   acceptedTypes?: string;
   itemId?: number;
   updateEndpoint?: string;
+  stageDeletion?: boolean; // New prop to control deletion behavior
 };
 
 export default function UploadFilesButton({
   onFilesChange,
   onExistingFilesChange,
+  onFilesToDeleteChange,
   existingFiles = [],
   maxFiles = 10,
   acceptedTypes = "image/*,.pdf,.doc,.docx",
   itemId,
   updateEndpoint,
+  stageDeletion = false, // Default to immediate deletion for backward compatibility
 }: UploadFilesButtonProps) {
   const router = useRouter();
 
@@ -35,6 +39,7 @@ export default function UploadFilesButton({
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [existingFilesList, setExistingFilesList] = useState<string[]>([]);
+  const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,6 +98,28 @@ export default function UploadFilesButton({
   const removeExistingFile = async (index: number) => {
     const urlToDelete = existingFilesList[index];
 
+    // If staging deletions, just mark for deletion
+    if (stageDeletion) {
+      // Mark file for deletion
+      const updatedFilesToDelete = [...filesToDelete, urlToDelete];
+      setFilesToDelete(updatedFilesToDelete);
+
+      // Remove from UI immediately
+      const updatedExisting = existingFilesList.filter((_, i) => i !== index);
+      setExistingFilesList(updatedExisting);
+
+      if (onExistingFilesChange) {
+        onExistingFilesChange(updatedExisting);
+      }
+
+      if (onFilesToDeleteChange) {
+        onFilesToDeleteChange(updatedFilesToDelete);
+      }
+
+      return;
+    }
+
+    // Otherwise, delete immediately (original behavior)
     setIsDeleting(true);
 
     try {
@@ -272,9 +299,6 @@ export default function UploadFilesButton({
                   {uploadedFile.file.name.length > 15
                     ? uploadedFile.file.name.substring(0, 12) + "..."
                     : uploadedFile.file.name}
-                </span>
-                <span className="file-size">
-                  {formatFileSize(uploadedFile.file.size)}
                 </span>
               </div>
             </div>

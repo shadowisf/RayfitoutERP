@@ -7,8 +7,9 @@ import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import AttachQuotationButton from "./_AttachQuotationButton";
 
 type SupplierQuotation = {
   id?: number;
@@ -40,7 +41,6 @@ export default function MrSupplierAndQuotationButton({
   const router = useRouter();
 
   const trashIcon = "/icons/trash.svg";
-  const uploadIcon = "/icons/upload.svg";
   const externalLinkIcon = "/icons/external-link.svg";
   const closeIcon = "/icons/cross-small.svg";
 
@@ -51,9 +51,6 @@ export default function MrSupplierAndQuotationButton({
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isCheckingExisting, setIsCheckingExisting] = useState<boolean>(true);
-  const [deletingFileIndex, setDeletingFileIndex] = useState<number | null>(
-    null
-  );
 
   const [mode, setMode] = useState<"add" | "edit">("add");
   const [hasExistingQuotations, setHasExistingQuotations] =
@@ -90,6 +87,8 @@ export default function MrSupplierAndQuotationButton({
     },
   ]);
 
+  const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
+
   const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
     []
   );
@@ -114,8 +113,6 @@ export default function MrSupplierAndQuotationButton({
   const [email, setEmail] = useState<string>("");
   const [address, setAddress] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
-
-  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Check if quotations exist on mount
   useEffect(() => {
@@ -303,6 +300,13 @@ export default function MrSupplierAndQuotationButton({
     }
   }, [isOpen, mode]);
 
+  // Reset filesToDelete when modal closes without confirming
+  useEffect(() => {
+    if (!isOpen) {
+      setFilesToDelete([]);
+    }
+  }, [isOpen]);
+
   function getAvailableSuppliers(currentIndex: number) {
     const selectedSupplierIds = supplierQuotations
       .map((q: SupplierQuotation, idx: number) => {
@@ -355,72 +359,20 @@ export default function MrSupplierAndQuotationButton({
     setSupplierQuotations(newQuotations);
   }
 
-  function handleFileSelection(index: number, file: File | null) {
-    if (!file) {
-      console.log("No file selected");
-      return;
-    }
-
-    const allowedTypes = [
-      "application/pdf",
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.ms-excel",
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      toast("Please upload PDF, Excel, or image files only", "error");
-      return;
-    }
-
+  function handleFileSelection(index: number, file: File) {
     updateQuotation(index, "quotation_file", file);
     console.log("File stored successfully:", file.name);
   }
 
-  async function handleRemoveFile(index: number) {
+  function handleRemoveFile(index: number) {
     const quotation = supplierQuotations[index];
 
-    // If there's an existing URL (file from S3), delete it
+    // If there's an existing URL (file from S3), mark it for deletion
     if (quotation.quotation_url && !quotation.quotation_file) {
-      setDeletingFileIndex(index);
-      try {
-        const deleteResponse = await fetch("/api/s3", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "delete",
-            url: quotation.quotation_url,
-          }),
-        });
-
-        if (!deleteResponse.ok) {
-          const errorText = await deleteResponse.text();
-          let errorData;
-          try {
-            errorData = JSON.parse(errorText);
-          } catch {
-            errorData = { error: errorText || "Failed to delete file" };
-          }
-          console.error("Failed to delete file from S3:", errorData);
-          toast("Failed to delete file from storage", "error");
-          return;
-        }
-
-        const result = await deleteResponse.json();
-        console.log("File deleted from S3:", result);
-        toast("File deleted successfully", "success");
-      } catch (error) {
-        console.error("Error deleting file:", error);
-        toast("Failed to delete file", "error");
-        return;
-      } finally {
-        setDeletingFileIndex(null);
-      }
+      setFilesToDelete((prev) => [...prev, quotation.quotation_url]);
     }
 
-    // Clear the quotation file data
+    // Clear the quotation file data immediately in the UI
     const newQuotations = [...supplierQuotations];
     newQuotations[index] = {
       ...newQuotations[index],
@@ -428,11 +380,6 @@ export default function MrSupplierAndQuotationButton({
       quotation_url: "",
     };
     setSupplierQuotations(newQuotations);
-
-    // Reset file input
-    if (fileInputRefs.current[index]) {
-      fileInputRefs.current[index]!.value = "";
-    }
   }
 
   function handleViewFile(quotation: SupplierQuotation) {
@@ -569,7 +516,39 @@ export default function MrSupplierAndQuotationButton({
     return updatedQuotations;
   }
 
-  async function handleQuotationSubmit(e: React.FormEvent) {
+  async function deleteFilesFromS3(urls: string[]) {
+    const deletePromises = urls.map(async (url) => {
+      try {
+        const deleteResponse = await fetch("/api/s3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "delete",
+            url: url,
+          }),
+        });
+
+        if (!deleteResponse.ok) {
+          const errorText = await deleteResponse.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || "Failed to delete file" };
+          }
+          console.error("Failed to delete file from S3:", errorData);
+          throw new Error(`Failed to delete ${url}`);
+        }
+      } catch (error) {
+        console.error(`Error deleting ${url}:`, error);
+        throw error;
+      }
+    });
+
+    await Promise.all(deletePromises);
+  }
+
+  async function handleSupplierAndQuotationSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     const validQuotations = supplierQuotations.filter(
@@ -588,17 +567,22 @@ export default function MrSupplierAndQuotationButton({
       );
 
       if (!quotation.supplier_id) {
-        toast(`Row ${originalIndex + 1}: Please select a supplier`, "error");
+        toast(`Please select a supplier`, "error");
+        return;
+      }
+
+      if (!quotation.quotation_file && !quotation.quotation_url) {
+        toast(`Please upload a quotation`, "error");
         return;
       }
 
       if (!quotation.unit_price || quotation.unit_price.trim() === "") {
-        toast(`Row ${originalIndex + 1}: Please enter unit price`, "error");
+        toast(`Please enter unit price`, "error");
         return;
       }
 
       if (!quotation.total_price || quotation.total_price.trim() === "") {
-        toast(`Row ${originalIndex + 1}: Please enter total price`, "error");
+        toast(`Please enter total price`, "error");
         return;
       }
     }
@@ -606,9 +590,14 @@ export default function MrSupplierAndQuotationButton({
     setIsUploading(true);
 
     try {
-      const quotationsWithUrls = await uploadFilesToS3(validQuotations);
+      // First, delete marked files from S3
+      if (filesToDelete.length > 0) {
+        await deleteFilesFromS3(filesToDelete);
+        console.log(`${filesToDelete.length} file(s) deleted from S3`);
+      }
 
-      console.log("Files processed, quotations with URLs:", quotationsWithUrls);
+      // Then upload new files
+      const quotationsWithUrls = await uploadFilesToS3(validQuotations);
 
       const apiPayload =
         mode === "edit"
@@ -639,7 +628,7 @@ export default function MrSupplierAndQuotationButton({
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
         {
-          method: "POST",
+          method: mode === "edit" ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(apiPayload),
         }
@@ -648,13 +637,13 @@ export default function MrSupplierAndQuotationButton({
       if (res.ok) {
         toast(
           mode === "edit"
-            ? "Quotations updated successfully"
-            : "Quotations added successfully",
+            ? "Suppliers and quotations updated"
+            : "Suppliers and quotations added",
           "success"
         );
         setIsOpen(false);
 
-        // Reset form
+        // Reset form and deletion tracking
         setSupplierQuotations([
           {
             supplier_id: "",
@@ -681,6 +670,7 @@ export default function MrSupplierAndQuotationButton({
             total_price: "",
           },
         ]);
+        setFilesToDelete([]);
 
         // Re-check if quotations exist after submit
         await checkExistingQuotations();
@@ -748,7 +738,7 @@ export default function MrSupplierAndQuotationButton({
               : "ADD SUPPLIER & QUOTATION"
           }
           setIsOpen={setIsOpen}
-          handleSubmit={handleQuotationSubmit}
+          handleSubmit={handleSupplierAndQuotationSubmit}
           addButtonLabel={"CONFIRM"}
         >
           <>
@@ -807,6 +797,7 @@ export default function MrSupplierAndQuotationButton({
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
+                                minWidth: "100px",
                                 maxWidth: "100px",
                                 display: "inline-block",
                               }}
@@ -819,73 +810,29 @@ export default function MrSupplierAndQuotationButton({
                                 alt="view"
                                 style={{
                                   cursor: "pointer",
-                                  opacity:
-                                    deletingFileIndex === index ? 0.5 : 1,
-                                  pointerEvents:
-                                    deletingFileIndex === index
-                                      ? "none"
-                                      : "auto",
                                 }}
                                 onClick={() => handleViewFile(quotation)}
                               />
                               <img
                                 src={closeIcon}
                                 alt="remove"
+                                style={{
+                                  cursor: "pointer",
+                                }}
                                 onClick={() => handleRemoveFile(index)}
                               />
                             </div>
                           </div>
                         )}
 
-                        <input
-                          ref={(el) => {
-                            fileInputRefs.current[index] = el;
-                          }}
-                          type="file"
-                          style={{ display: "none" }}
-                          accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0] || null;
-                            if (file) {
-                              handleFileSelection(index, file);
-                            }
-                          }}
-                          disabled={isUploading}
-                        />
-
                         {!quotation.quotation_file &&
                           !quotation.quotation_url && (
-                            <Button
-                              componentType={"button"}
-                              bgColor={"black"}
-                              borderColor={"black"}
-                              textColor={"white"}
-                              onClick={(e: React.MouseEvent) => {
-                                e.preventDefault();
-                                if (
-                                  !isUploading &&
-                                  fileInputRefs.current[index]
-                                ) {
-                                  fileInputRefs.current[index]?.click();
-                                }
-                              }}
-                              full
-                              style={{
-                                padding: "5px 20px",
-                                borderRadius: "25px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: "10px",
-                                textWrap: "nowrap",
-                                opacity: isUploading ? 0.5 : 1,
-                                cursor: isUploading ? "not-allowed" : "pointer",
-                                pointerEvents: isUploading ? "none" : "auto",
-                              }}
-                            >
-                              Attach Quotation
-                              <img src={uploadIcon} alt="upload icon" />
-                            </Button>
+                            <AttachQuotationButton
+                              onFileSelect={(file) =>
+                                handleFileSelection(index, file)
+                              }
+                              isUploading={isUploading}
+                            />
                           )}
                       </td>
                       <td style={{ minWidth: "150px" }}>
@@ -1014,6 +961,7 @@ export default function MrSupplierAndQuotationButton({
                 onChange={setMaterialCategoryID}
                 placeholder={"SELECT MATERIAL CATEGORY"}
                 label="MATERIAL CATEGORY"
+                style={{ maxWidth: "410px" }}
               />
 
               <MultiSelectDropdown
@@ -1023,6 +971,7 @@ export default function MrSupplierAndQuotationButton({
                 placeholder={"SELECT MATERIAL SUBCATEGORY"}
                 label="MATERIAL SUBCATEGORY"
                 disabled={materialCategoryID.length === 0}
+                style={{ maxWidth: "410px" }}
               />
             </div>
 
