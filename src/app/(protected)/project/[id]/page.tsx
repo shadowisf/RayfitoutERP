@@ -1,3 +1,5 @@
+import { EditProjectButton } from "./components/_EditProjectButton";
+
 export default async function ProjectWithID({
   params,
 }: {
@@ -31,7 +33,17 @@ export default async function ProjectWithID({
 
       <div className="project-with-id">
         <div>
-          <span>CODE</span>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <span>CODE</span>
+            <EditProjectButton project={project} />
+          </div>
+
           <h2>RAY-{project.id}</h2>
 
           <br />
@@ -39,6 +51,7 @@ export default async function ProjectWithID({
           <span>NAME</span>
           <h2>{project.name}</h2>
 
+          <br />
           <br />
 
           <span>STATUS</span>

@@ -52,6 +52,7 @@ export default function NewProjectButton() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          action: "createProject",
           name,
           property_type_id: propertyTypeID,
           id,
@@ -132,7 +133,10 @@ export default function NewProjectButton() {
               placeholder={"SELECT PROPETY TYPE"}
               onChange={(e) => setPropertyTypeID(Number(e.target.value))}
               dbMap={propertyTypes.map((pt: any) => (
-                <option key={pt.id} value={pt.id}>
+                <option
+                  key={pt.id}
+                  value={pt.id}
+                >
                   {pt.value}
                 </option>
               ))}
@@ -368,7 +372,10 @@ export default function NewProjectButton() {
           </div>
 
           {/* 6th row */}
-          <div className="input-row three-col" style={{ marginBottom: "40px" }}>
+          <div
+            className="input-row three-col"
+            style={{ marginBottom: "40px" }}
+          >
             <InputItem
               label={"START DATE (OPTIONAL)"}
               value={startDate}
