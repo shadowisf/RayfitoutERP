@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Button from "./Button";
 
 type SingleSelectInputProps = {
   label: string;
@@ -13,6 +14,12 @@ type SingleSelectInputProps = {
   dbData?: any[];
   idField?: string;
   labelField?: string;
+  noLabel?: boolean;
+  // New props for create button
+  showCreateButton?: boolean;
+  createButtonLabel?: string;
+  onCreateClick?: () => void;
+  style?: React.CSSProperties;
 };
 
 export default function SingleSelectDropdown({
@@ -26,6 +33,11 @@ export default function SingleSelectDropdown({
   dbData,
   idField = "id",
   labelField = "value",
+  noLabel,
+  showCreateButton = false,
+  createButtonLabel = "Create New",
+  style,
+  onCreateClick,
 }: SingleSelectInputProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -93,13 +105,20 @@ export default function SingleSelectDropdown({
     setSearchQuery("");
   }
 
+  function handleCreateClick() {
+    setIsOpen(false);
+    setSearchQuery("");
+    if (onCreateClick) {
+      onCreateClick();
+    }
+  }
+
   function getDisplayText() {
     if (!selectedValue && selectedValue !== 0) {
       return placeholder;
     }
 
     const selectedOption = options.find(function (option) {
-      // Handle both string and number comparison
       return String(option.id) === String(selectedValue);
     });
 
@@ -111,9 +130,9 @@ export default function SingleSelectDropdown({
 
   return (
     <div className="input-item" ref={containerRef}>
-      <label>{label}</label>
+      {!noLabel && <label>{label}</label>}
 
-      <div className="select-wrapper">
+      <div className="select-wrapper" style={style}>
         <select
           className={`native-select ${disabled ? "disabled" : ""} ${
             isPlaceholder ? "placeholder" : ""
@@ -150,7 +169,6 @@ export default function SingleSelectDropdown({
             <div className="options-list">
               {filteredOptions.length > 0 ? (
                 filteredOptions.map(function (option) {
-                  // Handle both string and number comparison
                   const isSelected =
                     String(option.id) === String(selectedValue);
 
@@ -176,6 +194,28 @@ export default function SingleSelectDropdown({
                 </div>
               )}
             </div>
+
+            {showCreateButton && (
+              <div className="create-button-wrapper">
+                {/* <button
+                  type="button"
+                  className="create-button"
+                  onClick={handleCreateClick}
+                >
+                  {createButtonLabel}
+                </button> */}
+                <Button
+                  componentType={"button"}
+                  bgColor={"black"}
+                  borderColor={"black"}
+                  textColor={"white"}
+                  onClick={handleCreateClick}
+                  full
+                >
+                  {createButtonLabel}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

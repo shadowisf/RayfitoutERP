@@ -23,8 +23,10 @@ export async function POST(req: Request) {
       // UPLOAD ACTION
       const formData = await req.formData();
       const files = formData.getAll("files") as File[];
+      const folder = formData.get("folder") as string || "boq-files"; // Get folder from formData, default to boq-files
 
       console.log("Files received:", files.length);
+      console.log("Target folder:", folder);
 
       if (!files || files.length === 0) {
         return NextResponse.json(
@@ -42,7 +44,7 @@ export async function POST(req: Request) {
         const fileExtension = file.name.split(".").pop();
         const uniqueId = crypto.randomBytes(16).toString("hex");
         const fileName = `${Date.now()}-${uniqueId}.${fileExtension}`;
-        const key = `boq-files/${fileName}`;
+        const key = `${folder}/${fileName}`; // Use the folder parameter
 
         // Convert file to buffer
         const buffer = Buffer.from(await file.arrayBuffer());

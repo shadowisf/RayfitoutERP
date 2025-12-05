@@ -346,7 +346,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           userInfo?.departmentID === 9 && (
                             <td>
                               <AddMrSupplierAndQuotationButton
-                                mrHeaderID={mrHeader.id}
+                                mrLineID={item.id}
                                 bgColor="black"
                                 textColor="white"
                                 borderColor="black"

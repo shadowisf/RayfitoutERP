@@ -8,6 +8,7 @@ type ButtonProps = {
   children: React.ReactNode;
   onClick?: () => void;
   href?: string;
+  target?: string;
   type?: "button" | "submit" | "reset";
   style?: React.CSSProperties;
 };
@@ -23,6 +24,7 @@ export default function Button({
   href,
   type,
   style,
+  target,
 }: ButtonProps) {
   if (componentType === "button") {
     return (
@@ -52,8 +54,10 @@ export default function Button({
           border: `1px solid ${borderColor}`,
           color: textColor,
           width: full ? "100%" : "fit-content",
+          ...style,
         }}
         href={href}
+        target={target}
       >
         {children}
       </a>
