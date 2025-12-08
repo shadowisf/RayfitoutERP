@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import AttachQuotationButton from "./_AttachQuotationButton";
+import RejectCommentPopUp from "../manager/RejectCommentPopUp";
+import { MrHeader } from "../../types/mrHeader";
 
 type SupplierQuotation = {
   id?: number;
@@ -20,9 +22,12 @@ type SupplierQuotation = {
   unit_price: string;
   total_price: string;
   approval_status?: string;
+  reject_comment?: string;
+  supplier_name?: string;
 };
 
 type MrSupplierAndQuotationButtonProps = {
+  mrHeader: MrHeader;
   mrLineID: number;
   bgColor?: string;
   textColor?: string;
@@ -32,6 +37,7 @@ type MrSupplierAndQuotationButtonProps = {
 };
 
 export default function MrSupplierAndQuotationButton({
+  mrHeader,
   mrLineID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
@@ -58,6 +64,11 @@ export default function MrSupplierAndQuotationButton({
     useState<boolean>(false);
   const [allSuppliersRejected, setAllSuppliersRejected] =
     useState<boolean>(false);
+  const [allSuppliersPending, setAllSuppliersPending] =
+    useState<boolean>(false);
+
+  // State for rejection comments
+  const [rejectComments, setRejectComments] = useState<string>("");
 
   const [suppliers, setSuppliers] = useState<any[]>([]);
 
@@ -167,19 +178,39 @@ export default function MrSupplierAndQuotationButton({
         setHasExistingQuotations(true);
         setMode("edit");
 
+        // Check if all suppliers are rejected
         const allRejected = data.every(
           (q: SupplierQuotation) => q.approval_status === "Rejected"
         );
         setAllSuppliersRejected(allRejected);
+
+        // Check if all suppliers are pending (null or undefined approval_status)
+        const allPending = data.every(
+          (q: SupplierQuotation) =>
+            !q.approval_status || q.approval_status === null
+        );
+        setAllSuppliersPending(allPending);
+
+        if (allRejected) {
+          const firstRejected = data.find(
+            (q: SupplierQuotation) => q.reject_comment
+          );
+
+          setRejectComments(
+            firstRejected?.reject_comment || "No comment provided"
+          );
+        }
       } else {
         setHasExistingQuotations(false);
         setAllSuppliersRejected(false);
+        setAllSuppliersPending(false);
         setMode("add");
       }
     } catch (error) {
       console.error("Error checking quotations:", error);
       setHasExistingQuotations(false);
       setAllSuppliersRejected(false);
+      setAllSuppliersPending(false);
       setMode("add");
     } finally {
       setIsCheckingExisting(false);
@@ -250,6 +281,8 @@ export default function MrSupplierAndQuotationButton({
           unit_price: item.unit_price || "",
           total_price: item.total_price || "",
           approval_status: item.approval_status,
+          reject_comment: item.reject_comment,
+          supplier_name: item.supplier_name,
         }));
 
         // Ensure at least 3 rows
@@ -706,61 +739,72 @@ export default function MrSupplierAndQuotationButton({
     }
   }
 
-  const buttonLabel =
-    mode === "edit"
-      ? "EDIT SUPPLIER & QUOTATION"
-      : "+ ADD SUPPLIER & QUOTATION";
-
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         {allSuppliersRejected && (
           <div
             style={{
-              padding: "5px 10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "15px",
+              padding: "5px 10px 5px 15px",
               backgroundColor: "rgba(185, 28, 28, 1)",
               color: "white",
               borderRadius: "25px",
+              whiteSpace: "nowrap",
             }}
           >
             <span>All Suppliers Rejected</span>
-            <img
-              src={externalLinkIcon}
-              alt="view"
-              style={{
-                filter: "invert(1)",
-                cursor: "pointer",
-              }}
-              onClick={() => setIsOpen(true)}
-            />
+            <RejectCommentPopUp text={rejectComments} />
           </div>
         )}
 
-        {mode === "edit" ? (
-          <Button
-            componentType={"button"}
-            bgColor={"white"}
-            borderColor={"black"}
-            textColor={"black"}
-            onClick={() => setIsOpen(true)}
-            full={full ? true : false}
-            style={style}
+        {allSuppliersPending && !allSuppliersRejected && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "10px",
+              padding: "5px 15px",
+              backgroundColor: "rgba(128, 128, 128, 1)",
+              color: "white",
+              borderRadius: "25px",
+              whiteSpace: "nowrap",
+            }}
           >
-            EDIT SUPPLIER & QUOTATION
-          </Button>
-        ) : (
-          <Button
-            componentType={"button"}
-            bgColor={bgColor}
-            borderColor={borderColor}
-            textColor={textColor}
-            onClick={() => setIsOpen(true)}
-            full={full ? true : false}
-            style={style}
-          >
-            + ADD SUPPLIER & QUOTATION
-          </Button>
+            <span>Pending Approval</span>
+          </div>
         )}
+
+        {(mrHeader.progress_id === 11 || mrHeader.progress_id === 7) &&
+          (mode === "edit" ? (
+            <Button
+              componentType="button"
+              bgColor="white"
+              borderColor="black"
+              textColor="black"
+              onClick={() => setIsOpen(true)}
+              full={full || false}
+              style={style}
+            >
+              EDIT SUPPLIER & QUOTATION
+            </Button>
+          ) : (
+            <Button
+              componentType="button"
+              bgColor={bgColor}
+              borderColor={borderColor}
+              textColor={textColor}
+              onClick={() => setIsOpen(true)}
+              full={full || false}
+              style={style}
+            >
+              + ADD SUPPLIER & QUOTATION
+            </Button>
+          ))}
       </div>
 
       {isOpen && (
@@ -781,7 +825,7 @@ export default function MrSupplierAndQuotationButton({
                   <th>#</th>
                   <th>SUPPLIER</th>
                   <th>QUOTATION</th>
-                  <th>RATING</th>
+                  {/* <th>RATING</th> */}
                   <th>UNIT PRICE</th>
                   <th>TOTAL PRICE</th>
                   {supplierQuotations.length > 3 && <th>ACTION</th>}
@@ -868,7 +912,7 @@ export default function MrSupplierAndQuotationButton({
                             />
                           )}
                       </td>
-                      <td style={{ minWidth: "150px" }}>
+                      {/* <td style={{ minWidth: "150px" }}>
                         <input
                           type="number"
                           value={quotation.rating}
@@ -881,7 +925,7 @@ export default function MrSupplierAndQuotationButton({
                           max="5"
                           disabled
                         />
-                      </td>
+                      </td> */}
                       <td>
                         <div className="input-prefix right">
                           <span>AED</span>

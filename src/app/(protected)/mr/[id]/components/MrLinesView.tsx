@@ -72,10 +72,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     [mrLines]
   );
 
-  // Check which items have supplier quotations
   useEffect(() => {
     async function checkAllQuotations() {
-      if (mrHeader.progress_id !== 7) {
+      if (mrHeader.progress_id !== 7 && mrHeader.progress_id !== 11) {
         setIsCheckingQuotations(false);
         return;
       }
@@ -135,7 +134,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   // Check supplier approval status for pricing approval stage
   useEffect(() => {
     async function checkSupplierApprovals() {
-      if (mrHeader.progress_id !== 10) {
+      if (mrHeader.progress_id !== 10 && mrHeader.progress_id !== 11) {
         setIsCheckingSupplierApprovals(false);
         return;
       }
@@ -360,6 +359,27 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return allReviewed && allApproved;
   }
 
+  // Check if any items have rejected suppliers (for procurement stage)
+  function hasAnyRejectedSuppliers() {
+    if (isCheckingSupplierApprovals) return false;
+
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        const items = mrLines[category][subCategory];
+
+        for (const item of items) {
+          const status = supplierApprovalStatus[item.id];
+
+          if (status === "rejected") {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
   return (
     <>
       <div
@@ -562,7 +582,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
                   {/* PROCUREMENT */}
                   {(mrHeader.progress_id === 7 ||
-                    mrHeader.progress_id === 11) &&
+                    mrHeader.progress_id === 11 ||
+                    mrHeader.progress_id === 10) &&
                     userInfo?.departmentID === 9 && (
                       <th>SUPPLIER & QUOTATION</th>
                     )}
@@ -667,7 +688,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
                         {/* PROCUREMENT */}
                         {(mrHeader.progress_id === 7 ||
-                          mrHeader.progress_id === 11) &&
+                          mrHeader.progress_id === 11 ||
+                          mrHeader.progress_id === 10) &&
                           userInfo?.departmentID === 9 && (
                             <td>
                               <div
@@ -678,6 +700,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 }}
                               >
                                 <MrSupplierAndQuotationButton
+                                  mrHeader={mrHeader}
                                   mrLineID={item.id}
                                   bgColor="black"
                                   textColor="white"
@@ -806,6 +829,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         )}
 
       {allItemsHaveSupplierQuotations() &&
+        !hasAnyRejectedSuppliers() && // Check if any suppliers are rejected
         userInfo?.departmentID === 9 &&
         (mrHeader.progress_id === 7 || mrHeader.progress_id === 11) && (
           <div className="bottom-nav">
@@ -840,6 +864,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         mrHeader.progress_id === 10 && (
           <div className="bottom-nav">
             <SubmitMrForLPO
+              mrLines={mrLines}
               mrHeaderID={mrHeader.id}
               bgColor="white"
               borderColor="white"
