@@ -273,3 +273,120 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const body = await req.json();
+
+    if (body.action === "deleteNonApprovedQuotationFiles") {
+      const { approved_suppliers } = body;
+
+      let totalFilesDeleted = 0;
+      let totalFilesFailed = 0;
+
+      // For each MR line, fetch and delete S3 files for non-approved quotations
+      for (const item of approved_suppliers) {
+        const { mr_line_id, quotation_id } = item;
+
+        // Fetch the quotation files that will be deleted
+        const quotationsResult = await db.query(
+          `SELECT id, quotation_file 
+             FROM mr_line_supplier_quotation 
+             WHERE mr_line_id = ? AND id != ?`,
+          [mr_line_id, quotation_id]
+        );
+
+        const quotationsToDelete: any[] = Array.isArray(quotationsResult[0])
+          ? quotationsResult[0]
+          : [];
+
+        // Collect all file URLs to delete
+        const filesToDelete: string[] = [];
+
+        for (const quotation of quotationsToDelete) {
+          if (quotation.quotation_file) {
+            try {
+              let fileUrls: string[] = [];
+
+              // Parse quotation_file (could be JSON array or string)
+              if (typeof quotation.quotation_file === "string") {
+                try {
+                  const parsed = JSON.parse(quotation.quotation_file);
+                  fileUrls = Array.isArray(parsed) ? parsed : [parsed];
+                } catch {
+                  fileUrls = [quotation.quotation_file];
+                }
+              } else if (Array.isArray(quotation.quotation_file)) {
+                fileUrls = quotation.quotation_file;
+              }
+
+              // Filter out empty URLs and add to delete list
+              const validUrls = fileUrls.filter(
+                (url) => url && typeof url === "string" && url.trim() !== ""
+              );
+              filesToDelete.push(...validUrls);
+            } catch (error) {
+              console.error(
+                `Error parsing quotation_file for quotation ${quotation.id}:`,
+                error
+              );
+            }
+          }
+        }
+
+        // Delete files from S3 using your existing S3 API route
+        if (filesToDelete.length > 0) {
+          for (const fileUrl of filesToDelete) {
+            try {
+              const deleteResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "delete",
+                    url: fileUrl,
+                  }),
+                }
+              );
+
+              if (!deleteResponse.ok) {
+                const errorText = await deleteResponse.text();
+                console.error(
+                  `Failed to delete file from S3: ${fileUrl}`,
+                  errorText
+                );
+                totalFilesFailed++;
+              } else {
+                console.log(`Successfully deleted file from S3: ${fileUrl}`);
+                totalFilesDeleted++;
+              }
+            } catch (error) {
+              console.error(`Error deleting file ${fileUrl} from S3:`, error);
+              totalFilesFailed++;
+            }
+          }
+        }
+
+        // Delete non-approved quotation records from database
+        await db.query(
+          `DELETE FROM mr_line_supplier_quotation 
+             WHERE mr_line_id = ? AND id != ?`,
+          [mr_line_id, quotation_id]
+        );
+      }
+
+      return NextResponse.json(
+        {
+          message: "Non-approved quotations deleted successfully",
+          totalFilesDeleted,
+          totalFilesFailed,
+        },
+        { status: 200 }
+      );
+    }
+  } catch (err: any) {
+    console.error(err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+  }
+}

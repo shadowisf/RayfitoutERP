@@ -594,6 +594,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 }}
                               >
                                 <MrSupplierAndQuotationButton
+                                  mrHeader={mrHeader}
                                   mrLineID={item.id}
                                   bgColor="black"
                                   textColor="white"
@@ -757,6 +758,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         mrHeader.progress_id === 10 && (
           <div className="bottom-nav">
             <SubmitMrForLPO
+              mrLines={mrLines}
               mrHeaderID={mrHeader.id}
               bgColor="white"
               borderColor="white"

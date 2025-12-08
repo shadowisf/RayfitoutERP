@@ -280,7 +280,7 @@ export default function PriceApprovalMrItemButton({
                   <th></th>
                   <th>SUPPLIER</th>
                   <th>QUOTATION</th>
-                  <th>RATING</th>
+                  {/* <th>RATING</th> */}
                   <th>UNIT PRICE</th>
                   <th>TOTAL PRICE</th>
                 </tr>
@@ -333,9 +333,9 @@ export default function PriceApprovalMrItemButton({
                         />
                       </Button>
                     </td>
-                    <td>{quotation.supplier_rating}</td>
-                    <td>{quotation.unit_price}</td>
-                    <td>{quotation.total_price}</td>
+                    {/* <td>{quotation.supplier_rating}</td> */}
+                    <td>{quotation.unit_price} AED</td>
+                    <td>{quotation.total_price} AED</td>
                   </tr>
                 ))}
               </tbody>

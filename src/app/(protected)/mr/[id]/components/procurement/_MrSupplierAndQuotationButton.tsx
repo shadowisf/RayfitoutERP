@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import AttachQuotationButton from "./_AttachQuotationButton";
 import RejectCommentPopUp from "../manager/RejectCommentPopUp";
+import { MrHeader } from "../../types/mrHeader";
 
 type SupplierQuotation = {
   id?: number;
@@ -26,6 +27,7 @@ type SupplierQuotation = {
 };
 
 type MrSupplierAndQuotationButtonProps = {
+  mrHeader: MrHeader;
   mrLineID: number;
   bgColor?: string;
   textColor?: string;
@@ -35,6 +37,7 @@ type MrSupplierAndQuotationButtonProps = {
 };
 
 export default function MrSupplierAndQuotationButton({
+  mrHeader,
   mrLineID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
@@ -736,11 +739,6 @@ export default function MrSupplierAndQuotationButton({
     }
   }
 
-  const buttonLabel =
-    mode === "edit"
-      ? "EDIT SUPPLIER & QUOTATION"
-      : "+ ADD SUPPLIER & QUOTATION";
-
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -781,36 +779,32 @@ export default function MrSupplierAndQuotationButton({
           </div>
         )}
 
-        {/* Only show buttons when NOT pending (either add mode or rejected) */}
-        {!allSuppliersPending && (
-          <>
-            {mode === "edit" ? (
-              <Button
-                componentType={"button"}
-                bgColor={"white"}
-                borderColor={"black"}
-                textColor={"black"}
-                onClick={() => setIsOpen(true)}
-                full={full ? true : false}
-                style={style}
-              >
-                EDIT SUPPLIER & QUOTATION
-              </Button>
-            ) : (
-              <Button
-                componentType={"button"}
-                bgColor={bgColor}
-                borderColor={borderColor}
-                textColor={textColor}
-                onClick={() => setIsOpen(true)}
-                full={full ? true : false}
-                style={style}
-              >
-                + ADD SUPPLIER & QUOTATION
-              </Button>
-            )}
-          </>
-        )}
+        {(mrHeader.progress_id === 11 || mrHeader.progress_id === 7) &&
+          (mode === "edit" ? (
+            <Button
+              componentType="button"
+              bgColor="white"
+              borderColor="black"
+              textColor="black"
+              onClick={() => setIsOpen(true)}
+              full={full || false}
+              style={style}
+            >
+              EDIT SUPPLIER & QUOTATION
+            </Button>
+          ) : (
+            <Button
+              componentType="button"
+              bgColor={bgColor}
+              borderColor={borderColor}
+              textColor={textColor}
+              onClick={() => setIsOpen(true)}
+              full={full || false}
+              style={style}
+            >
+              + ADD SUPPLIER & QUOTATION
+            </Button>
+          ))}
       </div>
 
       {isOpen && (
@@ -831,7 +825,7 @@ export default function MrSupplierAndQuotationButton({
                   <th>#</th>
                   <th>SUPPLIER</th>
                   <th>QUOTATION</th>
-                  <th>RATING</th>
+                  {/* <th>RATING</th> */}
                   <th>UNIT PRICE</th>
                   <th>TOTAL PRICE</th>
                   {supplierQuotations.length > 3 && <th>ACTION</th>}
@@ -918,7 +912,7 @@ export default function MrSupplierAndQuotationButton({
                             />
                           )}
                       </td>
-                      <td style={{ minWidth: "150px" }}>
+                      {/* <td style={{ minWidth: "150px" }}>
                         <input
                           type="number"
                           value={quotation.rating}
@@ -931,7 +925,7 @@ export default function MrSupplierAndQuotationButton({
                           max="5"
                           disabled
                         />
-                      </td>
+                      </td> */}
                       <td>
                         <div className="input-prefix right">
                           <span>AED</span>
