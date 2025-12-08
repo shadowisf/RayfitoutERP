@@ -20,6 +20,7 @@ import NotesPopUp from "./NotesPopUp";
 import PriceApprovalMrItemButton from "./manager/_PriceApprovalMrItemButton";
 import SubmitMrForPricingResubmissionButton from "./manager/_SubmitMrForPriceResubmissionButton";
 import SubmitMrForLPO from "./manager/_SubmitMrForLPO";
+import Button from "@/app/components/Button";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -42,6 +43,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const [expandedDescriptions, setExpandedDescriptions] = useState<number[]>(
     []
   );
+
+  const [showBySupplier, setShowBySupplier] = useState<boolean>(false);
+  const [showByItem, setShowByItem] = useState<boolean>(true);
   const [itemsWithQuotations, setItemsWithQuotations] = useState<Set<number>>(
     new Set()
   );
@@ -358,24 +362,117 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
   return (
     <>
-      <div className="category-grid">
+      <div
+        className="category-grid"
+        style={{
+          flexDirection: "column",
+          gap: "2rem",
+        }}
+      >
+        {mrHeader.progress_id === 10 && userInfo?.departmentID === 9 && (
+          <div
+            style={{
+              display: "flex",
+              gap: " 2rem",
+            }}
+          >
+            <Button
+              componentType={"button"}
+              bgColor={"black"}
+              borderColor={"black"}
+              textColor={"white"}
+              style={{
+                padding: "7px 20px",
+                borderRadius: "25px",
+              }}
+              onClick={() => {
+                setShowBySupplier(!setShowBySupplier);
+                setShowByItem(false);
+                console.log("show by supplier clicked");
+              }}
+            >
+              SHOW BY SUPPLIER
+            </Button>
+            <Button
+              componentType={"button"}
+              bgColor={"transparent"}
+              borderColor={"black"}
+              textColor={"black"}
+              style={{
+                padding: "7px 20px",
+                borderRadius: "25px",
+              }}
+              onClick={() => {
+                setShowByItem(!showByItem);
+                setShowBySupplier(false);
+                console.log("show by item clicked");
+              }}
+            >
+              SHOW BY ITEM
+            </Button>
+          </div>
+        )}
         <div>
-          {categories.map(function (category) {
-            return (
-              <button
-                key={category}
-                className={`item ${
-                  activeCategory === category ? "active" : ""
-                }`}
-                onClick={function () {
-                  setActiveCategory(category);
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              width: "100%",
+              alignItems: "center",
+            }}
+          >
+            <div>
+              {categories.map(function (category) {
+                return (
+                  <button
+                    key={category}
+                    className={`item ${
+                      activeCategory === category ? "active" : ""
+                    }`}
+                    onClick={function () {
+                      setActiveCategory(category);
+                    }}
+                    style={{ textTransform: "uppercase" }}
+                  >
+                    {category}
+                  </button>
+                );
+              })}
+            </div>
+            {mrHeader.progress_id === 10 && userInfo?.departmentID === 9 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: " 2rem",
                 }}
-                style={{ textTransform: "uppercase" }}
               >
-                {category}
-              </button>
-            );
-          })}
+                <Button
+                  componentType={"button"}
+                  bgColor={"black"}
+                  borderColor={"black"}
+                  textColor={"white"}
+                  style={{
+                    padding: "7px 20px",
+                    borderRadius: "25px",
+                  }}
+                >
+                  Issue LPO
+                </Button>
+                <Button
+                  componentType={"button"}
+                  bgColor={"black"}
+                  borderColor={"black"}
+                  textColor={"white"}
+                  style={{
+                    padding: "7px 20px",
+                    borderRadius: "25px",
+                  }}
+                >
+                  Upload Image
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
 
         {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
@@ -400,7 +497,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         index
       ) {
         return (
-          <div key={subCategory} className="subcategory-section">
+          <div
+            key={subCategory}
+            className="subcategory-section"
+          >
             <div className="subcategory-header">
               <h2 style={{ textTransform: "uppercase" }}>
                 <span style={{ marginRight: "25px" }}>
@@ -542,7 +642,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       borderColor={"rgba(223, 223, 223, 1)"}
                                       textColor={"black"}
                                     >
-                                      <img src={pencilIcon} alt="pencil icon" />
+                                      <img
+                                        src={pencilIcon}
+                                        alt="pencil icon"
+                                      />
                                     </EditMrItemButton>
 
                                     <DeleteMrItemButton
@@ -551,7 +654,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       borderColor={"rgba(223, 223, 223, 1)"}
                                       textColor={"black"}
                                     >
-                                      <img src={trashIcon} alt="trash icon" />
+                                      <img
+                                        src={trashIcon}
+                                        alt="trash icon"
+                                      />
                                     </DeleteMrItemButton>
                                   </>
                                 )}

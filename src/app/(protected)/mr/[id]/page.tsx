@@ -78,7 +78,10 @@ export default async function MrWithID({
             <h2>
               {mrHeader.project_name}{" "}
               <a href={`/project/${mrHeader.project_id}`}>
-                <img src={externalLinkIcon} alt="external link icon" />
+                <img
+                  src={externalLinkIcon}
+                  alt="external link icon"
+                />
               </a>
             </h2>
           </div>
@@ -141,7 +144,10 @@ export default async function MrWithID({
       <br />
 
       {mrLines && Object.keys(mrLines).length > 0 ? (
-        <MrLinesView mrLines={mrLines} mrHeader={mrHeader} />
+        <MrLinesView
+          mrLines={mrLines}
+          mrHeader={mrHeader}
+        />
       ) : (
         <CreateMrLineClient
           mrHeaderID={mrHeader.id}

@@ -194,7 +194,10 @@ export default function PriceApprovalMrItemButton({
               filter: "invert(1)",
             }}
           >
-            <img src={externalLinkIcon} alt="external link icon" />
+            <img
+              src={externalLinkIcon}
+              alt="external link icon"
+            />
           </SupplierDetailsPopUp>
           <img
             src={crossIcon}
@@ -248,7 +251,11 @@ export default function PriceApprovalMrItemButton({
         onClick={() => setIsOpen(true)}
         style={style}
       >
-        Manually Select <img src={externalLinkIcon} alt="external link icon" />
+        Manually Select{" "}
+        <img
+          src={externalLinkIcon}
+          alt="external link icon"
+        />
       </Button>
 
       {isOpen && (
