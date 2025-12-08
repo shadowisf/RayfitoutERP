@@ -19,6 +19,7 @@ type SupplierQuotation = {
   rating: string;
   unit_price: string;
   total_price: string;
+  approval_status?: string;
 };
 
 type MrSupplierAndQuotationButtonProps = {
@@ -54,6 +55,8 @@ export default function MrSupplierAndQuotationButton({
 
   const [mode, setMode] = useState<"add" | "edit">("add");
   const [hasExistingQuotations, setHasExistingQuotations] =
+    useState<boolean>(false);
+  const [allSuppliersRejected, setAllSuppliersRejected] =
     useState<boolean>(false);
 
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -163,13 +166,20 @@ export default function MrSupplierAndQuotationButton({
       if (data && data.length > 0) {
         setHasExistingQuotations(true);
         setMode("edit");
+
+        const allRejected = data.every(
+          (q: SupplierQuotation) => q.approval_status === "Rejected"
+        );
+        setAllSuppliersRejected(allRejected);
       } else {
         setHasExistingQuotations(false);
+        setAllSuppliersRejected(false);
         setMode("add");
       }
     } catch (error) {
       console.error("Error checking quotations:", error);
       setHasExistingQuotations(false);
+      setAllSuppliersRejected(false);
       setMode("add");
     } finally {
       setIsCheckingExisting(false);
@@ -239,6 +249,7 @@ export default function MrSupplierAndQuotationButton({
           rating: item.rating || "",
           unit_price: item.unit_price || "",
           total_price: item.total_price || "",
+          approval_status: item.approval_status,
         }));
 
         // Ensure at least 3 rows
@@ -702,33 +713,55 @@ export default function MrSupplierAndQuotationButton({
 
   return (
     <>
-      {mode === "edit" ? (
-        <Button
-          componentType={"button"}
-          bgColor={"white"}
-          borderColor={"black"}
-          textColor={"black"}
-          onClick={() => setIsOpen(true)}
-          full={full ? true : false}
-          style={style}
-          /* disabled={isCheckingExisting} */
-        >
-          EDIT SUPPLIER & QUOTATION
-        </Button>
-      ) : (
-        <Button
-          componentType={"button"}
-          bgColor={bgColor}
-          borderColor={borderColor}
-          textColor={textColor}
-          onClick={() => setIsOpen(true)}
-          full={full ? true : false}
-          style={style}
-          /* disabled={isCheckingExisting} */
-        >
-          + ADD SUPPLIER & QUOTATION
-        </Button>
-      )}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        {allSuppliersRejected && (
+          <div
+            style={{
+              padding: "5px 10px",
+              backgroundColor: "rgba(185, 28, 28, 1)",
+              color: "white",
+              borderRadius: "25px",
+            }}
+          >
+            <span>All Suppliers Rejected</span>
+            <img
+              src={externalLinkIcon}
+              alt="view"
+              style={{
+                filter: "invert(1)",
+                cursor: "pointer",
+              }}
+              onClick={() => setIsOpen(true)}
+            />
+          </div>
+        )}
+
+        {mode === "edit" ? (
+          <Button
+            componentType={"button"}
+            bgColor={"white"}
+            borderColor={"black"}
+            textColor={"black"}
+            onClick={() => setIsOpen(true)}
+            full={full ? true : false}
+            style={style}
+          >
+            EDIT SUPPLIER & QUOTATION
+          </Button>
+        ) : (
+          <Button
+            componentType={"button"}
+            bgColor={bgColor}
+            borderColor={borderColor}
+            textColor={textColor}
+            onClick={() => setIsOpen(true)}
+            full={full ? true : false}
+            style={style}
+          >
+            + ADD SUPPLIER & QUOTATION
+          </Button>
+        )}
+      </div>
 
       {isOpen && (
         <FormPopUp

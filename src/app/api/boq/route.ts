@@ -94,6 +94,8 @@ export async function PUT(req: Request) {
       ];
 
       await db.query(query, values);
+
+      return NextResponse.json({ success: true });
     }
 
     if (body.action === "updateSubCategory") {
@@ -111,21 +113,9 @@ export async function PUT(req: Request) {
       ];
 
       await db.query(query, values);
+
+      return NextResponse.json({ success: true });
     }
-
-    if (body.action === "updateAttachments") {
-      const query = `
-    UPDATE boq_lines 
-    SET attachments = ?
-    WHERE id = ?
-  `;
-
-      const values = [body.attachments, Number(body.id)];
-
-      await db.query(query, values);
-    }
-
-    return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
@@ -140,14 +130,14 @@ export async function DELETE(req: Request) {
       const query =
         "DELETE FROM boq_lines WHERE category = ? AND sub_category = ? AND boq_id = ?";
       await db.query(query, [body.category, body.sub_category, body.boq_id]);
+      return NextResponse.json({ success: true });
     }
 
     if (body.action === "deleteItem") {
       const query = "DELETE FROM boq_lines WHERE id = ?";
       await db.query(query, [Number(body.id)]);
+      return NextResponse.json({ success: true });
     }
-
-    return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("SQL Error:", err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });

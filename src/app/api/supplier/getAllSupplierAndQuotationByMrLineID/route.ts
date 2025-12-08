@@ -6,7 +6,7 @@ export async function POST(req: Request) {
 
   try {
     const [rows] = await db.query(
-      "SELECT * FROM mr_line_supplier_quotation WHERE mr_line_id = ?",
+      "SELECT * FROM vw_mr_line_supplier_and_quotation WHERE mr_line_id = ?",
       [Number(body.id)]
     );
 

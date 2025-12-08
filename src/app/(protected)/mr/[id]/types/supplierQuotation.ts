@@ -1,0 +1,24 @@
+export type SupplierQuotation = {
+  id: number;
+  supplier_id: number;
+  mr_line_id: number;
+  quotation_file: string[];
+  quotation_rating: number;
+  unit_price: number;
+  total_price: number;
+  approval_status: string;
+  reject_comment: string;
+  supplier_name: string;
+  supplier_trn_number: string;
+  supplier_avg_lead_time: string;
+  supplier_rating: number;
+  supplier_currency: string;
+  supplier_status: string;
+  supplier_contact_person: string;
+  supplier_phone: string;
+  supplier_email: string;
+  supplier_address: string;
+  supplier_notes: string;
+  supplier_material_categories: string;
+  supplier_material_subcategories: string;
+};

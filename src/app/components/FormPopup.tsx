@@ -7,6 +7,7 @@ type FormPopUpProps = {
   children: React.ReactNode;
   addButtonLabel?: string;
   style?: React.CSSProperties;
+  secondButton?: React.ReactNode;
 };
 
 export default function FormPopUp({
@@ -16,6 +17,7 @@ export default function FormPopUp({
   addButtonLabel,
   children,
   style,
+  secondButton,
 }: FormPopUpProps) {
   const cross_icon = "/icons/cross.svg";
 
@@ -36,29 +38,59 @@ export default function FormPopUp({
         <br />
         <br />
 
-        <form onSubmit={handleSubmit}>
-          {children}
+        {handleSubmit ? (
+          <form onSubmit={handleSubmit}>
+            {children}
 
-          {addButtonLabel && (
-            <>
-              <br />
-              <br />
-              <br />
+            {addButtonLabel && (
+              <>
+                <br />
+                <br />
+                <br />
 
-              <div className="button-container">
-                <Button
-                  componentType={"button"}
-                  bgColor={"black"}
-                  borderColor={"black"}
-                  textColor={"white"}
-                  type="submit"
-                >
-                  {addButtonLabel}
-                </Button>
-              </div>
-            </>
-          )}
-        </form>
+                <div className="button-container">
+                  {secondButton}
+
+                  <Button
+                    componentType={"button"}
+                    bgColor={"black"}
+                    borderColor={"black"}
+                    textColor={"white"}
+                    type="submit"
+                  >
+                    {addButtonLabel}
+                  </Button>
+                </div>
+              </>
+            )}
+          </form>
+        ) : (
+          <div>
+            {children}
+
+            {addButtonLabel && (
+              <>
+                <br />
+                <br />
+                <br />
+
+                <div className="button-container">
+                  {secondButton}
+
+                  <Button
+                    componentType={"button"}
+                    bgColor={"black"}
+                    borderColor={"black"}
+                    textColor={"white"}
+                    type="submit"
+                  >
+                    {addButtonLabel}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

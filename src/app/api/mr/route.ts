@@ -179,6 +179,22 @@ export async function PUT(req: Request) {
   try {
     const body = await req.json();
 
+    if (body.action == "submitForLPO") {
+      await db.query(`UPDATE mr_headers SET progress_id = 12 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForPricingResubmission") {
+      await db.query(`UPDATE mr_headers SET progress_id = 11 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action === "updateAll") {
       const query = `
       UPDATE mr_lines 

@@ -6,10 +6,10 @@ import { MrLine } from "../../types/mrLine";
 import Button from "@/app/components/Button";
 
 type RejectPopUpProps = {
-  item: MrLine;
+  text: string;
 };
 
-export default function RejectCommentPopUp({ item }: RejectPopUpProps) {
+export default function RejectCommentPopUp({ text }: RejectPopUpProps) {
   const externalLinkIcon = "/icons/external-link.svg";
 
   const [isOpen, setIsOpen] = useState(false);
@@ -35,7 +35,7 @@ export default function RejectCommentPopUp({ item }: RejectPopUpProps) {
           setIsOpen={setIsOpen}
           style={{ whiteSpace: "pre-wrap", width: "500px", color: "black" }}
         >
-          {item.reject_comment}
+          {text}
         </FormPopUp>
       )}
     </>

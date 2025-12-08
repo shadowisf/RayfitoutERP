@@ -10,17 +10,17 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
 
-type ApprovalMrItemButton = {
+type InitialApprovalMrItemButtonProps = {
   item: MrLine;
   progressID: number;
 };
 
 type StatusType = "pending" | "approved" | "rejected";
 
-export default function ApprovalMrItemButton({
+export default function InitialApprovalMrItemButton({
   item,
   progressID,
-}: ApprovalMrItemButton) {
+}: InitialApprovalMrItemButtonProps) {
   const router = useRouter();
 
   const { userInfo } = useAuth();
@@ -30,10 +30,8 @@ export default function ApprovalMrItemButton({
 
   const [status, setStatus] = useState<StatusType>(getInitialStatus());
 
-  const [isClarifyOpen, setIsClarifyOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
 
-  const [clarifyText, setClarifyText] = useState("");
   const [rejectText, setRejectText] = useState("");
 
   useEffect(() => {
@@ -100,7 +98,6 @@ export default function ApprovalMrItemButton({
     setStatus("pending");
 
     setIsRejectOpen(false);
-    setIsClarifyOpen(false);
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "POST",
@@ -174,7 +171,7 @@ export default function ApprovalMrItemButton({
       >
         <span>Rejected</span>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <RejectCommentPopUp item={item} />
+          <RejectCommentPopUp text={item.reject_comment} />
           {userInfo?.departmentID === 8 && progressID === 3 && (
             <img
               src={crossIcon}

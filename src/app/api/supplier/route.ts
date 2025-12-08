@@ -17,7 +17,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Add new supplier and quotations
     if (body.action === "addSupplierAndQuotation") {
       const { mr_line_id, quotations } = body;
 
@@ -51,7 +50,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create new supplier
     if (body.action === "createSupplier") {
       const query = `
         INSERT INTO suppliers 
@@ -137,118 +135,139 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, id: supplierId });
     }
   } catch (err: any) {
-    console.error("Database error:", err.sqlMessage || err.message);
-    return NextResponse.json(
-      { error: err.sqlMessage || err.message },
-      { status: 500 }
-    );
+    console.error(err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
   }
 }
 
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { mr_line_id, quotations } = body;
 
-    if (!quotations || quotations.length === 0) {
-      return NextResponse.json(
-        { error: "No quotations provided" },
-        { status: 400 }
-      );
+    if (body.action === "resetSupplierAndQuotation") {
+      const query = `UPDATE mr_line_supplier_quotation SET approval_status = NULL WHERE mr_line_id = ?`;
+
+      await db.query(query, [body.mr_line_id]);
+
+      return NextResponse.json({ success: true });
     }
 
-    if (!mr_line_id) {
-      return NextResponse.json(
-        { error: "mr_line_id is required" },
-        { status: 400 }
-      );
+    if (body.action === "rejectAllSupplierAndQuotation") {
+      const query = `UPDATE mr_line_supplier_quotation SET approval_status = 'Rejected', reject_comment = ? WHERE mr_line_id = ?`;
+
+      await db.query(query, [body.reject_comment, body.mr_line_id]);
+
+      return NextResponse.json({ success: true });
     }
 
-    // Get existing quotation IDs for this MR line
-    const [existingRows] = await db.query<RowDataPacket[]>(
-      "SELECT id FROM mr_line_supplier_quotation WHERE mr_line_id = ?",
-      [mr_line_id]
-    );
+    if (body.action === "approveSupplierAndQuotation") {
+      const query = `UPDATE mr_line_supplier_quotation SET approval_status = 'Approved' WHERE mr_line_id = ? AND supplier_id = ?`;
 
-    const existingIds = existingRows.map((row) => row.id);
-    const updatedIds: number[] = [];
+      await db.query(query, [body.mr_line_id, body.supplier_id]);
 
-    // Process each quotation
-    for (const quotation of quotations) {
-      if (quotation.id && existingIds.includes(quotation.id)) {
-        // Update existing quotation
-        await db.query(
-          `UPDATE mr_line_supplier_quotation 
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "updateSupplierAndQuotation") {
+      const { mr_line_id, quotations } = body;
+
+      if (!quotations || quotations.length === 0) {
+        return NextResponse.json(
+          { error: "No quotations provided" },
+          { status: 400 }
+        );
+      }
+
+      if (!mr_line_id) {
+        return NextResponse.json(
+          { error: "mr_line_id is required" },
+          { status: 400 }
+        );
+      }
+
+      // Get existing quotation IDs for this MR line
+      const [existingRows] = await db.query<RowDataPacket[]>(
+        "SELECT id FROM mr_line_supplier_quotation WHERE mr_line_id = ?",
+        [mr_line_id]
+      );
+
+      const existingIds = existingRows.map((row) => row.id);
+      const updatedIds: number[] = [];
+
+      // Process each quotation
+      for (const quotation of quotations) {
+        if (quotation.id && existingIds.includes(quotation.id)) {
+          // Update existing quotation
+          await db.query(
+            `UPDATE mr_line_supplier_quotation 
           SET supplier_id = ?, 
               quotation_file = ?, 
               rating = ?, 
               unit_price = ?, 
               total_price = ?
           WHERE id = ?`,
-          [
-            quotation.supplier_id,
-            JSON.stringify([quotation.quotation_file]), // Store as JSON array
-            quotation.rating,
-            quotation.unit_price,
-            quotation.total_price,
-            quotation.id,
-          ]
-        );
-        updatedIds.push(quotation.id);
-      } else {
-        // Insert new quotation
-        const [result] = await db.query<ResultSetHeader>(
-          `INSERT INTO mr_line_supplier_quotation 
+            [
+              quotation.supplier_id,
+              JSON.stringify([quotation.quotation_file]), // Store as JSON array
+              quotation.rating,
+              quotation.unit_price,
+              quotation.total_price,
+              quotation.id,
+            ]
+          );
+          updatedIds.push(quotation.id);
+        } else {
+          // Insert new quotation
+          const [result] = await db.query<ResultSetHeader>(
+            `INSERT INTO mr_line_supplier_quotation 
           (supplier_id, mr_line_id, quotation_file, rating, unit_price, total_price) 
           VALUES (?, ?, ?, ?, ?, ?)`,
-          [
-            quotation.supplier_id,
-            mr_line_id,
-            JSON.stringify([quotation.quotation_file]), // Store as JSON array
-            quotation.rating,
-            quotation.unit_price,
-            quotation.total_price,
-          ]
-        );
-        updatedIds.push(result.insertId);
+            [
+              quotation.supplier_id,
+              mr_line_id,
+              JSON.stringify([quotation.quotation_file]), // Store as JSON array
+              quotation.rating,
+              quotation.unit_price,
+              quotation.total_price,
+            ]
+          );
+          updatedIds.push(result.insertId);
+        }
       }
-    }
 
-    // Delete quotations that were removed (exist in DB but not in the update)
-    const idsToDelete = existingIds.filter((id) => !updatedIds.includes(id));
+      // Delete quotations that were removed (exist in DB but not in the update)
+      const idsToDelete = existingIds.filter((id) => !updatedIds.includes(id));
 
-    if (idsToDelete.length > 0) {
-      // First, get the quotation files to delete from S3
-      const [quotationsToDelete] = await db.query<RowDataPacket[]>(
-        "SELECT quotation_file FROM mr_line_supplier_quotation WHERE id IN (?)",
-        [idsToDelete]
+      if (idsToDelete.length > 0) {
+        // First, get the quotation files to delete from S3
+        const [quotationsToDelete] = await db.query<RowDataPacket[]>(
+          "SELECT quotation_file FROM mr_line_supplier_quotation WHERE id IN (?)",
+          [idsToDelete]
+        );
+
+        // TODO: Delete files from S3 here if needed
+        // const filesToDelete = quotationsToDelete.map(q => q.quotation_file).flat();
+        // await deleteFromS3(filesToDelete);
+
+        // Delete the database records
+        await db.query(
+          "DELETE FROM mr_line_supplier_quotation WHERE id IN (?)",
+          [idsToDelete]
+        );
+
+        console.log("Deleted quotation IDs:", idsToDelete);
+      }
+
+      return NextResponse.json(
+        {
+          updated: updatedIds.length,
+          deleted: idsToDelete.length,
+        },
+        { status: 200 }
       );
-
-      // TODO: Delete files from S3 here if needed
-      // const filesToDelete = quotationsToDelete.map(q => q.quotation_file).flat();
-      // await deleteFromS3(filesToDelete);
-
-      // Delete the database records
-      await db.query("DELETE FROM mr_line_supplier_quotation WHERE id IN (?)", [
-        idsToDelete,
-      ]);
-
-      console.log("Deleted quotation IDs:", idsToDelete);
     }
-
-    return NextResponse.json(
-      {
-        message: "Quotations updated successfully",
-        updated: updatedIds.length,
-        deleted: idsToDelete.length,
-      },
-      { status: 200 }
-    );
   } catch (err: any) {
-    console.error("Database error:", err.sqlMessage || err.message);
-    return NextResponse.json(
-      { error: err.sqlMessage || err.message },
-      { status: 500 }
-    );
+    console.error(err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
   }
 }
