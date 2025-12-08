@@ -204,7 +204,9 @@ export async function PUT(req: Request) {
               quotation_file = ?, 
               rating = ?, 
               unit_price = ?, 
-              total_price = ?
+              total_price = ?,
+              approval_status = NULL,
+              reject_comment = NULL
           WHERE id = ?`,
             [
               quotation.supplier_id,

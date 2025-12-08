@@ -181,6 +181,7 @@ export default function PriceApprovalMrItemButton({
         style={{
           backgroundColor: "rgba(34, 150, 100, 1)",
           color: "white",
+          minWidth: "250px",
         }}
       >
         <span>{approvedQuotation.supplier_name}</span>

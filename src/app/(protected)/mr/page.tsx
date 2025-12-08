@@ -71,11 +71,6 @@ export default function MR() {
 
               <br />
 
-              <small>BOQ CODE</small>
-              <h3>{mr.boq_code || "TEMP"}</h3>
-
-              <br />
-
               <small>REQUIRED DATE</small>
               <div
                 style={{ display: "flex", alignItems: "center", gap: "25px" }}
