@@ -21,11 +21,18 @@ import PriceApprovalMrItemButton from "./manager/_PriceApprovalMrItemButton";
 import SubmitMrForPricingResubmissionButton from "./manager/_SubmitMrForPriceResubmissionButton";
 import SubmitMrForLPO from "./manager/_SubmitMrForLPO";
 import Button from "@/app/components/Button";
+import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
 
 type GroupedMrLines = {
   [category: string]: {
-    [subCategory: string]: MrLine[];
+    [subCategory: string]: {
+      [supplier: string]: MrLine[];
+    };
   };
+};
+
+type GroupedMrLinesBySupplier = {
+  [supplierName: string]: MrLine[];
 };
 
 type MrLinesViewProps = {
@@ -38,6 +45,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
   const pencilIcon = "/icons/pencil.svg";
   const trashIcon = "/icons/trash.svg";
+  const externalLinkIcon = "/icons/external-link.svg";
 
   const [activeCategory, setActiveCategory] = useState<string>("");
   const [expandedDescriptions, setExpandedDescriptions] = useState<number[]>(
@@ -59,8 +67,13 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const [isCheckingSupplierApprovals, setIsCheckingSupplierApprovals] =
     useState<boolean>(true);
 
+  // Group items by supplier - using the correct type
+  const [mrLinesBySupplier, setMrLinesBySupplier] =
+    useState<GroupedMrLinesBySupplier>({});
+
   const categories = Object.keys(mrLines);
   const subCategories = mrLines[activeCategory] || {};
+  const suppliers = Object.keys(mrLinesBySupplier);
 
   useEffect(
     function () {
@@ -71,6 +84,29 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     },
     [mrLines]
   );
+
+  // Group items by supplier - extract from nested structure
+  useEffect(() => {
+    const supplierGroups: GroupedMrLinesBySupplier = {};
+
+    // Iterate through all categories, subcategories, and suppliers
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
+
+          if (!supplierGroups[supplier]) {
+            supplierGroups[supplier] = [];
+          }
+
+          // Add all items from this supplier
+          supplierGroups[supplier].push(...items);
+        }
+      }
+    }
+
+    setMrLinesBySupplier(supplierGroups);
+  }, [mrLines]);
 
   useEffect(() => {
     async function checkAllQuotations() {
@@ -87,8 +123,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         const allItemIds: number[] = [];
         for (const category in mrLines) {
           for (const subCategory in mrLines[category]) {
-            const items = mrLines[category][subCategory];
-            items.forEach((item) => allItemIds.push(item.id));
+            for (const supplier in mrLines[category][subCategory]) {
+              const items = mrLines[category][subCategory][supplier];
+              items.forEach((item) => allItemIds.push(item.id));
+            }
           }
         }
 
@@ -149,8 +187,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         const allItemIds: number[] = [];
         for (const category in mrLines) {
           for (const subCategory in mrLines[category]) {
-            const items = mrLines[category][subCategory];
-            items.forEach((item) => allItemIds.push(item.id));
+            for (const supplier in mrLines[category][subCategory]) {
+              const items = mrLines[category][subCategory][supplier];
+              items.forEach((item) => allItemIds.push(item.id));
+            }
           }
         }
 
@@ -230,8 +270,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
   function getActiveCategoryID() {
     const firstSubCategory = Object.values(subCategories)[0];
-    if (firstSubCategory && firstSubCategory.length > 0) {
-      return String(firstSubCategory[0].material_category_id);
+    if (firstSubCategory) {
+      const firstSupplier = Object.values(firstSubCategory)[0];
+      if (firstSupplier && firstSupplier.length > 0) {
+        return String(firstSupplier[0].material_category_id);
+      }
     }
     return undefined;
   }
@@ -242,17 +285,19 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
-        const items = mrLines[category][subCategory];
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
 
-        for (const item of items) {
-          const status = item.approval_status?.toLowerCase();
+          for (const item of items) {
+            const status = item.approval_status?.toLowerCase();
 
-          if (status === "rejected" || status === "clarified") {
-            hasRejectedOrClarified = true;
-          }
+            if (status === "rejected" || status === "clarified") {
+              hasRejectedOrClarified = true;
+            }
 
-          if (!status || status === "pending") {
-            allItemsReviewed = false;
+            if (!status || status === "pending") {
+              allItemsReviewed = false;
+            }
           }
         }
       }
@@ -267,17 +312,19 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
-        const items = mrLines[category][subCategory];
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
 
-        for (const item of items) {
-          const status = item.approval_status?.toLowerCase();
+          for (const item of items) {
+            const status = item.approval_status?.toLowerCase();
 
-          if (!status || status === "pending") {
-            allReviewed = false;
-          }
+            if (!status || status === "pending") {
+              allReviewed = false;
+            }
 
-          if (status !== "approved") {
-            allApproved = false;
+            if (status !== "approved") {
+              allApproved = false;
+            }
           }
         }
       }
@@ -291,7 +338,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     let totalItems = 0;
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
-        totalItems += mrLines[category][subCategory].length;
+        for (const supplier in mrLines[category][subCategory]) {
+          totalItems += mrLines[category][subCategory][supplier].length;
+        }
       }
     }
 
@@ -312,17 +361,19 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
-        const items = mrLines[category][subCategory];
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
 
-        for (const item of items) {
-          const status = supplierApprovalStatus[item.id];
+          for (const item of items) {
+            const status = supplierApprovalStatus[item.id];
 
-          if (status === "rejected") {
-            hasRejected = true;
-          }
+            if (status === "rejected") {
+              hasRejected = true;
+            }
 
-          if (!status || status === "pending") {
-            allReviewed = false;
+            if (!status || status === "pending") {
+              allReviewed = false;
+            }
           }
         }
       }
@@ -340,17 +391,19 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
-        const items = mrLines[category][subCategory];
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
 
-        for (const item of items) {
-          const status = supplierApprovalStatus[item.id];
+          for (const item of items) {
+            const status = supplierApprovalStatus[item.id];
 
-          if (!status || status === "pending") {
-            allReviewed = false;
-          }
+            if (!status || status === "pending") {
+              allReviewed = false;
+            }
 
-          if (status !== "approved") {
-            allApproved = false;
+            if (status !== "approved") {
+              allApproved = false;
+            }
           }
         }
       }
@@ -365,19 +418,32 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
-        const items = mrLines[category][subCategory];
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
 
-        for (const item of items) {
-          const status = supplierApprovalStatus[item.id];
+          for (const item of items) {
+            const status = supplierApprovalStatus[item.id];
 
-          if (status === "rejected") {
-            return true;
+            if (status === "rejected") {
+              return true;
+            }
           }
         }
       }
     }
 
     return false;
+  }
+
+  // Helper function to get all items from a subcategory (flattened from all suppliers)
+  function getAllItemsInSubCategory(subCategoryData: {
+    [supplier: string]: MrLine[];
+  }): MrLine[] {
+    const allItems: MrLine[] = [];
+    for (const supplier in subCategoryData) {
+      allItems.push(...subCategoryData[supplier]);
+    }
+    return allItems;
   }
 
   return (
@@ -389,83 +455,407 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           gap: "2rem",
         }}
       >
-        {mrHeader.progress_id === 10 && userInfo?.departmentID === 9 && (
+        {mrHeader.progress_id === 12 && userInfo?.departmentID === 9 && (
           <div
             style={{
               display: "flex",
-              gap: " 2rem",
+              gap: "2rem",
             }}
           >
             <Button
               componentType={"button"}
-              bgColor={"black"}
+              bgColor={showBySupplier ? "black" : "transparent"}
               borderColor={"black"}
-              textColor={"white"}
+              textColor={showBySupplier ? "white" : "black"}
               style={{
                 padding: "7px 20px",
                 borderRadius: "25px",
               }}
               onClick={() => {
-                setShowBySupplier(!setShowBySupplier);
+                setShowBySupplier(true);
                 setShowByItem(false);
-                console.log("show by supplier clicked");
               }}
             >
               SHOW BY SUPPLIER
             </Button>
             <Button
               componentType={"button"}
-              bgColor={"transparent"}
+              bgColor={showByItem ? "black" : "transparent"}
               borderColor={"black"}
-              textColor={"black"}
+              textColor={showByItem ? "white" : "black"}
               style={{
                 padding: "7px 20px",
                 borderRadius: "25px",
               }}
               onClick={() => {
-                setShowByItem(!showByItem);
+                setShowByItem(true);
                 setShowBySupplier(false);
-                console.log("show by item clicked");
               }}
             >
               SHOW BY ITEM
             </Button>
           </div>
         )}
-        <div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              width: "100%",
-              alignItems: "center",
-            }}
-          >
-            <div>
-              {categories.map(function (category) {
-                return (
+
+        {/* Only show category tabs when in item view */}
+        {showByItem && (
+          <div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                width: "100%",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                {categories.map((category) => (
                   <button
                     key={category}
                     className={`item ${
                       activeCategory === category ? "active" : ""
                     }`}
-                    onClick={function () {
-                      setActiveCategory(category);
-                    }}
+                    onClick={() => setActiveCategory(category)}
                     style={{ textTransform: "uppercase" }}
                   >
                     {category}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
-            {mrHeader.progress_id === 10 && userInfo?.departmentID === 9 && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: " 2rem",
-                }}
-              >
+          </div>
+        )}
+
+        {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
+          userInfo?.departmentID === mrHeader.department_id &&
+          showByItem && (
+            <AddMrItemButton
+              mrHeaderID={mrHeader.id}
+              projectID={mrHeader.project_id}
+              bgColor="black"
+              borderColor="black"
+              textColor="white"
+            >
+              ADD CATEGORY & ITEM +
+            </AddMrItemButton>
+          )}
+      </div>
+
+      <br />
+      <br />
+
+      {/* Show by Item View - now includes supplier grouping */}
+      {showByItem &&
+        Object.entries(subCategories).map(function (
+          [subCategory, suppliers],
+          index
+        ) {
+          const allItems = getAllItemsInSubCategory(suppliers);
+          const firstItem = allItems[0];
+
+          return (
+            <div key={subCategory} className="subcategory-section">
+              <div className="subcategory-header">
+                <h2 style={{ textTransform: "uppercase" }}>
+                  <span style={{ marginRight: "25px" }}>
+                    {categories.indexOf(activeCategory) + 1}.{index + 1}
+                  </span>
+                  {subCategory}
+                </h2>
+
+                {mrHeader.progress_id === 1 &&
+                  userInfo?.departmentID === mrHeader.department_id &&
+                  firstItem && (
+                    <div className="right">
+                      <DeleteMrSubCategoryButton
+                        items={allItems}
+                        category={activeCategory}
+                        subCategory={subCategory}
+                      >
+                        DELETE
+                      </DeleteMrSubCategoryButton>
+
+                      <RenameMrSubCategoryButton
+                        items={allItems}
+                        categoryID={String(firstItem.material_category_id)}
+                        subCategoryID={String(
+                          firstItem.material_subcategory_id
+                        )}
+                      >
+                        RENAME
+                      </RenameMrSubCategoryButton>
+                    </div>
+                  )}
+              </div>
+
+              <br />
+              <br />
+
+              {/* Iterate through each supplier within the subcategory */}
+              {Object.entries(suppliers).map(
+                ([supplier, items], supplierIndex) => (
+                  <div key={supplier} style={{ marginBottom: "2rem" }}>
+                    <table className="items-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>DESCRIPTION</th>
+                          <th>QUANTITY</th>
+                          <th>UNIT</th>
+                          <th>BOQ REF</th>
+                          <th>NOTES</th>
+                          {((mrHeader.progress_id === 5 &&
+                            (userInfo?.departmentID ===
+                              mrHeader.department_id ||
+                              userInfo?.departmentID === 8)) ||
+                            (mrHeader.progress_id === 3 &&
+                              userInfo?.departmentID ===
+                                mrHeader.department_id)) && (
+                            <th>APPROVAL STATUS</th>
+                          )}
+                          {(mrHeader.progress_id === 1 ||
+                            mrHeader.progress_id === 5) &&
+                            userInfo?.departmentID ===
+                              mrHeader.department_id && <th>ACTIONS</th>}
+                          {mrHeader.progress_id === 3 &&
+                            userInfo?.departmentID === 8 && <th>ACTIONS</th>}
+                          {(((mrHeader.progress_id === 7 ||
+                            mrHeader.progress_id === 11 ||
+                            mrHeader.progress_id === 10 ||
+                            mrHeader.progress_id === 12) &&
+                            userInfo?.departmentID === 9) ||
+                            (mrHeader.progress_id === 10 &&
+                              userInfo?.departmentID === 8)) && (
+                            <th>SUPPLIER & QUOTATION</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Array.isArray(items) &&
+                          items.map(function (item, itemIndex) {
+                            return (
+                              <tr key={item.id}>
+                                <td>{itemIndex + 1}</td>
+                                <td>{item.material_description}</td>
+                                <td>{item.quantity}</td>
+                                <td>{item.unit}</td>
+                                <td>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "10px",
+                                    }}
+                                  >
+                                    {item.boq_item_number}
+                                    <BoqReferencePopUp item={item} />
+                                  </div>
+                                </td>
+                                <td>
+                                  <NotesPopUp item={item} />
+                                </td>
+
+                                {(((mrHeader.progress_id === 5 ||
+                                  mrHeader.progress_id === 3) &&
+                                  userInfo?.departmentID ===
+                                    mrHeader.department_id) ||
+                                  ((mrHeader.progress_id === 5 ||
+                                    mrHeader.progress_id === 3) &&
+                                    userInfo?.departmentID === 8)) && (
+                                  <td>
+                                    <div
+                                      style={{ display: "flex", gap: "10px" }}
+                                    >
+                                      <InitialApprovalMrItemButton
+                                        item={item}
+                                        progressID={mrHeader.progress_id}
+                                      />
+                                    </div>
+                                  </td>
+                                )}
+
+                                {(mrHeader.progress_id === 1 ||
+                                  mrHeader.progress_id === 5) &&
+                                  userInfo?.departmentID ===
+                                    mrHeader.department_id && (
+                                    <td>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          gap: "10px",
+                                        }}
+                                      >
+                                        {(mrHeader.progress_id === 1 ||
+                                          (mrHeader.progress_id === 5 &&
+                                            (item.approval_status?.toLowerCase() ===
+                                              "rejected" ||
+                                              item.approval_status?.toLowerCase() ===
+                                                "clarified"))) && (
+                                          <>
+                                            <EditMrItemButton
+                                              projectID={mrHeader.project_id}
+                                              item={item}
+                                              bgColor={"rgba(239, 239, 239, 1)"}
+                                              borderColor={
+                                                "rgba(223, 223, 223, 1)"
+                                              }
+                                              textColor={"black"}
+                                            >
+                                              <img
+                                                src={pencilIcon}
+                                                alt="pencil icon"
+                                              />
+                                            </EditMrItemButton>
+
+                                            <DeleteMrItemButton
+                                              item={item}
+                                              bgColor={"rgba(239, 239, 239, 1)"}
+                                              borderColor={
+                                                "rgba(223, 223, 223, 1)"
+                                              }
+                                              textColor={"black"}
+                                            >
+                                              <img
+                                                src={trashIcon}
+                                                alt="trash icon"
+                                              />
+                                            </DeleteMrItemButton>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  )}
+
+                                {(mrHeader.progress_id === 7 ||
+                                  mrHeader.progress_id === 11 ||
+                                  mrHeader.progress_id === 10) &&
+                                  userInfo?.departmentID === 9 && (
+                                    <td>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "10px",
+                                        }}
+                                      >
+                                        <MrSupplierAndQuotationButton
+                                          mrHeader={mrHeader}
+                                          mrLineID={item.id}
+                                          bgColor="black"
+                                          textColor="white"
+                                          borderColor="black"
+                                          style={{
+                                            padding: "7px 10px",
+                                            borderRadius: "25px",
+                                          }}
+                                        />
+                                      </div>
+                                    </td>
+                                  )}
+
+                                {mrHeader.progress_id === 10 &&
+                                  userInfo?.departmentID === 8 && (
+                                    <td>
+                                      <PriceApprovalMrItemButton
+                                        mrLineID={item.id}
+                                        bgColor="white"
+                                        borderColor="rgba(207, 207, 207, 1)"
+                                        textColor="black"
+                                        style={{
+                                          borderRadius: "25px",
+                                          padding: "5px 20px",
+                                        }}
+                                      />
+                                    </td>
+                                  )}
+
+                                {mrHeader.progress_id === 12 &&
+                                  userInfo?.departmentID === 9 && (
+                                    <td>
+                                      <SupplierDetailsPopUp
+                                        item={item}
+                                        style={{
+                                          padding: "0px",
+                                          border: "none",
+                                        }}
+                                      >
+                                        {item.approved_supplier_name}{" "}
+                                        <img
+                                          src={externalLinkIcon}
+                                          alt="external link icon"
+                                        />
+                                      </SupplierDetailsPopUp>
+                                    </td>
+                                  )}
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+
+                    <br />
+                  </div>
+                )
+              )}
+
+              {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
+                userInfo?.departmentID === mrHeader.department_id &&
+                firstItem && (
+                  <AddMrItemButton
+                    projectID={mrHeader.project_id}
+                    mrHeaderID={mrHeader.id}
+                    bgColor="rgba(239, 239, 239, 1)"
+                    borderColor="rgba(239, 239, 239, 1)"
+                    textColor="black"
+                    full
+                    autoCategoryID={String(firstItem.material_category_id)}
+                    autoSubCategoryID={String(
+                      firstItem.material_subcategory_id
+                    )}
+                  >
+                    ADD ITEM +
+                  </AddMrItemButton>
+                )}
+
+              <br />
+              <br />
+              <br />
+              <br />
+              <br />
+            </div>
+          );
+        })}
+
+      {/* Show by Supplier View - No tabs, all suppliers in a list */}
+      {showBySupplier &&
+        Object.entries(mrLinesBySupplier).map(([supplier, items], index) => (
+          <div key={supplier} className="subcategory-section">
+            <div className="subcategory-header">
+              <div style={{ display: "flex", gap: "10px" }}>
+                <h2
+                  style={{
+                    textTransform: "uppercase",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                  }}
+                >
+                  {supplier}
+                </h2>
+
+                <SupplierDetailsPopUp
+                  item={items[0]}
+                  style={{ padding: "0px", border: "none" }}
+                >
+                  <img
+                    src={externalLinkIcon}
+                    alt="external link"
+                    style={{ width: "12px" }}
+                  />
+                </SupplierDetailsPopUp>
+              </div>
+
+              <div className="right" style={{ display: "flex", gap: "10px" }}>
                 <Button
                   componentType={"button"}
                   bgColor={"black"}
@@ -488,67 +878,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     borderRadius: "25px",
                   }}
                 >
-                  Upload Image
+                  Upload Invoice
                 </Button>
               </div>
-            )}
-          </div>
-        </div>
-
-        {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-          userInfo?.departmentID === mrHeader.department_id && (
-            <AddMrItemButton
-              mrHeaderID={mrHeader.id}
-              projectID={mrHeader.project_id}
-              bgColor="black"
-              borderColor="black"
-              textColor="white"
-            >
-              ADD CATEGORY & ITEM +
-            </AddMrItemButton>
-          )}
-      </div>
-
-      <br />
-      <br />
-
-      {Object.entries(subCategories).map(function (
-        [subCategory, items],
-        index
-      ) {
-        return (
-          <div
-            key={subCategory}
-            className="subcategory-section"
-          >
-            <div className="subcategory-header">
-              <h2 style={{ textTransform: "uppercase" }}>
-                <span style={{ marginRight: "25px" }}>
-                  {categories.indexOf(activeCategory) + 1}.{index + 1}
-                </span>
-                {subCategory}
-              </h2>
-
-              {mrHeader.progress_id === 1 &&
-                userInfo?.departmentID === mrHeader.department_id && (
-                  <div className="right">
-                    <DeleteMrSubCategoryButton
-                      items={items}
-                      category={activeCategory}
-                      subCategory={subCategory}
-                    >
-                      DELETE
-                    </DeleteMrSubCategoryButton>
-
-                    <RenameMrSubCategoryButton
-                      items={items}
-                      categoryID={String(items[0].material_category_id)}
-                      subCategoryID={String(items[0].material_subcategory_id)}
-                    >
-                      RENAME
-                    </RenameMrSubCategoryButton>
-                  </div>
-                )}
             </div>
 
             <br />
@@ -558,201 +890,47 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>DESCRIPTION</th>
-                  <th>QUANTITY</th>
-                  <th>UNIT</th>
-                  <th>BOQ REF</th>
+                  <th>CATEGORIES</th>
+                  <th>SUBCATEGORIES</th>
+                  <th>MATERIAL DESCRIPTION</th>
                   <th>NOTES</th>
-                  {/* RESUBMISSION */}
-                  {((mrHeader.progress_id === 5 &&
-                    (userInfo?.departmentID === mrHeader.department_id ||
-                      userInfo?.departmentID === 8)) ||
-                    (mrHeader.progress_id === 3 &&
-                      userInfo?.departmentID === mrHeader.department_id)) && (
-                    <th>APPROVAL STATUS</th>
-                  )}
-                  {/* DRAFT OR RESUBMISSION */}
-                  {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-                    userInfo?.departmentID === mrHeader.department_id && (
-                      <th>ACTIONS</th>
-                    )}
-                  {/* MANAGER APPROVAL */}
-                  {mrHeader.progress_id === 3 &&
-                    userInfo?.departmentID === 8 && <th>ACTIONS</th>}
-
-                  {/* PROCUREMENT */}
-                  {(mrHeader.progress_id === 7 ||
-                    mrHeader.progress_id === 11 ||
-                    mrHeader.progress_id === 10) &&
-                    userInfo?.departmentID === 9 && (
-                      <th>SUPPLIER & QUOTATION</th>
-                    )}
-
-                  {/* MANAGER PRICING APPROVAL */}
-                  {mrHeader.progress_id === 10 &&
-                    userInfo?.departmentID === 8 && (
-                      <th>SUPPLIER & QUOTATION</th>
-                    )}
+                  <th>BOQ REF</th>
+                  <th>QTY</th>
+                  <th>UNIT PRICE</th>
+                  <th>TOTAL PRICE</th>
                 </tr>
               </thead>
               <tbody>
-                {Array.isArray(items) &&
-                  items.map(function (item, itemIndex) {
-                    const expanded = isExpanded(item.id);
-                    const maxLength = 100;
-                    const needsCollapse =
-                      item.notes && item.notes.length > maxLength;
-                    const hasQuotations = itemsWithQuotations.has(item.id);
-
-                    return (
-                      <tr key={item.id}>
-                        <td>{itemIndex + 1}</td>
-                        <td>{item.material_description}</td>
-                        <td>{item.quantity}</td>
-                        <td>{item.unit}</td>
-                        <td>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "10px",
-                            }}
-                          >
-                            {item.boq_item_number}
-                            <BoqReferencePopUp item={item} />
-                          </div>
-                        </td>
-                        <td>
-                          <NotesPopUp item={item} />
-                        </td>
-
-                        {/* MANAGER & DEPARTMENT VIEW */}
-                        {(((mrHeader.progress_id === 5 ||
-                          mrHeader.progress_id === 3) &&
-                          userInfo?.departmentID === mrHeader.department_id) ||
-                          ((mrHeader.progress_id === 5 ||
-                            mrHeader.progress_id === 3) &&
-                            userInfo?.departmentID === 8)) && (
-                          <td>
-                            <div style={{ display: "flex", gap: "10px" }}>
-                              <InitialApprovalMrItemButton
-                                item={item}
-                                progressID={mrHeader.progress_id}
-                              />
-                            </div>
-                          </td>
-                        )}
-
-                        {/* DEPARTMENT ACTIONS */}
-                        {(mrHeader.progress_id === 1 ||
-                          mrHeader.progress_id === 5) &&
-                          userInfo?.departmentID === mrHeader.department_id && (
-                            <td>
-                              <div style={{ display: "flex", gap: "10px" }}>
-                                {(mrHeader.progress_id === 1 ||
-                                  (mrHeader.progress_id === 5 &&
-                                    (item.approval_status?.toLowerCase() ===
-                                      "rejected" ||
-                                      item.approval_status?.toLowerCase() ===
-                                        "clarified"))) && (
-                                  <>
-                                    <EditMrItemButton
-                                      projectID={mrHeader.project_id}
-                                      item={item}
-                                      bgColor={"rgba(239, 239, 239, 1)"}
-                                      borderColor={"rgba(223, 223, 223, 1)"}
-                                      textColor={"black"}
-                                    >
-                                      <img
-                                        src={pencilIcon}
-                                        alt="pencil icon"
-                                      />
-                                    </EditMrItemButton>
-
-                                    <DeleteMrItemButton
-                                      item={item}
-                                      bgColor={"rgba(239, 239, 239, 1)"}
-                                      borderColor={"rgba(223, 223, 223, 1)"}
-                                      textColor={"black"}
-                                    >
-                                      <img
-                                        src={trashIcon}
-                                        alt="trash icon"
-                                      />
-                                    </DeleteMrItemButton>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          )}
-
-                        {/* PROCUREMENT */}
-                        {(mrHeader.progress_id === 7 ||
-                          mrHeader.progress_id === 11 ||
-                          mrHeader.progress_id === 10) &&
-                          userInfo?.departmentID === 9 && (
-                            <td>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                }}
-                              >
-                                <MrSupplierAndQuotationButton
-                                  mrHeader={mrHeader}
-                                  mrLineID={item.id}
-                                  bgColor="black"
-                                  textColor="white"
-                                  borderColor="black"
-                                  style={{
-                                    padding: "7px 10px",
-                                    borderRadius: "25px",
-                                  }}
-                                />
-                              </div>
-                            </td>
-                          )}
-
-                        {/* MANAGER PRICING APPROVAL */}
-                        {mrHeader.progress_id === 10 &&
-                          userInfo?.departmentID === 8 && (
-                            <td>
-                              <PriceApprovalMrItemButton
-                                mrLineID={item.id}
-                                bgColor="white"
-                                borderColor="rgba(207, 207, 207, 1)"
-                                textColor="black"
-                                style={{
-                                  borderRadius: "25px",
-                                  padding: "5px 20px",
-                                }}
-                              />
-                            </td>
-                          )}
-                      </tr>
-                    );
-                  })}
+                {items.map((item: MrLine, itemIndex: number) => (
+                  <tr key={item.id}>
+                    <td>{itemIndex + 1}</td>
+                    <td>{item.material_category}</td>
+                    <td>{item.material_subcategory}</td>
+                    <td>{item.material_description}</td>
+                    <td>
+                      <NotesPopUp item={item} />
+                    </td>
+                    <td>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                        }}
+                      >
+                        {item.boq_item_number}
+                        <BoqReferencePopUp item={item} />
+                      </div>
+                    </td>
+                    <td>
+                      {item.quantity} {item.unit}
+                    </td>
+                    <td>{item.approved_unit_price || "-"}</td>
+                    <td>{item.approved_total_price || "-"}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-
-            <br />
-
-            {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-              userInfo?.departmentID === mrHeader.department_id && (
-                <AddMrItemButton
-                  projectID={mrHeader.project_id}
-                  mrHeaderID={mrHeader.id}
-                  bgColor="rgba(239, 239, 239, 1)"
-                  borderColor="rgba(239, 239, 239, 1)"
-                  textColor="black"
-                  full
-                  autoCategoryID={String(items[0].material_category_id)}
-                  autoSubCategoryID={String(items[0].material_subcategory_id)}
-                >
-                  ADD ITEM +
-                </AddMrItemButton>
-              )}
 
             <br />
             <br />
@@ -760,11 +938,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             <br />
             <br />
           </div>
-        );
-      })}
+        ))}
 
       {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-        userInfo?.departmentID === mrHeader.department_id && (
+        userInfo?.departmentID === mrHeader.department_id &&
+        showByItem && (
           <AddMrItemButton
             projectID={mrHeader.project_id}
             mrHeaderID={mrHeader.id}
@@ -829,7 +1007,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         )}
 
       {allItemsHaveSupplierQuotations() &&
-        !hasAnyRejectedSuppliers() && // Check if any suppliers are rejected
+        !hasAnyRejectedSuppliers() &&
         userInfo?.departmentID === 9 &&
         (mrHeader.progress_id === 7 || mrHeader.progress_id === 11) && (
           <div className="bottom-nav">
