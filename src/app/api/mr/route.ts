@@ -119,15 +119,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
-    if (body.action === "clarifyItem") {
-      await db.query(
-        `UPDATE mr_lines SET approval_status = 'Clarified', normal_comment = ? WHERE id = ?`,
-        [body.comment, body.id]
-      );
-
-      return NextResponse.json({ status: 200 });
-    }
-
     if (body.action === "rejectItem") {
       await db.query(
         `UPDATE mr_lines SET approval_status = 'Rejected', reject_comment = ? WHERE id = ?`,
@@ -164,6 +155,14 @@ export async function POST(req: Request) {
 
     if (body.action === "submitForPricingApproval") {
       await db.query(`UPDATE mr_headers SET progress_id = 10 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForPayment") {
+      await db.query(`UPDATE mr_headers SET progress_id = 14 WHERE id = ?`, [
         body.id,
       ]);
 

@@ -7,12 +7,16 @@ export async function POST(req: Request) {
 
     if (body.action === "updateLPOInvoice") {
       const query = `
-        UPDATE lpo
-        SET invoice_file = ?
-        WHERE mr_header_id = ?
-      `;
+    UPDATE lpo
+    SET invoice_file = ?
+    WHERE mr_header_id = ? AND supplier_id = ?
+  `;
 
-      const values = [body.invoice_file, Number(body.id)];
+      const values = [
+        body.invoice_file,
+        Number(body.mr_header_id),
+        Number(body.supplier_id),
+      ];
 
       await db.query(query, values);
 

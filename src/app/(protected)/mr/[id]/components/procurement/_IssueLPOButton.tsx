@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
+import { useAuth } from "@/app/context/AuthContext";
 
 type IssueLPOButtonProps = {
   mrHeader: MrHeader;
@@ -31,6 +32,7 @@ export default function IssueLPOButton({
   style,
 }: IssueLPOButtonProps) {
   const router = useRouter();
+  const { userInfo } = useAuth();
 
   const closeIcon = "/icons/cross-small.svg";
   const externalLinkIcon = "/icons/external-link.svg";
@@ -78,10 +80,12 @@ export default function IssueLPOButton({
   const shAmount = parseFloat(shippingHandling || "0");
   const total = amountAfterDiscount + vatAmount + shAmount;
 
-  // Check for existing LPO on component mount
+  // Check for existing LPO on component mount and when mrLines change
   useEffect(() => {
-    checkExistingLpo();
-  }, [mrHeader.id]);
+    if (mrLines.length > 0 && mrLines[0]?.approved_supplier_id) {
+      checkExistingLpo();
+    }
+  }, [mrHeader.id, mrLines]);
 
   useEffect(() => {
     const initialUnitPrices: { [key: number]: string } = {};
@@ -120,12 +124,18 @@ export default function IssueLPOButton({
   async function checkExistingLpo() {
     setIsCheckingLpo(true);
     try {
+      // Get the supplier_id from the first mrLine
+      const supplierId = mrLines[0]?.approved_supplier_id;
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mr_header_id: mrHeader.id }),
+          body: JSON.stringify({
+            mr_header_id: mrHeader.id,
+            supplier_id: supplierId, // Add supplier_id to the request
+          }),
         }
       );
       const data = await res.json();
@@ -318,6 +328,8 @@ export default function IssueLPOButton({
       // Update database with new invoice file
       const updatedInvoiceFiles = [...invoiceFiles, uploadedUrl];
 
+      const supplierId = mrLines[0]?.approved_supplier_id; // Get supplier_id
+
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
         {
@@ -325,7 +337,8 @@ export default function IssueLPOButton({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "updateLPOInvoice",
-            id: mrHeader.id,
+            mr_header_id: mrHeader.id,
+            supplier_id: supplierId, // Add supplier_id
             invoice_file: JSON.stringify(updatedInvoiceFiles),
           }),
         }
@@ -380,6 +393,8 @@ export default function IssueLPOButton({
       // Update database
       const updatedInvoiceFiles = invoiceFiles.filter((file) => file !== url);
 
+      const supplierId = mrLines[0]?.approved_supplier_id; // Get supplier_id
+
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
         {
@@ -387,7 +402,8 @@ export default function IssueLPOButton({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "updateLPOInvoice",
-            id: mrHeader.id,
+            mr_header_id: mrHeader.id,
+            supplier_id: supplierId, // Add supplier_id
             invoice_file: JSON.stringify(updatedInvoiceFiles),
           }),
         }
@@ -506,7 +522,6 @@ export default function IssueLPOButton({
                 }}
               >
                 <span
-                  onClick={(e) => handleFileClick(fileUrl, e)}
                   style={{
                     maxWidth: "120px",
                     overflow: "hidden",
@@ -517,22 +532,19 @@ export default function IssueLPOButton({
                   {getFileName(fileUrl)}
                 </span>
                 <a href={fileUrl} target="_blank">
-                  <img
-                    src={externalLinkIcon}
-                    alt="external link icon"
-                    style={{
-                      cursor: "pointer",
-                    }}
-                  />
+                  <img src={externalLinkIcon} alt="external link icon" />
                 </a>
-                <img
-                  src={closeIcon}
-                  alt="remove"
-                  onClick={(e) => handleRemoveFile(fileUrl, e)}
-                  style={{
-                    cursor: "pointer",
-                  }}
-                />
+                {userInfo?.departmentID === 9 &&
+                  mrHeader.progress_id === 12 && (
+                    <img
+                      src={closeIcon}
+                      alt="remove"
+                      onClick={(e) => handleRemoveFile(fileUrl, e)}
+                      style={{
+                        cursor: "pointer",
+                      }}
+                    />
+                  )}
               </div>
             ))}
           </>

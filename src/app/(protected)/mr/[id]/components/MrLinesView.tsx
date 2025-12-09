@@ -23,6 +23,7 @@ import SubmitMrForLPO from "./manager/_SubmitMrForLPO";
 import Button from "@/app/components/Button";
 import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
 import IssueLPOButton from "./procurement/_IssueLPOButton";
+import SubmitMrForPaymentButton from "./procurement/_SubmitMrForPayment";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -66,6 +67,13 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     [itemId: number]: "approved" | "rejected" | "pending";
   }>({});
   const [isCheckingSupplierApprovals, setIsCheckingSupplierApprovals] =
+    useState<boolean>(true);
+
+  // New state for tracking LPO and invoice status
+  const [lpoInvoiceStatus, setLpoInvoiceStatus] = useState<{
+    [supplierId: number]: { hasLpo: boolean; hasInvoice: boolean };
+  }>({});
+  const [isCheckingLpoInvoices, setIsCheckingLpoInvoices] =
     useState<boolean>(true);
 
   // Group items by supplier - using the correct type
@@ -253,6 +261,116 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     checkSupplierApprovals();
   }, [mrLines, mrHeader.progress_id]);
 
+  // Check LPO and invoice status for each supplier
+  useEffect(() => {
+    async function checkLpoInvoices() {
+      if (mrHeader.progress_id !== 12) {
+        setIsCheckingLpoInvoices(false);
+        return;
+      }
+
+      setIsCheckingLpoInvoices(true);
+      const statusMap: {
+        [supplierId: number]: { hasLpo: boolean; hasInvoice: boolean };
+      } = {};
+
+      try {
+        // Get unique suppliers with their IDs
+        const uniqueSuppliers = new Map<number, string>();
+
+        for (const category in mrLines) {
+          for (const subCategory in mrLines[category]) {
+            for (const supplier in mrLines[category][subCategory]) {
+              const items = mrLines[category][subCategory][supplier];
+              if (items.length > 0) {
+                const supplierId = items[0].approved_supplier_id;
+                if (supplierId) {
+                  uniqueSuppliers.set(supplierId, supplier);
+                }
+              }
+            }
+          }
+        }
+
+        // Check each supplier for LPO and invoice
+        const checkPromises = Array.from(uniqueSuppliers.keys()).map(
+          async (supplierId) => {
+            try {
+              const response = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    mr_header_id: mrHeader.id,
+                    supplier_id: supplierId,
+                  }),
+                }
+              );
+
+              if (response.ok) {
+                const data = await response.json();
+
+                if (data.success && data.data && data.data.length > 0) {
+                  const lpo = data.data[0];
+
+                  // Check if invoice files exist and have at least one file
+                  let hasInvoice = false;
+                  if (lpo.invoice_file) {
+                    try {
+                      const parsedFiles =
+                        typeof lpo.invoice_file === "string"
+                          ? JSON.parse(lpo.invoice_file)
+                          : lpo.invoice_file;
+                      hasInvoice =
+                        Array.isArray(parsedFiles) && parsedFiles.length > 0;
+                    } catch (error) {
+                      console.error("Error parsing invoice files:", error);
+                      hasInvoice = false;
+                    }
+                  }
+
+                  statusMap[supplierId] = {
+                    hasLpo: true,
+                    hasInvoice: hasInvoice,
+                  };
+                } else {
+                  statusMap[supplierId] = {
+                    hasLpo: false,
+                    hasInvoice: false,
+                  };
+                }
+              } else {
+                statusMap[supplierId] = {
+                  hasLpo: false,
+                  hasInvoice: false,
+                };
+              }
+            } catch (error) {
+              console.error(
+                `Error checking LPO for supplier ${supplierId}:`,
+                error
+              );
+              statusMap[supplierId] = {
+                hasLpo: false,
+                hasInvoice: false,
+              };
+            }
+          }
+        );
+
+        await Promise.all(checkPromises);
+        setLpoInvoiceStatus(statusMap);
+      } catch (error) {
+        console.error("Error checking LPO and invoices:", error);
+      } finally {
+        setIsCheckingLpoInvoices(false);
+      }
+    }
+
+    checkLpoInvoices();
+  }, [mrLines, mrHeader.progress_id, mrHeader.id]);
+
   function toggleDescription(itemId: number) {
     setExpandedDescriptions(function (prev) {
       if (prev.includes(itemId)) {
@@ -436,6 +554,39 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return false;
   }
 
+  // Check if all suppliers have LPO with invoices
+  function allSuppliersHaveLpoWithInvoices() {
+    if (isCheckingLpoInvoices) return false;
+
+    // Get unique supplier IDs
+    const uniqueSupplierIds = new Set<number>();
+
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
+          if (items.length > 0 && items[0].approved_supplier_id) {
+            uniqueSupplierIds.add(items[0].approved_supplier_id);
+          }
+        }
+      }
+    }
+
+    // Check if all suppliers have LPO with invoices
+    if (uniqueSupplierIds.size === 0) return false;
+
+    for (const supplierId of uniqueSupplierIds) {
+      const status = lpoInvoiceStatus[supplierId];
+
+      // If supplier doesn't have LPO or doesn't have invoice, return false
+      if (!status || !status.hasLpo || !status.hasInvoice) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   // Helper function to get all items from a subcategory (flattened from all suppliers)
   function getAllItemsInSubCategory(subCategoryData: {
     [supplier: string]: MrLine[];
@@ -456,7 +607,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           gap: "2rem",
         }}
       >
-        {mrHeader.progress_id === 12 && userInfo?.departmentID === 9 && (
+        {mrHeader.progress_id >= 12 && (
           <div
             style={{
               display: "flex",
@@ -1040,6 +1191,16 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             >
               SUBMIT FOR LPO
             </SubmitMrForLPO>
+          </div>
+        )}
+
+      {allSuppliersHaveLpoWithInvoices() &&
+        userInfo?.departmentID === 9 &&
+        mrHeader.progress_id === 12 && (
+          <div className="bottom-nav">
+            <SubmitMrForPaymentButton mrHeaderID={mrHeader.id}>
+              SUBMIT FOR PAYMENT
+            </SubmitMrForPaymentButton>
           </div>
         )}
     </>
