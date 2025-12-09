@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/app/context/AuthContext";
-import AddBoqItemButton from "./_AddBoqItemButton";
+import AddBoqItemButton from "./department/_AddBoqItemButton";
 
 export default function CreateBoqLineClient({
   boqHeaderID,

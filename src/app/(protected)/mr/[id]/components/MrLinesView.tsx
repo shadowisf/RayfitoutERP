@@ -22,6 +22,7 @@ import SubmitMrForPricingResubmissionButton from "./manager/_SubmitMrForPriceRes
 import SubmitMrForLPO from "./manager/_SubmitMrForLPO";
 import Button from "@/app/components/Button";
 import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
+import IssueLPOButton from "./procurement/_IssueLPOButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -459,7 +460,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           <div
             style={{
               display: "flex",
-              gap: "2rem",
+              gap: "10px",
             }}
           >
             <Button
@@ -602,7 +603,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           <th>DESCRIPTION</th>
                           <th>QUANTITY</th>
                           <th>UNIT</th>
-                          <th>BOQ REF</th>
+                          <th>BILL OF QUANTITY REFERENCE</th>
                           <th>NOTES</th>
                           {((mrHeader.progress_id === 5 &&
                             (userInfo?.departmentID ===
@@ -856,8 +857,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               </div>
 
               <div className="right" style={{ display: "flex", gap: "10px" }}>
-                <Button
-                  componentType={"button"}
+                <IssueLPOButton
+                  mrHeader={mrHeader}
+                  mrLines={items}
                   bgColor={"black"}
                   borderColor={"black"}
                   textColor={"white"}
@@ -867,19 +869,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   }}
                 >
                   Issue LPO
-                </Button>
-                <Button
-                  componentType={"button"}
-                  bgColor={"black"}
-                  borderColor={"black"}
-                  textColor={"white"}
-                  style={{
-                    padding: "7px 20px",
-                    borderRadius: "25px",
-                  }}
-                >
-                  Upload Invoice
-                </Button>
+                </IssueLPOButton>
               </div>
             </div>
 
@@ -890,12 +880,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>CATEGORIES</th>
-                  <th>SUBCATEGORIES</th>
-                  <th>MATERIAL DESCRIPTION</th>
+                  <th>CATEGORY</th>
+                  <th>SUB CATEGORY</th>
+                  <th>DESCRIPTION</th>
                   <th>NOTES</th>
-                  <th>BOQ REF</th>
-                  <th>QTY</th>
+                  <th>BILL OF QUANTITY REFERENCE</th>
+                  <th>QUANTITY</th>
                   <th>UNIT PRICE</th>
                   <th>TOTAL PRICE</th>
                 </tr>

@@ -13,6 +13,7 @@ type InputItemProps = {
   selectOptions?: string[];
   dbMap?: React.ReactNode;
   disabled?: boolean;
+  sideLabel?: boolean;
 };
 
 export default function InputItem({
@@ -25,6 +26,7 @@ export default function InputItem({
   selectOptions,
   dbMap,
   disabled,
+  sideLabel,
 }: InputItemProps) {
   switch (type) {
     case "date":
@@ -44,7 +46,18 @@ export default function InputItem({
 
     case "text":
       return (
-        <div className="input-item">
+        <div
+          className="input-item"
+          style={
+            sideLabel
+              ? {
+                  display: "grid",
+                  gridTemplateColumns: "0.5fr 1fr",
+                  alignItems: "center",
+                }
+              : {}
+          }
+        >
           <label>{label}</label>
           <input
             type={"text"}
@@ -76,7 +89,12 @@ export default function InputItem({
       return (
         <div className="input-item">
           <label>{label}</label>
-          <select value={value} onChange={onChange} required={required} disabled={disabled}>
+          <select
+            value={value}
+            onChange={onChange}
+            required={required}
+            disabled={disabled}
+          >
             <option value={typeof value === "string" ? "" : 0} disabled>
               {placeholder}
             </option>

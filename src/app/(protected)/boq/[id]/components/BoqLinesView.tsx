@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AddBoqItemButton from "./_AddBoqItemButton";
-import EditBoqItemButton from "./_EditBoqItemButton";
+import AddBoqItemButton from "./department/_AddBoqItemButton";
+import EditBoqItemButton from "./department/_EditBoqItemButton";
 import { BoqLine } from "../types/boqLine";
-import DeleteBoqItemButton from "./_DeleteBoqItemButton";
-import DeleteBoqSubCategoryButton from "./_DeleteBoqSubCategoryButton";
-import RenameBoqSubCategoryButton from "./_RenameBoqSubCategory";
+import DeleteBoqItemButton from "./department/_DeleteBoqItemButton";
+import DeleteBoqSubCategoryButton from "./department/_DeleteBoqSubCategoryButton";
+import RenameBoqSubCategoryButton from "./department/_RenameBoqSubCategory";
 import { useAuth } from "@/app/context/AuthContext";
 import ItemDescriptionPopUp from "./ItemDescriptionPopUp";
 
@@ -143,7 +143,7 @@ export default function BoqLinesView({
                 <tr>
                   <th>#</th>
                   <th>ITEM</th>
-                  <th>QTY</th>
+                  <th>QUANTITY</th>
                   <th>UNIT</th>
                   <th>RATE</th>
                   <th>TOTAL COST</th>

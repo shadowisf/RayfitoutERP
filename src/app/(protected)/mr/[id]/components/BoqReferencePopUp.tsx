@@ -21,7 +21,10 @@ export default function BoqReferencePopUp({ item }: BoqReferencePopUpProps) {
         bgColor={"rgba(239, 239, 239, 1)"}
         borderColor={"rgba(223, 223, 223, 1)"}
         textColor={"black"}
-        onClick={() => setIsOpen(true)}
+        onClick={(e) => {
+          e.preventDefault();
+          setIsOpen(true);
+        }}
         style={{ padding: "7px 7px" }}
       >
         <img src={externalLinkIcon} alt="external link icon" />
@@ -38,7 +41,7 @@ export default function BoqReferencePopUp({ item }: BoqReferencePopUpProps) {
               <tr>
                 <th>#</th>
                 <th>ITEM</th>
-                <th>QTY</th>
+                <th>QUANTITY</th>
                 <th>UNIT</th>
                 <th>RATE</th>
                 <th>TOTAL COST</th>

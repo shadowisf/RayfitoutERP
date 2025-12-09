@@ -4,7 +4,7 @@ import { useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
-import { BoqLine } from "../types/boqLine";
+import { BoqLine } from "../../types/boqLine";
 import { toast } from "@/app/components/Toast";
 
 type DeleteBoqSubCategoryButtonProps = {
