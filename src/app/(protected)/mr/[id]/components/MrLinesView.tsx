@@ -12,7 +12,7 @@ import SubmitMrForApprovalButton from "./department/_SubmitMrForApprovalButton";
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import InitialApprovalMrItemButton from "./manager/_InitialApprovalMrItemButtons";
-import SubmitMrForResubmissionButton from "./manager/_SubmitMrForResubmissionButton";
+import SubmitMrForResubmissionButton from "./manager/_SubmitMrForInitialResubmissionButton";
 import SubmitMrForQuotationsButton from "./manager/_SubmitMrForQuotationsButton";
 import MrSupplierAndQuotationButton from "./procurement/_MrSupplierAndQuotationButton";
 import SubmitMrForPricingApprovalButton from "./procurement/_SubmitMrForPriceApprovalButton";
@@ -23,7 +23,9 @@ import SubmitMrForLPO from "./manager/_SubmitMrForLPO";
 import Button from "@/app/components/Button";
 import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
 import IssueLPOButton from "./procurement/_IssueLPOButton";
-import SubmitMrForPaymentButton from "./procurement/_SubmitMrForPayment";
+import SubmitMrForPaymentButton from "./procurement/_SubmitMrForPaymentButton";
+import PaymentMrItemButton from "./finance/_PaymentMrItemButton";
+import SubmitMrForAwaitingDeliveryButton from "./finance/_SubmitForAwaitingDelivery";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -69,9 +71,13 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const [isCheckingSupplierApprovals, setIsCheckingSupplierApprovals] =
     useState<boolean>(true);
 
-  // New state for tracking LPO and invoice status
+  // Updated state for tracking LPO, invoice, and signed file status
   const [lpoInvoiceStatus, setLpoInvoiceStatus] = useState<{
-    [supplierId: number]: { hasLpo: boolean; hasInvoice: boolean };
+    [supplierId: number]: {
+      hasLpo: boolean;
+      hasInvoice: boolean;
+      hasSignedFile: boolean; // Added this
+    };
   }>({});
   const [isCheckingLpoInvoices, setIsCheckingLpoInvoices] =
     useState<boolean>(true);
@@ -83,6 +89,13 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const categories = Object.keys(mrLines);
   const subCategories = mrLines[activeCategory] || {};
   const suppliers = Object.keys(mrLinesBySupplier);
+
+  // Add this new state for tracking payment status
+  const [lpoPaymentStatus, setLpoPaymentStatus] = useState<{
+    [supplierId: number]: "approved" | "rejected" | "pending";
+  }>({});
+  const [isCheckingPaymentStatus, setIsCheckingPaymentStatus] =
+    useState<boolean>(true);
 
   useEffect(
     function () {
@@ -261,7 +274,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     checkSupplierApprovals();
   }, [mrLines, mrHeader.progress_id]);
 
-  // Check LPO and invoice status for each supplier
+  // Updated: Check LPO, invoice, and signed file status for each supplier
   useEffect(() => {
     async function checkLpoInvoices() {
       if (mrHeader.progress_id !== 12) {
@@ -271,7 +284,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
       setIsCheckingLpoInvoices(true);
       const statusMap: {
-        [supplierId: number]: { hasLpo: boolean; hasInvoice: boolean };
+        [supplierId: number]: {
+          hasLpo: boolean;
+          hasInvoice: boolean;
+          hasSignedFile: boolean;
+        };
       } = {};
 
       try {
@@ -292,7 +309,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           }
         }
 
-        // Check each supplier for LPO and invoice
+        // Check each supplier for LPO, invoice, and signed file
         const checkPromises = Array.from(uniqueSuppliers.keys()).map(
           async (supplierId) => {
             try {
@@ -330,20 +347,39 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     }
                   }
 
+                  // Check if signed files exist and have at least one file
+                  let hasSignedFile = false;
+                  if (lpo.signed_file) {
+                    try {
+                      const parsedFiles =
+                        typeof lpo.signed_file === "string"
+                          ? JSON.parse(lpo.signed_file)
+                          : lpo.signed_file;
+                      hasSignedFile =
+                        Array.isArray(parsedFiles) && parsedFiles.length > 0;
+                    } catch (error) {
+                      console.error("Error parsing signed files:", error);
+                      hasSignedFile = false;
+                    }
+                  }
+
                   statusMap[supplierId] = {
                     hasLpo: true,
                     hasInvoice: hasInvoice,
+                    hasSignedFile: hasSignedFile,
                   };
                 } else {
                   statusMap[supplierId] = {
                     hasLpo: false,
                     hasInvoice: false,
+                    hasSignedFile: false,
                   };
                 }
               } else {
                 statusMap[supplierId] = {
                   hasLpo: false,
                   hasInvoice: false,
+                  hasSignedFile: false,
                 };
               }
             } catch (error) {
@@ -354,6 +390,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               statusMap[supplierId] = {
                 hasLpo: false,
                 hasInvoice: false,
+                hasSignedFile: false,
               };
             }
           }
@@ -554,8 +591,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return false;
   }
 
-  // Check if all suppliers have LPO with invoices
-  function allSuppliersHaveLpoWithInvoices() {
+  // Updated: Check if all suppliers have LPO with invoices AND signed files
+  function allSuppliersHaveLpoWithInvoicesAndSignedFiles() {
     if (isCheckingLpoInvoices) return false;
 
     // Get unique supplier IDs
@@ -572,14 +609,19 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       }
     }
 
-    // Check if all suppliers have LPO with invoices
+    // Check if all suppliers have LPO with invoices AND signed files
     if (uniqueSupplierIds.size === 0) return false;
 
     for (const supplierId of uniqueSupplierIds) {
       const status = lpoInvoiceStatus[supplierId];
 
-      // If supplier doesn't have LPO or doesn't have invoice, return false
-      if (!status || !status.hasLpo || !status.hasInvoice) {
+      // If supplier doesn't have LPO, invoice, OR signed file, return false
+      if (
+        !status ||
+        !status.hasLpo ||
+        !status.hasInvoice ||
+        !status.hasSignedFile
+      ) {
         return false;
       }
     }
@@ -596,6 +638,130 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       allItems.push(...subCategoryData[supplier]);
     }
     return allItems;
+  }
+
+  // Add this new useEffect to check payment statuses
+  useEffect(() => {
+    async function checkPaymentStatuses() {
+      if (mrHeader.progress_id !== 14) {
+        setIsCheckingPaymentStatus(false);
+        return;
+      }
+
+      setIsCheckingPaymentStatus(true);
+      const statusMap: {
+        [supplierId: number]: "approved" | "rejected" | "pending";
+      } = {};
+
+      try {
+        // Get unique suppliers with their IDs
+        const uniqueSuppliers = new Map<number, string>();
+
+        for (const category in mrLines) {
+          for (const subCategory in mrLines[category]) {
+            for (const supplier in mrLines[category][subCategory]) {
+              const items = mrLines[category][subCategory][supplier];
+              if (items.length > 0) {
+                const supplierId = items[0].approved_supplier_id;
+                if (supplierId) {
+                  uniqueSuppliers.set(supplierId, supplier);
+                }
+              }
+            }
+          }
+        }
+
+        // Check each supplier for payment status
+        const checkPromises = Array.from(uniqueSuppliers.keys()).map(
+          async (supplierId) => {
+            try {
+              const response = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    mr_header_id: mrHeader.id,
+                    supplier_id: supplierId,
+                  }),
+                }
+              );
+
+              if (response.ok) {
+                const data = await response.json();
+
+                if (data.success && data.data && data.data.length > 0) {
+                  const lpo = data.data[0];
+                  const paymentStatus = lpo.payment_status;
+
+                  if (!paymentStatus) {
+                    statusMap[supplierId] = "pending";
+                  } else if (paymentStatus.toLowerCase() === "approved") {
+                    statusMap[supplierId] = "approved";
+                  } else if (paymentStatus.toLowerCase() === "rejected") {
+                    statusMap[supplierId] = "rejected";
+                  } else {
+                    statusMap[supplierId] = "pending";
+                  }
+                } else {
+                  statusMap[supplierId] = "pending";
+                }
+              } else {
+                statusMap[supplierId] = "pending";
+              }
+            } catch (error) {
+              console.error(
+                `Error checking payment status for supplier ${supplierId}:`,
+                error
+              );
+              statusMap[supplierId] = "pending";
+            }
+          }
+        );
+
+        await Promise.all(checkPromises);
+        setLpoPaymentStatus(statusMap);
+      } catch (error) {
+        console.error("Error checking payment statuses:", error);
+      } finally {
+        setIsCheckingPaymentStatus(false);
+      }
+    }
+
+    checkPaymentStatuses();
+  }, [mrLines, mrHeader.progress_id, mrHeader.id]);
+
+  // Add this new function to check if all LPOs have been reviewed
+  function allLposHavePaymentStatus() {
+    if (isCheckingPaymentStatus) return false;
+
+    // Get unique supplier IDs
+    const uniqueSupplierIds = new Set<number>();
+
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
+          if (items.length > 0 && items[0].approved_supplier_id) {
+            uniqueSupplierIds.add(items[0].approved_supplier_id);
+          }
+        }
+      }
+    }
+
+    // Check if all suppliers have a payment status (approved or rejected)
+    if (uniqueSupplierIds.size === 0) return false;
+
+    for (const supplierId of uniqueSupplierIds) {
+      const status = lpoPaymentStatus[supplierId];
+
+      // If supplier doesn't have a status or is still pending, return false
+      if (!status || status === "pending") {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   return (
@@ -771,13 +937,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               mrHeader.department_id && <th>ACTIONS</th>}
                           {mrHeader.progress_id === 3 &&
                             userInfo?.departmentID === 8 && <th>ACTIONS</th>}
-                          {(((mrHeader.progress_id === 7 ||
-                            mrHeader.progress_id === 11 ||
-                            mrHeader.progress_id === 10 ||
-                            mrHeader.progress_id === 12) &&
-                            userInfo?.departmentID === 9) ||
-                            (mrHeader.progress_id === 10 &&
-                              userInfo?.departmentID === 8)) && (
+                          {(mrHeader.progress_id >= 7 ||
+                            userInfo?.departmentID === 9 ||
+                            userInfo?.departmentID === 8 ||
+                            userInfo?.departmentID === 10) && (
                             <th>SUPPLIER & QUOTATION</th>
                           )}
                         </tr>
@@ -921,24 +1084,35 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     </td>
                                   )}
 
-                                {mrHeader.progress_id === 12 &&
-                                  userInfo?.departmentID === 9 && (
-                                    <td>
+                                {((mrHeader.progress_id >= 12 &&
+                                  userInfo?.departmentID === 9) ||
+                                  userInfo?.departmentID === 10) && (
+                                  <td>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: "10px",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      {item.approved_supplier_name}{" "}
                                       <SupplierDetailsPopUp
                                         item={item}
                                         style={{
-                                          padding: "0px",
-                                          border: "none",
+                                          padding: "7px 7px",
+                                          backgroundColor:
+                                            "rgba(239, 239, 239, 1)",
+                                          borderColor: "rgba(223, 223, 223, 1)",
                                         }}
                                       >
-                                        {item.approved_supplier_name}{" "}
                                         <img
                                           src={externalLinkIcon}
                                           alt="external link icon"
                                         />
                                       </SupplierDetailsPopUp>
-                                    </td>
-                                  )}
+                                    </div>
+                                  </td>
+                                )}
                               </tr>
                             );
                           })}
@@ -1007,20 +1181,32 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 </SupplierDetailsPopUp>
               </div>
 
-              <div className="right" style={{ display: "flex", gap: "10px" }}>
-                <IssueLPOButton
-                  mrHeader={mrHeader}
-                  mrLines={items}
-                  bgColor={"black"}
-                  borderColor={"black"}
-                  textColor={"white"}
-                  style={{
-                    padding: "7px 20px",
-                    borderRadius: "25px",
-                  }}
-                >
-                  Issue LPO
-                </IssueLPOButton>
+              <div className="right" style={{ display: "flex", gap: "20px" }}>
+                {((mrHeader.progress_id >= 12 &&
+                  userInfo?.departmentID === 9) ||
+                  userInfo?.departmentID === 10) && (
+                  <IssueLPOButton
+                    mrHeader={mrHeader}
+                    mrLines={items}
+                    bgColor="black"
+                    borderColor="black"
+                    textColor="white"
+                    style={{
+                      padding: "7px 20px",
+                      borderRadius: "25px",
+                    }}
+                  >
+                    Issue LPO
+                  </IssueLPOButton>
+                )}
+
+                {userInfo?.departmentID === 10 &&
+                  mrHeader.progress_id === 14 && (
+                    <PaymentMrItemButton
+                      mrHeaderId={mrHeader.id}
+                      supplierId={items[0].approved_supplier_id}
+                    />
+                  )}
               </div>
             </div>
 
@@ -1194,13 +1380,23 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           </div>
         )}
 
-      {allSuppliersHaveLpoWithInvoices() &&
+      {allSuppliersHaveLpoWithInvoicesAndSignedFiles() &&
         userInfo?.departmentID === 9 &&
         mrHeader.progress_id === 12 && (
           <div className="bottom-nav">
             <SubmitMrForPaymentButton mrHeaderID={mrHeader.id}>
               SUBMIT FOR PAYMENT
             </SubmitMrForPaymentButton>
+          </div>
+        )}
+
+      {allLposHavePaymentStatus() &&
+        userInfo?.departmentID === 10 &&
+        mrHeader.progress_id === 14 && (
+          <div className="bottom-nav">
+            <SubmitMrForAwaitingDeliveryButton mrHeaderID={mrHeader.id}>
+              SUBMIT FOR AWAITING DELIVERY
+            </SubmitMrForAwaitingDeliveryButton>
           </div>
         )}
     </>

@@ -9,6 +9,8 @@ import { useState, useEffect, useRef } from "react";
 import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
+import { LPO } from "../../types/lpo";
+import EditLPOButton from "./_EditLPOButton";
 
 type IssueLPOButtonProps = {
   mrHeader: MrHeader;
@@ -39,14 +41,19 @@ export default function IssueLPOButton({
 
   const [isOpen, setIsOpen] = useState(false);
   const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
-  const [existingLpoData, setExistingLpoData] = useState<any>(null);
+  const [existingLpoData, setExistingLpoData] = useState<LPO | null>(null);
   const [isCheckingLpo, setIsCheckingLpo] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   // Invoice file states
   const [invoiceFiles, setInvoiceFiles] = useState<string[]>([]);
 
+  // Signed LPO file states
+  const [signedLpoFiles, setSignedLpoFiles] = useState<string[]>([]);
+  const [isUploadingSignedLpo, setIsUploadingSignedLpo] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const signedLpoInputRef = useRef<HTMLInputElement>(null);
 
   const [quotation, setQuotation] = useState("");
   const [supplierContactPersonName, setSupplierContactPersonName] = useState(
@@ -141,26 +148,43 @@ export default function IssueLPOButton({
       const data = await res.json();
 
       if (data.success && data.data && data.data.length > 0) {
-        setExistingLpoId(data.data[0].id);
-        setExistingLpoData(data.data[0]);
+        const lpoData: LPO = data.data[0];
+
+        setExistingLpoId(lpoData.id);
+        setExistingLpoData(lpoData);
 
         // Load existing invoice files
-        if (data.data[0].invoice_file) {
+        if (lpoData.invoice_file) {
           try {
             const parsedFiles =
-              typeof data.data[0].invoice_file === "string"
-                ? JSON.parse(data.data[0].invoice_file)
-                : data.data[0].invoice_file;
+              typeof lpoData.invoice_file === "string"
+                ? JSON.parse(lpoData.invoice_file)
+                : lpoData.invoice_file;
             setInvoiceFiles(Array.isArray(parsedFiles) ? parsedFiles : []);
           } catch (error) {
             console.error("Error parsing invoice files:", error);
             setInvoiceFiles([]);
           }
         }
+
+        // Load existing signed LPO files
+        if (lpoData.signed_file) {
+          try {
+            const parsedFiles =
+              typeof lpoData.signed_file === "string"
+                ? JSON.parse(lpoData.signed_file)
+                : lpoData.signed_file;
+            setSignedLpoFiles(Array.isArray(parsedFiles) ? parsedFiles : []);
+          } catch (error) {
+            console.error("Error parsing signed LPO files:", error);
+            setSignedLpoFiles([]);
+          }
+        }
       } else {
         setExistingLpoId(null);
         setExistingLpoData(null);
         setInvoiceFiles([]);
+        setSignedLpoFiles([]);
       }
     } catch (error) {
       console.error("Error checking for existing LPO:", error);
@@ -285,6 +309,13 @@ export default function IssueLPOButton({
     }
   }
 
+  // Handle upload signed LPO button click
+  function handleUploadSignedLpoClick() {
+    if (!isUploadingSignedLpo) {
+      signedLpoInputRef.current?.click();
+    }
+  }
+
   // Get file name from URL
   function getFileName(url: string): string {
     const urlParts = url.split("/");
@@ -292,7 +323,7 @@ export default function IssueLPOButton({
     return decodeURIComponent(fileName) || "View File";
   }
 
-  // Handle file selection and automatic upload
+  // Handle file selection and automatic upload for Invoice
   async function handleFileSelection(
     event: React.ChangeEvent<HTMLInputElement>
   ) {
@@ -366,7 +397,80 @@ export default function IssueLPOButton({
     }
   }
 
-  // Handle file removal
+  // Handle file selection and automatic upload for Signed LPO
+  async function handleSignedLpoSelection(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    setIsUploadingSignedLpo(true);
+
+    try {
+      // Upload to S3
+      const formData = new FormData();
+      formData.append("folder", "lpo-signed");
+      formData.append("files", file);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await response.json();
+      const uploadedUrl = data.urls[0];
+
+      console.log("Uploaded signed LPO URL:", uploadedUrl);
+
+      // Update database with new signed LPO file
+      const updatedSignedLpoFiles = [...signedLpoFiles, uploadedUrl];
+
+      const supplierId = mrLines[0]?.approved_supplier_id; // Get supplier_id
+
+      const updateRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "updateLPOSignedLpo",
+            mr_header_id: mrHeader.id,
+            supplier_id: supplierId, // Add supplier_id
+            signed_lpo_file: JSON.stringify(updatedSignedLpoFiles),
+          }),
+        }
+      );
+
+      if (!updateRes.ok) {
+        throw new Error("Failed to update database");
+      }
+
+      toast("Signed local purchase order uploaded", "success");
+
+      // Update local state
+      setSignedLpoFiles(updatedSignedLpoFiles);
+
+      router.refresh();
+    } catch (error) {
+      toast("Failed to upload signed local purchase order", "error");
+    } finally {
+      setIsUploadingSignedLpo(false);
+      // Reset file input
+      if (signedLpoInputRef.current) {
+        signedLpoInputRef.current.value = "";
+      }
+    }
+  }
+
+  // Handle file removal for Invoice
   async function handleRemoveFile(url: string, event: React.MouseEvent) {
     event.stopPropagation(); // Prevent triggering file upload
 
@@ -424,6 +528,71 @@ export default function IssueLPOButton({
       toast("Failed to delete invoice", "error");
     } finally {
       setIsUploading(false);
+    }
+  }
+
+  // Handle file removal for Signed LPO
+  async function handleRemoveSignedLpoFile(
+    url: string,
+    event: React.MouseEvent
+  ) {
+    event.stopPropagation(); // Prevent triggering file upload
+
+    setIsUploadingSignedLpo(true);
+
+    try {
+      // Delete from S3
+      const deleteRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "delete",
+            url: url,
+          }),
+        }
+      );
+
+      if (!deleteRes.ok) {
+        throw new Error("Failed to delete file from S3");
+      }
+
+      // Update database
+      const updatedSignedLpoFiles = signedLpoFiles.filter(
+        (file) => file !== url
+      );
+
+      const supplierId = mrLines[0]?.approved_supplier_id; // Get supplier_id
+
+      const updateRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "updateLPOSignedLpo",
+            mr_header_id: mrHeader.id,
+            supplier_id: supplierId, // Add supplier_id
+            signed_file: JSON.stringify(updatedSignedLpoFiles),
+          }),
+        }
+      );
+
+      if (!updateRes.ok) {
+        throw new Error("Failed to update database");
+      }
+
+      toast("Signed local purchase order deleted", "success");
+
+      // Update local state
+      setSignedLpoFiles(updatedSignedLpoFiles);
+
+      router.refresh();
+    } catch (error) {
+      toast("Failed to delete signed local purchase order", "error");
+    } finally {
+      setIsUploadingSignedLpo(false);
     }
   }
 
@@ -497,7 +666,17 @@ export default function IssueLPOButton({
           View LPO
         </Button>
 
-        {/* Hidden file input */}
+        <EditLPOButton
+          bgColor="white"
+          borderColor="rgba(207, 207, 207, 1)"
+          textColor="black"
+          style={style}
+          lpoId={existingLpoId}
+        >
+          Edit LPO
+        </EditLPOButton>
+
+        {/* Hidden file inputs */}
         <input
           ref={fileInputRef}
           type="file"
@@ -505,7 +684,15 @@ export default function IssueLPOButton({
           style={{ display: "none" }}
           onChange={handleFileSelection}
         />
+        <input
+          ref={signedLpoInputRef}
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          style={{ display: "none" }}
+          onChange={handleSignedLpoSelection}
+        />
 
+        {/* Invoice Files */}
         {invoiceFiles.length > 0 ? (
           <>
             {invoiceFiles.map((fileUrl, index) => (
@@ -531,6 +718,7 @@ export default function IssueLPOButton({
                 >
                   {getFileName(fileUrl)}
                 </span>
+
                 <a href={fileUrl} target="_blank">
                   <img src={externalLinkIcon} alt="external link icon" />
                 </a>
@@ -567,6 +755,70 @@ export default function IssueLPOButton({
             Upload Invoice
           </Button>
         )}
+
+        {/* Signed LPO Files */}
+        {signedLpoFiles.length > 0 ? (
+          <>
+            {signedLpoFiles.map((fileUrl, index) => (
+              <div
+                key={fileUrl}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "7px 20px",
+                  borderRadius: "25px",
+                  border: "1px rgba(207, 207, 207, 1) solid",
+                  backgroundColor: "white",
+                }}
+              >
+                <span
+                  style={{
+                    maxWidth: "120px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {getFileName(fileUrl)}
+                </span>
+
+                <a href={fileUrl} target="_blank">
+                  <img src={externalLinkIcon} alt="external link icon" />
+                </a>
+                {userInfo?.departmentID === 9 &&
+                  mrHeader.progress_id === 12 && (
+                    <img
+                      src={closeIcon}
+                      alt="remove"
+                      onClick={(e) => handleRemoveSignedLpoFile(fileUrl, e)}
+                      style={{
+                        cursor: "pointer",
+                      }}
+                    />
+                  )}
+              </div>
+            ))}
+          </>
+        ) : (
+          <Button
+            componentType={"button"}
+            onClick={handleUploadSignedLpoClick}
+            bgColor={"black"}
+            borderColor={"black"}
+            textColor={"white"}
+            style={{
+              padding: "7px 20px",
+              borderRadius: "25px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              minWidth: "150px",
+            }}
+          >
+            Upload Signed LPO
+          </Button>
+        )}
       </div>
     );
   }
@@ -588,7 +840,7 @@ export default function IssueLPOButton({
 
       {isOpen && (
         <FormPopUp
-          header={"ISSUE LPO"}
+          header={"CREATE LOCAL PURCHASE ORDER"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
@@ -613,10 +865,10 @@ export default function IssueLPOButton({
               disabled
             />
             <InputItem
-              label={"QUOTATION"}
+              label={"QUOTATION REFERENCE"}
               value={quotation}
               type={"text"}
-              placeholder={"ENTER QUOTATION"}
+              placeholder={"ENTER QUOTATION REFERENCE"}
               required
               onChange={(e) => setQuotation(e.target.value)}
             />
@@ -706,7 +958,7 @@ export default function IssueLPOButton({
                 <InputItem
                   label={"PAYMENT TERMS"}
                   value={paymentTerms}
-                  type={"text"}
+                  type={"textarea"}
                   placeholder={"ENTER PAYMENT TERMS"}
                   required
                   onChange={(e) => setPaymentTerms(e.target.value)}
@@ -716,7 +968,7 @@ export default function IssueLPOButton({
                 <InputItem
                   label={"DELIVERY TERMS"}
                   value={deliveryTerms}
-                  type={"text"}
+                  type={"textarea"}
                   placeholder={"ENTER DELIVERY TERMS"}
                   required
                   onChange={(e) => setDeliveryTerms(e.target.value)}
@@ -749,11 +1001,22 @@ export default function IssueLPOButton({
               </div>
               <div className="input-row full">
                 <InputItem
+                  label={"S&H (OPTIONAL)"}
+                  value={shippingHandling}
+                  type={"text"}
+                  placeholder={"ENTER S&H"}
+                  required={false}
+                  onChange={(e) => handleShippingChange(e.target.value)}
+                  sideLabel={true}
+                />
+              </div>
+              <div className="input-row full">
+                <InputItem
                   label={"VAT RATE (%)"}
                   value={vatRate}
                   type={"text"}
                   placeholder={"ENTER VAT RATE"}
-                  required={false}
+                  required={true}
                   onChange={(e) => handleVatRateChange(e.target.value)}
                   sideLabel={true}
                 />
@@ -768,17 +1031,6 @@ export default function IssueLPOButton({
                   onChange={() => {}}
                   sideLabel={true}
                   disabled={true}
-                />
-              </div>
-              <div className="input-row full">
-                <InputItem
-                  label={"S&H (OPTIONAL)"}
-                  value={shippingHandling}
-                  type={"text"}
-                  placeholder={"ENTER S&H"}
-                  required={false}
-                  onChange={(e) => handleShippingChange(e.target.value)}
-                  sideLabel={true}
                 />
               </div>
               <div className="input-row full">

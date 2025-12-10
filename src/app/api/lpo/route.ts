@@ -5,6 +5,144 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
+    if (body.action === "rejectPayment") {
+      const query = `
+    UPDATE lpo 
+    SET payment_status = 'Rejected', payment_reject_comment = ?
+    WHERE id = ?
+  `;
+
+      await db.query(query, [body.reject_comment, Number(body.lpo_id)]);
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "resetPayment") {
+      const query = `
+    UPDATE lpo 
+    SET payment_status = NULL, payment_reject_comment = NULL, payment_file = NULL
+    WHERE id = ?
+  `;
+
+      await db.query(query, [Number(body.lpo_id)]);
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "approvePayment") {
+      const query = `
+    UPDATE lpo 
+    SET payment_status = 'Approved', payment_reject_comment = NULL, payment_file = ?
+    WHERE id = ?
+  `;
+
+      await db.query(query, [body.payment_file || null, Number(body.lpo_id)]);
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "updateLPO") {
+      const {
+        lpo_id,
+        quotation_code,
+        supplier_contact_person_name,
+        supplier_email,
+        delivery_date,
+        payment_terms,
+        delivery_terms,
+        subtotal,
+        discount,
+        vat_rate,
+        vat,
+        shipping_and_handling,
+        total,
+        lpo_mr_lines,
+      } = body;
+
+      try {
+        // Update main LPO record
+        const updateLPOQuery = `
+      UPDATE lpo 
+      SET 
+        quotation_code = ?,
+        supplier_contact_person_name = ?,
+        supplier_email = ?,
+        delivery_date = ?,
+        payment_terms = ?,
+        delivery_terms = ?,
+        subtotal = ?,
+        discount = ?,
+        vat_rate = ?,
+        vat = ?,
+        shipping_and_handling = ?,
+        total = ?
+      WHERE id = ?
+    `;
+
+        await db.query(updateLPOQuery, [
+          quotation_code,
+          supplier_contact_person_name,
+          supplier_email,
+          delivery_date,
+          payment_terms,
+          delivery_terms,
+          subtotal,
+          discount,
+          vat_rate,
+          vat,
+          shipping_and_handling,
+          total,
+          lpo_id,
+        ]);
+
+        // Update LPO MR Lines
+        for (const line of lpo_mr_lines) {
+          const updateLineQuery = `
+        UPDATE lpo_mr_line 
+        SET 
+          unit_price = ?,
+          total_price = ?
+        WHERE id = ?
+      `;
+
+          await db.query(updateLineQuery, [
+            line.unit_price,
+            line.total_price,
+            line.id,
+          ]);
+        }
+
+        return NextResponse.json(
+          { success: true, message: "LPO updated successfully" },
+          { status: 200 }
+        );
+      } catch (error) {
+        console.error("Error updating LPO:", error);
+        return NextResponse.json(
+          { error: "Failed to update LPO" },
+          { status: 500 }
+        );
+      }
+    }
+
+    if (body.action === "updateLPOSignedLpo") {
+      const query = `
+    UPDATE lpo
+    SET signed_file = ?
+    WHERE mr_header_id = ? AND supplier_id = ?
+  `;
+
+      const values = [
+        body.signed_lpo_file,
+        Number(body.mr_header_id),
+        Number(body.supplier_id),
+      ];
+
+      await db.query(query, values);
+
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "updateLPOInvoice") {
       const query = `
     UPDATE lpo
@@ -53,7 +191,7 @@ export async function POST(req: Request) {
 
       if (body.lpo_mr_lines && body.lpo_mr_lines.length > 0) {
         const mrLineQuery = `
-            INSERT INTO jt_lpo_mr_line 
+            INSERT INTO lpo_mr_line 
             (lpo_id, mr_line_id, unit_price, total_price)
             VALUES (?, ?, ?, ?)
           `;

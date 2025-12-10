@@ -1,0 +1,26 @@
+import { LPOMrLine } from "./lpoMrLine";
+
+export type LPO = {
+  id: number;
+  project_id: number;
+  mr_header_id: number;
+  supplier_id: number;
+  quotation_code: string;
+  supplier_contact_person_name: string;
+  supplier_email: string;
+  delivery_date: string;
+  payment_terms: string;
+  delivery_terms: string;
+  subtotal: number;
+  discount: number;
+  vat_rate: number;
+  vat: number;
+  shipping_and_handling: number;
+  total: number;
+  payment_status: string;
+  payment_reject_status: string;
+  invoice_file: string[];
+  payment_file: string[];
+  signed_file: string[];
+  lpo_mr_lines: LPOMrLine[];
+};

@@ -10,7 +10,11 @@ export default function MR() {
   const [mrHeaders, setMrHeaders] = useState([]);
 
   useEffect(() => {
-    if (userInfo?.departmentID !== 8 && userInfo?.departmentID !== 9) {
+    if (
+      userInfo?.departmentID !== 8 &&
+      userInfo?.departmentID !== 9 &&
+      userInfo?.departmentID !== 10
+    ) {
       fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
         method: "POST",
         body: JSON.stringify({
