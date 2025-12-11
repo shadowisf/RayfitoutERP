@@ -26,7 +26,7 @@ type SupplierQuotation = {
   supplier_name?: string;
 };
 
-type MrSupplierAndQuotationButtonProps = {
+type SupplierAndQuotationButtonProps = {
   mrHeader: MrHeader;
   mrLineID: number;
   bgColor?: string;
@@ -36,7 +36,7 @@ type MrSupplierAndQuotationButtonProps = {
   style?: React.CSSProperties;
 };
 
-export default function MrSupplierAndQuotationButton({
+export default function SupplierAndQuotationButton({
   mrHeader,
   mrLineID,
   bgColor = "rgba(239, 239, 239, 1)",
@@ -44,7 +44,7 @@ export default function MrSupplierAndQuotationButton({
   borderColor = "rgba(239, 239, 239, 1)",
   full,
   style,
-}: MrSupplierAndQuotationButtonProps) {
+}: SupplierAndQuotationButtonProps) {
   const router = useRouter();
 
   const trashIcon = "/icons/trash.svg";

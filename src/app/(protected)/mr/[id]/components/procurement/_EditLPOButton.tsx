@@ -1,4 +1,3 @@
-// components/EditLPOButton.tsx
 "use client";
 
 import Button from "@/app/components/Button";
@@ -8,13 +7,6 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { LPO } from "../../types/lpo";
-import { LPOMrLine } from "../../types/lpoMrLine";
-
-type LPOWithDetails = LPO & {
-  supplier_name: string;
-  supplier_address: string;
-  lpo_mr_lines: LPOMrLine[];
-};
 
 type EditLPOButtonProps = {
   lpoId: number;
@@ -40,7 +32,7 @@ export default function EditLPOButton({
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [lpoData, setLpoData] = useState<LPOWithDetails | null>(null);
+  const [lpoData, setLpoData] = useState<LPO | null>(null);
 
   const [quotation, setQuotation] = useState("");
   const [supplierContactPersonName, setSupplierContactPersonName] =

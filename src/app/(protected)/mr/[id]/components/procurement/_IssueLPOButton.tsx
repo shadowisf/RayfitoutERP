@@ -11,6 +11,8 @@ import { MrHeader } from "../../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import { LPO } from "../../types/lpo";
 import EditLPOButton from "./_EditLPOButton";
+import ViewLPOPopUp from "../ViewLPOPopUp";
+import DownloadLPOButton from "./_DownloadLPOButton";
 
 type IssueLPOButtonProps = {
   mrHeader: MrHeader;
@@ -38,11 +40,11 @@ export default function IssueLPOButton({
 
   const closeIcon = "/icons/cross-small.svg";
   const externalLinkIcon = "/icons/external-link.svg";
+  const uploadIcon = "/icons/upload.svg";
+  const downloadIcon = "/icons/download.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
-  const [existingLpoData, setExistingLpoData] = useState<LPO | null>(null);
-  const [isCheckingLpo, setIsCheckingLpo] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   // Invoice file states
@@ -129,7 +131,6 @@ export default function IssueLPOButton({
   }, []);
 
   async function checkExistingLpo() {
-    setIsCheckingLpo(true);
     try {
       // Get the supplier_id from the first mrLine
       const supplierId = mrLines[0]?.approved_supplier_id;
@@ -151,7 +152,6 @@ export default function IssueLPOButton({
         const lpoData: LPO = data.data[0];
 
         setExistingLpoId(lpoData.id);
-        setExistingLpoData(lpoData);
 
         // Load existing invoice files
         if (lpoData.invoice_file) {
@@ -182,14 +182,11 @@ export default function IssueLPOButton({
         }
       } else {
         setExistingLpoId(null);
-        setExistingLpoData(null);
         setInvoiceFiles([]);
         setSignedLpoFiles([]);
       }
     } catch (error) {
       console.error("Error checking for existing LPO:", error);
-    } finally {
-      setIsCheckingLpo(false);
     }
   }
 
@@ -294,13 +291,6 @@ export default function IssueLPOButton({
       }, 2000);
     }
   };
-
-  // Handle viewing existing LPO
-  function handleViewLpo() {
-    if (existingLpoId) {
-      router.push(`/lpo/${existingLpoId}`);
-    }
-  }
 
   // Handle upload invoice button click
   function handleUploadInvoiceClick() {
@@ -654,27 +644,49 @@ export default function IssueLPOButton({
   if (existingLpoId) {
     return (
       <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-        <Button
+        {/* <Button
           componentType={"button"}
           bgColor={"white"}
           borderColor={"rgba(207, 207, 207, 1)"}
           textColor={"black"}
-          onClick={handleViewLpo}
           full={full ? true : false}
           style={style}
         >
           View LPO
-        </Button>
+        </Button> */}
 
-        <EditLPOButton
-          bgColor="white"
-          borderColor="rgba(207, 207, 207, 1)"
-          textColor="black"
+        <ViewLPOPopUp
+          lpoID={existingLpoId}
+          bgColor={"white"}
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
           style={style}
-          lpoId={existingLpoId}
         >
-          Edit LPO
-        </EditLPOButton>
+          View LPO
+        </ViewLPOPopUp>
+
+        <DownloadLPOButton
+          lpoID={existingLpoId}
+          bgColor="white"
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
+          style={style}
+        >
+          Download LPO
+          <img src={downloadIcon} alt="download" />
+        </DownloadLPOButton>
+
+        {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
+          <EditLPOButton
+            bgColor="white"
+            borderColor="rgba(207, 207, 207, 1)"
+            textColor="black"
+            style={style}
+            lpoId={existingLpoId}
+          >
+            Edit LPO
+          </EditLPOButton>
+        )}
 
         {/* Hidden file inputs */}
         <input
@@ -708,8 +720,9 @@ export default function IssueLPOButton({
                   backgroundColor: "white",
                 }}
               >
-                <span
+                <div
                   style={{
+                    fontSize: "13px",
                     maxWidth: "120px",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -717,7 +730,7 @@ export default function IssueLPOButton({
                   }}
                 >
                   {getFileName(fileUrl)}
-                </span>
+                </div>
 
                 <a href={fileUrl} target="_blank">
                   <img src={externalLinkIcon} alt="external link icon" />
@@ -753,6 +766,7 @@ export default function IssueLPOButton({
             }}
           >
             Upload Invoice
+            <img src={uploadIcon} alt="upload icon" />
           </Button>
         )}
 
@@ -774,6 +788,7 @@ export default function IssueLPOButton({
               >
                 <span
                   style={{
+                    fontSize: "13px",
                     maxWidth: "120px",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -817,6 +832,7 @@ export default function IssueLPOButton({
             }}
           >
             Upload Signed LPO
+            <img src={uploadIcon} alt="upload icon" />
           </Button>
         )}
       </div>

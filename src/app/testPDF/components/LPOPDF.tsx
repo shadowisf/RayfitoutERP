@@ -8,60 +8,11 @@ import {
   View,
   StyleSheet,
   Font,
+  Image, // ✅ Import Image component
   Svg,
   Line,
 } from "@react-pdf/renderer";
-
-// types/purchase-order.ts
-
-export interface PurchaseOrderItem {
-  description: string;
-  quantity: string;
-  unitPrice: number;
-  totalPrice: number;
-}
-
-export interface Vendor {
-  name: string;
-  contact: string;
-  address: string;
-  email: string;
-}
-
-export interface ShipTo {
-  name: string;
-  address: string;
-  phone: string;
-}
-
-export interface Summary {
-  subtotal: number;
-  discount: number;
-  taxable: number;
-  vatRate: number;
-  vat: number;
-  shipping: number;
-  total: number;
-}
-
-export interface PurchaseOrder {
-  id?: number;
-  date: string;
-  lpoNumber: string;
-  quotation: string;
-  trn: string;
-  vendor: Vendor;
-  shipTo: ShipTo;
-  deliveryDate: string;
-  items: PurchaseOrderItem[];
-  summary: Summary;
-  deliveryTerms: string[];
-  paymentTerms: string;
-}
-
-interface PurchaseOrderPDFProps {
-  data: PurchaseOrder;
-}
+import { LPO } from "@/app/(protected)/mr/[id]/types/lpo";
 
 Font.register({
   family: "Mont",
@@ -88,9 +39,10 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   logo: {
-    fontSize: 36,
-    fontFamily: "Mont-SemiBold",
-    color: "#000000",
+    // ✅ Add logo style
+    width: 120,
+    height: 40,
+    objectFit: "contain",
   },
   title: {
     fontSize: 20,
@@ -176,6 +128,7 @@ const styles = StyleSheet.create({
     color: "#333333",
     lineHeight: 1.6,
     marginBottom: 3,
+    textTransform: "uppercase",
   },
 
   // Delivery Date
@@ -311,7 +264,7 @@ const styles = StyleSheet.create({
     border: "1 solid #000000",
     borderRadius: 8,
     padding: 10,
-    height: 120,
+    height: 150,
   },
   signatureLabel: {
     fontFamily: "Mont-SemiBold",
@@ -320,13 +273,19 @@ const styles = StyleSheet.create({
   },
 });
 
-export const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({ data }) => {
+type LPOPDFProps = {
+  lpo: LPO;
+};
+
+export function LPOPDF({ lpo }: LPOPDFProps) {
+  const logo = "/icons/logo.jpg";
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>Rayfitout</Text>
+          <Image src={logo} style={styles.logo} />
           <Text style={styles.title}>
             PURCHASE <Text style={styles.titleBold}>ORDER</Text>
           </Text>
@@ -336,19 +295,29 @@ export const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({ data }) => {
         <View style={styles.infoRow}>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Date</Text>
-            <Text style={styles.infoValue}>{data.date}</Text>
+            <Text style={styles.infoValue}>
+              {new Date(lpo.created_at).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>LPO Number</Text>
-            <Text style={styles.infoValue}>{data.lpoNumber}</Text>
+            <Text style={styles.infoValue}>
+              PO-{String(lpo.id).padStart(5, "0")}
+            </Text>
           </View>
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Quotation</Text>
-            <Text style={styles.infoValue}>{data.quotation}</Text>
+            <Text style={styles.infoLabel}>Quotation REFERENCE</Text>
+            <Text style={styles.infoValue}>
+              PO-{String(lpo.quotation_code).padStart(5, "0")}
+            </Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>TRN</Text>
-            <Text style={styles.infoValue}>{data.trn}</Text>
+            <Text style={styles.infoValue}>{lpo.supplier_trn_number}</Text>
           </View>
         </View>
 
@@ -377,22 +346,32 @@ export const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({ data }) => {
         {/* Vendor and Ship To Content */}
         <View style={styles.twoColumn}>
           <View style={styles.column}>
-            <Text style={styles.partyName}>{data.vendor.name}</Text>
-            <Text style={styles.partyContact}>{data.vendor.contact}</Text>
-            <Text style={styles.partyContact}>{data.vendor.address}</Text>
-            <Text style={styles.partyContact}>{data.vendor.email}</Text>
+            <Text style={styles.partyName}>{lpo.supplier_name}</Text>
+            <Text style={styles.partyContact}>
+              {lpo.supplier_contact_person_name}
+            </Text>
+            <Text style={styles.partyContact}>{lpo.supplier_address}</Text>
+            <Text style={styles.partyContact}>{lpo.supplier_email}</Text>
           </View>
           <View style={styles.column}>
-            <Text style={styles.partyName}>{data.shipTo.name}</Text>
-            <Text style={styles.partyContact}>{data.shipTo.address}</Text>
-            <Text style={styles.partyContact}>{data.shipTo.phone}</Text>
+            <Text style={styles.partyName}>RAY FITOUT CONTRACTING LLC</Text>
+            <Text style={styles.partyContact}>
+              STREET 34, AL QUSAIS INDUSTRIAL 5, DUBAI, UNITED ARAB EMIRATES
+            </Text>
+            <Text style={styles.partyContact}>+97142633392</Text>
           </View>
         </View>
 
         {/* Delivery Date */}
         <View style={styles.deliveryDate}>
           <Text style={styles.infoLabel}>Delivery Date</Text>
-          <Text style={styles.infoValue}>{data.deliveryDate}</Text>
+          <Text style={styles.infoValue}>
+            {new Date(lpo.delivery_date).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </Text>
         </View>
 
         {/* Items Table */}
@@ -403,13 +382,19 @@ export const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({ data }) => {
             <Text style={styles.tableColUnitPrice}>UNIT PRICE</Text>
             <Text style={styles.tableColTotalPrice}>TOTAL PRICE</Text>
           </View>
-          {data.items.map((item, index) => (
+          {lpo.lpo_mr_lines.map((item, index) => (
             <View key={index} style={styles.tableRow}>
-              <Text style={styles.tableColDescription}>{item.description}</Text>
-              <Text style={styles.tableColQty}>{item.quantity}</Text>
-              <Text style={styles.tableColUnitPrice}>{item.unitPrice} AED</Text>
+              <Text style={styles.tableColDescription}>
+                {item.material_description}
+              </Text>
+              <Text style={styles.tableColQty}>
+                {item.quantity} {item.unit}
+              </Text>
+              <Text style={styles.tableColUnitPrice}>
+                {item.unit_price} AED
+              </Text>
               <Text style={styles.tableColTotalPrice}>
-                {item.totalPrice} AED
+                {item.total_price} AED
               </Text>
             </View>
           ))}
@@ -421,17 +406,13 @@ export const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({ data }) => {
           <View style={styles.termsColumn}>
             {/* Delivery Terms */}
             <Text style={styles.termsTitle}>DELIVERY TERMS</Text>
-            {data.deliveryTerms.map((term, index) => (
-              <Text key={index} style={styles.termItem}>
-                • {term}
-              </Text>
-            ))}
+            <Text style={styles.termItem}>{lpo.delivery_terms}</Text>
 
             {/* Payment Terms */}
             <Text style={[styles.termsTitle, { marginTop: 15 }]}>
               PAYMENT TERMS
             </Text>
-            <Text style={styles.paymentTermsText}>{data.paymentTerms}</Text>
+            <Text style={styles.paymentTermsText}>{lpo.payment_terms}</Text>
           </View>
 
           {/* Right Column - Summary + Signature */}
@@ -440,56 +421,45 @@ export const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({ data }) => {
             <View style={styles.summaryTable}>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>SUB TOTAL</Text>
-                <Text style={styles.summaryValue}>
-                  {data.summary.subtotal} AED
-                </Text>
+                <Text style={styles.summaryValue}>{lpo.subtotal} AED</Text>
               </View>
 
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>DISCOUNT</Text>
-                <Text style={styles.summaryValue}>
-                  {data.summary.discount === 0
-                    ? "-"
-                    : `${data.summary.discount} AED`}
-                </Text>
+                <Text style={styles.summaryValue}>{lpo.discount}%</Text>
               </View>
 
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>S&H</Text>
-                <Text style={styles.summaryValue}>{data.summary.shipping}</Text>
-              </View>
-
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>TAXABLE</Text>
                 <Text style={styles.summaryValue}>
-                  {data.summary.taxable} AED
+                  {lpo.shipping_and_handling} AED
                 </Text>
               </View>
 
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>VAT RATE</Text>
-                <Text style={styles.summaryValue}>{data.summary.vatRate}%</Text>
+                <Text style={styles.summaryValue}>{lpo.vat_rate}%</Text>
               </View>
 
               <View style={[styles.summaryRow, styles.summaryRowLast]}>
                 <Text style={styles.summaryLabel}>VAT</Text>
-                <Text style={styles.summaryValue}>{data.summary.vat} AED</Text>
+                <Text style={styles.summaryValue}>{lpo.vat} AED</Text>
               </View>
             </View>
 
             {/* Total Row */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>TOTAL</Text>
-              <Text style={styles.totalValue}>{data.summary.total} AED</Text>
+              <Text style={styles.totalValue}>{lpo.total} AED</Text>
             </View>
 
             {/* Signature Box - Below Summary */}
             <View style={styles.signatureBox}>
-              <Text style={styles.signatureLabel}>SIGNATRURE</Text>
+              <Text style={styles.signatureLabel}>SIGNATURE</Text>
             </View>
           </View>
         </View>
       </Page>
     </Document>
   );
-};
+}

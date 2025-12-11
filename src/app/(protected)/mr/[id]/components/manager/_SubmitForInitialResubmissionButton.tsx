@@ -6,7 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 
-type SubitMrForPaymentButtonProps = {
+type SubmitForResubmissionButtonProps = {
   mrHeaderID: number;
   bgColor?: string;
   textColor?: string;
@@ -14,13 +14,13 @@ type SubitMrForPaymentButtonProps = {
   children?: React.ReactNode;
 };
 
-export default function SubmitMrForPaymentButton({
+export default function SubmitForResubmissionButton({
   mrHeaderID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: SubitMrForPaymentButtonProps) {
+}: SubmitForResubmissionButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -32,19 +32,19 @@ export default function SubmitMrForPaymentButton({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitForPayment",
+        action: "submitForResubmission",
         id: mrHeaderID,
       }),
     });
 
     if (res.ok) {
-      toast("Material request submitted for payment", "success");
+      toast("Material request submitted for resubmission", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast("Failed to submit material request for payment", "error");
+      toast("Failed to submit material request for resubmission", "error");
     }
   }
 
@@ -63,12 +63,15 @@ export default function SubmitMrForPaymentButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR PAYMENT"}
+          header={"SUBMIT MATERIAL REQUEST FOR RESUBMISSION"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this material request?</p>
+          <p>
+            Are you sure you want to submit this material request for
+            resubmission?
+          </p>
         </FormPopUp>
       )}
     </>

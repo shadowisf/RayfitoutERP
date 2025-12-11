@@ -2,7 +2,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { PurchaseOrderPDF } from "./components/PurchaseOrderPDF";
+import { LPOPDF } from "./components/LPOPDF";
 
 // Dynamically import PDF components with no SSR
 const PDFDownloadLink = dynamic(
@@ -14,59 +14,6 @@ const PDFViewer = dynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFViewer),
   { ssr: false }
 );
-
-const sampleData = {
-  date: "DECEMBER 10, 2025",
-  lpoNumber: "PO-00451",
-  quotation: "QT-240092",
-  trn: "100301561900003",
-  vendor: {
-    name: "ALRAHMANI GENERAL TRADING CO LLC.",
-    contact: "MOHAMMAD YUSUF",
-    address: "AL RAHMANI BUILDING, HOR AL ANZ STREET, DEIRA, DUBAI, UAE",
-    email: "SALES@ALRAHMANI.COM",
-  },
-  shipTo: {
-    name: "RAY FITOUT CONTRACTING LLC",
-    address: "STREET 34, AL QUSAIS INDUSTRIAL 5, DUBAI, UNITED ARAB EMIRATES",
-    phone: "+97142633392",
-  },
-  deliveryDate: "DECEMBER, 13, 2025",
-  items: [
-    {
-      description: "12mm black profile",
-      quantity: "7 pcs",
-      unitPrice: 20,
-      totalPrice: 140,
-    },
-    {
-      description: "11mm black profile",
-      quantity: "2 pcs",
-      unitPrice: 20,
-      totalPrice: 40,
-    },
-    {
-      description: "10mm black profile",
-      quantity: "6 pcs",
-      unitPrice: 20,
-      totalPrice: 120,
-    },
-  ],
-  summary: {
-    subtotal: 300,
-    discount: 0,
-    taxable: 300,
-    vatRate: 5,
-    vat: 15,
-    shipping: 0,
-    total: 315,
-  },
-  deliveryTerms: [
-    "DELIVERY WILL BE MADE TO STREET 34, AL QUSAIS 5, DUBAI, UAE",
-    "ANY DEVIATIONS OR DAMAGES WILL BE RESPONSIBILITY OF THE SUPPLIER",
-  ],
-  paymentTerms: "NET 30 DAYS VIA BANK TRANSFER / CHEQUE",
-};
 
 export default function PDFPreviewPage() {
   return (
@@ -94,7 +41,7 @@ export default function PDFPreviewPage() {
             Purchase Order PDF
           </h1>
 
-          <PDFDownloadLink
+          {/* <PDFDownloadLink
             document={<PurchaseOrderPDF data={sampleData} />}
             fileName={`${sampleData.lpoNumber}.pdf`}
             style={{
@@ -111,7 +58,7 @@ export default function PDFPreviewPage() {
             {({ loading }) =>
               loading ? "Generating PDF..." : "📄 Download PDF"
             }
-          </PDFDownloadLink>
+          </PDFDownloadLink> */}
         </div>
 
         {/* PDF Preview */}
@@ -123,9 +70,9 @@ export default function PDFPreviewPage() {
             overflow: "hidden",
           }}
         >
-          <PDFViewer width="100%" height="800px">
+          {/* <PDFViewer width="100%" height="800px">
             <PurchaseOrderPDF data={sampleData} />
-          </PDFViewer>
+          </PDFViewer> */}
         </div>
       </div>
     </div>

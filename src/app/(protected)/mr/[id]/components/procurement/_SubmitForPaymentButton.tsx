@@ -6,7 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 
-type SubitMrForResubmissionButtonProps = {
+type SubitForPaymentButtonProps = {
   mrHeaderID: number;
   bgColor?: string;
   textColor?: string;
@@ -14,13 +14,13 @@ type SubitMrForResubmissionButtonProps = {
   children?: React.ReactNode;
 };
 
-export default function SubmitMrForResubmissionButton({
+export default function SubmitForPaymentButton({
   mrHeaderID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: SubitMrForResubmissionButtonProps) {
+}: SubitForPaymentButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -32,19 +32,19 @@ export default function SubmitMrForResubmissionButton({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitForResubmission",
+        action: "submitForPayment",
         id: mrHeaderID,
       }),
     });
 
     if (res.ok) {
-      toast("Material request submitted for resubmission", "success");
+      toast("Material request submitted for payment", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast("Failed to submit material request for resubmission", "error");
+      toast("Failed to submit material request for payment", "error");
     }
   }
 
@@ -63,15 +63,12 @@ export default function SubmitMrForResubmissionButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR RESUBMISSION"}
+          header={"SUBMIT MATERIAL REQUEST FOR PAYMENT"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>
-            Are you sure you want to submit this material request for
-            resubmission?
-          </p>
+          <p>Are you sure you want to submit this material request?</p>
         </FormPopUp>
       )}
     </>

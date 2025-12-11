@@ -11,19 +11,19 @@ import BoqReferencePopUp from "./BoqReferencePopUp";
 import SubmitMrForApprovalButton from "./department/_SubmitMrForApprovalButton";
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
-import InitialApprovalMrItemButton from "./manager/_InitialApprovalMrItemButtons";
-import SubmitMrForResubmissionButton from "./manager/_SubmitMrForInitialResubmissionButton";
-import SubmitMrForQuotationsButton from "./manager/_SubmitMrForQuotationsButton";
-import MrSupplierAndQuotationButton from "./procurement/_MrSupplierAndQuotationButton";
-import SubmitMrForPricingApprovalButton from "./procurement/_SubmitMrForPriceApprovalButton";
+import InitialApprovalButtons from "./manager/_InitialApprovalButtons";
+import SubmitForResubmissionButton from "./manager/_SubmitForInitialResubmissionButton";
+import SubmitForQuotationsButton from "./manager/_SubmitForQuotationsButton";
+import SupplierAndQuotationButton from "./procurement/_SupplierAndQuotationButton";
+import SubmitForPricingApprovalButton from "./procurement/_SubmitForPriceApprovalButton";
 import NotesPopUp from "./NotesPopUp";
-import PriceApprovalMrItemButton from "./manager/_PriceApprovalMrItemButton";
-import SubmitMrForPricingResubmissionButton from "./manager/_SubmitMrForPriceResubmissionButton";
-import SubmitMrForLPO from "./manager/_SubmitMrForLPO";
+import PriceApprovalButton from "./manager/_PriceApprovalButton";
+import SubmitForPricingResubmissionButton from "./manager/_SubmitForPriceResubmissionButton";
+import SubmitForLPO from "./manager/_SubmitForLPOButton";
 import Button from "@/app/components/Button";
 import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
 import IssueLPOButton from "./procurement/_IssueLPOButton";
-import SubmitMrForPaymentButton from "./procurement/_SubmitMrForPaymentButton";
+import SubmitForPaymentButton from "./procurement/_SubmitForPaymentButton";
 import PaymentMrItemButton from "./finance/_PaymentMrItemButton";
 import SubmitMrForAwaitingDeliveryButton from "./finance/_SubmitForAwaitingDelivery";
 
@@ -981,7 +981,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     <div
                                       style={{ display: "flex", gap: "10px" }}
                                     >
-                                      <InitialApprovalMrItemButton
+                                      <InitialApprovalButtons
                                         item={item}
                                         progressID={mrHeader.progress_id}
                                       />
@@ -1053,7 +1053,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           gap: "10px",
                                         }}
                                       >
-                                        <MrSupplierAndQuotationButton
+                                        <SupplierAndQuotationButton
                                           mrHeader={mrHeader}
                                           mrLineID={item.id}
                                           bgColor="black"
@@ -1071,7 +1071,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 {mrHeader.progress_id === 10 &&
                                   userInfo?.departmentID === 8 && (
                                     <td>
-                                      <PriceApprovalMrItemButton
+                                      <PriceApprovalButton
                                         mrLineID={item.id}
                                         bgColor="white"
                                         borderColor="rgba(207, 207, 207, 1)"
@@ -1196,7 +1196,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       borderRadius: "25px",
                     }}
                   >
-                    Issue LPO
+                    Issue LPO +
                   </IssueLPOButton>
                 )}
 
@@ -1307,14 +1307,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 8 &&
         mrHeader.progress_id === 3 && (
           <div className="bottom-nav">
-            <SubmitMrForResubmissionButton
+            <SubmitForResubmissionButton
               mrHeaderID={mrHeader.id}
               bgColor="white"
               borderColor="white"
               textColor="black"
             >
               SUBMIT FOR RESUBMISSION
-            </SubmitMrForResubmissionButton>
+            </SubmitForResubmissionButton>
           </div>
         )}
 
@@ -1322,14 +1322,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 8 &&
         mrHeader.progress_id === 3 && (
           <div className="bottom-nav">
-            <SubmitMrForQuotationsButton
+            <SubmitForQuotationsButton
               mrHeaderID={mrHeader.id}
               bgColor="white"
               borderColor="white"
               textColor="black"
             >
               SUBMIT FOR QUOTATIONS
-            </SubmitMrForQuotationsButton>
+            </SubmitForQuotationsButton>
           </div>
         )}
 
@@ -1338,14 +1338,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 9 &&
         (mrHeader.progress_id === 7 || mrHeader.progress_id === 11) && (
           <div className="bottom-nav">
-            <SubmitMrForPricingApprovalButton
+            <SubmitForPricingApprovalButton
               mrHeaderID={mrHeader.id}
               bgColor="white"
               borderColor="white"
               textColor="black"
             >
               SUBMIT FOR PRICING APPROVAL
-            </SubmitMrForPricingApprovalButton>
+            </SubmitForPricingApprovalButton>
           </div>
         )}
 
@@ -1353,14 +1353,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 8 &&
         mrHeader.progress_id === 10 && (
           <div className="bottom-nav">
-            <SubmitMrForPricingResubmissionButton
+            <SubmitForPricingResubmissionButton
               mrHeaderID={mrHeader.id}
               bgColor="white"
               borderColor="white"
               textColor="black"
             >
               SUBMIT FOR PRICING RESUBMISSION
-            </SubmitMrForPricingResubmissionButton>
+            </SubmitForPricingResubmissionButton>
           </div>
         )}
 
@@ -1368,7 +1368,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 8 &&
         mrHeader.progress_id === 10 && (
           <div className="bottom-nav">
-            <SubmitMrForLPO
+            <SubmitForLPO
               mrLines={mrLines}
               mrHeaderID={mrHeader.id}
               bgColor="white"
@@ -1376,7 +1376,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               textColor="black"
             >
               SUBMIT FOR LPO
-            </SubmitMrForLPO>
+            </SubmitForLPO>
           </div>
         )}
 
@@ -1384,9 +1384,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 9 &&
         mrHeader.progress_id === 12 && (
           <div className="bottom-nav">
-            <SubmitMrForPaymentButton mrHeaderID={mrHeader.id}>
+            <SubmitForPaymentButton mrHeaderID={mrHeader.id}>
               SUBMIT FOR PAYMENT
-            </SubmitMrForPaymentButton>
+            </SubmitForPaymentButton>
           </div>
         )}
 

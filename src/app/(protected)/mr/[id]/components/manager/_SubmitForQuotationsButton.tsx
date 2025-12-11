@@ -6,7 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 
-type SubitMrForPricingResubmissionButtonProps = {
+type SubmitForQuotationsButtonProps = {
   mrHeaderID: number;
   bgColor?: string;
   textColor?: string;
@@ -14,13 +14,13 @@ type SubitMrForPricingResubmissionButtonProps = {
   children?: React.ReactNode;
 };
 
-export default function SubmitMrForPricingResubmissionButton({
+export default function SubmitForQuotationsButton({
   mrHeaderID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: SubitMrForPricingResubmissionButtonProps) {
+}: SubmitForQuotationsButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -29,25 +29,22 @@ export default function SubmitMrForPricingResubmissionButton({
     e.preventDefault();
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "PUT",
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitForPricingResubmission",
+        action: "submitForQuotations",
         id: mrHeaderID,
       }),
     });
 
     if (res.ok) {
-      toast("Material request submitted for pricing resubmission", "success");
+      toast("Material request submitted for quotations", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast(
-        "Failed to submit material request for pricing resubmission",
-        "error"
-      );
+      toast("Failed to submit material request for quotations", "error");
     }
   }
 
@@ -66,15 +63,12 @@ export default function SubmitMrForPricingResubmissionButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR PRICING RESUBMISSION"}
+          header={"SUBMIT MATERIAL REQUEST FOR QUOTATIONS"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>
-            Are you sure you want to submit this material request for pricing
-            resubmission?
-          </p>
+          <p>Are you sure you want to submit this material request?</p>
         </FormPopUp>
       )}
     </>

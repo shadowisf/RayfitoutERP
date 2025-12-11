@@ -10,7 +10,7 @@ import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
 import RejectCommentPopUp from "./RejectCommentPopUp";
 
-type PriceApprovalMrItemButtonProps = {
+type PriceApprovalButtonProps = {
   mrLineID: number;
   bgColor?: string;
   textColor?: string;
@@ -19,14 +19,14 @@ type PriceApprovalMrItemButtonProps = {
   style?: React.CSSProperties;
 };
 
-export default function PriceApprovalMrItemButton({
+export default function PriceApprovalButton({
   mrLineID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   full,
   style,
-}: PriceApprovalMrItemButtonProps) {
+}: PriceApprovalButtonProps) {
   const externalLinkIcon = "/icons/external-link.svg";
   const crossIcon = "/icons/cross.svg";
 
@@ -195,10 +195,7 @@ export default function PriceApprovalMrItemButton({
               filter: "invert(1)",
             }}
           >
-            <img
-              src={externalLinkIcon}
-              alt="external link icon"
-            />
+            <img src={externalLinkIcon} alt="external link icon" />
           </SupplierDetailsPopUp>
           <img
             src={crossIcon}
@@ -252,11 +249,7 @@ export default function PriceApprovalMrItemButton({
         onClick={() => setIsOpen(true)}
         style={style}
       >
-        Manually Select{" "}
-        <img
-          src={externalLinkIcon}
-          alt="external link icon"
-        />
+        Manually Select <img src={externalLinkIcon} alt="external link icon" />
       </Button>
 
       {isOpen && (

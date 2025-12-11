@@ -6,7 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 
-type SubitMrForPricingApprovalButtonProps = {
+type SubitForPricingApprovalButtonProps = {
   mrHeaderID: number;
   bgColor?: string;
   textColor?: string;
@@ -14,13 +14,13 @@ type SubitMrForPricingApprovalButtonProps = {
   children?: React.ReactNode;
 };
 
-export default function SubmitMrForPricingApprovalButton({
+export default function SubmitForPricingApprovalButton({
   mrHeaderID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: SubitMrForPricingApprovalButtonProps) {
+}: SubitForPricingApprovalButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);

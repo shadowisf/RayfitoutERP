@@ -23,4 +23,8 @@ export type LPO = {
   payment_file: string[];
   signed_file: string[];
   lpo_mr_lines: LPOMrLine[];
+  supplier_name: string;
+  supplier_address: string;
+  supplier_trn_number: string;
+  created_at: string;
 };

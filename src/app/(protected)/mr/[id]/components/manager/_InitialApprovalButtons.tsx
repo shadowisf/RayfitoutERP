@@ -10,17 +10,17 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
 
-type InitialApprovalMrItemButtonProps = {
+type InitialApprovalButtonsProps = {
   item: MrLine;
   progressID: number;
 };
 
 type StatusType = "pending" | "approved" | "rejected";
 
-export default function InitialApprovalMrItemButton({
+export default function InitialApprovalButtons({
   item,
   progressID,
-}: InitialApprovalMrItemButtonProps) {
+}: InitialApprovalButtonsProps) {
   const router = useRouter();
 
   const { userInfo } = useAuth();

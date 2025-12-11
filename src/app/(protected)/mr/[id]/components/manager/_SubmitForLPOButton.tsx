@@ -6,7 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 
-type SubmitMrForLPOProps = {
+type SubmitForLPOProps = {
   mrHeaderID: number;
   mrLines: any;
   bgColor?: string;
@@ -15,14 +15,14 @@ type SubmitMrForLPOProps = {
   children?: React.ReactNode;
 };
 
-export default function SubmitMrForLPO({
+export default function SubmitForLPO({
   mrHeaderID,
   mrLines,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: SubmitMrForLPOProps) {
+}: SubmitForLPOProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);

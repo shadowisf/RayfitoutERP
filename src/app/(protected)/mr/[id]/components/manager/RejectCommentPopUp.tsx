@@ -2,7 +2,6 @@
 
 import FormPopUp from "@/app/components/FormPopup";
 import { useState } from "react";
-import { MrLine } from "../../types/mrLine";
 import Button from "@/app/components/Button";
 
 type RejectPopUpProps = {

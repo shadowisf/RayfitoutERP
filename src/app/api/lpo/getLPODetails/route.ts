@@ -12,7 +12,8 @@ export async function POST(request: NextRequest) {
       SELECT 
         l.*,
         s.name as supplier_name,
-        s.address as supplier_address
+        s.address as supplier_address,
+        s.trn_number as supplier_trn_number
       FROM lpo l
       LEFT JOIN suppliers s ON l.supplier_id = s.id
       WHERE l.id = ?
