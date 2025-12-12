@@ -14,6 +14,7 @@ type InputItemProps = {
   dbMap?: React.ReactNode;
   disabled?: boolean;
   sideLabel?: boolean;
+  style?: React.CSSProperties;
 };
 
 export default function InputItem({
@@ -27,6 +28,7 @@ export default function InputItem({
   dbMap,
   disabled,
   sideLabel,
+  style,
 }: InputItemProps) {
   switch (type) {
     case "date":
@@ -48,15 +50,16 @@ export default function InputItem({
       return (
         <div
           className="input-item"
-          style={
-            sideLabel
+          style={{
+            ...(style || {}),
+            ...(sideLabel
               ? {
                   display: "grid",
                   gridTemplateColumns: "0.5fr 1fr",
                   alignItems: "center",
                 }
-              : {}
-          }
+              : {}),
+          }}
         >
           <label>{label}</label>
           <input

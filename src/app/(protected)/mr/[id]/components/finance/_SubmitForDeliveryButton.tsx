@@ -6,7 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 
-type SubitMrForAwaitingDeliveryButtonProps = {
+type SubitForDeliveryButtonProps = {
   mrHeaderID: number;
   bgColor?: string;
   textColor?: string;
@@ -14,13 +14,13 @@ type SubitMrForAwaitingDeliveryButtonProps = {
   children?: React.ReactNode;
 };
 
-export default function SubmitMrForAwaitingDeliveryButton({
+export default function SubmitForDeliveryButton({
   mrHeaderID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: SubitMrForAwaitingDeliveryButtonProps) {
+}: SubitForDeliveryButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -32,7 +32,7 @@ export default function SubmitMrForAwaitingDeliveryButton({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitForAwaitingDelivery",
+        action: "submitForDelivery",
         id: mrHeaderID,
       }),
     });
@@ -63,7 +63,7 @@ export default function SubmitMrForAwaitingDeliveryButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR AWAITING DELIVERY"}
+          header={"SUBMIT MATERIAL REQUEST FOR DELIVERY"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Button from "@/app/components/Button";
 import { pdf } from "@react-pdf/renderer";
-import { LPOPDF } from "@/app/testPDF/components/LPOPDF";
+import { LPOPDF } from "@/app/components/LPOPDF";
 import { LPO } from "../../types/lpo";
 
 type DownloadLPOButtonProps = {

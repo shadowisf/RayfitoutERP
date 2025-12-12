@@ -13,6 +13,8 @@ import { LPO } from "../../types/lpo";
 import EditLPOButton from "./_EditLPOButton";
 import ViewLPOPopUp from "../ViewLPOPopUp";
 import DownloadLPOButton from "./_DownloadLPOButton";
+import UploadInvoiceButton from "./_UploadInvoiceButton";
+import UploadSignedLPOButton from "./_UploadSignedLPOButton";
 
 type IssueLPOButtonProps = {
   mrHeader: MrHeader;
@@ -38,24 +40,16 @@ export default function IssueLPOButton({
   const router = useRouter();
   const { userInfo } = useAuth();
 
-  const closeIcon = "/icons/cross-small.svg";
-  const externalLinkIcon = "/icons/external-link.svg";
-  const uploadIcon = "/icons/upload.svg";
   const downloadIcon = "/icons/download.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
   // Invoice file states
   const [invoiceFiles, setInvoiceFiles] = useState<string[]>([]);
 
   // Signed LPO file states
   const [signedLpoFiles, setSignedLpoFiles] = useState<string[]>([]);
-  const [isUploadingSignedLpo, setIsUploadingSignedLpo] = useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const signedLpoInputRef = useRef<HTMLInputElement>(null);
 
   const [quotation, setQuotation] = useState("");
   const [supplierContactPersonName, setSupplierContactPersonName] = useState(
@@ -132,7 +126,6 @@ export default function IssueLPOButton({
 
   async function checkExistingLpo() {
     try {
-      // Get the supplier_id from the first mrLine
       const supplierId = mrLines[0]?.approved_supplier_id;
 
       const res = await fetch(
@@ -142,7 +135,7 @@ export default function IssueLPOButton({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             mr_header_id: mrHeader.id,
-            supplier_id: supplierId, // Add supplier_id to the request
+            supplier_id: supplierId,
           }),
         }
       );
@@ -292,306 +285,6 @@ export default function IssueLPOButton({
     }
   };
 
-  // Handle upload invoice button click
-  function handleUploadInvoiceClick() {
-    if (!isUploading) {
-      fileInputRef.current?.click();
-    }
-  }
-
-  // Handle upload signed LPO button click
-  function handleUploadSignedLpoClick() {
-    if (!isUploadingSignedLpo) {
-      signedLpoInputRef.current?.click();
-    }
-  }
-
-  // Get file name from URL
-  function getFileName(url: string): string {
-    const urlParts = url.split("/");
-    const fileName = urlParts[urlParts.length - 1];
-    return decodeURIComponent(fileName) || "View File";
-  }
-
-  // Handle file selection and automatic upload for Invoice
-  async function handleFileSelection(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    setIsUploading(true);
-
-    try {
-      // Upload to S3
-      const formData = new FormData();
-      formData.append("folder", "lpo-invoices");
-      formData.append("files", file);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Upload failed");
-      }
-
-      const data = await response.json();
-      const uploadedUrl = data.urls[0];
-
-      console.log("Uploaded invoice URL:", uploadedUrl);
-
-      // Update database with new invoice file
-      const updatedInvoiceFiles = [...invoiceFiles, uploadedUrl];
-
-      const supplierId = mrLines[0]?.approved_supplier_id; // Get supplier_id
-
-      const updateRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "updateLPOInvoice",
-            mr_header_id: mrHeader.id,
-            supplier_id: supplierId, // Add supplier_id
-            invoice_file: JSON.stringify(updatedInvoiceFiles),
-          }),
-        }
-      );
-
-      if (!updateRes.ok) {
-        throw new Error("Failed to update database");
-      }
-
-      toast("Invoice uploaded", "success");
-
-      // Update local state
-      setInvoiceFiles(updatedInvoiceFiles);
-
-      router.refresh();
-    } catch (error) {
-      console.error("Error uploading invoice:", error);
-      toast("Failed to upload invoice", "error");
-    } finally {
-      setIsUploading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  }
-
-  // Handle file selection and automatic upload for Signed LPO
-  async function handleSignedLpoSelection(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    setIsUploadingSignedLpo(true);
-
-    try {
-      // Upload to S3
-      const formData = new FormData();
-      formData.append("folder", "lpo-signed");
-      formData.append("files", file);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Upload failed");
-      }
-
-      const data = await response.json();
-      const uploadedUrl = data.urls[0];
-
-      console.log("Uploaded signed LPO URL:", uploadedUrl);
-
-      // Update database with new signed LPO file
-      const updatedSignedLpoFiles = [...signedLpoFiles, uploadedUrl];
-
-      const supplierId = mrLines[0]?.approved_supplier_id; // Get supplier_id
-
-      const updateRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "updateLPOSignedLpo",
-            mr_header_id: mrHeader.id,
-            supplier_id: supplierId, // Add supplier_id
-            signed_lpo_file: JSON.stringify(updatedSignedLpoFiles),
-          }),
-        }
-      );
-
-      if (!updateRes.ok) {
-        throw new Error("Failed to update database");
-      }
-
-      toast("Signed local purchase order uploaded", "success");
-
-      // Update local state
-      setSignedLpoFiles(updatedSignedLpoFiles);
-
-      router.refresh();
-    } catch (error) {
-      toast("Failed to upload signed local purchase order", "error");
-    } finally {
-      setIsUploadingSignedLpo(false);
-      // Reset file input
-      if (signedLpoInputRef.current) {
-        signedLpoInputRef.current.value = "";
-      }
-    }
-  }
-
-  // Handle file removal for Invoice
-  async function handleRemoveFile(url: string, event: React.MouseEvent) {
-    event.stopPropagation(); // Prevent triggering file upload
-
-    setIsUploading(true);
-
-    try {
-      // Delete from S3
-      const deleteRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "delete",
-            url: url,
-          }),
-        }
-      );
-
-      if (!deleteRes.ok) {
-        throw new Error("Failed to delete file from S3");
-      }
-
-      // Update database
-      const updatedInvoiceFiles = invoiceFiles.filter((file) => file !== url);
-
-      const supplierId = mrLines[0]?.approved_supplier_id; // Get supplier_id
-
-      const updateRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "updateLPOInvoice",
-            mr_header_id: mrHeader.id,
-            supplier_id: supplierId, // Add supplier_id
-            invoice_file: JSON.stringify(updatedInvoiceFiles),
-          }),
-        }
-      );
-
-      if (!updateRes.ok) {
-        throw new Error("Failed to update database");
-      }
-
-      toast("Invoice deleted", "success");
-
-      // Update local state
-      setInvoiceFiles(updatedInvoiceFiles);
-
-      router.refresh();
-    } catch (error) {
-      console.error("Error deleting invoice:", error);
-      toast("Failed to delete invoice", "error");
-    } finally {
-      setIsUploading(false);
-    }
-  }
-
-  // Handle file removal for Signed LPO
-  async function handleRemoveSignedLpoFile(
-    url: string,
-    event: React.MouseEvent
-  ) {
-    event.stopPropagation(); // Prevent triggering file upload
-
-    setIsUploadingSignedLpo(true);
-
-    try {
-      // Delete from S3
-      const deleteRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "delete",
-            url: url,
-          }),
-        }
-      );
-
-      if (!deleteRes.ok) {
-        throw new Error("Failed to delete file from S3");
-      }
-
-      // Update database
-      const updatedSignedLpoFiles = signedLpoFiles.filter(
-        (file) => file !== url
-      );
-
-      const supplierId = mrLines[0]?.approved_supplier_id; // Get supplier_id
-
-      const updateRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "updateLPOSignedLpo",
-            mr_header_id: mrHeader.id,
-            supplier_id: supplierId, // Add supplier_id
-            signed_file: JSON.stringify(updatedSignedLpoFiles),
-          }),
-        }
-      );
-
-      if (!updateRes.ok) {
-        throw new Error("Failed to update database");
-      }
-
-      toast("Signed local purchase order deleted", "success");
-
-      // Update local state
-      setSignedLpoFiles(updatedSignedLpoFiles);
-
-      router.refresh();
-    } catch (error) {
-      toast("Failed to delete signed local purchase order", "error");
-    } finally {
-      setIsUploadingSignedLpo(false);
-    }
-  }
-
-  // Handle file click to open in new tab
-  function handleFileClick(url: string, event: React.MouseEvent) {
-    event.stopPropagation(); // Prevent triggering file upload
-    window.open(url, "_blank");
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -627,9 +320,7 @@ export default function IssueLPOButton({
 
     if (res.ok) {
       toast("Local purchase order created", "success");
-
       setIsOpen(false);
-
       await checkExistingLpo();
       router.refresh();
     } else {
@@ -642,19 +333,12 @@ export default function IssueLPOButton({
   };
 
   if (existingLpoId) {
+    const supplierId = mrLines[0]?.approved_supplier_id;
+    const canDelete =
+      userInfo?.departmentID === 9 && mrHeader.progress_id === 12;
+
     return (
       <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-        {/* <Button
-          componentType={"button"}
-          bgColor={"white"}
-          borderColor={"rgba(207, 207, 207, 1)"}
-          textColor={"black"}
-          full={full ? true : false}
-          style={style}
-        >
-          View LPO
-        </Button> */}
-
         <ViewLPOPopUp
           lpoID={existingLpoId}
           bgColor={"white"}
@@ -688,153 +372,21 @@ export default function IssueLPOButton({
           </EditLPOButton>
         )}
 
-        {/* Hidden file inputs */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
-          style={{ display: "none" }}
-          onChange={handleFileSelection}
-        />
-        <input
-          ref={signedLpoInputRef}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
-          style={{ display: "none" }}
-          onChange={handleSignedLpoSelection}
+        <UploadInvoiceButton
+          mrHeader={mrHeader}
+          supplierId={supplierId}
+          invoiceFiles={invoiceFiles}
+          onFilesUpdate={setInvoiceFiles}
+          canDelete={canDelete}
         />
 
-        {/* Invoice Files */}
-        {invoiceFiles.length > 0 ? (
-          <>
-            {invoiceFiles.map((fileUrl, index) => (
-              <div
-                key={fileUrl}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "7px 20px",
-                  borderRadius: "25px",
-                  border: "1px rgba(207, 207, 207, 1) solid",
-                  backgroundColor: "white",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "13px",
-                    maxWidth: "120px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {getFileName(fileUrl)}
-                </div>
-
-                <a href={fileUrl} target="_blank">
-                  <img src={externalLinkIcon} alt="external link icon" />
-                </a>
-                {userInfo?.departmentID === 9 &&
-                  mrHeader.progress_id === 12 && (
-                    <img
-                      src={closeIcon}
-                      alt="remove"
-                      onClick={(e) => handleRemoveFile(fileUrl, e)}
-                      style={{
-                        cursor: "pointer",
-                      }}
-                    />
-                  )}
-              </div>
-            ))}
-          </>
-        ) : (
-          <Button
-            componentType={"button"}
-            onClick={handleUploadInvoiceClick}
-            bgColor={"black"}
-            borderColor={"black"}
-            textColor={"white"}
-            style={{
-              padding: "7px 20px",
-              borderRadius: "25px",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              minWidth: "120px",
-            }}
-          >
-            Upload Invoice
-            <img src={uploadIcon} alt="upload icon" />
-          </Button>
-        )}
-
-        {/* Signed LPO Files */}
-        {signedLpoFiles.length > 0 ? (
-          <>
-            {signedLpoFiles.map((fileUrl, index) => (
-              <div
-                key={fileUrl}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "7px 20px",
-                  borderRadius: "25px",
-                  border: "1px rgba(207, 207, 207, 1) solid",
-                  backgroundColor: "white",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "13px",
-                    maxWidth: "120px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {getFileName(fileUrl)}
-                </span>
-
-                <a href={fileUrl} target="_blank">
-                  <img src={externalLinkIcon} alt="external link icon" />
-                </a>
-                {userInfo?.departmentID === 9 &&
-                  mrHeader.progress_id === 12 && (
-                    <img
-                      src={closeIcon}
-                      alt="remove"
-                      onClick={(e) => handleRemoveSignedLpoFile(fileUrl, e)}
-                      style={{
-                        cursor: "pointer",
-                      }}
-                    />
-                  )}
-              </div>
-            ))}
-          </>
-        ) : (
-          <Button
-            componentType={"button"}
-            onClick={handleUploadSignedLpoClick}
-            bgColor={"black"}
-            borderColor={"black"}
-            textColor={"white"}
-            style={{
-              padding: "7px 20px",
-              borderRadius: "25px",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              minWidth: "150px",
-            }}
-          >
-            Upload Signed LPO
-            <img src={uploadIcon} alt="upload icon" />
-          </Button>
-        )}
+        <UploadSignedLPOButton
+          mrHeader={mrHeader}
+          supplierId={supplierId}
+          signedLpoFiles={signedLpoFiles}
+          onFilesUpdate={setSignedLpoFiles}
+          canDelete={canDelete}
+        />
       </div>
     );
   }
@@ -842,17 +394,19 @@ export default function IssueLPOButton({
   // Otherwise show "Issue LPO" button
   return (
     <>
-      <Button
-        componentType={"button"}
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
-        onClick={() => setIsOpen(true)}
-        full={full ? true : false}
-        style={style}
-      >
-        {children}
-      </Button>
+      {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
+        <Button
+          componentType={"button"}
+          bgColor={bgColor}
+          borderColor={borderColor}
+          textColor={textColor}
+          onClick={() => setIsOpen(true)}
+          full={full ? true : false}
+          style={style}
+        >
+          {children}
+        </Button>
+      )}
 
       {isOpen && (
         <FormPopUp

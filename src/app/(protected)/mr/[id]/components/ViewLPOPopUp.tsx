@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Button from "@/app/components/Button";
 import { LPO } from "../types/lpo";
 import { PDFViewer } from "@react-pdf/renderer";
-import { LPOPDF } from "@/app/testPDF/components/LPOPDF";
+import { LPOPDF } from "@/app/components/LPOPDF";
 
 type ViewLPOPopUpProps = {
   lpoID: number;

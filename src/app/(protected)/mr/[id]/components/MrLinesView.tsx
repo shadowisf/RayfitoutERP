@@ -24,8 +24,9 @@ import Button from "@/app/components/Button";
 import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
 import IssueLPOButton from "./procurement/_IssueLPOButton";
 import SubmitForPaymentButton from "./procurement/_SubmitForPaymentButton";
-import PaymentMrItemButton from "./finance/_PaymentMrItemButton";
-import SubmitMrForAwaitingDeliveryButton from "./finance/_SubmitForAwaitingDelivery";
+import PaymentButtons from "./finance/_PaymentButtons";
+import SubmitForDeliveryButton from "./finance/_SubmitForDeliveryButton";
+import CreateGRNButton from "./storekeeper/_CreateGRNButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -1084,35 +1085,35 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     </td>
                                   )}
 
-                                {((mrHeader.progress_id >= 12 &&
-                                  userInfo?.departmentID === 9) ||
-                                  userInfo?.departmentID === 10) && (
-                                  <td>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        gap: "10px",
-                                        alignItems: "center",
-                                      }}
-                                    >
-                                      {item.approved_supplier_name}{" "}
-                                      <SupplierDetailsPopUp
-                                        item={item}
+                                {mrHeader.progress_id >= 12 &&
+                                  userInfo?.departmentID >= 9 && (
+                                    <td>
+                                      <div
                                         style={{
-                                          padding: "7px 7px",
-                                          backgroundColor:
-                                            "rgba(239, 239, 239, 1)",
-                                          borderColor: "rgba(223, 223, 223, 1)",
+                                          display: "flex",
+                                          gap: "10px",
+                                          alignItems: "center",
                                         }}
                                       >
-                                        <img
-                                          src={externalLinkIcon}
-                                          alt="external link icon"
-                                        />
-                                      </SupplierDetailsPopUp>
-                                    </div>
-                                  </td>
-                                )}
+                                        {item.approved_supplier_name}{" "}
+                                        <SupplierDetailsPopUp
+                                          item={item}
+                                          style={{
+                                            padding: "7px 7px",
+                                            backgroundColor:
+                                              "rgba(239, 239, 239, 1)",
+                                            borderColor:
+                                              "rgba(223, 223, 223, 1)",
+                                          }}
+                                        >
+                                          <img
+                                            src={externalLinkIcon}
+                                            alt="external link icon"
+                                          />
+                                        </SupplierDetailsPopUp>
+                                      </div>
+                                    </td>
+                                  )}
                               </tr>
                             );
                           })}
@@ -1184,7 +1185,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               <div className="right" style={{ display: "flex", gap: "20px" }}>
                 {((mrHeader.progress_id >= 12 &&
                   userInfo?.departmentID === 9) ||
-                  userInfo?.departmentID === 10) && (
+                  userInfo?.departmentID === 10 ||
+                  userInfo?.departmentID === 11) && (
                   <IssueLPOButton
                     mrHeader={mrHeader}
                     mrLines={items}
@@ -1202,10 +1204,24 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
                 {userInfo?.departmentID === 10 &&
                   mrHeader.progress_id === 14 && (
-                    <PaymentMrItemButton
+                    <PaymentButtons
                       mrHeaderId={mrHeader.id}
                       supplierId={items[0].approved_supplier_id}
                     />
+                  )}
+
+                {userInfo?.departmentID === 11 &&
+                  mrHeader.progress_id === 17 && (
+                    <CreateGRNButton
+                      mrHeader={mrHeader}
+                      mrLines={items}
+                      bgColor="black"
+                      borderColor="black"
+                      textColor="white"
+                      style={{ padding: "5px 20px", borderRadius: "25px" }}
+                    >
+                      Add GRN +
+                    </CreateGRNButton>
                   )}
               </div>
             </div>
@@ -1394,9 +1410,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 10 &&
         mrHeader.progress_id === 14 && (
           <div className="bottom-nav">
-            <SubmitMrForAwaitingDeliveryButton mrHeaderID={mrHeader.id}>
-              SUBMIT FOR AWAITING DELIVERY
-            </SubmitMrForAwaitingDeliveryButton>
+            <SubmitForDeliveryButton mrHeaderID={mrHeader.id}>
+              SUBMIT FOR DELIVERY
+            </SubmitForDeliveryButton>
           </div>
         )}
     </>

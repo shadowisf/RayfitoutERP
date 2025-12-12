@@ -152,7 +152,11 @@ export default function Login() {
           )}
 
           {isNewPasswordRequired && (
-            <form className="form-inner-container" onSubmit={handleNewPassword}>
+            <form
+              className="form-inner-container"
+              onSubmit={handleNewPassword}
+              style={{ margin: "0px" }}
+            >
               <h3 style={{ marginBottom: "10px" }}>SET A NEW PASSWORD</h3>
               <p
                 style={{

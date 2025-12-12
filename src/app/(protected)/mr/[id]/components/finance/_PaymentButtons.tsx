@@ -8,29 +8,30 @@ import { useState, useEffect, useRef } from "react";
 import RejectCommentPopUp from "../manager/RejectCommentPopUp";
 import { useRouter } from "next/navigation";
 
-type PaymentMrItemButtonProps = {
+type PaymentButtonsProps = {
   mrHeaderId: number;
   supplierId: number;
 };
 
 type StatusType = "pending" | "approved" | "rejected";
 
-export default function PaymentMrItemButton({
+export default function PaymentButtons({
   mrHeaderId,
   supplierId,
-}: PaymentMrItemButtonProps) {
+}: PaymentButtonsProps) {
   const router = useRouter();
 
   const crossIcon = "/icons/cross-small.svg";
   const externalLinkIcon = "/icons/external-link.svg";
+  const uploadIcon = "/icons/upload.svg";
 
   const [status, setStatus] = useState<StatusType>("pending");
   const [rejectComment, setRejectComment] = useState<string>("");
   const [lpoId, setLpoId] = useState<number | null>(null);
   const [paymentFileUrl, setPaymentFileUrl] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
 
+  const [isProceedOpen, setIsProceedOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
 
   const [rejectText, setRejectText] = useState("");
@@ -43,7 +44,6 @@ export default function PaymentMrItemButton({
   }, [mrHeaderId, supplierId]);
 
   async function fetchLpoPaymentStatus() {
-    setIsLoading(true);
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
@@ -87,8 +87,6 @@ export default function PaymentMrItemButton({
       }
     } catch (error) {
       console.error("Error fetching LPO payment status:", error);
-    } finally {
-      setIsLoading(false);
     }
   }
 
@@ -144,6 +142,73 @@ export default function PaymentMrItemButton({
 
       console.log("Uploaded payment file URL:", uploadedUrl);
 
+      // Update local state to show file
+      setPaymentFileUrl(uploadedUrl);
+
+      toast("Payment receipt uploaded", "success");
+    } catch (error) {
+      console.error("Error uploading payment file:", error);
+      toast("Failed to upload payment receipt", "error");
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  // Handle removing uploaded file
+  async function handleRemoveFile(event: React.MouseEvent) {
+    event.stopPropagation();
+
+    if (!paymentFileUrl) return;
+
+    setIsUploading(true);
+
+    try {
+      // Delete from S3
+      const deleteRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "delete",
+            url: paymentFileUrl,
+          }),
+        }
+      );
+
+      if (!deleteRes.ok) {
+        throw new Error("Failed to delete file from S3");
+      }
+
+      toast("Payment file removed", "success");
+      setPaymentFileUrl("");
+    } catch (error) {
+      console.error("Error deleting payment file:", error);
+      toast("Failed to delete payment file", "error");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  // Handle proceed payment submission
+  async function handleProceedPayment(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!lpoId) {
+      toast("No LPO found for this supplier", "error");
+      return;
+    }
+
+    if (!paymentFileUrl) {
+      toast("Please upload a payment file", "error");
+      return;
+    }
+
+    try {
       // Update database with payment file and approve status
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
@@ -153,7 +218,7 @@ export default function PaymentMrItemButton({
           body: JSON.stringify({
             action: "approvePayment",
             lpo_id: lpoId,
-            payment_file: JSON.stringify(uploadedUrl),
+            payment_file: JSON.stringify(paymentFileUrl),
           }),
         }
       );
@@ -162,22 +227,15 @@ export default function PaymentMrItemButton({
         throw new Error("Failed to update database");
       }
 
-      toast("Payment file uploaded successfully", "success");
+      toast("Payment approved successfully", "success");
 
-      // Update local state
-      setPaymentFileUrl(uploadedUrl);
       setStatus("approved");
+      setIsProceedOpen(false);
 
       router.refresh();
     } catch (error) {
-      console.error("Error uploading payment file:", error);
-      toast("Failed to upload payment file", "error");
-    } finally {
-      setIsUploading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      console.error("Error approving payment:", error);
+      toast("Failed to approve payment", "error");
     }
   }
 
@@ -285,20 +343,6 @@ export default function PaymentMrItemButton({
       >
         <span>Paid</span>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          {/* {paymentFileUrl && (
-            <a
-              href={paymentFileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: "white",
-                textDecoration: "underline",
-                fontSize: "13px",
-              }}
-            >
-              {getFileName(paymentFileUrl)}
-            </a>
-          )} */}
           <Button
             componentType={"link"}
             bgColor={"transparent"}
@@ -310,9 +354,8 @@ export default function PaymentMrItemButton({
           >
             <img
               src={externalLinkIcon}
-              alt="close"
-              style={{ filter: "invert(1)", cursor: "pointer", width: "10px" }}
-              onClick={handleReset}
+              alt="view"
+              style={{ filter: "invert(1)" }}
             />
           </Button>
           <img
@@ -373,7 +416,7 @@ export default function PaymentMrItemButton({
           bgColor={"rgba(34, 150, 100, 1)"}
           borderColor={"rgba(34, 150, 100, 1)"}
           textColor={"white"}
-          onClick={handleUploadClick}
+          onClick={() => setIsProceedOpen(true)}
           style={{
             borderRadius: "20px",
             padding: "5px 20px",
@@ -394,6 +437,101 @@ export default function PaymentMrItemButton({
           Reject Invoice
         </Button>
       </div>
+
+      {isProceedOpen && (
+        <FormPopUp
+          header="PROCEED PAYMENT"
+          setIsOpen={setIsProceedOpen}
+          handleSubmit={handleProceedPayment}
+          addButtonLabel="CONFIRM"
+        >
+          {/* Upload Payment File Section */}
+          <div
+            style={{
+              height: "200px",
+              border: "1px rgba(207, 207, 207, 1) solid",
+              borderRadius: "10px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
+            <label
+              style={{
+                fontSize: "12px",
+                fontWeight: "600",
+                textTransform: "uppercase",
+              }}
+            >
+              Payment Receipt
+            </label>
+
+            {paymentFileUrl ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  border: "1px rgba(207, 207, 207, 1) solid",
+                  backgroundColor: "white",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "13px",
+                  }}
+                >
+                  {getFileName(paymentFileUrl)}
+                </div>
+
+                <a
+                  href={paymentFileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "flex" }}
+                >
+                  <img src={externalLinkIcon} alt="external link" height={11} />
+                </a>
+
+                <img
+                  src={crossIcon}
+                  alt="remove"
+                  onClick={handleRemoveFile}
+                  style={{
+                    cursor: "pointer",
+                  }}
+                />
+              </div>
+            ) : (
+              <Button
+                componentType={"button"}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleUploadClick();
+                }}
+                bgColor={"black"}
+                borderColor={"black"}
+                textColor={"white"}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                }}
+              >
+                Upload File
+                <img src={uploadIcon} alt="upload icon" />
+              </Button>
+            )}
+          </div>
+        </FormPopUp>
+      )}
 
       {isRejectOpen && (
         <FormPopUp
