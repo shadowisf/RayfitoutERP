@@ -14,7 +14,8 @@ export default function MR() {
       userInfo?.departmentID !== 8 &&
       userInfo?.departmentID !== 9 &&
       userInfo?.departmentID !== 10 &&
-      userInfo?.departmentID !== 11
+      userInfo?.departmentID !== 11 &&
+      userInfo?.departmentID !== 12
     ) {
       fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
         method: "POST",

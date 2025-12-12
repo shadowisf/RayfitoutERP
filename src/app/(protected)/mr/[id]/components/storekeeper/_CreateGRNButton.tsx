@@ -324,7 +324,7 @@ export default function CreateGRNButton({
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/grn/getGRNByLpoId`,
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/grn/getGRNDetailsByLPOID`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

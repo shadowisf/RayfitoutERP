@@ -195,16 +195,18 @@ button {
 
     button {
       text-align: left;
-      padding-left: 40px;
+      margin: 0px 20px;
       padding: 15px 40px;
       background: none;
       border: none;
       color: black;
       cursor: pointer;
+      border-radius: 10px;
     }
 
     .nav-active {
-      background-color: rgba(245, 242, 242, 1);
+      background-color: black;
+      color: white;
     }
   }
 }
@@ -382,6 +384,8 @@ label {
   position: relative;
   min-width: 900px;
   margin: 40px;
+  max-height: 95dvh;
+  overflow-y: auto;
 
   .form-header {
     display: flex;
@@ -716,6 +720,12 @@ label {
 .items-table {
   width: 100%;
   border-collapse: collapse;
+
+  .alt {
+    td {
+      padding: 4px 30px;
+    }
+  }
 
   th,
   td {

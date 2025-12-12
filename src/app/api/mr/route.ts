@@ -202,6 +202,22 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "submitForQC") {
+      await db.query(`UPDATE mr_headers SET progress_id = 21 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForCompletion") {
+      await db.query(`UPDATE mr_headers SET progress_id = 17 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action === "updateAll") {
       const query = `
       UPDATE mr_lines 

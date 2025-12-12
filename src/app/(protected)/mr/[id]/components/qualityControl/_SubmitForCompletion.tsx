@@ -6,7 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 
-type SubmitForQCProps = {
+type SubmitForCompletionProps = {
   mrHeaderID: number;
   bgColor?: string;
   textColor?: string;
@@ -14,13 +14,13 @@ type SubmitForQCProps = {
   children?: React.ReactNode;
 };
 
-export default function SubmitForQC({
+export default function SubmitForCompletionButton({
   mrHeaderID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: SubmitForQCProps) {
+}: SubmitForCompletionProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -28,22 +28,23 @@ export default function SubmitForQC({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`/api/mr`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitForQC",
+        action: "submitForCompletion",
         id: mrHeaderID,
       }),
     });
 
     if (res.ok) {
-      toast("Material request submitted for QC", "success");
+      toast("Material request submitted for completion", "success");
+
+      setIsOpen(false);
+
       router.refresh();
-      setIsOpen(false);
     } else {
-      toast("Failed to submit material request for QC", "error");
-      setIsOpen(false);
+      toast("Failed to submit material request for completion", "error");
     }
   }
 
@@ -62,12 +63,12 @@ export default function SubmitForQC({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR QC"}
+          header={"SUBMIT MATERIAL REQUEST FOR COMPLETION"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this material request?</p>
+          <p>Are you sure you want to submit this material request</p>
         </FormPopUp>
       )}
     </>

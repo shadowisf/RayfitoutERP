@@ -27,6 +27,9 @@ import SubmitForPaymentButton from "./procurement/_SubmitForPaymentButton";
 import PaymentButtons from "./finance/_PaymentButtons";
 import SubmitForDeliveryButton from "./finance/_SubmitForDeliveryButton";
 import CreateGRNButton from "./storekeeper/_CreateGRNButton";
+import SubmitForQC from "./storekeeper/_SubmitForQCButton";
+import QCCheckListButton from "./qualityControl/_QCCheckListButton";
+import SubmitForCompletionButton from "./qualityControl/_SubmitForCompletion";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -65,25 +68,22 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const [isCheckingQuotations, setIsCheckingQuotations] =
     useState<boolean>(true);
 
-  // New state for tracking supplier approval status
   const [supplierApprovalStatus, setSupplierApprovalStatus] = useState<{
     [itemId: number]: "approved" | "rejected" | "pending";
   }>({});
   const [isCheckingSupplierApprovals, setIsCheckingSupplierApprovals] =
     useState<boolean>(true);
 
-  // Updated state for tracking LPO, invoice, and signed file status
   const [lpoInvoiceStatus, setLpoInvoiceStatus] = useState<{
     [supplierId: number]: {
       hasLpo: boolean;
       hasInvoice: boolean;
-      hasSignedFile: boolean; // Added this
+      hasSignedFile: boolean;
     };
   }>({});
   const [isCheckingLpoInvoices, setIsCheckingLpoInvoices] =
     useState<boolean>(true);
 
-  // Group items by supplier - using the correct type
   const [mrLinesBySupplier, setMrLinesBySupplier] =
     useState<GroupedMrLinesBySupplier>({});
 
@@ -91,12 +91,21 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const subCategories = mrLines[activeCategory] || {};
   const suppliers = Object.keys(mrLinesBySupplier);
 
-  // Add this new state for tracking payment status
   const [lpoPaymentStatus, setLpoPaymentStatus] = useState<{
     [supplierId: number]: "approved" | "rejected" | "pending";
   }>({});
   const [isCheckingPaymentStatus, setIsCheckingPaymentStatus] =
     useState<boolean>(true);
+
+  const [grnStatus, setGrnStatus] = useState<{
+    [supplierId: number]: boolean;
+  }>({});
+  const [isCheckingGrn, setIsCheckingGrn] = useState<boolean>(true);
+
+  const [qcStatus, setQcStatus] = useState<{
+    [itemId: number]: "passed" | "failed" | "pending";
+  }>({});
+  const [isCheckingQc, setIsCheckingQc] = useState<boolean>(true);
 
   useEffect(
     function () {
@@ -108,11 +117,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     [mrLines]
   );
 
-  // Group items by supplier - extract from nested structure
   useEffect(() => {
     const supplierGroups: GroupedMrLinesBySupplier = {};
 
-    // Iterate through all categories, subcategories, and suppliers
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
         for (const supplier in mrLines[category][subCategory]) {
@@ -122,7 +129,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             supplierGroups[supplier] = [];
           }
 
-          // Add all items from this supplier
           supplierGroups[supplier].push(...items);
         }
       }
@@ -142,7 +148,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       const itemsWithQuotes = new Set<number>();
 
       try {
-        // Get all item IDs
         const allItemIds: number[] = [];
         for (const category in mrLines) {
           for (const subCategory in mrLines[category]) {
@@ -153,7 +158,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           }
         }
 
-        // Check each item for quotations
         const checkPromises = allItemIds.map(async (itemId) => {
           try {
             const response = await fetch(
@@ -167,7 +171,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
             if (response.ok) {
               const data = await response.json();
-              // Check if there are at least 3 quotations
               if (data && Array.isArray(data) && data.length >= 3) {
                 itemsWithQuotes.add(itemId);
               }
@@ -192,7 +195,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     checkAllQuotations();
   }, [mrLines, mrHeader.progress_id]);
 
-  // Check supplier approval status for pricing approval stage
   useEffect(() => {
     async function checkSupplierApprovals() {
       if (mrHeader.progress_id !== 10 && mrHeader.progress_id !== 11) {
@@ -206,7 +208,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       } = {};
 
       try {
-        // Get all item IDs
         const allItemIds: number[] = [];
         for (const category in mrLines) {
           for (const subCategory in mrLines[category]) {
@@ -217,7 +218,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           }
         }
 
-        // Check each item's supplier approval status
         const checkPromises = allItemIds.map(async (itemId) => {
           try {
             const response = await fetch(
@@ -233,12 +233,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               const data = await response.json();
 
               if (data && Array.isArray(data) && data.length > 0) {
-                // Check if any quotation is approved
                 const hasApproved = data.some(
                   (q: any) => q.approval_status === "Approved"
                 );
 
-                // Check if all quotations are rejected
                 const allRejected = data.every(
                   (q: any) => q.approval_status === "Rejected"
                 );
@@ -275,7 +273,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     checkSupplierApprovals();
   }, [mrLines, mrHeader.progress_id]);
 
-  // Updated: Check LPO, invoice, and signed file status for each supplier
   useEffect(() => {
     async function checkLpoInvoices() {
       if (mrHeader.progress_id !== 12) {
@@ -293,7 +290,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       } = {};
 
       try {
-        // Get unique suppliers with their IDs
         const uniqueSuppliers = new Map<number, string>();
 
         for (const category in mrLines) {
@@ -310,7 +306,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           }
         }
 
-        // Check each supplier for LPO, invoice, and signed file
         const checkPromises = Array.from(uniqueSuppliers.keys()).map(
           async (supplierId) => {
             try {
@@ -332,7 +327,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 if (data.success && data.data && data.data.length > 0) {
                   const lpo = data.data[0];
 
-                  // Check if invoice files exist and have at least one file
                   let hasInvoice = false;
                   if (lpo.invoice_file) {
                     try {
@@ -348,7 +342,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     }
                   }
 
-                  // Check if signed files exist and have at least one file
                   let hasSignedFile = false;
                   if (lpo.signed_file) {
                     try {
@@ -407,6 +400,320 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     }
 
     checkLpoInvoices();
+  }, [mrLines, mrHeader.progress_id, mrHeader.id]);
+
+  useEffect(() => {
+    async function checkPaymentStatuses() {
+      if (mrHeader.progress_id !== 14) {
+        setIsCheckingPaymentStatus(false);
+        return;
+      }
+
+      setIsCheckingPaymentStatus(true);
+      const statusMap: {
+        [supplierId: number]: "approved" | "rejected" | "pending";
+      } = {};
+
+      try {
+        const uniqueSuppliers = new Map<number, string>();
+
+        for (const category in mrLines) {
+          for (const subCategory in mrLines[category]) {
+            for (const supplier in mrLines[category][subCategory]) {
+              const items = mrLines[category][subCategory][supplier];
+              if (items.length > 0) {
+                const supplierId = items[0].approved_supplier_id;
+                if (supplierId) {
+                  uniqueSuppliers.set(supplierId, supplier);
+                }
+              }
+            }
+          }
+        }
+
+        const checkPromises = Array.from(uniqueSuppliers.keys()).map(
+          async (supplierId) => {
+            try {
+              const response = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    mr_header_id: mrHeader.id,
+                    supplier_id: supplierId,
+                  }),
+                }
+              );
+
+              if (response.ok) {
+                const data = await response.json();
+
+                if (data.success && data.data && data.data.length > 0) {
+                  const lpo = data.data[0];
+                  const paymentStatus = lpo.payment_status;
+
+                  if (!paymentStatus) {
+                    statusMap[supplierId] = "pending";
+                  } else if (paymentStatus.toLowerCase() === "approved") {
+                    statusMap[supplierId] = "approved";
+                  } else if (paymentStatus.toLowerCase() === "rejected") {
+                    statusMap[supplierId] = "rejected";
+                  } else {
+                    statusMap[supplierId] = "pending";
+                  }
+                } else {
+                  statusMap[supplierId] = "pending";
+                }
+              } else {
+                statusMap[supplierId] = "pending";
+              }
+            } catch (error) {
+              console.error(
+                `Error checking payment status for supplier ${supplierId}:`,
+                error
+              );
+              statusMap[supplierId] = "pending";
+            }
+          }
+        );
+
+        await Promise.all(checkPromises);
+        setLpoPaymentStatus(statusMap);
+      } catch (error) {
+        console.error("Error checking payment statuses:", error);
+      } finally {
+        setIsCheckingPaymentStatus(false);
+      }
+    }
+
+    checkPaymentStatuses();
+  }, [mrLines, mrHeader.progress_id, mrHeader.id]);
+
+  useEffect(() => {
+    async function checkGrnStatuses() {
+      if (mrHeader.progress_id !== 17) {
+        setIsCheckingGrn(false);
+        return;
+      }
+
+      setIsCheckingGrn(true);
+      const statusMap: { [supplierId: number]: boolean } = {};
+
+      try {
+        const uniqueSuppliers = new Map<number, string>();
+
+        for (const category in mrLines) {
+          for (const subCategory in mrLines[category]) {
+            for (const supplier in mrLines[category][subCategory]) {
+              const items = mrLines[category][subCategory][supplier];
+              if (items.length > 0) {
+                const supplierId = items[0].approved_supplier_id;
+                if (supplierId) {
+                  uniqueSuppliers.set(supplierId, supplier);
+                }
+              }
+            }
+          }
+        }
+
+        const checkPromises = Array.from(uniqueSuppliers.keys()).map(
+          async (supplierId) => {
+            try {
+              const lpoResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    mr_header_id: mrHeader.id,
+                    supplier_id: supplierId,
+                  }),
+                }
+              );
+
+              if (lpoResponse.ok) {
+                const lpoData = await lpoResponse.json();
+
+                if (
+                  lpoData.success &&
+                  lpoData.data &&
+                  lpoData.data.length > 0
+                ) {
+                  const lpo = lpoData.data[0];
+
+                  const grnResponse = await fetch(
+                    `${process.env.NEXT_PUBLIC_BASE_URL}/api/grn/getGRNDetailsByLPOID`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ lpo_id: lpo.id }),
+                    }
+                  );
+
+                  if (grnResponse.ok) {
+                    const grnData = await grnResponse.json();
+                    statusMap[supplierId] = !!(
+                      grnData.success &&
+                      grnData.data &&
+                      grnData.data.id
+                    );
+                  } else {
+                    statusMap[supplierId] = false;
+                  }
+                } else {
+                  statusMap[supplierId] = false;
+                }
+              } else {
+                statusMap[supplierId] = false;
+              }
+            } catch (error) {
+              console.error(
+                `Error checking GRN for supplier ${supplierId}:`,
+                error
+              );
+              statusMap[supplierId] = false;
+            }
+          }
+        );
+
+        await Promise.all(checkPromises);
+        setGrnStatus(statusMap);
+      } catch (error) {
+        console.error("Error checking GRN statuses:", error);
+      } finally {
+        setIsCheckingGrn(false);
+      }
+    }
+
+    checkGrnStatuses();
+  }, [mrLines, mrHeader.progress_id, mrHeader.id]);
+
+  // Check QC status for all items
+  useEffect(() => {
+    async function checkQcStatuses() {
+      if (mrHeader.progress_id !== 21) {
+        setIsCheckingQc(false);
+        return;
+      }
+
+      setIsCheckingQc(true);
+      const statusMap: {
+        [itemId: number]: "passed" | "failed" | "pending";
+      } = {};
+
+      try {
+        const allItems: MrLine[] = [];
+
+        // Collect all items
+        for (const category in mrLines) {
+          for (const subCategory in mrLines[category]) {
+            for (const supplier in mrLines[category][subCategory]) {
+              const items = mrLines[category][subCategory][supplier];
+              allItems.push(...items);
+            }
+          }
+        }
+
+        // Check QC status for each item
+        const checkPromises = allItems.map(async (item) => {
+          try {
+            // First get the LPO
+            const lpoResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  mr_header_id: mrHeader.id,
+                  supplier_id: item.approved_supplier_id,
+                }),
+              }
+            );
+
+            if (lpoResponse.ok) {
+              const lpoData = await lpoResponse.json();
+
+              if (lpoData.success && lpoData.data && lpoData.data.length > 0) {
+                const lpo = lpoData.data[0];
+
+                // Get LPO details to find lpo_mr_line_id
+                const lpoDetailsResponse = await fetch(
+                  `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPODetails`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ lpo_id: lpo.id }),
+                  }
+                );
+
+                if (lpoDetailsResponse.ok) {
+                  const lpoDetailsData = await lpoDetailsResponse.json();
+
+                  if (
+                    lpoDetailsData.success &&
+                    lpoDetailsData.data &&
+                    lpoDetailsData.data.lpo_mr_lines
+                  ) {
+                    const lpoLine = lpoDetailsData.data.lpo_mr_lines.find(
+                      (line: any) => line.mr_line_id === item.id
+                    );
+
+                    if (lpoLine) {
+                      // Check QC status
+                      const qcResponse = await fetch(
+                        `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getQCByLPOMrLineID`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            lpo_mr_line_id: lpoLine.id,
+                          }),
+                        }
+                      );
+
+                      if (qcResponse.ok) {
+                        const qcData = await qcResponse.json();
+
+                        if (qcData.success && qcData.data) {
+                          statusMap[item.id] = qcData.data.qc_status;
+                        } else {
+                          statusMap[item.id] = "pending";
+                        }
+                      } else {
+                        statusMap[item.id] = "pending";
+                      }
+                    } else {
+                      statusMap[item.id] = "pending";
+                    }
+                  } else {
+                    statusMap[item.id] = "pending";
+                  }
+                } else {
+                  statusMap[item.id] = "pending";
+                }
+              } else {
+                statusMap[item.id] = "pending";
+              }
+            } else {
+              statusMap[item.id] = "pending";
+            }
+          } catch (error) {
+            console.error(`Error checking QC for item ${item.id}:`, error);
+            statusMap[item.id] = "pending";
+          }
+        });
+
+        await Promise.all(checkPromises);
+        setQcStatus(statusMap);
+      } catch (error) {
+        console.error("Error checking QC statuses:", error);
+      } finally {
+        setIsCheckingQc(false);
+      }
+    }
+
+    checkQcStatuses();
   }, [mrLines, mrHeader.progress_id, mrHeader.id]);
 
   function toggleDescription(itemId: number) {
@@ -491,7 +798,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   }
 
   function allItemsHaveSupplierQuotations() {
-    // Get total count of items
     let totalItems = 0;
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
@@ -501,7 +807,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       }
     }
 
-    // Check if all items have quotations
     return (
       totalItems > 0 &&
       itemsWithQuotations.size === totalItems &&
@@ -509,7 +814,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     );
   }
 
-  // Check if any supplier quotations are rejected
   function hasRejectedSuppliers() {
     if (isCheckingSupplierApprovals) return false;
 
@@ -539,7 +843,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return allReviewed && hasRejected;
   }
 
-  // Check if all supplier quotations are approved
   function allSuppliersApproved() {
     if (isCheckingSupplierApprovals) return false;
 
@@ -569,7 +872,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return allReviewed && allApproved;
   }
 
-  // Check if any items have rejected suppliers (for procurement stage)
   function hasAnyRejectedSuppliers() {
     if (isCheckingSupplierApprovals) return false;
 
@@ -592,11 +894,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return false;
   }
 
-  // Updated: Check if all suppliers have LPO with invoices AND signed files
   function allSuppliersHaveLpoWithInvoicesAndSignedFiles() {
     if (isCheckingLpoInvoices) return false;
 
-    // Get unique supplier IDs
     const uniqueSupplierIds = new Set<number>();
 
     for (const category in mrLines) {
@@ -610,13 +910,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       }
     }
 
-    // Check if all suppliers have LPO with invoices AND signed files
     if (uniqueSupplierIds.size === 0) return false;
 
     for (const supplierId of uniqueSupplierIds) {
       const status = lpoInvoiceStatus[supplierId];
 
-      // If supplier doesn't have LPO, invoice, OR signed file, return false
       if (
         !status ||
         !status.hasLpo ||
@@ -630,7 +928,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return true;
   }
 
-  // Helper function to get all items from a subcategory (flattened from all suppliers)
   function getAllItemsInSubCategory(subCategoryData: {
     [supplier: string]: MrLine[];
   }): MrLine[] {
@@ -641,102 +938,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return allItems;
   }
 
-  // Add this new useEffect to check payment statuses
-  useEffect(() => {
-    async function checkPaymentStatuses() {
-      if (mrHeader.progress_id !== 14) {
-        setIsCheckingPaymentStatus(false);
-        return;
-      }
-
-      setIsCheckingPaymentStatus(true);
-      const statusMap: {
-        [supplierId: number]: "approved" | "rejected" | "pending";
-      } = {};
-
-      try {
-        // Get unique suppliers with their IDs
-        const uniqueSuppliers = new Map<number, string>();
-
-        for (const category in mrLines) {
-          for (const subCategory in mrLines[category]) {
-            for (const supplier in mrLines[category][subCategory]) {
-              const items = mrLines[category][subCategory][supplier];
-              if (items.length > 0) {
-                const supplierId = items[0].approved_supplier_id;
-                if (supplierId) {
-                  uniqueSuppliers.set(supplierId, supplier);
-                }
-              }
-            }
-          }
-        }
-
-        // Check each supplier for payment status
-        const checkPromises = Array.from(uniqueSuppliers.keys()).map(
-          async (supplierId) => {
-            try {
-              const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    mr_header_id: mrHeader.id,
-                    supplier_id: supplierId,
-                  }),
-                }
-              );
-
-              if (response.ok) {
-                const data = await response.json();
-
-                if (data.success && data.data && data.data.length > 0) {
-                  const lpo = data.data[0];
-                  const paymentStatus = lpo.payment_status;
-
-                  if (!paymentStatus) {
-                    statusMap[supplierId] = "pending";
-                  } else if (paymentStatus.toLowerCase() === "approved") {
-                    statusMap[supplierId] = "approved";
-                  } else if (paymentStatus.toLowerCase() === "rejected") {
-                    statusMap[supplierId] = "rejected";
-                  } else {
-                    statusMap[supplierId] = "pending";
-                  }
-                } else {
-                  statusMap[supplierId] = "pending";
-                }
-              } else {
-                statusMap[supplierId] = "pending";
-              }
-            } catch (error) {
-              console.error(
-                `Error checking payment status for supplier ${supplierId}:`,
-                error
-              );
-              statusMap[supplierId] = "pending";
-            }
-          }
-        );
-
-        await Promise.all(checkPromises);
-        setLpoPaymentStatus(statusMap);
-      } catch (error) {
-        console.error("Error checking payment statuses:", error);
-      } finally {
-        setIsCheckingPaymentStatus(false);
-      }
-    }
-
-    checkPaymentStatuses();
-  }, [mrLines, mrHeader.progress_id, mrHeader.id]);
-
-  // Add this new function to check if all LPOs have been reviewed
   function allLposHavePaymentStatus() {
     if (isCheckingPaymentStatus) return false;
 
-    // Get unique supplier IDs
     const uniqueSupplierIds = new Set<number>();
 
     for (const category in mrLines) {
@@ -750,19 +954,78 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       }
     }
 
-    // Check if all suppliers have a payment status (approved or rejected)
     if (uniqueSupplierIds.size === 0) return false;
 
     for (const supplierId of uniqueSupplierIds) {
       const status = lpoPaymentStatus[supplierId];
 
-      // If supplier doesn't have a status or is still pending, return false
       if (!status || status === "pending") {
         return false;
       }
     }
 
     return true;
+  }
+
+  function allSuppliersHaveGrn() {
+    if (isCheckingGrn) return false;
+
+    const uniqueSupplierIds = new Set<number>();
+
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
+          if (items.length > 0 && items[0].approved_supplier_id) {
+            uniqueSupplierIds.add(items[0].approved_supplier_id);
+          }
+        }
+      }
+    }
+
+    if (uniqueSupplierIds.size === 0) return false;
+
+    for (const supplierId of uniqueSupplierIds) {
+      const hasGrn = grnStatus[supplierId];
+
+      if (!hasGrn) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // Check if all items have passed QC
+  function allItemsPassedQc() {
+    if (isCheckingQc) return false;
+
+    let totalItems = 0;
+    let allPassed = true;
+    let allChecked = true;
+
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
+
+          for (const item of items) {
+            totalItems++;
+            const status = qcStatus[item.id];
+
+            if (!status || status === "pending") {
+              allChecked = false;
+            }
+
+            if (status !== "passed") {
+              allPassed = false;
+            }
+          }
+        }
+      }
+    }
+
+    return totalItems > 0 && allChecked && allPassed;
   }
 
   return (
@@ -816,7 +1079,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           </div>
         )}
 
-        {/* Only show category tabs when in item view */}
         {showByItem && (
           <div>
             <div
@@ -863,7 +1125,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       <br />
       <br />
 
-      {/* Show by Item View - now includes supplier grouping */}
       {showByItem &&
         Object.entries(subCategories).map(function (
           [subCategory, suppliers],
@@ -910,7 +1171,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               <br />
               <br />
 
-              {/* Iterate through each supplier within the subcategory */}
               {Object.entries(suppliers).map(
                 ([supplier, items], supplierIndex) => (
                   <div key={supplier} style={{ marginBottom: "2rem" }}>
@@ -944,6 +1204,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             userInfo?.departmentID === 10) && (
                             <th>SUPPLIER & QUOTATION</th>
                           )}
+                          {userInfo?.departmentID === 12 &&
+                            mrHeader.progress_id === 21 && (
+                              <th>QUALITY CONTROL</th>
+                            )}
                         </tr>
                       </thead>
                       <tbody>
@@ -1086,7 +1350,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   )}
 
                                 {mrHeader.progress_id >= 12 &&
-                                  userInfo?.departmentID >= 9 && (
+                                  (userInfo?.departmentID ?? 0) >= 9 && (
                                     <td>
                                       <div
                                         style={{
@@ -1112,6 +1376,17 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           />
                                         </SupplierDetailsPopUp>
                                       </div>
+                                    </td>
+                                  )}
+
+                                {userInfo?.departmentID === 12 &&
+                                  mrHeader.progress_id === 21 && (
+                                    <td>
+                                      <QCCheckListButton
+                                        item={item}
+                                        mrHeader={mrHeader}
+                                        progressID={mrHeader.progress_id}
+                                      />
                                     </td>
                                   )}
                               </tr>
@@ -1153,7 +1428,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           );
         })}
 
-      {/* Show by Supplier View - No tabs, all suppliers in a list */}
       {showBySupplier &&
         Object.entries(mrLinesBySupplier).map(([supplier, items], index) => (
           <div key={supplier} className="subcategory-section">
@@ -1239,8 +1513,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   <th>NOTES</th>
                   <th>BILL OF QUANTITY REFERENCE</th>
                   <th>QUANTITY</th>
-                  <th>UNIT PRICE</th>
-                  <th>TOTAL PRICE</th>
+                  {userInfo?.departmentID === 12 &&
+                    mrHeader.progress_id === 21 && <th>QUALITY CONTROL</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1268,8 +1542,16 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     <td>
                       {item.quantity} {item.unit}
                     </td>
-                    <td>{item.approved_unit_price || "-"}</td>
-                    <td>{item.approved_total_price || "-"}</td>
+                    {userInfo?.departmentID === 12 &&
+                      mrHeader.progress_id === 21 && (
+                        <td>
+                          <QCCheckListButton
+                            item={item}
+                            mrHeader={mrHeader}
+                            progressID={mrHeader.progress_id}
+                          />
+                        </td>
+                      )}
                   </tr>
                 ))}
               </tbody>
@@ -1413,6 +1695,26 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             <SubmitForDeliveryButton mrHeaderID={mrHeader.id}>
               SUBMIT FOR DELIVERY
             </SubmitForDeliveryButton>
+          </div>
+        )}
+
+      {allSuppliersHaveGrn() &&
+        userInfo?.departmentID === 11 &&
+        mrHeader.progress_id === 17 && (
+          <div className="bottom-nav">
+            <SubmitForQC mrHeaderID={mrHeader.id}>
+              SUBMIT FOR QUALITY CONTROL
+            </SubmitForQC>
+          </div>
+        )}
+
+      {allItemsPassedQc() &&
+        userInfo?.departmentID === 12 &&
+        mrHeader.progress_id === 21 && (
+          <div className="bottom-nav">
+            <SubmitForCompletionButton mrHeaderID={mrHeader.id}>
+              SUBMIT FOR COMPLETION
+            </SubmitForCompletionButton>
           </div>
         )}
     </>

@@ -23,9 +23,6 @@ export async function POST(request: NextRequest) {
       // Check different possible structures for the insert ID
       const grnId = grnResult.insertId || grnResult[0]?.insertId;
 
-      console.log("GRN Result:", grnResult);
-      console.log("GRN ID:", grnId);
-
       if (!grnId) {
         console.error("Failed to get GRN insert ID. Result:", grnResult);
         return NextResponse.json(
