@@ -13,5 +13,5 @@ export type BoqLine = {
   rate_per_quantity: number;
   total_cost: number;
   item_description: string;
-  attachments: string;
+  attachments: string[] | string;
 };

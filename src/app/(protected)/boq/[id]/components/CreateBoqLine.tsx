@@ -1,12 +1,13 @@
 "use client";
 
 import { useAuth } from "@/app/context/AuthContext";
-import AddBoqItemButton from "./department/_AddBoqItemButton";
+import AddBoqItemButton from "./manager/_AddBoqItemButton";
+import { BoqHeader } from "../types/boqHeader";
 
 export default function CreateBoqLineClient({
-  boqHeaderID,
+  boqHeader,
 }: {
-  boqHeaderID: string;
+  boqHeader: BoqHeader;
 }) {
   const { userInfo } = useAuth();
 
@@ -34,7 +35,7 @@ export default function CreateBoqLineClient({
       <br />
 
       {userInfo?.departmentID === 8 && (
-        <AddBoqItemButton full boqHeaderID={boqHeaderID}>
+        <AddBoqItemButton full boqHeaderID={boqHeader.id}>
           ADD CATEGORY & ITEM +
         </AddBoqItemButton>
       )}

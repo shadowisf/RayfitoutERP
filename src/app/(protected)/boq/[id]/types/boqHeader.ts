@@ -1,0 +1,20 @@
+export type BoqHeader = {
+  id: number;
+  project_id: number;
+  company_name: string;
+  client_name: string;
+  location: string;
+  boq_date: string;
+  payment_terms: string;
+  validity_terms: string;
+  terms_and_conditions: string;
+  project_name: string;
+  project_size: string;
+  type_of_work: string;
+  quoted_budget: string;
+  currency: string;
+  allocated_budget: string;
+  project_start_date: string;
+  project_end_date: string;
+  project_created_at: string;
+};

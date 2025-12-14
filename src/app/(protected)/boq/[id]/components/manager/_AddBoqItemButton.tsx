@@ -11,7 +11,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 
 type AddBoqItemButtonProps = {
-  boqHeaderID: string;
+  boqHeaderID: number;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
@@ -98,8 +98,6 @@ export default function AddBoqItemButton({
         attachmentFiles.forEach((file) => {
           formData.append("files", file);
         });
-
-        console.log(`Uploading ${attachmentFiles.length} file(s) to S3...`);
 
         const uploadResponse = await fetch("/api/s3", {
           method: "POST",

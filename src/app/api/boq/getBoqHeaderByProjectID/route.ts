@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
     const { id } = await req.json();
 
     const [rows] = await db.query(
-      "SELECT * FROM boq_headers WHERE project_id = ?",
+      "SELECT * FROM vw_boq_headers WHERE project_id = ?",
       [id]
     );
 

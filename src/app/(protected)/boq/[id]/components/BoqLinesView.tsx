@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AddBoqItemButton from "./department/_AddBoqItemButton";
-import EditBoqItemButton from "./department/_EditBoqItemButton";
+import AddBoqItemButton from "./manager/_AddBoqItemButton";
+import EditBoqItemButton from "./manager/_EditBoqItemButton";
 import { BoqLine } from "../types/boqLine";
-import DeleteBoqItemButton from "./department/_DeleteBoqItemButton";
-import DeleteBoqSubCategoryButton from "./department/_DeleteBoqSubCategoryButton";
-import RenameBoqSubCategoryButton from "./department/_RenameBoqSubCategory";
+import DeleteBoqItemButton from "./manager/_DeleteBoqItemButton";
+import DeleteBoqSubCategoryButton from "./manager/_DeleteBoqSubCategoryButton";
+import RenameBoqSubCategoryButton from "./manager/_RenameBoqSubCategory";
 import { useAuth } from "@/app/context/AuthContext";
 import ItemDescriptionPopUp from "./ItemDescriptionPopUp";
+import { BoqHeader } from "../types/boqHeader";
+import DownloadBOQButton from "./manager/_DownloadBOQButton";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -18,12 +20,12 @@ type GroupedBoqLines = {
 
 type BoqLinesViewProps = {
   boqLines: GroupedBoqLines;
-  boqHeaderID: string;
+  boqHeader: BoqHeader;
 };
 
 export default function BoqLinesView({
   boqLines,
-  boqHeaderID,
+  boqHeader,
 }: BoqLinesViewProps) {
   const { userInfo } = useAuth();
 
@@ -85,16 +87,30 @@ export default function BoqLinesView({
           })}
         </div>
 
-        {userInfo?.departmentID === 8 && (
-          <AddBoqItemButton
-            boqHeaderID={boqHeaderID}
-            bgColor="black"
-            borderColor="black"
-            textColor="white"
-          >
-            ADD CATEGORY & ITEM +
-          </AddBoqItemButton>
-        )}
+        <div style={{ display: "flex", gap: "10px" }}>
+          {userInfo?.departmentID === 8 && (
+            <>
+              <AddBoqItemButton
+                boqHeaderID={boqHeader.id}
+                bgColor="black"
+                borderColor="black"
+                textColor="white"
+              >
+                ADD CATEGORY & ITEM +
+              </AddBoqItemButton>
+
+              <DownloadBOQButton
+                boqHeader={boqHeader}
+                boqLines={boqLines}
+                bgColor="black"
+                borderColor="black"
+                textColor="white"
+              >
+                DOWNLOAD BOQ
+              </DownloadBOQButton>
+            </>
+          )}
+        </div>
       </div>
 
       <br />
@@ -296,7 +312,7 @@ export default function BoqLinesView({
 
             {userInfo?.departmentID === 8 && (
               <AddBoqItemButton
-                boqHeaderID={boqHeaderID}
+                boqHeaderID={boqHeader.id}
                 bgColor="rgba(239, 239, 239, 1)"
                 borderColor="rgba(239, 239, 239, 1)"
                 textColor="black"
@@ -320,7 +336,7 @@ export default function BoqLinesView({
 
       {userInfo?.departmentID === 8 && (
         <AddBoqItemButton
-          boqHeaderID={boqHeaderID}
+          boqHeaderID={boqHeader.id}
           bgColor="rgba(239, 239, 239, 1)"
           borderColor="rgba(239, 239, 239, 1)"
           textColor="black"
