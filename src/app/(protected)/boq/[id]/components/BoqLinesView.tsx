@@ -98,18 +98,18 @@ export default function BoqLinesView({
               >
                 ADD CATEGORY & ITEM +
               </AddBoqItemButton>
-
-              <DownloadBOQButton
-                boqHeader={boqHeader}
-                boqLines={boqLines}
-                bgColor="black"
-                borderColor="black"
-                textColor="white"
-              >
-                DOWNLOAD BOQ
-              </DownloadBOQButton>
             </>
           )}
+
+          <DownloadBOQButton
+            boqHeader={boqHeader}
+            boqLines={boqLines}
+            bgColor="black"
+            borderColor="black"
+            textColor="white"
+          >
+            DOWNLOAD BOQ
+          </DownloadBOQButton>
         </div>
       </div>
 

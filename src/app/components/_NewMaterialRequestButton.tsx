@@ -63,7 +63,7 @@ export default function NewMrButton() {
       }),
     });
 
-    const data = await res.json();
+    /*     const data = await res.json(); */
 
     if (res.ok) {
       toast("Material request header created", "success");
@@ -77,7 +77,7 @@ export default function NewMrButton() {
 
       router.refresh();
 
-      router.push(`/mr/${data.mrHeaderId}`);
+      /*       router.push(`/mr/${data.mrHeaderId}`); */
     } else {
       toast("Failed to create material request header", "error");
     }

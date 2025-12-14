@@ -136,8 +136,8 @@ export default function Dashboard() {
                       color: "rgba(52,100,73,1)",
                     }
                   : {
-                      backgroundColor: "rgba(255,244,93,1)",
-                      color: "rgba(132,107,26,1)",
+                      backgroundColor: "rgba(255, 250, 189, 1)",
+                      color: "rgba(134, 83, 47, 1)",
                     }
               }
             >
@@ -160,23 +160,32 @@ export default function Dashboard() {
 
             <br />
 
-            <Button
-              componentType={"link"}
-              bgColor={"rgba(29, 44, 66, 1)"}
-              borderColor={"rgba(29, 44, 66, 1)"}
-              textColor={"white"}
-              href={`boq/${proj.id}`}
-              full={false}
-            >
-              <>
-                {proj.hasBOQ ? "VIEW BOQ" : "CREATE BOQ"}
-                <img
-                  src={external_link_icon}
-                  alt="external link icon"
-                  style={{ filter: "invert(1)" }}
-                />
-              </>
-            </Button>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <Button
+                componentType={"link"}
+                bgColor={"rgba(239, 239, 239, 1)"}
+                borderColor={"rgba(223, 223, 223, 1)"}
+                textColor={"black"}
+                href={`boq/${proj.id}`}
+                full={false}
+              >
+                <>
+                  {proj.hasBOQ ? "VIEW BOQ" : "CREATE BOQ"}
+                  <img src={external_link_icon} alt="external link icon" />
+                </>
+              </Button>
+
+              <Button
+                componentType={"link"}
+                bgColor={"rgba(29, 44, 66, 1)"}
+                borderColor={"rgba(29, 44, 66, 1)"}
+                textColor={"white"}
+                full={false}
+                href={`project/${proj.id}`}
+              >
+                {`VIEW`}
+              </Button>
+            </div>
           </div>
         ))}
       </div>

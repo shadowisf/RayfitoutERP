@@ -74,12 +74,12 @@ export default function Project() {
               style={
                 proj.status === "Completed"
                   ? {
-                      backgroundColor: "rgba(134,241,181,1)",
-                      color: "rgba(52,100,73,1)",
+                      backgroundColor: "rgba(230, 245, 230, 1)",
+                      color: "rgba(60, 120, 60, 1)",
                     }
                   : {
-                      backgroundColor: "rgba(255,244,93,1)",
-                      color: "rgba(132,107,26,1)",
+                      backgroundColor: "rgba(255, 250, 189, 1)",
+                      color: "rgba(134, 83, 47, 1)",
                     }
               }
             >
@@ -129,8 +129,8 @@ export default function Project() {
 
               <Button
                 componentType={"link"}
-                bgColor={"black"}
-                borderColor={"black"}
+                bgColor={"rgba(29, 44, 66, 1)"}
+                borderColor={"rgba(29, 44, 66, 1)"}
                 textColor={"white"}
                 full={false}
                 href={`project/${proj.id}`}

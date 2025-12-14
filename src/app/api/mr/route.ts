@@ -2,27 +2,6 @@ import { NextResponse } from "next/server";
 import { ResultSetHeader } from "mysql2";
 import { db } from "@/lib/db";
 
-function calculatePriority(requiredDate: string): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const required = new Date(requiredDate);
-  required.setHours(0, 0, 0, 0);
-
-  const diffTime = required.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays <= 1) {
-    return "Critical";
-  } else if (diffDays <= 3) {
-    return "High";
-  } else if (diffDays <= 7) {
-    return "Medium";
-  } else {
-    return "Normal";
-  }
-}
-
 export async function GET(req: Request) {
   try {
     const [rows]: any = await db.query(`SELECT * FROM vw_mr_headers`);
@@ -48,12 +27,10 @@ export async function POST(req: Request) {
     }
 
     if (body.action === "createMrHeader") {
-      const calculatedPriority = calculatePriority(body.required_date);
-
       const headerQuery = `
       INSERT INTO mr_headers 
-      (project_id, department_id, requested_by, required_date, priority, purpose_id)
-      VALUES (?, ?, ?, ?, ?, ?)
+      (project_id, department_id, requested_by, required_date, purpose_id)
+      VALUES (?, ?, ?, ?, ?)
     `;
 
       const headerValues = [
@@ -61,7 +38,6 @@ export async function POST(req: Request) {
         Number(body.department_id),
         body.requested_by,
         body.required_date,
-        calculatedPriority,
         Number(body.purpose_id),
       ];
 
