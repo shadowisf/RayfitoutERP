@@ -147,20 +147,19 @@ vii. Contractor reserve the right to request for an extension of time for reason
             <InputItem
               label={"PAYMENT TERMS"}
               value={paymentTerms}
-              type={"select"}
-              placeholder={"SELECT PAYMENT TERMS"}
+              type={"text"}
+              placeholder={"ENTER PAYMENT TERMS"}
               required
               onChange={(e) => {
                 setPaymentTerms(e.target.value);
               }}
-              selectOptions={["test"]}
             />
 
             <InputItem
               label={"VALIDITY TERMS"}
               value={validityTerms}
               type={"text"}
-              placeholder={"SELECT VALIDITY TERMS"}
+              placeholder={"ENTER VALIDITY TERMS"}
               required
               onChange={(e) => {
                 setValidityTerms(e.target.value);

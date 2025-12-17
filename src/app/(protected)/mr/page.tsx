@@ -63,8 +63,8 @@ export default function MR() {
     } else {
       return {
         label: "LOW",
-        backgroundColor: "rgba(230, 245, 230, 1)",
-        color: "rgba(60, 120, 60, 1)",
+        backgroundColor: "rgba(87, 244, 176, 1)",
+        color: "rgba(31, 101, 71, 1)",
       };
     }
   };
@@ -110,8 +110,8 @@ export default function MR() {
 
     if (status === "Completed") {
       return {
-        backgroundColor: "rgba(230, 245, 230, 1)",
-        color: "rgba(60, 120, 60, 1)",
+        backgroundColor: "rgba(87, 244, 176, 1)",
+        color: "rgba(31, 101, 71, 1)",
       };
     }
 
@@ -140,6 +140,7 @@ export default function MR() {
     "Pending delivery",
     "GRN pending",
     "Awaiting QC check",
+    "Awaiting stock entry",
     "Completed",
   ];
 
@@ -213,14 +214,14 @@ export default function MR() {
                     backgroundColor: isRejected
                       ? "rgba(255, 181, 181, 1)"
                       : isCompleted && hasItems
-                      ? "rgba(230, 245, 230, 1)"
+                      ? "rgba(87, 244, 176, 1)"
                       : hasItems
                       ? "rgba(255, 250, 189, 1)"
                       : "rgba(231, 231, 231, 1)",
                     color: isRejected
                       ? "rgba(248, 77, 77, 1)"
                       : isCompleted && hasItems
-                      ? "rgba(60, 120, 60, 1)"
+                      ? "rgba(31, 101, 71, 1)"
                       : hasItems
                       ? "rgba(134, 83, 47, 1)"
                       : "rgba(100, 100, 100, 1)",
@@ -244,6 +245,7 @@ export default function MR() {
               >
                 {mrs.map((mr: any) => {
                   const priority = getPriority(mr.required_date);
+                  const isCompleted = mr.progress_name === "Completed";
 
                   return (
                     <div
@@ -275,15 +277,18 @@ export default function MR() {
                           >
                             {mr.progress_name}
                           </small>
-                          <small
-                            className="status"
-                            style={{
-                              backgroundColor: priority.backgroundColor,
-                              color: priority.color,
-                            }}
-                          >
-                            {priority.label}
-                          </small>
+                          {/* Only show priority badge if NOT completed */}
+                          {!isCompleted && (
+                            <small
+                              className="status"
+                              style={{
+                                backgroundColor: priority.backgroundColor,
+                                color: priority.color,
+                              }}
+                            >
+                              {priority.label}
+                            </small>
+                          )}
                         </div>
                       </div>
 
@@ -310,16 +315,19 @@ export default function MR() {
                         <h3>
                           {new Date(mr.required_date).toLocaleDateString()}
                         </h3>
-                        <h3
-                          style={{
-                            padding: "5px 15px",
-                            backgroundColor: "rgba(231, 231, 231, 1)",
-                            textTransform: "uppercase",
-                            borderRadius: "5px",
-                          }}
-                        >
-                          {getDaysLeftText(mr.required_date)}
-                        </h3>
+                        {/* Only show days left/overdue text if NOT completed */}
+                        {!isCompleted && (
+                          <h3
+                            style={{
+                              padding: "5px 15px",
+                              backgroundColor: "rgba(231, 231, 231, 1)",
+                              textTransform: "uppercase",
+                              borderRadius: "5px",
+                            }}
+                          >
+                            {getDaysLeftText(mr.required_date)}
+                          </h3>
+                        )}
                       </div>
 
                       <br />

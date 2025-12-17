@@ -182,51 +182,40 @@ export default function UploadInvoiceButton({
       {invoiceFiles.length > 0 ? (
         <>
           {invoiceFiles.map((fileUrl) => (
-            <div
+            <a
+              href={fileUrl}
+              target="_blank"
               key={fileUrl}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
                 padding: "7px 20px",
                 borderRadius: "25px",
                 border: "1px rgba(207, 207, 207, 1) solid",
                 backgroundColor: "white",
+                fontSize: "13px",
+                fontWeight: "bold",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
               }}
             >
-              <div
-                style={{
-                  fontSize: "13px",
-                  fontWeight: "bold",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {/* {getFileName(fileUrl)} */}
-                View Invoice
-              </div>
-
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: "flex" }}
-              >
-                <img src={externalLinkIcon} alt="external link" height={11} />
-              </a>
-
+              {/* {getFileName(fileUrl)} */}
+              View Invoice
+              <img src={externalLinkIcon} alt="external link" height={11} />
               {canDelete && (
                 <img
                   src={closeIcon}
                   alt="remove"
-                  onClick={(e) => handleRemoveFile(fileUrl, e)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleRemoveFile(fileUrl, e);
+                  }}
                   style={{
                     cursor: "pointer",
                   }}
                 />
               )}
-            </div>
+            </a>
           ))}
         </>
       ) : (

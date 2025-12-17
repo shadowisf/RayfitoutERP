@@ -29,7 +29,7 @@ export default function SubmitForPaymentButton({
     e.preventDefault();
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "POST",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "submitForPayment",

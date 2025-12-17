@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ResultSetHeader } from "mysql2";
 import { db } from "@/lib/db";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const [rows]: any = await db.query(`SELECT * FROM vw_mr_headers`);
 
@@ -77,6 +77,53 @@ export async function POST(req: Request) {
         success: true,
       });
     }
+  } catch (err: any) {
+    console.error(err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+
+    if (body.action == "submitForLPO") {
+      await db.query(`UPDATE mr_headers SET progress_id = 12 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForPricingResubmission") {
+      await db.query(`UPDATE mr_headers SET progress_id = 11 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForQC") {
+      await db.query(`UPDATE mr_headers SET progress_id = 21 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForStockEntry") {
+      await db.query(`UPDATE mr_headers SET progress_id = 24 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForCompletion") {
+      await db.query(`UPDATE mr_headers SET progress_id = 25 WHERE id = ?`, [
+        body.id,
+      ]);
+    }
 
     if (body.action === "submitForInitialApproval") {
       await db.query(`UPDATE mr_headers SET progress_id = 3 WHERE id = ?`, [
@@ -146,47 +193,6 @@ export async function POST(req: Request) {
     }
 
     if (body.action === "submitForDelivery") {
-      await db.query(`UPDATE mr_headers SET progress_id = 17 WHERE id = ?`, [
-        body.id,
-      ]);
-
-      return NextResponse.json({ status: 200 });
-    }
-  } catch (err: any) {
-    console.error(err.sqlMessage);
-    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
-  }
-}
-
-export async function PUT(req: Request) {
-  try {
-    const body = await req.json();
-
-    if (body.action == "submitForLPO") {
-      await db.query(`UPDATE mr_headers SET progress_id = 12 WHERE id = ?`, [
-        body.id,
-      ]);
-
-      return NextResponse.json({ status: 200 });
-    }
-
-    if (body.action === "submitForPricingResubmission") {
-      await db.query(`UPDATE mr_headers SET progress_id = 11 WHERE id = ?`, [
-        body.id,
-      ]);
-
-      return NextResponse.json({ status: 200 });
-    }
-
-    if (body.action === "submitForQC") {
-      await db.query(`UPDATE mr_headers SET progress_id = 21 WHERE id = ?`, [
-        body.id,
-      ]);
-
-      return NextResponse.json({ status: 200 });
-    }
-
-    if (body.action === "submitForCompletion") {
       await db.query(`UPDATE mr_headers SET progress_id = 17 WHERE id = ?`, [
         body.id,
       ]);

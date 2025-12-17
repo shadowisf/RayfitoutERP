@@ -1,3 +1,13 @@
+::-webkit-scrollbar-track {
+  background: rgba(248, 249, 251, 1);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 rgba(248, 249, 251, 1);
+}
+
 html,
 body {
   max-width: 100vw;
@@ -401,6 +411,7 @@ label {
     display: grid;
     grid-template-columns: 1fr 0.5fr;
     gap: 20px;
+    align-items: center;
 
     &.three-col {
       grid-template-columns: 1fr 1fr 1fr;
@@ -720,6 +731,7 @@ label {
 .items-table {
   width: 100%;
   border-collapse: collapse;
+  margin-bottom: 50px;
 
   .alt {
     td {

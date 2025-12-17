@@ -44,6 +44,9 @@ export default async function MrWithID({
       console.error(err);
     });
 
+  // Check if MR is completed
+  const isCompleted = mrHeader.progress_name === "Completed";
+
   // Calculate days left and priority
   const required = new Date(mrHeader.required_date);
   const today = new Date();
@@ -85,8 +88,8 @@ export default async function MrWithID({
     // More than 3 days
     priority = "LOW";
     priorityStyle = {
-      backgroundColor: "rgba(230, 245, 230, 1)",
-      color: "rgba(60, 120, 60, 1)",
+      backgroundColor: "rgba(87, 244, 176, 1)",
+      color: "rgba(31, 101, 71, 1)",
     };
   }
 
@@ -104,10 +107,16 @@ export default async function MrWithID({
 
   const isRejected = mrHeader.progress_name?.toLowerCase().includes("reject");
 
+  // Progress style based on status
   const progressStyle = isRejected
     ? {
         backgroundColor: "rgba(255, 181, 181, 1)",
         color: "rgba(248, 77, 77, 1)",
+      }
+    : isCompleted
+    ? {
+        backgroundColor: "rgba(87, 244, 176, 1)",
+        color: "rgba(31, 101, 71, 1)",
       }
     : {
         backgroundColor: "rgba(255, 250, 189, 1)",
@@ -128,9 +137,12 @@ export default async function MrWithID({
               {mrHeader.progress_name}
             </p>
 
-            <p className="status" style={priorityStyle}>
-              {priority}
-            </p>
+            {/* Only show priority badge if NOT completed */}
+            {!isCompleted && (
+              <p className="status" style={priorityStyle}>
+                {priority}
+              </p>
+            )}
           </div>
         </div>
 
@@ -164,16 +176,19 @@ export default async function MrWithID({
             <span>REQUIRED DATE</span>
             <div style={{ display: "flex", alignItems: "center", gap: "50px" }}>
               <h2>{new Date(mrHeader.required_date).toLocaleDateString()}</h2>
-              <h2
-                style={{
-                  padding: "5px 15px",
-                  backgroundColor: "rgba(231, 231, 231, 1)",
-                  textTransform: "uppercase",
-                  borderRadius: "5px",
-                }}
-              >
-                {daysLeftText}
-              </h2>
+              {/* Only show days left/overdue text if NOT completed */}
+              {!isCompleted && (
+                <h2
+                  style={{
+                    padding: "5px 15px",
+                    backgroundColor: "rgba(231, 231, 231, 1)",
+                    textTransform: "uppercase",
+                    borderRadius: "5px",
+                  }}
+                >
+                  {daysLeftText}
+                </h2>
+              )}
             </div>
           </div>
         </div>

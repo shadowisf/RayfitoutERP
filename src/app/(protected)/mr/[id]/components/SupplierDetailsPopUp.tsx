@@ -40,10 +40,8 @@ export default function SupplierDetailsPopUp({
           setIsOpen={setIsOpen}
           style={{
             whiteSpace: "pre-wrap",
-            width: "500px",
             color: "black",
             textTransform: "uppercase",
-            minWidth: "1250px",
           }}
         >
           <div
@@ -59,7 +57,7 @@ export default function SupplierDetailsPopUp({
             </div>
             <div>
               <span>ID</span>
-              <h2>SUPP-{item.id}</h2>
+              <h2>SUPP-{String(item.id).padStart(5, "0")}</h2>
             </div>
           </div>
 
@@ -102,7 +100,7 @@ export default function SupplierDetailsPopUp({
               <h2>{item.approved_supplier_rating || "NO DATA"}</h2>
             </div>
             <div>
-              <span>TRN / TAX REGISTRATION NUMBER</span>
+              <span>TAX REGISTRATION NUMBER</span>
               <h2>{item.approved_supplier_trn_number}</h2>
             </div>
           </div>

@@ -68,7 +68,7 @@ export default function SubmitForStockEntryButton({
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this material request</p>
+          <p>Are you sure you want to submit this material request?</p>
         </FormPopUp>
       )}
     </>

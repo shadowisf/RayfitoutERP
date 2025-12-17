@@ -15,6 +15,7 @@ type InputItemProps = {
   disabled?: boolean;
   sideLabel?: boolean;
   style?: React.CSSProperties;
+  onClick?: () => void;
 };
 
 export default function InputItem({
@@ -29,12 +30,13 @@ export default function InputItem({
   disabled,
   sideLabel,
   style,
+  onClick,
 }: InputItemProps) {
   switch (type) {
     case "date":
       return (
         <div className="input-item">
-          <label>{label}</label>
+          {label && <label>{label}</label>}
           <input
             type={"date"}
             value={value}
@@ -42,6 +44,7 @@ export default function InputItem({
             placeholder={placeholder}
             required={required}
             disabled={disabled}
+            onClick={onClick}
           />
         </div>
       );
@@ -61,7 +64,7 @@ export default function InputItem({
               : {}),
           }}
         >
-          <label>{label}</label>
+          {label && <label>{label}</label>}
           <input
             type={"text"}
             value={value}
@@ -69,6 +72,7 @@ export default function InputItem({
             placeholder={placeholder}
             required={required}
             disabled={disabled}
+            onClick={onClick}
           />
         </div>
       );
@@ -76,7 +80,7 @@ export default function InputItem({
     case "number":
       return (
         <div className="input-item">
-          <label>{label}</label>
+          {label && <label>{label}</label>}
           <input
             type={"number"}
             value={value}
@@ -84,6 +88,7 @@ export default function InputItem({
             placeholder={placeholder}
             required={required}
             disabled={disabled}
+            onClick={onClick}
           />
         </div>
       );
@@ -91,12 +96,13 @@ export default function InputItem({
     case "select":
       return (
         <div className="input-item">
-          <label>{label}</label>
+          {label && <label>{label}</label>}
           <select
             value={value}
             onChange={onChange}
             required={required}
             disabled={disabled}
+            onClick={onClick}
           >
             <option value={typeof value === "string" ? "" : 0} disabled>
               {placeholder}
@@ -111,21 +117,22 @@ export default function InputItem({
     case "textarea":
       return (
         <div className="input-item">
-          <label>{label}</label>
+          {label && <label>{label}</label>}
           <textarea
             value={value}
             onChange={onChange}
             required={required}
             placeholder={placeholder}
             disabled={disabled}
-          ></textarea>
+            onClick={onClick}
+          />
         </div>
       );
 
     case "password":
       return (
         <div className="input-item">
-          <label>{label}</label>
+          {label && <label>{label}</label>}
           <input
             type={"password"}
             value={value}
@@ -133,6 +140,7 @@ export default function InputItem({
             placeholder={placeholder}
             required={required}
             disabled={disabled}
+            onClick={onClick}
           />
         </div>
       );

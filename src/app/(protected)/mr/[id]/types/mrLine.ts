@@ -1,5 +1,7 @@
 export type MrLine = {
   id: number;
+  project_id: number;
+  project_name: string;
   mr_header_id: number;
   material_category_id: number;
   material_category: string;

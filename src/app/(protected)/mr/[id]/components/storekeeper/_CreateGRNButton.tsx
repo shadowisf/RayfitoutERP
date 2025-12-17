@@ -575,7 +575,7 @@ export default function CreateGRNButton({
                         style={{
                           display: "flex",
                           flexDirection: "column",
-                          gap: "8px",
+                          gap: "10px",
                         }}
                       >
                         <div
@@ -597,7 +597,7 @@ export default function CreateGRNButton({
                                 e.target.value
                               )
                             }
-                            style={{ minWidth: "200px" }}
+                            style={{ minWidth: "200px", marginBottom: "0px" }}
                             disabled={isViewMode}
                           />
                           {quantityMatch !== null && (
@@ -605,9 +605,6 @@ export default function CreateGRNButton({
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                justifyContent: "center",
-                                width: "32px",
-                                height: "32px",
                                 flexShrink: 0,
                               }}
                             >
@@ -617,7 +614,6 @@ export default function CreateGRNButton({
                                   alt="match"
                                   style={{
                                     width: "32px",
-                                    height: "32px",
                                   }}
                                 />
                               ) : (
@@ -626,7 +622,6 @@ export default function CreateGRNButton({
                                   alt="warning"
                                   style={{
                                     width: "32px",
-                                    height: "32px",
                                   }}
                                 />
                               )}

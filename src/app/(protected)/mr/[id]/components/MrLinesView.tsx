@@ -30,6 +30,8 @@ import CreateGRNButton from "./storekeeper/_CreateGRNButton";
 import SubmitForQC from "./storekeeper/_SubmitForQCButton";
 import QCCheckListButton from "./qualityControl/_QCCheckListButton";
 import SubmitForStockEntryButton from "./qualityControl/_SubmitForStockEntry";
+import AddInventoryButton from "./storekeeper/_AddInventoryButton";
+import CompleteMaterialRequestButton from "./storekeeper/_CompleteMaterialRequestButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -106,6 +108,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     [itemId: number]: "passed" | "failed" | "pending";
   }>({});
   const [isCheckingQc, setIsCheckingQc] = useState<boolean>(true);
+
+  const [inventoryStatus, setInventoryStatus] = useState<{
+    [itemId: number]: boolean;
+  }>({});
+  const [isCheckingInventory, setIsCheckingInventory] = useState<boolean>(true);
 
   useEffect(
     function () {
@@ -716,6 +723,64 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     checkQcStatuses();
   }, [mrLines, mrHeader.progress_id, mrHeader.id]);
 
+  // Check inventory status for all items
+  useEffect(() => {
+    async function checkInventoryStatuses() {
+      if (mrHeader.progress_id !== 24) {
+        setIsCheckingInventory(false);
+        return;
+      }
+
+      setIsCheckingInventory(true);
+      const statusMap: { [itemId: number]: boolean } = {};
+
+      try {
+        // Fetch all inventory items
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`,
+          {
+            method: "GET",
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.success && data.data) {
+            const inventoryItems = data.data;
+
+            // Collect all MR line items
+            const allItems: MrLine[] = [];
+            for (const category in mrLines) {
+              for (const subCategory in mrLines[category]) {
+                for (const supplier in mrLines[category][subCategory]) {
+                  const items = mrLines[category][subCategory][supplier];
+                  allItems.push(...items);
+                }
+              }
+            }
+
+            // Check if each MR line has a corresponding inventory entry
+            allItems.forEach((item) => {
+              const hasInventory = inventoryItems.some(
+                (invItem: any) => invItem.id === item.id
+              );
+              statusMap[item.id] = hasInventory;
+            });
+          }
+        }
+
+        setInventoryStatus(statusMap);
+      } catch (error) {
+        console.error("Error checking inventory statuses:", error);
+      } finally {
+        setIsCheckingInventory(false);
+      }
+    }
+
+    checkInventoryStatuses();
+  }, [mrLines, mrHeader.progress_id, mrHeader.id]);
+
   function toggleDescription(itemId: number) {
     setExpandedDescriptions(function (prev) {
       if (prev.includes(itemId)) {
@@ -1028,6 +1093,31 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return totalItems > 0 && allChecked && allPassed;
   }
 
+  // Check if all items have inventory entries
+  function allItemsHaveInventory() {
+    if (isCheckingInventory) return false;
+
+    let totalItems = 0;
+    let itemsWithInventory = 0;
+
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
+
+          for (const item of items) {
+            totalItems++;
+            if (inventoryStatus[item.id]) {
+              itemsWithInventory++;
+            }
+          }
+        }
+      }
+    }
+
+    return totalItems > 0 && itemsWithInventory === totalItems;
+  }
+
   function hasAnyRejectedItems() {
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
@@ -1218,10 +1308,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               mrHeader.department_id && <th>ACTIONS</th>}
                           {mrHeader.progress_id === 3 &&
                             userInfo?.departmentID === 8 && <th>ACTIONS</th>}
-                          {mrHeader.progress_id >= 10 /* &&
-                            [8, 9, 10, 11, 12].includes(
-                              userInfo?.departmentID ?? 0
-                            ) */ && <th>SUPPLIER & QUOTATION</th>}
+                          {mrHeader.progress_id >= 10 && (
+                            <th>SUPPLIER & QUOTATION</th>
+                          )}
                           {mrHeader.progress_id === 7 &&
                             userInfo?.departmentID === 9 && (
                               <th>SUPPLIER & QUOTATION</th>
@@ -1230,6 +1319,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             mrHeader.progress_id === 21 && (
                               <th>QUALITY CONTROL</th>
                             )}
+                          {userInfo?.departmentID === 11 &&
+                            mrHeader.progress_id === 24 && <th>STOCKS</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -1406,6 +1497,13 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       />
                                     </td>
                                   )}
+
+                                {userInfo?.departmentID === 11 &&
+                                  mrHeader.progress_id === 24 && (
+                                    <td>
+                                      <AddInventoryButton mrLine={item} />
+                                    </td>
+                                  )}
                               </tr>
                             );
                           })}
@@ -1534,6 +1632,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   {mrHeader.progress_id >= 12 && <th>SUPPLIER & QUOTATION</th>}
                   {userInfo?.departmentID === 12 &&
                     mrHeader.progress_id === 21 && <th>QUALITY CONTROL</th>}
+                  {mrHeader.progress_id === 24 &&
+                    userInfo?.departmentID === 11 && <th>STOCKS</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1599,6 +1699,13 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           />
                         </td>
                       )}
+
+                    {userInfo?.departmentID === 11 &&
+                      mrHeader.progress_id === 24 && (
+                        <td>
+                          <AddInventoryButton mrLine={item} />
+                        </td>
+                      )}
                   </tr>
                 ))}
               </tbody>
@@ -1636,7 +1743,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
       {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
         userInfo?.departmentID === mrHeader.department_id &&
-        !hasAnyRejectedItems() && ( // Add this check
+        !hasAnyRejectedItems() && (
           <div className="bottom-nav">
             <SubmitForInitialApprovalButton
               mrHeaderID={mrHeader.id}
@@ -1763,6 +1870,16 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             <SubmitForStockEntryButton mrHeaderID={mrHeader.id}>
               SUBMIT FOR STOCK ENTRY
             </SubmitForStockEntryButton>
+          </div>
+        )}
+
+      {allItemsHaveInventory() &&
+        userInfo?.departmentID === 11 &&
+        mrHeader.progress_id === 24 && (
+          <div className="bottom-nav">
+            <CompleteMaterialRequestButton mrHeaderID={mrHeader.id}>
+              COMPLETE MATERIAL REQUEST
+            </CompleteMaterialRequestButton>
           </div>
         )}
     </>
