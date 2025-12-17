@@ -1,3 +1,4 @@
+// app/api/qc/route.ts
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { ResultSetHeader } from "mysql2";
@@ -14,7 +15,6 @@ export async function POST(request: Request) {
         accepted_quantity,
         qc_status,
         checkpoints,
-        failure_reasons,
       } = body;
 
       // Validate required fields
@@ -28,22 +28,36 @@ export async function POST(request: Request) {
         );
       }
 
+      // Check if QC already exists for this lpo_mr_line_id
+      const checkExistingQuery = `
+        SELECT id FROM qc_mr_line WHERE lpo_mr_line_id = ? LIMIT 1
+      `;
+      const [existingQc] = await db.query<any[]>(checkExistingQuery, [
+        lpo_mr_line_id,
+      ]);
+
+      if (existingQc.length > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "QC record already exists for this item. Please use update instead.",
+            existingQcId: existingQc[0].id,
+          },
+          { status: 400 }
+        );
+      }
+
       // Insert into qc_mr_line table
       const qcInsertQuery = `
-      INSERT INTO qc_mr_line (
-        lpo_mr_line_id,
-        lpo_id,
-        checked_by,
-        accepted_quantity,
-        qc_status,
-        physical_damage,
-        wrong_specification,
-        quantity_packaging_issues,
-        functional_failure,
-        quality_issues,
-        compliance_certification
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+        INSERT INTO qc_mr_line (
+          lpo_mr_line_id,
+          lpo_id,
+          checked_by,
+          accepted_quantity,
+          qc_status
+        ) VALUES (?, ?, ?, ?, ?)
+      `;
 
       const qcValues = [
         lpo_mr_line_id,
@@ -51,20 +65,6 @@ export async function POST(request: Request) {
         checked_by,
         accepted_quantity,
         qc_status,
-        qc_status === "failed" ? failure_reasons?.physicalDamage || null : null,
-        qc_status === "failed"
-          ? failure_reasons?.wrongSpecification || null
-          : null,
-        qc_status === "failed"
-          ? failure_reasons?.quantityPackagingIssues || null
-          : null,
-        qc_status === "failed"
-          ? failure_reasons?.functionalFailure || null
-          : null,
-        qc_status === "failed" ? failure_reasons?.qualityIssues || null : null,
-        qc_status === "failed"
-          ? failure_reasons?.complianceCertification || null
-          : null,
       ];
 
       const [qcResult] = await db.query<ResultSetHeader>(
@@ -76,23 +76,27 @@ export async function POST(request: Request) {
       // Insert checkpoint responses into qc_checkpoints table
       if (checkpoints && Object.keys(checkpoints).length > 0) {
         const checkpointInsertQuery = `
-        INSERT INTO qc_checkpoints (
-          qc_mr_line_id,
-          checkpoint_number,
-          checkpoint_name,
-          response,
-          notes
-        ) VALUES ?
-      `;
+          INSERT INTO qc_checkpoints (
+            qc_mr_line_id,
+            checkpoint_number,
+            checkpoint_name,
+            response,
+            notes,
+            attachments
+          ) VALUES ?
+        `;
 
         const checkpointValues = Object.entries(checkpoints)
-          .filter(([_, data]: [string, any]) => data.response) // Only insert answered checkpoints
+          .filter(([_, data]: [string, any]) => data.response)
           .map(([index, data]: [string, any]) => [
             qcId,
             parseInt(index) + 1,
             getCheckpointName(parseInt(index)),
             data.response,
             data.notes || null,
+            data.attachments && data.attachments.length > 0
+              ? JSON.stringify(data.attachments)
+              : null,
           ]);
 
         if (checkpointValues.length > 0) {
@@ -106,122 +110,6 @@ export async function POST(request: Request) {
         data: { qc_id: qcId },
       });
     }
-
-    if (body.action === "updateQC") {
-      const {
-        qc_id,
-        lpo_mr_line_id,
-        lpo_id,
-        checked_by,
-        accepted_quantity,
-        qc_status,
-        checkpoints,
-        failure_reasons,
-      } = body;
-
-      // Validate required fields
-      if (
-        !qc_id ||
-        !lpo_mr_line_id ||
-        !lpo_id ||
-        !accepted_quantity ||
-        !qc_status
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Missing required fields",
-          },
-          { status: 400 }
-        );
-      }
-
-      // Update qc_mr_line table
-      const qcUpdateQuery = `
-        UPDATE qc_mr_line 
-        SET 
-          checked_by = ?,
-          accepted_quantity = ?,
-          qc_status = ?,
-          physical_damage = ?,
-          wrong_specification = ?,
-          quantity_packaging_issues = ?,
-          functional_failure = ?,
-          quality_issues = ?,
-          compliance_certification = ?
-        WHERE id = ?
-      `;
-
-      const qcValues = [
-        checked_by,
-        accepted_quantity,
-        qc_status,
-        qc_status === "failed" ? failure_reasons?.physicalDamage || null : null,
-        qc_status === "failed"
-          ? failure_reasons?.wrongSpecification || null
-          : null,
-        qc_status === "failed"
-          ? failure_reasons?.quantityPackagingIssues || null
-          : null,
-        qc_status === "failed"
-          ? failure_reasons?.functionalFailure || null
-          : null,
-        qc_status === "failed" ? failure_reasons?.qualityIssues || null : null,
-        qc_status === "failed"
-          ? failure_reasons?.complianceCertification || null
-          : null,
-        qc_id,
-      ];
-
-      await db.query<ResultSetHeader>(qcUpdateQuery, qcValues);
-
-      // Delete existing checkpoints
-      const deleteCheckpointsQuery = `
-        DELETE FROM qc_checkpoints WHERE qc_mr_line_id = ?
-      `;
-      await db.query(deleteCheckpointsQuery, [qc_id]);
-
-      // Insert updated checkpoint responses
-      if (checkpoints && Object.keys(checkpoints).length > 0) {
-        const checkpointInsertQuery = `
-          INSERT INTO qc_checkpoints (
-            qc_mr_line_id,
-            checkpoint_number,
-            checkpoint_name,
-            response,
-            notes
-          ) VALUES ?
-        `;
-
-        const checkpointValues = Object.entries(checkpoints)
-          .filter(([_, data]: [string, any]) => data.response)
-          .map(([index, data]: [string, any]) => [
-            qc_id,
-            parseInt(index) + 1,
-            getCheckpointName(parseInt(index)),
-            data.response,
-            data.notes || null,
-          ]);
-
-        if (checkpointValues.length > 0) {
-          await db.query(checkpointInsertQuery, [checkpointValues]);
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: "QC checklist updated successfully",
-        data: { qc_id: qc_id },
-      });
-    }
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Invalid action",
-      },
-      { status: 400 }
-    );
   } catch (error: any) {
     console.error("Error saving QC checklist:", error);
     return NextResponse.json(
@@ -252,4 +140,98 @@ function getCheckpointName(index: number): string {
     "Safety compliance",
   ];
   return checkpoints[index] || "";
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+
+    const {
+      lpo_mr_line_id,
+      lpo_id,
+      checked_by,
+      accepted_quantity,
+      qc_status,
+      checkpoints,
+      qc_id,
+    } = body;
+
+    // Validate required fields
+    if (!lpo_mr_line_id || !lpo_id || !accepted_quantity || !qc_status) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Missing required fields",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Update qc_mr_line table
+    const qcUpdateQuery = `
+      UPDATE qc_mr_line 
+      SET 
+        checked_by = ?,
+        accepted_quantity = ?,
+        qc_status = ?
+      WHERE id = ?
+    `;
+
+    const qcValues = [checked_by, accepted_quantity, qc_status, qc_id];
+
+    await db.query<ResultSetHeader>(qcUpdateQuery, qcValues);
+
+    // Delete existing checkpoints
+    const deleteCheckpointsQuery = `
+      DELETE FROM qc_checkpoints WHERE qc_mr_line_id = ?
+    `;
+    await db.query(deleteCheckpointsQuery, [qc_id]);
+
+    // Insert updated checkpoint responses
+    if (checkpoints && Object.keys(checkpoints).length > 0) {
+      const checkpointInsertQuery = `
+        INSERT INTO qc_checkpoints (
+          qc_mr_line_id,
+          checkpoint_number,
+          checkpoint_name,
+          response,
+          notes,
+          attachments
+        ) VALUES ?
+      `;
+
+      const checkpointValues = Object.entries(checkpoints)
+        .filter(([_, data]: [string, any]) => data.response)
+        .map(([index, data]: [string, any]) => [
+          qc_id,
+          parseInt(index) + 1,
+          getCheckpointName(parseInt(index)),
+          data.response,
+          data.notes || null,
+          data.attachments && data.attachments.length > 0
+            ? JSON.stringify(data.attachments)
+            : null,
+        ]);
+
+      if (checkpointValues.length > 0) {
+        await db.query(checkpointInsertQuery, [checkpointValues]);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "QC checklist updated successfully",
+      data: { qc_id: qc_id },
+    });
+  } catch (error: any) {
+    console.error("Error updating QC checklist:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to update QC checklist",
+        error: error.sqlMessage || error.message,
+      },
+      { status: 500 }
+    );
+  }
 }

@@ -55,6 +55,7 @@ export default function CreateGRNButton({
   const pencilIcon = "/icons/pencil.svg";
   const warningIcon = "/icons/warning.svg";
   const checkGreenIcon = "/icons/check-green.svg";
+  const externalLinkIcon = "/icons/external-link.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
@@ -65,6 +66,7 @@ export default function CreateGRNButton({
   const [lpoMrLines, setLpoMrLines] = useState<any[]>([]);
 
   const [existingGrn, setExistingGrn] = useState<GRN | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
 
   const [receivedDate, setReceivedDate] = useState("");
@@ -77,6 +79,15 @@ export default function CreateGRNButton({
       checkExistingLpo();
     }
   }, [mrHeader.id, mrLines]);
+
+  // Check if we should be in view mode based on progress_id
+  useEffect(() => {
+    if (mrHeader.progress_id >= 21) {
+      setIsViewMode(true);
+    } else {
+      setIsViewMode(false);
+    }
+  }, [mrHeader.progress_id]);
 
   async function checkExistingLpo() {
     try {
@@ -164,27 +175,26 @@ export default function CreateGRNButton({
         const data = await response.json();
 
         if (data.success && data.data && data.data.id) {
-          // Only set view mode if GRN actually exists (has an ID)
           setExistingGrn(data.data);
-          setIsViewMode(true);
+          // Only set edit mode if not in view mode
+          if (!isViewMode) {
+            setIsEditMode(true);
+          }
         } else {
           setExistingGrn(null);
-          setIsViewMode(false);
+          setIsEditMode(false);
         }
       } catch (error) {
         console.error("Error checking for existing GRN:", error);
         setExistingGrn(null);
-        setIsViewMode(false);
+        setIsEditMode(false);
       }
     }
 
     checkExistingGrn();
   }, [existingLpoId]);
 
-  // Load existing GRN data when viewing
-  // In the CreateGRNButton component, update the mapping in useEffect:
-
-  // Load existing GRN data when viewing
+  // Load existing GRN data when editing
   useEffect(() => {
     if (existingGrn && existingGrn.id && lpoMrLines.length > 0) {
       setReceivedDate(
@@ -197,7 +207,7 @@ export default function CreateGRNButton({
       const mappedGrnLines: { [key: number]: GRNLineItem } = {};
 
       lpoMrLines.forEach((lpoLine: any, index: number) => {
-        // Find matching GRN line - Fixed column name
+        // Find matching GRN line
         const grnLine = existingGrn.grn_lines?.find(
           (gl: any) => gl.lpo_mr_line_id === lpoLine.id
         );
@@ -316,7 +326,7 @@ export default function CreateGRNButton({
     }
   };
 
-  // Add this function after the checkExistingLpo function
+  // Recheck for existing GRN
   async function recheckGrn() {
     if (!existingLpoId) return;
 
@@ -335,7 +345,7 @@ export default function CreateGRNButton({
       if (!response.ok) {
         console.error("API response not ok:", response.status);
         setExistingGrn(null);
-        setIsViewMode(false);
+        setIsEditMode(false);
         return;
       }
 
@@ -343,7 +353,7 @@ export default function CreateGRNButton({
       if (!contentType || !contentType.includes("application/json")) {
         console.error("Response is not JSON:", contentType);
         setExistingGrn(null);
-        setIsViewMode(false);
+        setIsEditMode(false);
         return;
       }
 
@@ -353,23 +363,24 @@ export default function CreateGRNButton({
       if (data.success && data.data && data.data.id) {
         console.log("GRN found on recheck:", data.data);
         setExistingGrn(data.data);
-        setIsViewMode(true);
+        setIsEditMode(true);
       } else {
         console.log("No GRN found on recheck");
         setExistingGrn(null);
-        setIsViewMode(false);
+        setIsEditMode(false);
       }
     } catch (error) {
       console.error("Error rechecking for existing GRN:", error);
       setExistingGrn(null);
-      setIsViewMode(false);
+      setIsEditMode(false);
     }
   }
 
-  // Then update handleSubmit to call this function:
+  // Handle form submission (create or update)
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    // In view mode, just close the modal
     if (isViewMode) {
       setIsOpen(false);
       return;
@@ -394,22 +405,39 @@ export default function CreateGRNButton({
       notes: line.notes || null,
     }));
 
+    // Determine if we're creating or updating
+    const action = isEditMode ? "updateGRN" : "createGRN";
+    const requestBody: any = {
+      action,
+      lpo_id: existingLpoId,
+      received_date: receivedDate,
+      received_by: userInfo?.name,
+      grn_lines: grnLinesArray,
+    };
+
+    // Include GRN ID if updating
+    if (isEditMode && existingGrn?.id) {
+      requestBody.grn_id = existingGrn.id;
+    }
+
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/grn`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "createGRN",
-        lpo_id: existingLpoId,
-        received_date: receivedDate,
-        received_by: userInfo?.name,
-        grn_lines: grnLinesArray,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (res.ok) {
-      toast("Good receiving note created", "success");
+      toast(
+        isEditMode
+          ? "Good received note updated"
+          : "Good received note created",
+        "success"
+      );
       setIsOpen(false);
-      resetForm();
+
+      if (!isEditMode) {
+        resetForm();
+      }
 
       // Wait a brief moment for DB to commit, then recheck
       setTimeout(async () => {
@@ -417,7 +445,10 @@ export default function CreateGRNButton({
         router.refresh();
       }, 500);
     } else {
-      toast("Failed to create GRN", "error");
+      toast(
+        isEditMode ? "Failed to update GRN" : "Failed to create GRN",
+        "error"
+      );
     }
   }
 
@@ -425,26 +456,33 @@ export default function CreateGRNButton({
     <>
       <Button
         componentType={"button"}
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor={isViewMode ? "white" : bgColor}
+        borderColor={isViewMode ? "rgba(207, 207, 207, 1)" : borderColor}
+        textColor={isViewMode ? "black" : textColor}
         onClick={() => setIsOpen(true)}
         full={full ? true : false}
         style={style}
       >
-        {isViewMode ? "View GRN" : children}
+        {isEditMode ? "Edit GRN" : isViewMode ? "View GRN" : children}
+        {isViewMode && (
+          <img src={externalLinkIcon} alt="external link" height={11} />
+        )}
       </Button>
 
       {isOpen && (
         <FormPopUp
           header={
             isViewMode
-              ? "VIEW GOOD RECEIVING NOTE"
-              : "CREATE GOOD RECEIVING NOTE"
+              ? "VIEW GOOD RECEIVED NOTE"
+              : isEditMode
+              ? "EDIT GOOD RECEIVED NOTE"
+              : "CREATE GOOD RECEIVED NOTE"
           }
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={isViewMode ? "CLOSE" : "CONFIRM"}
+          addButtonLabel={
+            isViewMode ? "CLOSE" : isEditMode ? "UPDATE" : "CONFIRM"
+          }
         >
           <div className="input-row full">
             <InputItem
@@ -492,7 +530,7 @@ export default function CreateGRNButton({
             <InputItem
               label={"RECEIVED BY"}
               value={
-                isViewMode
+                isEditMode
                   ? existingGrn?.received_by || ""
                   : userInfo?.name || ""
               }
@@ -705,7 +743,7 @@ export default function CreateGRNButton({
                             textColor={"black"}
                             style={{
                               borderRadius: "5px",
-                              padding: "10px 10px",
+                              padding: "7px 7px",
                             }}
                             onClick={(e) => {
                               e.preventDefault();
@@ -779,7 +817,9 @@ export default function CreateGRNButton({
 
       {isNotesOpen && currentNoteIndex !== null && (
         <FormPopUp
-          header={isViewMode ? "VIEW NOTES" : "ADD NOTES"}
+          header={
+            isViewMode ? "VIEW NOTES" : isEditMode ? "EDIT NOTES" : "ADD NOTES"
+          }
           setIsOpen={setIsNotesOpen}
           handleSubmit={(e) => {
             e.preventDefault();

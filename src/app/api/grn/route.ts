@@ -54,15 +54,76 @@ export async function POST(request: NextRequest) {
         grnId: grnId,
       });
     }
-
-    return NextResponse.json(
-      { error: "Invalid action", success: false },
-      { status: 400 }
-    );
   } catch (error) {
     console.error("Error creating GRN:", error);
     return NextResponse.json(
       { error: "Failed to create GRN", success: false },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    if (body.action === "updateGRN") {
+      const { grn_id, lpo_id, received_date, received_by, grn_lines } = body;
+
+      // Validate required fields
+      if (!grn_id || !lpo_id || !received_date || !received_by || !grn_lines) {
+        return NextResponse.json(
+          { error: "Missing required fields", success: false },
+          { status: 400 }
+        );
+      }
+
+      // Update the GRN header
+      const updateGrnQuery = `
+        UPDATE grn
+        SET received_date = ?, received_by = ?
+        WHERE id = ?
+      `;
+
+      await db.query(updateGrnQuery, [received_date, received_by, grn_id]);
+
+      // Delete existing GRN lines
+      const deleteGrnLinesQuery = `
+        DELETE FROM grn_mr_line
+        WHERE grn_id = ?
+      `;
+
+      await db.query(deleteGrnLinesQuery, [grn_id]);
+
+      // Insert updated GRN lines
+      if (grn_lines && grn_lines.length > 0) {
+        const grnLineQuery = `
+          INSERT INTO grn_mr_line 
+          (grn_id, lpo_mr_line_id, received_quantity, packaging_condition, notes)
+          VALUES (?, ?, ?, ?, ?)
+        `;
+
+        for (const line of grn_lines) {
+          await db.query(grnLineQuery, [
+            grn_id,
+            line.lpo_mr_line_id,
+            line.received_quantity,
+            line.packaging_condition,
+            line.notes || null,
+          ]);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        grnId: grn_id,
+        message: "GRN updated successfully",
+      });
+    }
+  } catch (error) {
+    console.error("Error updating GRN:", error);
+    return NextResponse.json(
+      { error: "Failed to update GRN", success: false },
       { status: 500 }
     );
   }

@@ -38,13 +38,13 @@ export default function SubmitForQuotationsButton({
     });
 
     if (res.ok) {
-      toast("Material request submitted for quotations", "success");
+      toast("Material request submitted", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast("Failed to submit material request for quotations", "error");
+      toast("Failed to submit material request", "error");
     }
   }
 
@@ -63,7 +63,7 @@ export default function SubmitForQuotationsButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR QUOTATIONS"}
+          header={"SUBMIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

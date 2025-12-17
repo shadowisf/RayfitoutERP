@@ -1,5 +1,7 @@
 import CreateMrLineClient from "./components/CreateMrLine";
 import MrLinesView from "./components/MrLinesView";
+import { MrHeader } from "./types/mrHeader";
+import { MrLine } from "./types/mrLine";
 
 export default async function MrWithID({
   params,
@@ -10,7 +12,7 @@ export default async function MrWithID({
 
   const externalLinkIcon = "/icons/external-link.svg";
 
-  const mrHeader = await fetch(
+  const mrHeader: MrHeader = await fetch(
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMrHeaderByID`,
     {
       method: "POST",
@@ -100,23 +102,29 @@ export default async function MrWithID({
     } OVERDUE`;
   }
 
+  const isRejected = mrHeader.progress_name?.toLowerCase().includes("reject");
+
+  const progressStyle = isRejected
+    ? {
+        backgroundColor: "rgba(255, 181, 181, 1)",
+        color: "rgba(248, 77, 77, 1)",
+      }
+    : {
+        backgroundColor: "rgba(255, 250, 189, 1)",
+        color: "rgba(134, 83, 47, 1)",
+      };
+
   return (
     <div className="dashboard">
       <div className="mr-with-id">
         <div className="top">
           <div>
             <span>MR NUMBER</span>
-            <h2>MR-{String(id).padStart(3, "0")}</h2>
+            <h2>MR-{String(id).padStart(5, "0")}</h2>
           </div>
 
           <div style={{ display: "flex", gap: "10px" }}>
-            <p
-              className="status"
-              style={{
-                backgroundColor: "rgba(255, 250, 189, 1)",
-                color: "rgba(134, 83, 47, 1)",
-              }}
-            >
+            <p className="status" style={progressStyle}>
               {mrHeader.progress_name}
             </p>
 

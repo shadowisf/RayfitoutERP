@@ -6,7 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 
-type SubmitForCompletionProps = {
+type SubmitForStockEntryProps = {
   mrHeaderID: number;
   bgColor?: string;
   textColor?: string;
@@ -14,13 +14,13 @@ type SubmitForCompletionProps = {
   children?: React.ReactNode;
 };
 
-export default function SubmitForCompletionButton({
+export default function SubmitForStockEntryButton({
   mrHeaderID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: SubmitForCompletionProps) {
+}: SubmitForStockEntryProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -32,19 +32,19 @@ export default function SubmitForCompletionButton({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitForCompletion",
+        action: "submitForStockEntry",
         id: mrHeaderID,
       }),
     });
 
     if (res.ok) {
-      toast("Material request submitted for completion", "success");
+      toast("Material request submitted", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast("Failed to submit material request for completion", "error");
+      toast("Failed to submit material request", "error");
     }
   }
 
@@ -63,7 +63,7 @@ export default function SubmitForCompletionButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR COMPLETION"}
+          header={"SUBMIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

@@ -7,7 +7,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { lpo_mr_line_id } = body;
 
-    // Validate required field
     if (!lpo_mr_line_id) {
       return NextResponse.json(
         {
@@ -18,7 +17,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Query to get QC data for this lpo_mr_line_id
     const query = `
       SELECT 
         id,
@@ -26,13 +24,7 @@ export async function POST(request: Request) {
         lpo_id,
         checked_by,
         accepted_quantity,
-        qc_status,
-        physical_damage,
-        wrong_specification,
-        quantity_packaging_issues,
-        functional_failure,
-        quality_issues,
-        compliance_certification
+        qc_status
       FROM qc_mr_line
       WHERE lpo_mr_line_id = ?
       ORDER BY id DESC
@@ -51,13 +43,14 @@ export async function POST(request: Request) {
 
     const qcData = rows[0];
 
-    // Optionally, also fetch checkpoint data
+    // Fetch checkpoint data including attachments
     const checkpointsQuery = `
       SELECT 
         checkpoint_number,
         checkpoint_name,
         response,
-        notes
+        notes,
+        attachments
       FROM qc_checkpoints
       WHERE qc_mr_line_id = ?
       ORDER BY checkpoint_number ASC

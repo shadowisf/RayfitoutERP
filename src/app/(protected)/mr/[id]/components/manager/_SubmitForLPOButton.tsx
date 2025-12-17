@@ -30,13 +30,22 @@ export default function SubmitForLPO({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    console.log(mrLines);
+
     try {
       // Get all MR line IDs
       const allItemIds: number[] = [];
+
       for (const category in mrLines) {
         for (const subCategory in mrLines[category]) {
-          const items = mrLines[category][subCategory];
-          items.forEach((item: any) => allItemIds.push(item.id));
+          for (const supplier in mrLines[category][subCategory]) {
+            const items = mrLines[category][subCategory][supplier];
+
+            // Add safety check
+            if (Array.isArray(items)) {
+              items.forEach((item: any) => allItemIds.push(item.id));
+            }
+          }
         }
       }
 
@@ -105,19 +114,16 @@ export default function SubmitForLPO({
       });
 
       if (res.ok) {
-        toast("Material request submitted for LPO", "success");
+        toast("Material request submitted", "success");
         setIsOpen(false);
         router.refresh();
       } else {
         const errorData = await res.json();
-        toast(
-          errorData.error || "Failed to submit material request for LPO",
-          "error"
-        );
+        toast(errorData.error || "Failed to submit material request", "error");
       }
     } catch (error) {
       console.error("Error submitting for LPO:", error);
-      toast("Failed to submit material request for LPO", "error");
+      toast("Failed to submit material request", "error");
     }
   }
 
@@ -136,12 +142,12 @@ export default function SubmitForLPO({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR LPO"}
+          header={"SUBMIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this material request for LPO?</p>
+          <p>Are you sure you want to submit this material request?</p>
         </FormPopUp>
       )}
     </>

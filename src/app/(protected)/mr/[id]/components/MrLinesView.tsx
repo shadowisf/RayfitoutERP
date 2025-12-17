@@ -8,7 +8,7 @@ import DeleteMrItemButton from "./department/_DeleteMrItemButton";
 import RenameMrSubCategoryButton from "./department/_RenameMrSubCategoryButton";
 import DeleteMrSubCategoryButton from "./department/_DeleteMrSubCategoryButton";
 import BoqReferencePopUp from "./BoqReferencePopUp";
-import SubmitMrForApprovalButton from "./department/_SubmitMrForApprovalButton";
+import SubmitForInitialApprovalButton from "./department/_SubmitForInitialApprovalButton";
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import InitialApprovalButtons from "./manager/_InitialApprovalButtons";
@@ -29,7 +29,7 @@ import SubmitForDeliveryButton from "./finance/_SubmitForDeliveryButton";
 import CreateGRNButton from "./storekeeper/_CreateGRNButton";
 import SubmitForQC from "./storekeeper/_SubmitForQCButton";
 import QCCheckListButton from "./qualityControl/_QCCheckListButton";
-import SubmitForCompletionButton from "./qualityControl/_SubmitForCompletion";
+import SubmitForStockEntryButton from "./qualityControl/_SubmitForStockEntry";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -744,7 +744,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   }
 
   function hasRejectedItems() {
-    let hasRejectedOrClarified = false;
+    let hasRejected = false;
     let allItemsReviewed = true;
 
     for (const category in mrLines) {
@@ -755,8 +755,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           for (const item of items) {
             const status = item.approval_status?.toLowerCase();
 
-            if (status === "rejected" || status === "clarified") {
-              hasRejectedOrClarified = true;
+            if (status === "rejected") {
+              hasRejected = true;
             }
 
             if (!status || status === "pending") {
@@ -767,7 +767,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       }
     }
 
-    return allItemsReviewed && hasRejectedOrClarified;
+    return allItemsReviewed && hasRejected;
   }
 
   function allItemsApproved() {
@@ -1028,6 +1028,26 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return totalItems > 0 && allChecked && allPassed;
   }
 
+  function hasAnyRejectedItems() {
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
+
+          for (const item of items) {
+            const status = item.approval_status?.toLowerCase();
+
+            if (status === "rejected") {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
   return (
     <>
       <div
@@ -1103,23 +1123,23 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   </button>
                 ))}
               </div>
+
+              {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
+                userInfo?.departmentID === mrHeader.department_id &&
+                showByItem && (
+                  <AddMrItemButton
+                    mrHeaderID={mrHeader.id}
+                    projectID={mrHeader.project_id}
+                    bgColor="black"
+                    borderColor="black"
+                    textColor="white"
+                  >
+                    ADD CATEGORY & ITEM +
+                  </AddMrItemButton>
+                )}
             </div>
           </div>
         )}
-
-        {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-          userInfo?.departmentID === mrHeader.department_id &&
-          showByItem && (
-            <AddMrItemButton
-              mrHeaderID={mrHeader.id}
-              projectID={mrHeader.project_id}
-              bgColor="black"
-              borderColor="black"
-              textColor="white"
-            >
-              ADD CATEGORY & ITEM +
-            </AddMrItemButton>
-          )}
       </div>
 
       <br />
@@ -1171,6 +1191,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               <br />
               <br />
 
+              {/* SHOW BY ITEM */}
               {Object.entries(suppliers).map(
                 ([supplier, items], supplierIndex) => (
                   <div key={supplier} style={{ marginBottom: "2rem" }}>
@@ -1180,8 +1201,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           <th>#</th>
                           <th>DESCRIPTION</th>
                           <th>QUANTITY</th>
-                          <th>UNIT</th>
-                          <th>BILL OF QUANTITY REFERENCE</th>
+                          <th>BOF REF.</th>
                           <th>NOTES</th>
                           {((mrHeader.progress_id === 5 &&
                             (userInfo?.departmentID ===
@@ -1198,12 +1218,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               mrHeader.department_id && <th>ACTIONS</th>}
                           {mrHeader.progress_id === 3 &&
                             userInfo?.departmentID === 8 && <th>ACTIONS</th>}
-                          {(mrHeader.progress_id >= 7 ||
-                            userInfo?.departmentID === 9 ||
-                            userInfo?.departmentID === 8 ||
-                            userInfo?.departmentID === 10) && (
-                            <th>SUPPLIER & QUOTATION</th>
-                          )}
+                          {mrHeader.progress_id >= 10 /* &&
+                            [8, 9, 10, 11, 12].includes(
+                              userInfo?.departmentID ?? 0
+                            ) */ && <th>SUPPLIER & QUOTATION</th>}
+                          {mrHeader.progress_id === 7 &&
+                            userInfo?.departmentID === 9 && (
+                              <th>SUPPLIER & QUOTATION</th>
+                            )}
                           {userInfo?.departmentID === 12 &&
                             mrHeader.progress_id === 21 && (
                               <th>QUALITY CONTROL</th>
@@ -1217,8 +1239,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               <tr key={item.id}>
                                 <td>{itemIndex + 1}</td>
                                 <td>{item.material_description}</td>
-                                <td>{item.quantity}</td>
-                                <td>{item.unit}</td>
+                                <td>
+                                  {item.quantity} {item.unit}
+                                </td>
                                 <td>
                                   <div
                                     style={{
@@ -1265,43 +1288,36 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           gap: "10px",
                                         }}
                                       >
-                                        {(mrHeader.progress_id === 1 ||
-                                          (mrHeader.progress_id === 5 &&
-                                            (item.approval_status?.toLowerCase() ===
-                                              "rejected" ||
-                                              item.approval_status?.toLowerCase() ===
-                                                "clarified"))) && (
-                                          <>
-                                            <EditMrItemButton
-                                              projectID={mrHeader.project_id}
-                                              item={item}
-                                              bgColor={"rgba(239, 239, 239, 1)"}
-                                              borderColor={
-                                                "rgba(223, 223, 223, 1)"
-                                              }
-                                              textColor={"black"}
-                                            >
-                                              <img
-                                                src={pencilIcon}
-                                                alt="pencil icon"
-                                              />
-                                            </EditMrItemButton>
+                                        <>
+                                          <EditMrItemButton
+                                            projectID={mrHeader.project_id}
+                                            item={item}
+                                            bgColor={"rgba(239, 239, 239, 1)"}
+                                            borderColor={
+                                              "rgba(223, 223, 223, 1)"
+                                            }
+                                            textColor={"black"}
+                                          >
+                                            <img
+                                              src={pencilIcon}
+                                              alt="pencil icon"
+                                            />
+                                          </EditMrItemButton>
 
-                                            <DeleteMrItemButton
-                                              item={item}
-                                              bgColor={"rgba(239, 239, 239, 1)"}
-                                              borderColor={
-                                                "rgba(223, 223, 223, 1)"
-                                              }
-                                              textColor={"black"}
-                                            >
-                                              <img
-                                                src={trashIcon}
-                                                alt="trash icon"
-                                              />
-                                            </DeleteMrItemButton>
-                                          </>
-                                        )}
+                                          <DeleteMrItemButton
+                                            item={item}
+                                            bgColor={"rgba(239, 239, 239, 1)"}
+                                            borderColor={
+                                              "rgba(223, 223, 223, 1)"
+                                            }
+                                            textColor={"black"}
+                                          >
+                                            <img
+                                              src={trashIcon}
+                                              alt="trash icon"
+                                            />
+                                          </DeleteMrItemButton>
+                                        </>
                                       </div>
                                     </td>
                                   )}
@@ -1325,18 +1341,21 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           textColor="white"
                                           borderColor="black"
                                           style={{
-                                            padding: "7px 10px",
+                                            padding: "7px 25px",
                                             borderRadius: "25px",
                                           }}
-                                        />
+                                        >
+                                          Add Suppliers & Quotation
+                                        </SupplierAndQuotationButton>
                                       </div>
                                     </td>
                                   )}
 
-                                {mrHeader.progress_id === 10 &&
+                                {[10, 11].includes(mrHeader.progress_id) &&
                                   userInfo?.departmentID === 8 && (
                                     <td>
                                       <PriceApprovalButton
+                                        progressID={mrHeader.progress_id}
                                         mrLineID={item.id}
                                         bgColor="white"
                                         borderColor="rgba(207, 207, 207, 1)"
@@ -1349,35 +1368,33 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     </td>
                                   )}
 
-                                {mrHeader.progress_id >= 12 &&
-                                  (userInfo?.departmentID ?? 0) >= 9 && (
-                                    <td>
-                                      <div
+                                {mrHeader.progress_id >= 12 && (
+                                  <td>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: "10px",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      {item.approved_supplier_name}{" "}
+                                      <SupplierDetailsPopUp
+                                        item={item}
                                         style={{
-                                          display: "flex",
-                                          gap: "10px",
-                                          alignItems: "center",
+                                          padding: "7px 7px",
+                                          backgroundColor:
+                                            "rgba(239, 239, 239, 1)",
+                                          borderColor: "rgba(223, 223, 223, 1)",
                                         }}
                                       >
-                                        {item.approved_supplier_name}{" "}
-                                        <SupplierDetailsPopUp
-                                          item={item}
-                                          style={{
-                                            padding: "7px 7px",
-                                            backgroundColor:
-                                              "rgba(239, 239, 239, 1)",
-                                            borderColor:
-                                              "rgba(223, 223, 223, 1)",
-                                          }}
-                                        >
-                                          <img
-                                            src={externalLinkIcon}
-                                            alt="external link icon"
-                                          />
-                                        </SupplierDetailsPopUp>
-                                      </div>
-                                    </td>
-                                  )}
+                                        <img
+                                          src={externalLinkIcon}
+                                          alt="external link icon"
+                                        />
+                                      </SupplierDetailsPopUp>
+                                    </div>
+                                  </td>
+                                )}
 
                                 {userInfo?.departmentID === 12 &&
                                   mrHeader.progress_id === 21 && (
@@ -1460,7 +1477,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 {((mrHeader.progress_id >= 12 &&
                   userInfo?.departmentID === 9) ||
                   userInfo?.departmentID === 10 ||
-                  userInfo?.departmentID === 11) && (
+                  userInfo?.departmentID === 11 ||
+                  userInfo?.departmentID === 12) && (
                   <IssueLPOButton
                     mrHeader={mrHeader}
                     mrLines={items}
@@ -1484,35 +1502,36 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     />
                   )}
 
-                {userInfo?.departmentID === 11 &&
-                  mrHeader.progress_id === 17 && (
-                    <CreateGRNButton
-                      mrHeader={mrHeader}
-                      mrLines={items}
-                      bgColor="black"
-                      borderColor="black"
-                      textColor="white"
-                      style={{ padding: "5px 20px", borderRadius: "25px" }}
-                    >
-                      Add GRN +
-                    </CreateGRNButton>
-                  )}
+                {mrHeader.progress_id >= 17 && (
+                  <CreateGRNButton
+                    mrHeader={mrHeader}
+                    mrLines={items}
+                    bgColor="black"
+                    borderColor="black"
+                    textColor="white"
+                    style={{ padding: "5px 20px", borderRadius: "25px" }}
+                  >
+                    Add GRN +
+                  </CreateGRNButton>
+                )}
               </div>
             </div>
 
             <br />
             <br />
 
+            {/* SHOW BY SUPPLIER */}
             <table className="items-table">
               <thead>
                 <tr>
                   <th>#</th>
                   <th>CATEGORY</th>
-                  <th>SUB CATEGORY</th>
+                  <th>SUBCATEGORY</th>
                   <th>DESCRIPTION</th>
-                  <th>NOTES</th>
-                  <th>BILL OF QUANTITY REFERENCE</th>
                   <th>QUANTITY</th>
+                  <th>BOQ REF.</th>
+                  <th>NOTES</th>
+                  {mrHeader.progress_id >= 12 && <th>SUPPLIER & QUOTATION</th>}
                   {userInfo?.departmentID === 12 &&
                     mrHeader.progress_id === 21 && <th>QUALITY CONTROL</th>}
                 </tr>
@@ -1525,7 +1544,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     <td>{item.material_subcategory}</td>
                     <td>{item.material_description}</td>
                     <td>
-                      <NotesPopUp item={item} />
+                      {item.quantity} {item.unit}
                     </td>
                     <td>
                       <div
@@ -1540,8 +1559,36 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       </div>
                     </td>
                     <td>
-                      {item.quantity} {item.unit}
+                      <NotesPopUp item={item} />
                     </td>
+
+                    {mrHeader.progress_id >= 12 && (
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "10px",
+                            alignItems: "center",
+                          }}
+                        >
+                          {item.approved_supplier_name}{" "}
+                          <SupplierDetailsPopUp
+                            item={item}
+                            style={{
+                              padding: "7px 7px",
+                              backgroundColor: "rgba(239, 239, 239, 1)",
+                              borderColor: "rgba(223, 223, 223, 1)",
+                            }}
+                          >
+                            <img
+                              src={externalLinkIcon}
+                              alt="external link icon"
+                            />
+                          </SupplierDetailsPopUp>
+                        </div>
+                      </td>
+                    )}
+
                     {userInfo?.departmentID === 12 &&
                       mrHeader.progress_id === 21 && (
                         <td>
@@ -1588,16 +1635,17 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       <br />
 
       {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-        userInfo?.departmentID === mrHeader.department_id && (
+        userInfo?.departmentID === mrHeader.department_id &&
+        !hasAnyRejectedItems() && ( // Add this check
           <div className="bottom-nav">
-            <SubmitMrForApprovalButton
+            <SubmitForInitialApprovalButton
               mrHeaderID={mrHeader.id}
               bgColor="white"
               borderColor="white"
               textColor="black"
             >
-              SUBMIT FOR APPROVAL
-            </SubmitMrForApprovalButton>
+              SUBMIT FOR INITIAL APPROVAL
+            </SubmitForInitialApprovalButton>
           </div>
         )}
 
@@ -1611,7 +1659,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               borderColor="white"
               textColor="black"
             >
-              SUBMIT FOR RESUBMISSION
+              RETURN FOR MATERIAL CORRECTIONS
             </SubmitForResubmissionButton>
           </div>
         )}
@@ -1657,7 +1705,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               borderColor="white"
               textColor="black"
             >
-              SUBMIT FOR PRICING RESUBMISSION
+              RETURN FOR PRICING CORRECTIONS
             </SubmitForPricingResubmissionButton>
           </div>
         )}
@@ -1673,7 +1721,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               borderColor="white"
               textColor="black"
             >
-              SUBMIT FOR LPO
+              SUBMIT FOR LOCAL PURCHASE ORDER
             </SubmitForLPO>
           </div>
         )}
@@ -1712,9 +1760,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 12 &&
         mrHeader.progress_id === 21 && (
           <div className="bottom-nav">
-            <SubmitForCompletionButton mrHeaderID={mrHeader.id}>
-              SUBMIT FOR COMPLETION
-            </SubmitForCompletionButton>
+            <SubmitForStockEntryButton mrHeaderID={mrHeader.id}>
+              SUBMIT FOR STOCK ENTRY
+            </SubmitForStockEntryButton>
           </div>
         )}
     </>

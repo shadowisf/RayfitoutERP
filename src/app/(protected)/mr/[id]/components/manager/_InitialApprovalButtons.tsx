@@ -122,9 +122,9 @@ export default function InitialApprovalButtons({
     return (
       <div
         className="approval-pill"
-        style={{ backgroundColor: "gray", color: "black" }}
+        style={{ backgroundColor: "gray", color: "white" }}
       >
-        <span>Pending</span>
+        <span>Pending Approval</span>
         <div
           style={{ display: "flex", gap: "12px", alignItems: "center" }}
         ></div>

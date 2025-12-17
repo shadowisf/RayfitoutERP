@@ -101,48 +101,11 @@ export async function POST(req: Request) {
       }
 
       grouped[category][subCategory][supplier].push({
-        id: row.id,
-        mr_header_id: row.mr_header_id,
-        material_category: row.material_category,
-        material_category_id: row.material_category_id,
-        material_subcategory: row.material_subcategory,
-        material_subcategory_id: row.material_subcategory_id,
-        material_description: row.material_description,
-        quantity: row.quantity,
-        unit: row.unit,
-        notes: row.notes,
-        supplier: row.supplier,
-        boq_line_id: row.boq_line_id,
-        boq_item_name: row.boq_item_name,
+        ...row,
+
         boq_item_number: row.boq_line_id
           ? boqNumbering.get(row.boq_line_id)
           : null,
-        boq_item_description: row.boq_item_description,
-        boq_quantity: row.boq_quantity,
-        boq_unit: row.boq_unit,
-        boq_category: row.boq_category,
-        boq_sub_category: row.boq_sub_category,
-        boq_rate: row.boq_rate,
-        boq_total_cost: row.boq_total_cost,
-        boq_attachments: row.boq_attachments,
-        boq_location: row.boq_location,
-        approval_status: row.approval_status,
-        reject_comment: row.rejection_comment,
-        approved_supplier_id: row.approved_supplier_id,
-        approved_supplier_name: row.approved_supplier_name,
-        approved_unit_price: row.approved_unit_price,
-        approved_total_price: row.approved_total_price,
-        approved_supplier_material_categories:
-          row.approved_supplier_material_categories,
-        approved_supplier_material_subcategories:
-          row.approved_supplier_material_subcategories,
-        approved_supplier_avg_lead_time: row.approved_supplier_avg_lead_time,
-        approved_supplier_rating: row.approved_supplier_rating,
-        approved_supplier_trn_number: row.approved_supplier_trn_number,
-        approved_supplier_contact_person: row.approved_supplier_contact_person,
-        approved_supplier_phone: row.approved_supplier_phone,
-        approved_supplier_email: row.approved_supplier_email,
-        approved_supplier_address: row.approved_supplier_address,
       });
     });
 

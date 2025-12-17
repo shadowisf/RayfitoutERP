@@ -38,13 +38,13 @@ export default function SubmitForDeliveryButton({
     });
 
     if (res.ok) {
-      toast("Material request submitted for awaiting delivery", "success");
+      toast("Material request submitted", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast("Failed to submit material request for awaiting delivery", "error");
+      toast("Failed to submit material request", "error");
     }
   }
 
@@ -63,7 +63,7 @@ export default function SubmitForDeliveryButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR DELIVERY"}
+          header={"SUBMIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

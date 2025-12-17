@@ -34,6 +34,7 @@ type SupplierAndQuotationButtonProps = {
   borderColor?: string;
   full?: boolean;
   style?: React.CSSProperties;
+  children: React.ReactNode;
 };
 
 export default function SupplierAndQuotationButton({
@@ -44,6 +45,7 @@ export default function SupplierAndQuotationButton({
   borderColor = "rgba(239, 239, 239, 1)",
   full,
   style,
+  children,
 }: SupplierAndQuotationButtonProps) {
   const router = useRouter();
 
@@ -66,6 +68,9 @@ export default function SupplierAndQuotationButton({
     useState<boolean>(false);
   const [allSuppliersPending, setAllSuppliersPending] =
     useState<boolean>(false);
+  const [hasApprovedSupplier, setHasApprovedSupplier] =
+    useState<boolean>(false);
+  const [approvedSupplierName, setApprovedSupplierName] = useState<string>("");
 
   // State for rejection comments
   const [rejectComments, setRejectComments] = useState<string>("");
@@ -133,7 +138,7 @@ export default function SupplierAndQuotationButton({
     setIsMounted(true);
 
     // Fetch suppliers
-    fetch("/api/supplier", {
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     })
@@ -142,7 +147,9 @@ export default function SupplierAndQuotationButton({
       .catch((err) => console.error(err));
 
     // Fetch material categories
-    fetch("/api/mr/getMaterialCategoryValues")
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`
+    )
       .then((res) => res.json())
       .then((data) => {
         setMaterialCategoryValues(data);
@@ -160,7 +167,7 @@ export default function SupplierAndQuotationButton({
     setIsCheckingExisting(true);
     try {
       const res = await fetch(
-        "/api/supplier/getAllSupplierAndQuotationByMrLineID",
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -191,6 +198,21 @@ export default function SupplierAndQuotationButton({
         );
         setAllSuppliersPending(allPending);
 
+        const hasApproved = data.some(
+          (q: SupplierQuotation) => q.approval_status === "Approved"
+        );
+        setHasApprovedSupplier(hasApproved);
+
+        // Store the approved supplier name
+        if (hasApproved) {
+          const approvedQuotation = data.find(
+            (q: SupplierQuotation) => q.approval_status === "Approved"
+          );
+          setApprovedSupplierName(
+            approvedQuotation?.supplier_name || "Approved"
+          );
+        }
+
         if (allRejected) {
           const firstRejected = data.find(
             (q: SupplierQuotation) => q.reject_comment
@@ -204,6 +226,7 @@ export default function SupplierAndQuotationButton({
         setHasExistingQuotations(false);
         setAllSuppliersRejected(false);
         setAllSuppliersPending(false);
+        setHasApprovedSupplier(false);
         setMode("add");
       }
     } catch (error) {
@@ -211,6 +234,7 @@ export default function SupplierAndQuotationButton({
       setHasExistingQuotations(false);
       setAllSuppliersRejected(false);
       setAllSuppliersPending(false);
+      setHasApprovedSupplier(false);
       setMode("add");
     } finally {
       setIsCheckingExisting(false);
@@ -221,13 +245,16 @@ export default function SupplierAndQuotationButton({
     if (materialCategoryID.length > 0) {
       Promise.all(
         materialCategoryID.map((categoryId) =>
-          fetch("/api/mr/getMaterialSubCategoryValuesByCategoryID", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              category_id: categoryId,
-            }),
-          }).then((res) => res.json())
+          fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                category_id: categoryId,
+              }),
+            }
+          ).then((res) => res.json())
         )
       )
         .then((results) => {
@@ -255,7 +282,7 @@ export default function SupplierAndQuotationButton({
     setIsLoading(true);
     try {
       const res = await fetch(
-        "/api/supplier/getAllSupplierAndQuotationByMrLineID",
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -742,7 +769,7 @@ export default function SupplierAndQuotationButton({
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        {allSuppliersRejected && (
+        {mrHeader.progress_id === 11 && allSuppliersRejected && (
           <div
             style={{
               display: "flex",
@@ -761,7 +788,27 @@ export default function SupplierAndQuotationButton({
           </div>
         )}
 
-        {allSuppliersPending && !allSuppliersRejected && (
+        {(mrHeader.progress_id === 11 || mrHeader.progress_id === 10) &&
+          allSuppliersPending &&
+          !allSuppliersRejected && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                padding: "5px 15px",
+                backgroundColor: "rgba(128, 128, 128, 1)",
+                color: "white",
+                borderRadius: "25px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span>Pending Approval</span>
+            </div>
+          )}
+
+        {[10, 11].includes(mrHeader.progress_id) && hasApprovedSupplier && (
           <div
             style={{
               display: "flex",
@@ -769,13 +816,13 @@ export default function SupplierAndQuotationButton({
               justifyContent: "center",
               gap: "10px",
               padding: "5px 15px",
-              backgroundColor: "rgba(128, 128, 128, 1)",
+              backgroundColor: "rgba(34, 150, 100, 1)",
               color: "white",
               borderRadius: "25px",
               whiteSpace: "nowrap",
             }}
           >
-            <span>Pending Approval</span>
+            <span>{approvedSupplierName}</span>
           </div>
         )}
 
@@ -790,7 +837,7 @@ export default function SupplierAndQuotationButton({
               full={full || false}
               style={style}
             >
-              EDIT SUPPLIER & QUOTATION
+              Edit Suppliers & Quotations
             </Button>
           ) : (
             <Button
@@ -802,7 +849,7 @@ export default function SupplierAndQuotationButton({
               full={full || false}
               style={style}
             >
-              + ADD SUPPLIER & QUOTATION
+              {children}
             </Button>
           ))}
       </div>
@@ -811,8 +858,8 @@ export default function SupplierAndQuotationButton({
         <FormPopUp
           header={
             mode === "edit"
-              ? "EDIT SUPPLIER & QUOTATION"
-              : "ADD SUPPLIER & QUOTATION"
+              ? "EDIT SUPPLIERS & QUOTATIONS"
+              : "ADD SUPPLIERS & QUOTATIONS"
           }
           setIsOpen={setIsOpen}
           handleSubmit={handleSupplierAndQuotationSubmit}
@@ -879,7 +926,7 @@ export default function SupplierAndQuotationButton({
                                 display: "inline-block",
                               }}
                             >
-                              {getFileName(quotation)}
+                              View Quotation
                             </span>
                             <div style={{ display: "flex", gap: "10px" }}>
                               <img

@@ -38,16 +38,13 @@ export default function SubmitForPricingResubmissionButton({
     });
 
     if (res.ok) {
-      toast("Material request submitted for pricing resubmission", "success");
+      toast("Material request submitted", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast(
-        "Failed to submit material request for pricing resubmission",
-        "error"
-      );
+      toast("Failed to submit material request", "error");
     }
   }
 
@@ -66,15 +63,12 @@ export default function SubmitForPricingResubmissionButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR PRICING RESUBMISSION"}
+          header={"SUBMIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>
-            Are you sure you want to submit this material request for pricing
-            resubmission?
-          </p>
+          <p>Are you sure you want to submit this material request?</p>
         </FormPopUp>
       )}
     </>

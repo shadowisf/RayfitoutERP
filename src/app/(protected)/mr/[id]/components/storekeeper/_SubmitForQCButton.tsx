@@ -38,11 +38,11 @@ export default function SubmitForQC({
     });
 
     if (res.ok) {
-      toast("Material request submitted for QC", "success");
+      toast("Material request submitted", "success");
       router.refresh();
       setIsOpen(false);
     } else {
-      toast("Failed to submit material request for QC", "error");
+      toast("Failed to submit material request", "error");
       setIsOpen(false);
     }
   }
@@ -62,7 +62,7 @@ export default function SubmitForQC({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR QC"}
+          header={"SUBMIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

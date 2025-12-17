@@ -448,7 +448,7 @@ export function BOQPDF({ boqLines, boqHeader }: BOQPDFProps) {
             <View style={styles.table}>
               <View style={styles.detailTableHeader}>
                 <Text style={styles.detailColItemNo}>#</Text>
-                <Text style={styles.detailColCategory}>CATEGORY</Text>
+                <Text style={styles.detailColCategory}>ITEM</Text>
                 <Text style={styles.detailColQty}>QTY</Text>
                 <Text style={styles.detailColRate}>RATE</Text>
                 <Text style={styles.detailColTotal}>TOTAL COST</Text>

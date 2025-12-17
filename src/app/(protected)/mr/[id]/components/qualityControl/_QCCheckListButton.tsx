@@ -4,7 +4,7 @@ import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
@@ -19,10 +19,16 @@ type QCCheckListButtonProps = {
 
 type CheckpointResponse = "yes" | "no" | "na" | null;
 
+type UploadedFile = {
+  file: File;
+  preview: string;
+};
+
 type CheckpointData = {
   response: CheckpointResponse;
   notes: string;
-  attachments: File[];
+  attachments: string[]; // Existing S3 URLs
+  pendingFiles: UploadedFile[]; // Files waiting to be uploaded on confirm
 };
 
 type GRN = {
@@ -66,9 +72,11 @@ export default function QCCheckListButton({
   const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
+  const uploadIcon = "/icons/upload.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [qcStatus, setQcStatus] = useState<QCStatus>("pending");
   const [existingQcId, setExistingQcId] = useState<number | null>(null);
 
@@ -96,6 +104,12 @@ export default function QCCheckListButton({
     complianceCertification: "",
   });
 
+  // Track attachments marked for deletion
+  const [attachmentsToDelete, setAttachmentsToDelete] = useState<string[]>([]);
+
+  // File input refs for each checkpoint
+  const fileInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
+
   useEffect(() => {
     const initialData: { [key: number]: CheckpointData } = {};
     checkpoints.forEach((_, index) => {
@@ -103,6 +117,7 @@ export default function QCCheckListButton({
         response: null,
         notes: "",
         attachments: [],
+        pendingFiles: [],
       };
     });
     setCheckpointData(initialData);
@@ -137,10 +152,13 @@ export default function QCCheckListButton({
       const data = await res.json();
 
       if (data.success && data.data) {
+        console.log("Found existing QC with ID:", data.data.id);
         setExistingQcId(data.data.id);
         setQcStatus(data.data.qc_status);
         setAcceptedQty(data.data.accepted_quantity?.toString() || "");
       } else {
+        console.log("No existing QC found, will create new");
+        setExistingQcId(null);
         setQcStatus("pending");
       }
     } catch (error) {
@@ -148,7 +166,6 @@ export default function QCCheckListButton({
     }
   }
 
-  // Load existing QC data into form when editing
   async function loadExistingQcData() {
     if (!lpoMrLineId) {
       console.log("No lpoMrLineId available");
@@ -177,11 +194,9 @@ export default function QCCheckListButton({
       if (data.success && data.data) {
         const qcData = data.data;
 
-        // Load basic data
         setAcceptedQty(qcData.accepted_quantity?.toString() || "");
         setQcStatusSelection(qcData.qc_status);
 
-        // Load failure reasons if failed
         if (qcData.qc_status === "failed") {
           setFailureReasons({
             physicalDamage: qcData.physical_damage || "",
@@ -193,17 +208,52 @@ export default function QCCheckListButton({
           });
         }
 
-        // Load checkpoint data
         if (qcData.checkpoints && qcData.checkpoints.length > 0) {
           const loadedCheckpoints: { [key: number]: CheckpointData } = {};
 
           qcData.checkpoints.forEach((cp: any) => {
             const index = cp.checkpoint_number - 1;
+
+            // Parse attachments safely
+            let attachmentsArray: string[] = [];
+            if (cp.attachments) {
+              try {
+                // Check if it's already a string starting with "http" (single URL)
+                if (
+                  typeof cp.attachments === "string" &&
+                  cp.attachments.startsWith("http")
+                ) {
+                  attachmentsArray = [cp.attachments];
+                } else if (typeof cp.attachments === "string") {
+                  // Try to parse as JSON array
+                  attachmentsArray = JSON.parse(cp.attachments);
+                } else if (Array.isArray(cp.attachments)) {
+                  // Already an array
+                  attachmentsArray = cp.attachments;
+                }
+              } catch (error) {
+                console.error(
+                  "Error parsing attachments for checkpoint",
+                  index,
+                  ":",
+                  error
+                );
+                console.log("Raw attachments value:", cp.attachments);
+                attachmentsArray = [];
+              }
+            }
+
             loadedCheckpoints[index] = {
               response: cp.response,
               notes: cp.notes || "",
-              attachments: [],
+              attachments: attachmentsArray,
+              pendingFiles: [],
             };
+
+            console.log(
+              `Loaded checkpoint ${index} with attachments:`,
+              attachmentsArray
+            );
           });
 
           setCheckpointData(loadedCheckpoints);
@@ -220,14 +270,31 @@ export default function QCCheckListButton({
     }
   }
 
-  // Handle edit button click - open modal first, then load data
-  const handleEditClick = () => {
-    console.log("Edit button clicked!");
-    console.log("Current isOpen state:", isOpen);
-    console.log("Setting isOpen to true...");
+  const handleEditClick = async () => {
+    if (!existingQcId && lpoMrLineId) {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getQCByLPOMrLineID`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lpo_mr_line_id: lpoMrLineId,
+            }),
+          }
+        );
+        const data = await res.json();
+
+        if (data.success && data.data) {
+          setExistingQcId(data.data.id);
+        }
+      } catch (error) {
+        console.error("Error fetching QC ID:", error);
+      }
+    }
+
     setIsOpen(true);
-    console.log("Calling loadExistingQcData...");
-    loadExistingQcData();
+    await loadExistingQcData();
   };
 
   async function checkExistingLpo() {
@@ -259,7 +326,6 @@ export default function QCCheckListButton({
     }
   }
 
-  // Fetch GRN when LPO is found
   useEffect(() => {
     async function fetchGrn() {
       if (!existingLpoId) return;
@@ -305,17 +371,14 @@ export default function QCCheckListButton({
         const data = await response.json();
 
         if (data.success && data.data && data.data.lpo_mr_lines) {
-          // Find the LPO line that matches this item's MR line
           const lpoLine = data.data.lpo_mr_lines.find(
             (line: any) => line.mr_line_id === item.id
           );
 
           if (lpoLine) {
-            // Store the lpo_mr_line_id for later use
             setLpoMrLineId(lpoLine.id);
 
             if (existingGrn.grn_lines) {
-              // Find the GRN line that matches this LPO line
               const grnLine = existingGrn.grn_lines.find(
                 (gl: any) => gl.lpo_mr_line_id === lpoLine.id
               );
@@ -359,16 +422,224 @@ export default function QCCheckListButton({
     }));
   };
 
+  // Handle file selection
+  const handleFileSelect = (
+    index: number,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles: UploadedFile[] = [];
+
+    Array.from(files).forEach((file) => {
+      const preview = file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : "";
+
+      newFiles.push({
+        file,
+        preview,
+      });
+    });
+
+    setCheckpointData((prev) => ({
+      ...prev,
+      [index]: {
+        ...prev[index],
+        pendingFiles: [...(prev[index]?.pendingFiles || []), ...newFiles],
+      },
+    }));
+
+    // Clear the input
+    e.target.value = "";
+  };
+
+  // Remove pending file
+  const removePendingFile = (checkpointIndex: number, fileIndex: number) => {
+    setCheckpointData((prev) => ({
+      ...prev,
+      [checkpointIndex]: {
+        ...prev[checkpointIndex],
+        pendingFiles: prev[checkpointIndex].pendingFiles.filter(
+          (_, i) => i !== fileIndex
+        ),
+      },
+    }));
+  };
+
+  // Remove uploaded attachment - only marks for deletion
+  const removeAttachment = (
+    checkpointIndex: number,
+    attachmentIndex: number
+  ) => {
+    const urlToDelete =
+      checkpointData[checkpointIndex].attachments[attachmentIndex];
+
+    // Mark the URL for deletion
+    setAttachmentsToDelete((prev) => [...prev, urlToDelete]);
+
+    // Remove from UI immediately
+    setCheckpointData((prev) => ({
+      ...prev,
+      [checkpointIndex]: {
+        ...prev[checkpointIndex],
+        attachments: prev[checkpointIndex].attachments.filter(
+          (_, i) => i !== attachmentIndex
+        ),
+      },
+    }));
+  };
+
+  // Delete all marked attachments from S3
+  const deleteMarkedAttachments = async () => {
+    if (attachmentsToDelete.length === 0) return true;
+
+    try {
+      console.log("Deleting marked attachments:", attachmentsToDelete);
+
+      // Delete each marked attachment from S3
+      const deletePromises = attachmentsToDelete.map(async (url) => {
+        const s3Response = await fetch("/api/s3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "delete",
+            url: url,
+          }),
+        });
+
+        if (!s3Response.ok) {
+          throw new Error(`Failed to delete file from S3: ${url}`);
+        }
+
+        return url;
+      });
+
+      await Promise.all(deletePromises);
+      console.log("All marked attachments deleted from S3");
+
+      // Clear the deletion list
+      setAttachmentsToDelete([]);
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting attachments:", error);
+      toast("Failed to delete some attachments", "error");
+      return false;
+    }
+  };
+
+  const getFileNameFromUrl = (url: string) => {
+    const urlParts = url.split("/");
+    return decodeURIComponent(urlParts[urlParts.length - 1] || "file");
+  };
+
+  const isImageFile = (url: string) => {
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+  };
+
+  // Upload all pending files for all checkpoints
+  const uploadAllPendingFiles = async () => {
+    const filesByCheckpoint: { [key: number]: File[] } = {};
+
+    // Collect all files that need to be uploaded
+    Object.keys(checkpointData).forEach((key) => {
+      const checkpointIndex = parseInt(key);
+      const checkpoint = checkpointData[checkpointIndex];
+
+      if (checkpoint.pendingFiles && checkpoint.pendingFiles.length > 0) {
+        filesByCheckpoint[checkpointIndex] = checkpoint.pendingFiles.map(
+          (f) => f.file
+        );
+      }
+    });
+
+    // Upload all files
+    if (Object.keys(filesByCheckpoint).length > 0) {
+      try {
+        const formData = new FormData();
+
+        // Add all files to FormData
+        Object.values(filesByCheckpoint)
+          .flat()
+          .forEach((file) => {
+            formData.append("files", file);
+          });
+
+        // Add folder parameter
+        formData.append("folder", "qc-attachments");
+
+        console.log("Uploading files to S3...");
+
+        // Upload to S3
+        const response = await fetch("/api/s3", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to upload files");
+        }
+
+        const result = await response.json();
+        const uploadedUrls: string[] = result.urls;
+
+        console.log("Files uploaded successfully:", uploadedUrls);
+
+        // Create updated checkpoint data with new attachments
+        const updatedCheckpointData = { ...checkpointData };
+        let urlIndex = 0;
+
+        Object.keys(filesByCheckpoint).forEach((key) => {
+          const checkpointIndex = parseInt(key);
+          const fileCount = filesByCheckpoint[checkpointIndex].length;
+          const checkpointUrls = uploadedUrls.slice(
+            urlIndex,
+            urlIndex + fileCount
+          );
+
+          updatedCheckpointData[checkpointIndex] = {
+            ...updatedCheckpointData[checkpointIndex],
+            attachments: [
+              ...updatedCheckpointData[checkpointIndex].attachments,
+              ...checkpointUrls,
+            ],
+            pendingFiles: [],
+          };
+
+          console.log(
+            `Checkpoint ${checkpointIndex} attachments:`,
+            updatedCheckpointData[checkpointIndex].attachments
+          );
+
+          urlIndex += fileCount;
+        });
+
+        // Update state
+        setCheckpointData(updatedCheckpointData);
+
+        // Return the updated data
+        return updatedCheckpointData;
+      } catch (error) {
+        console.error("Error uploading files:", error);
+        toast("Failed to upload some files", "error");
+        return null;
+      }
+    }
+
+    // No files to upload, return current data
+    return checkpointData;
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    // Validate that we have the required IDs
     if (!lpoMrLineId || !existingLpoId) {
       toast("Unable to submit: Missing LPO information", "error");
       return;
     }
 
-    // Validate that all checkpoints have been answered
     const unansweredCheckpoints = checkpoints.filter(
       (_, index) => !checkpointData[index]?.response
     );
@@ -378,42 +649,59 @@ export default function QCCheckListButton({
       return;
     }
 
-    // Validate accepted quantity
     if (!acceptedQty || acceptedQty === "0") {
       toast("Please enter accepted quantity", "error");
       return;
     }
 
-    // Validate QC status
     if (!qcStatusSelection) {
       toast("Please select QC status (Passed or Failed)", "error");
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      // Determine if this is create or update
+      // Step 1: Delete marked attachments from S3
+      const deletionSuccess = await deleteMarkedAttachments();
+      if (!deletionSuccess) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Step 2: Upload all pending files and get updated checkpoint data
+      const updatedCheckpointData = await uploadAllPendingFiles();
+
+      if (!updatedCheckpointData) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log("Submitting QC with checkpoint data:", updatedCheckpointData);
+
+      // Step 3: Submit the form with the updated checkpoint data
       const isUpdate = existingQcId !== null;
 
-      // Prepare the data to send to the API
       const qcData = {
-        action: isUpdate ? "updateQC" : "createQC",
+        action: isUpdate ? "" : "createQC",
         ...(isUpdate && { qc_id: existingQcId }),
         lpo_mr_line_id: lpoMrLineId,
         lpo_id: existingLpoId,
         checked_by: userInfo?.name || "",
         accepted_quantity: acceptedQty,
         qc_status: qcStatusSelection,
-        checkpoints: checkpointData,
+        checkpoints: updatedCheckpointData, // Use the updated data from upload
         ...(qcStatusSelection === "failed" && {
           failure_reasons: failureReasons,
         }),
       };
 
-      // Send data to API
+      console.log("QC Data being sent:", JSON.stringify(qcData, null, 2));
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc`,
         {
-          method: "POST",
+          method: isUpdate ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(qcData),
         }
@@ -430,6 +718,10 @@ export default function QCCheckListButton({
         );
         setIsOpen(false);
         setQcStatus(qcStatusSelection);
+
+        // Clear the attachments to delete list
+        setAttachmentsToDelete([]);
+
         router.refresh();
       } else {
         toast(
@@ -443,12 +735,465 @@ export default function QCCheckListButton({
         "An error occurred while creating a quality control checklist",
         "error"
       );
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
+  // Handle modal close - restore attachments if not confirmed
+  const handleModalClose = () => {
+    // Restore any attachments that were marked for deletion but not confirmed
+    if (attachmentsToDelete.length > 0) {
+      loadExistingQcData();
+      setAttachmentsToDelete([]);
+    }
+    setIsOpen(false);
+  };
+
+  // Render attachment cell content
+  const renderAttachmentCell = (index: number) => {
+    const checkpoint = checkpointData[index];
+    const hasAttachments = checkpoint?.attachments?.length > 0;
+    const hasPendingFiles = checkpoint?.pendingFiles?.length > 0;
+
+    const gridStyle: React.CSSProperties = {
+      display: "grid",
+      gridTemplateColumns: "repeat(2, 50px)",
+      gap: "4px",
+      justifyContent: "center",
+    };
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          alignItems: "center",
+        }}
+      >
+        {/* Uploaded attachments */}
+        {hasAttachments && (
+          <div style={gridStyle}>
+            {checkpoint.attachments.map((url, attIndex) => (
+              <div
+                key={`att-${attIndex}`}
+                style={{
+                  position: "relative",
+                  width: "50px",
+                  overflow: "hidden",
+                }}
+              >
+                {isImageFile(url) ? (
+                  <img
+                    src={url}
+                    alt="attachment"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "#f3f4f6",
+                    }}
+                  >
+                    {getFileNameFromUrl(url).split(".").pop()?.toUpperCase()}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => removeAttachment(index, attIndex)}
+                  style={{
+                    position: "absolute",
+                    top: "2px",
+                    right: "2px",
+                    width: "18px",
+                    height: "18px",
+                    borderRadius: "50%",
+                    border: "none",
+                    backgroundColor: "rgba(0,0,0,0.6)",
+                    color: "white",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pending (not uploaded yet) */}
+        {hasPendingFiles && (
+          <div style={gridStyle}>
+            {checkpoint.pendingFiles.map((uploadedFile, fileIndex) => (
+              <div
+                key={`pending-${fileIndex}`}
+                style={{
+                  position: "relative",
+                  width: "50px",
+                  overflow: "hidden",
+                }}
+              >
+                {uploadedFile.preview ? (
+                  <img
+                    src={uploadedFile.preview}
+                    alt="preview"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "#f9fafb",
+                    }}
+                  >
+                    {uploadedFile.file.name.split(".").pop()?.toUpperCase()}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => removePendingFile(index, fileIndex)}
+                  style={{
+                    position: "absolute",
+                    top: "2px",
+                    right: "2px",
+                    width: "18px",
+                    height: "18px",
+                    borderRadius: "50%",
+                    border: "none",
+                    backgroundColor: "rgba(0,0,0,0.6)",
+                    color: "white",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Upload input */}
+        <input
+          type="file"
+          ref={(el) => {
+            fileInputRefs.current[index] = el;
+          }}
+          onChange={(e) => handleFileSelect(index, e)}
+          accept="image/*"
+          multiple
+          style={{ display: "none" }}
+        />
+
+        <Button
+          componentType="button"
+          bgColor="black"
+          borderColor="black"
+          textColor="white"
+          onClick={(e) => {
+            e.preventDefault();
+            fileInputRefs.current[index]?.click();
+          }}
+        >
+          UPLOAD FILES
+          <img
+            src={uploadIcon}
+            alt="upload"
+            style={{ width: "12px", height: "12px" }}
+          />
+        </Button>
+      </div>
+    );
+  };
+
+  // Render the table row for a checkpoint
+  const renderCheckpointRow = (checkpoint: string, index: number) => (
+    <tr key={index}>
+      <td style={{ textAlign: "center" }}>{index + 1}</td>
+      <td>{checkpoint}</td>
+      <td style={{ textAlign: "center" }}>
+        <div
+          onClick={() => handleResponseChange(index, "yes")}
+          style={{
+            width: "24px",
+            height: "24px",
+            borderRadius: "5px",
+            border:
+              checkpointData[index]?.response === "yes"
+                ? "none"
+                : "2px solid #d1d5db",
+            backgroundColor:
+              checkpointData[index]?.response === "yes"
+                ? "#10b981"
+                : "transparent",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            margin: "0 auto",
+          }}
+        >
+          {checkpointData[index]?.response === "yes" && (
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M16.6667 5L7.50004 14.1667L3.33337 10"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </div>
+      </td>
+      <td style={{ textAlign: "center" }}>
+        <div
+          onClick={() => handleResponseChange(index, "no")}
+          style={{
+            width: "24px",
+            height: "24px",
+            borderRadius: "5px",
+            border:
+              checkpointData[index]?.response === "no"
+                ? "none"
+                : "2px solid #d1d5db",
+            backgroundColor:
+              checkpointData[index]?.response === "no"
+                ? "#ef4444"
+                : "transparent",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            margin: "0 auto",
+          }}
+        >
+          {checkpointData[index]?.response === "no" && (
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M15 5L5 15M5 5L15 15"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </div>
+      </td>
+      <td style={{ textAlign: "center" }}>
+        <div
+          onClick={() => handleResponseChange(index, "na")}
+          style={{
+            width: "24px",
+            height: "24px",
+            borderRadius: "5px",
+            border:
+              checkpointData[index]?.response === "na"
+                ? "none"
+                : "2px solid #d1d5db",
+            backgroundColor:
+              checkpointData[index]?.response === "na"
+                ? "#6b7280"
+                : "transparent",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            margin: "0 auto",
+          }}
+        >
+          {checkpointData[index]?.response === "na" && (
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M5 10H15"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </div>
+      </td>
+      <td>
+        <InputItem
+          label={""}
+          value={checkpointData[index]?.notes || ""}
+          type={"text"}
+          placeholder={"ENTER NOTES"}
+          required={false}
+          onChange={(e) => handleNotesChange(index, e.target.value)}
+        />
+      </td>
+      <td style={{ textAlign: "center" }}>{renderAttachmentCell(index)}</td>
+    </tr>
+  );
+
+  // Form content
+  const formContent = (
+    <>
+      <div className="input-row three-col">
+        <InputItem
+          label={"ORDERED QUANTITY"}
+          value={item.quantity}
+          type={"text"}
+          placeholder={""}
+          required
+          disabled
+          onChange={() => {}}
+        />
+        <InputItem
+          label={"RECEIVED QUANTITY"}
+          value={receivedQuantity}
+          type={"text"}
+          placeholder={""}
+          required
+          disabled
+          onChange={() => {}}
+        />
+        <InputItem
+          label={"CHECKED BY"}
+          value={userInfo?.name || ""}
+          type={"text"}
+          placeholder={""}
+          required
+          disabled
+          onChange={() => {}}
+        />
+      </div>
+
+      <br />
+
+      <table className="items-table alt">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>CHECKPOINT</th>
+            <th>YES</th>
+            <th>NO</th>
+            <th>N/A</th>
+            <th style={{ minWidth: "500px" }}>NOTES</th>
+            <th>ATTACHMENT(S)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {checkpoints.map((checkpoint, index) =>
+            renderCheckpointRow(checkpoint, index)
+          )}
+        </tbody>
+      </table>
+
+      <br />
+      <br />
+
+      <div className="input-row three-col">
+        <InputItem
+          label={"ACCEPTED QUANTITY"}
+          value={acceptedQty}
+          type={"text"}
+          placeholder={"ENTER ACCEPTED QUANTITY"}
+          required
+          onChange={(e) => setAcceptedQty(e.target.value)}
+        />
+        <div style={{ display: "flex", alignItems: "center", gap: "25px" }}>
+          <label>QC STATUS</label>
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="radio"
+              name="qc-status"
+              checked={qcStatusSelection === "passed"}
+              onChange={() => setQcStatusSelection("passed")}
+              style={{
+                width: "24px",
+                height: "24px",
+                cursor: "pointer",
+              }}
+            />
+            <span>PASSED QC</span>
+          </label>
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="radio"
+              name="qc-status"
+              checked={qcStatusSelection === "failed"}
+              onChange={() => setQcStatusSelection("failed")}
+              style={{
+                width: "24px",
+                height: "24px",
+                cursor: "pointer",
+              }}
+            />
+            <span>FAILED QC</span>
+          </label>
+        </div>
+      </div>
+    </>
+  );
+
   // If QC status is passed
   if (qcStatus === "passed") {
-    console.log("Rendering QC PASS pill");
     return (
       <>
         <div
@@ -458,7 +1203,7 @@ export default function QCCheckListButton({
             color: "white",
           }}
         >
-          <span>QC PASS</span>
+          <span>PASSED</span>
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <img
               src={pencilIcon}
@@ -467,410 +1212,19 @@ export default function QCCheckListButton({
                 filter: "invert(1)",
                 cursor: "pointer",
               }}
-              onClick={() => {
-                handleEditClick();
-              }}
+              onClick={handleEditClick}
             />
           </div>
         </div>
 
-        {console.log("Render check - isOpen:", isOpen)}
         {isOpen && (
           <FormPopUp
             header="QUALITY CONTROL CHECKLIST"
-            setIsOpen={setIsOpen}
+            setIsOpen={handleModalClose}
             handleSubmit={handleSubmit}
             addButtonLabel={"CONFIRM"}
           >
-            <div className="input-row three-col">
-              <InputItem
-                label={"ORDERED QUANTITY"}
-                value={item.quantity}
-                type={"text"}
-                placeholder={""}
-                required
-                disabled
-                onChange={() => {}}
-              />
-              <InputItem
-                label={"RECEIVED QUANTITY"}
-                value={receivedQuantity}
-                type={"text"}
-                placeholder={""}
-                required
-                disabled
-                onChange={() => {}}
-              />
-              <InputItem
-                label={"CHECKED BY"}
-                value={userInfo?.name || ""}
-                type={"text"}
-                placeholder={""}
-                required
-                disabled
-                onChange={() => {}}
-              />
-            </div>
-
-            <br />
-
-            <table className="items-table alt">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>CHECKPOINT</th>
-                  <th>YES</th>
-                  <th>NO</th>
-                  <th>N/A</th>
-                  <th style={{ minWidth: "500px" }}>NOTES</th>
-                  <th>ATTACHMENT(S)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {checkpoints.map((checkpoint, index) => (
-                  <tr key={index}>
-                    <td style={{ textAlign: "center" }}>{index + 1}</td>
-                    <td>{checkpoint}</td>
-                    <td style={{ textAlign: "center" }}>
-                      <div
-                        onClick={() => handleResponseChange(index, "yes")}
-                        style={{
-                          width: "24px",
-                          height: "24px",
-                          borderRadius: "5px",
-                          border:
-                            checkpointData[index]?.response === "yes"
-                              ? "none"
-                              : "2px solid #d1d5db",
-                          backgroundColor:
-                            checkpointData[index]?.response === "yes"
-                              ? "#10b981"
-                              : "transparent",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          margin: "0 auto",
-                        }}
-                      >
-                        {checkpointData[index]?.response === "yes" && (
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M16.6667 5L7.50004 14.1667L3.33337 10"
-                              stroke="white"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <div
-                        onClick={() => handleResponseChange(index, "no")}
-                        style={{
-                          width: "24px",
-                          height: "24px",
-                          borderRadius: "5px",
-                          border:
-                            checkpointData[index]?.response === "no"
-                              ? "none"
-                              : "2px solid #d1d5db",
-                          backgroundColor:
-                            checkpointData[index]?.response === "no"
-                              ? "#ef4444"
-                              : "transparent",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          margin: "0 auto",
-                        }}
-                      >
-                        {checkpointData[index]?.response === "no" && (
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M15 5L5 15M5 5L15 15"
-                              stroke="white"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <div
-                        onClick={() => handleResponseChange(index, "na")}
-                        style={{
-                          width: "24px",
-                          height: "24px",
-                          borderRadius: "5px",
-                          border:
-                            checkpointData[index]?.response === "na"
-                              ? "none"
-                              : "2px solid #d1d5db",
-                          backgroundColor:
-                            checkpointData[index]?.response === "na"
-                              ? "#6b7280"
-                              : "transparent",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          margin: "0 auto",
-                        }}
-                      >
-                        {checkpointData[index]?.response === "na" && (
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M5 10H15"
-                              stroke="white"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <InputItem
-                        label={""}
-                        value={checkpointData[index]?.notes || ""}
-                        type={"text"}
-                        placeholder={"ENTER NOTES"}
-                        required={false}
-                        onChange={(e) =>
-                          handleNotesChange(index, e.target.value)
-                        }
-                      />
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      {/* Attachment functionality commented out as in original */}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <br />
-            <br />
-
-            <div className="input-row three-col">
-              <InputItem
-                label={"ACCEPTED QUANTITY"}
-                value={acceptedQty}
-                type={"text"}
-                placeholder={"ENTER ACCEPTED QUANTITY"}
-                required
-                onChange={(e) => setAcceptedQty(e.target.value)}
-              />
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "25px" }}
-              >
-                <label>QC STATUS</label>
-
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="qc-status"
-                    checked={qcStatusSelection === "passed"}
-                    onChange={() => setQcStatusSelection("passed")}
-                    style={{
-                      width: "24px",
-                      height: "24px",
-                      cursor: "pointer",
-                    }}
-                  />
-                  <span>PASSED QC</span>
-                </label>
-
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="qc-status"
-                    checked={qcStatusSelection === "failed"}
-                    onChange={() => setQcStatusSelection("failed")}
-                    style={{
-                      width: "24px",
-                      height: "24px",
-                      cursor: "pointer",
-                    }}
-                  />
-                  <span>FAILED QC</span>
-                </label>
-              </div>
-            </div>
-
-            {qcStatusSelection === "failed" && (
-              <>
-                <div className="input-row three-col">
-                  <InputItem
-                    label={"PHYSICAL DAMAGE"}
-                    value={failureReasons.physicalDamage}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        physicalDamage: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Scratches",
-                      "Cracks",
-                      "Breakage",
-                      "Denting",
-                      "Water damage",
-                      "Warped/bent",
-                    ]}
-                  />
-
-                  <InputItem
-                    label={"WRONG SPECIFICATION"}
-                    value={failureReasons.wrongSpecification}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        wrongSpecification: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Wrong size/dimensions",
-                      "Wrong material grade",
-                      "Wrong finish/color",
-                      "Wrong model/variant",
-                      "Wrong technical spec",
-                      "Does not match approved drawing",
-                    ]}
-                  />
-
-                  <InputItem
-                    label={"QUANTITY/PACKAGING ISSUES SHORTAGE"}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    value={failureReasons.quantityPackagingIssues}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        quantityPackagingIssues: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Shortage",
-                      "Excess (over-supply)",
-                      "Damaged packaging",
-                      "Missing accessories/hardware",
-                      "Incorrect labeling/barcode",
-                    ]}
-                  />
-                </div>
-
-                <div className="input-row three-col">
-                  <InputItem
-                    label={"FUNCTIONAL FAILURE"}
-                    value={failureReasons.functionalFailure}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        functionalFailure: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Mechanism not working",
-                      "Loose joints",
-                      "Motor not firing (for motors/automation)",
-                      "Electronics malfunctioning",
-                      "Not fitting during assembly test",
-                    ]}
-                  />
-
-                  <InputItem
-                    label={"QUALITY ISSUES"}
-                    value={failureReasons.qualityIssues}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        qualityIssues: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Poor finishing",
-                      "Uneven coating/painting",
-                      "Rough edges",
-                      "Poor craftsmanship",
-                      "Inconsistent batch quality",
-                    ]}
-                  />
-
-                  <InputItem
-                    label={"COMPLIANCE & CERTIFICATION FAILURES"}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    value={failureReasons.complianceCertification}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        complianceCertification: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Missing test certificates",
-                      "Does not meet fire rating",
-                      "Does not meet safety standards",
-                      "Wrong country certification",
-                    ]}
-                  />
-                </div>
-              </>
-            )}
+            {formContent}
           </FormPopUp>
         )}
       </>
@@ -879,7 +1233,6 @@ export default function QCCheckListButton({
 
   // If QC status is failed
   if (qcStatus === "failed") {
-    console.log("Rendering QC FAILED pill");
     return (
       <>
         <div
@@ -889,7 +1242,7 @@ export default function QCCheckListButton({
             color: "white",
           }}
         >
-          <span>QC FAILED</span>
+          <span>FAILED</span>
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <img
               src={pencilIcon}
@@ -899,411 +1252,19 @@ export default function QCCheckListButton({
                 cursor: "pointer",
                 width: "14px",
               }}
-              onClick={() => {
-                console.log("QC FAILED edit icon clicked!");
-                handleEditClick();
-              }}
+              onClick={handleEditClick}
             />
           </div>
         </div>
 
-        {console.log("Render check - isOpen:", isOpen)}
         {isOpen && (
           <FormPopUp
             header="QUALITY CONTROL CHECKLIST"
-            setIsOpen={setIsOpen}
+            setIsOpen={handleModalClose}
             handleSubmit={handleSubmit}
             addButtonLabel={"CONFIRM"}
           >
-            <div className="input-row three-col">
-              <InputItem
-                label={"ORDERED QUANTITY"}
-                value={item.quantity}
-                type={"text"}
-                placeholder={""}
-                required
-                disabled
-                onChange={() => {}}
-              />
-              <InputItem
-                label={"RECEIVED QUANTITY"}
-                value={receivedQuantity}
-                type={"text"}
-                placeholder={""}
-                required
-                disabled
-                onChange={() => {}}
-              />
-              <InputItem
-                label={"CHECKED BY"}
-                value={userInfo?.name || ""}
-                type={"text"}
-                placeholder={""}
-                required
-                disabled
-                onChange={() => {}}
-              />
-            </div>
-
-            <br />
-
-            <table className="items-table alt">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>CHECKPOINT</th>
-                  <th>YES</th>
-                  <th>NO</th>
-                  <th>N/A</th>
-                  <th style={{ minWidth: "500px" }}>NOTES</th>
-                  <th>ATTACHMENT(S)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {checkpoints.map((checkpoint, index) => (
-                  <tr key={index}>
-                    <td style={{ textAlign: "center" }}>{index + 1}</td>
-                    <td>{checkpoint}</td>
-                    <td style={{ textAlign: "center" }}>
-                      <div
-                        onClick={() => handleResponseChange(index, "yes")}
-                        style={{
-                          width: "24px",
-                          height: "24px",
-                          borderRadius: "5px",
-                          border:
-                            checkpointData[index]?.response === "yes"
-                              ? "none"
-                              : "2px solid #d1d5db",
-                          backgroundColor:
-                            checkpointData[index]?.response === "yes"
-                              ? "#10b981"
-                              : "transparent",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          margin: "0 auto",
-                        }}
-                      >
-                        {checkpointData[index]?.response === "yes" && (
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M16.6667 5L7.50004 14.1667L3.33337 10"
-                              stroke="white"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <div
-                        onClick={() => handleResponseChange(index, "no")}
-                        style={{
-                          width: "24px",
-                          height: "24px",
-                          borderRadius: "5px",
-                          border:
-                            checkpointData[index]?.response === "no"
-                              ? "none"
-                              : "2px solid #d1d5db",
-                          backgroundColor:
-                            checkpointData[index]?.response === "no"
-                              ? "#ef4444"
-                              : "transparent",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          margin: "0 auto",
-                        }}
-                      >
-                        {checkpointData[index]?.response === "no" && (
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M15 5L5 15M5 5L15 15"
-                              stroke="white"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <div
-                        onClick={() => handleResponseChange(index, "na")}
-                        style={{
-                          width: "24px",
-                          height: "24px",
-                          borderRadius: "5px",
-                          border:
-                            checkpointData[index]?.response === "na"
-                              ? "none"
-                              : "2px solid #d1d5db",
-                          backgroundColor:
-                            checkpointData[index]?.response === "na"
-                              ? "#6b7280"
-                              : "transparent",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          margin: "0 auto",
-                        }}
-                      >
-                        {checkpointData[index]?.response === "na" && (
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M5 10H15"
-                              stroke="white"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <InputItem
-                        label={""}
-                        value={checkpointData[index]?.notes || ""}
-                        type={"text"}
-                        placeholder={"ENTER NOTES"}
-                        required={false}
-                        onChange={(e) =>
-                          handleNotesChange(index, e.target.value)
-                        }
-                      />
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      {/* Attachment functionality commented out as in original */}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <br />
-            <br />
-
-            <div className="input-row three-col">
-              <InputItem
-                label={"ACCEPTED QUANTITY"}
-                value={acceptedQty}
-                type={"text"}
-                placeholder={"ENTER ACCEPTED QUANTITY"}
-                required
-                onChange={(e) => setAcceptedQty(e.target.value)}
-              />
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "25px" }}
-              >
-                <label>QC STATUS</label>
-
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="qc-status"
-                    checked={qcStatusSelection === "passed"}
-                    onChange={() => setQcStatusSelection("passed")}
-                    style={{
-                      width: "24px",
-                      height: "24px",
-                      cursor: "pointer",
-                    }}
-                  />
-                  <span>PASSED QC</span>
-                </label>
-
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="qc-status"
-                    checked={qcStatusSelection === "failed"}
-                    onChange={() => setQcStatusSelection("failed")}
-                    style={{
-                      width: "24px",
-                      height: "24px",
-                      cursor: "pointer",
-                    }}
-                  />
-                  <span>FAILED QC</span>
-                </label>
-              </div>
-            </div>
-
-            {qcStatusSelection === "failed" && (
-              <>
-                <div className="input-row three-col">
-                  <InputItem
-                    label={"PHYSICAL DAMAGE"}
-                    value={failureReasons.physicalDamage}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        physicalDamage: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Scratches",
-                      "Cracks",
-                      "Breakage",
-                      "Denting",
-                      "Water damage",
-                      "Warped/bent",
-                    ]}
-                  />
-
-                  <InputItem
-                    label={"WRONG SPECIFICATION"}
-                    value={failureReasons.wrongSpecification}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        wrongSpecification: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Wrong size/dimensions",
-                      "Wrong material grade",
-                      "Wrong finish/color",
-                      "Wrong model/variant",
-                      "Wrong technical spec",
-                      "Does not match approved drawing",
-                    ]}
-                  />
-
-                  <InputItem
-                    label={"QUANTITY/PACKAGING ISSUES SHORTAGE"}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    value={failureReasons.quantityPackagingIssues}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        quantityPackagingIssues: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Shortage",
-                      "Excess (over-supply)",
-                      "Damaged packaging",
-                      "Missing accessories/hardware",
-                      "Incorrect labeling/barcode",
-                    ]}
-                  />
-                </div>
-
-                <div className="input-row three-col">
-                  <InputItem
-                    label={"FUNCTIONAL FAILURE"}
-                    value={failureReasons.functionalFailure}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        functionalFailure: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Mechanism not working",
-                      "Loose joints",
-                      "Motor not firing (for motors/automation)",
-                      "Electronics malfunctioning",
-                      "Not fitting during assembly test",
-                    ]}
-                  />
-
-                  <InputItem
-                    label={"QUALITY ISSUES"}
-                    value={failureReasons.qualityIssues}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        qualityIssues: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Poor finishing",
-                      "Uneven coating/painting",
-                      "Rough edges",
-                      "Poor craftsmanship",
-                      "Inconsistent batch quality",
-                    ]}
-                  />
-
-                  <InputItem
-                    label={"COMPLIANCE & CERTIFICATION FAILURES"}
-                    type={"select"}
-                    placeholder={"SELECT CONDITION"}
-                    required={false}
-                    value={failureReasons.complianceCertification}
-                    onChange={(e) =>
-                      setFailureReasons({
-                        ...failureReasons,
-                        complianceCertification: e.target.value,
-                      })
-                    }
-                    selectOptions={[
-                      "Missing test certificates",
-                      "Does not meet fire rating",
-                      "Does not meet safety standards",
-                      "Wrong country certification",
-                    ]}
-                  />
-                </div>
-              </>
-            )}
+            {formContent}
           </FormPopUp>
         )}
       </>
@@ -1326,399 +1287,14 @@ export default function QCCheckListButton({
         </Button>
       </div>
 
-      {console.log("Render check - isOpen:", isOpen)}
       {isOpen && (
         <FormPopUp
           header="QUALITY CONTROL CHECKLIST"
-          setIsOpen={setIsOpen}
+          setIsOpen={handleModalClose}
           handleSubmit={handleSubmit}
-          addButtonLabel={"CONFIRM"}
+          addButtonLabel={isSubmitting ? "UPLOADING..." : "CONFIRM"}
         >
-          <div className="input-row three-col">
-            <InputItem
-              label={"ORDERED QUANTITY"}
-              value={item.quantity}
-              type={"text"}
-              placeholder={""}
-              required
-              disabled
-              onChange={() => {}}
-            />
-            <InputItem
-              label={"RECEIVED QUANTITY"}
-              value={receivedQuantity}
-              type={"text"}
-              placeholder={""}
-              required
-              disabled
-              onChange={() => {}}
-            />
-            <InputItem
-              label={"CHECKED BY"}
-              value={userInfo?.name || ""}
-              type={"text"}
-              placeholder={""}
-              required
-              disabled
-              onChange={() => {}}
-            />
-          </div>
-
-          <br />
-
-          <table className="items-table alt">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>CHECKPOINT</th>
-                <th>YES</th>
-                <th>NO</th>
-                <th>N/A</th>
-                <th style={{ minWidth: "500px" }}>NOTES</th>
-                <th>ATTACHMENT(S)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {checkpoints.map((checkpoint, index) => (
-                <tr key={index}>
-                  <td style={{ textAlign: "center" }}>{index + 1}</td>
-                  <td>{checkpoint}</td>
-                  <td style={{ textAlign: "center" }}>
-                    <div
-                      onClick={() => handleResponseChange(index, "yes")}
-                      style={{
-                        width: "24px",
-                        height: "24px",
-                        borderRadius: "5px",
-                        border:
-                          checkpointData[index]?.response === "yes"
-                            ? "none"
-                            : "2px solid #d1d5db",
-                        backgroundColor:
-                          checkpointData[index]?.response === "yes"
-                            ? "#10b981"
-                            : "transparent",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        margin: "0 auto",
-                      }}
-                    >
-                      {checkpointData[index]?.response === "yes" && (
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M16.6667 5L7.50004 14.1667L3.33337 10"
-                            stroke="white"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    <div
-                      onClick={() => handleResponseChange(index, "no")}
-                      style={{
-                        width: "24px",
-                        height: "24px",
-                        borderRadius: "5px",
-                        border:
-                          checkpointData[index]?.response === "no"
-                            ? "none"
-                            : "2px solid #d1d5db",
-                        backgroundColor:
-                          checkpointData[index]?.response === "no"
-                            ? "#ef4444"
-                            : "transparent",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        margin: "0 auto",
-                      }}
-                    >
-                      {checkpointData[index]?.response === "no" && (
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M15 5L5 15M5 5L15 15"
-                            stroke="white"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    <div
-                      onClick={() => handleResponseChange(index, "na")}
-                      style={{
-                        width: "24px",
-                        height: "24px",
-                        borderRadius: "5px",
-                        border:
-                          checkpointData[index]?.response === "na"
-                            ? "none"
-                            : "2px solid #d1d5db",
-                        backgroundColor:
-                          checkpointData[index]?.response === "na"
-                            ? "#6b7280"
-                            : "transparent",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        margin: "0 auto",
-                      }}
-                    >
-                      {checkpointData[index]?.response === "na" && (
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M5 10H15"
-                            stroke="white"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <InputItem
-                      label={""}
-                      value={checkpointData[index]?.notes || ""}
-                      type={"text"}
-                      placeholder={"ENTER NOTES"}
-                      required={false}
-                      onChange={(e) => handleNotesChange(index, e.target.value)}
-                    />
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    {/* Attachment functionality commented out as in original */}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <br />
-          <br />
-
-          <div className="input-row three-col">
-            <InputItem
-              label={"ACCEPTED QUANTITY"}
-              value={acceptedQty}
-              type={"text"}
-              placeholder={"ENTER ACCEPTED QUANTITY"}
-              required
-              onChange={(e) => setAcceptedQty(e.target.value)}
-            />
-            <div style={{ display: "flex", alignItems: "center", gap: "25px" }}>
-              <label>QC STATUS</label>
-
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                }}
-              >
-                <input
-                  type="radio"
-                  name="qc-status"
-                  checked={qcStatusSelection === "passed"}
-                  onChange={() => setQcStatusSelection("passed")}
-                  style={{
-                    width: "24px",
-                    height: "24px",
-                    cursor: "pointer",
-                  }}
-                />
-                <span>PASSED QC</span>
-              </label>
-
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                }}
-              >
-                <input
-                  type="radio"
-                  name="qc-status"
-                  checked={qcStatusSelection === "failed"}
-                  onChange={() => setQcStatusSelection("failed")}
-                  style={{
-                    width: "24px",
-                    height: "24px",
-                    cursor: "pointer",
-                  }}
-                />
-                <span>FAILED QC</span>
-              </label>
-            </div>
-          </div>
-
-          {qcStatusSelection === "failed" && (
-            <>
-              <div className="input-row three-col">
-                <InputItem
-                  label={"PHYSICAL DAMAGE"}
-                  value={failureReasons.physicalDamage}
-                  type={"select"}
-                  placeholder={"SELECT CONDITION"}
-                  required={false}
-                  onChange={(e) =>
-                    setFailureReasons({
-                      ...failureReasons,
-                      physicalDamage: e.target.value,
-                    })
-                  }
-                  selectOptions={[
-                    "Scratches",
-                    "Cracks",
-                    "Breakage",
-                    "Denting",
-                    "Water damage",
-                    "Warped/bent",
-                  ]}
-                />
-
-                <InputItem
-                  label={"WRONG SPECIFICATION"}
-                  value={failureReasons.wrongSpecification}
-                  type={"select"}
-                  placeholder={"SELECT CONDITION"}
-                  required={false}
-                  onChange={(e) =>
-                    setFailureReasons({
-                      ...failureReasons,
-                      wrongSpecification: e.target.value,
-                    })
-                  }
-                  selectOptions={[
-                    "Wrong size/dimensions",
-                    "Wrong material grade",
-                    "Wrong finish/color",
-                    "Wrong model/variant",
-                    "Wrong technical spec",
-                    "Does not match approved drawing",
-                  ]}
-                />
-
-                <InputItem
-                  label={"QUANTITY/PACKAGING ISSUES SHORTAGE"}
-                  type={"select"}
-                  placeholder={"SELECT CONDITION"}
-                  required={false}
-                  value={failureReasons.quantityPackagingIssues}
-                  onChange={(e) =>
-                    setFailureReasons({
-                      ...failureReasons,
-                      quantityPackagingIssues: e.target.value,
-                    })
-                  }
-                  selectOptions={[
-                    "Shortage",
-                    "Excess (over-supply)",
-                    "Damaged packaging",
-                    "Missing accessories/hardware",
-                    "Incorrect labeling/barcode",
-                  ]}
-                />
-              </div>
-
-              <div className="input-row three-col">
-                <InputItem
-                  label={"FUNCTIONAL FAILURE"}
-                  value={failureReasons.functionalFailure}
-                  type={"select"}
-                  placeholder={"SELECT CONDITION"}
-                  required={false}
-                  onChange={(e) =>
-                    setFailureReasons({
-                      ...failureReasons,
-                      functionalFailure: e.target.value,
-                    })
-                  }
-                  selectOptions={[
-                    "Mechanism not working",
-                    "Loose joints",
-                    "Motor not firing (for motors/automation)",
-                    "Electronics malfunctioning",
-                    "Not fitting during assembly test",
-                  ]}
-                />
-
-                <InputItem
-                  label={"QUALITY ISSUES"}
-                  value={failureReasons.qualityIssues}
-                  type={"select"}
-                  placeholder={"SELECT CONDITION"}
-                  required={false}
-                  onChange={(e) =>
-                    setFailureReasons({
-                      ...failureReasons,
-                      qualityIssues: e.target.value,
-                    })
-                  }
-                  selectOptions={[
-                    "Poor finishing",
-                    "Uneven coating/painting",
-                    "Rough edges",
-                    "Poor craftsmanship",
-                    "Inconsistent batch quality",
-                  ]}
-                />
-
-                <InputItem
-                  label={"COMPLIANCE & CERTIFICATION FAILURES"}
-                  type={"select"}
-                  placeholder={"SELECT CONDITION"}
-                  required={false}
-                  value={failureReasons.complianceCertification}
-                  onChange={(e) =>
-                    setFailureReasons({
-                      ...failureReasons,
-                      complianceCertification: e.target.value,
-                    })
-                  }
-                  selectOptions={[
-                    "Missing test certificates",
-                    "Does not meet fire rating",
-                    "Does not meet safety standards",
-                    "Wrong country certification",
-                  ]}
-                />
-              </div>
-            </>
-          )}
+          {formContent}
         </FormPopUp>
       )}
     </>

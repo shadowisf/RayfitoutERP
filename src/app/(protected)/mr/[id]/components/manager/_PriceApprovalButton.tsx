@@ -9,8 +9,10 @@ import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
 import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
 import RejectCommentPopUp from "./RejectCommentPopUp";
+import { useAuth } from "@/app/context/AuthContext";
 
 type PriceApprovalButtonProps = {
+  progressID: number;
   mrLineID: number;
   bgColor?: string;
   textColor?: string;
@@ -20,6 +22,7 @@ type PriceApprovalButtonProps = {
 };
 
 export default function PriceApprovalButton({
+  progressID,
   mrLineID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
@@ -27,8 +30,10 @@ export default function PriceApprovalButton({
   full,
   style,
 }: PriceApprovalButtonProps) {
+  const { userInfo } = useAuth();
+
   const externalLinkIcon = "/icons/external-link.svg";
-  const crossIcon = "/icons/cross.svg";
+  const crossIcon = "/icons/cross-small.svg";
 
   const router = useRouter();
 
@@ -197,16 +202,17 @@ export default function PriceApprovalButton({
           >
             <img src={externalLinkIcon} alt="external link icon" />
           </SupplierDetailsPopUp>
-          <img
-            src={crossIcon}
-            alt="reset"
-            style={{
-              filter: "invert(1)",
-              cursor: "pointer",
-              width: "10px",
-            }}
-            onClick={handleReset}
-          />
+          {progressID === 10 && (
+            <img
+              src={crossIcon}
+              alt="reset"
+              style={{
+                filter: "invert(1)",
+                cursor: "pointer",
+              }}
+              onClick={handleReset}
+            />
+          )}
         </div>
       </div>
     );
@@ -224,16 +230,17 @@ export default function PriceApprovalButton({
         <span>All Supplier Rejected</span>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
           <RejectCommentPopUp text={supplierQuotations[0].reject_comment} />
-          <img
-            src={crossIcon}
-            alt="reset"
-            style={{
-              filter: "invert(1)",
-              cursor: "pointer",
-              width: "10px",
-            }}
-            onClick={handleReset}
-          />
+          {progressID === 10 && (
+            <img
+              src={crossIcon}
+              alt="reset"
+              style={{
+                filter: "invert(1)",
+                cursor: "pointer",
+              }}
+              onClick={handleReset}
+            />
+          )}
         </div>
       </div>
     );

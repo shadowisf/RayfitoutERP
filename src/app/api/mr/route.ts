@@ -205,7 +205,6 @@ SET boq_line_id = ?,
     unit = ?, 
     notes = ?,
     approval_status = NULL,
-    normal_comment = NULL,
     reject_comment = NULL
 WHERE id = ?
     `;

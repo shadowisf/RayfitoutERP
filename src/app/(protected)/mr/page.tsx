@@ -100,6 +100,27 @@ export default function MR() {
     return rejectedStatuses.includes(status);
   };
 
+  const getProgressStyle = (status: string) => {
+    if (isRejectedStatus(status)) {
+      return {
+        backgroundColor: "rgba(255, 181, 181, 1)",
+        color: "rgba(248, 77, 77, 1)",
+      };
+    }
+
+    if (status === "Completed") {
+      return {
+        backgroundColor: "rgba(230, 245, 230, 1)",
+        color: "rgba(60, 120, 60, 1)",
+      };
+    }
+
+    return {
+      backgroundColor: "rgba(255, 250, 189, 1)",
+      color: "rgba(134, 83, 47, 1)",
+    };
+  };
+
   // Function to check if status is completed
   const isCompletedStatus = (status: string) => {
     return status === "Completed";
@@ -244,16 +265,13 @@ export default function MR() {
                       >
                         <div>
                           <small>MR NUMBER</small>
-                          <h3>MR-{String(mr.id).padStart(3, "0")}</h3>
+                          <h3>MR-{String(mr.id).padStart(5, "0")}</h3>
                         </div>
 
                         <div style={{ display: "flex", gap: "10px" }}>
                           <small
                             className="status"
-                            style={{
-                              backgroundColor: "rgba(255, 250, 189, 1)",
-                              color: "rgba(134, 83, 47, 1)",
-                            }}
+                            style={getProgressStyle(mr.progress_name)}
                           >
                             {mr.progress_name}
                           </small>

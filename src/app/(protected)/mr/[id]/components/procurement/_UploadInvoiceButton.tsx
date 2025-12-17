@@ -197,13 +197,14 @@ export default function UploadInvoiceButton({
               <div
                 style={{
                   fontSize: "13px",
-                  maxWidth: "120px",
+                  fontWeight: "bold",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
                 }}
               >
-                {getFileName(fileUrl)}
+                {/* {getFileName(fileUrl)} */}
+                View Invoice
               </div>
 
               <a
@@ -212,11 +213,7 @@ export default function UploadInvoiceButton({
                 rel="noopener noreferrer"
                 style={{ display: "flex" }}
               >
-                <img
-                  src={externalLinkIcon}
-                  alt="external link"
-                  height={11}
-                />
+                <img src={externalLinkIcon} alt="external link" height={11} />
               </a>
 
               {canDelete && (

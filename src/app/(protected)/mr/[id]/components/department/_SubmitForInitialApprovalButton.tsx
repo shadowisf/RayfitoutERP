@@ -6,7 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 
-type SubitMrForApprovalButtonProps = {
+type SubitForInitialApprovalButtonProps = {
   mrHeaderID: number;
   bgColor?: string;
   textColor?: string;
@@ -14,13 +14,13 @@ type SubitMrForApprovalButtonProps = {
   children?: React.ReactNode;
 };
 
-export default function SubmitMrForApprovalButton({
+export default function SubmitForInitialApprovalButton({
   mrHeaderID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: SubitMrForApprovalButtonProps) {
+}: SubitForInitialApprovalButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -38,13 +38,13 @@ export default function SubmitMrForApprovalButton({
     });
 
     if (res.ok) {
-      toast("Material request submitted for approval", "success");
+      toast("Material request submitted", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast("Failed to submit material request for approval", "error");
+      toast("Failed to submit material request", "error");
     }
   }
 
@@ -63,7 +63,7 @@ export default function SubmitMrForApprovalButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR APPROVAL"}
+          header={"SUBMIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

@@ -349,17 +349,6 @@ export default function IssueLPOButton({
           View LPO
         </ViewLPOPopUp>
 
-        <DownloadLPOButton
-          lpoID={existingLpoId}
-          bgColor="white"
-          borderColor={"rgba(207, 207, 207, 1)"}
-          textColor={"black"}
-          style={style}
-        >
-          Download LPO
-          <img src={downloadIcon} alt="download" />
-        </DownloadLPOButton>
-
         {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
           <EditLPOButton
             bgColor="white"
@@ -371,6 +360,17 @@ export default function IssueLPOButton({
             Edit LPO
           </EditLPOButton>
         )}
+
+        <DownloadLPOButton
+          lpoID={existingLpoId}
+          bgColor="white"
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
+          style={style}
+        >
+          Download LPO
+          <img src={downloadIcon} alt="download" />
+        </DownloadLPOButton>
 
         <UploadInvoiceButton
           mrHeader={mrHeader}

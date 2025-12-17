@@ -38,13 +38,13 @@ export default function SubmitForResubmissionButton({
     });
 
     if (res.ok) {
-      toast("Material request submitted for resubmission", "success");
+      toast("Material request submitted", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast("Failed to submit material request for resubmission", "error");
+      toast("Failed to submit material request", "error");
     }
   }
 
@@ -63,15 +63,12 @@ export default function SubmitForResubmissionButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR RESUBMISSION"}
+          header={"SUBMIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>
-            Are you sure you want to submit this material request for
-            resubmission?
-          </p>
+          <p>Are you sure you want to submit this material request?</p>
         </FormPopUp>
       )}
     </>

@@ -338,10 +338,9 @@ export default function PaymentButtons({
           backgroundColor: "rgba(34, 150, 100, 1)",
           color: "white",
           minWidth: "350px",
-          padding: "5px 20px",
         }}
       >
-        <span>Paid</span>
+        Paid
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
           <Button
             componentType={"link"}
@@ -355,7 +354,7 @@ export default function PaymentButtons({
             <img
               src={externalLinkIcon}
               alt="view"
-              style={{ filter: "invert(1)" }}
+              style={{ filter: "invert(1)", cursor: "pointer", width: "12px" }}
             />
           </Button>
           <img
@@ -381,10 +380,9 @@ export default function PaymentButtons({
           backgroundColor: "rgba(185, 28, 28, 1)",
           color: "white",
           minWidth: "350px",
-          padding: "5px 20px",
         }}
       >
-        <span>Rejected</span>
+        Rejected
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
           <RejectCommentPopUp text={rejectComment} />
 
@@ -485,7 +483,8 @@ export default function PaymentButtons({
                     fontSize: "13px",
                   }}
                 >
-                  {getFileName(paymentFileUrl)}
+                  {/* {getFileName(paymentFileUrl)} */}
+                  View Payment Receipt
                 </div>
 
                 <a

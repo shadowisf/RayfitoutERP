@@ -41,7 +41,7 @@ export default function Navbar() {
           <button className="notifications">
             <img src={notification_icon} alt="notification icon" />
           </button>
-          <NewMrButton />
+          {userInfo?.departmentID !== 8 && <NewMrButton />}
 
           {userInfo?.departmentID === 8 && <NewProjectButton />}
 

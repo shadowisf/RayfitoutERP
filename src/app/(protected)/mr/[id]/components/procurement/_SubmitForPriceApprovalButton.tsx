@@ -38,13 +38,13 @@ export default function SubmitForPricingApprovalButton({
     });
 
     if (res.ok) {
-      toast("Material request submitted for pricing approval", "success");
+      toast("Material request submitted", "success");
 
       setIsOpen(false);
 
       router.refresh();
     } else {
-      toast("Failed to submit material request for pricing approval", "error");
+      toast("Failed to submit material request", "error");
     }
   }
 
@@ -63,7 +63,7 @@ export default function SubmitForPricingApprovalButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST FOR PRICING APPROVAL"}
+          header={"SUBMIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

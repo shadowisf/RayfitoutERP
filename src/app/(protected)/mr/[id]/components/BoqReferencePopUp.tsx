@@ -32,7 +32,13 @@ export default function BoqReferencePopUp({ item }: BoqReferencePopUpProps) {
 
       {isOpen && (
         <FormPopUp
-          header={`${item.boq_item_number} - ${item.boq_item_name}`}
+          header={
+            <>
+              <a href={`/boq/${item.boq_header_id}`}>
+                {item.boq_item_number} - {item.boq_item_name}
+              </a>
+            </>
+          }
           setIsOpen={setIsOpen}
           style={{ whiteSpace: "pre-wrap" }}
         >

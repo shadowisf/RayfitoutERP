@@ -199,13 +199,14 @@ export default function UploadSignedLPOButton({
               <span
                 style={{
                   fontSize: "13px",
-                  maxWidth: "120px",
+                  fontWeight: "bold",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
                 }}
               >
-                {getFileName(fileUrl)}
+                {/* {getFileName(fileUrl)} */}
+                View Signed LPO
               </span>
 
               <a

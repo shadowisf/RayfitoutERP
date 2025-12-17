@@ -1,7 +1,7 @@
 import Button from "./Button";
 
 type FormPopUpProps = {
-  header: string;
+  header: string | React.ReactNode;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   handleSubmit?: (e: React.FormEvent) => void;
   children: React.ReactNode;
