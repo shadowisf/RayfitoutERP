@@ -1,7 +1,8 @@
 import CreateMrLineClient from "./components/CreateMrLine";
+import DeleteMrHeaderButton from "./components/department/_DeleteMrHeaderButton";
+import EditMrHeaderButton from "./components/department/_EditMrHeaderButton";
 import MrLinesView from "./components/MrLinesView";
 import { MrHeader } from "./types/mrHeader";
-import { MrLine } from "./types/mrLine";
 
 export default async function MrWithID({
   params,
@@ -127,22 +128,37 @@ export default async function MrWithID({
     <div className="dashboard">
       <div className="mr-with-id">
         <div className="top">
-          <div>
-            <span>MR NUMBER</span>
-            <h2>MR-{String(id).padStart(5, "0")}</h2>
-          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ display: "flex", gap: "50px", alignItems: "center" }}>
+              <div>
+                <span>MATERIAL REQUEST ID</span>
+                <h2>MR-{String(id).padStart(5, "0")}</h2>
+              </div>
 
-          <div style={{ display: "flex", gap: "10px" }}>
-            <p className="status" style={progressStyle}>
-              {mrHeader.progress_name}
-            </p>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <p className="status" style={progressStyle}>
+                  {mrHeader.progress_name}
+                </p>
 
-            {/* Only show priority badge if NOT completed */}
-            {!isCompleted && (
-              <p className="status" style={priorityStyle}>
-                {priority}
-              </p>
-            )}
+                {/* Only show priority badge if NOT completed */}
+                {!isCompleted && (
+                  <p className="status" style={priorityStyle}>
+                    {priority}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <EditMrHeaderButton mrHeader={mrHeader} />
+              <DeleteMrHeaderButton mrHeader={mrHeader} />
+            </div>
           </div>
         </div>
 
@@ -152,7 +168,12 @@ export default async function MrWithID({
             <h2>
               {mrHeader.project_name}{" "}
               <a href={`/project/${mrHeader.project_id}`}>
-                <img src={externalLinkIcon} alt="external link icon" />
+                <img
+                  src={externalLinkIcon}
+                  alt="external link icon"
+                  height={12}
+                  style={{ marginLeft: "5px" }}
+                />
               </a>
             </h2>
           </div>

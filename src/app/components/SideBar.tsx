@@ -9,7 +9,7 @@ export default function SideBar() {
   const menuItems = [
     { label: "Dashboard", path: "/dashboard" },
     { label: "Material Request", path: "/mr" },
-    { label: "Inventory", path: "/inventory" },
+    { label: "Inventory Management", path: "/inventory" },
     { label: "Project Management", path: "/project" },
   ];
 

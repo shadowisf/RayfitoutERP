@@ -29,23 +29,11 @@ type SupplierQuotation = {
 type SupplierAndQuotationButtonProps = {
   mrHeader: MrHeader;
   mrLineID: number;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  full?: boolean;
-  style?: React.CSSProperties;
-  children: React.ReactNode;
 };
 
 export default function SupplierAndQuotationButton({
   mrHeader,
   mrLineID,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  full,
-  style,
-  children,
 }: SupplierAndQuotationButtonProps) {
   const router = useRouter();
 
@@ -58,12 +46,8 @@ export default function SupplierAndQuotationButton({
     useState<boolean>(false);
   const [isMounted, setIsMounted] = useState<boolean>(false);
   const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isCheckingExisting, setIsCheckingExisting] = useState<boolean>(true);
 
   const [mode, setMode] = useState<"add" | "edit">("add");
-  const [hasExistingQuotations, setHasExistingQuotations] =
-    useState<boolean>(false);
   const [allSuppliersRejected, setAllSuppliersRejected] =
     useState<boolean>(false);
   const [allSuppliersPending, setAllSuppliersPending] =
@@ -164,7 +148,6 @@ export default function SupplierAndQuotationButton({
 
   // Check if quotations already exist for this MR line
   async function checkExistingQuotations() {
-    setIsCheckingExisting(true);
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`,
@@ -182,7 +165,6 @@ export default function SupplierAndQuotationButton({
       const data = await res.json();
 
       if (data && data.length > 0) {
-        setHasExistingQuotations(true);
         setMode("edit");
 
         // Check if all suppliers are rejected
@@ -223,7 +205,6 @@ export default function SupplierAndQuotationButton({
           );
         }
       } else {
-        setHasExistingQuotations(false);
         setAllSuppliersRejected(false);
         setAllSuppliersPending(false);
         setHasApprovedSupplier(false);
@@ -231,13 +212,10 @@ export default function SupplierAndQuotationButton({
       }
     } catch (error) {
       console.error("Error checking quotations:", error);
-      setHasExistingQuotations(false);
       setAllSuppliersRejected(false);
       setAllSuppliersPending(false);
       setHasApprovedSupplier(false);
       setMode("add");
-    } finally {
-      setIsCheckingExisting(false);
     }
   }
 
@@ -279,7 +257,6 @@ export default function SupplierAndQuotationButton({
   async function fetchExistingQuotations() {
     if (mode !== "edit") return;
 
-    setIsLoading(true);
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`,
@@ -329,8 +306,6 @@ export default function SupplierAndQuotationButton({
     } catch (error) {
       console.error("Error fetching quotations:", error);
       toast("Failed to load existing quotations", "error");
-    } finally {
-      setIsLoading(false);
     }
   }
 
@@ -456,7 +431,7 @@ export default function SupplierAndQuotationButton({
   function handleViewFile(quotation: SupplierQuotation) {
     if (quotation.quotation_file) {
       const fileUrl = URL.createObjectURL(quotation.quotation_file);
-      window.open(fileUrl, "_blank");
+      return fileUrl;
     } else if (quotation.quotation_url) {
       window.open(quotation.quotation_url, "_blank");
     }
@@ -834,22 +809,26 @@ export default function SupplierAndQuotationButton({
               borderColor="black"
               textColor="black"
               onClick={() => setIsOpen(true)}
-              full={full || false}
-              style={style}
+              style={{
+                padding: "7px 20px",
+                borderRadius: "25px",
+              }}
             >
               Edit Suppliers & Quotations
             </Button>
           ) : (
             <Button
               componentType="button"
-              bgColor={bgColor}
-              borderColor={borderColor}
-              textColor={textColor}
+              bgColor="black"
+              textColor="white"
+              borderColor="black"
               onClick={() => setIsOpen(true)}
-              full={full || false}
-              style={style}
+              style={{
+                padding: "7px 20px",
+                borderRadius: "25px",
+              }}
             >
-              {children}
+              Add Suppliers & Quotation
             </Button>
           ))}
       </div>
@@ -904,49 +883,33 @@ export default function SupplierAndQuotationButton({
                       <td>
                         {(quotation.quotation_file ||
                           quotation.quotation_url) && (
-                          <div
+                          <Button
+                            componentType="none"
+                            bgColor="white"
+                            borderColor="rgba(223, 223, 223, 1)"
+                            textColor="black"
                             style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              padding: "5px 20px",
-                              border: "1px solid rgba(223, 223, 223, 1)",
+                              padding: "7px 20px",
                               borderRadius: "25px",
-                              backgroundColor: "white",
-                              gap: "10px",
                             }}
                           >
-                            <span
-                              style={{
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                minWidth: "100px",
-                                maxWidth: "100px",
-                                display: "inline-block",
-                              }}
+                            Quotation
+                            <a
+                              href={quotation.quotation_url}
+                              target="_blank"
+                              style={{ display: "flex" }}
                             >
-                              View Quotation
-                            </span>
-                            <div style={{ display: "flex", gap: "10px" }}>
-                              <img
-                                src={externalLinkIcon}
-                                alt="view"
-                                style={{
-                                  cursor: "pointer",
-                                }}
-                                onClick={() => handleViewFile(quotation)}
-                              />
-                              <img
-                                src={closeIcon}
-                                alt="remove"
-                                style={{
-                                  cursor: "pointer",
-                                }}
-                                onClick={() => handleRemoveFile(index)}
-                              />
-                            </div>
-                          </div>
+                              <img src={externalLinkIcon} alt="view" />
+                            </a>
+                            <img
+                              src={closeIcon}
+                              alt="remove"
+                              style={{
+                                cursor: "pointer",
+                              }}
+                              onClick={() => handleRemoveFile(index)}
+                            />
+                          </Button>
                         )}
 
                         {!quotation.quotation_file &&

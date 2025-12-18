@@ -200,6 +200,19 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "updateMrHeader") {
+      await db.query(
+        `UPDATE mr_headers 
+     SET project_id = ?, 
+         required_date = ?, 
+         purpose_id = ? 
+     WHERE id = ?`,
+        [body.project_id, body.required_date, body.purpose_id, body.id]
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action === "updateAll") {
       const query = `
       UPDATE mr_lines 
@@ -270,7 +283,10 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json({ success: true });
+    if (body.action === "deleteMrHeader") {
+      const query = "DELETE FROM mr_headers WHERE id = ?";
+      await db.query(query, [Number(body.id)]);
+    }
   } catch (err: any) {
     console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });

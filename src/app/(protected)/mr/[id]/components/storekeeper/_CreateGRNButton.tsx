@@ -8,24 +8,17 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { MrLine } from "../../types/mrLine";
 import { useAuth } from "@/app/context/AuthContext";
-import { LPO } from "../../types/lpo";
+import { LpoHeader } from "../../types/lpoHeader";
 import { MrHeader } from "../../types/mrHeader";
 
 type CreateGRNButtonProps = {
   mrHeader: MrHeader;
   mrLines: MrLine[];
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children: React.ReactNode;
-  full?: boolean;
-  style?: React.CSSProperties;
 };
 
 type GRNLineItem = {
   lpo_mr_line_id: number;
   received_quantity: string;
-  packaging_condition: "good" | "bad" | null;
   notes: string;
 };
 
@@ -40,12 +33,6 @@ type GRN = {
 export default function CreateGRNButton({
   mrHeader,
   mrLines,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
-  full,
-  style,
 }: CreateGRNButtonProps) {
   const router = useRouter();
   const { userInfo } = useAuth();
@@ -62,7 +49,7 @@ export default function CreateGRNButton({
   const [currentNoteIndex, setCurrentNoteIndex] = useState<number | null>(null);
 
   const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
-  const [lpo, setLpo] = useState<LPO | null>(null);
+  const [lpo, setLpo] = useState<LpoHeader | null>(null);
   const [lpoMrLines, setLpoMrLines] = useState<any[]>([]);
 
   const [existingGrn, setExistingGrn] = useState<GRN | null>(null);
@@ -107,7 +94,7 @@ export default function CreateGRNButton({
       const data = await res.json();
 
       if (data.success && data.data && data.data.length > 0) {
-        const lpoData: LPO = data.data[0];
+        const lpoData: LpoHeader = data.data[0];
         setExistingLpoId(lpoData.id);
       } else {
         setExistingLpoId(null);
@@ -144,7 +131,6 @@ export default function CreateGRNButton({
               initialGrnLines[index] = {
                 lpo_mr_line_id: line.id,
                 received_quantity: "",
-                packaging_condition: null,
                 notes: "",
               };
             });
@@ -216,14 +202,12 @@ export default function CreateGRNButton({
           mappedGrnLines[index] = {
             lpo_mr_line_id: lpoLine.id,
             received_quantity: grnLine.received_quantity?.toString() || "",
-            packaging_condition: grnLine.packaging_condition || null,
             notes: grnLine.notes || "",
           };
         } else {
           mappedGrnLines[index] = {
             lpo_mr_line_id: lpoLine.id,
             received_quantity: "",
-            packaging_condition: null,
             notes: "",
           };
         }
@@ -241,21 +225,6 @@ export default function CreateGRNButton({
       [index]: {
         ...prev[index],
         received_quantity: value,
-      },
-    }));
-  };
-
-  const handlePackagingConditionChange = (
-    index: number,
-    condition: "good" | "bad"
-  ) => {
-    if (isViewMode) return; // Prevent changes in view mode
-
-    setGrnLines((prev) => ({
-      ...prev,
-      [index]: {
-        ...prev[index],
-        packaging_condition: condition,
       },
     }));
   };
@@ -318,7 +287,6 @@ export default function CreateGRNButton({
         initialGrnLines[index] = {
           lpo_mr_line_id: line.id,
           received_quantity: "",
-          packaging_condition: null,
           notes: "",
         };
       });
@@ -387,21 +355,17 @@ export default function CreateGRNButton({
     }
 
     const allLinesValid = Object.values(grnLines).every(
-      (line) => line.received_quantity && line.packaging_condition
+      (line) => line.received_quantity
     );
 
     if (!allLinesValid) {
-      toast(
-        "Please fill in all received quantities and packaging conditions",
-        "error"
-      );
+      toast("Please fill in all received quantities condition", "error");
       return;
     }
 
     const grnLinesArray = Object.values(grnLines).map((line) => ({
       lpo_mr_line_id: line.lpo_mr_line_id,
       received_quantity: parseFloat(line.received_quantity),
-      packaging_condition: line.packaging_condition,
       notes: line.notes || null,
     }));
 
@@ -454,20 +418,49 @@ export default function CreateGRNButton({
 
   return (
     <>
-      <Button
-        componentType={"button"}
-        bgColor={isViewMode ? "white" : bgColor}
-        borderColor={isViewMode ? "rgba(207, 207, 207, 1)" : borderColor}
-        textColor={isViewMode ? "black" : textColor}
-        onClick={() => setIsOpen(true)}
-        full={full ? true : false}
-        style={style}
-      >
-        {isEditMode ? "Edit GRN" : isViewMode ? "View GRN" : children}
-        {isViewMode && (
-          <img src={externalLinkIcon} alt="external link" height={11} />
-        )}
-      </Button>
+      {isViewMode && (
+        <Button
+          componentType={"none"}
+          bgColor={"white"}
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
+          onClick={() => {}}
+          style={{ padding: "5px 20px", borderRadius: "25px" }}
+        >
+          GRN
+          <img
+            src={externalLinkIcon}
+            alt="external link"
+            onClick={() => setIsOpen(true)}
+          />
+        </Button>
+      )}
+
+      {isEditMode && (
+        <Button
+          componentType={"button"}
+          bgColor={"black"}
+          borderColor={"black"}
+          textColor={"white"}
+          onClick={() => setIsOpen(true)}
+          style={{ padding: "5px 20px", borderRadius: "25px" }}
+        >
+          Edit GRN
+        </Button>
+      )}
+
+      {!isViewMode && !isEditMode && (
+        <Button
+          componentType={"button"}
+          bgColor={"black"}
+          borderColor={"black"}
+          textColor={"white"}
+          onClick={() => setIsOpen(true)}
+          style={{ padding: "5px 20px", borderRadius: "25px" }}
+        >
+          Create GRN
+        </Button>
+      )}
 
       {isOpen && (
         <FormPopUp
@@ -480,9 +473,7 @@ export default function CreateGRNButton({
           }
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={
-            isViewMode ? "CLOSE" : isEditMode ? "UPDATE" : "CONFIRM"
-          }
+          addButtonLabel={isViewMode ? "" : isEditMode ? "UPDATE" : "CONFIRM"}
         >
           <div className="input-row full">
             <InputItem
@@ -551,7 +542,6 @@ export default function CreateGRNButton({
                 <th>DESCRIPTION</th>
                 <th>ORDERED QUANTITY</th>
                 <th>RECEIVED QUANTITY</th>
-                <th>PACKAGING CONDITION</th>
                 <th>NOTES</th>
               </tr>
             </thead>
@@ -645,90 +635,6 @@ export default function CreateGRNButton({
                       </div>
                     </td>
                     <td>
-                      <div style={{ display: "flex", gap: "10px" }}>
-                        <Button
-                          componentType={"button"}
-                          bgColor={
-                            grnLines[index]?.packaging_condition === "good"
-                              ? "rgba(0, 163, 93, 1)"
-                              : "white"
-                          }
-                          borderColor={
-                            grnLines[index]?.packaging_condition === "good"
-                              ? "rgba(0, 163, 93, 1)"
-                              : "rgba(207, 207, 207, 1)"
-                          }
-                          textColor={
-                            grnLines[index]?.packaging_condition === "good"
-                              ? "white"
-                              : "black"
-                          }
-                          style={{
-                            borderRadius: "50px",
-                            padding: "10px 10px",
-                            cursor: isViewMode ? "default" : "pointer",
-                          }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (!isViewMode) {
-                              handlePackagingConditionChange(index, "good");
-                            }
-                          }}
-                        >
-                          <img
-                            src={checkIcon}
-                            alt="check"
-                            style={{
-                              filter:
-                                grnLines[index]?.packaging_condition === "good"
-                                  ? "invert(1)"
-                                  : "none",
-                            }}
-                          />
-                        </Button>
-                        <Button
-                          componentType={"button"}
-                          bgColor={
-                            grnLines[index]?.packaging_condition === "bad"
-                              ? "rgba(248, 77, 77, 1)"
-                              : "white"
-                          }
-                          borderColor={
-                            grnLines[index]?.packaging_condition === "bad"
-                              ? "rgba(248, 77, 77, 1)"
-                              : "rgba(207, 207, 207, 1)"
-                          }
-                          textColor={
-                            grnLines[index]?.packaging_condition === "bad"
-                              ? "white"
-                              : "black"
-                          }
-                          style={{
-                            borderRadius: "50px",
-                            padding: "10px 10px",
-                            cursor: isViewMode ? "default" : "pointer",
-                          }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (!isViewMode) {
-                              handlePackagingConditionChange(index, "bad");
-                            }
-                          }}
-                        >
-                          <img
-                            src={crossIcon}
-                            alt="cross"
-                            style={{
-                              filter:
-                                grnLines[index]?.packaging_condition === "bad"
-                                  ? "invert(1)"
-                                  : "none",
-                            }}
-                          />
-                        </Button>
-                      </div>
-                    </td>
-                    <td>
                       {isViewMode ? (
                         grnLines[index]?.notes ? (
                           <Button
@@ -745,7 +651,10 @@ export default function CreateGRNButton({
                               openNotesModal(index);
                             }}
                           >
-                            <img src={pencilIcon} alt="notes" />
+                            <img
+                              src={isViewMode ? externalLinkIcon : pencilIcon}
+                              alt="notes"
+                            />
                           </Button>
                         ) : (
                           <span style={{ color: "rgba(150, 150, 150, 1)" }}>
@@ -820,7 +729,7 @@ export default function CreateGRNButton({
             e.preventDefault();
             handleNotesSubmit();
           }}
-          addButtonLabel={isViewMode ? "CLOSE" : "CONFIRM"}
+          addButtonLabel={isViewMode ? "" : "CONFIRM"}
         >
           <div className="input-row full">
             <InputItem

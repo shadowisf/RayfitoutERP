@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { InventoryItem } from "./types/inventoryItem";
 import NotesPopUp from "./components/NotesPopUp";
+import AddInventoryButton from "./components/_AddInventoryItem";
+import { QRCodeSVG } from "qrcode.react";
 
 export default function Inventory() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -20,6 +22,7 @@ export default function Inventory() {
     <div className="dashboard">
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <h2>INVENTORY LIST</h2>
+        <AddInventoryButton></AddInventoryButton>
       </div>
 
       <br />
@@ -71,7 +74,11 @@ export default function Inventory() {
                   <td>
                     <NotesPopUp item={item} />
                   </td>
-                  <td></td>
+                  <td>
+                    <QRCodeSVG
+                      value={`${process.env.NEXT_PUBLIC_BASE_URL}/inventory/${item.id}`}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>

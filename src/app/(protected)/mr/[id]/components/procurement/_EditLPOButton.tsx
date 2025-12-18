@@ -6,33 +6,17 @@ import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { LPO } from "../../types/lpo";
+import { LpoHeader } from "../../types/lpoHeader";
 
 type EditLPOButtonProps = {
   lpoId: number;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children?: React.ReactNode;
-  full?: boolean;
-  style?: React.CSSProperties;
 };
 
-export default function EditLPOButton({
-  lpoId,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children = "Edit LPO",
-  full,
-  style,
-}: EditLPOButtonProps) {
+export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [lpoData, setLpoData] = useState<LPO | null>(null);
+  const [lpoData, setLpoData] = useState<LpoHeader | null>(null);
 
   const [quotation, setQuotation] = useState("");
   const [supplierContactPersonName, setSupplierContactPersonName] =
@@ -250,8 +234,6 @@ export default function EditLPOButton({
 
     if (!lpoData) return;
 
-    setIsSubmitting(true);
-
     try {
       const updatedLpoMrLines = lpoData.lpo_mr_lines.map((line, index) => ({
         id: line.id,
@@ -292,8 +274,6 @@ export default function EditLPOButton({
       }
     } catch (error) {
       toast("Failed to update local purchase order", "error");
-    } finally {
-      setIsSubmitting(false);
     }
   }
 
@@ -305,14 +285,13 @@ export default function EditLPOButton({
     <>
       <Button
         componentType={"button"}
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor="white"
+        borderColor="rgba(207, 207, 207, 1)"
+        textColor="black"
         onClick={() => setIsOpen(true)}
-        full={full ? true : false}
-        style={style}
+        style={{ padding: "5px 20px", borderRadius: "25px" }}
       >
-        {children}
+        Edit LPO
       </Button>
 
       {isOpen && (

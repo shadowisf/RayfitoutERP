@@ -91,7 +91,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
   const categories = Object.keys(mrLines);
   const subCategories = mrLines[activeCategory] || {};
-  const suppliers = Object.keys(mrLinesBySupplier);
 
   const [lpoPaymentStatus, setLpoPaymentStatus] = useState<{
     [supplierId: number]: "approved" | "rejected" | "pending";
@@ -1291,7 +1290,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           <th>#</th>
                           <th>DESCRIPTION</th>
                           <th>QUANTITY</th>
-                          <th>BOF REF.</th>
+                          <th>BOQ REF.</th>
                           <th>NOTES</th>
                           {((mrHeader.progress_id === 5 &&
                             (userInfo?.departmentID ===
@@ -1428,16 +1427,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         <SupplierAndQuotationButton
                                           mrHeader={mrHeader}
                                           mrLineID={item.id}
-                                          bgColor="black"
-                                          textColor="white"
-                                          borderColor="black"
-                                          style={{
-                                            padding: "7px 25px",
-                                            borderRadius: "25px",
-                                          }}
-                                        >
-                                          Add Suppliers & Quotation
-                                        </SupplierAndQuotationButton>
+                                        />
                                       </div>
                                     </td>
                                   )}
@@ -1572,24 +1562,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               </div>
 
               <div className="right" style={{ display: "flex", gap: "20px" }}>
-                {((mrHeader.progress_id >= 12 &&
-                  userInfo?.departmentID === 9) ||
-                  userInfo?.departmentID === 10 ||
-                  userInfo?.departmentID === 11 ||
-                  userInfo?.departmentID === 12) && (
-                  <IssueLPOButton
-                    mrHeader={mrHeader}
-                    mrLines={items}
-                    bgColor="black"
-                    borderColor="black"
-                    textColor="white"
-                    style={{
-                      padding: "7px 20px",
-                      borderRadius: "25px",
-                    }}
-                  >
-                    Issue LPO +
-                  </IssueLPOButton>
+                {mrHeader.progress_id >= 12 && (
+                  <IssueLPOButton mrHeader={mrHeader} mrLines={items} />
                 )}
 
                 {userInfo?.departmentID === 10 &&
@@ -1601,16 +1575,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   )}
 
                 {mrHeader.progress_id >= 17 && (
-                  <CreateGRNButton
-                    mrHeader={mrHeader}
-                    mrLines={items}
-                    bgColor="black"
-                    borderColor="black"
-                    textColor="white"
-                    style={{ padding: "5px 20px", borderRadius: "25px" }}
-                  >
-                    Add GRN +
-                  </CreateGRNButton>
+                  <CreateGRNButton mrHeader={mrHeader} mrLines={items} />
                 )}
               </div>
             </div>

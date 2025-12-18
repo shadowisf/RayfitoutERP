@@ -1,7 +1,7 @@
 "use client";
 
 import { PDFViewer } from "@react-pdf/renderer";
-import { BOQPDF } from "@/app/(protected)/boq/[id]/components/BOQPDF"; // Adjust path as needed
+import { BoqPDF } from "@/app/(protected)/boq/[id]/components/BoqPDF"; // Adjust path as needed
 import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 import { MrLine } from "@/app/(protected)/mr/[id]/types/mrLine";
 
@@ -44,7 +44,7 @@ export default function BOQPreviewPage() {
   return (
     <div className="w-full h-screen">
       <PDFViewer width="100%" height="800px">
-        <BOQPDF mrHeader={sampleMrHeader} mrLines={sampleMrLines} />
+        <BoqPDF mrHeader={sampleMrHeader} mrLines={sampleMrLines} />
       </PDFViewer>
     </div>
   );

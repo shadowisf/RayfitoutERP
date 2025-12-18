@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
-import { LPO } from "../../types/lpo";
+import { LpoHeader } from "../../types/lpoHeader";
 
 type QCCheckListButtonProps = {
   mrHeader: MrHeader;
@@ -81,7 +81,7 @@ export default function QCCheckListButton({
   const [existingQcId, setExistingQcId] = useState<number | null>(null);
 
   const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
-  const [lpo, setLpo] = useState<LPO | null>(null);
+  const [lpo, setLpo] = useState<LpoHeader | null>(null);
   const [existingGrn, setExistingGrn] = useState<GRN | null>(null);
   const [receivedQuantity, setReceivedQuantity] = useState<string>("");
   const [lpoMrLineId, setLpoMrLineId] = useState<number | null>(null);
@@ -315,7 +315,7 @@ export default function QCCheckListButton({
       const data = await res.json();
 
       if (data.success && data.data && data.data.length > 0) {
-        const lpoData: LPO = data.data[0];
+        const lpoData: LpoHeader = data.data[0];
         setExistingLpoId(lpoData.id);
         setLpo(lpoData);
       } else {

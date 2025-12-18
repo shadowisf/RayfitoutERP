@@ -45,6 +45,23 @@ export default function Button({
     );
   }
 
+  if (componentType === "none") {
+    return (
+      <div
+        className="button-like"
+        style={{
+          backgroundColor: bgColor,
+          border: `1px solid ${borderColor}`,
+          color: textColor,
+          width: full ? "100%" : "fit-content",
+          ...style,
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+
   if (componentType === "link") {
     return (
       <a

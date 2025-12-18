@@ -89,6 +89,22 @@ button {
   }
 }
 
+.button-like {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-weight: 700;
+  font-size: 14.1px;
+
+  img {
+    width: 12px;
+    cursor: pointer;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
@@ -307,16 +323,16 @@ button {
 
     .top {
       padding: 20px;
-      display: flex;
-      gap: 25px;
-      align-items: center;
+      /* display: flex;
+      gap: 50px;
+      align-items: center; */
       border-bottom: 1px solid rgba(217, 217, 217, 1);
     }
 
     .bottom {
       padding: 20px;
       display: flex;
-      gap: 40px;
+      gap: 50px;
     }
   }
 

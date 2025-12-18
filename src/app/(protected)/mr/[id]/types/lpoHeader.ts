@@ -1,6 +1,6 @@
 import { LPOMrLine } from "./lpoMrLine";
 
-export type LPO = {
+export type LpoHeader = {
   id: number;
   project_id: number;
   mr_header_id: number;

@@ -72,7 +72,7 @@ export default function AttachQuotationButton({
         onClick={handleButtonClick}
         full
         style={{
-          padding: "5px 20px",
+          padding: "7px 20px",
           borderRadius: "25px",
           display: "flex",
           alignItems: "center",

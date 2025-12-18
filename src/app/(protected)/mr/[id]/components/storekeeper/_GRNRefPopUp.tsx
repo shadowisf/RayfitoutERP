@@ -5,7 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { useState, useEffect } from "react";
 import { MrLine } from "../../types/mrLine";
-import { LPO } from "../../types/lpo";
+import { LpoHeader } from "../../types/lpoHeader";
 import NotesPopUp from "../NotesPopUp";
 
 type GRNRefPopUpProps = {
@@ -50,7 +50,7 @@ export default function GRNRefPopUp({
   const [isNotesOpen, setIsNotesOpen] = useState(false);
 
   const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
-  const [lpo, setLpo] = useState<LPO | null>(null);
+  const [lpo, setLpo] = useState<LpoHeader | null>(null);
   const [lpoMrLine, setLpoMrLine] = useState<any>(null);
 
   const [existingGrn, setExistingGrn] = useState<GRN | null>(null);

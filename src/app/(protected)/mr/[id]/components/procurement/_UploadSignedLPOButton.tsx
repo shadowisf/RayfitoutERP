@@ -184,40 +184,31 @@ export default function UploadSignedLPOButton({
       {signedLpoFiles.length > 0 ? (
         <>
           {signedLpoFiles.map((fileUrl) => (
-            <a
-              href={fileUrl}
-              target="_blank"
+            <Button
+              bgColor={"white"}
+              borderColor={"rgba(207, 207, 207, 1)"}
+              textColor={"black"}
+              onClick={() => {}}
+              componentType="none"
+              style={{ padding: "5px 20px", borderRadius: "25px" }}
               key={fileUrl}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "7px 20px",
-                borderRadius: "25px",
-                border: "1px rgba(207, 207, 207, 1) solid",
-                backgroundColor: "white",
-                fontSize: "13px",
-                fontWeight: "bold",
-              }}
             >
               {/* {getFileName(fileUrl)} */}
-              View Signed LPO
-              <img src={externalLinkIcon} alt="external link" height={11} />
+              Signed LPO
+              <a style={{ display: "flex" }} href={fileUrl} target="_blank">
+                <img src={externalLinkIcon} alt="external link" />
+              </a>
               {canDelete && (
                 <img
                   src={closeIcon}
                   alt="remove"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleRemoveFile(fileUrl, e);
-                  }}
+                  onClick={(e) => handleRemoveFile(fileUrl, e)}
                   style={{
                     cursor: "pointer",
                   }}
                 />
               )}
-            </a>
+            </Button>
           ))}
         </>
       ) : (

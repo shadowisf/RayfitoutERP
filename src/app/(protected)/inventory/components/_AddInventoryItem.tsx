@@ -3,15 +3,12 @@
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
-import GRNRefPopUp from "./_GRNRefPopUp";
 import { toast } from "@/app/components/Toast";
 import { InventoryItem } from "@/app/(protected)/inventory/types/inventoryItem";
 
-export default function AddInventoryButton({
-  mrLine,
-}: AddInventoryButtonProps) {
+export default function AddInventoryButton() {
   const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -25,47 +22,6 @@ export default function AddInventoryButton({
 
   const pencilIcon = "/icons/pencil.svg";
   const externalLinkIcon = "/icons/external-link.svg";
-
-  useEffect(() => {
-    checkExistingInventory();
-  }, [mrLine.id]);
-
-  async function checkExistingInventory() {
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`,
-        {
-          method: "GET",
-        }
-      );
-
-      if (res.ok) {
-        const data = await res.json();
-
-        if (data.success && data.data) {
-          // Find inventory item that matches this MR line
-          const inventoryItem = data.data.find(
-            (item: InventoryItem) =>
-              item.category === mrLine.material_category &&
-              item.subcategory === mrLine.material_subcategory &&
-              item.item === mrLine.material_description
-          );
-
-          if (inventoryItem) {
-            setExistingInventory(inventoryItem);
-            setIsEditMode(true);
-            setLocation(inventoryItem.location);
-            setNotes(inventoryItem.notes || "");
-          } else {
-            setExistingInventory(null);
-            setIsEditMode(false);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error checking existing inventory:", error);
-    }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import FormPopUp from "./FormPopup";
-import Button from "./Button";
+import Button from "@/app/components/Button";
+import FormPopUp from "@/app/components/FormPopup";
+import InputItem from "@/app/components/InputItem";
+import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import InputItem from "./InputItem";
-import { useAuth } from "../context/AuthContext";
-import MultiSelectDropdown from "./MultiSelectDropdown";
-import { toast } from "./Toast";
+import { useEffect, useState } from "react";
+import { MrHeader } from "../../types/mrHeader";
 
-export default function NewMrButton() {
-  const { userInfo } = useAuth();
+type EditMrHeaderButtonProps = {
+  mrHeader: MrHeader;
+};
 
+export default function EditMrHeaderButton({
+  mrHeader,
+}: EditMrHeaderButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -19,11 +22,26 @@ export default function NewMrButton() {
   const [purposeReasonValues, setPurposeReasonValues] = useState<[]>([]);
   const [projects, setProjects] = useState<[]>([]);
 
-  const [purposeReasonID, setPurposeReasonID] = useState("");
-  /* const [boqLineID, setBoqLineID] = useState<(string | number)[]>([]); */
-  const [projectID, setProjectID] = useState("");
-  const [requestedBy, setRequestedBy] = useState(userInfo?.name || "");
-  const [neededBy, setNeededBy] = useState("");
+  const [purposeReasonID, setPurposeReasonID] = useState<string | number>(
+    mrHeader.purpose_id
+  );
+  const [projectID, setProjectID] = useState<string | number>(
+    mrHeader.project_id
+  );
+  const [neededBy, setNeededBy] = useState(() => {
+    if (!mrHeader.required_date) return "";
+
+    // Convert to Date object if it isn't already
+    const date = new Date(mrHeader.required_date);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) return "";
+
+    // Format as YYYY-MM-DD for the input
+    return date.toISOString().split("T")[0];
+  });
+
+  const pencilIcon = "/icons/pencil.svg";
 
   useEffect(function () {
     fetch("/api/mr/getPurposeReasonValues")
@@ -51,35 +69,24 @@ export default function NewMrButton() {
     e.preventDefault();
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "POST",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "createMrHeader",
+        action: "updateMrHeader",
+        id: mrHeader.id,
         project_id: projectID,
-        department_id: userInfo?.departmentID,
-        requested_by: requestedBy,
+        requested_by: mrHeader.requested_by,
         required_date: neededBy,
         purpose_id: purposeReasonID,
       }),
     });
 
-    /*     const data = await res.json(); */
-
     if (res.ok) {
-      toast("Material request header created", "success");
-
+      toast("Material request header updated", "success");
       setIsOpen(false);
-
-      setPurposeReasonID("");
-      setProjectID("");
-      setRequestedBy("");
-      setNeededBy("");
-
       router.refresh();
-
-      /*       router.push(`/mr/${data.mrHeaderId}`); */
     } else {
-      toast("Failed to create material request header", "error");
+      toast("Failed to update material request header", "error");
     }
   }
 
@@ -87,20 +94,18 @@ export default function NewMrButton() {
     <>
       <Button
         componentType={"button"}
-        bgColor={"white"}
-        borderColor={"black"}
+        bgColor={"rgba(239, 239, 239, 1)"}
+        borderColor={"rgba(223, 223, 223, 1)"}
         textColor={"black"}
-        onClick={() => {
-          router.refresh();
-          setIsOpen(true);
-        }}
+        onClick={() => setIsOpen(true)}
+        style={{ borderRadius: "5px", padding: "7px 7px" }}
       >
-        + NEW MATERIAL REQUEST
+        <img src={pencilIcon} alt="edit" />
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"CREATE MATERIAL REQUEST HEADER"}
+          header={"EDIT MATERIAL REQUEST HEADER"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
@@ -132,35 +137,17 @@ export default function NewMrButton() {
                 </option>
               ))}
               required={false}
-              disabled={purposeReasonID === "6"}
+              disabled
             />
-
-            {/* <SingleSelectDropdown
-              label={"BOQ LINE ID"}
-              selectedValue={boqLineID}
-              onChange={setBoqLineID}
-              placeholder={purposeReasonID === "6" ? "" : "SELECT BOQ LINE ID"}
-              dbData={boqLines}
-              disabled={purposeReasonID === "6"}
-            /> */}
-
-            {/* <MultiSelectDropdown
-              label={"BOQ LINE ID"}
-              selectedValues={boqLineID}
-              onChange={setBoqLineID}
-              placeholder={purposeReasonID === "6" ? "" : "SELECT BOQ LINE ID"}
-              dbData={boqLines}
-              disabled={purposeReasonID === "6"}
-            /> */}
           </div>
 
           <div className="input-row half">
             <InputItem
               label={"REQUESTED BY"}
-              value={requestedBy}
+              value={mrHeader.requested_by}
               type={"text"}
               placeholder={"ENTER NAME"}
-              onChange={(e) => setRequestedBy(e.target.value)}
+              onChange={() => {}}
               required
               disabled
             />

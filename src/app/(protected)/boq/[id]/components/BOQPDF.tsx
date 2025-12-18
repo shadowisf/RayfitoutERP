@@ -262,12 +262,12 @@ type GroupedBoqLines = {
   };
 };
 
-type BOQPDFProps = {
+type BoqPDFProps = {
   boqLines: GroupedBoqLines;
   boqHeader: BoqHeader;
 };
 
-export function BOQPDF({ boqLines, boqHeader }: BOQPDFProps) {
+export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
   const logo = "/icons/logo.jpg";
 
   // Calculate totals for each category and subcategory

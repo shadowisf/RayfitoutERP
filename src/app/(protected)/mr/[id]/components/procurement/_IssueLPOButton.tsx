@@ -9,38 +9,23 @@ import { useState, useEffect, useRef } from "react";
 import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
-import { LPO } from "../../types/lpo";
+import { LpoHeader } from "../../types/lpoHeader";
 import EditLPOButton from "./_EditLPOButton";
-import ViewLPOPopUp from "../ViewLPOPopUp";
-import DownloadLPOButton from "./_DownloadLPOButton";
+import ViewLPOButton from "./_ViewLPOButton";
 import UploadInvoiceButton from "./_UploadInvoiceButton";
 import UploadSignedLPOButton from "./_UploadSignedLPOButton";
 
 type IssueLPOButtonProps = {
   mrHeader: MrHeader;
   mrLines: MrLine[];
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children: React.ReactNode;
-  full?: boolean;
-  style?: React.CSSProperties;
 };
 
 export default function IssueLPOButton({
   mrHeader,
   mrLines,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
-  full,
-  style,
 }: IssueLPOButtonProps) {
   const router = useRouter();
   const { userInfo } = useAuth();
-
-  const downloadIcon = "/icons/download.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
@@ -142,7 +127,7 @@ export default function IssueLPOButton({
       const data = await res.json();
 
       if (data.success && data.data && data.data.length > 0) {
-        const lpoData: LPO = data.data[0];
+        const lpoData: LpoHeader = data.data[0];
 
         setExistingLpoId(lpoData.id);
 
@@ -339,52 +324,25 @@ export default function IssueLPOButton({
 
     return (
       <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-        <ViewLPOPopUp
-          lpoID={existingLpoId}
-          bgColor={"white"}
-          borderColor={"rgba(207, 207, 207, 1)"}
-          textColor={"black"}
-          style={style}
-        >
-          View LPO
-        </ViewLPOPopUp>
-
         {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
-          <EditLPOButton
-            bgColor="white"
-            borderColor="rgba(207, 207, 207, 1)"
-            textColor="black"
-            style={style}
-            lpoId={existingLpoId}
-          >
-            Edit LPO
-          </EditLPOButton>
+          <EditLPOButton lpoId={existingLpoId} />
         )}
 
-        <DownloadLPOButton
-          lpoID={existingLpoId}
-          bgColor="white"
-          borderColor={"rgba(207, 207, 207, 1)"}
-          textColor={"black"}
-          style={style}
-        >
-          Download LPO
-          <img src={downloadIcon} alt="download" />
-        </DownloadLPOButton>
-
-        <UploadInvoiceButton
-          mrHeader={mrHeader}
-          supplierId={supplierId}
-          invoiceFiles={invoiceFiles}
-          onFilesUpdate={setInvoiceFiles}
-          canDelete={canDelete}
-        />
+        <ViewLPOButton lpoID={existingLpoId} />
 
         <UploadSignedLPOButton
           mrHeader={mrHeader}
           supplierId={supplierId}
           signedLpoFiles={signedLpoFiles}
           onFilesUpdate={setSignedLpoFiles}
+          canDelete={canDelete}
+        />
+
+        <UploadInvoiceButton
+          mrHeader={mrHeader}
+          supplierId={supplierId}
+          invoiceFiles={invoiceFiles}
+          onFilesUpdate={setInvoiceFiles}
           canDelete={canDelete}
         />
       </div>
@@ -397,14 +355,13 @@ export default function IssueLPOButton({
       {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
         <Button
           componentType={"button"}
-          bgColor={bgColor}
-          borderColor={borderColor}
-          textColor={textColor}
+          bgColor="black"
+          borderColor="black"
+          textColor="white"
           onClick={() => setIsOpen(true)}
-          full={full ? true : false}
-          style={style}
+          style={{ padding: "5px 20px", borderRadius: "25px" }}
         >
-          {children}
+          Issue LPO
         </Button>
       )}
 

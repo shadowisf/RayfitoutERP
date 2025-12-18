@@ -1,29 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Button from "@/app/components/Button";
 import { pdf } from "@react-pdf/renderer";
-import { LPOPDF } from "@/app/components/LPOPDF";
-import { LPO } from "../../types/lpo";
+import { LpoPDF } from "@/app/(protected)/mr/[id]/components/LpoPDF";
+import { LpoHeader } from "../../types/lpoHeader";
 
 type DownloadLPOButtonProps = {
   lpoID: number;
-  children: React.ReactNode;
-  bgColor: string;
-  textColor: string;
-  borderColor: string;
-  style?: React.CSSProperties;
 };
 
-export default function DownloadLPOButton({
-  lpoID,
-  children,
-  bgColor,
-  textColor,
-  borderColor,
-  style,
-}: DownloadLPOButtonProps) {
-  const [lpo, setLpo] = useState<LPO | null>(null);
+export default function DownloadLPOButton({ lpoID }: DownloadLPOButtonProps) {
+  const downloadIcon = "/icons/download.svg";
+
+  const [lpo, setLpo] = useState<LpoHeader | null>(null);
 
   useEffect(() => {
     async function fetchLpo() {
@@ -54,7 +43,7 @@ export default function DownloadLPOButton({
 
     try {
       // Generate PDF blob
-      const blob = await pdf(<LPOPDF lpo={lpo} />).toBlob();
+      const blob = await pdf(<LpoPDF lpo={lpo} />).toBlob();
 
       // Create download link
       const url = URL.createObjectURL(blob);
@@ -74,16 +63,5 @@ export default function DownloadLPOButton({
     }
   }
 
-  return (
-    <Button
-      componentType={"button"}
-      bgColor={bgColor}
-      borderColor={borderColor}
-      textColor={textColor}
-      onClick={handleDownload}
-      style={style}
-    >
-      {children}
-    </Button>
-  );
+  return <img src={downloadIcon} alt="download" onClick={handleDownload} />;
 }

@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       if (grn_lines && grn_lines.length > 0) {
         const grnLineQuery = `
           INSERT INTO grn_mr_line 
-          (grn_id, lpo_mr_line_id, received_quantity, packaging_condition, notes)
+          (grn_id, lpo_mr_line_id, received_quantity, notes)
           VALUES (?, ?, ?, ?, ?)
         `;
 
@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
             grnId,
             line.lpo_mr_line_id,
             line.received_quantity,
-            line.packaging_condition,
             line.notes || null,
           ]);
         }
@@ -99,7 +98,7 @@ export async function PUT(request: NextRequest) {
       if (grn_lines && grn_lines.length > 0) {
         const grnLineQuery = `
           INSERT INTO grn_mr_line 
-          (grn_id, lpo_mr_line_id, received_quantity, packaging_condition, notes)
+          (grn_id, lpo_mr_line_id, received_quantity, notes)
           VALUES (?, ?, ?, ?, ?)
         `;
 
@@ -108,7 +107,6 @@ export async function PUT(request: NextRequest) {
             grn_id,
             line.lpo_mr_line_id,
             line.received_quantity,
-            line.packaging_condition,
             line.notes || null,
           ]);
         }

@@ -182,40 +182,31 @@ export default function UploadInvoiceButton({
       {invoiceFiles.length > 0 ? (
         <>
           {invoiceFiles.map((fileUrl) => (
-            <a
-              href={fileUrl}
-              target="_blank"
+            <Button
+              bgColor={"white"}
+              borderColor={"rgba(207, 207, 207, 1)"}
+              textColor={"black"}
+              onClick={() => {}}
+              componentType="none"
+              style={{ padding: "5px 20px", borderRadius: "25px" }}
               key={fileUrl}
-              style={{
-                padding: "7px 20px",
-                borderRadius: "25px",
-                border: "1px rgba(207, 207, 207, 1) solid",
-                backgroundColor: "white",
-                fontSize: "13px",
-                fontWeight: "bold",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-              }}
             >
               {/* {getFileName(fileUrl)} */}
-              View Invoice
-              <img src={externalLinkIcon} alt="external link" height={11} />
+              Invoice
+              <a style={{ display: "flex" }} href={fileUrl} target="_blank">
+                <img src={externalLinkIcon} alt="external link" />
+              </a>
               {canDelete && (
                 <img
                   src={closeIcon}
                   alt="remove"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleRemoveFile(fileUrl, e);
-                  }}
+                  onClick={(e) => handleRemoveFile(fileUrl, e)}
                   style={{
                     cursor: "pointer",
                   }}
                 />
               )}
-            </a>
+            </Button>
           ))}
         </>
       ) : (
@@ -231,7 +222,6 @@ export default function UploadInvoiceButton({
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            minWidth: "120px",
           }}
         >
           Upload Invoice

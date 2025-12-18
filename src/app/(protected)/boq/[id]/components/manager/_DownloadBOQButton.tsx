@@ -3,7 +3,7 @@
 import Button from "@/app/components/Button";
 import { BoqHeader } from "../../types/boqHeader";
 import { BoqLine } from "../../types/boqLine";
-import { BOQPDF } from "../BOQPDF";
+import { BoqPDF } from "../BoqPDF";
 import { pdf } from "@react-pdf/renderer";
 
 type GroupedBoqLines = {
@@ -126,7 +126,7 @@ export default function DownloadBOQButton({
 
       // Generate PDF blob
       const blob = await pdf(
-        <BOQPDF boqHeader={boqHeader} boqLines={processedLines} />
+        <BoqPDF boqHeader={boqHeader} boqLines={processedLines} />
       ).toBlob();
 
       console.log("PDF generated successfully");

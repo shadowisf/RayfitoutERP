@@ -9,7 +9,7 @@ import {
   Svg,
   Line,
 } from "@react-pdf/renderer";
-import { LPO } from "@/app/(protected)/mr/[id]/types/lpo";
+import { LpoHeader } from "@/app/(protected)/mr/[id]/types/lpoHeader";
 
 Font.register({
   family: "Mont",
@@ -270,11 +270,11 @@ const styles = StyleSheet.create({
   },
 });
 
-type LPOPDFProps = {
-  lpo: LPO;
+type LpoPDFProps = {
+  lpo: LpoHeader;
 };
 
-export function LPOPDF({ lpo }: LPOPDFProps) {
+export function LpoPDF({ lpo }: LpoPDFProps) {
   const logo = "/icons/logo.jpg";
 
   return (
