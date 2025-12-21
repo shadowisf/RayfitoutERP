@@ -30,8 +30,6 @@ export default function PriceApprovalButton({
   full,
   style,
 }: PriceApprovalButtonProps) {
-  const { userInfo } = useAuth();
-
   const externalLinkIcon = "/icons/external-link.svg";
   const crossIcon = "/icons/cross-small.svg";
 
@@ -333,7 +331,7 @@ export default function PriceApprovalButton({
                         target="_blank"
                         style={{ padding: "7px 20px", borderRadius: "25px" }}
                       >
-                        View Quotation
+                        Quotation
                         <img
                           src="/icons/external-link.svg"
                           alt="external link icon"

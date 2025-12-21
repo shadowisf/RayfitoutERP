@@ -20,6 +20,8 @@ type SingleSelectInputProps = {
   createButtonLabel?: string;
   onCreateClick?: () => void;
   style?: React.CSSProperties;
+  // New prop for custom option formatting
+  formatOptionLabel?: (item: any) => string;
 };
 
 export default function SingleSelectDropdown({
@@ -38,6 +40,7 @@ export default function SingleSelectDropdown({
   createButtonLabel = "Create New",
   style,
   onCreateClick,
+  formatOptionLabel,
 }: SingleSelectInputProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,13 +50,21 @@ export default function SingleSelectDropdown({
   function getOptions() {
     if (selectOptions) {
       return selectOptions.map(function (o) {
-        return { id: o, label: o };
+        return { id: o, label: o, raw: o };
       });
     }
 
     if (dbData) {
       return dbData.map(function (item) {
-        return { id: item[idField], label: item[labelField] };
+        const formattedLabel = formatOptionLabel
+          ? formatOptionLabel(item)
+          : item[labelField];
+
+        return {
+          id: item[idField],
+          label: formattedLabel,
+          raw: item,
+        };
       });
     }
 
@@ -197,13 +208,6 @@ export default function SingleSelectDropdown({
 
             {showCreateButton && (
               <div className="create-button-wrapper">
-                {/* <button
-                  type="button"
-                  className="create-button"
-                  onClick={handleCreateClick}
-                >
-                  {createButtonLabel}
-                </button> */}
                 <Button
                   componentType={"button"}
                   bgColor={"black"}

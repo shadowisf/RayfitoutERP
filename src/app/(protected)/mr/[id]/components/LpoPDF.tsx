@@ -307,9 +307,9 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
             </Text>
           </View>
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Quotation REFERENCE</Text>
+            <Text style={styles.infoLabel}>Quotation Reference</Text>
             <Text style={styles.infoValue}>
-              PO-{String(lpo.quotation_code).padStart(5, "0")}
+              QT-{String(lpo.quotation_code).padStart(5, "0")}
             </Text>
           </View>
           <View style={styles.infoItem}>

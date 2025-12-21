@@ -289,7 +289,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
         borderColor="rgba(207, 207, 207, 1)"
         textColor="black"
         onClick={() => setIsOpen(true)}
-        style={{ padding: "5px 20px", borderRadius: "25px" }}
+        style={{ padding: "7px 20px", borderRadius: "25px" }}
       >
         Edit LPO
       </Button>

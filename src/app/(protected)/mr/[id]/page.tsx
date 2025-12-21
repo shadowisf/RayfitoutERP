@@ -106,7 +106,9 @@ export default async function MrWithID({
     } OVERDUE`;
   }
 
-  const isRejected = mrHeader.progress_name?.toLowerCase().includes("reject");
+  const isRejected = ["reject", "fail"].some((word) =>
+    mrHeader.progress_name?.toLowerCase().includes(word)
+  );
 
   // Progress style based on status
   const progressStyle = isRejected

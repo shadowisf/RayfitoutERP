@@ -30,8 +30,11 @@ import CreateGRNButton from "./storekeeper/_CreateGRNButton";
 import SubmitForQC from "./storekeeper/_SubmitForQCButton";
 import QCCheckListButton from "./qualityControl/_QCCheckListButton";
 import SubmitForStockEntryButton from "./qualityControl/_SubmitForStockEntry";
-import AddInventoryButton from "./storekeeper/_AddInventoryButton";
+import AddToInventoryButton from "./storekeeper/_AddStockButton";
 import CompleteMaterialRequestButton from "./storekeeper/_CompleteMaterialRequestButton";
+import SubmitForProcurementResolutionButton from "./qualityControl/_SubmitForProcurementResolution";
+import QCRecheckButton from "./procurement/_QCRecheckButton";
+import ResolutionButton from "./procurement/_AddResolutionButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -722,9 +725,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     checkQcStatuses();
   }, [mrLines, mrHeader.progress_id, mrHeader.id]);
 
-  // Check inventory status for all items
+  // Check stock status for all items
   useEffect(() => {
-    async function checkInventoryStatuses() {
+    async function checkStockStatuses() {
       if (mrHeader.progress_id !== 24) {
         setIsCheckingInventory(false);
         return;
@@ -734,50 +737,54 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       const statusMap: { [itemId: number]: boolean } = {};
 
       try {
-        // Fetch all inventory items
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`,
-          {
-            method: "GET",
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-
-          if (data.success && data.data) {
-            const inventoryItems = data.data;
-
-            // Collect all MR line items
-            const allItems: MrLine[] = [];
-            for (const category in mrLines) {
-              for (const subCategory in mrLines[category]) {
-                for (const supplier in mrLines[category][subCategory]) {
-                  const items = mrLines[category][subCategory][supplier];
-                  allItems.push(...items);
-                }
-              }
+        // Collect all MR line items
+        const allItems: MrLine[] = [];
+        for (const category in mrLines) {
+          for (const subCategory in mrLines[category]) {
+            for (const supplier in mrLines[category][subCategory]) {
+              const items = mrLines[category][subCategory][supplier];
+              allItems.push(...items);
             }
-
-            // Check if each MR line has a corresponding inventory entry
-            allItems.forEach((item) => {
-              const hasInventory = inventoryItems.some(
-                (invItem: any) => invItem.id === item.id
-              );
-              statusMap[item.id] = hasInventory;
-            });
           }
         }
 
+        // Check if each MR line has a stock entry
+        const checkPromises = allItems.map(async (item) => {
+          try {
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getStockByMrLineID`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  mr_line_id: item.id,
+                }),
+              }
+            );
+
+            const data = await response.json();
+
+            if (data.success && data.data) {
+              statusMap[item.id] = true;
+            } else {
+              statusMap[item.id] = false;
+            }
+          } catch (error) {
+            console.error(`Error checking stock for item ${item.id}:`, error);
+            statusMap[item.id] = false;
+          }
+        });
+
+        await Promise.all(checkPromises);
         setInventoryStatus(statusMap);
       } catch (error) {
-        console.error("Error checking inventory statuses:", error);
+        console.error("Error checking stock statuses:", error);
       } finally {
         setIsCheckingInventory(false);
       }
     }
 
-    checkInventoryStatuses();
+    checkStockStatuses();
   }, [mrLines, mrHeader.progress_id, mrHeader.id]);
 
   function toggleDescription(itemId: number) {
@@ -1092,12 +1099,39 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return totalItems > 0 && allChecked && allPassed;
   }
 
-  // Check if all items have inventory entries
-  function allItemsHaveInventory() {
+  // Check if all items have completed QC (either passed or failed, no pending)
+  function hasAllItemsCompletedQc() {
+    if (isCheckingQc) return false;
+
+    let totalItems = 0;
+    let allCompleted = true;
+
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
+
+          for (const item of items) {
+            totalItems++;
+            const status = qcStatus[item.id];
+
+            if (!status || status === "pending") {
+              allCompleted = false;
+            }
+          }
+        }
+      }
+    }
+
+    return totalItems > 0 && allCompleted;
+  }
+
+  // Check if all items have stock entries
+  function allItemsHaveStock() {
     if (isCheckingInventory) return false;
 
     let totalItems = 0;
-    let itemsWithInventory = 0;
+    let itemsWithStock = 0;
 
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
@@ -1107,14 +1141,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           for (const item of items) {
             totalItems++;
             if (inventoryStatus[item.id]) {
-              itemsWithInventory++;
+              itemsWithStock++;
             }
           }
         }
       }
     }
 
-    return totalItems > 0 && itemsWithInventory === totalItems;
+    return totalItems > 0 && itemsWithStock === totalItems;
   }
 
   function hasAnyRejectedItems() {
@@ -1320,6 +1354,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             )}
                           {userInfo?.departmentID === 11 &&
                             mrHeader.progress_id === 24 && <th>STOCKS</th>}
+                          {userInfo?.departmentID === 9 &&
+                            mrHeader.progress_id === 23 && <th>RESOLUTIONS</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -1483,7 +1519,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       <QCCheckListButton
                                         item={item}
                                         mrHeader={mrHeader}
-                                        progressID={mrHeader.progress_id}
                                       />
                                     </td>
                                   )}
@@ -1491,7 +1526,17 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 {userInfo?.departmentID === 11 &&
                                   mrHeader.progress_id === 24 && (
                                     <td>
-                                      <AddInventoryButton mrLine={item} />
+                                      <AddToInventoryButton mrLine={item} />
+                                    </td>
+                                  )}
+
+                                {userInfo?.departmentID === 9 &&
+                                  mrHeader.progress_id === 23 && (
+                                    <td>
+                                      <ResolutionButton
+                                        mrHeader={mrHeader}
+                                        item={item}
+                                      />
                                     </td>
                                   )}
                               </tr>
@@ -1562,6 +1607,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               </div>
 
               <div className="right" style={{ display: "flex", gap: "20px" }}>
+                {mrHeader.progress_id === 23 &&
+                  userInfo?.departmentID === 9 && (
+                    <QCRecheckButton mrHeader={mrHeader} />
+                  )}
+
                 {mrHeader.progress_id >= 12 && (
                   <IssueLPOButton mrHeader={mrHeader} mrLines={items} />
                 )}
@@ -1574,8 +1624,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     />
                   )}
 
-                {mrHeader.progress_id >= 17 && (
-                  <CreateGRNButton mrHeader={mrHeader} mrLines={items} />
+                {(mrHeader.progress_id >= 18 ||
+                  (mrHeader.progress_id === 17 &&
+                    userInfo?.departmentID === 11)) && (
+                  <CreateGRNButton
+                    mrHeader={mrHeader}
+                    mrLines={items}
+                    progress_id={mrHeader.progress_id}
+                  />
                 )}
               </div>
             </div>
@@ -1657,18 +1713,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     {userInfo?.departmentID === 12 &&
                       mrHeader.progress_id === 21 && (
                         <td>
-                          <QCCheckListButton
-                            item={item}
-                            mrHeader={mrHeader}
-                            progressID={mrHeader.progress_id}
-                          />
+                          <QCCheckListButton item={item} mrHeader={mrHeader} />
                         </td>
                       )}
 
                     {userInfo?.departmentID === 11 &&
                       mrHeader.progress_id === 24 && (
                         <td>
-                          <AddInventoryButton mrLine={item} />
+                          <AddToInventoryButton mrLine={item} />
                         </td>
                       )}
                   </tr>
@@ -1838,7 +1890,19 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           </div>
         )}
 
-      {allItemsHaveInventory() &&
+      {!allItemsPassedQc() &&
+        !isCheckingQc &&
+        hasAllItemsCompletedQc() &&
+        userInfo?.departmentID === 12 &&
+        mrHeader.progress_id === 21 && (
+          <div className="bottom-nav">
+            <SubmitForProcurementResolutionButton mrHeaderID={mrHeader.id}>
+              RETURN FOR RESOLUTION
+            </SubmitForProcurementResolutionButton>
+          </div>
+        )}
+
+      {allItemsHaveStock() &&
         userInfo?.departmentID === 11 &&
         mrHeader.progress_id === 24 && (
           <div className="bottom-nav">

@@ -14,7 +14,6 @@ import { LpoHeader } from "../../types/lpoHeader";
 type QCCheckListButtonProps = {
   mrHeader: MrHeader;
   item: MrLine;
-  progressID: number;
 };
 
 type CheckpointResponse = "yes" | "no" | "na" | null;
@@ -65,7 +64,6 @@ const checkpoints = [
 
 export default function QCCheckListButton({
   mrHeader,
-  progressID,
   item,
 }: QCCheckListButtonProps) {
   const router = useRouter();
@@ -73,15 +71,13 @@ export default function QCCheckListButton({
 
   const pencilIcon = "/icons/pencil.svg";
   const uploadIcon = "/icons/upload.svg";
+  const plusIcon = "/icons/plus.svg";
 
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [qcStatus, setQcStatus] = useState<QCStatus>("pending");
   const [existingQcId, setExistingQcId] = useState<number | null>(null);
 
   const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
-  const [lpo, setLpo] = useState<LpoHeader | null>(null);
   const [existingGrn, setExistingGrn] = useState<GRN | null>(null);
   const [receivedQuantity, setReceivedQuantity] = useState<string>("");
   const [lpoMrLineId, setLpoMrLineId] = useState<number | null>(null);
@@ -171,8 +167,6 @@ export default function QCCheckListButton({
       console.log("No lpoMrLineId available");
       return;
     }
-
-    setIsLoadingData(true);
 
     try {
       console.log("Loading QC data for lpoMrLineId:", lpoMrLineId);
@@ -265,8 +259,6 @@ export default function QCCheckListButton({
     } catch (error) {
       console.error("Error loading existing QC data:", error);
       toast("Error loading existing QC data", "error");
-    } finally {
-      setIsLoadingData(false);
     }
   }
 
@@ -317,7 +309,6 @@ export default function QCCheckListButton({
       if (data.success && data.data && data.data.length > 0) {
         const lpoData: LpoHeader = data.data[0];
         setExistingLpoId(lpoData.id);
-        setLpo(lpoData);
       } else {
         setExistingLpoId(null);
       }
@@ -659,13 +650,10 @@ export default function QCCheckListButton({
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
       // Step 1: Delete marked attachments from S3
       const deletionSuccess = await deleteMarkedAttachments();
       if (!deletionSuccess) {
-        setIsSubmitting(false);
         return;
       }
 
@@ -673,7 +661,6 @@ export default function QCCheckListButton({
       const updatedCheckpointData = await uploadAllPendingFiles();
 
       if (!updatedCheckpointData) {
-        setIsSubmitting(false);
         return;
       }
 
@@ -735,8 +722,6 @@ export default function QCCheckListButton({
         "An error occurred while creating a quality control checklist",
         "error"
       );
-    } finally {
-      setIsSubmitting(false);
     }
   }
 
@@ -1242,7 +1227,7 @@ export default function QCCheckListButton({
             color: "white",
           }}
         >
-          <span>FAILED</span>
+          FAILED
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <img
               src={pencilIcon}
@@ -1250,7 +1235,7 @@ export default function QCCheckListButton({
               style={{
                 filter: "invert(1)",
                 cursor: "pointer",
-                width: "14px",
+                width: "12px",
               }}
               onClick={handleEditClick}
             />
@@ -1283,7 +1268,7 @@ export default function QCCheckListButton({
           onClick={() => setIsOpen(true)}
           style={{ borderRadius: "5px", padding: "7px 7px" }}
         >
-          <img src={pencilIcon} alt="pencil" />
+          <img src={plusIcon} alt="plus" />
         </Button>
       </div>
 
@@ -1292,7 +1277,7 @@ export default function QCCheckListButton({
           header="QUALITY CONTROL CHECKLIST"
           setIsOpen={handleModalClose}
           handleSubmit={handleSubmit}
-          addButtonLabel={isSubmitting ? "UPLOADING..." : "CONFIRM"}
+          addButtonLabel={"CONFIRM"}
         >
           {formContent}
         </FormPopUp>

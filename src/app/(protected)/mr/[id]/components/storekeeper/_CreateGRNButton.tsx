@@ -14,6 +14,7 @@ import { MrHeader } from "../../types/mrHeader";
 type CreateGRNButtonProps = {
   mrHeader: MrHeader;
   mrLines: MrLine[];
+  progress_id: number;
 };
 
 type GRNLineItem = {
@@ -33,12 +34,11 @@ type GRN = {
 export default function CreateGRNButton({
   mrHeader,
   mrLines,
+  progress_id,
 }: CreateGRNButtonProps) {
   const router = useRouter();
   const { userInfo } = useAuth();
 
-  const checkIcon = "/icons/check.svg";
-  const crossIcon = "/icons/cross-small.svg";
   const pencilIcon = "/icons/pencil.svg";
   const warningIcon = "/icons/warning.svg";
   const checkGreenIcon = "/icons/check-green.svg";
@@ -60,6 +60,11 @@ export default function CreateGRNButton({
 
   // State for GRN line items
   const [grnLines, setGrnLines] = useState<{ [key: number]: GRNLineItem }>({});
+
+  // State for QC accepted quantities
+  const [qcAcceptedQuantities, setQcAcceptedQuantities] = useState<{
+    [key: number]: number | null;
+  }>({});
 
   useEffect(() => {
     if (mrLines.length > 0 && mrLines[0]?.approved_supplier_id) {
@@ -144,6 +149,47 @@ export default function CreateGRNButton({
     fetchLpo();
   }, [existingLpoId]);
 
+  // Fetch QC accepted quantities
+  useEffect(() => {
+    async function fetchQcAcceptedQuantities() {
+      if (!existingLpoId || lpoMrLines.length === 0) return;
+
+      try {
+        const qcQuantities: { [key: number]: number | null } = {};
+
+        // Fetch QC data for each lpo_mr_line
+        for (let index = 0; index < lpoMrLines.length; index++) {
+          const lpoMrLineId = lpoMrLines[index].id;
+
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getQCByLPOMrLineID`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                lpo_mr_line_id: lpoMrLineId,
+              }),
+            }
+          );
+
+          const data = await response.json();
+
+          if (data.success && data.data && data.data.accepted_quantity) {
+            qcQuantities[index] = data.data.accepted_quantity;
+          } else {
+            qcQuantities[index] = null;
+          }
+        }
+
+        setQcAcceptedQuantities(qcQuantities);
+      } catch (error) {
+        console.error("Error fetching QC accepted quantities:", error);
+      }
+    }
+
+    fetchQcAcceptedQuantities();
+  }, [existingLpoId, lpoMrLines, isOpen]);
+
   // Check for existing GRN
   useEffect(() => {
     async function checkExistingGrn() {
@@ -180,9 +226,12 @@ export default function CreateGRNButton({
     checkExistingGrn();
   }, [existingLpoId]);
 
-  // Load existing GRN data when editing
+  // Load existing GRN data when editing OR when opening the modal
   useEffect(() => {
-    if (existingGrn && existingGrn.id && lpoMrLines.length > 0) {
+    if (existingGrn && existingGrn.id && lpoMrLines.length > 0 && isOpen) {
+      console.log("Loading existing GRN data:", existingGrn);
+      console.log("LPO MR Lines:", lpoMrLines);
+
       setReceivedDate(
         existingGrn.received_date
           ? new Date(existingGrn.received_date).toISOString().split("T")[0]
@@ -196,6 +245,11 @@ export default function CreateGRNButton({
         // Find matching GRN line
         const grnLine = existingGrn.grn_lines?.find(
           (gl: any) => gl.lpo_mr_line_id === lpoLine.id
+        );
+
+        console.log(
+          `Mapping index ${index}, lpoLine.id: ${lpoLine.id}, grnLine:`,
+          grnLine
         );
 
         if (grnLine) {
@@ -213,9 +267,10 @@ export default function CreateGRNButton({
         }
       });
 
+      console.log("Mapped GRN Lines:", mappedGrnLines);
       setGrnLines(mappedGrnLines);
     }
-  }, [existingGrn, lpoMrLines]);
+  }, [existingGrn, lpoMrLines, isOpen]);
 
   const handleReceivedQuantityChange = (index: number, value: string) => {
     if (isViewMode) return; // Prevent changes in view mode
@@ -359,7 +414,7 @@ export default function CreateGRNButton({
     );
 
     if (!allLinesValid) {
-      toast("Please fill in all received quantities condition", "error");
+      toast("Please fill in all received quantities", "error");
       return;
     }
 
@@ -371,6 +426,8 @@ export default function CreateGRNButton({
 
     // Determine if we're creating or updating
     const action = isEditMode ? "updateGRN" : "createGRN";
+    const method = isEditMode ? "PUT" : "POST";
+
     const requestBody: any = {
       action,
       lpo_id: existingLpoId,
@@ -385,7 +442,7 @@ export default function CreateGRNButton({
     }
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/grn`, {
-      method: "POST",
+      method: method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
     });
@@ -456,7 +513,7 @@ export default function CreateGRNButton({
           borderColor={"black"}
           textColor={"white"}
           onClick={() => setIsOpen(true)}
-          style={{ padding: "5px 20px", borderRadius: "25px" }}
+          style={{ padding: "7px 20px", borderRadius: "25px" }}
         >
           Create GRN
         </Button>
@@ -473,7 +530,7 @@ export default function CreateGRNButton({
           }
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={isViewMode ? "" : isEditMode ? "UPDATE" : "CONFIRM"}
+          addButtonLabel={isViewMode ? "" : "CONFIRM"}
         >
           <div className="input-row full">
             <InputItem
@@ -542,6 +599,7 @@ export default function CreateGRNButton({
                 <th>DESCRIPTION</th>
                 <th>ORDERED QUANTITY</th>
                 <th>RECEIVED QUANTITY</th>
+                {progress_id >= 21 && <th>ACCEPTED QUANTITY</th>}
                 <th>NOTES</th>
               </tr>
             </thead>
@@ -552,6 +610,7 @@ export default function CreateGRNButton({
                   grnLines[index]?.received_quantity || "0"
                 );
                 const orderedQty = mrLine.quantity;
+                const acceptedQty = qcAcceptedQuantities[index];
 
                 return (
                   <tr key={mrLine.id || index}>
@@ -561,79 +620,101 @@ export default function CreateGRNButton({
                       {mrLine.quantity} {mrLine.unit}
                     </td>
                     <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "10px",
-                        }}
-                      >
+                      {isViewMode ? (
+                        // View mode: Just display the quantity
+                        `${grnLines[index]?.received_quantity || "0"} ${
+                          mrLine.unit
+                        }`
+                      ) : (
+                        // Edit/Create mode: Show input with validation
                         <div
                           style={{
                             display: "flex",
-                            alignItems: "center",
+                            flexDirection: "column",
                             gap: "10px",
                           }}
                         >
-                          <InputItem
-                            label={""}
-                            value={grnLines[index]?.received_quantity || ""}
-                            type={"text"}
-                            placeholder={"ENTER RECEIVED QUANTITY"}
-                            required
-                            onChange={(e) =>
-                              handleReceivedQuantityChange(
-                                index,
-                                e.target.value
-                              )
-                            }
-                            style={{ minWidth: "200px", marginBottom: "0px" }}
-                            disabled={isViewMode}
-                          />
-                          {quantityMatch !== null && (
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                flexShrink: 0,
-                              }}
-                            >
-                              {quantityMatch ? (
-                                <img
-                                  src={checkGreenIcon}
-                                  alt="match"
-                                  style={{
-                                    width: "32px",
-                                  }}
-                                />
-                              ) : (
-                                <img
-                                  src={warningIcon}
-                                  alt="warning"
-                                  style={{
-                                    width: "32px",
-                                  }}
-                                />
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        {quantityMatch === false && (
-                          <span
+                          <div
                             style={{
-                              fontWeight: "500",
-                              color: "rgba(248, 77, 77, 1)",
-                              fontStyle: "italic",
-                              paddingLeft: "4px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
                             }}
                           >
-                            {receivedQty > orderedQty
-                              ? "Excess quantity beyond the request"
-                              : "Quantity is less than the request"}
+                            <InputItem
+                              label={""}
+                              value={grnLines[index]?.received_quantity || ""}
+                              type={"text"}
+                              placeholder={"ENTER RECEIVED QUANTITY"}
+                              required
+                              onChange={(e) =>
+                                handleReceivedQuantityChange(
+                                  index,
+                                  e.target.value
+                                )
+                              }
+                              style={{
+                                minWidth: "200px",
+                                marginBottom: "0px",
+                              }}
+                              disabled={isViewMode}
+                            />
+                            {quantityMatch !== null && (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {quantityMatch ? (
+                                  <img
+                                    src={checkGreenIcon}
+                                    alt="match"
+                                    style={{
+                                      width: "32px",
+                                    }}
+                                  />
+                                ) : (
+                                  <img
+                                    src={warningIcon}
+                                    alt="warning"
+                                    style={{
+                                      width: "32px",
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {quantityMatch === false && (
+                            <span
+                              style={{
+                                fontWeight: "500",
+                                color: "rgba(248, 77, 77, 1)",
+                                fontStyle: "italic",
+                                paddingLeft: "4px",
+                              }}
+                            >
+                              {receivedQty > orderedQty
+                                ? "Excess quantity beyond the request"
+                                : "Quantity is less than the request"}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    {progress_id >= 21 && (
+                      <td>
+                        {acceptedQty !== null && acceptedQty !== undefined ? (
+                          `${acceptedQty} ${mrLine.unit}`
+                        ) : (
+                          <span style={{ color: "rgba(150, 150, 150, 1)" }}>
+                            -
                           </span>
                         )}
-                      </div>
-                    </td>
+                      </td>
+                    )}
                     <td>
                       {isViewMode ? (
                         grnLines[index]?.notes ? (
@@ -683,7 +764,7 @@ export default function CreateGRNButton({
             </tbody>
           </table>
 
-          {hasQuantityMismatch() && (
+          {!isViewMode && hasQuantityMismatch() && (
             <div
               style={{
                 display: "flex",

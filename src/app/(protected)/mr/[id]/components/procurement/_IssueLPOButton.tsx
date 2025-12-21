@@ -44,8 +44,12 @@ export default function IssueLPOButton({
     mrLines[0].approved_supplier_email
   );
   const [deliveryDate, setDeliveryDate] = useState("");
-  const [paymentTerms, setPaymentTerms] = useState("");
-  const [deliveryTerms, setDeliveryTerms] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState(
+    "Net 30 Days via Bank Transfer / Cheque"
+  );
+  const [deliveryTerms, setDeliveryTerms] =
+    useState(`• Delivery will be made to Street 34, Al Qusais 5, Dubai, UAE
+• Any deviations or damages will be responsibility of the supplier which he/she will rectify without any additional charges`);
   const [discount, setDiscount] = useState("0");
   const [vatRate, setVatRate] = useState("5");
   const [shippingHandling, setShippingHandling] = useState("0");

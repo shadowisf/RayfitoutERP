@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
         const grnLineQuery = `
           INSERT INTO grn_mr_line 
           (grn_id, lpo_mr_line_id, received_quantity, notes)
-          VALUES (?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?)
         `;
 
         for (const line of grn_lines) {
@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest) {
         const grnLineQuery = `
           INSERT INTO grn_mr_line 
           (grn_id, lpo_mr_line_id, received_quantity, notes)
-          VALUES (?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?)
         `;
 
         for (const line of grn_lines) {

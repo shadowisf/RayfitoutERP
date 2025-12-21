@@ -341,7 +341,7 @@ export default function PaymentButtons({
         }}
       >
         Paid
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <Button
             componentType={"link"}
             bgColor={"transparent"}
@@ -354,7 +354,7 @@ export default function PaymentButtons({
             <img
               src={externalLinkIcon}
               alt="view"
-              style={{ filter: "invert(1)", cursor: "pointer", width: "12px" }}
+              style={{ filter: "invert(1)", cursor: "pointer" }}
             />
           </Button>
           <img
@@ -416,8 +416,8 @@ export default function PaymentButtons({
           textColor={"white"}
           onClick={() => setIsProceedOpen(true)}
           style={{
-            borderRadius: "20px",
-            padding: "5px 20px",
+            borderRadius: "25px",
+            padding: "7px 20px",
             flexGrow: 1,
             textWrap: "nowrap",
           }}
@@ -430,7 +430,12 @@ export default function PaymentButtons({
           borderColor={"rgba(185, 28, 28, 1)"}
           textColor={"white"}
           onClick={() => setIsRejectOpen(true)}
-          style={{ borderRadius: "20px", padding: "5px 20px" }}
+          style={{
+            borderRadius: "25px",
+            padding: "7px 20px",
+            flexGrow: 1,
+            textWrap: "nowrap",
+          }}
         >
           Reject Invoice
         </Button>
@@ -484,7 +489,7 @@ export default function PaymentButtons({
                   }}
                 >
                   {/* {getFileName(paymentFileUrl)} */}
-                  View Payment Receipt
+                  Payment Receipt
                 </div>
 
                 <a
@@ -493,13 +498,14 @@ export default function PaymentButtons({
                   rel="noopener noreferrer"
                   style={{ display: "flex" }}
                 >
-                  <img src={externalLinkIcon} alt="external link" height={11} />
+                  <img src={externalLinkIcon} alt="external link" width={12} />
                 </a>
 
                 <img
                   src={crossIcon}
                   alt="remove"
                   onClick={handleRemoveFile}
+                  width={12}
                   style={{
                     cursor: "pointer",
                   }}

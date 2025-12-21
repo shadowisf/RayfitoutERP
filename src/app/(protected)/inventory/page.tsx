@@ -2,27 +2,104 @@
 
 import { useEffect, useState } from "react";
 import { InventoryItem } from "./types/inventoryItem";
-import NotesPopUp from "./components/NotesPopUp";
-import AddInventoryButton from "./components/_AddInventoryItem";
+import CreateInventoryItemButton from "./components/_CreateInventoryItemButton";
 import { QRCodeSVG } from "qrcode.react";
+import Button from "@/app/components/Button";
 
 export default function Inventory() {
+  const externalLinkIcon = "/icons/external-link.svg";
+
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [stockQuantities, setStockQuantities] = useState<{
+    [itemId: number]: {
+      total_quantity: number;
+    };
+  }>({});
 
   useEffect(() => {
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory/getAllCompletedInventory`,
-      {
-        method: "GET",
-      }
-    ).then((res) => res.json().then((data) => setInventory(data.data)));
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`, {
+      method: "GET",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setInventory(data.data);
+      });
   }, []);
+
+  // Fetch total quantities for all inventory items
+  useEffect(() => {
+    async function fetchAllQuantities() {
+      if (!inventory || inventory.length === 0) {
+        return;
+      }
+
+      const quantities: {
+        [itemId: number]: {
+          total_quantity: number;
+          batch_count: number;
+        };
+      } = {};
+
+      try {
+        const fetchPromises = inventory.map(async (item) => {
+          try {
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getTotalQuantityByInventoryItemID`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  inventory_item_id: item.id,
+                }),
+              }
+            );
+
+            const data = await response.json();
+
+            if (data.success && data.data) {
+              quantities[item.id] = {
+                total_quantity: data.data.total_quantity || 0,
+                batch_count: data.data.batch_count || 0,
+              };
+            } else {
+              quantities[item.id] = {
+                total_quantity: 0,
+                batch_count: 0,
+              };
+            }
+          } catch (error) {
+            console.error(
+              `Error fetching quantity for item ${item.id}:`,
+              error
+            );
+            quantities[item.id] = {
+              total_quantity: 0,
+              batch_count: 0,
+            };
+          }
+        });
+
+        await Promise.all(fetchPromises);
+        setStockQuantities(quantities);
+      } catch (error) {
+        console.error("Error fetching stock quantities:", error);
+      }
+    }
+
+    fetchAllQuantities();
+  }, [inventory]);
 
   return (
     <div className="dashboard">
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <h2>INVENTORY LIST</h2>
-        <AddInventoryButton></AddInventoryButton>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h2>INVENTORY</h2>
+        <CreateInventoryItemButton />
       </div>
 
       <br />
@@ -36,51 +113,44 @@ export default function Inventory() {
               <tr>
                 <th>#</th>
                 <th>ID</th>
-                <th>BATCH ID</th>
                 <th>CATEGORY</th>
                 <th>SUBCATEGORY</th>
-                <th>ITEM</th>
-                <th>LOCATION</th>
+                <th>DESCRIPTION</th>
                 <th>TOTAL QUANTITY</th>
-                <th>STOCK HISTORY</th>
-                <th>ISSUE HISTORY</th>
-                <th>LAST TRANSACTION</th>
-                <th>NOTES</th>
-                <th>BARCODE</th>
+                <th>DETAILS</th>
               </tr>
             </thead>
             <tbody>
-              {inventory.map((item, index) => (
-                <tr key={item.id}>
-                  <td>{index + 1}</td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    MRT-{String(item.id).padStart(5, "0")}
-                  </td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    BAT-{String(item.batch_id).padStart(5, "0")}
-                  </td>
-                  <td>{item.category}</td>
-                  <td>{item.subcategory}</td>
-                  <td>{item.item}</td>
-                  <td>{item.location}</td>
-                  <td>{item.total_quantity}</td>
-                  <td></td>
-                  <td></td>
-                  <td>
-                    {item.last_transaction
-                      ? new Date(item.last_transaction).toLocaleDateString()
-                      : ""}
-                  </td>
-                  <td>
-                    <NotesPopUp item={item} />
-                  </td>
-                  <td>
-                    <QRCodeSVG
-                      value={`${process.env.NEXT_PUBLIC_BASE_URL}/inventory/${item.id}`}
-                    />
-                  </td>
-                </tr>
-              ))}
+              {inventory.map((item, index) => {
+                const stockData = stockQuantities[item.id];
+                const totalQty = stockData?.total_quantity ?? 0;
+
+                return (
+                  <tr key={item.id}>
+                    <td>{index + 1}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      MRT-{String(item.id).padStart(5, "0")}
+                    </td>
+                    <td>{item.category_name}</td>
+                    <td>{item.subcategory_name}</td>
+                    <td>{item.description}</td>
+                    <td>{`${totalQty} ${item.unit || ""}`}</td>
+
+                    <td>
+                      <Button
+                        componentType={"link"}
+                        bgColor={"rgba(239, 239, 239, 1)"}
+                        borderColor={"rgba(223, 223, 223, 1)"}
+                        textColor={"white"}
+                        style={{ padding: "7px 7px" }}
+                        href={`/inventory/${item.id}`}
+                      >
+                        <img src={externalLinkIcon} alt="external link"></img>
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         ) : (

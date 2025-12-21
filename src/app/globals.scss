@@ -57,6 +57,11 @@ a {
     border-radius: 5px;
     padding: 10px 20px;
     font-weight: 700;
+    font-size: 14.1px;
+
+    img {
+      width: 12px;
+    }
   }
 }
 
@@ -848,8 +853,8 @@ label {
   align-items: center;
   justify-content: space-between;
   color: white;
-  padding: 5px 10px;
-  border-radius: 20px;
+  padding: 7px 20px;
+  border-radius: 25px;
   width: 200px;
 }
 

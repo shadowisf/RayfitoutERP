@@ -13,7 +13,6 @@ export default function Dashboard() {
 
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsWithBOQ, setProjectsWithBOQ] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // Fetch Projects
   useEffect(() => {
@@ -60,15 +59,10 @@ export default function Dashboard() {
       );
 
       setProjectsWithBOQ(enriched);
-      setLoading(false);
     };
 
     loadBOQStatus();
   }, [projects]);
-
-  if (loading) {
-    return <div className="dashboard">Loading...</div>;
-  }
 
   return (
     <div className="dashboard">

@@ -51,7 +51,7 @@ export default function InitialApprovalButtons({
     setStatus("approved");
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "POST",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "approveItem",
@@ -60,7 +60,7 @@ export default function InitialApprovalButtons({
     });
 
     if (res.ok) {
-      toast(`${item.boq_item_name} approved`, "success");
+      toast(`${item.material_description} approved`, "success");
 
       router.refresh();
     } else {
@@ -73,7 +73,7 @@ export default function InitialApprovalButtons({
     setStatus("rejected");
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "POST",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "rejectItem",
@@ -100,7 +100,7 @@ export default function InitialApprovalButtons({
     setIsRejectOpen(false);
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "POST",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "resetItem",

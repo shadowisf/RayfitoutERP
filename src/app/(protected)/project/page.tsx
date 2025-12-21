@@ -9,7 +9,6 @@ export default function Project() {
   const external_link_icon = "/icons/external-link.svg";
 
   const [projectsWithBOQ, setProjectsWithBOQ] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchProjects() {
@@ -43,27 +42,18 @@ export default function Project() {
         setProjectsWithBOQ(projectsWithBOQData);
       } catch (error) {
         console.error("Error fetching projects:", error);
-      } finally {
-        setLoading(false);
       }
     }
 
     fetchProjects();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="dashboard">
-        <h2>PROJECTS</h2>
-        <br />
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="dashboard">
       <h2>PROJECTS</h2>
+
+      <br />
+      <br />
       <br />
 
       <div className="widget-grid active-projects">

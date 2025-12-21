@@ -34,7 +34,6 @@ export default function AddBoqItemButton({
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [locationValues, setLocationValues] = useState<[]>([]);
 
@@ -86,8 +85,6 @@ export default function AddBoqItemButton({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    setIsSubmitting(true);
 
     try {
       // Step 1: Upload files to S3 if there are any
@@ -169,8 +166,6 @@ export default function AddBoqItemButton({
         "Failed to create bill of quantity item. Something went wrong",
         "error"
       );
-    } finally {
-      setIsSubmitting(false);
     }
   }
 
