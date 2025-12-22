@@ -1324,7 +1324,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           <th>#</th>
                           <th>DESCRIPTION</th>
                           <th>QUANTITY</th>
-                          <th>BOQ REF.</th>
+                          <th>BILL OF QUANTITY</th>
                           <th>NOTES</th>
                           {((mrHeader.progress_id === 5 &&
                             (userInfo?.departmentID ===
@@ -1355,7 +1355,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           {userInfo?.departmentID === 11 &&
                             mrHeader.progress_id === 24 && <th>STOCKS</th>}
                           {userInfo?.departmentID === 9 &&
-                            mrHeader.progress_id === 23 && <th>RESOLUTIONS</th>}
+                            mrHeader.progress_id === 23 && <th>RESOLUTION</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -1648,13 +1648,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   <th>SUBCATEGORY</th>
                   <th>DESCRIPTION</th>
                   <th>QUANTITY</th>
-                  <th>BOQ REF.</th>
+                  <th>BILL OF QUANTITY</th>
                   <th>NOTES</th>
                   {mrHeader.progress_id >= 12 && <th>SUPPLIER & QUOTATION</th>}
                   {userInfo?.departmentID === 12 &&
                     mrHeader.progress_id === 21 && <th>QUALITY CONTROL</th>}
                   {mrHeader.progress_id === 24 &&
                     userInfo?.departmentID === 11 && <th>STOCKS</th>}
+                  {mrHeader.progress_id === 23 &&
+                    userInfo?.departmentID === 9 && <th>RESOLUTION</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1721,6 +1723,13 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       mrHeader.progress_id === 24 && (
                         <td>
                           <AddToInventoryButton mrLine={item} />
+                        </td>
+                      )}
+
+                    {mrHeader.progress_id === 23 &&
+                      userInfo?.departmentID === 9 && (
+                        <td>
+                          <ResolutionButton mrHeader={mrHeader} item={item} />
                         </td>
                       )}
                   </tr>
