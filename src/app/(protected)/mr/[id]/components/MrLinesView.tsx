@@ -35,6 +35,7 @@ import CompleteMaterialRequestButton from "./storekeeper/_CompleteMaterialReques
 import SubmitForProcurementResolutionButton from "./qualityControl/_SubmitForProcurementResolution";
 import QCRecheckButton from "./procurement/_QCRecheckButton";
 import ResolutionButton from "./procurement/_AddResolutionButton";
+import CancelMaterialRequestButton from "./_CancelMaterialRequest";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -60,7 +61,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const trashIcon = "/icons/trash.svg";
   const externalLinkIcon = "/icons/external-link.svg";
 
-  const [activeCategory, setActiveCategory] = useState<string>("");
+  const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [expandedDescriptions, setExpandedDescriptions] = useState<number[]>(
     []
   );
@@ -93,7 +94,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     useState<GroupedMrLinesBySupplier>({});
 
   const categories = Object.keys(mrLines);
-  const subCategories = mrLines[activeCategory] || {};
+  const subCategories =
+    activeCategory === "ALL"
+      ? mrLines[categories[0]] || {}
+      : mrLines[activeCategory] || {};
 
   const [lpoPaymentStatus, setLpoPaymentStatus] = useState<{
     [supplierId: number]: "approved" | "rejected" | "pending";
@@ -115,16 +119,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     [itemId: number]: boolean;
   }>({});
   const [isCheckingInventory, setIsCheckingInventory] = useState<boolean>(true);
-
-  useEffect(
-    function () {
-      const categories = Object.keys(mrLines);
-      if (categories.length > 0) {
-        setActiveCategory(categories[0]);
-      }
-    },
-    [mrLines]
-  );
 
   useEffect(() => {
     const supplierGroups: GroupedMrLinesBySupplier = {};
@@ -598,7 +592,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     checkGrnStatuses();
   }, [mrLines, mrHeader.progress_id, mrHeader.id]);
 
-  // Check QC status for all items
   useEffect(() => {
     async function checkQcStatuses() {
       if (mrHeader.progress_id !== 21) {
@@ -614,7 +607,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       try {
         const allItems: MrLine[] = [];
 
-        // Collect all items
         for (const category in mrLines) {
           for (const subCategory in mrLines[category]) {
             for (const supplier in mrLines[category][subCategory]) {
@@ -624,10 +616,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           }
         }
 
-        // Check QC status for each item
         const checkPromises = allItems.map(async (item) => {
           try {
-            // First get the LPO
             const lpoResponse = await fetch(
               `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
               {
@@ -646,7 +636,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               if (lpoData.success && lpoData.data && lpoData.data.length > 0) {
                 const lpo = lpoData.data[0];
 
-                // Get LPO details to find lpo_mr_line_id
                 const lpoDetailsResponse = await fetch(
                   `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPODetails`,
                   {
@@ -669,7 +658,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     );
 
                     if (lpoLine) {
-                      // Check QC status
                       const qcResponse = await fetch(
                         `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getQCByLPOMrLineID`,
                         {
@@ -725,7 +713,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     checkQcStatuses();
   }, [mrLines, mrHeader.progress_id, mrHeader.id]);
 
-  // Check stock status for all items
   useEffect(() => {
     async function checkStockStatuses() {
       if (mrHeader.progress_id !== 24) {
@@ -737,7 +724,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       const statusMap: { [itemId: number]: boolean } = {};
 
       try {
-        // Collect all MR line items
         const allItems: MrLine[] = [];
         for (const category in mrLines) {
           for (const subCategory in mrLines[category]) {
@@ -748,7 +734,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           }
         }
 
-        // Check if each MR line has a stock entry
         const checkPromises = allItems.map(async (item) => {
           try {
             const response = await fetch(
@@ -804,6 +789,20 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   }
 
   function getActiveCategoryID() {
+    if (activeCategory === "ALL") {
+      const firstCategory = Object.keys(mrLines)[0];
+      if (firstCategory) {
+        const firstSubCategory = Object.values(mrLines[firstCategory])[0];
+        if (firstSubCategory) {
+          const firstSupplier = Object.values(firstSubCategory)[0];
+          if (firstSupplier && firstSupplier.length > 0) {
+            return String(firstSupplier[0].material_category_id);
+          }
+        }
+      }
+      return undefined;
+    }
+
     const firstSubCategory = Object.values(subCategories)[0];
     if (firstSubCategory) {
       const firstSupplier = Object.values(firstSubCategory)[0];
@@ -1067,7 +1066,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return true;
   }
 
-  // Check if all items have passed QC
   function allItemsPassedQc() {
     if (isCheckingQc) return false;
 
@@ -1099,7 +1097,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return totalItems > 0 && allChecked && allPassed;
   }
 
-  // Check if all items have completed QC (either passed or failed, no pending)
   function hasAllItemsCompletedQc() {
     if (isCheckingQc) return false;
 
@@ -1126,7 +1123,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return totalItems > 0 && allCompleted;
   }
 
-  // Check if all items have stock entries
   function allItemsHaveStock() {
     if (isCheckingInventory) return false;
 
@@ -1233,6 +1229,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               }}
             >
               <div>
+                <button
+                  className={`item ${activeCategory === "ALL" ? "active" : ""}`}
+                  onClick={() => setActiveCategory("ALL")}
+                  style={{ textTransform: "uppercase" }}
+                >
+                  ALL
+                </button>
+
                 {categories.map((category) => (
                   <button
                     key={category}
@@ -1250,15 +1254,17 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
                 userInfo?.departmentID === mrHeader.department_id &&
                 showByItem && (
-                  <AddMrItemButton
-                    mrHeaderID={mrHeader.id}
-                    projectID={mrHeader.project_id}
-                    bgColor="black"
-                    borderColor="black"
-                    textColor="white"
-                  >
-                    ADD CATEGORY & ITEM +
-                  </AddMrItemButton>
+                  <>
+                    <AddMrItemButton
+                      mrHeaderID={mrHeader.id}
+                      projectID={mrHeader.project_id}
+                      bgColor="black"
+                      borderColor="black"
+                      textColor="white"
+                    >
+                      ADD CATEGORY & ITEM +
+                    </AddMrItemButton>
+                  </>
                 )}
             </div>
           </div>
@@ -1269,189 +1275,455 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       <br />
 
       {showByItem &&
-        Object.entries(subCategories).map(function (
-          [subCategory, suppliers],
-          index
-        ) {
-          const allItems = getAllItemsInSubCategory(suppliers);
-          const firstItem = allItems[0];
+        (activeCategory === "ALL"
+          ? Object.entries(mrLines).map(
+              ([category, subCategoriesData], categoryIndex) =>
+                Object.entries(subCategoriesData).map(function (
+                  [subCategory, suppliers],
+                  subCategoryIndex
+                ) {
+                  const allItems = getAllItemsInSubCategory(suppliers);
+                  const firstItem = allItems[0];
 
-          return (
-            <div key={subCategory} className="subcategory-section">
-              <div className="subcategory-header">
-                <h2 style={{ textTransform: "uppercase" }}>
-                  <span style={{ marginRight: "25px" }}>
-                    {categories.indexOf(activeCategory) + 1}.{index + 1}
-                  </span>
-                  {subCategory}
-                </h2>
+                  return (
+                    <div
+                      key={`${category}-${subCategory}`}
+                      className="subcategory-section"
+                    >
+                      <div className="subcategory-header">
+                        <h2 style={{ textTransform: "uppercase" }}>
+                          <span style={{ marginRight: "25px" }}>
+                            {categoryIndex + 1}.{subCategoryIndex + 1}
+                          </span>
+                          {category} - {subCategory}
+                        </h2>
 
-                {mrHeader.progress_id === 1 &&
-                  userInfo?.departmentID === mrHeader.department_id &&
-                  firstItem && (
-                    <div className="right">
-                      <DeleteMrSubCategoryButton
-                        items={allItems}
-                        category={activeCategory}
-                        subCategory={subCategory}
-                      >
-                        DELETE
-                      </DeleteMrSubCategoryButton>
+                        {mrHeader.progress_id === 1 &&
+                          userInfo?.departmentID === mrHeader.department_id &&
+                          firstItem && (
+                            <div className="right">
+                              <DeleteMrSubCategoryButton
+                                items={allItems}
+                                category={category}
+                                subCategory={subCategory}
+                              >
+                                DELETE
+                              </DeleteMrSubCategoryButton>
 
-                      <RenameMrSubCategoryButton
-                        items={allItems}
-                        categoryID={String(firstItem.material_category_id)}
-                        subCategoryID={String(
-                          firstItem.material_subcategory_id
-                        )}
-                      >
-                        RENAME
-                      </RenameMrSubCategoryButton>
-                    </div>
-                  )}
-              </div>
-
-              <br />
-              <br />
-
-              {/* SHOW BY ITEM */}
-              {Object.entries(suppliers).map(
-                ([supplier, items], supplierIndex) => (
-                  <div key={supplier} style={{ marginBottom: "2rem" }}>
-                    <table className="items-table">
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>DESCRIPTION</th>
-                          <th>QUANTITY</th>
-                          <th>BILL OF QUANTITY</th>
-                          <th>NOTES</th>
-                          {((mrHeader.progress_id === 5 &&
-                            (userInfo?.departmentID ===
-                              mrHeader.department_id ||
-                              userInfo?.departmentID === 8)) ||
-                            (mrHeader.progress_id === 3 &&
-                              userInfo?.departmentID ===
-                                mrHeader.department_id)) && (
-                            <th>APPROVAL STATUS</th>
-                          )}
-                          {(mrHeader.progress_id === 1 ||
-                            mrHeader.progress_id === 5) &&
-                            userInfo?.departmentID ===
-                              mrHeader.department_id && <th>ACTIONS</th>}
-                          {mrHeader.progress_id === 3 &&
-                            userInfo?.departmentID === 8 && <th>ACTIONS</th>}
-                          {mrHeader.progress_id >= 10 && (
-                            <th>SUPPLIER & QUOTATION</th>
-                          )}
-                          {mrHeader.progress_id === 7 &&
-                            userInfo?.departmentID === 9 && (
-                              <th>SUPPLIER & QUOTATION</th>
-                            )}
-                          {userInfo?.departmentID === 12 &&
-                            mrHeader.progress_id === 21 && (
-                              <th>QUALITY CONTROL</th>
-                            )}
-                          {userInfo?.departmentID === 11 &&
-                            mrHeader.progress_id === 24 && <th>STOCKS</th>}
-                          {userInfo?.departmentID === 9 &&
-                            mrHeader.progress_id === 23 && <th>RESOLUTION</th>}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Array.isArray(items) &&
-                          items.map(function (item, itemIndex) {
-                            return (
-                              <tr key={item.id}>
-                                <td>{itemIndex + 1}</td>
-                                <td>{item.material_description}</td>
-                                <td>
-                                  {item.quantity} {item.unit}
-                                </td>
-                                <td>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "10px",
-                                    }}
-                                  >
-                                    {item.boq_item_number}
-                                    <BoqReferencePopUp item={item} />
-                                  </div>
-                                </td>
-                                <td>
-                                  <NotesPopUp item={item} />
-                                </td>
-
-                                {(((mrHeader.progress_id === 5 ||
-                                  mrHeader.progress_id === 3) &&
-                                  userInfo?.departmentID ===
-                                    mrHeader.department_id) ||
-                                  ((mrHeader.progress_id === 5 ||
-                                    mrHeader.progress_id === 3) &&
-                                    userInfo?.departmentID === 8)) && (
-                                  <td>
-                                    <div
-                                      style={{ display: "flex", gap: "10px" }}
-                                    >
-                                      <InitialApprovalButtons
-                                        item={item}
-                                        progressID={mrHeader.progress_id}
-                                      />
-                                    </div>
-                                  </td>
+                              <RenameMrSubCategoryButton
+                                items={allItems}
+                                categoryID={String(
+                                  firstItem.material_category_id
                                 )}
+                                subCategoryID={String(
+                                  firstItem.material_subcategory_id
+                                )}
+                              >
+                                RENAME
+                              </RenameMrSubCategoryButton>
+                            </div>
+                          )}
+                      </div>
 
-                                {(mrHeader.progress_id === 1 ||
-                                  mrHeader.progress_id === 5) &&
-                                  userInfo?.departmentID ===
-                                    mrHeader.department_id && (
-                                    <td>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          gap: "10px",
-                                        }}
-                                      >
-                                        <>
-                                          <EditMrItemButton
-                                            projectID={mrHeader.project_id}
-                                            item={item}
-                                            bgColor={"rgba(239, 239, 239, 1)"}
-                                            borderColor={
-                                              "rgba(223, 223, 223, 1)"
-                                            }
-                                            textColor={"black"}
-                                          >
-                                            <img
-                                              src={pencilIcon}
-                                              alt="pencil icon"
-                                            />
-                                          </EditMrItemButton>
+                      <br />
+                      <br />
 
-                                          <DeleteMrItemButton
-                                            item={item}
-                                            bgColor={"rgba(239, 239, 239, 1)"}
-                                            borderColor={
-                                              "rgba(223, 223, 223, 1)"
-                                            }
-                                            textColor={"black"}
-                                          >
-                                            <img
-                                              src={trashIcon}
-                                              alt="trash icon"
-                                            />
-                                          </DeleteMrItemButton>
-                                        </>
-                                      </div>
-                                    </td>
+                      {Object.entries(suppliers).map(
+                        ([supplier, items], supplierIndex) => (
+                          <div key={supplier} style={{ marginBottom: "2rem" }}>
+                            <table className="items-table">
+                              <thead>
+                                <tr>
+                                  <th>#</th>
+                                  <th>DESCRIPTION</th>
+                                  <th>QUANTITY</th>
+                                  <th>BILL OF QUANTITY</th>
+                                  <th>NOTES</th>
+                                  {((mrHeader.progress_id === 5 &&
+                                    (userInfo?.departmentID ===
+                                      mrHeader.department_id ||
+                                      userInfo?.departmentID === 8)) ||
+                                    (mrHeader.progress_id === 3 &&
+                                      userInfo?.departmentID ===
+                                        mrHeader.department_id)) && (
+                                    <th>APPROVAL STATUS</th>
                                   )}
+                                  {(mrHeader.progress_id === 1 ||
+                                    mrHeader.progress_id === 5) &&
+                                    userInfo?.departmentID ===
+                                      mrHeader.department_id && (
+                                      <th>ACTIONS</th>
+                                    )}
+                                  {mrHeader.progress_id === 3 &&
+                                    userInfo?.departmentID === 8 && (
+                                      <th>ACTIONS</th>
+                                    )}
+                                  {mrHeader.progress_id >= 10 && (
+                                    <th>SUPPLIER & QUOTATION</th>
+                                  )}
+                                  {mrHeader.progress_id === 7 &&
+                                    userInfo?.departmentID === 9 && (
+                                      <th>SUPPLIER & QUOTATION</th>
+                                    )}
+                                  {userInfo?.departmentID === 12 &&
+                                    mrHeader.progress_id === 21 && (
+                                      <th>QUALITY CONTROL</th>
+                                    )}
+                                  {userInfo?.departmentID === 11 &&
+                                    mrHeader.progress_id === 24 && (
+                                      <th>STOCKS</th>
+                                    )}
+                                  {userInfo?.departmentID === 9 &&
+                                    mrHeader.progress_id === 23 && (
+                                      <th>RESOLUTION</th>
+                                    )}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {Array.isArray(items) &&
+                                  items.map(function (item, itemIndex) {
+                                    return (
+                                      <tr key={item.id}>
+                                        <td>{itemIndex + 1}</td>
+                                        <td>{item.material_description}</td>
+                                        <td>
+                                          {item.quantity} {item.unit}
+                                        </td>
+                                        <td>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: "10px",
+                                            }}
+                                          >
+                                            {item.boq_item_number}
+                                            <BoqReferencePopUp item={item} />
+                                          </div>
+                                        </td>
+                                        <td>
+                                          <NotesPopUp item={item} />
+                                        </td>
 
-                                {(mrHeader.progress_id === 7 ||
-                                  mrHeader.progress_id === 11 ||
-                                  mrHeader.progress_id === 10) &&
-                                  userInfo?.departmentID === 9 && (
+                                        {(((mrHeader.progress_id === 5 ||
+                                          mrHeader.progress_id === 3) &&
+                                          userInfo?.departmentID ===
+                                            mrHeader.department_id) ||
+                                          ((mrHeader.progress_id === 5 ||
+                                            mrHeader.progress_id === 3) &&
+                                            userInfo?.departmentID === 8)) && (
+                                          <td>
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                gap: "10px",
+                                              }}
+                                            >
+                                              <InitialApprovalButtons
+                                                item={item}
+                                                progressID={
+                                                  mrHeader.progress_id
+                                                }
+                                              />
+                                            </div>
+                                          </td>
+                                        )}
+
+                                        {(mrHeader.progress_id === 1 ||
+                                          mrHeader.progress_id === 5) &&
+                                          userInfo?.departmentID ===
+                                            mrHeader.department_id && (
+                                            <td>
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  gap: "10px",
+                                                }}
+                                              >
+                                                <>
+                                                  <EditMrItemButton
+                                                    projectID={
+                                                      mrHeader.project_id
+                                                    }
+                                                    item={item}
+                                                    bgColor={
+                                                      "rgba(239, 239, 239, 1)"
+                                                    }
+                                                    borderColor={
+                                                      "rgba(223, 223, 223, 1)"
+                                                    }
+                                                    textColor={"black"}
+                                                  >
+                                                    <img
+                                                      src={pencilIcon}
+                                                      alt="pencil icon"
+                                                    />
+                                                  </EditMrItemButton>
+
+                                                  <DeleteMrItemButton
+                                                    item={item}
+                                                    bgColor={
+                                                      "rgba(239, 239, 239, 1)"
+                                                    }
+                                                    borderColor={
+                                                      "rgba(223, 223, 223, 1)"
+                                                    }
+                                                    textColor={"black"}
+                                                  >
+                                                    <img
+                                                      src={trashIcon}
+                                                      alt="trash icon"
+                                                    />
+                                                  </DeleteMrItemButton>
+                                                </>
+                                              </div>
+                                            </td>
+                                          )}
+
+                                        {(mrHeader.progress_id === 7 ||
+                                          mrHeader.progress_id === 11 ||
+                                          mrHeader.progress_id === 10) &&
+                                          userInfo?.departmentID === 9 && (
+                                            <td>
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  gap: "10px",
+                                                }}
+                                              >
+                                                <SupplierAndQuotationButton
+                                                  mrHeader={mrHeader}
+                                                  mrLine={item}
+                                                />
+                                              </div>
+                                            </td>
+                                          )}
+
+                                        {[10, 11].includes(
+                                          mrHeader.progress_id
+                                        ) &&
+                                          userInfo?.departmentID === 8 && (
+                                            <td>
+                                              <PriceApprovalButton
+                                                progressID={
+                                                  mrHeader.progress_id
+                                                }
+                                                mrLineID={item.id}
+                                                bgColor="white"
+                                                borderColor="rgba(207, 207, 207, 1)"
+                                                textColor="black"
+                                                style={{
+                                                  borderRadius: "25px",
+                                                  padding: "5px 20px",
+                                                }}
+                                              />
+                                            </td>
+                                          )}
+
+                                        {mrHeader.progress_id >= 12 && (
+                                          <td>
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                gap: "10px",
+                                                alignItems: "center",
+                                              }}
+                                            >
+                                              {item.approved_supplier_name}{" "}
+                                              <SupplierDetailsPopUp
+                                                item={item}
+                                                style={{
+                                                  padding: "7px 7px",
+                                                  backgroundColor:
+                                                    "rgba(239, 239, 239, 1)",
+                                                  borderColor:
+                                                    "rgba(223, 223, 223, 1)",
+                                                }}
+                                              >
+                                                <img
+                                                  src={externalLinkIcon}
+                                                  alt="external link icon"
+                                                />
+                                              </SupplierDetailsPopUp>
+                                            </div>
+                                          </td>
+                                        )}
+
+                                        {userInfo?.departmentID === 12 &&
+                                          mrHeader.progress_id === 21 && (
+                                            <td>
+                                              <QCCheckListButton
+                                                item={item}
+                                                mrHeader={mrHeader}
+                                              />
+                                            </td>
+                                          )}
+
+                                        {userInfo?.departmentID === 11 &&
+                                          mrHeader.progress_id === 24 && (
+                                            <td>
+                                              <AddToInventoryButton
+                                                mrLine={item}
+                                              />
+                                            </td>
+                                          )}
+
+                                        {userInfo?.departmentID === 9 &&
+                                          mrHeader.progress_id === 23 && (
+                                            <td>
+                                              <ResolutionButton
+                                                mrHeader={mrHeader}
+                                                item={item}
+                                              />
+                                            </td>
+                                          )}
+                                      </tr>
+                                    );
+                                  })}
+                              </tbody>
+                            </table>
+
+                            <br />
+                          </div>
+                        )
+                      )}
+
+                      {(mrHeader.progress_id === 1 ||
+                        mrHeader.progress_id === 5) &&
+                        userInfo?.departmentID === mrHeader.department_id &&
+                        firstItem && (
+                          <>
+                            <AddMrItemButton
+                              projectID={mrHeader.project_id}
+                              mrHeaderID={mrHeader.id}
+                              bgColor="rgba(239, 239, 239, 1)"
+                              borderColor="rgba(239, 239, 239, 1)"
+                              textColor="black"
+                              full
+                              autoCategoryID={String(
+                                firstItem.material_category_id
+                              )}
+                              autoSubCategoryID={String(
+                                firstItem.material_subcategory_id
+                              )}
+                            >
+                              ADD ITEM +
+                            </AddMrItemButton>
+
+                            <br />
+                            <br />
+                            <br />
+                            <br />
+                            <br />
+                          </>
+                        )}
+                    </div>
+                  );
+                })
+            )
+          : Object.entries(subCategories).map(function (
+              [subCategory, suppliers],
+              index
+            ) {
+              const allItems = getAllItemsInSubCategory(suppliers);
+              const firstItem = allItems[0];
+
+              return (
+                <div key={subCategory} className="subcategory-section">
+                  <div className="subcategory-header">
+                    <h2 style={{ textTransform: "uppercase" }}>
+                      <span style={{ marginRight: "25px" }}>
+                        {categories.indexOf(activeCategory) + 1}.{index + 1}
+                      </span>
+                      {subCategory}
+                    </h2>
+
+                    {mrHeader.progress_id === 1 &&
+                      userInfo?.departmentID === mrHeader.department_id &&
+                      firstItem && (
+                        <div className="right">
+                          <DeleteMrSubCategoryButton
+                            items={allItems}
+                            category={activeCategory}
+                            subCategory={subCategory}
+                          >
+                            DELETE
+                          </DeleteMrSubCategoryButton>
+
+                          <RenameMrSubCategoryButton
+                            items={allItems}
+                            categoryID={String(firstItem.material_category_id)}
+                            subCategoryID={String(
+                              firstItem.material_subcategory_id
+                            )}
+                          >
+                            RENAME
+                          </RenameMrSubCategoryButton>
+                        </div>
+                      )}
+                  </div>
+
+                  <br />
+                  <br />
+
+                  {Object.entries(suppliers).map(
+                    ([supplier, items], supplierIndex) => (
+                      <div key={supplier} style={{ marginBottom: "2rem" }}>
+                        <table className="items-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>DESCRIPTION</th>
+                              <th>QUANTITY</th>
+                              <th>BILL OF QUANTITY</th>
+                              <th>NOTES</th>
+                              {((mrHeader.progress_id === 5 &&
+                                (userInfo?.departmentID ===
+                                  mrHeader.department_id ||
+                                  userInfo?.departmentID === 8)) ||
+                                (mrHeader.progress_id === 3 &&
+                                  userInfo?.departmentID ===
+                                    mrHeader.department_id)) && (
+                                <th>APPROVAL STATUS</th>
+                              )}
+                              {(mrHeader.progress_id === 1 ||
+                                mrHeader.progress_id === 5) &&
+                                userInfo?.departmentID ===
+                                  mrHeader.department_id && <th>ACTIONS</th>}
+                              {mrHeader.progress_id === 3 &&
+                                userInfo?.departmentID === 8 && (
+                                  <th>ACTIONS</th>
+                                )}
+                              {mrHeader.progress_id >= 10 && (
+                                <th>SUPPLIER & QUOTATION</th>
+                              )}
+                              {mrHeader.progress_id === 7 &&
+                                userInfo?.departmentID === 9 && (
+                                  <th>SUPPLIER & QUOTATION</th>
+                                )}
+                              {userInfo?.departmentID === 12 &&
+                                mrHeader.progress_id === 21 && (
+                                  <th>QUALITY CONTROL</th>
+                                )}
+                              {userInfo?.departmentID === 11 &&
+                                mrHeader.progress_id === 24 && <th>STOCKS</th>}
+                              {userInfo?.departmentID === 9 &&
+                                mrHeader.progress_id === 23 && (
+                                  <th>RESOLUTION</th>
+                                )}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Array.isArray(items) &&
+                              items.map(function (item, itemIndex) {
+                                return (
+                                  <tr key={item.id}>
+                                    <td>{itemIndex + 1}</td>
+                                    <td>{item.material_description}</td>
+                                    <td>
+                                      {item.quantity} {item.unit}
+                                    </td>
                                     <td>
                                       <div
                                         style={{
@@ -1460,123 +1732,219 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           gap: "10px",
                                         }}
                                       >
-                                        <SupplierAndQuotationButton
-                                          mrHeader={mrHeader}
-                                          mrLineID={item.id}
-                                        />
+                                        {item.boq_item_number}
+                                        <BoqReferencePopUp item={item} />
                                       </div>
                                     </td>
-                                  )}
-
-                                {[10, 11].includes(mrHeader.progress_id) &&
-                                  userInfo?.departmentID === 8 && (
                                     <td>
-                                      <PriceApprovalButton
-                                        progressID={mrHeader.progress_id}
-                                        mrLineID={item.id}
-                                        bgColor="white"
-                                        borderColor="rgba(207, 207, 207, 1)"
-                                        textColor="black"
-                                        style={{
-                                          borderRadius: "25px",
-                                          padding: "5px 20px",
-                                        }}
-                                      />
+                                      <NotesPopUp item={item} />
                                     </td>
-                                  )}
 
-                                {mrHeader.progress_id >= 12 && (
-                                  <td>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        gap: "10px",
-                                        alignItems: "center",
-                                      }}
-                                    >
-                                      {item.approved_supplier_name}{" "}
-                                      <SupplierDetailsPopUp
-                                        item={item}
-                                        style={{
-                                          padding: "7px 7px",
-                                          backgroundColor:
-                                            "rgba(239, 239, 239, 1)",
-                                          borderColor: "rgba(223, 223, 223, 1)",
-                                        }}
-                                      >
-                                        <img
-                                          src={externalLinkIcon}
-                                          alt="external link icon"
-                                        />
-                                      </SupplierDetailsPopUp>
-                                    </div>
-                                  </td>
-                                )}
+                                    {(((mrHeader.progress_id === 5 ||
+                                      mrHeader.progress_id === 3) &&
+                                      userInfo?.departmentID ===
+                                        mrHeader.department_id) ||
+                                      ((mrHeader.progress_id === 5 ||
+                                        mrHeader.progress_id === 3) &&
+                                        userInfo?.departmentID === 8)) && (
+                                      <td>
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            gap: "10px",
+                                          }}
+                                        >
+                                          <InitialApprovalButtons
+                                            item={item}
+                                            progressID={mrHeader.progress_id}
+                                          />
+                                        </div>
+                                      </td>
+                                    )}
 
-                                {userInfo?.departmentID === 12 &&
-                                  mrHeader.progress_id === 21 && (
-                                    <td>
-                                      <QCCheckListButton
-                                        item={item}
-                                        mrHeader={mrHeader}
-                                      />
-                                    </td>
-                                  )}
+                                    {(mrHeader.progress_id === 1 ||
+                                      mrHeader.progress_id === 5) &&
+                                      userInfo?.departmentID ===
+                                        mrHeader.department_id && (
+                                        <td>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "10px",
+                                            }}
+                                          >
+                                            <>
+                                              <EditMrItemButton
+                                                projectID={mrHeader.project_id}
+                                                item={item}
+                                                bgColor={
+                                                  "rgba(239, 239, 239, 1)"
+                                                }
+                                                borderColor={
+                                                  "rgba(223, 223, 223, 1)"
+                                                }
+                                                textColor={"black"}
+                                              >
+                                                <img
+                                                  src={pencilIcon}
+                                                  alt="pencil icon"
+                                                />
+                                              </EditMrItemButton>
 
-                                {userInfo?.departmentID === 11 &&
-                                  mrHeader.progress_id === 24 && (
-                                    <td>
-                                      <AddToInventoryButton mrLine={item} />
-                                    </td>
-                                  )}
+                                              <DeleteMrItemButton
+                                                item={item}
+                                                bgColor={
+                                                  "rgba(239, 239, 239, 1)"
+                                                }
+                                                borderColor={
+                                                  "rgba(223, 223, 223, 1)"
+                                                }
+                                                textColor={"black"}
+                                              >
+                                                <img
+                                                  src={trashIcon}
+                                                  alt="trash icon"
+                                                />
+                                              </DeleteMrItemButton>
+                                            </>
+                                          </div>
+                                        </td>
+                                      )}
 
-                                {userInfo?.departmentID === 9 &&
-                                  mrHeader.progress_id === 23 && (
-                                    <td>
-                                      <ResolutionButton
-                                        mrHeader={mrHeader}
-                                        item={item}
-                                      />
-                                    </td>
-                                  )}
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
+                                    {(mrHeader.progress_id === 7 ||
+                                      mrHeader.progress_id === 11 ||
+                                      mrHeader.progress_id === 10) &&
+                                      userInfo?.departmentID === 9 && (
+                                        <td>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: "10px",
+                                            }}
+                                          >
+                                            <SupplierAndQuotationButton
+                                              mrHeader={mrHeader}
+                                              mrLine={item}
+                                            />
+                                          </div>
+                                        </td>
+                                      )}
 
-                    <br />
-                  </div>
-                )
-              )}
+                                    {[10, 11].includes(mrHeader.progress_id) &&
+                                      userInfo?.departmentID === 8 && (
+                                        <td>
+                                          <PriceApprovalButton
+                                            progressID={mrHeader.progress_id}
+                                            mrLineID={item.id}
+                                            bgColor="white"
+                                            borderColor="rgba(207, 207, 207, 1)"
+                                            textColor="black"
+                                            style={{
+                                              borderRadius: "25px",
+                                              padding: "5px 20px",
+                                            }}
+                                          />
+                                        </td>
+                                      )}
 
-              {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-                userInfo?.departmentID === mrHeader.department_id &&
-                firstItem && (
-                  <AddMrItemButton
-                    projectID={mrHeader.project_id}
-                    mrHeaderID={mrHeader.id}
-                    bgColor="rgba(239, 239, 239, 1)"
-                    borderColor="rgba(239, 239, 239, 1)"
-                    textColor="black"
-                    full
-                    autoCategoryID={String(firstItem.material_category_id)}
-                    autoSubCategoryID={String(
-                      firstItem.material_subcategory_id
+                                    {mrHeader.progress_id >= 12 && (
+                                      <td>
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            gap: "10px",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          {item.approved_supplier_name}{" "}
+                                          <SupplierDetailsPopUp
+                                            item={item}
+                                            style={{
+                                              padding: "7px 7px",
+                                              backgroundColor:
+                                                "rgba(239, 239, 239, 1)",
+                                              borderColor:
+                                                "rgba(223, 223, 223, 1)",
+                                            }}
+                                          >
+                                            <img
+                                              src={externalLinkIcon}
+                                              alt="external link icon"
+                                            />
+                                          </SupplierDetailsPopUp>
+                                        </div>
+                                      </td>
+                                    )}
+
+                                    {userInfo?.departmentID === 12 &&
+                                      mrHeader.progress_id === 21 && (
+                                        <td>
+                                          <QCCheckListButton
+                                            item={item}
+                                            mrHeader={mrHeader}
+                                          />
+                                        </td>
+                                      )}
+
+                                    {userInfo?.departmentID === 11 &&
+                                      mrHeader.progress_id === 24 && (
+                                        <td>
+                                          <AddToInventoryButton mrLine={item} />
+                                        </td>
+                                      )}
+
+                                    {userInfo?.departmentID === 9 &&
+                                      mrHeader.progress_id === 23 && (
+                                        <td>
+                                          <ResolutionButton
+                                            mrHeader={mrHeader}
+                                            item={item}
+                                          />
+                                        </td>
+                                      )}
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+
+                        <br />
+                      </div>
+                    )
+                  )}
+
+                  {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
+                    userInfo?.departmentID === mrHeader.department_id &&
+                    firstItem && (
+                      <>
+                        <AddMrItemButton
+                          projectID={mrHeader.project_id}
+                          mrHeaderID={mrHeader.id}
+                          bgColor="rgba(239, 239, 239, 1)"
+                          borderColor="rgba(239, 239, 239, 1)"
+                          textColor="black"
+                          full
+                          autoCategoryID={String(
+                            firstItem.material_category_id
+                          )}
+                          autoSubCategoryID={String(
+                            firstItem.material_subcategory_id
+                          )}
+                        >
+                          ADD ITEM +
+                        </AddMrItemButton>
+
+                        <br />
+                        <br />
+                        <br />
+                        <br />
+                        <br />
+                      </>
                     )}
-                  >
-                    ADD ITEM +
-                  </AddMrItemButton>
-                )}
-
-              <br />
-              <br />
-              <br />
-              <br />
-              <br />
-            </div>
-          );
-        })}
+                </div>
+              );
+            }))}
 
       {showBySupplier &&
         Object.entries(mrLinesBySupplier).map(([supplier, items], index) => (
@@ -1639,7 +2007,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             <br />
             <br />
 
-            {/* SHOW BY SUPPLIER */}
             <table className="items-table">
               <thead>
                 <tr>
@@ -1739,33 +2106,38 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
             <br />
             <br />
-            <br />
-            <br />
-            <br />
           </div>
         ))}
 
       {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
         userInfo?.departmentID === mrHeader.department_id &&
         showByItem && (
-          <AddMrItemButton
-            projectID={mrHeader.project_id}
-            mrHeaderID={mrHeader.id}
-            bgColor="rgba(239, 239, 239, 1)"
-            borderColor="rgba(239, 239, 239, 1)"
-            textColor="black"
-            full
-            autoCategoryID={getActiveCategoryID()}
-          >
-            ADD SUBCATEGORY & ITEM +
-          </AddMrItemButton>
-        )}
+          <>
+            <br />
+            <br />
+            <br />
+            <br />
+            <br />
 
-      <br />
-      <br />
-      <br />
-      <br />
-      <br />
+            <AddMrItemButton
+              projectID={mrHeader.project_id}
+              mrHeaderID={mrHeader.id}
+              bgColor="rgba(239, 239, 239, 1)"
+              borderColor="rgba(239, 239, 239, 1)"
+              textColor="black"
+              full
+              autoCategoryID={getActiveCategoryID()}
+            >
+              ADD SUBCATEGORY & ITEM +
+            </AddMrItemButton>
+
+            <br />
+            <br />
+            <br />
+            <br />
+            <br />
+          </>
+        )}
 
       {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
         userInfo?.departmentID === mrHeader.department_id &&
@@ -1782,10 +2154,34 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           </div>
         )}
 
+      {mrHeader.progress_id < 12 &&
+        mrHeader.progress_id > 1 &&
+        mrHeader.department_id === userInfo?.departmentID && (
+          <div className="bottom-nav">
+            <CancelMaterialRequestButton
+              mrHeaderID={mrHeader.id}
+              bgColor="white"
+              borderColor="white"
+              textColor="black"
+            >
+              CANCEL MATERIAL REQUEST
+            </CancelMaterialRequestButton>
+          </div>
+        )}
+
       {hasRejectedItems() &&
         userInfo?.departmentID === 8 &&
         mrHeader.progress_id === 3 && (
           <div className="bottom-nav">
+            <CancelMaterialRequestButton
+              mrHeaderID={mrHeader.id}
+              bgColor="white"
+              borderColor="white"
+              textColor="black"
+            >
+              CANCEL MATERIAL REQUEST
+            </CancelMaterialRequestButton>
+
             <SubmitForResubmissionButton
               mrHeaderID={mrHeader.id}
               bgColor="white"
@@ -1801,6 +2197,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 8 &&
         mrHeader.progress_id === 3 && (
           <div className="bottom-nav">
+            <CancelMaterialRequestButton
+              mrHeaderID={mrHeader.id}
+              bgColor="white"
+              borderColor="white"
+              textColor="black"
+            >
+              CANCEL MATERIAL REQUEST
+            </CancelMaterialRequestButton>
+
             <SubmitForQuotationsButton
               mrHeaderID={mrHeader.id}
               bgColor="white"
@@ -1817,6 +2222,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 9 &&
         (mrHeader.progress_id === 7 || mrHeader.progress_id === 11) && (
           <div className="bottom-nav">
+            <CancelMaterialRequestButton
+              mrHeaderID={mrHeader.id}
+              bgColor="white"
+              borderColor="white"
+              textColor="black"
+            >
+              CANCEL MATERIAL REQUEST
+            </CancelMaterialRequestButton>
+
             <SubmitForPricingApprovalButton
               mrHeaderID={mrHeader.id}
               bgColor="white"
@@ -1832,6 +2246,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 8 &&
         mrHeader.progress_id === 10 && (
           <div className="bottom-nav">
+            <CancelMaterialRequestButton
+              mrHeaderID={mrHeader.id}
+              bgColor="white"
+              borderColor="white"
+              textColor="black"
+            >
+              CANCEL MATERIAL REQUEST
+            </CancelMaterialRequestButton>
+
             <SubmitForPricingResubmissionButton
               mrHeaderID={mrHeader.id}
               bgColor="white"
@@ -1847,6 +2270,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === 8 &&
         mrHeader.progress_id === 10 && (
           <div className="bottom-nav">
+            <CancelMaterialRequestButton
+              mrHeaderID={mrHeader.id}
+              bgColor="white"
+              borderColor="white"
+              textColor="black"
+            >
+              CANCEL MATERIAL REQUEST
+            </CancelMaterialRequestButton>
+
             <SubmitForLPO
               mrLines={mrLines}
               mrHeaderID={mrHeader.id}

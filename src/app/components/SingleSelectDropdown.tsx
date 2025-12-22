@@ -14,6 +14,7 @@ type SingleSelectInputProps = {
   dbData?: any[];
   idField?: string;
   labelField?: string;
+  tooltipField?: string; // NEW: field name for tooltip in database
   noLabel?: boolean;
   // New props for create button
   showCreateButton?: boolean;
@@ -35,6 +36,7 @@ export default function SingleSelectDropdown({
   dbData,
   idField = "id",
   labelField = "value",
+  tooltipField = "tooltip", // NEW: default field name
   noLabel,
   showCreateButton = false,
   createButtonLabel = "Create New",
@@ -44,13 +46,17 @@ export default function SingleSelectDropdown({
 }: SingleSelectInputProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [hoveredOption, setHoveredOption] = useState<string | number | null>(
+    null
+  );
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   function getOptions() {
     if (selectOptions) {
       return selectOptions.map(function (o) {
-        return { id: o, label: o, raw: o };
+        return { id: o, label: o, tooltip: null, raw: o };
       });
     }
 
@@ -63,6 +69,7 @@ export default function SingleSelectDropdown({
         return {
           id: item[idField],
           label: formattedLabel,
+          tooltip: item[tooltipField] || null, // NEW: get tooltip from database
           raw: item,
         };
       });
@@ -85,6 +92,7 @@ export default function SingleSelectDropdown({
       ) {
         setIsOpen(false);
         setSearchQuery("");
+        setHoveredOption(null);
       }
     }
 
@@ -114,14 +122,32 @@ export default function SingleSelectDropdown({
     onChange(optionId);
     setIsOpen(false);
     setSearchQuery("");
+    setHoveredOption(null);
   }
 
   function handleCreateClick() {
     setIsOpen(false);
     setSearchQuery("");
+    setHoveredOption(null);
     if (onCreateClick) {
       onCreateClick();
     }
+  }
+
+  function handleMouseEnter(
+    optionId: string | number,
+    event: React.MouseEvent<HTMLDivElement>
+  ) {
+    setHoveredOption(optionId);
+    const rect = event.currentTarget.getBoundingClientRect();
+    setTooltipPosition({
+      x: rect.right + 10,
+      y: rect.top,
+    });
+  }
+
+  function handleMouseLeave() {
+    setHoveredOption(null);
   }
 
   function getDisplayText() {
@@ -138,6 +164,9 @@ export default function SingleSelectDropdown({
 
   const displayText = getDisplayText();
   const isPlaceholder = !selectedValue && selectedValue !== 0;
+  const hoveredOptionData = options.find(function (option) {
+    return option.id === hoveredOption;
+  });
 
   return (
     <div className="input-item" ref={containerRef}>
@@ -194,6 +223,10 @@ export default function SingleSelectDropdown({
                       onClick={function () {
                         handleOptionClick(option.id);
                       }}
+                      onMouseEnter={function (e) {
+                        handleMouseEnter(option.id, e);
+                      }}
+                      onMouseLeave={handleMouseLeave}
                     >
                       <span className="option-text">{option.label}</span>
                     </div>
@@ -223,6 +256,28 @@ export default function SingleSelectDropdown({
           </div>
         )}
       </div>
+
+      {/* Tooltip */}
+      {hoveredOption && hoveredOptionData?.tooltip && (
+        <div
+          className="select-tooltip"
+          style={{
+            position: "fixed",
+            left: `${tooltipPosition.x}px`,
+            top: `${tooltipPosition.y}px`,
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            color: "white",
+            padding: "10px",
+            borderRadius: "5px",
+            maxWidth: "300px",
+            zIndex: 10000,
+            pointerEvents: "none",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {hoveredOptionData.tooltip}
+        </div>
+      )}
     </div>
   );
 }

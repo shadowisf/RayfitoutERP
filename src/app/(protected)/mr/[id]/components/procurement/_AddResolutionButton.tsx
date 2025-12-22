@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
-import { LpoHeader } from "../../types/lpoHeader";
 
 type ResolutionButtonProps = {
   mrHeader: MrHeader;
@@ -32,12 +31,40 @@ type GRNData = {
   received_quantity: number;
 };
 
+type ExistingResolution = {
+  resolution_id: number;
+  resolution_type: string;
+  // Return/Refund
+  return_quantity?: number;
+  expected_refund?: number;
+  actual_refund?: number;
+  variance_amount?: number;
+  reason_for_variance?: string;
+  eta_delivery_date?: string;
+  refund_method?: string;
+  proof_of_payment_url?: string;
+  // Replace
+  replace_quantity?: number;
+  replacement_type?: string;
+  expected_replacement_date?: string;
+  notes?: string;
+  // Conditionally Accepted
+  conditionally_accepted_quantity?: number;
+  reason?: string;
+  attachment?: string;
+  // Reject/Scrap
+  scrap_quantity?: number;
+  scrap_reason?: string;
+  return_not_possible_reason?: string;
+  disposal_method?: string;
+  scrap_attachment?: string;
+};
+
 export default function ResolutionButton({
   mrHeader,
   item,
 }: ResolutionButtonProps) {
   const router = useRouter();
-
   const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
@@ -45,6 +72,9 @@ export default function ResolutionButton({
   const plusIcon = "/icons/plus.svg";
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [existingResolution, setExistingResolution] =
+    useState<ExistingResolution | null>(null);
   const [resolutionType, setResolutionType] = useState("");
 
   const [lpoMrLine, setLpoMrLine] = useState<LpoMrLine | null>(null);
@@ -99,6 +129,40 @@ export default function ResolutionButton({
   const expectedRefund = failedQuantity * unitPrice;
   const actualRefundAmount = parseFloat(actualRefund) || 0;
   const varianceAmount = expectedRefund - actualRefundAmount;
+
+  // Check for existing resolution on component mount
+  useEffect(() => {
+    async function checkExistingResolution() {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getQCResolutionByMrLineID`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mr_header_id: mrHeader.id,
+              mr_line_id: item.id,
+            }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          setIsEditMode(true);
+          setExistingResolution(data.data);
+        } else {
+          setIsEditMode(false);
+          setExistingResolution(null);
+        }
+      } catch (error) {
+        console.error("Error checking existing resolution:", error);
+        setIsEditMode(false);
+      }
+    }
+
+    checkExistingResolution();
+  }, [mrHeader.id, item.id]);
 
   // Fetch LPO data
   useEffect(() => {
@@ -205,12 +269,111 @@ export default function ResolutionButton({
     }
   }, [item, mrHeader.id, isOpen]);
 
+  // Populate form with existing resolution data
+  useEffect(() => {
+    if (isEditMode && existingResolution && isOpen) {
+      setResolutionType(existingResolution.resolution_type);
+
+      if (existingResolution.resolution_type === "Return/refund") {
+        setActualRefund(existingResolution.actual_refund?.toString() || "");
+        setReasonForVariance(existingResolution.reason_for_variance || "");
+        setEtaDeliveryDate(existingResolution.eta_delivery_date || "");
+        setRefundMethod(existingResolution.refund_method || "");
+
+        // Parse JSON string for proof of payment
+        if (existingResolution.proof_of_payment_url) {
+          try {
+            const parsedUrl =
+              typeof existingResolution.proof_of_payment_url === "string"
+                ? JSON.parse(existingResolution.proof_of_payment_url)
+                : existingResolution.proof_of_payment_url;
+
+            setProofFilePreview(parsedUrl);
+            setProofFileType(
+              parsedUrl.endsWith(".pdf") ? "application/pdf" : "image/jpeg"
+            );
+          } catch (e) {
+            // If not JSON, use as-is
+            setProofFilePreview(existingResolution.proof_of_payment_url);
+            setProofFileType(
+              existingResolution.proof_of_payment_url.endsWith(".pdf")
+                ? "application/pdf"
+                : "image/jpeg"
+            );
+          }
+        }
+      } else if (existingResolution.resolution_type === "Replace") {
+        setReplacementType(existingResolution.replacement_type || "");
+        setExpectedReplacementDate(
+          existingResolution.expected_replacement_date || ""
+        );
+        setReplaceNotes(existingResolution.notes || "");
+      } else if (
+        existingResolution.resolution_type === "Conditionally accepted"
+      ) {
+        setConditionallyAcceptedReason(existingResolution.reason || "");
+
+        // Parse JSON string for attachment
+        if (existingResolution.attachment) {
+          try {
+            const parsedUrl =
+              typeof existingResolution.attachment === "string"
+                ? JSON.parse(existingResolution.attachment)
+                : existingResolution.attachment;
+
+            setAttachmentFilePreview(parsedUrl);
+            setAttachmentFileType(
+              parsedUrl.endsWith(".pdf") ? "application/pdf" : "image/jpeg"
+            );
+          } catch (e) {
+            // If not JSON, use as-is
+            setAttachmentFilePreview(existingResolution.attachment);
+            setAttachmentFileType(
+              existingResolution.attachment.endsWith(".pdf")
+                ? "application/pdf"
+                : "image/jpeg"
+            );
+          }
+        }
+      } else if (existingResolution.resolution_type === "Reject/scrap") {
+        setScrapReason(existingResolution.scrap_reason || "");
+        setReturnNotPossibleReason(
+          existingResolution.return_not_possible_reason || ""
+        );
+        setDisposalMethod(existingResolution.disposal_method || "");
+
+        // Parse JSON string for scrap attachment
+        if (existingResolution.scrap_attachment) {
+          try {
+            const parsedUrl =
+              typeof existingResolution.scrap_attachment === "string"
+                ? JSON.parse(existingResolution.scrap_attachment)
+                : existingResolution.scrap_attachment;
+
+            setScrapFilePreview(parsedUrl);
+            setScrapFileType(
+              parsedUrl.endsWith(".pdf") ? "application/pdf" : "image/jpeg"
+            );
+          } catch (e) {
+            // If not JSON, use as-is
+            setScrapFilePreview(existingResolution.scrap_attachment);
+            setScrapFileType(
+              existingResolution.scrap_attachment.endsWith(".pdf")
+                ? "application/pdf"
+                : "image/jpeg"
+            );
+          }
+        }
+      }
+    }
+  }, [isEditMode, existingResolution, isOpen]);
+
   // Auto-populate actual refund with expected refund
   useEffect(() => {
-    if (expectedRefund > 0 && !actualRefund) {
+    if (expectedRefund > 0 && !actualRefund && !isEditMode) {
       setActualRefund(expectedRefund.toFixed(2));
     }
-  }, [expectedRefund]);
+  }, [expectedRefund, isEditMode]);
 
   const handleActualRefundChange = (value: string) => {
     // Only allow numbers and decimals
@@ -442,87 +605,125 @@ export default function ResolutionButton({
         return;
       }
 
-      if (!proofFile) {
+      // In edit mode, file is optional if it already exists
+      if (!isEditMode && !proofFile) {
         toast("Please upload proof of payment or credit note", "error");
         return;
       }
 
-      let proofUrl = null;
+      let proofUrl = existingResolution?.proof_of_payment_url || null;
 
-      // Upload proof of payment to qc-failed-proof-of-payments folder
-      try {
-        const formData = new FormData();
-        formData.append("files", proofFile);
-        formData.append("folder", "qc-failed-proof-of-payments");
+      // Only upload if a new file is selected
+      if (proofFile) {
+        try {
+          const formData = new FormData();
+          formData.append("files", proofFile);
+          formData.append("folder", "qc-failed-proof-of-payments");
 
-        const uploadResponse = await fetch("/api/s3", {
-          method: "POST",
-          body: formData,
-        });
+          const uploadResponse = await fetch("/api/s3", {
+            method: "POST",
+            body: formData,
+          });
 
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload proof of payment");
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to upload proof of payment");
+          }
+
+          const uploadResult = await uploadResponse.json();
+          proofUrl = uploadResult.urls[0];
+        } catch (error) {
+          console.error("Error uploading proof:", error);
+          toast("Failed to upload proof of payment", "error");
+          return;
         }
-
-        const uploadResult = await uploadResponse.json();
-        proofUrl = uploadResult.urls[0];
-      } catch (error) {
-        console.error("Error uploading proof:", error);
-        toast("Failed to upload proof of payment", "error");
-        return;
       }
 
       // Submit resolution
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/resolution`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "createResolution",
-            mr_header_id: mrHeader.id,
-            mr_line_id: item.id,
-            lpo_mr_line_id: lpoMrLine?.id,
-            type: resolutionType,
-            failed_quantity: failedQuantity,
-            return_quantity: failedQuantity,
-            unit_price: unitPrice,
-            expected_refund: expectedRefund,
-            actual_refund: parseFloat(actualRefund),
-            variance_amount: varianceAmount,
-            reason_for_variance: reasonForVariance,
-            eta_delivery_date: etaDeliveryDate,
-            refund_method: refundMethod,
-            proof_of_payment_url: proofUrl,
-            created_by: userInfo?.name,
-          }),
-        }
-      );
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/qc`, {
+        method: isEditMode ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: isEditMode ? "updateQCResolution" : "createQCResolution",
+          resolution_id: existingResolution?.resolution_id,
+          old_type: existingResolution?.resolution_type,
+          mr_header_id: mrHeader.id,
+          mr_line_id: item.id,
+          type: resolutionType,
+          failed_quantity: failedQuantity,
+          return_quantity: failedQuantity,
+          expected_refund: expectedRefund,
+          actual_refund: parseFloat(actualRefund),
+          variance_amount: varianceAmount,
+          reason_for_variance: reasonForVariance,
+          eta_delivery_date: etaDeliveryDate,
+          refund_method: refundMethod,
+          proof_of_payment: JSON.stringify(proofUrl),
+        }),
+      });
 
       if (res.ok) {
-        toast("Resolution created", "success");
+        toast(
+          isEditMode ? "Resolution updated" : "Resolution created",
+          "success"
+        );
         setIsOpen(false);
-        setResolutionType("");
-        setActualRefund("");
-        setReasonForVariance("");
-        setEtaDeliveryDate("");
-        setRefundMethod("");
-        setProofFile(null);
-        setProofFilePreview(null);
-        setProofFileType("");
         router.refresh();
       } else {
         toast("Failed to create resolution", "error");
       }
-    } else if (resolutionType === "Conditionally accepted") {
+    }
+
+    if (resolutionType === "Replace") {
+      if (!replacementType) {
+        toast("Please select a replacement type", "error");
+        return;
+      }
+
+      if (!expectedReplacementDate) {
+        toast("Please select expected replacement date", "error");
+        return;
+      }
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/qc`, {
+        method: isEditMode ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: isEditMode ? "updateQCResolution" : "createQCResolution",
+          resolution_id: existingResolution?.resolution_id,
+          old_type: existingResolution?.resolution_type,
+          mr_header_id: mrHeader.id,
+          mr_line_id: item.id,
+          type: resolutionType,
+          failed_quantity: failedQuantity,
+          replacement_quantity: failedQuantity,
+          replacement_type: replacementType,
+          expected_replacement_date: expectedReplacementDate,
+          notes: replaceNotes,
+          created_by: userInfo?.name,
+        }),
+      });
+
+      if (res.ok) {
+        toast(
+          isEditMode ? "Resolution updated" : "Resolution created",
+          "success"
+        );
+        setIsOpen(false);
+        router.refresh();
+      } else {
+        toast("Failed to save resolution", "error");
+      }
+    }
+
+    if (resolutionType === "Conditionally accepted") {
       if (!conditionallyAcceptedReason) {
         toast("Please enter a reason", "error");
         return;
       }
 
-      let attachmentUrl = null;
+      let attachmentUrl = existingResolution?.attachment || null;
 
-      // Upload attachment to qc-failed-conditionally-accepted folder (if provided)
+      // Only upload if a new file is selected
       if (attachmentFile) {
         try {
           const formData = new FormData();
@@ -547,48 +748,47 @@ export default function ResolutionButton({
         }
       }
 
-      // Submit resolution
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/resolution`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "createResolution",
-            mr_header_id: mrHeader.id,
-            mr_line_id: item.id,
-            lpo_mr_line_id: lpoMrLine?.id,
-            type: resolutionType,
-            failed_quantity: failedQuantity,
-            conditionally_accepted_quantity: failedQuantity,
-            reason: conditionallyAcceptedReason,
-            attachment_url: attachmentUrl,
-            created_by: userInfo?.name,
-          }),
-        }
-      );
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/qc`, {
+        method: isEditMode ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: isEditMode ? "updateQCResolution" : "createQCResolution",
+          resolution_id: existingResolution?.resolution_id,
+          old_type: existingResolution?.resolution_type,
+          mr_header_id: mrHeader.id,
+          mr_line_id: item.id,
+          type: resolutionType,
+          failed_quantity: failedQuantity,
+          conditionally_accepted_quantity: failedQuantity,
+          reason: conditionallyAcceptedReason,
+          attachment_url: attachmentUrl,
+          created_by: userInfo?.name,
+        }),
+      });
 
       if (res.ok) {
-        toast("Resolution created", "success");
+        toast(
+          isEditMode
+            ? "Resolution updated successfully"
+            : "Resolution created successfully",
+          "success"
+        );
         setIsOpen(false);
-        setResolutionType("");
-        setConditionallyAcceptedReason("");
-        setAttachmentFile(null);
-        setAttachmentFilePreview(null);
-        setAttachmentFileType("");
         router.refresh();
       } else {
-        toast("Failed to create resolution", "error");
+        toast("Failed to save resolution", "error");
       }
-    } else if (resolutionType === "Reject/scrap") {
+    }
+
+    if (resolutionType === "Reject/scrap") {
       if (!scrapReason) {
         toast("Please select a scrap reason", "error");
         return;
       }
 
-      let scrapUrl = null;
+      let scrapUrl = existingResolution?.scrap_attachment || null;
 
-      // Upload scrap attachment to qc-failed-scrap-reject folder (if provided)
+      // Only upload if a new file is selected
       if (scrapFile) {
         try {
           const formData = new FormData();
@@ -613,42 +813,37 @@ export default function ResolutionButton({
         }
       }
 
-      // Submit resolution
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/resolution`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "createResolution",
-            mr_header_id: mrHeader.id,
-            mr_line_id: item.id,
-            lpo_mr_line_id: lpoMrLine?.id,
-            type: resolutionType,
-            failed_quantity: failedQuantity,
-            scrap_quantity: failedQuantity,
-            scrap_reason: scrapReason,
-            return_not_possible_reason: returnNotPossibleReason,
-            disposal_method: disposalMethod,
-            scrap_attachment_url: scrapUrl,
-            created_by: userInfo?.name,
-          }),
-        }
-      );
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/qc`, {
+        method: isEditMode ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: isEditMode ? "updateQCResolution" : "createQCResolution",
+          resolution_id: existingResolution?.resolution_id,
+          old_type: existingResolution?.resolution_type,
+          mr_header_id: mrHeader.id,
+          mr_line_id: item.id,
+          type: resolutionType,
+          failed_quantity: failedQuantity,
+          scrap_quantity: failedQuantity,
+          scrap_reason: scrapReason,
+          return_not_possible_reason: returnNotPossibleReason,
+          disposal_method: disposalMethod,
+          scrap_attachment_url: scrapUrl,
+          created_by: userInfo?.name,
+        }),
+      });
 
       if (res.ok) {
-        toast("Resolution created", "success");
+        toast(
+          isEditMode
+            ? "Resolution updated successfully"
+            : "Resolution created successfully",
+          "success"
+        );
         setIsOpen(false);
-        setResolutionType("");
-        setScrapReason("");
-        setReturnNotPossibleReason("");
-        setDisposalMethod("");
-        setScrapFile(null);
-        setScrapFilePreview(null);
-        setScrapFileType("");
         router.refresh();
       } else {
-        toast("Failed to create resolution", "error");
+        toast("Failed to save resolution", "error");
       }
     }
   }
@@ -663,15 +858,18 @@ export default function ResolutionButton({
         onClick={() => setIsOpen(true)}
         style={{ borderRadius: "5px", padding: "7px 7px" }}
       >
-        <img src={plusIcon} alt="plus" />
+        <img
+          src={isEditMode ? pencilIcon : plusIcon}
+          alt={isEditMode ? "edit" : "add"}
+        />
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header="CREATE RESOLUTION"
+          header={isEditMode ? "EDIT RESOLUTION" : "CREATE RESOLUTION"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"CONFIRM"}
+          addButtonLabel={isEditMode ? "UPDATE" : "CONFIRM"}
         >
           <div className="input-row full">
             <InputItem
@@ -746,6 +944,8 @@ export default function ResolutionButton({
               </table>
 
               <br />
+              <br />
+              <br />
 
               <div className="input-row half">
                 <div className="input-item">
@@ -792,7 +992,10 @@ export default function ResolutionButton({
 
               <div className="input-row half">
                 <div className="input-item">
-                  <label>PROOF OF PAYMENT / CREDIT NOTE</label>
+                  <label>
+                    PROOF OF PAYMENT / CREDIT NOTE{" "}
+                    {isEditMode && proofFilePreview && "(Click to change)"}
+                  </label>
                   <div
                     onDragOver={handleProofDragOver}
                     onDrop={handleProofDrop}
@@ -809,7 +1012,7 @@ export default function ResolutionButton({
                       cursor: "pointer",
                     }}
                   >
-                    {proofFile ? (
+                    {proofFile || proofFilePreview ? (
                       <div style={{ width: "100%" }}>
                         {proofFileType.startsWith("image/") &&
                         proofFilePreview ? (
@@ -862,7 +1065,7 @@ export default function ResolutionButton({
                                 gap: "10px",
                               }}
                             >
-                              {proofFile.name}
+                              {proofFile?.name || "Existing file"}
                             </div>
                             <button
                               type="button"
@@ -945,6 +1148,8 @@ export default function ResolutionButton({
               </table>
 
               <br />
+              <br />
+              <br />
 
               <div className="input-row half">
                 <InputItem
@@ -972,7 +1177,7 @@ export default function ResolutionButton({
                   value={replaceNotes}
                   type={"textarea"}
                   placeholder={"ENTER NOTES"}
-                  required
+                  required={false}
                   onChange={(e) => setReplaceNotes(e.target.value)}
                 />
               </div>
@@ -1007,6 +1212,10 @@ export default function ResolutionButton({
                 </tbody>
               </table>
 
+              <br />
+              <br />
+              <br />
+
               <div className="input-row full">
                 <InputItem
                   label={"REASON"}
@@ -1022,7 +1231,12 @@ export default function ResolutionButton({
 
               <div className="input-row half">
                 <div className="input-item">
-                  <label>ATTACHMENTS</label>
+                  <label>
+                    ATTACHMENTS{" "}
+                    {isEditMode &&
+                      attachmentFilePreview &&
+                      "(Optional - Click to change)"}
+                  </label>
                   <div
                     onDragOver={handleAttachmentDragOver}
                     onDrop={handleAttachmentDrop}
@@ -1039,7 +1253,7 @@ export default function ResolutionButton({
                       cursor: "pointer",
                     }}
                   >
-                    {attachmentFile ? (
+                    {attachmentFile || attachmentFilePreview ? (
                       <div style={{ width: "100%" }}>
                         {attachmentFileType.startsWith("image/") &&
                         attachmentFilePreview ? (
@@ -1092,7 +1306,7 @@ export default function ResolutionButton({
                                 gap: "10px",
                               }}
                             >
-                              {attachmentFile.name}
+                              {attachmentFile?.name || "Existing file"}
                             </div>
                             <button
                               type="button"
@@ -1174,6 +1388,10 @@ export default function ResolutionButton({
                 </tbody>
               </table>
 
+              <br />
+              <br />
+              <br />
+
               <div className="input-row half">
                 <InputItem
                   label={"SCRAP REASON"}
@@ -1191,10 +1409,21 @@ export default function ResolutionButton({
                 />
               </div>
 
-              {scrapReason === "Supplier rejection refused" && (
+              {(scrapReason === "Supplier rejection refused" ||
+                scrapReason === "Expired" ||
+                scrapReason === "Damaged beyond repair") && (
                 <div className="input-row half">
                   <div className="input-item">
-                    <label>SUPPLIER REJECTION EMAIL/CLAUSE</label>
+                    <label>
+                      {scrapReason === "Supplier rejection refused"
+                        ? "SUPPLIER REJECTION EMAIL/CLAUSE"
+                        : scrapReason === "Expired"
+                        ? "EXPIRED LABEL/ITEM"
+                        : "ATTACHMENTS"}{" "}
+                      {isEditMode &&
+                        scrapFilePreview &&
+                        "(Optional - Click to change)"}
+                    </label>
                     <div
                       onDragOver={handleScrapDragOver}
                       onDrop={handleScrapDrop}
@@ -1211,7 +1440,7 @@ export default function ResolutionButton({
                         cursor: "pointer",
                       }}
                     >
-                      {scrapFile ? (
+                      {scrapFile || scrapFilePreview ? (
                         <div style={{ width: "100%" }}>
                           {scrapFileType.startsWith("image/") &&
                           scrapFilePreview ? (
@@ -1264,259 +1493,7 @@ export default function ResolutionButton({
                                   gap: "10px",
                                 }}
                               >
-                                {scrapFile.name}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={removeScrapFile}
-                                style={{
-                                  width: "30px",
-                                  height: "30px",
-                                  borderRadius: "50%",
-                                  border: "none",
-                                  backgroundColor: "black",
-                                  color: "white",
-                                  cursor: "pointer",
-                                  fontSize: "18px",
-                                }}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          UPLOAD OR DRAG ATTACHMENT
-                          <br />
-                          <br />
-                          <input
-                            ref={scrapFileInputRef}
-                            type="file"
-                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                            onChange={handleScrapFileSelect}
-                            style={{ display: "none" }}
-                          />
-                          <Button
-                            componentType="button"
-                            bgColor="black"
-                            borderColor="black"
-                            textColor="white"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              scrapFileInputRef.current?.click();
-                            }}
-                          >
-                            <img src={uploadIcon} alt="upload" />
-                            UPLOAD FILE
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {scrapReason === "Expired" && (
-                <div className="input-row half">
-                  <div className="input-item">
-                    <label>EXPIRED LABEL/ITEM</label>
-                    <div
-                      onDragOver={handleScrapDragOver}
-                      onDrop={handleScrapDrop}
-                      style={{
-                        border: "1px dashed #d1d5db",
-                        borderRadius: "5px",
-                        padding: "40px",
-                        textAlign: "center",
-                        backgroundColor: "#f9fafb",
-                        flexDirection: "column",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {scrapFile ? (
-                        <div style={{ width: "100%" }}>
-                          {scrapFileType.startsWith("image/") &&
-                          scrapFilePreview ? (
-                            <div style={{ position: "relative" }}>
-                              <img
-                                src={scrapFilePreview}
-                                alt="Preview"
-                                style={{
-                                  maxWidth: "100%",
-                                  maxHeight: "300px",
-                                  borderRadius: "5px",
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={removeScrapFile}
-                                style={{
-                                  position: "absolute",
-                                  top: "10px",
-                                  right: "10px",
-                                  width: "30px",
-                                  height: "30px",
-                                  borderRadius: "50%",
-                                  border: "none",
-                                  backgroundColor: "rgba(0,0,0,0.6)",
-                                  color: "white",
-                                  cursor: "pointer",
-                                  fontSize: "18px",
-                                }}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                padding: "16px",
-                                backgroundColor: "white",
-                                borderRadius: "8px",
-                                border: "1px solid #e5e7eb",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                }}
-                              >
-                                {scrapFile.name}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={removeScrapFile}
-                                style={{
-                                  width: "30px",
-                                  height: "30px",
-                                  borderRadius: "50%",
-                                  border: "none",
-                                  backgroundColor: "black",
-                                  color: "white",
-                                  cursor: "pointer",
-                                  fontSize: "18px",
-                                }}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          UPLOAD OR DRAG ATTACHMENT
-                          <br />
-                          <br />
-                          <input
-                            ref={scrapFileInputRef}
-                            type="file"
-                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                            onChange={handleScrapFileSelect}
-                            style={{ display: "none" }}
-                          />
-                          <Button
-                            componentType="button"
-                            bgColor="black"
-                            borderColor="black"
-                            textColor="white"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              scrapFileInputRef.current?.click();
-                            }}
-                          >
-                            <img src={uploadIcon} alt="upload" />
-                            UPLOAD FILE
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {scrapReason === "Damaged beyond repair" && (
-                <div className="input-row half">
-                  <div className="input-item">
-                    <label>ATTACHMENTS</label>
-                    <div
-                      onDragOver={handleScrapDragOver}
-                      onDrop={handleScrapDrop}
-                      style={{
-                        border: "1px dashed #d1d5db",
-                        borderRadius: "5px",
-                        padding: "40px",
-                        textAlign: "center",
-                        backgroundColor: "#f9fafb",
-                        flexDirection: "column",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {scrapFile ? (
-                        <div style={{ width: "100%" }}>
-                          {scrapFileType.startsWith("image/") &&
-                          scrapFilePreview ? (
-                            <div style={{ position: "relative" }}>
-                              <img
-                                src={scrapFilePreview}
-                                alt="Preview"
-                                style={{
-                                  maxWidth: "100%",
-                                  maxHeight: "300px",
-                                  borderRadius: "5px",
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={removeScrapFile}
-                                style={{
-                                  position: "absolute",
-                                  top: "10px",
-                                  right: "10px",
-                                  width: "30px",
-                                  height: "30px",
-                                  borderRadius: "50%",
-                                  border: "none",
-                                  backgroundColor: "rgba(0,0,0,0.6)",
-                                  color: "white",
-                                  cursor: "pointer",
-                                  fontSize: "18px",
-                                }}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                padding: "16px",
-                                backgroundColor: "white",
-                                borderRadius: "8px",
-                                border: "1px solid #e5e7eb",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                }}
-                              >
-                                {scrapFile.name}
+                                {scrapFile?.name || "Existing file"}
                               </div>
                               <button
                                 type="button"

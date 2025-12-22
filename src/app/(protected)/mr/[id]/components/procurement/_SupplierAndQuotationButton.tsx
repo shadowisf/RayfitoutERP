@@ -7,11 +7,12 @@ import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import AttachQuotationButton from "./_AttachQuotationButton";
 import RejectCommentPopUp from "../manager/RejectCommentPopUp";
 import { MrHeader } from "../../types/mrHeader";
+import { MrLine } from "../../types/mrLine";
 
 type SupplierQuotation = {
   id?: number;
@@ -28,18 +29,21 @@ type SupplierQuotation = {
 
 type SupplierAndQuotationButtonProps = {
   mrHeader: MrHeader;
-  mrLineID: number;
+  mrLine: MrLine;
 };
 
 export default function SupplierAndQuotationButton({
   mrHeader,
-  mrLineID,
+  mrLine,
 }: SupplierAndQuotationButtonProps) {
   const router = useRouter();
 
+  const pencilIcon = "/icons/pencil.svg";
+  const plusIcon = "/icons/plus.svg";
   const trashIcon = "/icons/trash.svg";
   const externalLinkIcon = "/icons/external-link.svg";
   const closeIcon = "/icons/cross-small.svg";
+  const uploadIcon = "/icons/upload.svg";
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isSupplierModalOpen, setIsSupplierModalOpen] =
@@ -56,7 +60,6 @@ export default function SupplierAndQuotationButton({
     useState<boolean>(false);
   const [approvedSupplierName, setApprovedSupplierName] = useState<string>("");
 
-  // State for rejection comments
   const [rejectComments, setRejectComments] = useState<string>("");
 
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -117,11 +120,27 @@ export default function SupplierAndQuotationButton({
   const [address, setAddress] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
 
-  // Check if quotations exist on mount
+  // File states for TRN Certificate
+  const [trnCertificateFile, setTrnCertificateFile] = useState<File | null>(
+    null
+  );
+  const [trnCertificatePreview, setTrnCertificatePreview] = useState<
+    string | null
+  >(null);
+  const [trnCertificateType, setTrnCertificateType] = useState<string>("");
+  const trnCertificateInputRef = useRef<HTMLInputElement | null>(null);
+
+  // File states for Trade License
+  const [tradeLicenseFile, setTradeLicenseFile] = useState<File | null>(null);
+  const [tradeLicensePreview, setTradeLicensePreview] = useState<string | null>(
+    null
+  );
+  const [tradeLicenseType, setTradeLicenseType] = useState<string>("");
+  const tradeLicenseInputRef = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
     setIsMounted(true);
 
-    // Fetch suppliers
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -130,7 +149,6 @@ export default function SupplierAndQuotationButton({
       .then((data) => setSuppliers(data))
       .catch((err) => console.error(err));
 
-    // Fetch material categories
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`
     )
@@ -142,11 +160,9 @@ export default function SupplierAndQuotationButton({
         console.error(err);
       });
 
-    // Check for existing quotations
     checkExistingQuotations();
-  }, [mrLineID]);
+  }, [mrLine.id]);
 
-  // Check if quotations already exist for this MR line
   async function checkExistingQuotations() {
     try {
       const res = await fetch(
@@ -154,7 +170,7 @@ export default function SupplierAndQuotationButton({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: mrLineID }),
+          body: JSON.stringify({ id: mrLine.id }),
         }
       );
 
@@ -167,13 +183,11 @@ export default function SupplierAndQuotationButton({
       if (data && data.length > 0) {
         setMode("edit");
 
-        // Check if all suppliers are rejected
         const allRejected = data.every(
           (q: SupplierQuotation) => q.approval_status === "Rejected"
         );
         setAllSuppliersRejected(allRejected);
 
-        // Check if all suppliers are pending (null or undefined approval_status)
         const allPending = data.every(
           (q: SupplierQuotation) =>
             !q.approval_status || q.approval_status === null
@@ -185,7 +199,6 @@ export default function SupplierAndQuotationButton({
         );
         setHasApprovedSupplier(hasApproved);
 
-        // Store the approved supplier name
         if (hasApproved) {
           const approvedQuotation = data.find(
             (q: SupplierQuotation) => q.approval_status === "Approved"
@@ -253,7 +266,6 @@ export default function SupplierAndQuotationButton({
     }
   }, [materialCategoryID]);
 
-  // Fetch existing quotations when modal opens in edit mode
   async function fetchExistingQuotations() {
     if (mode !== "edit") return;
 
@@ -263,7 +275,7 @@ export default function SupplierAndQuotationButton({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: mrLineID }),
+          body: JSON.stringify({ id: mrLine.id }),
         }
       );
 
@@ -289,7 +301,6 @@ export default function SupplierAndQuotationButton({
           supplier_name: item.supplier_name,
         }));
 
-        // Ensure at least 3 rows
         while (formattedQuotations.length < 3) {
           formattedQuotations.push({
             supplier_id: "",
@@ -309,13 +320,11 @@ export default function SupplierAndQuotationButton({
     }
   }
 
-  // Load data when modal opens
   useEffect(() => {
     if (isOpen) {
       if (mode === "edit") {
         fetchExistingQuotations();
       } else {
-        // Reset to default empty rows for add mode
         setSupplierQuotations([
           {
             supplier_id: "",
@@ -346,7 +355,6 @@ export default function SupplierAndQuotationButton({
     }
   }, [isOpen, mode]);
 
-  // Reset filesToDelete when modal closes without confirming
   useEffect(() => {
     if (!isOpen) {
       setFilesToDelete([]);
@@ -402,6 +410,16 @@ export default function SupplierAndQuotationButton({
       ...newQuotations[index],
       [field]: value,
     };
+
+    // Automatically calculate total price when unit_price changes
+    if (field === "unit_price") {
+      const unitPrice = parseFloat(value as string);
+      const quantity = parseFloat(mrLine.quantity as any) || 0;
+      newQuotations[index].total_price = isNaN(unitPrice * quantity)
+        ? ""
+        : (unitPrice * quantity).toFixed(2);
+    }
+
     setSupplierQuotations(newQuotations);
   }
 
@@ -413,12 +431,10 @@ export default function SupplierAndQuotationButton({
   function handleRemoveFile(index: number) {
     const quotation = supplierQuotations[index];
 
-    // If there's an existing URL (file from S3), mark it for deletion
     if (quotation.quotation_url && !quotation.quotation_file) {
       setFilesToDelete((prev) => [...prev, quotation.quotation_url]);
     }
 
-    // Clear the quotation file data immediately in the UI
     const newQuotations = [...supplierQuotations];
     newQuotations[index] = {
       ...newQuotations[index],
@@ -428,86 +444,244 @@ export default function SupplierAndQuotationButton({
     setSupplierQuotations(newQuotations);
   }
 
-  function handleViewFile(quotation: SupplierQuotation) {
-    if (quotation.quotation_file) {
-      const fileUrl = URL.createObjectURL(quotation.quotation_file);
-      return fileUrl;
-    } else if (quotation.quotation_url) {
-      window.open(quotation.quotation_url, "_blank");
-    }
-  }
+  // TRN Certificate file handlers
+  const handleTrnCertificateSelect = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
 
-  function getFileName(quotation: SupplierQuotation): string {
-    if (quotation.quotation_file) {
-      return quotation.quotation_file.name;
-    } else if (quotation.quotation_url) {
-      const urlParts = quotation.quotation_url.split("/");
-      const fileName = urlParts[urlParts.length - 1];
-      // Decode URL-encoded filename
-      return decodeURIComponent(fileName) || "View File";
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      toast("File size must be less than 10MB", "error");
+      return;
     }
-    return "";
-  }
+
+    setTrnCertificateFile(selectedFile);
+    setTrnCertificateType(selectedFile.type);
+
+    if (selectedFile.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTrnCertificatePreview(reader.result as string);
+      };
+      reader.readAsDataURL(selectedFile);
+    } else {
+      setTrnCertificatePreview(null);
+    }
+  };
+
+  const removeTrnCertificateFile = () => {
+    setTrnCertificateFile(null);
+    setTrnCertificatePreview(null);
+    setTrnCertificateType("");
+    if (trnCertificateInputRef.current) {
+      trnCertificateInputRef.current.value = "";
+    }
+  };
+
+  const handleTrnCertificateDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleTrnCertificateDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (!droppedFile) return;
+
+    if (droppedFile.size > 10 * 1024 * 1024) {
+      toast("File size must be less than 10MB", "error");
+      return;
+    }
+
+    setTrnCertificateFile(droppedFile);
+    setTrnCertificateType(droppedFile.type);
+
+    if (droppedFile.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTrnCertificatePreview(reader.result as string);
+      };
+      reader.readAsDataURL(droppedFile);
+    } else {
+      setTrnCertificatePreview(null);
+    }
+  };
+
+  // Trade License file handlers
+  const handleTradeLicenseSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      toast("File size must be less than 10MB", "error");
+      return;
+    }
+
+    setTradeLicenseFile(selectedFile);
+    setTradeLicenseType(selectedFile.type);
+
+    if (selectedFile.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTradeLicensePreview(reader.result as string);
+      };
+      reader.readAsDataURL(selectedFile);
+    } else {
+      setTradeLicensePreview(null);
+    }
+  };
+
+  const removeTradeLicenseFile = () => {
+    setTradeLicenseFile(null);
+    setTradeLicensePreview(null);
+    setTradeLicenseType("");
+    if (tradeLicenseInputRef.current) {
+      tradeLicenseInputRef.current.value = "";
+    }
+  };
+
+  const handleTradeLicenseDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleTradeLicenseDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (!droppedFile) return;
+
+    if (droppedFile.size > 10 * 1024 * 1024) {
+      toast("File size must be less than 10MB", "error");
+      return;
+    }
+
+    setTradeLicenseFile(droppedFile);
+    setTradeLicenseType(droppedFile.type);
+
+    if (droppedFile.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTradeLicensePreview(reader.result as string);
+      };
+      reader.readAsDataURL(droppedFile);
+    } else {
+      setTradeLicensePreview(null);
+    }
+  };
 
   async function handleSupplierSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     const trn_number = `${trn1}-${trn2}-${trn3}`;
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          material_categories: materialCategoryID,
-          material_subcategories: materialSubCategoryID,
-          trn_number,
-          avg_lead_time: null,
-          supplier_rating: null,
-          currency,
-          status,
-          contact_person_name: contactPersonName,
-          phone,
-          email,
-          address,
-          notes,
-        }),
+    try {
+      let trnCertificateUrl = null;
+      if (trnCertificateFile) {
+        const trnFormData = new FormData();
+        trnFormData.append("files", trnCertificateFile);
+        trnFormData.append("folder", "supplier-trn-certificates");
+
+        const trnUploadResponse = await fetch("/api/s3", {
+          method: "POST",
+          body: trnFormData,
+        });
+
+        if (!trnUploadResponse.ok) {
+          throw new Error("Failed to upload TRN certificate");
+        }
+
+        const trnUploadResult = await trnUploadResponse.json();
+        trnCertificateUrl = trnUploadResult.urls[0];
       }
-    );
 
-    if (res.ok) {
-      toast("Supplier created", "success");
+      let tradeLicenseUrl = null;
+      if (tradeLicenseFile) {
+        const tradeFormData = new FormData();
+        tradeFormData.append("files", tradeLicenseFile);
+        tradeFormData.append("folder", "supplier-trade-licenses");
 
-      setName("");
-      setMaterialCategoryID([]);
-      setMaterialSubCategoryID([]);
-      setTrn1("");
-      setTrn2("");
-      setTrn3("");
-      setCurrency("");
-      setStatus("");
-      setContactPersonName("");
-      setPhone("");
-      setEmail("");
-      setAddress("");
-      setNotes("");
+        const tradeUploadResponse = await fetch("/api/s3", {
+          method: "POST",
+          body: tradeFormData,
+        });
 
-      setIsSupplierModalOpen(false);
+        if (!tradeUploadResponse.ok) {
+          throw new Error("Failed to upload trade license");
+        }
 
-      // Refresh suppliers list
-      fetch("/api/supplier", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      })
-        .then((res) => res.json())
-        .then((data) => setSuppliers(data))
-        .catch((err) => console.error(err));
+        const tradeUploadResult = await tradeUploadResponse.json();
+        tradeLicenseUrl = tradeUploadResult.urls[0];
+      }
 
-      router.refresh();
-    } else {
-      toast("Failed to create supplier", "error");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "createSupplier",
+            name,
+            material_categories: materialCategoryID,
+            material_subcategories: materialSubCategoryID,
+            trn_number,
+            trn_certificate: JSON.stringify(trnCertificateUrl),
+            trade_license: JSON.stringify(tradeLicenseUrl),
+            avg_lead_time: null,
+            supplier_rating: null,
+            currency,
+            status,
+            contact_person_name: contactPersonName,
+            phone,
+            email,
+            address,
+            notes,
+          }),
+        }
+      );
+
+      if (res.ok) {
+        toast("Supplier created", "success");
+
+        setName("");
+        setMaterialCategoryID([]);
+        setMaterialSubCategoryID([]);
+        setTrn1("");
+        setTrn2("");
+        setTrn3("");
+        setCurrency("");
+        setStatus("");
+        setContactPersonName("");
+        setPhone("");
+        setEmail("");
+        setAddress("");
+        setNotes("");
+        setTrnCertificateFile(null);
+        setTrnCertificatePreview(null);
+        setTradeLicenseFile(null);
+        setTradeLicensePreview(null);
+
+        setIsSupplierModalOpen(false);
+
+        fetch("/api/supplier", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+          .then((res) => res.json())
+          .then((data) => setSuppliers(data))
+          .catch((err) => console.error(err));
+
+        router.refresh();
+      } else {
+        toast("Failed to create supplier", "error");
+      }
+    } catch (error: any) {
+      console.error("Error creating supplier:", error);
+      toast(error.message || "Failed to create supplier", "error");
     }
   }
 
@@ -608,9 +782,6 @@ export default function SupplierAndQuotationButton({
 
     for (let i = 0; i < validQuotations.length; i++) {
       const quotation = validQuotations[i];
-      const originalIndex = supplierQuotations.findIndex(
-        (q) => q === quotation
-      );
 
       if (!quotation.supplier_id) {
         toast(`Please select a supplier`, "error");
@@ -636,20 +807,18 @@ export default function SupplierAndQuotationButton({
     setIsUploading(true);
 
     try {
-      // First, delete marked files from S3
       if (filesToDelete.length > 0) {
         await deleteFilesFromS3(filesToDelete);
         console.log(`${filesToDelete.length} file(s) deleted from S3`);
       }
 
-      // Then upload new files
       const quotationsWithUrls = await uploadFilesToS3(validQuotations);
 
       const apiPayload =
         mode === "edit"
           ? {
               action: "updateSupplierAndQuotation",
-              mr_line_id: mrLineID,
+              mr_line_id: mrLine.id,
               quotations: quotationsWithUrls.map((q) => ({
                 id: q.id,
                 supplier_id: q.supplier_id,
@@ -661,7 +830,7 @@ export default function SupplierAndQuotationButton({
             }
           : {
               action: "addSupplierAndQuotation",
-              mr_line_id: mrLineID,
+              mr_line_id: mrLine.id,
               quotations: quotationsWithUrls.map((q) => ({
                 supplier_id: q.supplier_id,
                 quotation_file: q.quotation_url,
@@ -689,7 +858,6 @@ export default function SupplierAndQuotationButton({
         );
         setIsOpen(false);
 
-        // Reset form and deletion tracking
         setSupplierQuotations([
           {
             supplier_id: "",
@@ -718,7 +886,6 @@ export default function SupplierAndQuotationButton({
         ]);
         setFilesToDelete([]);
 
-        // Re-check if quotations exist after submit
         await checkExistingQuotations();
 
         router.refresh();
@@ -805,30 +972,28 @@ export default function SupplierAndQuotationButton({
           (mode === "edit" ? (
             <Button
               componentType="button"
-              bgColor="white"
-              borderColor="black"
+              bgColor="rgba(239, 239, 239, 1)"
+              borderColor="rgba(223, 223, 223, 1)"
               textColor="black"
               onClick={() => setIsOpen(true)}
               style={{
-                padding: "7px 20px",
-                borderRadius: "25px",
+                padding: "7px 7px",
               }}
             >
-              Edit Suppliers & Quotations
+              <img src={pencilIcon} alt="pencil" />
             </Button>
           ) : (
             <Button
               componentType="button"
-              bgColor="black"
+              bgColor="rgba(239, 239, 239, 1)"
               textColor="white"
-              borderColor="black"
+              borderColor="rgba(223, 223, 223, 1)"
               onClick={() => setIsOpen(true)}
               style={{
-                padding: "7px 20px",
-                borderRadius: "25px",
+                padding: "7px 7px",
               }}
             >
-              Add Suppliers & Quotation
+              <img src={plusIcon} alt="plus" />
             </Button>
           ))}
       </div>
@@ -851,7 +1016,6 @@ export default function SupplierAndQuotationButton({
                   <th>#</th>
                   <th>SUPPLIER</th>
                   <th>QUOTATION</th>
-                  {/* <th>RATING</th> */}
                   <th>UNIT PRICE</th>
                   <th>TOTAL PRICE</th>
                   {supplierQuotations.length > 3 && <th>ACTION</th>}
@@ -922,20 +1086,6 @@ export default function SupplierAndQuotationButton({
                             />
                           )}
                       </td>
-                      {/* <td style={{ minWidth: "150px" }}>
-                        <input
-                          type="number"
-                          value={quotation.rating}
-                          onChange={(e) =>
-                            updateQuotation(index, "rating", e.target.value)
-                          }
-                          placeholder="RATING"
-                          step="1"
-                          min="0"
-                          max="5"
-                          disabled
-                        />
-                      </td> */}
                       <td>
                         <div className="input-prefix right">
                           <span>AED</span>
@@ -969,6 +1119,7 @@ export default function SupplierAndQuotationButton({
                                 e.target.value
                               )
                             }
+                            disabled
                           />
                         </div>
                       </td>
@@ -1033,7 +1184,7 @@ export default function SupplierAndQuotationButton({
                 label="NAME"
                 type="text"
                 value={name}
-                placeholder={"ENTER SUPPLIER NAME"}
+                placeholder={"ENTER NAME"}
                 required
                 onChange={(e) => {
                   setName(e.target.value);
@@ -1090,6 +1241,252 @@ export default function SupplierAndQuotationButton({
                     value={trn3}
                     onChange={(e) => setTrn3(e.target.value)}
                   />
+                </div>
+              </div>
+            </div>
+
+            <div className="input-row half">
+              <div className="input-item">
+                <label>TRN CERTIFICATE</label>
+                <div
+                  onDragOver={handleTrnCertificateDragOver}
+                  onDrop={handleTrnCertificateDrop}
+                  style={{
+                    border: "1px dashed #d1d5db",
+                    borderRadius: "5px",
+                    padding: "40px",
+                    textAlign: "center",
+                    backgroundColor: "#f9fafb",
+                    flexDirection: "column",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  {trnCertificateFile || trnCertificatePreview ? (
+                    <div style={{ width: "100%" }}>
+                      {trnCertificateType.startsWith("image/") &&
+                      trnCertificatePreview ? (
+                        <div style={{ position: "relative" }}>
+                          <img
+                            src={trnCertificatePreview}
+                            alt="Preview"
+                            style={{
+                              maxWidth: "100%",
+                              maxHeight: "300px",
+                              borderRadius: "5px",
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={removeTrnCertificateFile}
+                            style={{
+                              position: "absolute",
+                              top: "10px",
+                              right: "10px",
+                              width: "30px",
+                              height: "30px",
+                              borderRadius: "50%",
+                              border: "none",
+                              backgroundColor: "rgba(0,0,0,0.6)",
+                              color: "white",
+                              cursor: "pointer",
+                              fontSize: "18px",
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "16px",
+                            backgroundColor: "white",
+                            borderRadius: "8px",
+                            border: "1px solid #e5e7eb",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                            }}
+                          >
+                            {trnCertificateFile?.name || "Existing file"}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={removeTrnCertificateFile}
+                            style={{
+                              width: "30px",
+                              height: "30px",
+                              borderRadius: "50%",
+                              border: "none",
+                              backgroundColor: "black",
+                              color: "white",
+                              cursor: "pointer",
+                              fontSize: "18px",
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      UPLOAD OR DRAG ATTACHMENT
+                      <br />
+                      <br />
+                      <input
+                        ref={trnCertificateInputRef}
+                        type="file"
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                        onChange={handleTrnCertificateSelect}
+                        style={{ display: "none" }}
+                      />
+                      <Button
+                        componentType="button"
+                        bgColor="black"
+                        borderColor="black"
+                        textColor="white"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          trnCertificateInputRef.current?.click();
+                        }}
+                      >
+                        <img src={uploadIcon} alt="upload" />
+                        UPLOAD FILE
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="input-item">
+                <label>TRADE LICENSE</label>
+                <div
+                  onDragOver={handleTradeLicenseDragOver}
+                  onDrop={handleTradeLicenseDrop}
+                  style={{
+                    border: "1px dashed #d1d5db",
+                    borderRadius: "5px",
+                    padding: "40px",
+                    textAlign: "center",
+                    backgroundColor: "#f9fafb",
+                    flexDirection: "column",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  {tradeLicenseFile || tradeLicensePreview ? (
+                    <div style={{ width: "100%" }}>
+                      {tradeLicenseType.startsWith("image/") &&
+                      tradeLicensePreview ? (
+                        <div style={{ position: "relative" }}>
+                          <img
+                            src={tradeLicensePreview}
+                            alt="Preview"
+                            style={{
+                              maxWidth: "100%",
+                              maxHeight: "300px",
+                              borderRadius: "5px",
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={removeTradeLicenseFile}
+                            style={{
+                              position: "absolute",
+                              top: "10px",
+                              right: "10px",
+                              width: "30px",
+                              height: "30px",
+                              borderRadius: "50%",
+                              border: "none",
+                              backgroundColor: "rgba(0,0,0,0.6)",
+                              color: "white",
+                              cursor: "pointer",
+                              fontSize: "18px",
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "16px",
+                            backgroundColor: "white",
+                            borderRadius: "8px",
+                            border: "1px solid #e5e7eb",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                            }}
+                          >
+                            {tradeLicenseFile?.name || "Existing file"}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={removeTradeLicenseFile}
+                            style={{
+                              width: "30px",
+                              height: "30px",
+                              borderRadius: "50%",
+                              border: "none",
+                              backgroundColor: "black",
+                              color: "white",
+                              cursor: "pointer",
+                              fontSize: "18px",
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      UPLOAD OR DRAG ATTACHMENT
+                      <br />
+                      <br />
+                      <input
+                        ref={tradeLicenseInputRef}
+                        type="file"
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                        onChange={handleTradeLicenseSelect}
+                        style={{ display: "none" }}
+                      />
+                      <Button
+                        componentType="button"
+                        bgColor="black"
+                        borderColor="black"
+                        textColor="white"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          tradeLicenseInputRef.current?.click();
+                        }}
+                      >
+                        <img src={uploadIcon} alt="upload" />
+                        UPLOAD FILE
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

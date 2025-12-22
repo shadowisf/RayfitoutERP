@@ -670,7 +670,7 @@ export default function QCCheckListButton({
       const isUpdate = existingQcId !== null;
 
       const qcData = {
-        action: isUpdate ? "" : "createQC",
+        action: isUpdate ? "updateQC" : "createQC",
         ...(isUpdate && { qc_id: existingQcId }),
         lpo_mr_line_id: lpoMrLineId,
         lpo_id: existingLpoId,

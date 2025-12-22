@@ -53,13 +53,15 @@ export async function POST(req: Request) {
     if (body.action === "createSupplier") {
       const query = `
         INSERT INTO suppliers 
-        (name, trn_number, avg_lead_time, supplier_rating, currency, status, contact_person_name, phone, email, address, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (name, trn_number, trn_certificate, trade_license, avg_lead_time, supplier_rating, currency, status, contact_person_name, phone, email, address, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
         body.name,
         body.trn_number,
+        body.trn_certificate || null,
+        body.trade_license || null,
         body.avg_lead_time || null,
         body.supplier_rating || null,
         body.currency,
@@ -98,7 +100,6 @@ export async function POST(req: Request) {
               );
 
               if (subcat.length > 0) {
-                // Check for common column name variations
                 const categoryId =
                   subcat[0].material_category_id ||
                   subcat[0].category_id ||
@@ -210,7 +211,7 @@ export async function PUT(req: Request) {
           WHERE id = ?`,
             [
               quotation.supplier_id,
-              JSON.stringify([quotation.quotation_file]), // Store as JSON array
+              JSON.stringify([quotation.quotation_file]),
               quotation.rating,
               quotation.unit_price,
               quotation.total_price,
@@ -227,7 +228,7 @@ export async function PUT(req: Request) {
             [
               quotation.supplier_id,
               mr_line_id,
-              JSON.stringify([quotation.quotation_file]), // Store as JSON array
+              JSON.stringify([quotation.quotation_file]),
               quotation.rating,
               quotation.unit_price,
               quotation.total_price,
@@ -237,21 +238,15 @@ export async function PUT(req: Request) {
         }
       }
 
-      // Delete quotations that were removed (exist in DB but not in the update)
+      // Delete quotations that were removed
       const idsToDelete = existingIds.filter((id) => !updatedIds.includes(id));
 
       if (idsToDelete.length > 0) {
-        // First, get the quotation files to delete from S3
         const [quotationsToDelete] = await db.query<RowDataPacket[]>(
           "SELECT quotation_file FROM mr_line_supplier_quotation WHERE id IN (?)",
           [idsToDelete]
         );
 
-        // TODO: Delete files from S3 here if needed
-        // const filesToDelete = quotationsToDelete.map(q => q.quotation_file).flat();
-        // await deleteFromS3(filesToDelete);
-
-        // Delete the database records
         await db.query(
           "DELETE FROM mr_line_supplier_quotation WHERE id IN (?)",
           [idsToDelete]
@@ -284,11 +279,9 @@ export async function DELETE(req: Request) {
       let totalFilesDeleted = 0;
       let totalFilesFailed = 0;
 
-      // For each MR line, fetch and delete S3 files for non-approved quotations
       for (const item of approved_suppliers) {
         const { mr_line_id, quotation_id } = item;
 
-        // Fetch the quotation files that will be deleted
         const quotationsResult = await db.query(
           `SELECT id, quotation_file 
              FROM mr_line_supplier_quotation 
@@ -300,7 +293,6 @@ export async function DELETE(req: Request) {
           ? quotationsResult[0]
           : [];
 
-        // Collect all file URLs to delete
         const filesToDelete: string[] = [];
 
         for (const quotation of quotationsToDelete) {
@@ -308,7 +300,6 @@ export async function DELETE(req: Request) {
             try {
               let fileUrls: string[] = [];
 
-              // Parse quotation_file (could be JSON array or string)
               if (typeof quotation.quotation_file === "string") {
                 try {
                   const parsed = JSON.parse(quotation.quotation_file);
@@ -320,7 +311,6 @@ export async function DELETE(req: Request) {
                 fileUrls = quotation.quotation_file;
               }
 
-              // Filter out empty URLs and add to delete list
               const validUrls = fileUrls.filter(
                 (url) => url && typeof url === "string" && url.trim() !== ""
               );
@@ -334,7 +324,6 @@ export async function DELETE(req: Request) {
           }
         }
 
-        // Delete files from S3 using your existing S3 API route
         if (filesToDelete.length > 0) {
           for (const fileUrl of filesToDelete) {
             try {
@@ -368,7 +357,6 @@ export async function DELETE(req: Request) {
           }
         }
 
-        // Delete non-approved quotation records from database
         await db.query(
           `DELETE FROM mr_line_supplier_quotation 
              WHERE mr_line_id = ? AND id != ?`,

@@ -48,7 +48,6 @@ export default function BoqReferencePopUp({ item }: BoqReferencePopUpProps) {
                 <th>#</th>
                 <th>ITEM</th>
                 <th>QUANTITY</th>
-                <th>UNIT</th>
                 <th>RATE</th>
                 <th>TOTAL COST</th>
                 <th>LOCATION</th>
@@ -60,8 +59,9 @@ export default function BoqReferencePopUp({ item }: BoqReferencePopUpProps) {
               <tr key={item.id}>
                 <td>{item.boq_item_number}</td>
                 <td>{item.boq_item_name}</td>
-                <td>{item.quantity}</td>
-                <td>{item.unit}</td>
+                <td>
+                  {item.quantity} {item.unit}
+                </td>
                 <td>{item.boq_rate?.toLocaleString()}</td>
                 <td>AED {item.boq_total_cost?.toLocaleString()}</td>
                 <td>{item.boq_location?.split(" - ").pop()}</td>

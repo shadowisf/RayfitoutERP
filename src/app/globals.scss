@@ -417,6 +417,7 @@ label {
   margin: 40px;
   max-height: 95dvh;
   overflow-y: auto;
+  overflow: auto;
 
   .form-header {
     display: flex;
@@ -626,7 +627,7 @@ label {
     border: 1px solid #d9d9d9;
     border-radius: 5px;
     max-height: 250px;
-    z-index: 1000;
+    z-index: 2000;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
     .search-wrapper {
@@ -752,7 +753,6 @@ label {
 .items-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 50px;
 
   .alt {
     td {

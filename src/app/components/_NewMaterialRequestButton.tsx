@@ -8,6 +8,7 @@ import InputItem from "./InputItem";
 import { useAuth } from "../context/AuthContext";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import { toast } from "./Toast";
+import SingleSelectDropdown from "./SingleSelectDropdown";
 
 export default function NewMrButton() {
   const { userInfo } = useAuth();
@@ -19,7 +20,7 @@ export default function NewMrButton() {
   const [purposeReasonValues, setPurposeReasonValues] = useState<[]>([]);
   const [projects, setProjects] = useState<[]>([]);
 
-  const [purposeReasonID, setPurposeReasonID] = useState("");
+  const [purposeReasonID, setPurposeReasonID] = useState<string | number>("");
   /* const [boqLineID, setBoqLineID] = useState<(string | number)[]>([]); */
   const [projectID, setProjectID] = useState("");
   const [requestedBy, setRequestedBy] = useState(userInfo?.name || "");
@@ -106,7 +107,7 @@ export default function NewMrButton() {
           addButtonLabel={"CONFIRM"}
         >
           <div className="input-row half">
-            <InputItem
+            {/* <InputItem
               label={"PURPOSE/REASON"}
               value={purposeReasonID}
               type={"select"}
@@ -117,6 +118,17 @@ export default function NewMrButton() {
                   {pr.value}
                 </option>
               ))}
+              required
+            /> */}
+            <SingleSelectDropdown
+              label={"PURPOSE/REASON"}
+              selectedValue={purposeReasonID}
+              onChange={setPurposeReasonID}
+              placeholder={"SELECT PURPOSE/REASON"}
+              dbData={purposeReasonValues}
+              idField="id"
+              labelField="value"
+              tooltipField="tooltip"
               required
             />
 
