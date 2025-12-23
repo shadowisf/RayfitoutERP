@@ -304,30 +304,30 @@ export default function MR() {
 
                       <br />
 
-                      <small>REQUIRED DATE</small>
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "50px",
+                          gap: "25px",
                         }}
                       >
-                        <h3>
-                          {new Date(mr.required_date).toLocaleDateString()}
-                        </h3>
-                        {/* Only show days left/overdue text if NOT completed */}
-                        {!isCompleted && (
-                          <h3
-                            style={{
-                              padding: "5px 15px",
-                              backgroundColor: "rgba(231, 231, 231, 1)",
-                              textTransform: "uppercase",
-                              borderRadius: "5px",
-                            }}
-                          >
-                            {getDaysLeftText(mr.required_date)}
+                        <div>
+                          <small>REQUIRED DATE</small>
+                          <h3>
+                            {new Date(mr.required_date).toLocaleDateString()}
                           </h3>
-                        )}
+                        </div>
+
+                        <h3
+                          style={{
+                            padding: "5px 15px",
+                            backgroundColor: "rgba(231, 231, 231, 1)",
+                            textTransform: "uppercase",
+                            borderRadius: "5px",
+                          }}
+                        >
+                          {getDaysLeftText(mr.required_date)}
+                        </h3>
                       </div>
 
                       <br />

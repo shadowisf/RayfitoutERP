@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { InventoryItem } from "./types/inventoryItem";
 import CreateInventoryItemButton from "./components/_CreateInventoryItemButton";
-import { QRCodeSVG } from "qrcode.react";
 import Button from "@/app/components/Button";
 
 export default function Inventory() {

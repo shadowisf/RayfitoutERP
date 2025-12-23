@@ -12,7 +12,7 @@ export type InventoryItem = {
   brand: string;
   country_of_origin: string;
   specification: string;
-  image: JSON[];
+  image: string;
   created_at: string;
   created_by: string;
 };

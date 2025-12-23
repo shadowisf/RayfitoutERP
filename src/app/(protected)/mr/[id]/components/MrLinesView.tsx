@@ -1185,22 +1185,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           >
             <Button
               componentType={"button"}
-              bgColor={showBySupplier ? "black" : "transparent"}
-              borderColor={"black"}
-              textColor={showBySupplier ? "white" : "black"}
-              style={{
-                padding: "7px 20px",
-                borderRadius: "25px",
-              }}
-              onClick={() => {
-                setShowBySupplier(true);
-                setShowByItem(false);
-              }}
-            >
-              SHOW BY SUPPLIER
-            </Button>
-            <Button
-              componentType={"button"}
               bgColor={showByItem ? "black" : "transparent"}
               borderColor={"black"}
               textColor={showByItem ? "white" : "black"}
@@ -1214,6 +1198,22 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               }}
             >
               SHOW BY ITEM
+            </Button>
+            <Button
+              componentType={"button"}
+              bgColor={showBySupplier ? "black" : "transparent"}
+              borderColor={"black"}
+              textColor={showBySupplier ? "white" : "black"}
+              style={{
+                padding: "7px 20px",
+                borderRadius: "25px",
+              }}
+              onClick={() => {
+                setShowBySupplier(true);
+                setShowByItem(false);
+              }}
+            >
+              SHOW BY SUPPLIER
             </Button>
           </div>
         )}

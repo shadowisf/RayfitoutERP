@@ -7,6 +7,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MrHeader } from "../../types/mrHeader";
+import { useAuth } from "@/app/context/AuthContext";
 
 type EditMrHeaderButtonProps = {
   mrHeader: MrHeader;
@@ -16,6 +17,8 @@ export default function EditMrHeaderButton({
   mrHeader,
 }: EditMrHeaderButtonProps) {
   const router = useRouter();
+
+  const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -88,6 +91,10 @@ export default function EditMrHeaderButton({
     } else {
       toast("Failed to update material request header", "error");
     }
+  }
+
+  if (userInfo?.departmentID !== mrHeader.department_id) {
+    return null;
   }
 
   return (

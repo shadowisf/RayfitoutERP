@@ -17,7 +17,7 @@ export default function ProtectedLayout({
         style={{
           paddingTop: "100px",
           paddingBottom: "50px",
-          marginLeft: "325px",
+          marginLeft: "300px",
           marginRight: "40px",
         }}
       >

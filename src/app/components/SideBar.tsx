@@ -13,6 +13,15 @@ export default function SideBar() {
     { label: "Project Management", path: "/project" },
   ];
 
+  const isActive = (path: string) => {
+    // Exact match for the path
+    if (pathname === path) return true;
+    // Check if current path starts with the menu item path (for child routes)
+    // But exclude the root path to avoid matching everything
+    if (path !== "/" && pathname.startsWith(path + "/")) return true;
+    return false;
+  };
+
   return (
     <div className="side-bar">
       <h2>MENU</h2>
@@ -23,7 +32,7 @@ export default function SideBar() {
         {menuItems.map((item) => (
           <button
             key={item.label}
-            className={pathname === item.path ? "nav-active" : ""}
+            className={isActive(item.path) ? "nav-active" : ""}
             onClick={() => router.push(item.path)}
           >
             {item.label}

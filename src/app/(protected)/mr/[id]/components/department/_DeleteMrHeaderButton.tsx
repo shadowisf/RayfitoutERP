@@ -2,11 +2,11 @@
 
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
-import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MrHeader } from "../../types/mrHeader";
+import { useAuth } from "@/app/context/AuthContext";
 
 type DeleteMrHeaderButtonProps = {
   mrHeader: MrHeader;
@@ -16,6 +16,8 @@ export default function DeleteMrHeaderButton({
   mrHeader,
 }: DeleteMrHeaderButtonProps) {
   const router = useRouter();
+
+  const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -40,6 +42,10 @@ export default function DeleteMrHeaderButton({
     } else {
       toast("Failed to delete material request header", "error");
     }
+  }
+
+  if (userInfo?.departmentID !== mrHeader.department_id) {
+    return null;
   }
 
   return (

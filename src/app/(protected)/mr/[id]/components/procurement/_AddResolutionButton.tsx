@@ -70,6 +70,8 @@ export default function ResolutionButton({
   const pencilIcon = "/icons/pencil.svg";
   const uploadIcon = "/icons/upload.svg";
   const plusIcon = "/icons/plus.svg";
+  const downloadIcon = "/icons/download.svg";
+  const trashIcon = "/icons/trash.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -129,6 +131,189 @@ export default function ResolutionButton({
   const expectedRefund = failedQuantity * unitPrice;
   const actualRefundAmount = parseFloat(actualRefund) || 0;
   const varianceAmount = expectedRefund - actualRefundAmount;
+
+  // Get status badge configuration
+  const getStatusBadge = () => {
+    if (!existingResolution) return null;
+
+    const configs = {
+      "Return/refund": {
+        bg: "rgba(87, 244, 176, 1)",
+        text: "rgba(31, 101, 71, 1)",
+        label: "Return / Refund",
+      },
+      Replace: {
+        bg: "rgba(87, 244, 176, 1)",
+        text: "rgba(31, 101, 71, 1)",
+        label: "Replace",
+      },
+      "Conditionally accepted": {
+        bg: "rgba(87, 244, 176, 1)",
+        text: "rgba(31, 101, 71, 1)",
+        label: "Conditionally Accepted",
+      },
+      "Reject/scrap": {
+        bg: "rgba(255, 181, 181, 1)",
+        text: "rgba(248, 77, 77, 1)",
+        label: "Rejected",
+      },
+    };
+
+    const config =
+      configs[existingResolution.resolution_type as keyof typeof configs];
+    if (!config) return null;
+
+    return (
+      <div style={{ display: "flex", gap: "10px" }}>
+        <div
+          style={{
+            backgroundColor: config.bg,
+            color: config.text,
+            padding: "0px 10px",
+            borderRadius: "5px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "10px",
+          }}
+        >
+          <span>{config.label}</span>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px" }}>
+          <Button
+            componentType={"button"}
+            bgColor={"rgba(239, 239, 239, 1)"}
+            borderColor={"rgba(223, 223, 223, 1)"}
+            textColor={"black"}
+            onClick={() => setIsOpen(true)}
+            style={{ padding: "7px 7px" }}
+          >
+            <img src={pencilIcon} alt="edit" />
+          </Button>
+          <Button
+            componentType={"button"}
+            bgColor={"rgba(239, 239, 239, 1)"}
+            borderColor={"rgba(223, 223, 223, 1)"}
+            textColor={"black"}
+            onClick={handleDownload}
+            style={{ padding: "7px 7px" }}
+          >
+            <img src={downloadIcon} alt="download" />
+          </Button>
+          <Button
+            componentType={"button"}
+            bgColor={"rgba(239, 239, 239, 1)"}
+            borderColor={"rgba(223, 223, 223, 1)"}
+            textColor={"black"}
+            onClick={handleDelete}
+            style={{ padding: "7px 7px" }}
+          >
+            <img src={trashIcon} alt="delete" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  // Handle download resolution
+  const handleDownload = async () => {
+    toast("Downloading resolution...", "info");
+    // Add your download logic here
+  };
+
+  // Handle delete resolution
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this resolution?")) return;
+
+    try {
+      // Delete associated files from S3 before deleting the resolution
+      if (existingResolution) {
+        const filesToDelete: string[] = [];
+
+        // Collect file URLs based on resolution type
+        if (
+          existingResolution.resolution_type === "Return/refund" &&
+          existingResolution.proof_of_payment_url
+        ) {
+          try {
+            const url =
+              typeof existingResolution.proof_of_payment_url === "string"
+                ? JSON.parse(existingResolution.proof_of_payment_url)
+                : existingResolution.proof_of_payment_url;
+            filesToDelete.push(url);
+          } catch (e) {
+            filesToDelete.push(existingResolution.proof_of_payment_url);
+          }
+        } else if (
+          existingResolution.resolution_type === "Conditionally accepted" &&
+          existingResolution.attachment
+        ) {
+          try {
+            const url =
+              typeof existingResolution.attachment === "string"
+                ? JSON.parse(existingResolution.attachment)
+                : existingResolution.attachment;
+            filesToDelete.push(url);
+          } catch (e) {
+            filesToDelete.push(existingResolution.attachment);
+          }
+        } else if (
+          existingResolution.resolution_type === "Reject/scrap" &&
+          existingResolution.scrap_attachment
+        ) {
+          try {
+            const url =
+              typeof existingResolution.scrap_attachment === "string"
+                ? JSON.parse(existingResolution.scrap_attachment)
+                : existingResolution.scrap_attachment;
+            filesToDelete.push(url);
+          } catch (e) {
+            filesToDelete.push(existingResolution.scrap_attachment);
+          }
+        }
+
+        // Delete files from S3
+        for (const fileUrl of filesToDelete) {
+          try {
+            await fetch("/api/s3", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url: fileUrl }),
+            });
+          } catch (deleteError) {
+            console.error("Error deleting file from S3:", deleteError);
+            // Continue with deletion even if S3 delete fails
+          }
+        }
+      }
+
+      // Delete the resolution from database
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "deleteQCResolution",
+            resolution_id: existingResolution?.resolution_id,
+            resolution_type: existingResolution?.resolution_type,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        toast("Resolution deleted successfully", "success");
+        setExistingResolution(null);
+        setIsEditMode(false);
+        router.refresh();
+      } else {
+        toast("Failed to delete resolution", "error");
+      }
+    } catch (error) {
+      console.error("Error deleting resolution:", error);
+      toast("Failed to delete resolution", "error");
+    }
+  };
 
   // Check for existing resolution on component mount
   useEffect(() => {
@@ -616,6 +801,25 @@ export default function ResolutionButton({
       // Only upload if a new file is selected
       if (proofFile) {
         try {
+          // Delete old file from S3 if it exists
+          if (existingResolution?.proof_of_payment_url) {
+            try {
+              const oldUrl =
+                typeof existingResolution.proof_of_payment_url === "string"
+                  ? JSON.parse(existingResolution.proof_of_payment_url)
+                  : existingResolution.proof_of_payment_url;
+
+              await fetch("/api/s3", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: oldUrl }),
+              });
+            } catch (deleteError) {
+              console.error("Error deleting old proof file:", deleteError);
+              // Continue with upload even if delete fails
+            }
+          }
+
           const formData = new FormData();
           formData.append("files", proofFile);
           formData.append("folder", "qc-failed-proof-of-payments");
@@ -726,6 +930,25 @@ export default function ResolutionButton({
       // Only upload if a new file is selected
       if (attachmentFile) {
         try {
+          // Delete old file from S3 if it exists
+          if (existingResolution?.attachment) {
+            try {
+              const oldUrl =
+                typeof existingResolution.attachment === "string"
+                  ? JSON.parse(existingResolution.attachment)
+                  : existingResolution.attachment;
+
+              await fetch("/api/s3", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: oldUrl }),
+              });
+            } catch (deleteError) {
+              console.error("Error deleting old attachment file:", deleteError);
+              // Continue with upload even if delete fails
+            }
+          }
+
           const formData = new FormData();
           formData.append("files", attachmentFile);
           formData.append("folder", "qc-failed-conditionally-accepted");
@@ -791,6 +1014,25 @@ export default function ResolutionButton({
       // Only upload if a new file is selected
       if (scrapFile) {
         try {
+          // Delete old file from S3 if it exists
+          if (existingResolution?.scrap_attachment) {
+            try {
+              const oldUrl =
+                typeof existingResolution.scrap_attachment === "string"
+                  ? JSON.parse(existingResolution.scrap_attachment)
+                  : existingResolution.scrap_attachment;
+
+              await fetch("/api/s3", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: oldUrl }),
+              });
+            } catch (deleteError) {
+              console.error("Error deleting old scrap file:", deleteError);
+              // Continue with upload even if delete fails
+            }
+          }
+
           const formData = new FormData();
           formData.append("files", scrapFile);
           formData.append("folder", "qc-failed-scrap-reject");
@@ -850,19 +1092,20 @@ export default function ResolutionButton({
 
   return (
     <>
-      <Button
-        componentType={"button"}
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(207, 207, 207, 1)"}
-        textColor={"black"}
-        onClick={() => setIsOpen(true)}
-        style={{ borderRadius: "5px", padding: "7px 7px" }}
-      >
-        <img
-          src={isEditMode ? pencilIcon : plusIcon}
-          alt={isEditMode ? "edit" : "add"}
-        />
-      </Button>
+      {existingResolution ? (
+        getStatusBadge()
+      ) : (
+        <Button
+          componentType={"button"}
+          bgColor={"rgba(239, 239, 239, 1)"}
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
+          onClick={() => setIsOpen(true)}
+          style={{ borderRadius: "5px", padding: "7px 7px" }}
+        >
+          <img src={plusIcon} alt="add" />
+        </Button>
+      )}
 
       {isOpen && (
         <FormPopUp

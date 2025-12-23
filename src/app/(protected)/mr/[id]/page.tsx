@@ -197,22 +197,20 @@ export default async function MrWithID({
 
           <div>
             <span>REQUIRED DATE</span>
-            <div style={{ display: "flex", alignItems: "center", gap: "50px" }}>
-              <h2>{new Date(mrHeader.required_date).toLocaleDateString()}</h2>
-              {/* Only show days left/overdue text if NOT completed */}
-              {!isCompleted && (
-                <h2
-                  style={{
-                    padding: "5px 15px",
-                    backgroundColor: "rgba(231, 231, 231, 1)",
-                    textTransform: "uppercase",
-                    borderRadius: "5px",
-                  }}
-                >
-                  {daysLeftText}
-                </h2>
-              )}
-            </div>
+            <h2>{new Date(mrHeader.required_date).toLocaleDateString()}</h2>
+          </div>
+
+          <div>
+            <h2
+              style={{
+                padding: "5px 15px",
+                backgroundColor: "rgba(231, 231, 231, 1)",
+                textTransform: "uppercase",
+                borderRadius: "5px",
+              }}
+            >
+              {daysLeftText}
+            </h2>
           </div>
         </div>
       </div>

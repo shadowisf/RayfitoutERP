@@ -14,7 +14,6 @@ export default function CreateInventoryItemButton() {
 
   const router = useRouter();
 
-  const plusIcon = "/icons/plus.svg";
   const uploadIcon = "/icons/upload.svg";
 
   const [isOpen, setIsOpen] = useState(false);
@@ -175,7 +174,7 @@ export default function CreateInventoryItemButton() {
           brand,
           country_of_origin: countryOfOrigin,
           specification,
-          image: JSON.stringify(imageUrl),
+          image: imageUrl,
           created_by: userInfo?.name,
         }),
       }
