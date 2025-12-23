@@ -7,7 +7,8 @@ import {
   Font,
   Image,
 } from "@react-pdf/renderer";
-import CodeSectionPDF from "./CodeSectionPDF";
+import QrCodeSectionPDF from "./QrCodeSectionPDF";
+import { InventoryItem } from "../../types/inventoryItem";
 
 Font.register({
   family: "Mont",
@@ -29,7 +30,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 25,
   },
   logo: {
     width: 120,
@@ -51,17 +52,15 @@ const styles = StyleSheet.create({
 });
 
 type CodePDFProps = {
-  itemDescription: string;
-  itemCategory: string;
-  barcodeDataUrl: string;
+  inventoryItem: InventoryItem;
+  // barcodeDataUrl: string;
   qrcodeDataUrl: string;
 };
 
-export function CodePDF({
-  barcodeDataUrl,
+export function QrCodePDF({
+  // barcodeDataUrl,
   qrcodeDataUrl,
-  itemDescription,
-  itemCategory,
+  inventoryItem,
 }: CodePDFProps) {
   const logo = "/icons/logo.jpg";
 
@@ -74,14 +73,15 @@ export function CodePDF({
 
         <View>
           <Text style={styles.title}>
-            <Text style={styles.titleBold}>{itemDescription}</Text>
+            <Text style={styles.titleBold}>{inventoryItem.description}</Text>
           </Text>
-          <Text style={styles.small}>{itemCategory}</Text>
+          <Text style={styles.small}>{inventoryItem.category_name}</Text>
         </View>
 
-        <CodeSectionPDF
-          barcodeDataUrl={barcodeDataUrl}
+        <QrCodeSectionPDF
+          // barcodeDataUrl={barcodeDataUrl}
           qrcodeDataUrl={qrcodeDataUrl}
+          inventoryItem={inventoryItem}
         />
       </Page>
     </Document>

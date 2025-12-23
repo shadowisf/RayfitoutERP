@@ -4,20 +4,20 @@ import Barcode from "react-barcode";
 import { QRCodeSVG } from "qrcode.react";
 import { InventoryItem } from "../../types/inventoryItem";
 
-type CodeSectionProps = {
+type QrCodeSectionProps = {
   item: InventoryItem;
 };
 
-export default function CodeSection({ item }: CodeSectionProps) {
+export default function QrCodeSection({ item }: QrCodeSectionProps) {
   return (
     <div
       style={{
         display: "flex",
         gap: "25px",
-        justifyContent: "space-between",
+        /* justifyContent: "space-between", */
       }}
     >
-      <div style={{ marginLeft: "-5px" }}>
+      {/* <div style={{ marginLeft: "-5px" }}>
         <Barcode
           value={`MRT-${item.id.toString().padStart(5, "0")}`}
           format="CODE128"
@@ -25,9 +25,9 @@ export default function CodeSection({ item }: CodeSectionProps) {
           height={80}
           displayValue={true}
         />
-      </div>
-      <div style={{ marginTop: "10px" }}>
-        <QRCodeSVG value={`/inventory/${item.id}`} size={80} />
+      </div> */}
+      <div /* style={{ marginTop: "10px" }} */>
+        <QRCodeSVG value={`/inventory/${item.id}`} size={125} />
       </div>
     </div>
   );

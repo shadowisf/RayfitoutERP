@@ -32,23 +32,16 @@ export default function BoqLinesView({
   const pencilIcon = "/icons/pencil.svg";
   const trashIcon = "/icons/trash.svg";
 
-  const [activeCategory, setActiveCategory] = useState<string>("");
+  const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [expandedDescriptions, setExpandedDescriptions] = useState<number[]>(
     []
   );
 
   const categories = Object.keys(boqLines);
-  const subCategories = boqLines[activeCategory] || {};
-
-  useEffect(
-    function () {
-      const categories = Object.keys(boqLines);
-      if (categories.length > 0) {
-        setActiveCategory(categories[0]);
-      }
-    },
-    [boqLines]
-  );
+  const subCategories =
+    activeCategory === "ALL"
+      ? boqLines[categories[0]] || {}
+      : boqLines[activeCategory] || {};
 
   function toggleDescription(itemId: number) {
     setExpandedDescriptions(function (prev) {
@@ -70,6 +63,14 @@ export default function BoqLinesView({
     <>
       <div className="category-grid">
         <div>
+          <button
+            className={`item ${activeCategory === "ALL" ? "active" : ""}`}
+            onClick={() => setActiveCategory("ALL")}
+            style={{ textTransform: "uppercase" }}
+          >
+            ALL
+          </button>
+
           {categories.map(function (category) {
             return (
               <button
@@ -116,223 +117,398 @@ export default function BoqLinesView({
       <br />
       <br />
 
-      {Object.entries(subCategories).map(function (
-        [subCategory, items],
-        index
-      ) {
-        return (
-          <div key={subCategory} className="subcategory-section">
-            <div className="subcategory-header">
-              <h2>
-                <span style={{ marginRight: "25px" }}>
-                  {categories.indexOf(activeCategory) + 1}.{index + 1}{" "}
-                </span>
-                {subCategory}
-              </h2>
-
-              {userInfo?.departmentID === 8 && (
-                <div className="right">
-                  <DeleteBoqSubCategoryButton
-                    item={items[0]}
-                    category={activeCategory}
-                    subCategory={subCategory}
+      {activeCategory === "ALL"
+        ? Object.entries(boqLines).map(
+            ([category, subCategoriesData], categoryIndex) =>
+              Object.entries(subCategoriesData).map(function (
+                [subCategory, items],
+                subCategoryIndex
+              ) {
+                return (
+                  <div
+                    key={`${category}-${subCategory}`}
+                    className="subcategory-section"
                   >
-                    DELETE
-                  </DeleteBoqSubCategoryButton>
-
-                  <RenameBoqSubCategoryButton
-                    item={items[0]}
-                    category={activeCategory}
-                    subCategory={subCategory}
-                  >
-                    RENAME
-                  </RenameBoqSubCategoryButton>
-                </div>
-              )}
-            </div>
-
-            <br />
-            <br />
-
-            <table className="items-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>ITEM</th>
-                  <th>QUANTITY</th>
-                  <th>UNIT</th>
-                  <th>RATE</th>
-                  <th>TOTAL COST</th>
-                  <th>LOCATION</th>
-                  <th>ITEM DESCRIPTION</th>
-                  <th>ATTACHMENT(S)</th>
-                  {userInfo?.departmentID === 8 && <th>ACTION</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map(function (item, itemIndex) {
-                  const expanded = isExpanded(item.id);
-                  const maxLength = 100;
-                  const needsCollapse =
-                    item.item_description &&
-                    item.item_description.length > maxLength;
-
-                  return (
-                    <tr key={item.id}>
-                      <td>
-                        {categories.indexOf(activeCategory) + 1}.{index + 1}.
-                        {itemIndex + 1}
-                      </td>
-                      <td>{item.item_name}</td>
-                      <td>{item.quantity}</td>
-                      <td>{item.unit}</td>
-                      <td>{item.rate_per_quantity?.toLocaleString()}</td>
-                      <td>AED {item.total_cost?.toLocaleString()}</td>
-                      <td>{item.location?.split(" - ").pop()}</td>
-                      {/* <td
-                        className="item-description"
-                        style={{ whiteSpace: "pre-wrap", width: "300px" }}
-                      >
-                        {needsCollapse ? (
-                          <>
-                            {expanded
-                              ? item.item_description
-                              : item.item_description.substring(0, maxLength) +
-                                "..."}
-                            <br />
-                            <br />
-                            <span
-                              className="toggle-btn"
-                              onClick={function () {
-                                toggleDescription(item.id);
-                              }}
-                            >
-                              {expanded ? "SHOW LESS" : "SHOW MORE"}
-                            </span>
-                          </>
-                        ) : (
-                          item.item_description
-                        )}
-                      </td> */}
-                      <td>
-                        <ItemDescriptionPopUp item={item} />
-                      </td>
-                      {/* <td>
-                        <div style={{ whiteSpace: "pre-wrap" }}>
-                          {item.item_description}
-                        </div>
-                      </td> */}
-                      <td className="attachments">
-                        <div className="attachments-grid">
-                          {(() => {
-                            try {
-                              if (!item.attachments) {
-                                return null;
-                              }
-
-                              if (Array.isArray(item.attachments)) {
-                                return item.attachments.map(function (
-                                  url: string,
-                                  i: number
-                                ) {
-                                  return (
-                                    <img key={i} src={url} alt="attachment" />
-                                  );
-                                });
-                              }
-
-                              if (typeof item.attachments === "string") {
-                                if (item.attachments.trim() === "") {
-                                  return null;
-                                }
-
-                                const attachments = JSON.parse(
-                                  item.attachments
-                                );
-
-                                if (!Array.isArray(attachments)) {
-                                  return null;
-                                }
-
-                                return attachments.map(function (
-                                  url: string,
-                                  i: number
-                                ) {
-                                  return (
-                                    <a href={url} key={i} target="_blank">
-                                      <img key={i} src={url} alt="attachment" />
-                                    </a>
-                                  );
-                                });
-                              }
-
-                              return null;
-                            } catch (error) {
-                              console.error(
-                                "Failed to parse attachments:",
-                                error,
-                                item.attachments
-                              );
-                              return null;
-                            }
-                          })()}
-                        </div>
-                      </td>
+                    <div className="subcategory-header">
+                      <h2 style={{ textTransform: "uppercase" }}>
+                        <span style={{ marginRight: "25px" }}>
+                          {categoryIndex + 1}.{subCategoryIndex + 1}
+                        </span>
+                        {category} - {subCategory}
+                      </h2>
 
                       {userInfo?.departmentID === 8 && (
-                        <td>
-                          <div style={{ display: "flex", gap: "10px" }}>
-                            <EditBoqItemButton
-                              item={item}
-                              bgColor={"rgba(239, 239, 239, 1)"}
-                              borderColor={"rgba(223, 223, 223, 1)"}
-                              textColor={"black"}
-                            >
-                              <img src={pencilIcon} alt="pencil icon" />
-                            </EditBoqItemButton>
+                        <div className="right">
+                          <DeleteBoqSubCategoryButton
+                            item={items[0]}
+                            category={category}
+                            subCategory={subCategory}
+                          >
+                            DELETE
+                          </DeleteBoqSubCategoryButton>
 
-                            <DeleteBoqItemButton
-                              item={item}
-                              bgColor={"rgba(239, 239, 239, 1)"}
-                              borderColor={"rgba(223, 223, 223, 1)"}
-                              textColor={"black"}
-                            >
-                              <img src={trashIcon} alt="trash icon" />
-                            </DeleteBoqItemButton>
-                          </div>
-                        </td>
+                          <RenameBoqSubCategoryButton
+                            item={items[0]}
+                            category={category}
+                            subCategory={subCategory}
+                          >
+                            RENAME
+                          </RenameBoqSubCategoryButton>
+                        </div>
                       )}
+                    </div>
+
+                    <br />
+                    <br />
+
+                    <table className="items-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>ITEM</th>
+                          <th>QUANTITY</th>
+                          <th>UNIT</th>
+                          <th>RATE</th>
+                          <th>TOTAL COST</th>
+                          <th>LOCATION</th>
+                          <th>ITEM DESCRIPTION</th>
+                          <th>ATTACHMENT(S)</th>
+                          {userInfo?.departmentID === 8 && <th>ACTION</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map(function (item, itemIndex) {
+                          return (
+                            <tr key={item.id}>
+                              <td>
+                                {categoryIndex + 1}.{subCategoryIndex + 1}.
+                                {itemIndex + 1}
+                              </td>
+                              <td>{item.item_name}</td>
+                              <td>{item.quantity}</td>
+                              <td>{item.unit}</td>
+                              <td>
+                                {item.rate_per_quantity?.toLocaleString()}
+                              </td>
+                              <td>AED {item.total_cost?.toLocaleString()}</td>
+                              <td>{item.location?.split(" - ").pop()}</td>
+                              <td>
+                                <ItemDescriptionPopUp item={item} />
+                              </td>
+                              <td className="attachments">
+                                <div className="attachments-grid">
+                                  {(() => {
+                                    try {
+                                      if (!item.attachments) {
+                                        return null;
+                                      }
+
+                                      if (Array.isArray(item.attachments)) {
+                                        return item.attachments.map(function (
+                                          url: string,
+                                          i: number
+                                        ) {
+                                          return (
+                                            <img
+                                              key={i}
+                                              src={url}
+                                              alt="attachment"
+                                            />
+                                          );
+                                        });
+                                      }
+
+                                      if (
+                                        typeof item.attachments === "string"
+                                      ) {
+                                        if (item.attachments.trim() === "") {
+                                          return null;
+                                        }
+
+                                        const attachments = JSON.parse(
+                                          item.attachments
+                                        );
+
+                                        if (!Array.isArray(attachments)) {
+                                          return null;
+                                        }
+
+                                        return attachments.map(function (
+                                          url: string,
+                                          i: number
+                                        ) {
+                                          return (
+                                            <a
+                                              href={url}
+                                              key={i}
+                                              target="_blank"
+                                            >
+                                              <img
+                                                key={i}
+                                                src={url}
+                                                alt="attachment"
+                                              />
+                                            </a>
+                                          );
+                                        });
+                                      }
+
+                                      return null;
+                                    } catch (error) {
+                                      console.error(
+                                        "Failed to parse attachments:",
+                                        error,
+                                        item.attachments
+                                      );
+                                      return null;
+                                    }
+                                  })()}
+                                </div>
+                              </td>
+
+                              {userInfo?.departmentID === 8 && (
+                                <td>
+                                  <div style={{ display: "flex", gap: "10px" }}>
+                                    <EditBoqItemButton
+                                      item={item}
+                                      bgColor={"rgba(239, 239, 239, 1)"}
+                                      borderColor={"rgba(223, 223, 223, 1)"}
+                                      textColor={"black"}
+                                    >
+                                      <img src={pencilIcon} alt="pencil icon" />
+                                    </EditBoqItemButton>
+
+                                    <DeleteBoqItemButton
+                                      item={item}
+                                      bgColor={"rgba(239, 239, 239, 1)"}
+                                      borderColor={"rgba(223, 223, 223, 1)"}
+                                      textColor={"black"}
+                                    >
+                                      <img src={trashIcon} alt="trash icon" />
+                                    </DeleteBoqItemButton>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+
+                    <br />
+
+                    {userInfo?.departmentID === 8 && (
+                      <AddBoqItemButton
+                        boqHeaderID={boqHeader.id}
+                        bgColor="rgba(239, 239, 239, 1)"
+                        borderColor="rgba(239, 239, 239, 1)"
+                        textColor="black"
+                        full
+                        autoCategory={category}
+                        autoSubCategory={subCategory}
+                      >
+                        ADD ITEM +
+                      </AddBoqItemButton>
+                    )}
+
+                    <br />
+                    <br />
+                    <br />
+                    <br />
+                    <br />
+                  </div>
+                );
+              })
+          )
+        : Object.entries(subCategories).map(function (
+            [subCategory, items],
+            index
+          ) {
+            return (
+              <div key={subCategory} className="subcategory-section">
+                <div className="subcategory-header">
+                  <h2>
+                    <span style={{ marginRight: "25px" }}>
+                      {categories.indexOf(activeCategory) + 1}.{index + 1}{" "}
+                    </span>
+                    {subCategory}
+                  </h2>
+
+                  {userInfo?.departmentID === 8 && (
+                    <div className="right">
+                      <DeleteBoqSubCategoryButton
+                        item={items[0]}
+                        category={activeCategory}
+                        subCategory={subCategory}
+                      >
+                        DELETE
+                      </DeleteBoqSubCategoryButton>
+
+                      <RenameBoqSubCategoryButton
+                        item={items[0]}
+                        category={activeCategory}
+                        subCategory={subCategory}
+                      >
+                        RENAME
+                      </RenameBoqSubCategoryButton>
+                    </div>
+                  )}
+                </div>
+
+                <br />
+                <br />
+
+                <table className="items-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>ITEM</th>
+                      <th>QUANTITY</th>
+                      <th>UNIT</th>
+                      <th>RATE</th>
+                      <th>TOTAL COST</th>
+                      <th>LOCATION</th>
+                      <th>ITEM DESCRIPTION</th>
+                      <th>ATTACHMENT(S)</th>
+                      {userInfo?.departmentID === 8 && <th>ACTION</th>}
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {items.map(function (item, itemIndex) {
+                      return (
+                        <tr key={item.id}>
+                          <td>
+                            {categories.indexOf(activeCategory) + 1}.{index + 1}
+                            .{itemIndex + 1}
+                          </td>
+                          <td>{item.item_name}</td>
+                          <td>{item.quantity}</td>
+                          <td>{item.unit}</td>
+                          <td>{item.rate_per_quantity?.toLocaleString()}</td>
+                          <td>AED {item.total_cost?.toLocaleString()}</td>
+                          <td>{item.location?.split(" - ").pop()}</td>
+                          <td>
+                            <ItemDescriptionPopUp item={item} />
+                          </td>
+                          <td className="attachments">
+                            <div className="attachments-grid">
+                              {(() => {
+                                try {
+                                  if (!item.attachments) {
+                                    return null;
+                                  }
 
-            <br />
+                                  if (Array.isArray(item.attachments)) {
+                                    return item.attachments.map(function (
+                                      url: string,
+                                      i: number
+                                    ) {
+                                      return (
+                                        <img
+                                          key={i}
+                                          src={url}
+                                          alt="attachment"
+                                        />
+                                      );
+                                    });
+                                  }
 
-            {userInfo?.departmentID === 8 && (
-              <AddBoqItemButton
-                boqHeaderID={boqHeader.id}
-                bgColor="rgba(239, 239, 239, 1)"
-                borderColor="rgba(239, 239, 239, 1)"
-                textColor="black"
-                full
-                autoCategory={activeCategory}
-                autoSubCategory={subCategory}
-              >
-                ADD ITEM +
-              </AddBoqItemButton>
-            )}
+                                  if (typeof item.attachments === "string") {
+                                    if (item.attachments.trim() === "") {
+                                      return null;
+                                    }
 
-            <br />
+                                    const attachments = JSON.parse(
+                                      item.attachments
+                                    );
 
-            <br />
-            <br />
-            <br />
-            <br />
-          </div>
-        );
-      })}
+                                    if (!Array.isArray(attachments)) {
+                                      return null;
+                                    }
+
+                                    return attachments.map(function (
+                                      url: string,
+                                      i: number
+                                    ) {
+                                      return (
+                                        <a href={url} key={i} target="_blank">
+                                          <img
+                                            key={i}
+                                            src={url}
+                                            alt="attachment"
+                                          />
+                                        </a>
+                                      );
+                                    });
+                                  }
+
+                                  return null;
+                                } catch (error) {
+                                  console.error(
+                                    "Failed to parse attachments:",
+                                    error,
+                                    item.attachments
+                                  );
+                                  return null;
+                                }
+                              })()}
+                            </div>
+                          </td>
+
+                          {userInfo?.departmentID === 8 && (
+                            <td>
+                              <div style={{ display: "flex", gap: "10px" }}>
+                                <EditBoqItemButton
+                                  item={item}
+                                  bgColor={"rgba(239, 239, 239, 1)"}
+                                  borderColor={"rgba(223, 223, 223, 1)"}
+                                  textColor={"black"}
+                                >
+                                  <img src={pencilIcon} alt="pencil icon" />
+                                </EditBoqItemButton>
+
+                                <DeleteBoqItemButton
+                                  item={item}
+                                  bgColor={"rgba(239, 239, 239, 1)"}
+                                  borderColor={"rgba(223, 223, 223, 1)"}
+                                  textColor={"black"}
+                                >
+                                  <img src={trashIcon} alt="trash icon" />
+                                </DeleteBoqItemButton>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                <br />
+
+                {userInfo?.departmentID === 8 && (
+                  <AddBoqItemButton
+                    boqHeaderID={boqHeader.id}
+                    bgColor="rgba(239, 239, 239, 1)"
+                    borderColor="rgba(239, 239, 239, 1)"
+                    textColor="black"
+                    full
+                    autoCategory={activeCategory}
+                    autoSubCategory={subCategory}
+                  >
+                    ADD ITEM +
+                  </AddBoqItemButton>
+                )}
+
+                <br />
+
+                <br />
+                <br />
+                <br />
+                <br />
+              </div>
+            );
+          })}
 
       {userInfo?.departmentID === 8 && (
         <AddBoqItemButton
@@ -341,7 +517,7 @@ export default function BoqLinesView({
           borderColor="rgba(239, 239, 239, 1)"
           textColor="black"
           full
-          autoCategory={activeCategory}
+          autoCategory={activeCategory === "ALL" ? undefined : activeCategory}
         >
           ADD SUBCATEGORY & ITEM +
         </AddBoqItemButton>

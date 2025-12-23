@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const [rows] = await db.query("SELECT * FROM vw_suppliers");
 

@@ -3,18 +3,20 @@
 import { useRef } from "react";
 import Button from "@/app/components/Button";
 import { pdf } from "@react-pdf/renderer";
-import { CodePDF } from "./CodePDF";
-import Barcode from "react-barcode";
+import { QrCodePDF } from "./QrCodePDF";
+// import Barcode from "react-barcode";
 import { QRCodeSVG } from "qrcode.react";
 import { InventoryItem } from "../../types/inventoryItem";
 
-type CodeDownloadButtonProps = {
+type QrCodeDownloadButtonProps = {
   item: InventoryItem;
 };
 
-export default function CodeDownloadButton({ item }: CodeDownloadButtonProps) {
-  const printerIcon = "/icons/printer.svg";
-  const barcodeRef = useRef<HTMLDivElement>(null);
+export default function QrCodeDownloadButton({
+  item,
+}: QrCodeDownloadButtonProps) {
+  const downloadIcon = "/icons/download.svg";
+  // const barcodeRef = useRef<HTMLDivElement>(null);
   const qrcodeRef = useRef<HTMLDivElement>(null);
 
   const svgToPngDataUrl = async (
@@ -67,26 +69,23 @@ export default function CodeDownloadButton({ item }: CodeDownloadButtonProps) {
 
     try {
       // Get SVG elements
-      const barcodeSvg = barcodeRef.current?.querySelector("svg");
+      // const barcodeSvg = barcodeRef.current?.querySelector("svg");
       const qrcodeSvg = qrcodeRef.current?.querySelector("svg");
 
-      if (!barcodeSvg || !qrcodeSvg) {
+      if (!qrcodeSvg) {
         console.error("SVG elements not found");
         alert("SVG elements not found. Please try again.");
         return;
       }
 
       // Convert to PNG data URLs
-
-      const barcodeDataUrl = await svgToPngDataUrl(barcodeSvg, 400, 150);
-
+      // const barcodeDataUrl = await svgToPngDataUrl(barcodeSvg, 400, 150);
       const qrcodeDataUrl = await svgToPngDataUrl(qrcodeSvg, 300, 300);
 
       const blob = await pdf(
-        <CodePDF
-          itemCategory={item.category_name}
-          itemDescription={item.description}
-          barcodeDataUrl={barcodeDataUrl}
+        <QrCodePDF
+          inventoryItem={item}
+          // barcodeDataUrl={barcodeDataUrl}
           qrcodeDataUrl={qrcodeDataUrl}
         />
       ).toBlob();
@@ -125,7 +124,7 @@ export default function CodeDownloadButton({ item }: CodeDownloadButtonProps) {
           visibility: "hidden",
         }}
       >
-        <div ref={barcodeRef} id="barcode-container">
+        {/* <div ref={barcodeRef} id="barcode-container">
           <Barcode
             value={`MRT-${item.id.toString().padStart(5, "0")}`}
             format="CODE128"
@@ -133,7 +132,7 @@ export default function CodeDownloadButton({ item }: CodeDownloadButtonProps) {
             height={75}
             displayValue={true}
           />
-        </div>
+        </div> */}
         <div ref={qrcodeRef} id="qrcode-container">
           <QRCodeSVG value={`/inventory/${item.id}`} size={150} />
         </div>
@@ -147,7 +146,7 @@ export default function CodeDownloadButton({ item }: CodeDownloadButtonProps) {
         style={{ padding: "7px 7px" }}
         onClick={handleDownload}
       >
-        <img src={printerIcon} alt="printer" />
+        <img src={downloadIcon} alt="printer" />
       </Button>
     </>
   );

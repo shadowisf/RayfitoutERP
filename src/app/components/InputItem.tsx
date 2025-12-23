@@ -108,7 +108,9 @@ export default function InputItem({
               {placeholder}
             </option>
             {selectOptions
-              ? selectOptions.map((o) => <option key={o}>{o}</option>)
+              ? selectOptions.map((o, index) => (
+                  <option key={index}>{o}</option>
+                ))
               : dbMap}
           </select>
         </div>

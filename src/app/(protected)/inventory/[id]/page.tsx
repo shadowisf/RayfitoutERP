@@ -1,7 +1,13 @@
+import Barcode from "react-barcode";
 import { InventoryItem } from "../types/inventoryItem";
-import CodeSection from "./components/CodeSection";
-import CodeDownloadButton from "./components/CodeDownloadButton";
+import { QRCodeSVG } from "qrcode.react";
+import CodeSection from "./components/QrCodeSection";
+import Button from "@/app/components/Button";
+import QrCodeDownloadButton from "./components/_QrCodeDownloadButton";
 import TransactionTimeline from "./components/TransactionTimeline";
+import AddToStockButton from "../../mr/[id]/components/storekeeper/_AddStockButton";
+import ManualAddToStockButton from "./components/_ManualAddStockButton";
+import TransferIssueStocksButton from "./components/_TransferIssueStockButton";
 
 export default async function InventoryItemWithID({
   params,
@@ -30,74 +36,49 @@ export default async function InventoryItemWithID({
       return null;
     });
 
-  // Example transaction data - replace with your actual API call
-  const transactions = [
+  // Fetch stock transactions for this inventory item
+  const stocks = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getStocksByInventoryItemID`,
     {
-      id: "1",
-      type: "TO_BE_TRANSFERRED" as const,
-      date: "21 JAN 2025",
-      quantity: 1,
-      batchId: "BA-0013",
-      transferNote: "TRN - 001",
-    },
-    {
-      id: "2",
-      type: "STOCK_ADDED" as const,
-      date: "21 JAN 2025",
-      quantity: 12,
-      batchId: "BA-0013",
-      stockLocation: "HEADQUARTERS",
-      addedBy: "JOHN",
-    },
-    {
-      id: "3",
-      type: "STOCK_ISSUED" as const,
-      date: "21 JAN 2025",
-      quantity: 1,
-      batchId: "BA-0013",
-      issuedTo: "RAFIQUE AHMED",
-      purpose: "NEW WORK",
-    },
-    {
-      id: "4",
-      type: "TRANSFER_RECEIVED" as const,
-      date: "21 JAN 2025",
-      quantity: 1,
-      batchId: "BA-0013",
-      transferNote: "TRN - 001",
-    },
-    {
-      id: "5",
-      type: "TO_BE_TRANSFERRED" as const,
-      date: "21 JAN 2025",
-      quantity: 1,
-      batchId: "BA-0013",
-      transferNote: "TRN - 001",
-    },
-    {
-      id: "6",
-      type: "STOCK_ADDED" as const,
-      date: "21 JAN 2025",
-      quantity: 12,
-      batchId: "BA-0013",
-      stockLocation: "HEADQUARTERS",
-      addedBy: "JOHN",
-    },
-    {
-      id: "7",
-      type: "ITEM_CREATED" as const,
-      date: "21 JAN 2025",
-      quantity: 0,
-      createdBy: "JOHN",
-    },
-  ];
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inventoryItemId: id }),
+    }
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success && data.rows && data.rows.length > 0) {
+        return data.rows;
+      }
+      return [];
+    })
+    .catch((err) => {
+      console.error(err);
+      return [];
+    });
 
   return (
     <div className="dashboard">
       <div
         style={{
+          display: "flex",
+          justifyContent: "space-betweens",
+        }}
+      >
+        <div></div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <ManualAddToStockButton inventoryItem={inventoryItem} />
+          <TransferIssueStocksButton inventoryItem={inventoryItem} />
+        </div>
+      </div>
+
+      <br />
+      <br />
+
+      <div
+        style={{
           display: "grid",
-          gridTemplateColumns: "1fr 0.5fr",
+          gridTemplateColumns: "1fr 0.25fr",
           gap: "25px",
           textTransform: "uppercase",
         }}
@@ -203,11 +184,10 @@ export default async function InventoryItemWithID({
               alignItems: "center",
             }}
           >
-            <h2>BARCODE & QR CODE</h2>
-            <CodeDownloadButton item={inventoryItem} />
+            <h2>QR CODE</h2>
+            <QrCodeDownloadButton item={inventoryItem} />
           </div>
 
-          <br />
           <br />
 
           <CodeSection item={inventoryItem} />
@@ -232,7 +212,7 @@ export default async function InventoryItemWithID({
           <h2>TRANSACTION & MOVEMENT</h2>
           <br />
           <br />
-          <TransactionTimeline transactions={transactions} />
+          <TransactionTimeline stock={stocks} inventoryItem={inventoryItem} />
         </div>
       </div>
     </div>

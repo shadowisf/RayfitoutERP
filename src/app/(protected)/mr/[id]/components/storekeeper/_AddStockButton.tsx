@@ -180,8 +180,8 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
           action: "updateStock",
           id: existingStock.id,
           inventory_item_id: inventoryItemID,
-          location: location,
-          notes: notes,
+          location,
+          notes,
         }),
       });
 
@@ -212,8 +212,8 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
           subcategory_id: mrLine.material_subcategory_id,
           unit: mrLine.unit,
           quantity: mrLine.quantity,
-          location: location,
-          notes: notes,
+          location,
+          notes,
         }),
       });
 

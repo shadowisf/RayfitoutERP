@@ -23,21 +23,18 @@ export async function POST(request: NextRequest) {
 
       const query = `
         INSERT INTO stocks 
-        (batch_id, mr_header_id, mr_line_id, inventory_item_id, supplier_id, received_by, category_id, subcategory_id, quantity, unit, location, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (batch_id, mr_header_id, mr_line_id, inventory_item_id, supplier_id, received_by, quantity, location, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
         nextBatchId,
-        Number(body.mr_header_id),
-        Number(body.mr_line_id),
+        Number(body.mr_header_id) || null,
+        Number(body.mr_line_id) || null,
         Number(body.inventory_item_id),
-        body.supplier_id,
+        body.supplier_id || null,
         body.received_by,
-        body.category_id,
-        body.subcategory_id,
         Number(body.quantity),
-        body.unit,
         body.location,
         body.notes,
       ];
@@ -47,6 +44,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         batch_id: nextBatchId,
+      });
+    }
+
+    if (body.action === "transferIssueStock") {
+      const query = `
+        INSERT INTO stocks_transfer_issue 
+        (inventory_item_id, type, from_location, to_location, quantity, purpose, receiver_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      const values = [
+        Number(body.inventory_item_id),
+        body.type,
+        body.from,
+        body.to,
+        body.quantity,
+        body.purpose,
+        body.receiver_name,
+      ];
+
+      await db.query(query, values);
+
+      return NextResponse.json({
+        success: true,
       });
     }
   } catch (error: any) {
