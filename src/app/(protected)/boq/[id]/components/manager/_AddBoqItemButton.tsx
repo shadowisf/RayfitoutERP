@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import Button from "@/app/components/Button";
