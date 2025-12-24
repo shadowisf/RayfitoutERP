@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Button from "./Button";
 
-type SingleSelectInputProps = {
+type SingleSelectDropdownProps = {
   label: string;
   selectedValue: string | number;
   onChange: (selected: string | number) => void;
@@ -43,7 +43,7 @@ export default function SingleSelectDropdown({
   style,
   onCreateClick,
   formatOptionLabel,
-}: SingleSelectInputProps) {
+}: SingleSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredOption, setHoveredOption] = useState<string | number | null>(
