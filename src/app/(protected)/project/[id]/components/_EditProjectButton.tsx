@@ -6,7 +6,7 @@ import InputItem from "@/app/components/InputItem";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { toast } from "@/app/components/Toast";
-import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
+import { MultiSelectDropdown } from "@/app/components/MultiSelectDropdown";
 
 export function EditProjectButton({ project }: { project: any }) {
   const router = useRouter();

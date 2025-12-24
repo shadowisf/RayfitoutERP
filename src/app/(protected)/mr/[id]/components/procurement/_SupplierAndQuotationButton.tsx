@@ -3,7 +3,7 @@
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
-import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
+import { MultiSelectDropdown } from "@/app/components/MultiSelectDropdown";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";

@@ -16,7 +16,7 @@ type MultiSelectInputProps = {
   style?: React.CSSProperties;
 };
 
-export default function MultiSelectDropdown({
+export function MultiSelectDropdown({
   label,
   selectedValues,
   onChange,
