@@ -5,7 +5,6 @@ import TransactionTimeline from "./components/TransactionTimeline";
 import ManualAddToStockButton from "./components/_ManualAddStockButton";
 import TransferIssueStocksButton from "./components/_TransferIssueStockButton";
 import StockLocationChart from "./components/StockLocationChart";
-import TopSuppliersChart from "./components/TopSuppliersChart";
 
 export default async function InventoryItemWithID({
   params,

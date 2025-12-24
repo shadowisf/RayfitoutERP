@@ -8,7 +8,6 @@ import { useAuth } from "@/app/context/AuthContext";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { InventoryItem } from "../../types/inventoryItem";
-import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 
 type TransferIssueStockButtonProps = {
   inventoryItem: InventoryItem;

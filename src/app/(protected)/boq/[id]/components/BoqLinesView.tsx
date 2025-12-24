@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import AddBoqItemButton from "./manager/_AddBoqItemButton";
 import EditBoqItemButton from "./manager/_EditBoqItemButton";
 import { BoqLine } from "../types/boqLine";

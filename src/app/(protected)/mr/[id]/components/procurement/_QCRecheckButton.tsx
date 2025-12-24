@@ -6,7 +6,6 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MrHeader } from "../../types/mrHeader";
-import { useAuth } from "@/app/context/AuthContext";
 
 type QCRecheckButtonProps = {
   mrHeader: MrHeader;
@@ -14,8 +13,6 @@ type QCRecheckButtonProps = {
 
 export default function QCRecheckButton({ mrHeader }: QCRecheckButtonProps) {
   const router = useRouter();
-
-  const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
 

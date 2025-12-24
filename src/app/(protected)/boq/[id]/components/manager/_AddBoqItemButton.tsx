@@ -6,7 +6,6 @@ import InputItem from "@/app/components/InputItem";
 import Button from "@/app/components/Button";
 import UploadFilesButton from "./_UploadFilesButton";
 import { useRouter } from "next/navigation";
-import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 

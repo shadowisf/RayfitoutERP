@@ -9,7 +9,6 @@ import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
 import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
 import RejectCommentPopUp from "./RejectCommentPopUp";
-import { useAuth } from "@/app/context/AuthContext";
 
 type PriceApprovalButtonProps = {
   progressID: number;

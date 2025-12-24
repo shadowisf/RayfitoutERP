@@ -1,6 +1,6 @@
 "use client";
 
-import Barcode from "react-barcode";
+/* import Barcode from "react-barcode"; */
 import { QRCodeSVG } from "qrcode.react";
 import { InventoryItem } from "../../types/inventoryItem";
 

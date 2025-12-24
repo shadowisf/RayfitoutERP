@@ -6,7 +6,6 @@ import InputItem from "@/app/components/InputItem";
 import { useState, useEffect } from "react";
 import { MrLine } from "../../types/mrLine";
 import { LpoHeader } from "../../types/lpoHeader";
-import NotesPopUp from "../NotesPopUp";
 
 type GRNRefPopUpProps = {
   mrLine: MrLine;
