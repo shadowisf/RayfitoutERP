@@ -3,10 +3,10 @@
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
-import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { toast } from "@/app/components/Toast";
+import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 
 export function EditProjectButton({ project }: { project: any }) {
   const router = useRouter();
@@ -125,10 +125,7 @@ export function EditProjectButton({ project }: { project: any }) {
               placeholder={"SELECT PROPETY TYPE"}
               onChange={(e) => setPropertyTypeID(Number(e.target.value))}
               dbMap={propertyTypes.map((pt: any) => (
-                <option
-                  key={pt.id}
-                  value={pt.id}
-                >
+                <option key={pt.id} value={pt.id}>
                   {pt.value}
                 </option>
               ))}
@@ -365,10 +362,7 @@ export function EditProjectButton({ project }: { project: any }) {
           </div>
 
           {/* 6th row */}
-          <div
-            className="input-row three-col"
-            style={{ marginBottom: "40px" }}
-          >
+          <div className="input-row three-col" style={{ marginBottom: "40px" }}>
             <InputItem
               label={"START DATE (OPTIONAL)"}
               value={startDate}

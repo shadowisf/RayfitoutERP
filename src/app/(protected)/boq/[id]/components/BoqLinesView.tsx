@@ -10,7 +10,7 @@ import RenameBoqSubCategoryButton from "./manager/_RenameBoqSubCategory";
 import { useAuth } from "@/app/context/AuthContext";
 import ItemDescriptionPopUp from "./ItemDescriptionPopUp";
 import { BoqHeader } from "../types/boqHeader";
-import DownloadBOQButton from "./manager/_DownloadBOQButton";
+import DownloadBoqButton from "./manager/_DownloadBoqButton";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -102,7 +102,7 @@ export default function BoqLinesView({
             </>
           )}
 
-          <DownloadBOQButton
+          <DownloadBoqButton
             boqHeader={boqHeader}
             boqLines={boqLines}
             bgColor="black"
@@ -110,7 +110,7 @@ export default function BoqLinesView({
             textColor="white"
           >
             DOWNLOAD BOQ
-          </DownloadBOQButton>
+          </DownloadBoqButton>
         </div>
       </div>
 

@@ -3,8 +3,8 @@
 import Button from "@/app/components/Button";
 import { BoqHeader } from "../../types/boqHeader";
 import { BoqLine } from "../../types/boqLine";
-import { BoqPDF } from "../BoqPDF";
 import { pdf } from "@react-pdf/renderer";
+import { BoqPDF } from "../BoqPDF";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -12,7 +12,7 @@ type GroupedBoqLines = {
   };
 };
 
-type DownloadBOQButtonProps = {
+type DownloadBoqButtonProps = {
   boqHeader: BoqHeader;
   boqLines: GroupedBoqLines;
   children: React.ReactNode;
@@ -22,7 +22,7 @@ type DownloadBOQButtonProps = {
   style?: React.CSSProperties;
 };
 
-export default function DownloadBOQButton({
+export default function DownloadBoqButton({
   boqHeader,
   boqLines,
   bgColor,
@@ -30,7 +30,7 @@ export default function DownloadBOQButton({
   borderColor,
   children,
   style,
-}: DownloadBOQButtonProps) {
+}: DownloadBoqButtonProps) {
   async function urlToBase64(url: string): Promise<string> {
     try {
       const response = await fetch(
