@@ -14,6 +14,14 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsWithBOQ, setProjectsWithBOQ] = useState<any[]>([]);
 
+  useEffect(() => {
+    // Temporarily add this to see what's being used
+    console.log("DB Host:", process.env.DB_HOST);
+    console.log("DB User:", process.env.DB_USER);
+    console.log("DB Name:", process.env.DB_NAME);
+    console.log("DB Password exists:", !!process.env.DB_PASSWORD);
+  }, []);
+
   // Fetch Projects
   useEffect(() => {
     const loadProjects = async () => {

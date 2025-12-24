@@ -1,13 +1,11 @@
-import Barcode from "react-barcode";
 import { InventoryItem } from "../types/inventoryItem";
-import { QRCodeSVG } from "qrcode.react";
 import CodeSection from "./components/QrCodeSection";
-import Button from "@/app/components/Button";
 import QrCodeDownloadButton from "./components/_QrCodeDownloadButton";
 import TransactionTimeline from "./components/TransactionTimeline";
-import AddToStockButton from "../../mr/[id]/components/storekeeper/_AddStockButton";
 import ManualAddToStockButton from "./components/_ManualAddStockButton";
 import TransferIssueStocksButton from "./components/_TransferIssueStockButton";
+import StockLocationChart from "./components/StockLocationChart";
+import TopSuppliersChart from "./components/TopSuppliersChart";
 
 export default async function InventoryItemWithID({
   params,
@@ -37,7 +35,7 @@ export default async function InventoryItemWithID({
     });
 
   // Fetch stock transactions for this inventory item
-  const stocks = await fetch(
+  const stockData = await fetch(
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getStocksByInventoryItemID`,
     {
       method: "POST",
@@ -47,14 +45,23 @@ export default async function InventoryItemWithID({
   )
     .then((res) => res.json())
     .then((data) => {
-      if (data.success && data.rows && data.rows.length > 0) {
-        return data.rows;
+      if (data.success) {
+        return {
+          stocks: data.stocks || [],
+          stocksTransferIssue: data.stocksTransferIssue || [],
+        };
       }
-      return [];
+      return {
+        stocks: [],
+        stocksTransferIssue: [],
+      };
     })
     .catch((err) => {
       console.error(err);
-      return [];
+      return {
+        stocks: [],
+        stocksTransferIssue: [],
+      };
     });
 
   return (
@@ -204,15 +211,35 @@ export default async function InventoryItemWithID({
           gap: "25px",
         }}
       >
-        <div className="widget-container">
-          <h2>STOCK HISTORY</h2>
+        <div>
+          <div className="widget-container">
+            <StockLocationChart
+              stocks={stockData.stocks}
+              stocksTransferIssue={stockData.stocksTransferIssue}
+              unit={inventoryItem.unit}
+            />
+          </div>
+
+          {/* <br />
+          <br />
+
+          <div className="widget-container">
+            <TopSuppliersChart
+              stocks={stockData.stocks}
+              unit={inventoryItem.unit}
+            />
+          </div> */}
         </div>
 
         <div className="widget-container">
           <h2>TRANSACTION & MOVEMENT</h2>
           <br />
           <br />
-          <TransactionTimeline stock={stocks} inventoryItem={inventoryItem} />
+          <TransactionTimeline
+            stocks={stockData.stocks}
+            stocksTransferIssue={stockData.stocksTransferIssue}
+            inventoryItem={inventoryItem}
+          />
         </div>
       </div>
     </div>

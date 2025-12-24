@@ -51,7 +51,7 @@ export default function TransferIssueStocksButton({
     )
       .then((res) => res.json())
       .then((data) => {
-        const locations = data.rows.map(
+        const locations = data.stocks.map(
           (item: { location: string }) => item.location
         );
         setFromValues(locations);

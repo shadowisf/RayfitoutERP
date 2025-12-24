@@ -18,22 +18,38 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      // Query to get all stocks for the inventory item
-      // Filtering by type: 'Add' and 'Transfer' = STOCK_ADDED, 'Issue' = STOCK_ISSUED
-      const query = `
-        SELECT *
-        FROM stocks
-        WHERE inventory_item_id = ?
-        ORDER BY created_at DESC
-      `;
-
-      const [rows] = await db.execute<RowDataPacket[]>(query, [
+      // Query stocks table
+      const stocksQuery = `SELECT * FROM stocks WHERE inventory_item_id = ?`;
+      const [stocksRows] = await db.execute<RowDataPacket[]>(stocksQuery, [
         inventoryItemId,
       ]);
 
+      // Query stocks_transfer_issue table
+      const transferIssueQuery = `SELECT * FROM stocks_transfer_issue WHERE inventory_item_id = ?`;
+      const [transferIssueRows] = await db.execute<RowDataPacket[]>(
+        transferIssueQuery,
+        [inventoryItemId]
+      );
+
+      // Add source identifier to each row
+      const stocksWithSource = stocksRows.map((row) => ({
+        ...row,
+        source_table: "stocks",
+      }));
+
+      const transferIssueWithSource = transferIssueRows.map((row) => ({
+        ...row,
+        source_table: "stocks_transfer_issue",
+      }));
+
+      // Combine and return
+      const stocks = [...stocksWithSource];
+      const stocksTransferIssue = [...transferIssueWithSource];
+
       return NextResponse.json({
         success: true,
-        rows: rows,
+        stocks: stocks,
+        stocksTransferIssue: stocksTransferIssue,
       });
     } catch (error) {
       console.error("Database query error:", error);
