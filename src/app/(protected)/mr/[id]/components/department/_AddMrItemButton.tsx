@@ -35,9 +35,11 @@ export default function AddMrItemButton({
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const [materialCategoryValues, setMaterialCategoryValues] = useState<[]>([]);
-  const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
+  const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
     []
+  );
+  const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
+    any[]
   >([]);
   const [boqLineValues, setBoqLineValues] = useState<any[]>([]);
 
@@ -72,6 +74,16 @@ export default function AddMrItemButton({
       })
       .catch((err) => {
         console.error(err);
+      });
+
+    // Fetch all subcategories initially
+    fetch("/api/mr/getMaterialSubCategoryValues", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setMaterialSubCategoryValues(data);
       });
 
     fetch("/api/boq/getAllBoqLinesWithNumberRef", {
@@ -116,6 +128,16 @@ export default function AddMrItemButton({
         })
         .catch((err) => {
           console.error(err);
+        });
+    } else {
+      // If category is reset, load all subcategories
+      fetch("/api/mr/getMaterialSubCategoryValues", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setMaterialSubCategoryValues(data);
         });
     }
   }, [materialCategoryID]);
@@ -193,10 +215,19 @@ export default function AddMrItemButton({
               label={"SUB CATEGORY"}
               dbData={materialSubCategoryValues}
               selectedValue={materialSubCategoryID}
-              onChange={setMaterialSubCategoryID}
+              onChange={(subCategoryId) => {
+                setMaterialSubCategoryID(subCategoryId);
+
+                const selectedSubCategory = materialSubCategoryValues.find(
+                  (sc: any) => sc.id === subCategoryId
+                ) as any;
+
+                if (selectedSubCategory?.category_id) {
+                  setMaterialCategoryID(selectedSubCategory.category_id);
+                }
+              }}
               placeholder="SELECT SUB CATEGORY"
               required
-              disabled={materialCategoryID === ""}
             />
           </div>
 
@@ -211,22 +242,13 @@ export default function AddMrItemButton({
             />
 
             <SingleSelectDropdown
-              label={"BOQ LINE"}
+              label={"BILL OF QUANTITY"}
               dbData={boqLineValues}
               selectedValue={boqLineID}
               onChange={setBoqLineID}
               placeholder="SELECT BOQ LINE"
               required={false}
             />
-
-            {/* <MultiSelectDropdown
-              label="BOQ LINE"
-              dbData={boqLineValues}
-              selectedValues={boqLineID}
-              onChange={setBoqLineID}
-              placeholder="SELECT BOQ LINE"
-              required={false}
-            /> */}
           </div>
 
           <div className="input-row half">

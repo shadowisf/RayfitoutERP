@@ -32,9 +32,11 @@ export default function EditMrItemButton({
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const [materialCategoryValues, setMaterialCategoryValues] = useState<[]>([]);
-  const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
+  const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
     []
+  );
+  const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
+    any[]
   >([]);
   const [boqLineValues, setBoqLineValues] = useState<any[]>([]);
 
@@ -62,6 +64,16 @@ export default function EditMrItemButton({
         console.error(err);
       });
 
+    // Fetch all subcategories initially
+    fetch("/api/mr/getMaterialSubCategoryValues", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setMaterialSubCategoryValues(data);
+      });
+
     fetch("/api/boq/getAllBoqLinesWithNumberRef", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -87,23 +99,35 @@ export default function EditMrItemButton({
 
         setBoqLineValues(array);
       });
-  }, []);
+  }, [projectID]);
 
   useEffect(() => {
-    fetch("/api/mr/getMaterialSubCategoryValuesByCategoryID", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        category_id: materialCategoryID,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setMaterialSubCategoryValues(data);
+    if (materialCategoryID) {
+      fetch("/api/mr/getMaterialSubCategoryValuesByCategoryID", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category_id: materialCategoryID,
+        }),
       })
-      .catch((err) => {
-        console.error(err);
-      });
+        .then((res) => res.json())
+        .then((data) => {
+          setMaterialSubCategoryValues(data);
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    } else {
+      // If category is reset, load all subcategories
+      fetch("/api/mr/getMaterialSubCategoryValues", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setMaterialSubCategoryValues(data);
+        });
+    }
   }, [materialCategoryID]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -177,17 +201,25 @@ export default function EditMrItemButton({
               onChange={setMaterialCategoryID}
               placeholder="SELECT CATEGORY"
               required
-              disabled
             />
 
             <SingleSelectDropdown
               label={"SUB CATEGORY"}
               dbData={materialSubCategoryValues}
               selectedValue={materialSubCategoryID}
-              onChange={setMaterialSubCategoryID}
+              onChange={(subCategoryId) => {
+                setMaterialSubCategoryID(subCategoryId);
+
+                const selectedSubCategory = materialSubCategoryValues.find(
+                  (sc: any) => sc.id === subCategoryId
+                ) as any;
+
+                if (selectedSubCategory?.category_id) {
+                  setMaterialCategoryID(selectedSubCategory.category_id);
+                }
+              }}
               placeholder="SELECT SUB CATEGORY"
               required
-              disabled
             />
           </div>
 
@@ -200,15 +232,6 @@ export default function EditMrItemButton({
               required
               onChange={(e) => setMaterialDescription(e.target.value)}
             />
-
-            {/* <MultiSelectDropdown
-              label="BOQ LINE"
-              dbData={boqLineValues}
-              selectedValues={boqLineID}
-              onChange={setBoqLineID}
-              placeholder="SELECT BOQ LINE"
-              required={false}
-            /> */}
 
             <SingleSelectDropdown
               label={"BOQ LINE"}

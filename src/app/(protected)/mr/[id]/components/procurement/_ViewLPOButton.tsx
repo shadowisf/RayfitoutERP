@@ -61,19 +61,12 @@ export default function ViewLPOButton({ lpoID }: ViewLPOButtonProps) {
     generatePdfBlob();
   }, [lpo]);
 
-  const handleViewClick = () => {
-    if (pdfUrl) {
-      window.open(pdfUrl, "_blank");
-    }
-  };
-
   return (
     <Button
       componentType={"none"}
       bgColor={"white"}
       borderColor={"rgba(207, 207, 207, 1)"}
       textColor={"black"}
-      onClick={handleViewClick}
       style={{ padding: "7px 20px", borderRadius: "25px" }}
     >
       LPO

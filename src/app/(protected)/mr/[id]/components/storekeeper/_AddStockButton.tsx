@@ -30,7 +30,6 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
 
   const plusIcon = "/icons/plus.svg";
   const pencilIcon = "/icons/pencil.svg";
-  const externalLinkIcon = "/icons/external-link.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -343,7 +342,11 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
               onChange={(e) => {
                 setLocation(e.target.value);
               }}
-              selectOptions={["Headquarters", `${mrLine.project_name}`]}
+              selectOptions={[
+                "Headquarters",
+                "Umm Al Quwain warehouse",
+                `${mrLine.project_name}`,
+              ]}
             />
           </div>
 

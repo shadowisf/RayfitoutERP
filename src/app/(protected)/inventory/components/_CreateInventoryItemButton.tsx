@@ -18,9 +18,11 @@ export default function CreateInventoryItemButton() {
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const [materialCategoryValues, setMaterialCategoryValues] = useState<[]>([]);
-  const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
+  const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
     []
+  );
+  const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
+    any[]
   >([]);
 
   const [materialCategoryID, setMaterialCategoryID] = useState<string | number>(
@@ -32,8 +34,10 @@ export default function CreateInventoryItemButton() {
   const [description, setDescription] = useState("");
   const [type, setType] = useState("");
   const [unit, setUnit] = useState("");
-  const [stockable, setStockable] = useState(false);
-  const [minimumStockQuantity, setMinimumStockQuantity] = useState("");
+  const [stockable, setStockable] = useState(true);
+  const [minimumStockQuantity, setMinimumStockQuantity] = useState<
+    string | number
+  >("");
   const [brand, setBrand] = useState("");
   const [countryOfOrigin, setCountryOfOrigin] = useState("");
   const [specification, setSpecification] = useState("");
@@ -42,6 +46,7 @@ export default function CreateInventoryItemButton() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Fetch all categories on mount
   useEffect(() => {
     fetch("/api/mr/getMaterialCategoryValues")
       .then((res) => res.json())
@@ -53,21 +58,53 @@ export default function CreateInventoryItemButton() {
       });
   }, []);
 
+  // Fetch all subcategories on mount (for initial load)
+  useEffect(() => {
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        setMaterialSubCategoryValues(data);
+      });
+  }, []);
+
+  // When category is selected, filter subcategories by category
   useEffect(() => {
     if (materialCategoryID) {
-      fetch("/api/mr/getMaterialSubCategoryValuesByCategoryID", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category_id: materialCategoryID,
-        }),
-      })
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category_id: materialCategoryID,
+          }),
+        }
+      )
         .then((res) => res.json())
         .then((data) => {
           setMaterialSubCategoryValues(data);
         })
         .catch((err) => {
           console.error(err);
+        });
+    } else {
+      // If category is reset, load all subcategories
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          setMaterialSubCategoryValues(data);
         });
     }
   }, [materialCategoryID]);
@@ -213,7 +250,7 @@ export default function CreateInventoryItemButton() {
         textColor={"white"}
         onClick={() => setIsOpen(true)}
       >
-        CREATE NEW MATERIAL +{/* <img src={plusIcon} alt="pencil" /> */}
+        NEW INVENTORY ITEM +
       </Button>
 
       {isOpen && (
@@ -234,22 +271,31 @@ export default function CreateInventoryItemButton() {
             />
 
             <SingleSelectDropdown
-              label={"SUB CATEGORY"}
+              label={"SUBCATEGORY"}
               dbData={materialSubCategoryValues}
               selectedValue={materialSubCategoryID}
-              onChange={setMaterialSubCategoryID}
-              placeholder="SELECT SUB CATEGORY"
+              onChange={(subCategoryId) => {
+                setMaterialSubCategoryID(subCategoryId);
+
+                const selectedSubCategory = materialSubCategoryValues.find(
+                  (sc: any) => sc.id === subCategoryId
+                ) as any;
+
+                if (selectedSubCategory?.category_id) {
+                  setMaterialCategoryID(selectedSubCategory.category_id);
+                }
+              }}
+              placeholder="SELECT SUBCATEGORY"
               required
-              disabled={materialCategoryID === ""}
             />
           </div>
 
           <div className="input-row full">
             <InputItem
-              label={"DESCRIPTION"}
+              label={"ITEM NAME"}
               value={description}
               type={"text"}
-              placeholder={"ENTER DESCRIPTION"}
+              placeholder={"ENTER ITEM NAME"}
               required
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -267,9 +313,10 @@ export default function CreateInventoryItemButton() {
                 "Raw material",
                 "Finish material",
                 "Hardware",
-                "Mechanical / plumbing material",
-                "Asset / equipment",
+                "Mechanical/plumbing material",
+                "Asset/equipment",
                 "Fabricated item",
+                "Finished product",
                 "Consumable",
               ]}
             />
@@ -357,14 +404,19 @@ export default function CreateInventoryItemButton() {
               type={"text"}
               placeholder={"ENTER MINIMUM QUANTITY TO STOCK"}
               required
-              onChange={(e) => setMinimumStockQuantity(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || /^\d+$/.test(val)) {
+                  setMinimumStockQuantity(val === "" ? "" : Number(val));
+                }
+              }}
             />
 
             <InputItem
               label={"BRAND (OPTIONAL)"}
               value={brand}
               type={"text"}
-              placeholder={""}
+              placeholder={"ENTER BRAND"}
               required={false}
               onChange={(e) => setBrand(e.target.value)}
             />

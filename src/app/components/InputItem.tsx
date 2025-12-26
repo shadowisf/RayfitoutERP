@@ -36,7 +36,14 @@ export default function InputItem({
     case "date":
       return (
         <div className="input-item">
-          {label && <label>{label}</label>}
+          {label && (
+            <label>
+              <span>
+                {label}{" "}
+                {required ? <span style={{ color: "red" }}>*</span> : ""}
+              </span>
+            </label>
+          )}
           <input
             type={"date"}
             value={value}
@@ -64,7 +71,11 @@ export default function InputItem({
               : {}),
           }}
         >
-          {label && <label>{label}</label>}
+          <label>
+            <span>
+              {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
+            </span>
+          </label>
           <input
             type={"text"}
             value={value}
@@ -80,7 +91,11 @@ export default function InputItem({
     case "number":
       return (
         <div className="input-item">
-          {label && <label>{label}</label>}
+          <label>
+            <span>
+              {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
+            </span>
+          </label>
           <input
             type={"number"}
             value={value}
@@ -96,7 +111,11 @@ export default function InputItem({
     case "select":
       return (
         <div className="input-item">
-          {label && <label>{label}</label>}
+          <label>
+            <span>
+              {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
+            </span>
+          </label>
           <select
             value={value}
             onChange={onChange}
@@ -119,7 +138,11 @@ export default function InputItem({
     case "textarea":
       return (
         <div className="input-item">
-          {label && <label>{label}</label>}
+          <label>
+            <span>
+              {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
+            </span>
+          </label>
           <textarea
             value={value}
             onChange={onChange}
@@ -134,7 +157,9 @@ export default function InputItem({
     case "password":
       return (
         <div className="input-item">
-          {label && <label>{label}</label>}
+          <span>
+            {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
+          </span>
           <input
             type={"password"}
             value={value}

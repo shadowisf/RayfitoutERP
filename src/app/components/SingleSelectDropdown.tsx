@@ -14,14 +14,12 @@ type SingleSelectDropdownProps = {
   dbData?: any[];
   idField?: string;
   labelField?: string;
-  tooltipField?: string; // NEW: field name for tooltip in database
+  tooltipField?: string;
   noLabel?: boolean;
-  // New props for create button
   showCreateButton?: boolean;
   createButtonLabel?: string;
   onCreateClick?: () => void;
   style?: React.CSSProperties;
-  // New prop for custom option formatting
   formatOptionLabel?: (item: any) => string;
 };
 
@@ -36,7 +34,7 @@ export default function SingleSelectDropdown({
   dbData,
   idField = "id",
   labelField = "value",
-  tooltipField = "tooltip", // NEW: default field name
+  tooltipField = "tooltip",
   noLabel,
   showCreateButton = false,
   createButtonLabel = "Create New",
@@ -50,29 +48,27 @@ export default function SingleSelectDropdown({
     null
   );
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   function getOptions() {
     if (selectOptions) {
-      return selectOptions.map(function (o) {
-        return { id: o, label: o, tooltip: null, raw: o };
-      });
+      return selectOptions.map((o) => ({
+        id: o,
+        label: o,
+        tooltip: null,
+        raw: o,
+      }));
     }
 
     if (dbData) {
-      return dbData.map(function (item) {
-        const formattedLabel = formatOptionLabel
-          ? formatOptionLabel(item)
-          : item[labelField];
-
-        return {
-          id: item[idField],
-          label: formattedLabel,
-          tooltip: item[tooltipField] || null, // NEW: get tooltip from database
-          raw: item,
-        };
-      });
+      return dbData.map((item) => ({
+        id: item[idField],
+        label: formatOptionLabel ? formatOptionLabel(item) : item[labelField],
+        tooltip: item[tooltipField] || null,
+        raw: item,
+      }));
     }
 
     return [];
@@ -80,11 +76,11 @@ export default function SingleSelectDropdown({
 
   const options = getOptions();
 
-  const filteredOptions = options.filter(function (option) {
-    return option.label.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filteredOptions = options.filter((option) =>
+    option.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  useEffect(function () {
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
         containerRef.current &&
@@ -97,24 +93,19 @@ export default function SingleSelectDropdown({
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-    return function () {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(
-    function () {
-      if (isOpen && searchInputRef.current) {
-        searchInputRef.current.focus();
-      }
-    },
-    [isOpen]
-  );
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen]);
 
   function handleSelectClick(e: React.MouseEvent<HTMLSelectElement>) {
     e.preventDefault();
     if (!disabled) {
-      setIsOpen(!isOpen);
+      setIsOpen((prev) => !prev);
     }
   }
 
@@ -125,13 +116,21 @@ export default function SingleSelectDropdown({
     setHoveredOption(null);
   }
 
+  function handleReset(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (disabled) return;
+
+    onChange("");
+    setIsOpen(false);
+    setSearchQuery("");
+    setHoveredOption(null);
+  }
+
   function handleCreateClick() {
     setIsOpen(false);
     setSearchQuery("");
     setHoveredOption(null);
-    if (onCreateClick) {
-      onCreateClick();
-    }
+    onCreateClick?.();
   }
 
   function handleMouseEnter(
@@ -155,24 +154,31 @@ export default function SingleSelectDropdown({
       return placeholder;
     }
 
-    const selectedOption = options.find(function (option) {
-      return String(option.id) === String(selectedValue);
-    });
+    const selectedOption = options.find(
+      (option) => String(option.id) === String(selectedValue)
+    );
 
     return selectedOption ? selectedOption.label : placeholder;
   }
 
   const displayText = getDisplayText();
   const isPlaceholder = !selectedValue && selectedValue !== 0;
-  const hoveredOptionData = options.find(function (option) {
-    return option.id === hoveredOption;
-  });
+  const hoveredOptionData = options.find(
+    (option) => option.id === hoveredOption
+  );
 
   return (
     <div className="input-item" ref={containerRef}>
-      {!noLabel && <label>{label}</label>}
+      {!noLabel && (
+        <label>
+          {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
+        </label>
+      )}
 
-      <div className="select-wrapper" style={style}>
+      <div
+        className="select-wrapper"
+        style={{ position: "relative", ...style }}
+      >
         <select
           className={`native-select ${disabled ? "disabled" : ""} ${
             isPlaceholder ? "placeholder" : ""
@@ -181,12 +187,33 @@ export default function SingleSelectDropdown({
           disabled={disabled}
           value="display"
           onMouseDown={handleSelectClick}
-          onChange={function () {}}
+          onChange={() => {}}
         >
           <option value="display" disabled hidden>
             {displayText}
           </option>
         </select>
+
+        {/* RESET BUTTON */}
+        {!disabled && selectedValue !== "" && selectedValue !== null && (
+          <button
+            type="button"
+            onClick={handleReset}
+            style={{
+              position: "absolute",
+              right: "20px",
+              top: "55%",
+              transform: "translateY(-50%)",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              lineHeight: 1,
+              color: "black",
+            }}
+          >
+            ×
+          </button>
+        )}
 
         {isOpen && (
           <div className="select-dropdown" role="listbox">
@@ -197,18 +224,14 @@ export default function SingleSelectDropdown({
                 className="search-input"
                 placeholder="Search..."
                 value={searchQuery}
-                onChange={function (e) {
-                  setSearchQuery(e.target.value);
-                }}
-                onClick={function (e) {
-                  e.stopPropagation();
-                }}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
 
             <div className="options-list">
               {filteredOptions.length > 0 ? (
-                filteredOptions.map(function (option) {
+                filteredOptions.map((option) => {
                   const isSelected =
                     String(option.id) === String(selectedValue);
 
@@ -220,12 +243,8 @@ export default function SingleSelectDropdown({
                       }`}
                       role="option"
                       aria-selected={isSelected}
-                      onClick={function () {
-                        handleOptionClick(option.id);
-                      }}
-                      onMouseEnter={function (e) {
-                        handleMouseEnter(option.id, e);
-                      }}
+                      onClick={() => handleOptionClick(option.id)}
+                      onMouseEnter={(e) => handleMouseEnter(option.id, e)}
                       onMouseLeave={handleMouseLeave}
                     >
                       <span className="option-text">{option.label}</span>
@@ -242,10 +261,10 @@ export default function SingleSelectDropdown({
             {showCreateButton && (
               <div className="create-button-wrapper">
                 <Button
-                  componentType={"button"}
-                  bgColor={"black"}
-                  borderColor={"black"}
-                  textColor={"white"}
+                  componentType="button"
+                  bgColor="black"
+                  borderColor="black"
+                  textColor="white"
                   onClick={handleCreateClick}
                   full
                 >
@@ -257,15 +276,15 @@ export default function SingleSelectDropdown({
         )}
       </div>
 
-      {/* Tooltip */}
+      {/* TOOLTIP */}
       {hoveredOption && hoveredOptionData?.tooltip && (
         <div
           className="select-tooltip"
           style={{
             position: "fixed",
-            left: `${tooltipPosition.x}px`,
-            top: `${tooltipPosition.y}px`,
-            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            left: tooltipPosition.x,
+            top: tooltipPosition.y,
+            backgroundColor: "rgba(0,0,0,0.9)",
             color: "white",
             padding: "10px",
             borderRadius: "5px",

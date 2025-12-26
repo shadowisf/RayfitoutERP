@@ -127,7 +127,9 @@ export default function MultiSelectDropdown({
 
   return (
     <div className="input-item" ref={containerRef}>
-      <label>{label}</label>
+      <label>
+        {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
+      </label>
 
       <div className="select-wrapper" style={{ position: "relative" }}>
         <select

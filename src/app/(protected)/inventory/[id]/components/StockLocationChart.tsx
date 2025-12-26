@@ -28,14 +28,17 @@ export default function StockLocationChart({
 
     // Subtract issued stocks and adjust for transfers
     stocksTransferIssue.forEach((transaction) => {
-      if (transaction.type === "Issue") {
-        // Deduct from from_location
-        const fromLocation = transaction.from_location || "Unknown";
-        if (!locationMap[fromLocation]) {
-          locationMap[fromLocation] = 0;
+      if (transaction.type.includes("Issue")) {
+        // Only subtract issues if received is true
+        if (transaction.received) {
+          const fromLocation = transaction.from_location || "Unknown";
+          if (!locationMap[fromLocation]) {
+            locationMap[fromLocation] = 0;
+          }
+          locationMap[fromLocation] -= transaction.quantity;
         }
-        locationMap[fromLocation] -= transaction.quantity;
-      } else if (transaction.type === "Transfer") {
+      } else if (transaction.type.includes("Transfer")) {
+        // For transfers, move stock from one location to another when received
         // Deduct from from_location
         const fromLocation = transaction.from_location || "Unknown";
         if (!locationMap[fromLocation]) {
@@ -86,12 +89,10 @@ export default function StockLocationChart({
   }));
 
   return (
-    <div>
-      <h2
-        style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "20px" }}
-      >
-        STOCK
-      </h2>
+    <div style={{ textTransform: "uppercase" }}>
+      <h2>STOCKS BY LOCATION</h2>
+
+      <br />
 
       <div style={{ display: "flex", gap: "40px", alignItems: "center" }}>
         {/* Donut Chart */}
@@ -126,21 +127,17 @@ export default function StockLocationChart({
           >
             <div
               style={{
-                fontSize: "12px",
                 color: "#737373",
-                textTransform: "uppercase",
               }}
             >
-              TOTAL STOCK
+              TOTAL
             </div>
             <div style={{ fontSize: "36px", fontWeight: "bold" }}>
               {totalStock}
             </div>
             <div
               style={{
-                fontSize: "14px",
                 color: "#737373",
-                textTransform: "uppercase",
               }}
             >
               {unit}
@@ -149,20 +146,17 @@ export default function StockLocationChart({
         </div>
 
         {/* Stock Locations Legend */}
-        <div style={{ flex: 1 }}>
-          <h3
-            style={{
-              fontSize: "14px",
-              fontWeight: "600",
-              marginBottom: "16px",
-              textTransform: "uppercase",
-            }}
-          >
-            STOCK LOCATIONS
-          </h3>
+        <div style={{ flex: 1, textTransform: "uppercase" }}>
+          <h3>STOCK LOCATIONS</h3>
+
+          <br />
 
           <div
-            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+            }}
           >
             {chartData.map((location, index) => (
               <div
@@ -174,7 +168,7 @@ export default function StockLocationChart({
                 }}
               >
                 <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                  style={{ display: "flex", alignItems: "center", gap: "10px" }}
                 >
                   <div
                     style={{
@@ -184,16 +178,9 @@ export default function StockLocationChart({
                       backgroundColor: location.color,
                     }}
                   />
-                  <span
-                    style={{
-                      fontSize: "14px",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {location.name}
-                  </span>
+                  <span>{location.name}</span>
                 </div>
-                <span style={{ fontSize: "14px", fontWeight: "600" }}>
+                <span>
                   {location.value} {unit}
                 </span>
               </div>

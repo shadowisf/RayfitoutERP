@@ -17,6 +17,7 @@ const styles = StyleSheet.create({
     display: "flex",
     flexDirection: "row",
     gap: "25px",
+    justifyContent: "space-between",
     alignItems: "flex-end",
   },
   // barcode: {
@@ -30,6 +31,12 @@ const styles = StyleSheet.create({
   small: {
     textTransform: "uppercase",
     fontSize: 14,
+    marginBottom: 10,
+  },
+  smallBold: {
+    textTransform: "uppercase",
+    fontSize: 14,
+    fontFamily: "Mont-SemiBold",
   },
 });
 
@@ -50,11 +57,14 @@ export default function QrCodeSectionPDF({
         <Image src={barcodeDataUrl} style={styles.barcode} />
       </View> */}
       <View style={styles.qrcodeContainer}>
+        <View>
+          <Text style={styles.small}>{inventoryItem.category_name}</Text>
+          <Text style={styles.smallBold}>
+            MRT-
+            {inventoryItem.id.toString().padStart(5, "0")}
+          </Text>
+        </View>
         <Image src={qrcodeDataUrl} style={styles.qrcode} />
-        <Text style={styles.small}>
-          MRT-
-          {inventoryItem.id.toString().padStart(5, "0")}
-        </Text>
       </View>
     </View>
   );

@@ -140,14 +140,14 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#f5f5f5",
-    padding: "5 10",
+    padding: "8 12",
     fontSize: 8,
     fontFamily: "Mont-SemiBold",
     textTransform: "uppercase",
   },
   tableRow: {
     flexDirection: "row",
-    padding: "5 10",
+    padding: "8 12",
     borderBottom: "1 solid #e0e0e0",
     fontSize: 8,
     color: "#333333",

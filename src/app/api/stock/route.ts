@@ -23,8 +23,8 @@ export async function POST(request: NextRequest) {
 
       const query = `
         INSERT INTO stocks 
-        (batch_id, mr_header_id, mr_line_id, inventory_item_id, supplier_id, received_by, quantity, location, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (batch_id, mr_header_id, mr_line_id, inventory_item_id, supplier_id, received_by, reason_for_entry, quantity, unit_price, location, notes, project_id, boq_line_id, item_condition, attachment)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
@@ -32,11 +32,17 @@ export async function POST(request: NextRequest) {
         Number(body.mr_header_id) || null,
         Number(body.mr_line_id) || null,
         Number(body.inventory_item_id),
-        body.supplier_id || null,
+        Number(body.supplier_id) || null,
         body.received_by,
+        body.reason_for_entry,
         Number(body.quantity),
+        Number(body.unit_price),
         body.location,
         body.notes,
+        Number(body.project_id) || null,
+        Number(body.boq_line_id) || null,
+        body.condition,
+        body.attachment,
       ];
 
       await db.query(query, values);
@@ -48,26 +54,98 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.action === "transferIssueStock") {
-      const query = `
-        INSERT INTO stocks_transfer_issue 
-        (inventory_item_id, type, from_location, to_location, quantity, purpose, receiver_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+      // Check if this is a reverse transfer (transferring back to original location)
+      if (body.type.includes("Transfer")) {
+        // Find if there's an existing transfer that brought stock to the current "from" location
+        const checkReverseTransferQuery = `
+        SELECT id, quantity, from_location, to_location
+        FROM stocks_transfer_issue 
+        WHERE inventory_item_id = ? 
+          AND type LIKE '%Transfer%' 
+          AND to_location = ? 
+          AND from_location = ?
+        ORDER BY received_on DESC
+        LIMIT 1
       `;
 
-      const values = [
-        Number(body.inventory_item_id),
+        const [existingTransfers] = await db.query<RowDataPacket[]>(
+          checkReverseTransferQuery,
+          [body.inventory_item_id, body.from, body.to]
+        );
+
+        // If we found a matching reverse transfer
+        if (existingTransfers.length > 0) {
+          const existingTransfer = existingTransfers[0];
+
+          // If the quantity matches exactly, delete the transfer entry
+          if (existingTransfer.quantity === Number(body.quantity)) {
+            const deleteQuery = `
+            DELETE FROM stocks_transfer_issue 
+            WHERE id = ?
+          `;
+            await db.query(deleteQuery, [existingTransfer.id]);
+
+            return NextResponse.json({
+              success: true,
+              message: "Transfer reversed and entry deleted",
+              deletedId: existingTransfer.id,
+            });
+          }
+          // If quantity is less, update the existing transfer quantity
+          else if (existingTransfer.quantity > Number(body.quantity)) {
+            const updateQuery = `
+            UPDATE stocks_transfer_issue 
+            SET quantity = quantity - ? 
+            WHERE id = ?
+          `;
+            await db.query(updateQuery, [
+              Number(body.quantity),
+              existingTransfer.id,
+            ]);
+
+            return NextResponse.json({
+              success: true,
+              message: "Transfer quantity reduced",
+              updatedId: existingTransfer.id,
+            });
+          }
+          // If quantity is more, we need to create a new transfer for the difference
+          else {
+            console.log(
+              "Quantity exceeds original transfer, creating new entry"
+            );
+          }
+        } else {
+          console.log("No matching reverse transfer found, creating new entry");
+        }
+      }
+
+      // If not a reverse transfer, create a new transfer/issue entry as normal
+      console.log("Creating new transfer/issue entry");
+
+      const insertQuery = `
+      INSERT INTO stocks_transfer_issue 
+      (inventory_item_id, type, from_location, to_location, quantity, purpose, receiver_name, notes, serial_number) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+      const [insertResult] = await db.query(insertQuery, [
+        body.inventory_item_id,
         body.type,
         body.from,
         body.to,
         body.quantity,
         body.purpose,
         body.receiver_name,
-      ];
+        body.notes,
+        body.serial_number,
+      ]);
 
-      await db.query(query, values);
+      console.log("Insert result:", insertResult);
 
       return NextResponse.json({
         success: true,
+        message: "Stock transferred/issued successfully",
       });
     }
   } catch (error: any) {
@@ -113,6 +191,22 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "Stock updated successfully",
+      });
+    }
+
+    if (body.action === "receiveStock") {
+      const query = `
+        UPDATE stocks_transfer_issue
+SET received = 1,
+    received_on = NOW(),
+    full_name_of_receiver = ?
+WHERE id = ?
+      `;
+
+      await db.query(query, [body.receiver_full_name, body.transfer_id]);
+
+      return NextResponse.json({
+        success: true,
       });
     }
   } catch (error: any) {

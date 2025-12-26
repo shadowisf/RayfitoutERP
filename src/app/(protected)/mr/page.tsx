@@ -11,23 +11,21 @@ export default function MR() {
   const [mrHeaders, setMrHeaders] = useState<MrHeader[]>([]);
 
   useEffect(() => {
-    if (
-      userInfo?.departmentID !== 8 &&
-      userInfo?.departmentID !== 9 &&
-      userInfo?.departmentID !== 10 &&
-      userInfo?.departmentID !== 11 &&
-      userInfo?.departmentID !== 12
-    ) {
+    const ALL_MRS_ALLOWED = [2, 8, 9, 10, 11, 12, 15];
+
+    if (ALL_MRS_ALLOWED.includes(userInfo?.departmentID ?? 0)) {
+      /* get every mr */
+      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+        method: "GET",
+      }).then((res) => res.json().then((data) => setMrHeaders(data)));
+    } else {
+      /* get mr only specific to department */
       fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
         method: "POST",
         body: JSON.stringify({
           action: "getMrHeaders",
           department_id: userInfo?.departmentID,
         }),
-      }).then((res) => res.json().then((data) => setMrHeaders(data)));
-    } else {
-      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-        method: "GET",
       }).then((res) => res.json().then((data) => setMrHeaders(data)));
     }
   }, [userInfo]);

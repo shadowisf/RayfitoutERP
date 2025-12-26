@@ -5,6 +5,10 @@ import TransactionTimeline from "./components/TransactionTimeline";
 import ManualAddToStockButton from "./components/_ManualAddStockButton";
 import TransferIssueStocksButton from "./components/_TransferIssueStockButton";
 import StockLocationChart from "./components/StockLocationChart";
+import QrCodePrintButton from "./components/_QrCodePrintButton";
+import EditInventoryItemButton from "../components/_EditInventoryItemButton";
+import DeleteInventoryItemButton from "./components/_DeleteInventoryItemButton";
+import ReceiveStocksButton from "./components/_ReceiveStocksButton";
 
 export default async function InventoryItemWithID({
   params,
@@ -72,7 +76,12 @@ export default async function InventoryItemWithID({
         }}
       >
         <div></div>
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <EditInventoryItemButton inventoryItem={inventoryItem} />
+          <DeleteInventoryItemButton inventoryItem={inventoryItem} />
+
+          <ReceiveStocksButton inventoryItem={inventoryItem} />
+
           <ManualAddToStockButton inventoryItem={inventoryItem} />
           <TransferIssueStocksButton inventoryItem={inventoryItem} />
         </div>
@@ -191,7 +200,10 @@ export default async function InventoryItemWithID({
             }}
           >
             <h2>QR CODE</h2>
-            <QrCodeDownloadButton item={inventoryItem} />
+            <div style={{ display: "flex", gap: "10px" }}>
+              <QrCodeDownloadButton item={inventoryItem} />
+              <QrCodePrintButton item={inventoryItem} />
+            </div>
           </div>
 
           <br />

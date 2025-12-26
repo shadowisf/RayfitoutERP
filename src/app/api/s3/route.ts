@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       // UPLOAD ACTION
       const formData = await req.formData();
       const files = formData.getAll("files") as File[];
-      const folder = formData.get("folder") as string || "boq-files"; // Get folder from formData, default to boq-files
+      const folder = (formData.get("folder") as string) || "boq-files"; // Get folder from formData, default to boq-files
 
       console.log("Files received:", files.length);
       console.log("Target folder:", folder);
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
         }
 
         // Validate that url is a string
-        if (typeof url !== 'string') {
+        if (typeof url !== "string") {
           return NextResponse.json(
             { error: "URL must be a string" },
             { status: 400 }

@@ -1,6 +1,8 @@
+"use client";
+
 import { InventoryItem } from "../../types/inventoryItem";
 import BatchDetailsPopUpButton from "./_BatchDetailsPopUpButton";
-import TrnPDFPopUpButton from "./_TrnPDFPopUpButton";
+import ViewTSNPDFButton from "./_ViewTsnPDFButton";
 
 type StockData = any;
 type TransferIssueData = any;
@@ -77,9 +79,9 @@ const TransactionCard = ({
     if (transaction.source_table === "stocks") {
       return "STOCK_ADDED";
     } else if (transaction.source_table === "stocks_transfer_issue") {
-      if (transaction.type === "Transfer") {
+      if (transaction.type.includes("Transfer")) {
         return "STOCK_TRANSFERRED";
-      } else if (transaction.type === "Issue") {
+      } else if (transaction.type.includes("Issue")) {
         return "STOCK_ISSUED";
       }
     }
@@ -129,7 +131,13 @@ const TransactionCard = ({
   const status = getStatusConfig();
 
   return (
-    <div style={{ display: "flex", position: "relative" }}>
+    <div
+      style={{
+        display: "flex",
+        position: "relative",
+        textTransform: "uppercase",
+      }}
+    >
       <div
         style={{
           display: "flex",
@@ -224,7 +232,7 @@ const TransactionCard = ({
                 </>
               )}
 
-              {transactionType === "STOCK_TRANSFERRED" && (
+              {/* {transactionType === "STOCK_TRANSFERRED" && (
                 <>
                   {transaction.id && (
                     <div
@@ -240,8 +248,25 @@ const TransactionCard = ({
                           TRN-{transaction.id.toString().padStart(5, "0")}
                         </h4>
                       </div>
-                      <TrnPDFPopUpButton inventoryItem={inventoryItem} />
+                      <ViewTSNPDFButton transferID={transaction.id} />
                     </div>
+                  )}
+                </>
+              )} */}
+
+              {transactionType === "STOCK_TRANSFERRED" && (
+                <>
+                  {transaction.id && (
+                    <>
+                      <div style={{ textWrap: "nowrap" }}>
+                        <small>TRANSFER FROM</small>
+                        <h4>{transaction.from_location}</h4>
+                      </div>
+                      <div style={{ textWrap: "nowrap" }}>
+                        <small>TRANSFER TO</small>
+                        <h4>{transaction.to_location}</h4>
+                      </div>
+                    </>
                   )}
                 </>
               )}
@@ -262,7 +287,7 @@ const TransactionCard = ({
                           TRN-{transaction.id.toString().padStart(5, "0")}
                         </h4>
                       </div>
-                      <TrnPDFPopUpButton inventoryItem={inventoryItem} />
+                      <ViewTSNPDFButton transferID={transaction.id} />
                     </div>
                   )}
                 </>
@@ -281,7 +306,7 @@ const ItemCreatedCard = ({
   inventoryItem: InventoryItem;
 }) => {
   const transactionDate = new Date(inventoryItem.created_at)
-    .toLocaleDateString("en-GB", {
+    .toLocaleDateString("en-US", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -305,6 +330,7 @@ const ItemCreatedCard = ({
         style={{
           paddingBottom: "50px",
           marginLeft: "-20px",
+          textTransform: "uppercase",
         }}
       >
         <div
@@ -362,8 +388,18 @@ export default function TransactionTimeline({
     source_table: "stocks",
   }));
 
-  // Add source table identifier to transfer/issue transactions
-  const transferIssueWithSource = stocksTransferIssue.map((transaction) => ({
+  // Filter transfer/issue transactions based on type
+  const filteredTransferIssue = stocksTransferIssue.filter((transaction) => {
+    // If it's a transfer, only include if received is true
+    if (transaction.type.includes("Issue")) {
+      return transaction.received;
+    }
+    // If it's an issue, always include it (no received check)
+    return true;
+  });
+
+  // Add source table identifier to filtered transfer/issue transactions
+  const transferIssueWithSource = filteredTransferIssue.map((transaction) => ({
     ...transaction,
     source_table: "stocks_transfer_issue",
   }));

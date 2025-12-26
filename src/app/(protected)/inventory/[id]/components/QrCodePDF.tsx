@@ -75,7 +75,6 @@ export function QrCodePDF({
           <Text style={styles.title}>
             <Text style={styles.titleBold}>{inventoryItem.description}</Text>
           </Text>
-          <Text style={styles.small}>{inventoryItem.category_name}</Text>
         </View>
 
         <QrCodeSectionPDF
