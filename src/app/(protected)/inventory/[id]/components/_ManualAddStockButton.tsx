@@ -218,6 +218,7 @@ export default function ManualAddToStockButton({
       setBoqLineID("");
       setCondition("");
       setFiles([]);
+      setUnitPrice("");
 
       router.refresh();
 
@@ -313,17 +314,15 @@ export default function ManualAddToStockButton({
               </div>
             </div>
             <InputItem
-              label={"STOCK LOCATION"}
-              value={location}
-              type={"select"}
-              placeholder={"SELECT LOCATION"}
+              label={"UNIT PRICE"}
+              value={unitPrice}
+              type={"text"}
+              placeholder={"ENTER UNIT PRICE"}
               required
-              onChange={(e) => setLocation(e.target.value)}
-              selectOptions={[
-                "Headquarters",
-                "Umm Al Quwain warehouse",
-                ...stockLocationValues,
-              ]}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, "");
+                setUnitPrice(value);
+              }}
             />
           </div>
 
@@ -345,6 +344,7 @@ export default function ManualAddToStockButton({
               onChange={setBoqLineID}
               placeholder="SELECT BILL OF QUANTITY"
               required={false}
+              disabled={projectID === ""}
             />
           </div>
 
@@ -358,16 +358,19 @@ export default function ManualAddToStockButton({
               onChange={(e) => setCondition(e.target.value)}
               selectOptions={["Good", "Fair", "Damaged"]}
             />
+
             <InputItem
-              label={"UNIT PRICE"}
-              value={unitPrice}
-              type={"text"}
-              placeholder={"ENTER UNIT PRICE"}
+              label={"STOCK LOCATION"}
+              value={location}
+              type={"select"}
+              placeholder={"SELECT LOCATION"}
               required
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "");
-                setUnitPrice(value);
-              }}
+              onChange={(e) => setLocation(e.target.value)}
+              selectOptions={[
+                "Headquarters",
+                "Umm Al Quwain warehouse",
+                ...stockLocationValues,
+              ]}
             />
           </div>
 
@@ -382,7 +385,7 @@ export default function ManualAddToStockButton({
             />
           </div>
 
-          <div className="input-row full">
+          <div className="input-row half">
             <div className="input-item">
               <label>ATTACHMENT</label>
 

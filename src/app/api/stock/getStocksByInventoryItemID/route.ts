@@ -18,22 +18,31 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      // Query stocks table
-      const stocksQuery = `SELECT * FROM stocks WHERE inventory_item_id = ?`;
+      // Query stocks using the view with supplier information
+      const stocksQuery = `
+        SELECT * 
+        FROM vw_stocks_with_supplier 
+        WHERE inventory_item_id = ?
+      `;
       const [stocksRows] = await db.execute<RowDataPacket[]>(stocksQuery, [
         inventoryItemId,
       ]);
 
       // Query stocks_transfer_issue table
-      const transferIssueQuery = `SELECT * FROM stocks_transfer_issue WHERE inventory_item_id = ?`;
+      const transferIssueQuery = `
+        SELECT * 
+        FROM stocks_transfer_issue 
+        WHERE inventory_item_id = ?
+      `;
       const [transferIssueRows] = await db.execute<RowDataPacket[]>(
         transferIssueQuery,
         [inventoryItemId]
       );
 
-      // Add source identifier to each row
+      // Add source identifier and handle null suppliers
       const stocksWithSource = stocksRows.map((row) => ({
         ...row,
+        supplier_name: row.supplier_name || "Others",
         source_table: "stocks",
       }));
 
@@ -42,14 +51,10 @@ export async function POST(req: NextRequest) {
         source_table: "stocks_transfer_issue",
       }));
 
-      // Combine and return
-      const stocks = [...stocksWithSource];
-      const stocksTransferIssue = [...transferIssueWithSource];
-
       return NextResponse.json({
         success: true,
-        stocks: stocks,
-        stocksTransferIssue: stocksTransferIssue,
+        stocks: stocksWithSource,
+        stocksTransferIssue: transferIssueWithSource,
       });
     } catch (error) {
       console.error("Database query error:", error);

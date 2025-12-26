@@ -128,7 +128,7 @@ export default function Inventory() {
                   <tr key={item.id}>
                     <td>{index + 1}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
-                      MRT-{String(item.id).padStart(5, "0")}
+                      INV-{String(item.id).padStart(5, "0")}
                     </td>
                     <td>{item.category_name}</td>
                     <td>{item.subcategory_name}</td>

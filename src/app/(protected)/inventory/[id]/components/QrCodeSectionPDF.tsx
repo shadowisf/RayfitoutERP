@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   //   height: 100,
   // },
   qrcode: {
-    marginTop: 25,
+    marginTop: 50,
     width: 100,
     height: 100,
   },
@@ -58,7 +58,9 @@ export default function QrCodeSectionPDF({
       </View> */}
       <View style={styles.qrcodeContainer}>
         <View>
-          <Text style={styles.small}>{inventoryItem.category_name}</Text>
+          <Text style={styles.small}>
+            {inventoryItem.category_name} / {inventoryItem.subcategory_name}
+          </Text>
           <Text style={styles.smallBold}>
             MRT-
             {inventoryItem.id.toString().padStart(5, "0")}

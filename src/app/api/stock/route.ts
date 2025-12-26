@@ -125,8 +125,8 @@ export async function POST(request: NextRequest) {
 
       const insertQuery = `
       INSERT INTO stocks_transfer_issue 
-      (inventory_item_id, type, from_location, to_location, quantity, purpose, receiver_name, notes, serial_number) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (inventory_item_id, type, from_location, to_location, quantity, purpose, receiver_name, notes, serial_number, attachment) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const [insertResult] = await db.query(insertQuery, [
@@ -139,6 +139,7 @@ export async function POST(request: NextRequest) {
         body.receiver_name,
         body.notes,
         body.serial_number,
+        body.attachment,
       ]);
 
       console.log("Insert result:", insertResult);
@@ -199,11 +200,16 @@ export async function PUT(request: NextRequest) {
         UPDATE stocks_transfer_issue
 SET received = 1,
     received_on = NOW(),
-    full_name_of_receiver = ?
+    full_name_of_receiver = ?,
+    received_quantity = ?
 WHERE id = ?
       `;
 
-      await db.query(query, [body.receiver_full_name, body.transfer_id]);
+      await db.query(query, [
+        body.receiver_full_name,
+        body.received_quantity,
+        body.transfer_id,
+      ]);
 
       return NextResponse.json({
         success: true,

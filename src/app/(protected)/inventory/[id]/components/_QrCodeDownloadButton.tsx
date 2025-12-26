@@ -96,7 +96,7 @@ export default function QrCodeDownloadButton({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `MRT-${String(item.id).padStart(5, "0")}.pdf`;
+      link.download = `INV-${String(item.id).padStart(5, "0")}.pdf`;
 
       // Trigger download
       document.body.appendChild(link);

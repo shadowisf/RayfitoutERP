@@ -37,6 +37,7 @@ export default function ReceiveStocksButton({
   const [selectedTransferId, setSelectedTransferId] = useState("");
   const [selectedTransfer, setSelectedTransfer] =
     useState<PendingTransfer | null>(null);
+  const [receivedQuantity, setReceivedQuantity] = useState("");
   const [fullNameOfReceiver, setFullNameOfReceiver] = useState("");
   const [agree, setAgree] = useState(false);
 
@@ -126,6 +127,14 @@ export default function ReceiveStocksButton({
       return;
     }
 
+    if (Number(receivedQuantity) > (selectedTransfer?.quantity ?? 0)) {
+      toast(
+        "Received quantity cannot be more than the transferred quantity",
+        "error"
+      );
+      return;
+    }
+
     // Extract the actual ID from the display value
     const actualId = selectedTransfer?.id.toString();
 
@@ -136,6 +145,7 @@ export default function ReceiveStocksButton({
         action: "receiveStock",
         transfer_id: actualId,
         receiver_full_name: fullNameOfReceiver,
+        received_quantity: receivedQuantity,
       }),
     });
 
@@ -149,6 +159,7 @@ export default function ReceiveStocksButton({
       setSelectedTransfer(null);
       setFullNameOfReceiver("");
       setAgree(false);
+      setReceivedQuantity("");
     } else {
       toast("Failed to receive stock", "error");
     }
@@ -222,7 +233,7 @@ export default function ReceiveStocksButton({
 
           <div className="input-row half">
             <InputItem
-              label={"DESCRIPTION"}
+              label={"ITEM NAME"}
               value={selectedTransfer?.description || ""}
               type={"text"}
               placeholder={""}
@@ -266,13 +277,25 @@ export default function ReceiveStocksButton({
 
           <div className="input-row half">
             <InputItem
-              label={"QUANTITY"}
+              label={"TRANSFERRED QUANTITY"}
               value={selectedTransfer ? `${selectedTransfer.quantity}` : ""}
               type={"text"}
               placeholder={""}
               required
               disabled
               onChange={() => {}}
+            />
+            <InputItem
+              label={"RECEIVED QUANTITY"}
+              value={receivedQuantity}
+              type={"text"}
+              placeholder={!selectedTransfer ? "" : "ENTER RECEIVED QUANTITY"}
+              required
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, "");
+                setReceivedQuantity(value);
+              }}
+              disabled={!selectedTransfer}
             />
           </div>
 
@@ -328,8 +351,12 @@ export default function ReceiveStocksButton({
                   )}
                 </div>
               </div>
-              <label>
-                I CONFIRM I RECEIVED THE ABOVE ITEMS IN GOOD CONDITION
+              <label style={{ maxWidth: "500px", textTransform: "uppercase" }}>
+                I confirm that I have received the above-mentioned
+                equipment/tool(s).
+                <br />I understand that I am responsible for this and if
+                anything is stolen and I have not adhered to this, I may be
+                liable for some/all of the costs.
               </label>
             </div>
           </div>

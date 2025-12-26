@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
 
   // Bottom Section
   bottomSection: {
-    marginTop: 325,
+    marginTop: 275,
   },
 
   // Signature Box
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     fontFamily: "Mont",
     color: "#000000",
     flex: 1,
-    marginTop: 2,
+    maxWidth: 300,
   },
 
   signatureLabel: {
@@ -264,13 +264,17 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
             <Text style={styles.infoValue}>{transaction?.from_location}</Text>
           </View>
           <View style={styles.column}>
-            {/* <View style={{ marginBottom: 10 }}>
+            <View style={{ marginBottom: 10 }}>
               <Text style={styles.infoLabel}>LOCATION</Text>
-              <Text style={styles.infoValue}>{transaction?.to_location}</Text>
-            </View> */}
+              <Text style={styles.infoValue}>
+                {transaction?.to_location || "-"}
+              </Text>
+            </View>
             <View>
               <Text style={styles.infoLabel}>RECEIVER</Text>
-              <Text style={styles.infoValue}>{transaction?.receiver_name}</Text>
+              <Text style={styles.infoValue}>
+                {transaction?.full_name_of_receiver}
+              </Text>
             </View>
           </View>
         </View>
@@ -328,7 +332,10 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
             </Svg>
 
             <Text style={styles.confirmationText}>
-              I CONFIRM I RECEIVED THE ABOVE ITEMS IN GOOD CONDITION
+              I confirm that I have received the above-mentioned
+              equipment/tool(s).{"\n"}I understand that I am responsible for
+              this and if anything is stolen and I have not adhered to this, I
+              may be liable for some/all of the costs.
             </Text>
           </View>
         </View>

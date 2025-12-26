@@ -66,7 +66,7 @@ export function QrCodePDF({
 
   return (
     <Document>
-      <Page size={["400", "275"]} style={styles.page}>
+      <Page size={["425", "300"]} style={styles.page}>
         <View style={styles.header}>
           <Image src={logo} style={styles.logo} />
         </View>

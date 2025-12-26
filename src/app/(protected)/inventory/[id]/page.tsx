@@ -9,6 +9,7 @@ import QrCodePrintButton from "./components/_QrCodePrintButton";
 import EditInventoryItemButton from "../components/_EditInventoryItemButton";
 import DeleteInventoryItemButton from "./components/_DeleteInventoryItemButton";
 import ReceiveStocksButton from "./components/_ReceiveStocksButton";
+import TopSuppliersChart from "./components/TopSuppliersChart";
 
 export default async function InventoryItemWithID({
   params,
@@ -104,18 +105,21 @@ export default async function InventoryItemWithID({
               display: "grid",
               gridTemplateColumns: "1fr 0.25fr",
               alignItems: "center",
+              gap: "50px",
             }}
           >
             <div>
               <div
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
+                  display: "inline-grid",
+                  gridTemplateColumns: "repeat(3, max-content)",
+                  columnGap: "50px",
+                  rowGap: "30px",
                 }}
               >
                 <div>
                   <small>INVENTORY ITEM ID</small>
-                  <h2>MRT-{inventoryItem?.id.toString().padStart(5, "0")}</h2>
+                  <h2>INV-{inventoryItem?.id.toString().padStart(5, "0")}</h2>
                 </div>
                 <div>
                   <small>STATUS</small>
@@ -133,20 +137,9 @@ export default async function InventoryItemWithID({
                   </p>
                 </div>
                 <div>
-                  <small>DESCRIPTION</small>
+                  <small>ITEM NAME</small>
                   <h2>{inventoryItem?.description}</h2>
                 </div>
-              </div>
-
-              <br />
-              <br />
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                }}
-              >
                 <div>
                   <small>CATEGORY</small>
                   <h2>{inventoryItem?.category_name}</h2>
@@ -157,19 +150,10 @@ export default async function InventoryItemWithID({
                 </div>
                 <div>
                   <small>SPECIFICATION</small>
-                  <h2>{inventoryItem?.specification || "-"}</h2>
+                  <h2 style={{ whiteSpace: "pre-wrap", maxWidth: "300px" }}>
+                    {inventoryItem?.specification || "-"}
+                  </h2>
                 </div>
-              </div>
-
-              <br />
-              <br />
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                }}
-              >
                 <div>
                   <small>SUBCATEGORY</small>
                   <h2>{inventoryItem?.subcategory_name}</h2>
@@ -185,7 +169,7 @@ export default async function InventoryItemWithID({
               <img
                 src={inventoryItem?.image}
                 alt="Inventory item"
-                style={{ maxHeight: "150px" }}
+                style={{ maxHeight: "200px" }}
               />
             </div>
           </div>
@@ -231,21 +215,24 @@ export default async function InventoryItemWithID({
             />
           </div>
 
-          {/* <br />
+          <br />
           <br />
 
           <div className="widget-container">
             <TopSuppliersChart
               stocks={stockData.stocks}
               unit={inventoryItem.unit}
+              stocksTransferIssue={stockData.stocksTransferIssue}
             />
-          </div> */}
+          </div>
         </div>
 
         <div className="widget-container">
           <h2>TRANSACTION & MOVEMENT</h2>
+
           <br />
           <br />
+
           <TransactionTimeline
             stocks={stockData.stocks}
             stocksTransferIssue={stockData.stocksTransferIssue}
