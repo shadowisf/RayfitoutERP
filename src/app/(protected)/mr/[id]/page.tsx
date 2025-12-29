@@ -256,6 +256,7 @@ export default async function MrWithID({
         <CreateMrLineClient
           mrHeaderID={mrHeader.id}
           projectID={mrHeader.project_id}
+          projectName={mrHeader.project_name}
         />
       )}
     </div>

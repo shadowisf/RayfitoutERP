@@ -5,11 +5,13 @@ import AddMrItemButton from "./department/_AddMrItemButton";
 type CreateMrLineClientProps = {
   mrHeaderID: number;
   projectID: number;
+  projectName: string;
 };
 
 export default function CreateMrLineClient({
   mrHeaderID,
   projectID,
+  projectName,
 }: CreateMrLineClientProps) {
   const noItemImg = "/images/no-items.svg";
 
@@ -34,7 +36,12 @@ export default function CreateMrLineClient({
       <br />
       <br />
 
-      <AddMrItemButton full mrHeaderID={mrHeaderID} projectID={projectID}>
+      <AddMrItemButton
+        full
+        mrHeaderID={mrHeaderID}
+        projectID={projectID}
+        projectName={projectName}
+      >
         ADD CATEGORY & ITEM +
       </AddMrItemButton>
     </div>
