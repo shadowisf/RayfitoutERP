@@ -39,7 +39,7 @@ export default function DeleteMrItemButton({
     });
 
     if (res.ok) {
-      toast("Material request item deleted", "success");
+      toast(`${item.material_description} deleted`, "success");
 
       setIsOpen(false);
 
@@ -69,7 +69,7 @@ export default function DeleteMrItemButton({
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to delete this item?</p>
+          <p>Are you sure you want to delete {item.material_description}?</p>
         </FormPopUp>
       )}
     </>

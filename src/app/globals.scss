@@ -1,11 +1,11 @@
 ::-webkit-scrollbar-track {
-  background: rgba(248, 249, 251, 1);
+  background: transparent;
 }
 
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #c1c1c1 rgba(248, 249, 251, 1);
+  scrollbar-color: #c1c1c1 transparent;
 }
 
 html,
@@ -146,10 +146,6 @@ button {
   background-color: black;
   padding: 10px 40px;
 
-  span {
-    color: white;
-  }
-
   .left {
     display: flex;
     align-items: center;
@@ -197,17 +193,6 @@ button {
       align-items: center;
 
       height: 100%;
-    }
-
-    .new-mr {
-      background-color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: black;
-      font-weight: 700;
-      padding: 5px 25px;
-      border-radius: 5px;
     }
   }
 }
@@ -417,6 +402,13 @@ select {
 label {
   font-size: 10px;
   font-weight: 700;
+
+  &.custom {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .form-inner-container {
@@ -424,20 +416,29 @@ label {
   padding: 30px;
   border-radius: 5px;
   position: relative;
-  min-width: 900px;
+  min-width: 750px;
   margin: 40px;
   max-height: 95dvh;
-  overflow-y: auto;
-  overflow: auto;
+  overflow: visible; /* Allow dropdowns to escape */
+  display: flex;
+  flex-direction: column;
 
   .form-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 
     img {
       width: auto;
     }
+  }
+
+  /* New scrollable content wrapper */
+  .form-content {
+    overflow-y: auto;
+    overflow-x: visible; /* Changed from hidden to visible */
+    max-height: calc(95dvh - 200px);
   }
 
   .input-row {
@@ -445,6 +446,10 @@ label {
     grid-template-columns: 1fr 0.5fr;
     gap: 20px;
     align-items: center;
+
+    &.four-col {
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+    }
 
     &.three-col {
       grid-template-columns: 1fr 1fr 1fr;
@@ -463,6 +468,8 @@ label {
       gap: 10px;
       flex-direction: column;
       margin-bottom: 20px;
+      position: relative; /* Important for dropdown positioning */
+      z-index: 1; /* Base z-index */
     }
   }
 
@@ -470,6 +477,8 @@ label {
     display: flex;
     gap: 15px;
     justify-content: flex-end;
+    flex-shrink: 0;
+    margin-top: 20px;
   }
 }
 
@@ -638,7 +647,7 @@ label {
     border: 1px solid #d9d9d9;
     border-radius: 5px;
     max-height: 250px;
-    z-index: 2000;
+    z-index: 5000;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
     .search-wrapper {
@@ -867,6 +876,7 @@ label {
   padding: 7px 20px;
   border-radius: 25px;
   width: 200px;
+  font-size: 14.1px;
 }
 
 .bottom-nav {
@@ -880,7 +890,7 @@ label {
   justify-content: flex-end;
   align-items: center;
   gap: 15px;
-  margin-left: 300px;
+  margin-left: 250px;
 }
 
 .create-button-wrapper {

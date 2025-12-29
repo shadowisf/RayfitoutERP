@@ -166,11 +166,13 @@ export default async function InventoryItemWithID({
             </div>
 
             <div>
-              <img
-                src={inventoryItem?.image}
-                alt="Inventory item"
-                style={{ maxHeight: "200px" }}
-              />
+              {inventoryItem.image && (
+                <img
+                  src={inventoryItem?.image}
+                  alt="Inventory item"
+                  style={{ maxHeight: "200px" }}
+                />
+              )}
             </div>
           </div>
         </div>

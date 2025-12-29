@@ -53,23 +53,25 @@ export async function POST(req: Request) {
     if (body.action === "createSupplier") {
       const query = `
         INSERT INTO suppliers 
-        (name, trn_number, trn_certificate, trade_license, avg_lead_time, supplier_rating, currency, status, contact_person_name, phone, email, address, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (type, name, trn_number, trn_certificate, trade_license, avg_lead_time, supplier_rating, currency, status, contact_person_name, phone, email, website, address, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
+        body.type,
         body.name,
-        body.trn_number,
+        body.trn_number || null,
         body.trn_certificate || null,
-        body.trade_license || null,
+        body.trade_license,
         body.avg_lead_time || null,
         body.supplier_rating || null,
         body.currency,
         body.status,
         body.contact_person_name,
-        body.phone,
-        body.email,
-        body.address,
+        body.phone || null,
+        body.email || null,
+        body.address || null,
+        body.website || null,
         body.notes || null,
       ];
 

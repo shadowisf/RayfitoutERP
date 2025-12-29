@@ -36,7 +36,7 @@ export default function TopSuppliersChart({
             (s) => s.location === transaction.from_location
           );
           const supplier = originalStock?.supplier_name || "Others";
-          
+
           if (supplierMap[supplier]) {
             supplierMap[supplier] -= transaction.quantity;
           }
@@ -105,7 +105,9 @@ export default function TopSuppliersChart({
 
       {stockBySupplier.length > 0 ? (
         <>
-          <div style={{ position: "relative", width: "200px", height: "200px" }}>
+          <div
+            style={{ position: "relative", width: "200px", height: "200px" }}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -143,23 +145,6 @@ export default function TopSuppliersChart({
                 }}
               >
                 ALL TIME
-              </div>
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  backgroundColor: chartData[0]?.color || "#00804C",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "20px",
-                  fontWeight: "bold",
-                  color: "white",
-                  margin: "0 auto",
-                }}
-              >
-                {topSupplierInitial}
               </div>
             </div>
 
@@ -204,7 +189,9 @@ export default function TopSuppliersChart({
                   marginBottom: "8px",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
                   <div
                     style={{
                       width: "8px",

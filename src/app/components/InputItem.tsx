@@ -2,8 +2,8 @@ type InputItemProps = {
   label: string;
   value: string | number;
   type: string;
-  placeholder: string;
-  required: boolean;
+  placeholder?: string;
+  required?: boolean;
   onChange: (
     e:
       | React.ChangeEvent<HTMLInputElement>
@@ -16,6 +16,7 @@ type InputItemProps = {
   sideLabel?: boolean;
   style?: React.CSSProperties;
   onClick?: () => void;
+  noOptionalLabel?: boolean;
 };
 
 export default function InputItem({
@@ -31,27 +32,31 @@ export default function InputItem({
   sideLabel,
   style,
   onClick,
+  noOptionalLabel,
 }: InputItemProps) {
   switch (type) {
     case "date":
       return (
         <div className="input-item">
-          {label && (
-            <label>
-              <span>
-                {label}{" "}
-                {required ? <span style={{ color: "red" }}>*</span> : ""}
-              </span>
-            </label>
-          )}
+          <label className="custom">
+            <span>{label}</span>{" "}
+            {!required && (
+              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                (OPTIONAL)
+              </small>
+            )}
+          </label>
           <input
             type={"date"}
             value={value}
             onChange={onChange}
-            placeholder={placeholder}
+            placeholder={placeholder ? placeholder : `SELECT ${label}`}
             required={required}
             disabled={disabled}
-            onClick={onClick}
+            onClick={(e) => {
+              e.currentTarget.showPicker?.();
+              onClick?.();
+            }}
           />
         </div>
       );
@@ -71,16 +76,19 @@ export default function InputItem({
               : {}),
           }}
         >
-          <label>
-            <span>
-              {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
-            </span>
+          <label className="custom">
+            <span>{label}</span>{" "}
+            {!required && !noOptionalLabel && (
+              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                (OPTIONAL)
+              </small>
+            )}
           </label>
           <input
             type={"text"}
             value={value}
             onChange={onChange}
-            placeholder={placeholder}
+            placeholder={placeholder ? placeholder : `ENTER ${label}`}
             required={required}
             disabled={disabled}
             onClick={onClick}
@@ -91,16 +99,19 @@ export default function InputItem({
     case "number":
       return (
         <div className="input-item">
-          <label>
-            <span>
-              {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
-            </span>
+          <label className="custom">
+            <span>{label}</span>{" "}
+            {!required && (
+              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                (OPTIONAL)
+              </small>
+            )}
           </label>
           <input
             type={"number"}
             value={value}
             onChange={onChange}
-            placeholder={placeholder}
+            placeholder={placeholder ? placeholder : `ENTER ${label}`}
             required={required}
             disabled={disabled}
             onClick={onClick}
@@ -111,10 +122,13 @@ export default function InputItem({
     case "select":
       return (
         <div className="input-item">
-          <label>
-            <span>
-              {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
-            </span>
+          <label className="custom">
+            <span>{label}</span>{" "}
+            {!required && (
+              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                (OPTIONAL)
+              </small>
+            )}
           </label>
           <select
             value={value}
@@ -124,7 +138,7 @@ export default function InputItem({
             onClick={onClick}
           >
             <option value={typeof value === "string" ? "" : 0} disabled>
-              {placeholder}
+              {placeholder ? placeholder : `SELECT ${label}`}
             </option>
             {selectOptions
               ? selectOptions.map((o, index) => (
@@ -138,16 +152,19 @@ export default function InputItem({
     case "textarea":
       return (
         <div className="input-item">
-          <label>
-            <span>
-              {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
-            </span>
+          <label className="custom">
+            <span>{label}</span>{" "}
+            {!required && (
+              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                (OPTIONAL)
+              </small>
+            )}
           </label>
           <textarea
             value={value}
             onChange={onChange}
             required={required}
-            placeholder={placeholder}
+            placeholder={placeholder ? placeholder : `ENTER ${label}`}
             disabled={disabled}
             onClick={onClick}
           />
@@ -157,14 +174,19 @@ export default function InputItem({
     case "password":
       return (
         <div className="input-item">
-          <span>
-            {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
-          </span>
+          <label className="custom">
+            <span>{label}</span>{" "}
+            {!required && (
+              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                (OPTIONAL)
+              </small>
+            )}
+          </label>
           <input
             type={"password"}
             value={value}
             onChange={onChange}
-            placeholder={placeholder}
+            placeholder={placeholder ? placeholder : `ENTER ${label}`}
             required={required}
             disabled={disabled}
             onClick={onClick}

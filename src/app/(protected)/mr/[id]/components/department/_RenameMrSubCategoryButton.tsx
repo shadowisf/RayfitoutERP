@@ -81,10 +81,7 @@ export default function RenameMrSubCategoryButton({
 
       router.refresh();
     } else {
-      toast(
-        "Failed to update material request subcategory. Something went wrong",
-        "error"
-      );
+      toast("Failed to update material request subcategory", "error");
     }
   }
 
@@ -109,7 +106,7 @@ export default function RenameMrSubCategoryButton({
         >
           <div className="input-row full">
             <SingleSelectDropdown
-              label={"SUB CATEGORY"}
+              label={"SUBCATEGORY"}
               dbData={materialSubCategoryValues}
               selectedValue={newSubCategory}
               onChange={setNewSubCategory}

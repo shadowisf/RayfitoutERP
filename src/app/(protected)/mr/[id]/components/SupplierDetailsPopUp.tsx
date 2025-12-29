@@ -73,11 +73,11 @@ export default function SupplierDetailsPopUp({
           >
             <div>
               <span>MATERIAL CATEGORIES</span>
-              <h2>{item.approved_supplier_material_categories}</h2>
+              <h2>{item.approved_supplier_material_categories || "-"}</h2>
             </div>
             <div>
               <span>MATERIAL SUBCATEGORIES</span>
-              <h2>{item.approved_supplier_material_subcategories}</h2>
+              <h2>{item.approved_supplier_material_subcategories || "-"}</h2>
             </div>
           </div>
 
@@ -93,15 +93,15 @@ export default function SupplierDetailsPopUp({
           >
             <div>
               <span>AVERAGE LEAD TIME</span>
-              <h2>{item.approved_supplier_avg_lead_time || "NO DATA"}</h2>
+              <h2>{item.approved_supplier_avg_lead_time || "-"}</h2>
             </div>
             <div>
               <span>RATING</span>
-              <h2>{item.approved_supplier_rating || "NO DATA"}</h2>
+              <h2>{item.approved_supplier_rating || "-"}</h2>
             </div>
             <div>
               <span>TAX REGISTRATION NUMBER</span>
-              <h2>{item.approved_supplier_trn_number}</h2>
+              <h2>{item.approved_supplier_trn_number || "-"}</h2>
             </div>
           </div>
 

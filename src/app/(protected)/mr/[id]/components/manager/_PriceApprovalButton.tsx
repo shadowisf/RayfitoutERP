@@ -9,10 +9,11 @@ import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
 import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
 import RejectCommentPopUp from "./RejectCommentPopUp";
+import { MrLine } from "../../types/mrLine";
 
 type PriceApprovalButtonProps = {
   progressID: number;
-  mrLineID: number;
+  mrLine: MrLine;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
@@ -22,7 +23,7 @@ type PriceApprovalButtonProps = {
 
 export default function PriceApprovalButton({
   progressID,
-  mrLineID,
+  mrLine,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
@@ -53,7 +54,7 @@ export default function PriceApprovalButton({
     fetch("/api/supplier/getAllSupplierAndQuotationByMrLineID", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: mrLineID }),
+      body: JSON.stringify({ id: mrLine.id }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -86,7 +87,7 @@ export default function PriceApprovalButton({
 
   useEffect(() => {
     fetchQuotations();
-  }, [mrLineID]);
+  }, [mrLine.id]);
 
   async function handleApproveSupplierAndQuotation(e: React.FormEvent) {
     e.preventDefault();
@@ -98,14 +99,17 @@ export default function PriceApprovalButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "approveSupplierAndQuotation",
-          mr_line_id: mrLineID,
+          mr_line_id: mrLine.id,
           supplier_id: selectedSupplierID,
         }),
       }
     );
 
     if (res.ok) {
-      toast("Supplier and quotation approved", "success");
+      toast(
+        `Vendor and quotation approved for ${mrLine.material_description}`,
+        "success"
+      );
       setIsOpen(false);
 
       setRejectText("");
@@ -114,7 +118,7 @@ export default function PriceApprovalButton({
 
       router.refresh();
     } else {
-      toast("Failed to approve supplier and quotation", "error");
+      toast("Failed to approve vendor and quotation", "error");
     }
   }
 
@@ -129,13 +133,13 @@ export default function PriceApprovalButton({
         body: JSON.stringify({
           action: "rejectAllSupplierAndQuotation",
           reject_comment: rejectText,
-          mr_line_id: mrLineID,
+          mr_line_id: mrLine.id,
         }),
       }
     );
 
     if (res.ok) {
-      toast("Supplier and quotation rejected", "success");
+      toast("Vendor and quotation rejected", "success");
 
       setRejectText("");
 
@@ -146,7 +150,7 @@ export default function PriceApprovalButton({
 
       router.refresh();
     } else {
-      toast("Failed to reject supplier and quotation", "error");
+      toast("Failed to reject vendor and quotation", "error");
     }
   }
 
@@ -158,13 +162,13 @@ export default function PriceApprovalButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "resetSupplierAndQuotation",
-          mr_line_id: mrLineID,
+          mr_line_id: mrLine.id,
         }),
       }
     );
 
     if (res.ok) {
-      toast("Supplier selection reset", "success");
+      toast("Vendor selection reset", "success");
 
       setRejectText("");
 
@@ -172,7 +176,7 @@ export default function PriceApprovalButton({
 
       router.refresh();
     } else {
-      toast("Failed to reset supplier selection", "error");
+      toast("Failed to reset vendor selection", "error");
     }
   }
 
@@ -222,9 +226,10 @@ export default function PriceApprovalButton({
         style={{
           backgroundColor: "rgba(185, 28, 28, 1)",
           color: "white",
+          width: "250px",
         }}
       >
-        <span>All Supplier Rejected</span>
+        <span style={{ textWrap: "nowrap" }}>All Suppliers Rejected</span>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
           <RejectCommentPopUp text={supplierQuotations[0].reject_comment} />
           {progressID === 10 && (
@@ -258,7 +263,7 @@ export default function PriceApprovalButton({
 
       {isOpen && (
         <FormPopUp
-          header={"CHOOSE SUPPLIER AND QUOTATION"}
+          header={"CHOOSE VENDOR AND QUOTATION"}
           setIsOpen={setIsOpen}
           handleSubmit={(e) => handleApproveSupplierAndQuotation(e)}
           addButtonLabel={"CONFIRM"}
@@ -273,7 +278,7 @@ export default function PriceApprovalButton({
                 setIsRejectOpen(true);
               }}
             >
-              REJECT ALL SUPPLIERS
+              REJECT ALL VENDORS
             </Button>
           }
         >

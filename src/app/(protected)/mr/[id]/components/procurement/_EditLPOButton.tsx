@@ -13,6 +13,8 @@ type EditLPOButtonProps = {
 };
 
 export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
+  const pencilIcon = "/icons/pencil.svg";
+
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -289,17 +291,18 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
         borderColor="rgba(207, 207, 207, 1)"
         textColor="black"
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 20px", borderRadius: "25px" }}
+        style={{ padding: "0px", border: "none" }}
       >
-        Edit LPO
+        <img src={pencilIcon} alt="pencil" />
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"EDIT LOCAL PURCHASE ORDER"}
+          header={"UPDATE LOCAL PURCHASE ORDER"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"UPDATE"}
+          addButtonLabel={"CONFIRM"}
+          style={{ width: "1000px" }}
         >
           {lpoData && (
             <>
@@ -407,7 +410,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 0.5fr",
+                  gridTemplateColumns: "1fr 0.75fr",
                   gap: "75px",
                 }}
               >
@@ -448,7 +451,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                   </div>
                   <div className="input-row full">
                     <InputItem
-                      label={"DISCOUNT (OPTIONAL)"}
+                      label={"DISCOUNT"}
                       value={discount}
                       type={"text"}
                       placeholder={"ENTER DISCOUNT"}
@@ -459,7 +462,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                   </div>
                   <div className="input-row full">
                     <InputItem
-                      label={"S&H (OPTIONAL)"}
+                      label={"S&H"}
                       value={shippingHandling}
                       type={"text"}
                       placeholder={"ENTER S&H"}

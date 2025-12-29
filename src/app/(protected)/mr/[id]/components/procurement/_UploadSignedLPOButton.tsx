@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
 import { MrHeader } from "../../types/mrHeader";
+import { MrLine } from "../../types/mrLine";
 
 type UploadSignedLPOButtonProps = {
   mrHeader: MrHeader;
+  mrLine: MrLine;
+  LpoID: number;
   supplierId: number;
   signedLpoFiles: string[];
   onFilesUpdate: (files: string[]) => void;
@@ -16,18 +19,22 @@ type UploadSignedLPOButtonProps = {
 
 export default function UploadSignedLPOButton({
   mrHeader,
+  mrLine,
+  LpoID,
   supplierId,
   signedLpoFiles,
   onFilesUpdate,
   canDelete = false,
 }: UploadSignedLPOButtonProps) {
   const router = useRouter();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [isUploading, setIsUploading] = useState(false);
 
   const closeIcon = "/icons/cross-small.svg";
-  const externalLinkIcon = "/icons/external-link.svg";
   const uploadIcon = "/icons/upload.svg";
+  const downloadIcon = "/icons/download.svg";
 
   function handleUploadClick() {
     if (!isUploading) {
@@ -41,13 +48,34 @@ export default function UploadSignedLPOButton({
     return decodeURIComponent(fileName) || "View File";
   }
 
-  async function handleFileSelection(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+  async function handleDownload(url: string, event: React.MouseEvent) {
+    event.stopPropagation();
 
-    const file = files[0];
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Download failed");
+      }
+
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      // Custom name with MR info
+      link.download = `Signed-LPO-${String(LpoID).padStart(5, "0")}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      toast("Failed to download signed LPO", "error");
+    }
+  }
+
+  async function uploadFile(file: File) {
     setIsUploading(true);
 
     try {
@@ -92,7 +120,10 @@ export default function UploadSignedLPOButton({
         throw new Error("Failed to update database");
       }
 
-      toast("Signed local purchase order uploaded", "success");
+      toast(
+        `Signed local purchase order uploaded for ${mrLine.approved_supplier_name}`,
+        "success"
+      );
 
       // Update parent state
       onFilesUpdate(updatedSignedLpoFiles);
@@ -103,11 +134,56 @@ export default function UploadSignedLPOButton({
       toast("Failed to upload signed local purchase order", "error");
     } finally {
       setIsUploading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     }
+  }
+
+  async function handleFileSelection(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    await uploadFile(file);
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function handleDragOver(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function handleDragLeave(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  async function handleDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const files = event.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+
+    // Validate file type
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      toast("Please upload a PDF, JPG, JPEG, or PNG file", "error");
+      return;
+    }
+
+    await uploadFile(file);
   }
 
   async function handleRemoveFile(url: string, event: React.MouseEvent) {
@@ -155,7 +231,10 @@ export default function UploadSignedLPOButton({
         throw new Error("Failed to update database");
       }
 
-      toast("Signed local purchase order deleted", "success");
+      toast(
+        `Signed local purchase order deleted for ${mrLine.approved_supplier_name}`,
+        "success"
+      );
 
       // Update parent state
       onFilesUpdate(updatedSignedLpoFiles);
@@ -190,14 +269,15 @@ export default function UploadSignedLPOButton({
               textColor={"black"}
               onClick={() => {}}
               componentType="none"
-              style={{ padding: "5px 20px", borderRadius: "25px" }}
+              style={{ padding: "7px 20px", borderRadius: "25px" }}
               key={fileUrl}
             >
-              {/* {getFileName(fileUrl)} */}
               Signed LPO
-              <a style={{ display: "flex" }} href={fileUrl} target="_blank">
-                <img src={externalLinkIcon} alt="external link" />
-              </a>
+              <img
+                src={downloadIcon}
+                alt="download"
+                onClick={(e) => handleDownload(fileUrl, e)}
+              />
               {canDelete && (
                 <img
                   src={closeIcon}
@@ -212,24 +292,34 @@ export default function UploadSignedLPOButton({
           ))}
         </>
       ) : (
-        <Button
-          componentType={"button"}
-          onClick={handleUploadClick}
-          bgColor={"black"}
-          borderColor={"black"}
-          textColor={"white"}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           style={{
-            padding: "7px 20px",
             borderRadius: "25px",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            minWidth: "150px",
           }}
         >
-          Upload Signed LPO
-          <img src={uploadIcon} alt="upload icon" />
-        </Button>
+          <Button
+            componentType={"button"}
+            onClick={handleUploadClick}
+            bgColor={"black"}
+            borderColor={"black"}
+            textColor={"white"}
+            style={{
+              padding: "7px 20px",
+              borderRadius: "25px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              minWidth: "150px",
+              cursor: isUploading ? "not-allowed" : "pointer",
+            }}
+            disabled={isUploading}
+          >
+            Select or Drop Signed LPO <img src={uploadIcon} alt="upload icon" />
+          </Button>
+        </div>
       )}
     </>
   );

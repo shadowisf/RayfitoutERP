@@ -26,8 +26,8 @@ type UploadedFile = {
 type CheckpointData = {
   response: CheckpointResponse;
   notes: string;
-  attachments: string[]; // Existing S3 URLs
-  pendingFiles: UploadedFile[]; // Files waiting to be uploaded on confirm
+  attachment: string | null; // Changed to single attachment
+  pendingFile: UploadedFile | null; // Changed to single file
 };
 
 type GRN = {
@@ -49,7 +49,6 @@ type QCStatus = "pending" | "passed" | "failed" | null;
 
 const checkpoints = [
   "Item matches purchase specifications",
-  "Quantity matches GRN",
   "Dimensions as per approved drawings",
   "Material grade confirmed",
   "Visual inspection - no damage",
@@ -57,9 +56,6 @@ const checkpoints = [
   "No corrosion / scratches",
   "Color matches approved sample",
   "Assembly/Functional test",
-  "Correct labeling / barcode",
-  "Proper packaging",
-  "Safety compliance",
 ];
 
 export default function QCCheckListButton({
@@ -72,6 +68,8 @@ export default function QCCheckListButton({
   const pencilIcon = "/icons/pencil.svg";
   const uploadIcon = "/icons/upload.svg";
   const plusIcon = "/icons/plus.svg";
+  const trashIcon = "/icons/trash.svg";
+  const externalLinkIcon = "/icons/external-link.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [qcStatus, setQcStatus] = useState<QCStatus>("pending");
@@ -112,8 +110,8 @@ export default function QCCheckListButton({
       initialData[index] = {
         response: null,
         notes: "",
-        attachments: [],
-        pendingFiles: [],
+        attachment: null,
+        pendingFile: null,
       };
     });
     setCheckpointData(initialData);
@@ -208,45 +206,42 @@ export default function QCCheckListButton({
           qcData.checkpoints.forEach((cp: any) => {
             const index = cp.checkpoint_number - 1;
 
-            // Parse attachments safely
-            let attachmentsArray: string[] = [];
+            // Parse attachment (single URL)
+            let attachmentUrl: string | null = null;
             if (cp.attachments) {
               try {
-                // Check if it's already a string starting with "http" (single URL)
                 if (
                   typeof cp.attachments === "string" &&
                   cp.attachments.startsWith("http")
                 ) {
-                  attachmentsArray = [cp.attachments];
+                  attachmentUrl = cp.attachments;
                 } else if (typeof cp.attachments === "string") {
-                  // Try to parse as JSON array
-                  attachmentsArray = JSON.parse(cp.attachments);
+                  const parsed = JSON.parse(cp.attachments);
+                  attachmentUrl = Array.isArray(parsed) ? parsed[0] : parsed;
                 } else if (Array.isArray(cp.attachments)) {
-                  // Already an array
-                  attachmentsArray = cp.attachments;
+                  attachmentUrl = cp.attachments[0];
                 }
               } catch (error) {
                 console.error(
-                  "Error parsing attachments for checkpoint",
+                  "Error parsing attachment for checkpoint",
                   index,
                   ":",
                   error
                 );
-                console.log("Raw attachments value:", cp.attachments);
-                attachmentsArray = [];
+                attachmentUrl = null;
               }
             }
 
             loadedCheckpoints[index] = {
               response: cp.response,
               notes: cp.notes || "",
-              attachments: attachmentsArray,
-              pendingFiles: [],
+              attachment: attachmentUrl,
+              pendingFile: null,
             };
 
             console.log(
-              `Loaded checkpoint ${index} with attachments:`,
-              attachmentsArray
+              `Loaded checkpoint ${index} with attachment:`,
+              attachmentUrl
             );
           });
 
@@ -418,27 +413,21 @@ export default function QCCheckListButton({
     index: number,
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    const newFiles: UploadedFile[] = [];
-
-    Array.from(files).forEach((file) => {
-      const preview = file.type.startsWith("image/")
-        ? URL.createObjectURL(file)
-        : "";
-
-      newFiles.push({
-        file,
-        preview,
-      });
-    });
+    const preview = file.type.startsWith("image/")
+      ? URL.createObjectURL(file)
+      : "";
 
     setCheckpointData((prev) => ({
       ...prev,
       [index]: {
         ...prev[index],
-        pendingFiles: [...(prev[index]?.pendingFiles || []), ...newFiles],
+        pendingFile: {
+          file,
+          preview,
+        },
       },
     }));
 
@@ -447,39 +436,33 @@ export default function QCCheckListButton({
   };
 
   // Remove pending file
-  const removePendingFile = (checkpointIndex: number, fileIndex: number) => {
+  const removePendingFile = (checkpointIndex: number) => {
     setCheckpointData((prev) => ({
       ...prev,
       [checkpointIndex]: {
         ...prev[checkpointIndex],
-        pendingFiles: prev[checkpointIndex].pendingFiles.filter(
-          (_, i) => i !== fileIndex
-        ),
+        pendingFile: null,
       },
     }));
   };
 
   // Remove uploaded attachment - only marks for deletion
-  const removeAttachment = (
-    checkpointIndex: number,
-    attachmentIndex: number
-  ) => {
-    const urlToDelete =
-      checkpointData[checkpointIndex].attachments[attachmentIndex];
+  const removeAttachment = (checkpointIndex: number) => {
+    const urlToDelete = checkpointData[checkpointIndex].attachment;
 
-    // Mark the URL for deletion
-    setAttachmentsToDelete((prev) => [...prev, urlToDelete]);
+    if (urlToDelete) {
+      // Mark the URL for deletion
+      setAttachmentsToDelete((prev) => [...prev, urlToDelete]);
 
-    // Remove from UI immediately
-    setCheckpointData((prev) => ({
-      ...prev,
-      [checkpointIndex]: {
-        ...prev[checkpointIndex],
-        attachments: prev[checkpointIndex].attachments.filter(
-          (_, i) => i !== attachmentIndex
-        ),
-      },
-    }));
+      // Remove from UI immediately
+      setCheckpointData((prev) => ({
+        ...prev,
+        [checkpointIndex]: {
+          ...prev[checkpointIndex],
+          attachment: null,
+        },
+      }));
+    }
   };
 
   // Delete all marked attachments from S3
@@ -532,31 +515,27 @@ export default function QCCheckListButton({
 
   // Upload all pending files for all checkpoints
   const uploadAllPendingFiles = async () => {
-    const filesByCheckpoint: { [key: number]: File[] } = {};
+    const filesToUpload: { [key: number]: File } = {};
 
     // Collect all files that need to be uploaded
     Object.keys(checkpointData).forEach((key) => {
       const checkpointIndex = parseInt(key);
       const checkpoint = checkpointData[checkpointIndex];
 
-      if (checkpoint.pendingFiles && checkpoint.pendingFiles.length > 0) {
-        filesByCheckpoint[checkpointIndex] = checkpoint.pendingFiles.map(
-          (f) => f.file
-        );
+      if (checkpoint.pendingFile) {
+        filesToUpload[checkpointIndex] = checkpoint.pendingFile.file;
       }
     });
 
     // Upload all files
-    if (Object.keys(filesByCheckpoint).length > 0) {
+    if (Object.keys(filesToUpload).length > 0) {
       try {
         const formData = new FormData();
 
         // Add all files to FormData
-        Object.values(filesByCheckpoint)
-          .flat()
-          .forEach((file) => {
-            formData.append("files", file);
-          });
+        Object.values(filesToUpload).forEach((file) => {
+          formData.append("files", file);
+        });
 
         // Add folder parameter
         formData.append("folder", "qc-attachments");
@@ -582,29 +561,19 @@ export default function QCCheckListButton({
         const updatedCheckpointData = { ...checkpointData };
         let urlIndex = 0;
 
-        Object.keys(filesByCheckpoint).forEach((key) => {
+        Object.keys(filesToUpload).forEach((key) => {
           const checkpointIndex = parseInt(key);
-          const fileCount = filesByCheckpoint[checkpointIndex].length;
-          const checkpointUrls = uploadedUrls.slice(
-            urlIndex,
-            urlIndex + fileCount
-          );
+          const uploadedUrl = uploadedUrls[urlIndex];
 
           updatedCheckpointData[checkpointIndex] = {
             ...updatedCheckpointData[checkpointIndex],
-            attachments: [
-              ...updatedCheckpointData[checkpointIndex].attachments,
-              ...checkpointUrls,
-            ],
-            pendingFiles: [],
+            attachment: uploadedUrl,
+            pendingFile: null,
           };
 
-          console.log(
-            `Checkpoint ${checkpointIndex} attachments:`,
-            updatedCheckpointData[checkpointIndex].attachments
-          );
+          console.log(`Checkpoint ${checkpointIndex} attachment:`, uploadedUrl);
 
-          urlIndex += fileCount;
+          urlIndex++;
         });
 
         // Update state
@@ -677,7 +646,7 @@ export default function QCCheckListButton({
         checked_by: userInfo?.name || "",
         accepted_quantity: acceptedQty,
         qc_status: qcStatusSelection,
-        checkpoints: updatedCheckpointData, // Use the updated data from upload
+        checkpoints: updatedCheckpointData,
         ...(qcStatusSelection === "failed" && {
           failure_reasons: failureReasons,
         }),
@@ -738,15 +707,13 @@ export default function QCCheckListButton({
   // Render attachment cell content
   const renderAttachmentCell = (index: number) => {
     const checkpoint = checkpointData[index];
-    const hasAttachments = checkpoint?.attachments?.length > 0;
-    const hasPendingFiles = checkpoint?.pendingFiles?.length > 0;
+    const hasAttachment = checkpoint?.attachment;
+    const hasPendingFile = checkpoint?.pendingFile;
+    const response = checkpoint?.response;
 
-    const gridStyle: React.CSSProperties = {
-      display: "grid",
-      gridTemplateColumns: "repeat(2, 50px)",
-      gap: "4px",
-      justifyContent: "center",
-    };
+    // Only show upload button if response is "no" and there's no attachment/pending file
+    const showUploadButton =
+      response === "no" && !hasAttachment && !hasPendingFile;
 
     return (
       <div
@@ -757,163 +724,239 @@ export default function QCCheckListButton({
           alignItems: "center",
         }}
       >
-        {/* Uploaded attachments */}
-        {hasAttachments && (
-          <div style={gridStyle}>
-            {checkpoint.attachments.map((url, attIndex) => (
-              <div
-                key={`att-${attIndex}`}
+        {/* Uploaded attachment */}
+        {hasAttachment && (
+          <div
+            style={{
+              position: "relative",
+              display: "inline-block",
+              maxWidth: "100px",
+            }}
+          >
+            {isImageFile(hasAttachment) ? (
+              <img
+                src={hasAttachment}
+                alt="attachment"
                 style={{
-                  position: "relative",
-                  width: "50px",
-                  overflow: "hidden",
+                  maxWidth: "100px",
+                  maxHeight: "100px",
+                  borderRadius: "5px",
+                  objectFit: "contain",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "100px",
+                  height: "100px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "#f3f4f6",
+                  borderRadius: "5px",
+                  padding: "10px",
+                  textAlign: "center",
                 }}
               >
-                {isImageFile(url) ? (
-                  <img
-                    src={url}
-                    alt="attachment"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: "#f3f4f6",
-                    }}
-                  >
-                    {getFileNameFromUrl(url).split(".").pop()?.toUpperCase()}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => removeAttachment(index, attIndex)}
+                <div style={{ fontSize: "12px", fontWeight: "bold" }}>
+                  {getFileNameFromUrl(hasAttachment)
+                    .split(".")
+                    .pop()
+                    ?.toUpperCase()}
+                </div>
+                <div
                   style={{
-                    position: "absolute",
-                    top: "2px",
-                    right: "2px",
-                    width: "18px",
-                    height: "18px",
-                    borderRadius: "50%",
-                    border: "none",
-                    backgroundColor: "rgba(0,0,0,0.6)",
-                    color: "white",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    fontSize: "10px",
+                    marginTop: "4px",
+                    wordBreak: "break-all",
                   }}
                 >
-                  ×
-                </button>
+                  {getFileNameFromUrl(hasAttachment).substring(0, 20)}
+                </div>
               </div>
-            ))}
+            )}
+
+            <Button
+              componentType={"button"}
+              bgColor={"rgba(239, 239, 239, 1)"}
+              borderColor={"rgba(223, 223, 223, 1)"}
+              textColor={"black"}
+              style={{
+                position: "absolute",
+                top: "5px",
+                right: "5px",
+                padding: "7px 7px",
+                minWidth: "auto",
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                removeAttachment(index);
+              }}
+            >
+              <img
+                src={trashIcon}
+                alt="remove"
+                style={{ width: "12px", height: "12px" }}
+              />
+            </Button>
+
+            {/* <Button
+              componentType={"link"}
+              bgColor={"rgba(239, 239, 239, 1)"}
+              borderColor={"rgba(223, 223, 223, 1)"}
+              textColor={"black"}
+              style={{
+                position: "absolute",
+                bottom: "-5px",
+                right: "-5px",
+                padding: "5px 5px",
+                minWidth: "auto",
+              }}
+              href={hasAttachment}
+              target="_blank"
+            >
+              <img
+                src={externalLinkIcon}
+                alt="view"
+                style={{ width: "12px", height: "12px" }}
+              />
+            </Button> */}
           </div>
         )}
 
-        {/* Pending (not uploaded yet) */}
-        {hasPendingFiles && (
-          <div style={gridStyle}>
-            {checkpoint.pendingFiles.map((uploadedFile, fileIndex) => (
-              <div
-                key={`pending-${fileIndex}`}
+        {/* Pending file (not uploaded yet) */}
+        {hasPendingFile && !hasAttachment && (
+          <div
+            style={{
+              position: "relative",
+              display: "inline-block",
+              maxWidth: "100px",
+            }}
+          >
+            {hasPendingFile.preview ? (
+              <img
+                src={hasPendingFile.preview}
+                alt="preview"
                 style={{
-                  position: "relative",
-                  width: "50px",
-                  overflow: "hidden",
+                  maxWidth: "100px",
+                  maxHeight: "100px",
+                  borderRadius: "5px",
+                  objectFit: "contain",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "100px",
+                  height: "100px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "#f9fafb",
+                  borderRadius: "5px",
+                  padding: "10px",
+                  textAlign: "center",
                 }}
               >
-                {uploadedFile.preview ? (
-                  <img
-                    src={uploadedFile.preview}
-                    alt="preview"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: "#f9fafb",
-                    }}
-                  >
-                    {uploadedFile.file.name.split(".").pop()?.toUpperCase()}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => removePendingFile(index, fileIndex)}
+                <div style={{ fontSize: "12px", fontWeight: "bold" }}>
+                  {hasPendingFile.file.name.split(".").pop()?.toUpperCase()}
+                </div>
+                <div
                   style={{
-                    position: "absolute",
-                    top: "2px",
-                    right: "2px",
-                    width: "18px",
-                    height: "18px",
-                    borderRadius: "50%",
-                    border: "none",
-                    backgroundColor: "rgba(0,0,0,0.6)",
-                    color: "white",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    marginTop: "4px",
+                    wordBreak: "break-all",
                   }}
                 >
-                  ×
-                </button>
+                  {hasPendingFile.file.name.substring(0, 20)}
+                </div>
               </div>
-            ))}
+            )}
+
+            <Button
+              componentType={"button"}
+              bgColor={"rgba(239, 239, 239, 1)"}
+              borderColor={"rgba(223, 223, 223, 1)"}
+              textColor={"black"}
+              style={{
+                position: "absolute",
+                top: "5px",
+                right: "5px",
+                padding: "7px 7px",
+                minWidth: "auto",
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                removePendingFile(index);
+              }}
+            >
+              <img
+                src={trashIcon}
+                alt="remove"
+                style={{ width: "12px", height: "12px" }}
+              />
+            </Button>
+
+            {/* <Button
+              componentType={"button"}
+              bgColor={"rgba(239, 239, 239, 1)"}
+              borderColor={"rgba(223, 223, 223, 1)"}
+              textColor={"black"}
+              style={{
+                position: "absolute",
+                bottom: "-5px",
+                right: "-5px",
+                padding: "5px 5px",
+                minWidth: "auto",
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                const fileUrl = URL.createObjectURL(hasPendingFile.file);
+                window.open(fileUrl, "_blank");
+              }}
+            >
+              <img
+                src={externalLinkIcon}
+                alt="view"
+                style={{ width: "12px", height: "12px" }}
+              />
+            </Button> */}
           </div>
         )}
 
-        {/* Upload input */}
-        <input
-          type="file"
-          ref={(el) => {
-            fileInputRefs.current[index] = el;
-          }}
-          onChange={(e) => handleFileSelect(index, e)}
-          accept="image/*"
-          multiple
-          style={{ display: "none" }}
-        />
+        {/* Upload button - only shown when response is "no" and no attachment exists */}
+        {showUploadButton && (
+          <>
+            <input
+              type="file"
+              ref={(el) => {
+                fileInputRefs.current[index] = el;
+              }}
+              onChange={(e) => handleFileSelect(index, e)}
+              accept="image/*,.pdf"
+              style={{ display: "none" }}
+            />
 
-        <Button
-          componentType="button"
-          bgColor="black"
-          borderColor="black"
-          textColor="white"
-          onClick={(e) => {
-            e.preventDefault();
-            fileInputRefs.current[index]?.click();
-          }}
-        >
-          UPLOAD FILES
-          <img
-            src={uploadIcon}
-            alt="upload"
-            style={{ width: "12px", height: "12px" }}
-          />
-        </Button>
+            <Button
+              componentType="button"
+              bgColor="rgba(239, 239, 239, 1)"
+              borderColor="rgba(223, 223, 223, 1)"
+              textColor="black"
+              onClick={(e) => {
+                e.preventDefault();
+                fileInputRefs.current[index]?.click();
+              }}
+              style={{ padding: "7px 7px" }}
+            >
+              <img
+                src={uploadIcon}
+                alt="upload"
+                style={{ filter: "invert(1)" }}
+              />
+            </Button>
+          </>
+        )}
       </div>
     );
   };
@@ -1063,25 +1106,7 @@ export default function QCCheckListButton({
   // Form content
   const formContent = (
     <>
-      <div className="input-row three-col">
-        <InputItem
-          label={"ORDERED QUANTITY"}
-          value={item.quantity}
-          type={"text"}
-          placeholder={""}
-          required
-          disabled
-          onChange={() => {}}
-        />
-        <InputItem
-          label={"RECEIVED QUANTITY"}
-          value={receivedQuantity}
-          type={"text"}
-          placeholder={""}
-          required
-          disabled
-          onChange={() => {}}
-        />
+      <div className="input-row half">
         <InputItem
           label={"CHECKED BY"}
           value={userInfo?.name || ""}
@@ -1104,7 +1129,7 @@ export default function QCCheckListButton({
             <th>NO</th>
             <th>N/A</th>
             <th style={{ minWidth: "500px" }}>NOTES</th>
-            <th>ATTACHMENT(S)</th>
+            <th>ATTACHMENT</th>
           </tr>
         </thead>
         <tbody>
@@ -1117,7 +1142,25 @@ export default function QCCheckListButton({
       <br />
       <br />
 
-      <div className="input-row three-col">
+      <div className="input-row four-col">
+        <InputItem
+          label={"ORDERED QUANTITY"}
+          value={item.quantity}
+          type={"text"}
+          placeholder={""}
+          required
+          disabled
+          onChange={() => {}}
+        />
+        <InputItem
+          label={"RECEIVED QUANTITY"}
+          value={receivedQuantity}
+          type={"text"}
+          placeholder={""}
+          required
+          disabled
+          onChange={() => {}}
+        />
         <InputItem
           label={"ACCEPTED QUANTITY"}
           value={acceptedQty}
@@ -1126,52 +1169,55 @@ export default function QCCheckListButton({
           required
           onChange={(e) => setAcceptedQty(e.target.value)}
         />
-        <div style={{ display: "flex", alignItems: "center", gap: "25px" }}>
+
+        <div className="input-item">
           <label>QC STATUS</label>
-
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-            }}
-          >
-            <input
-              type="radio"
-              name="qc-status"
-              checked={qcStatusSelection === "passed"}
-              onChange={() => setQcStatusSelection("passed")}
+          <div style={{ display: "flex", alignItems: "center", gap: "25px" }}>
+            <label
               style={{
-                width: "24px",
-                height: "24px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
                 cursor: "pointer",
               }}
-            />
-            <span>PASSED QC</span>
-          </label>
+            >
+              <input
+                type="radio"
+                name="qc-status"
+                checked={qcStatusSelection === "passed"}
+                onChange={() => setQcStatusSelection("passed")}
+                style={{
+                  width: "24px",
+                  height: "24px",
+                  cursor: "pointer",
+                }}
+                required
+              />
+              <span>PASSED QC</span>
+            </label>
 
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-            }}
-          >
-            <input
-              type="radio"
-              name="qc-status"
-              checked={qcStatusSelection === "failed"}
-              onChange={() => setQcStatusSelection("failed")}
+            <label
               style={{
-                width: "24px",
-                height: "24px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
                 cursor: "pointer",
               }}
-            />
-            <span>FAILED QC</span>
-          </label>
+            >
+              <input
+                type="radio"
+                name="qc-status"
+                checked={qcStatusSelection === "failed"}
+                onChange={() => setQcStatusSelection("failed")}
+                style={{
+                  width: "24px",
+                  height: "24px",
+                  cursor: "pointer",
+                }}
+              />
+              <span>FAILED QC</span>
+            </label>
+          </div>
         </div>
       </div>
     </>
@@ -1188,7 +1234,7 @@ export default function QCCheckListButton({
             color: "white",
           }}
         >
-          <span>PASSED</span>
+          PASSED
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <img
               src={pencilIcon}

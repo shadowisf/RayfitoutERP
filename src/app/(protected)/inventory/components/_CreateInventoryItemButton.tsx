@@ -3,18 +3,25 @@
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { toast } from "@/app/components/Toast";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { useRouter } from "next/navigation";
+import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 
-export default function CreateInventoryItemButton() {
+type CreateInventoryItemButtonProps = {
+  style?: React.CSSProperties;
+  onSuccess?: () => void;
+};
+
+export default function CreateInventoryItemButton({
+  style,
+  onSuccess,
+}: CreateInventoryItemButtonProps) {
   const { userInfo } = useAuth();
 
   const router = useRouter();
-
-  const uploadIcon = "/icons/upload.svg";
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -42,9 +49,6 @@ export default function CreateInventoryItemButton() {
   const [countryOfOrigin, setCountryOfOrigin] = useState("");
   const [specification, setSpecification] = useState("");
   const [image, setImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch all categories on mount
   useEffect(() => {
@@ -56,10 +60,7 @@ export default function CreateInventoryItemButton() {
       .catch((err) => {
         console.error(err);
       });
-  }, []);
 
-  // Fetch all subcategories on mount (for initial load)
-  useEffect(() => {
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
       {
@@ -108,60 +109,6 @@ export default function CreateInventoryItemButton() {
         });
     }
   }, [materialCategoryID]);
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Check if it's an image
-    if (!file.type.startsWith("image/")) {
-      toast("Please select an image file", "error");
-      return;
-    }
-
-    setImage(file);
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeImage = () => {
-    setImage(null);
-    setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast("Please select an image file", "error");
-      return;
-    }
-
-    setImage(file);
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -221,6 +168,10 @@ export default function CreateInventoryItemButton() {
       toast("Inventory item created", "success");
       setIsOpen(false);
 
+      if (onSuccess) {
+        onSuccess();
+      }
+
       router.refresh();
 
       // Reset form
@@ -235,7 +186,6 @@ export default function CreateInventoryItemButton() {
       setCountryOfOrigin("");
       setSpecification("");
       setImage(null);
-      setImagePreview(null);
     } else {
       toast("Failed to create inventory item", "error");
     }
@@ -249,6 +199,7 @@ export default function CreateInventoryItemButton() {
         borderColor={"black"}
         textColor={"white"}
         onClick={() => setIsOpen(true)}
+        style={style}
       >
         NEW INVENTORY ITEM +
       </Button>
@@ -267,7 +218,7 @@ export default function CreateInventoryItemButton() {
               selectedValue={materialCategoryID}
               onChange={setMaterialCategoryID}
               placeholder="SELECT CATEGORY"
-              required
+              required={true}
             />
 
             <SingleSelectDropdown
@@ -286,7 +237,7 @@ export default function CreateInventoryItemButton() {
                 }
               }}
               placeholder="SELECT SUBCATEGORY"
-              required
+              required={true}
             />
           </div>
 
@@ -413,7 +364,7 @@ export default function CreateInventoryItemButton() {
             />
 
             <InputItem
-              label={"BRAND (OPTIONAL)"}
+              label={"BRAND"}
               value={brand}
               type={"text"}
               placeholder={"ENTER BRAND"}
@@ -421,7 +372,7 @@ export default function CreateInventoryItemButton() {
               onChange={(e) => setBrand(e.target.value)}
             />
             <InputItem
-              label={"COUNTRY OF ORIGIN (OPTIONAL)"}
+              label={"COUNTRY OF ORIGIN"}
               value={countryOfOrigin}
               type={"select"}
               placeholder={"SELECT COUNTRY OF ORIGIN"}
@@ -626,7 +577,7 @@ export default function CreateInventoryItemButton() {
 
           <div className="input-row full">
             <InputItem
-              label={"SPECIFICATION (OPTIONAL)"}
+              label={"SPECIFICATION"}
               value={specification}
               type={"textarea"}
               placeholder={"ENTER SPECIFICATION"}
@@ -637,7 +588,7 @@ export default function CreateInventoryItemButton() {
 
           {/* Image Upload Section */}
           <div className="input-row full">
-            <div className="input-item">
+            {/* <div className="input-item">
               <label>REFERENCE IMAGE (OPTIONAL)</label>
 
               <div
@@ -712,7 +663,16 @@ export default function CreateInventoryItemButton() {
                   </>
                 )}
               </div>
-            </div>
+            </div> */}
+
+            <SingleUploadFileBox
+              fileState={image}
+              setFileState={setImage}
+              label={"REFERENCE IMAGE"}
+              acceptedFileTypes={".jpg,.jpeg,.png,.webp"}
+              buttonLabel="SELECT OR DROP IMAGE"
+              placeholder=""
+            />
           </div>
         </FormPopUp>
       )}

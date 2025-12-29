@@ -11,6 +11,7 @@ type ButtonProps = {
   target?: string;
   type?: "button" | "submit" | "reset";
   style?: React.CSSProperties;
+  disabled?: boolean;
 };
 
 export default function Button({
@@ -25,6 +26,7 @@ export default function Button({
   type,
   style,
   target,
+  disabled,
 }: ButtonProps) {
   if (componentType === "button") {
     return (
@@ -39,6 +41,7 @@ export default function Button({
         }}
         onClick={onClick}
         type={type ? type : undefined}
+        disabled={disabled}
       >
         {children}
       </button>
@@ -55,6 +58,7 @@ export default function Button({
           color: textColor,
           width: full ? "100%" : "fit-content",
           ...style,
+          pointerEvents: disabled ? "none" : "auto",
         }}
       >
         {children}

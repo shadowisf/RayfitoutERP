@@ -34,16 +34,17 @@ export async function POST(request: NextRequest) {
       if (grn_lines && grn_lines.length > 0) {
         const grnLineQuery = `
           INSERT INTO grn_mr_line 
-          (grn_id, lpo_mr_line_id, received_quantity, notes)
-          VALUES (?, ?, ?, ?)
+          (grn_id, lpo_mr_line_id, received_quantity, notes, attachment)
+          VALUES (?, ?, ?, ?, ?)
         `;
 
         for (const line of grn_lines) {
           await db.query(grnLineQuery, [
             grnId,
-            line.lpo_mr_line_id,
-            line.received_quantity,
+            Number(line.lpo_mr_line_id),
+            Number(line.received_quantity),
             line.notes || null,
+            line.attachment ? JSON.stringify(line.attachment) : null, // JSON.stringify in backend
           ]);
         }
       }
@@ -98,16 +99,17 @@ export async function PUT(request: NextRequest) {
       if (grn_lines && grn_lines.length > 0) {
         const grnLineQuery = `
           INSERT INTO grn_mr_line 
-          (grn_id, lpo_mr_line_id, received_quantity, notes)
-          VALUES (?, ?, ?, ?)
+          (grn_id, lpo_mr_line_id, received_quantity, notes, attachment)
+          VALUES (?, ?, ?, ?, ?)
         `;
 
         for (const line of grn_lines) {
           await db.query(grnLineQuery, [
             grn_id,
-            line.lpo_mr_line_id,
-            line.received_quantity,
+            Number(line.lpo_mr_line_id),
+            Number(line.received_quantity),
             line.notes || null,
+            line.attachment ? JSON.stringify(line.attachment) : null, // JSON.stringify in backend
           ]);
         }
       }

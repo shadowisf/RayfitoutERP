@@ -63,10 +63,10 @@ export default function NewMrButton() {
       }),
     });
 
-    /*     const data = await res.json(); */
+    const data = await res.json();
 
     if (res.ok) {
-      toast("Material request header created", "success");
+      toast("Material request created", "success");
 
       setIsOpen(false);
 
@@ -77,9 +77,9 @@ export default function NewMrButton() {
 
       router.refresh();
 
-      /*       router.push(`/mr/${data.mrHeaderId}`); */
+      router.push(`/mr/${data.mrHeaderId}`);
     } else {
-      toast("Failed to create material request header", "error");
+      toast("Failed to create material request", "error");
     }
   }
 
@@ -100,7 +100,7 @@ export default function NewMrButton() {
 
       {isOpen && (
         <FormPopUp
-          header={"CREATE MATERIAL REQUEST HEADER"}
+          header={"CREATE MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
@@ -143,7 +143,7 @@ export default function NewMrButton() {
                 </option>
               ))}
               required={false}
-              disabled={purposeReasonID === "6"}
+              disabled={purposeReasonID === 6}
             />
 
             {/* <SingleSelectDropdown

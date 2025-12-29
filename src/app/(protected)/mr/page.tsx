@@ -88,6 +88,39 @@ export default function MR() {
     }
   };
 
+  // Function to get days left background style
+  const getDaysLeftStyle = (requiredDate: string) => {
+    const required = new Date(requiredDate);
+    const today = new Date();
+    required.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil(
+      (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // Overdue (negative days)
+    if (diffDays < 0) {
+      return {
+        backgroundColor: "rgba(175, 61, 61, 1)",
+        color: "white",
+      };
+    }
+    // Due in 3 days or less (0-3 days)
+    else if (diffDays <= 3) {
+      return {
+        backgroundColor: "rgba(255, 181, 181, 1)",
+        color: "rgba(248, 77, 77, 1)",
+      };
+    }
+    // More than 3 days
+    else {
+      return {
+        backgroundColor: "rgba(255, 250, 189, 1)",
+        color: "rgba(134, 83, 47, 1)",
+      };
+    }
+  };
+
   // Function to check if status is rejected or failed
   const isRejectedStatus = (status: string) => {
     const rejectedStatuses = [
@@ -243,6 +276,7 @@ export default function MR() {
               >
                 {mrs.map((mr: any) => {
                   const priority = getPriority(mr.required_date);
+                  const daysLeftStyle = getDaysLeftStyle(mr.required_date);
                   const isCompleted = mr.progress_name === "Completed";
 
                   return (
@@ -269,12 +303,6 @@ export default function MR() {
                         </div>
 
                         <div style={{ display: "flex", gap: "10px" }}>
-                          <small
-                            className="status"
-                            style={getProgressStyle(mr.progress_name)}
-                          >
-                            {mr.progress_name}
-                          </small>
                           {/* Only show priority badge if NOT completed */}
                           {!isCompleted && (
                             <small
@@ -294,6 +322,11 @@ export default function MR() {
 
                       <small>REQUESTER</small>
                       <h3>{mr.requested_by}</h3>
+
+                      <br />
+
+                      <small>DEPARTMENT</small>
+                      <h3>{mr.department_name}</h3>
 
                       <br />
 
@@ -319,7 +352,8 @@ export default function MR() {
                         <h3
                           style={{
                             padding: "5px 15px",
-                            backgroundColor: "rgba(231, 231, 231, 1)",
+                            backgroundColor: daysLeftStyle.backgroundColor,
+                            color: daysLeftStyle.color,
                             textTransform: "uppercase",
                             borderRadius: "5px",
                           }}

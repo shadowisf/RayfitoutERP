@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 type AddMrItemButtonProps = {
   mrHeaderID: number;
   projectID: number;
+  projectName: string;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
@@ -23,6 +24,7 @@ type AddMrItemButtonProps = {
 export default function AddMrItemButton({
   mrHeaderID,
   projectID,
+  projectName,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
@@ -54,6 +56,9 @@ export default function AddMrItemButton({
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
   const [notes, setNotes] = useState("");
+  const [brand, setBrand] = useState("");
+  const [specification, setSpecification] = useState("");
+  const [deliveryLocation, setDeliveryLocation] = useState("");
 
   useEffect(() => {
     if (isOpen) {
@@ -145,6 +150,15 @@ export default function AddMrItemButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (materialCategoryID === "") {
+      toast("Please select a material category", "error");
+      return;
+    }
+    if (materialSubCategoryID === "") {
+      toast("Please select a material subcategory", "error");
+      return;
+    }
+
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -154,15 +168,18 @@ export default function AddMrItemButton({
         material_category_id: materialCategoryID,
         material_subcategory_id: materialSubCategoryID,
         material_description: materialDescription,
-        quantity: quantity,
-        unit: unit,
-        notes: notes,
+        quantity,
+        unit,
+        notes,
+        brand,
+        specification,
+        delivery_location: deliveryLocation,
         boq_line_id: boqLineID,
       }),
     });
 
     if (res.ok) {
-      toast("Material request item created", "success");
+      toast(`${materialDescription} added`, "success");
 
       setIsOpen(false);
 
@@ -176,7 +193,7 @@ export default function AddMrItemButton({
 
       router.refresh();
     } else {
-      toast("Failed to create material request item", "error");
+      toast("Failed to add material request item", "error");
     }
   }
 
@@ -195,7 +212,7 @@ export default function AddMrItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"CREATE MATERIAL REQUEST ITEM"}
+          header={"ADD MATERIAL REQUEST ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
@@ -212,7 +229,7 @@ export default function AddMrItemButton({
             />
 
             <SingleSelectDropdown
-              label={"SUB CATEGORY"}
+              label={"SUBCATEGORY"}
               dbData={materialSubCategoryValues}
               selectedValue={materialSubCategoryID}
               onChange={(subCategoryId) => {
@@ -226,7 +243,7 @@ export default function AddMrItemButton({
                   setMaterialCategoryID(selectedSubCategory.category_id);
                 }
               }}
-              placeholder="SELECT SUB CATEGORY"
+              placeholder="SELECT SUBCATEGORY"
               required
             />
           </div>
@@ -246,8 +263,9 @@ export default function AddMrItemButton({
               dbData={boqLineValues}
               selectedValue={boqLineID}
               onChange={setBoqLineID}
-              placeholder="SELECT BOQ LINE"
+              placeholder="SELECT BILL OF QUANTITY"
               required={false}
+              disabled={projectID ? false : true}
             />
           </div>
 
@@ -300,11 +318,40 @@ export default function AddMrItemButton({
 
           <div className="input-row full">
             <InputItem
+              label={"BRAND"}
+              value={brand}
+              type={"text"}
+              onChange={(e) => setBrand(e.target.value)}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"SPECIFICATION"}
+              value={specification}
+              type={"textarea"}
+              onChange={(e) => setSpecification(e.target.value)}
+            />
+          </div>
+
+          <div className="input-row half">
+            <InputItem
+              label="DELIVERY LOCATION"
+              value={deliveryLocation}
+              type="select"
+              onChange={(e) => setDeliveryLocation(e.target.value)}
+              selectOptions={[
+                "Headquarters",
+                "Umm Al Quwain Warehouse",
+                projectName,
+              ].filter(Boolean)}
+              required
+            />
+            <InputItem
               label={"NOTES"}
               value={notes}
-              type={"textarea"}
+              type={"text"}
               placeholder={"ENTER NOTES"}
-              required={false}
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>

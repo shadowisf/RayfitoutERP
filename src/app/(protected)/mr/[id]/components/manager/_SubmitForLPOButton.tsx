@@ -117,6 +117,7 @@ export default function SubmitForLPO({
         toast("Material request submitted", "success");
         setIsOpen(false);
         router.refresh();
+        router.replace(`/mr/`);
       } else {
         const errorData = await res.json();
         toast(errorData.error || "Failed to submit material request", "error");

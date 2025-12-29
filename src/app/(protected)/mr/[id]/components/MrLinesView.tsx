@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AddMrItemButton from "./department/_AddMrItemButton";
 import { MrLine } from "../types/mrLine";
 import EditMrItemButton from "./department/_EditMrItemButton";
@@ -61,13 +61,19 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const trashIcon = "/icons/trash.svg";
   const externalLinkIcon = "/icons/external-link.svg";
 
+  const totalInvoicePortalRef = useRef<HTMLDivElement>(null);
+
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [expandedDescriptions, setExpandedDescriptions] = useState<number[]>(
     []
   );
 
-  const [showBySupplier, setShowBySupplier] = useState<boolean>(false);
-  const [showByItem, setShowByItem] = useState<boolean>(true);
+  const [showBySupplier, setShowBySupplier] = useState<boolean>(
+    mrHeader.progress_id >= 12
+  );
+  const [showByItem, setShowByItem] = useState<boolean>(
+    mrHeader.progress_id < 12
+  );
   const [itemsWithQuotations, setItemsWithQuotations] = useState<Set<number>>(
     new Set()
   );
@@ -93,11 +99,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const [mrLinesBySupplier, setMrLinesBySupplier] =
     useState<GroupedMrLinesBySupplier>({});
 
-  const categories = Object.keys(mrLines);
-  const subCategories =
-    activeCategory === "ALL"
-      ? mrLines[categories[0]] || {}
-      : mrLines[activeCategory] || {};
+  const [regroupedMrLines, setRegroupedMrLines] = useState<GroupedMrLines>({});
 
   const [lpoPaymentStatus, setLpoPaymentStatus] = useState<{
     [supplierId: number]: "approved" | "rejected" | "pending";
@@ -120,25 +122,79 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   }>({});
   const [isCheckingInventory, setIsCheckingInventory] = useState<boolean>(true);
 
+  // Regroup mrLines based on progress_id
+  useEffect(() => {
+    // For progress_id < 12, regroup mrLines to combine all suppliers under one group
+    if (mrHeader.progress_id >= 10) {
+      const regrouped: GroupedMrLines = {};
+
+      for (const category in mrLines) {
+        regrouped[category] = {};
+
+        for (const subCategory in mrLines[category]) {
+          regrouped[category][subCategory] = {
+            "All Items": [], // Single group for all items
+          };
+
+          // Collect all items from all suppliers into one array
+          for (const supplier in mrLines[category][subCategory]) {
+            const items = mrLines[category][subCategory][supplier];
+            regrouped[category][subCategory]["All Items"].push(...items);
+          }
+        }
+      }
+
+      setRegroupedMrLines(regrouped);
+    } else {
+      // For progress_id >= 12, use original grouping
+      setRegroupedMrLines(mrLines);
+    }
+  }, [mrLines, mrHeader.progress_id]);
+
+  const categories = Object.keys(regroupedMrLines);
+  const subCategories =
+    activeCategory === "ALL"
+      ? regroupedMrLines[categories[0]] || {}
+      : regroupedMrLines[activeCategory] || {};
+
   useEffect(() => {
     const supplierGroups: GroupedMrLinesBySupplier = {};
 
-    for (const category in mrLines) {
-      for (const subCategory in mrLines[category]) {
-        for (const supplier in mrLines[category][subCategory]) {
-          const items = mrLines[category][subCategory][supplier];
+    // For progress_id < 12, flatten all items first to remove supplier grouping
+    if (mrHeader.progress_id < 12) {
+      const allItems: MrLine[] = [];
 
-          if (!supplierGroups[supplier]) {
-            supplierGroups[supplier] = [];
+      // Collect all items regardless of supplier grouping
+      for (const category in mrLines) {
+        for (const subCategory in mrLines[category]) {
+          for (const supplier in mrLines[category][subCategory]) {
+            const items = mrLines[category][subCategory][supplier];
+            allItems.push(...items);
           }
+        }
+      }
 
-          supplierGroups[supplier].push(...items);
+      // Group all items under "All Items"
+      supplierGroups["All Items"] = allItems;
+    } else {
+      // For progress_id >= 12, keep supplier grouping
+      for (const category in mrLines) {
+        for (const subCategory in mrLines[category]) {
+          for (const supplier in mrLines[category][subCategory]) {
+            const items = mrLines[category][subCategory][supplier];
+
+            if (!supplierGroups[supplier]) {
+              supplierGroups[supplier] = [];
+            }
+
+            supplierGroups[supplier].push(...items);
+          }
         }
       }
     }
 
     setMrLinesBySupplier(supplierGroups);
-  }, [mrLines]);
+  }, [mrLines, mrHeader.progress_id]);
 
   useEffect(() => {
     async function checkAllQuotations() {
@@ -174,7 +230,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
             if (response.ok) {
               const data = await response.json();
-              if (data && Array.isArray(data) && data.length >= 3) {
+              // Changed from >= 3 to >= 1
+              if (data && Array.isArray(data) && data.length >= 1) {
                 itemsWithQuotes.add(itemId);
               }
             }
@@ -790,9 +847,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
   function getActiveCategoryID() {
     if (activeCategory === "ALL") {
-      const firstCategory = Object.keys(mrLines)[0];
+      const firstCategory = Object.keys(regroupedMrLines)[0];
       if (firstCategory) {
-        const firstSubCategory = Object.values(mrLines[firstCategory])[0];
+        const firstSubCategory = Object.values(
+          regroupedMrLines[firstCategory]
+        )[0];
         if (firstSubCategory) {
           const firstSupplier = Object.values(firstSubCategory)[0];
           if (firstSupplier && firstSupplier.length > 0) {
@@ -1213,7 +1272,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 setShowByItem(false);
               }}
             >
-              SHOW BY SUPPLIER
+              SHOW BY VENDOR
             </Button>
           </div>
         )}
@@ -1258,6 +1317,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     <AddMrItemButton
                       mrHeaderID={mrHeader.id}
                       projectID={mrHeader.project_id}
+                      projectName={mrHeader.project_name}
                       bgColor="black"
                       borderColor="black"
                       textColor="white"
@@ -1276,7 +1336,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
       {showByItem &&
         (activeCategory === "ALL"
-          ? Object.entries(mrLines).map(
+          ? Object.entries(regroupedMrLines).map(
               ([category, subCategoriesData], categoryIndex) =>
                 Object.entries(subCategoriesData).map(function (
                   [subCategory, suppliers],
@@ -1302,14 +1362,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           userInfo?.departmentID === mrHeader.department_id &&
                           firstItem && (
                             <div className="right">
-                              <DeleteMrSubCategoryButton
-                                items={allItems}
-                                category={category}
-                                subCategory={subCategory}
-                              >
-                                DELETE
-                              </DeleteMrSubCategoryButton>
-
                               <RenameMrSubCategoryButton
                                 items={allItems}
                                 categoryID={String(
@@ -1319,8 +1371,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   firstItem.material_subcategory_id
                                 )}
                               >
-                                RENAME
+                                UPDATE
                               </RenameMrSubCategoryButton>
+
+                              <DeleteMrSubCategoryButton
+                                items={allItems}
+                                subCategory={subCategory}
+                              >
+                                DELETE
+                              </DeleteMrSubCategoryButton>
                             </div>
                           )}
                       </div>
@@ -1359,11 +1418,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       <th>ACTIONS</th>
                                     )}
                                   {mrHeader.progress_id >= 10 && (
-                                    <th>SUPPLIER & QUOTATION</th>
+                                    <th>VENDOR & QUOTATION</th>
                                   )}
                                   {mrHeader.progress_id === 7 &&
                                     userInfo?.departmentID === 9 && (
-                                      <th>SUPPLIER & QUOTATION</th>
+                                      <th>VENDOR & QUOTATION</th>
                                     )}
                                   {userInfo?.departmentID === 12 &&
                                     mrHeader.progress_id === 21 && (
@@ -1390,16 +1449,20 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           {item.quantity} {item.unit}
                                         </td>
                                         <td>
-                                          <div
-                                            style={{
-                                              display: "flex",
-                                              alignItems: "center",
-                                              gap: "10px",
-                                            }}
-                                          >
-                                            {item.boq_item_number}
-                                            <BoqReferencePopUp item={item} />
-                                          </div>
+                                          {item.boq_item_number ? (
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "10px",
+                                              }}
+                                            >
+                                              {item.boq_item_number}
+                                              <BoqReferencePopUp item={item} />
+                                            </div>
+                                          ) : (
+                                            "-"
+                                          )}
                                         </td>
                                         <td>
                                           <NotesPopUp item={item} />
@@ -1509,7 +1572,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                 progressID={
                                                   mrHeader.progress_id
                                                 }
-                                                mrLineID={item.id}
+                                                mrLine={item}
                                                 bgColor="white"
                                                 borderColor="rgba(207, 207, 207, 1)"
                                                 textColor="black"
@@ -1596,6 +1659,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           <>
                             <AddMrItemButton
                               projectID={mrHeader.project_id}
+                              projectName={mrHeader.project_name}
                               mrHeaderID={mrHeader.id}
                               bgColor="rgba(239, 239, 239, 1)"
                               borderColor="rgba(239, 239, 239, 1)"
@@ -1643,14 +1707,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       userInfo?.departmentID === mrHeader.department_id &&
                       firstItem && (
                         <div className="right">
-                          <DeleteMrSubCategoryButton
-                            items={allItems}
-                            category={activeCategory}
-                            subCategory={subCategory}
-                          >
-                            DELETE
-                          </DeleteMrSubCategoryButton>
-
                           <RenameMrSubCategoryButton
                             items={allItems}
                             categoryID={String(firstItem.material_category_id)}
@@ -1658,8 +1714,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               firstItem.material_subcategory_id
                             )}
                           >
-                            RENAME
+                            UPDATE
                           </RenameMrSubCategoryButton>
+
+                          <DeleteMrSubCategoryButton
+                            items={allItems}
+                            subCategory={subCategory}
+                          >
+                            DELETE
+                          </DeleteMrSubCategoryButton>
                         </div>
                       )}
                   </div>
@@ -1696,11 +1759,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   <th>ACTIONS</th>
                                 )}
                               {mrHeader.progress_id >= 10 && (
-                                <th>SUPPLIER & QUOTATION</th>
+                                <th>VENDOR & QUOTATION</th>
                               )}
                               {mrHeader.progress_id === 7 &&
                                 userInfo?.departmentID === 9 && (
-                                  <th>SUPPLIER & QUOTATION</th>
+                                  <th>VENDOR & QUOTATION</th>
                                 )}
                               {userInfo?.departmentID === 12 &&
                                 mrHeader.progress_id === 21 && (
@@ -1725,16 +1788,20 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       {item.quantity} {item.unit}
                                     </td>
                                     <td>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "10px",
-                                        }}
-                                      >
-                                        {item.boq_item_number}
-                                        <BoqReferencePopUp item={item} />
-                                      </div>
+                                      {item.boq_item_number ? (
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "10px",
+                                          }}
+                                        >
+                                          {item.boq_item_number}
+                                          <BoqReferencePopUp item={item} />
+                                        </div>
+                                      ) : (
+                                        "-"
+                                      )}
                                     </td>
                                     <td>
                                       <NotesPopUp item={item} />
@@ -1836,7 +1903,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         <td>
                                           <PriceApprovalButton
                                             progressID={mrHeader.progress_id}
-                                            mrLineID={item.id}
+                                            mrLine={item}
                                             bgColor="white"
                                             borderColor="rgba(207, 207, 207, 1)"
                                             textColor="black"
@@ -1920,6 +1987,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       <>
                         <AddMrItemButton
                           projectID={mrHeader.project_id}
+                          projectName={mrHeader.project_name}
                           mrHeaderID={mrHeader.id}
                           bgColor="rgba(239, 239, 239, 1)"
                           borderColor="rgba(239, 239, 239, 1)"
@@ -1988,7 +2056,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   mrHeader.progress_id === 14 && (
                     <PaymentButtons
                       mrHeaderId={mrHeader.id}
+                      mrLine={items[0]}
                       supplierId={items[0].approved_supplier_id}
+                      portalTarget={document.getElementById(
+                        `total-invoice-${items[0].approved_supplier_id}`
+                      )}
                     />
                   )}
 
@@ -2017,7 +2089,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   <th>QUANTITY</th>
                   <th>BILL OF QUANTITY</th>
                   <th>NOTES</th>
-                  {mrHeader.progress_id >= 12 && <th>SUPPLIER & QUOTATION</th>}
+                  {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>}
                   {userInfo?.departmentID === 12 &&
                     mrHeader.progress_id === 21 && <th>QUALITY CONTROL</th>}
                   {mrHeader.progress_id === 24 &&
@@ -2037,16 +2109,20 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       {item.quantity} {item.unit}
                     </td>
                     <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                        }}
-                      >
-                        {item.boq_item_number}
-                        <BoqReferencePopUp item={item} />
-                      </div>
+                      {item.boq_item_number ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                          }}
+                        >
+                          {item.boq_item_number}
+                          <BoqReferencePopUp item={item} />
+                        </div>
+                      ) : (
+                        "-"
+                      )}
                     </td>
                     <td>
                       <NotesPopUp item={item} />
@@ -2104,6 +2180,24 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               </tbody>
             </table>
 
+            {mrHeader.progress_id === 14 && userInfo?.departmentID === 10 && (
+              <div id={`total-invoice-${items[0].approved_supplier_id}`}>
+                {/* <br />
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    backgroundColor: "rgba(239, 239, 239, 1)",
+                    padding: "7px 20px",
+                    borderRadius: "25px",
+                  }}
+                >
+                  <h4>TOTAL INVOICE</h4>
+                  <h4>123 AED</h4>
+                </div> */}
+              </div>
+            )}
+
             <br />
             <br />
           </div>
@@ -2122,6 +2216,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             <AddMrItemButton
               projectID={mrHeader.project_id}
               mrHeaderID={mrHeader.id}
+              projectName={mrHeader.project_name}
               bgColor="rgba(239, 239, 239, 1)"
               borderColor="rgba(239, 239, 239, 1)"
               textColor="black"
@@ -2160,9 +2255,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           <div className="bottom-nav">
             <CancelMaterialRequestButton
               mrHeaderID={mrHeader.id}
-              bgColor="white"
+              bgColor="black"
               borderColor="white"
-              textColor="black"
+              textColor="white"
             >
               CANCEL MATERIAL REQUEST
             </CancelMaterialRequestButton>
@@ -2175,18 +2270,18 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           <div className="bottom-nav">
             <CancelMaterialRequestButton
               mrHeaderID={mrHeader.id}
-              bgColor="white"
+              bgColor="black"
               borderColor="white"
-              textColor="black"
+              textColor="white"
             >
               CANCEL MATERIAL REQUEST
             </CancelMaterialRequestButton>
 
             <SubmitForResubmissionButton
               mrHeaderID={mrHeader.id}
-              bgColor="white"
+              bgColor="black"
               borderColor="white"
-              textColor="black"
+              textColor="white"
             >
               RETURN FOR MATERIAL CORRECTIONS
             </SubmitForResubmissionButton>
@@ -2199,9 +2294,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           <div className="bottom-nav">
             <CancelMaterialRequestButton
               mrHeaderID={mrHeader.id}
-              bgColor="white"
+              bgColor="black"
               borderColor="white"
-              textColor="black"
+              textColor="white"
             >
               CANCEL MATERIAL REQUEST
             </CancelMaterialRequestButton>
@@ -2224,9 +2319,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           <div className="bottom-nav">
             <CancelMaterialRequestButton
               mrHeaderID={mrHeader.id}
-              bgColor="white"
+              bgColor="black"
               borderColor="white"
-              textColor="black"
+              textColor="white"
             >
               CANCEL MATERIAL REQUEST
             </CancelMaterialRequestButton>
@@ -2248,9 +2343,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           <div className="bottom-nav">
             <CancelMaterialRequestButton
               mrHeaderID={mrHeader.id}
-              bgColor="white"
+              bgColor="black"
               borderColor="white"
-              textColor="black"
+              textColor="white"
             >
               CANCEL MATERIAL REQUEST
             </CancelMaterialRequestButton>
@@ -2272,9 +2367,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           <div className="bottom-nav">
             <CancelMaterialRequestButton
               mrHeaderID={mrHeader.id}
-              bgColor="white"
+              bgColor="black"
               borderColor="white"
-              textColor="black"
+              textColor="white"
             >
               CANCEL MATERIAL REQUEST
             </CancelMaterialRequestButton>

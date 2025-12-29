@@ -364,7 +364,7 @@ export default function TransferIssueStocksButton({
                     onChange={(e) => setTo(e.target.value)}
                     selectOptions={[
                       "Headquarters",
-                      "Umm Al Quwain warehouse",
+                      "Umm Al Quwain Warehouse",
                       ...toValues,
                     ].filter((val: string) => val !== from)}
                   />

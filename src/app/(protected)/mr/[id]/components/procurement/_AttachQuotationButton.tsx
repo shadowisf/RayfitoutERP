@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
 
@@ -15,42 +15,68 @@ export default function AttachQuotationButton({
 }: AttachQuotationButtonProps) {
   const uploadIcon = "/icons/upload.svg";
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
+  const allowedTypes = [
+    "application/pdf",
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+  ];
 
-    if (!file) {
-      console.log("No file selected");
-      return;
-    }
-
-    const allowedTypes = [
-      "application/pdf",
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.ms-excel",
-    ];
-
+  const validateAndSelectFile = (file: File) => {
     if (!allowedTypes.includes(file.type)) {
       toast("Please upload PDF, Excel, or image files only", "error");
-      e.target.value = "";
       return;
     }
 
     onFileSelect(file);
-    console.log("File selected:", file.name);
+  };
 
-    // Reset input
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    validateAndSelectFile(file);
+
+    // reset input
     e.target.value = "";
   };
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!isUploading && fileInputRef.current) {
-      fileInputRef.current.click();
+    if (!isUploading) {
+      fileInputRef.current?.click();
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isUploading) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (isUploading) return;
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    validateAndSelectFile(file);
   };
 
   return (
@@ -64,29 +90,43 @@ export default function AttachQuotationButton({
         disabled={isUploading}
       />
 
-      <Button
-        componentType={"button"}
-        bgColor={"black"}
-        borderColor={"black"}
-        textColor={"white"}
-        onClick={handleButtonClick}
-        full
+      {/* DROP ZONE */}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         style={{
-          padding: "7px 20px",
+          width: "100%",
           borderRadius: "25px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "10px",
-          textWrap: "nowrap",
-          opacity: isUploading ? 0.5 : 1,
-          cursor: isUploading ? "not-allowed" : "pointer",
-          pointerEvents: isUploading ? "none" : "auto",
+          backgroundColor: isDragOver
+            ? "rgba(169, 255, 218, 1)"
+            : "transparent",
         }}
       >
-        Attach Quotation
-        <img src={uploadIcon} alt="upload icon" />
-      </Button>
+        <Button
+          componentType="button"
+          bgColor="black"
+          borderColor="black"
+          textColor="white"
+          onClick={handleButtonClick}
+          full
+          style={{
+            padding: "7px 20px",
+            borderRadius: "25px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            whiteSpace: "nowrap",
+            opacity: isUploading ? 0.5 : 1,
+            cursor: isUploading ? "not-allowed" : "pointer",
+            pointerEvents: isUploading ? "none" : "auto",
+          }}
+        >
+          Select File or Drop Quotation
+          <img src={uploadIcon} alt="upload icon" />
+        </Button>
+      </div>
     </>
   );
 }

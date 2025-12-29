@@ -6,7 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 
-type SubitForPaymentButtonProps = {
+type UploadGRNAttachmentButtonProps = {
   mrHeaderID: number;
   bgColor?: string;
   textColor?: string;
@@ -14,13 +14,13 @@ type SubitForPaymentButtonProps = {
   children?: React.ReactNode;
 };
 
-export default function SubmitForPaymentButton({
+export default function UploadGRNAttachmentButton({
   mrHeaderID,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
-}: SubitForPaymentButtonProps) {
+}: UploadGRNAttachmentButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -32,20 +32,19 @@ export default function SubmitForPaymentButton({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitForPayment",
+        action: "cancelMaterialRequest",
         id: mrHeaderID,
       }),
     });
 
     if (res.ok) {
-      toast("Material request submitted", "success");
+      toast("Material request cancelled", "success");
 
       setIsOpen(false);
 
       router.refresh();
-      router.replace(`/mr/`);
     } else {
-      toast("Failed to submit material request", "error");
+      toast("Failed to cancel material request", "error");
     }
   }
 
@@ -64,12 +63,12 @@ export default function SubmitForPaymentButton({
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST"}
+          header={"CANCEL MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this material request?</p>
+          <p>Are you sure you want to cancel this material request?</p>
         </FormPopUp>
       )}
     </>

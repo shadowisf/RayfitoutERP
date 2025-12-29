@@ -9,7 +9,6 @@ import { toast } from "@/app/components/Toast";
 
 type DeleteMrSubCategoryButtonProps = {
   items: MrLine[];
-  category: string;
   subCategory: string;
   bgColor?: string;
   textColor?: string;
@@ -19,7 +18,6 @@ type DeleteMrSubCategoryButtonProps = {
 
 export default function DeleteMrSubCategoryButton({
   items,
-  category,
   subCategory,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
@@ -74,7 +72,7 @@ export default function DeleteMrSubCategoryButton({
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to delete this subcategory? .</p>
+          <p>Are you sure you want to delete {subCategory} subcategory?</p>
         </FormPopUp>
       )}
     </>

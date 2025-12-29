@@ -41,12 +41,11 @@ export default function Navbar() {
           <button className="notifications">
             <img src={notification_icon} alt="notification icon" />
           </button>
-          {typeof userInfo?.departmentID === "number" &&
-            userInfo.departmentID <= 7 && <NewMrButton />}
+          <NewMrButton />
 
           {userInfo?.departmentID === 8 && <NewProjectButton />}
 
-          <span style={{ textTransform: "uppercase" }}>
+          <span style={{ textTransform: "uppercase", color: "white" }}>
             {userInfo?.role} - {userInfo?.departmentID}
           </span>
 

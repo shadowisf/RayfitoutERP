@@ -308,7 +308,10 @@ export default function IssueLPOButton({
     });
 
     if (res.ok) {
-      toast("Local purchase order created", "success");
+      toast(
+        `Local purchase order created for ${mrLines[0].approved_supplier_name}`,
+        "success"
+      );
       setIsOpen(false);
       await checkExistingLpo();
       router.refresh();
@@ -328,14 +331,16 @@ export default function IssueLPOButton({
 
     return (
       <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-        {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
+        {/* {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
           <EditLPOButton lpoId={existingLpoId} />
-        )}
+        )} */}
 
-        <ViewLPOButton lpoID={existingLpoId} />
+        <ViewLPOButton lpoID={existingLpoId} mrHeader={mrHeader} />
 
         <UploadSignedLPOButton
           mrHeader={mrHeader}
+          mrLine={mrLines[0]}
+          LpoID={existingLpoId}
           supplierId={supplierId}
           signedLpoFiles={signedLpoFiles}
           onFilesUpdate={setSignedLpoFiles}
@@ -344,6 +349,8 @@ export default function IssueLPOButton({
 
         <UploadInvoiceButton
           mrHeader={mrHeader}
+          mrLine={mrLines[0]}
+          LpoID={existingLpoId}
           supplierId={supplierId}
           invoiceFiles={invoiceFiles}
           onFilesUpdate={setInvoiceFiles}
@@ -363,9 +370,9 @@ export default function IssueLPOButton({
           borderColor="black"
           textColor="white"
           onClick={() => setIsOpen(true)}
-          style={{ padding: "5px 20px", borderRadius: "25px" }}
+          style={{ padding: "7px 20px", borderRadius: "25px" }}
         >
-          Issue LPO
+          Issue LPO +
         </Button>
       )}
 
@@ -375,22 +382,21 @@ export default function IssueLPOButton({
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
+          style={{ width: "1000px" }}
         >
           <div className="input-row three-col">
             <InputItem
-              label={"SUPPLIER NAME"}
+              label={"VENDOR NAME"}
               value={mrLines[0].approved_supplier_name}
               type={"text"}
-              placeholder={"ENTER SUPPLIER NAME"}
               required
               onChange={() => {}}
               disabled
             />
             <InputItem
-              label={"SUPPLIER ADDRESS"}
+              label={"VENDOR ADDRESS"}
               value={mrLines[0].approved_supplier_address}
               type={"text"}
-              placeholder={"ENTER SUPPLIER ADDRESS"}
               required
               onChange={() => {}}
               disabled
@@ -407,18 +413,16 @@ export default function IssueLPOButton({
 
           <div className="input-row half">
             <InputItem
-              label={"SUPPLIER CONTACT PERSON NAME"}
+              label={"VENDOR CONTACT PERSON NAME"}
               value={supplierContactPersonName}
               type={"text"}
-              placeholder={"ENTER SUPPLIER CONTACT PERSON NAME"}
               required
               onChange={(e) => setSupplierContactPersonName(e.target.value)}
             />
             <InputItem
-              label={"SUPPLIER EMAIL"}
+              label={"VENDOR EMAIL"}
               value={supplierEmail}
               type={"text"}
-              placeholder={"ENTER EMAIL"}
               required
               onChange={(e) => setSupplierEmail(e.target.value)}
             />
@@ -480,7 +484,7 @@ export default function IssueLPOButton({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 0.5fr",
+              gridTemplateColumns: "1fr 0.75fr",
               gap: "75px",
             }}
           >
@@ -521,7 +525,7 @@ export default function IssueLPOButton({
               </div>
               <div className="input-row full">
                 <InputItem
-                  label={"DISCOUNT (OPTIONAL)"}
+                  label={"DISCOUNT"}
                   value={discount}
                   type={"text"}
                   placeholder={"ENTER DISCOUNT"}
@@ -532,7 +536,7 @@ export default function IssueLPOButton({
               </div>
               <div className="input-row full">
                 <InputItem
-                  label={"S&H (OPTIONAL)"}
+                  label={"S&H"}
                   value={shippingHandling}
                   type={"text"}
                   placeholder={"ENTER S&H"}

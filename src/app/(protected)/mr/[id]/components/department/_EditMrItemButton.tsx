@@ -52,7 +52,12 @@ export default function EditMrItemButton({
   );
   const [quantity, setQuantity] = useState<string | number>(item.quantity);
   const [unit, setUnit] = useState(item.unit);
-  const [notes, setNotes] = useState(item.notes);
+  const [notes, setNotes] = useState(item.notes ?? "");
+  const [specification, setSpecification] = useState(item.specification ?? "");
+  const [brand, setBrand] = useState(item.brand ?? "");
+  const [deliveryLocation, setDeliveryLocation] = useState(
+    item.delivery_location
+  );
 
   useEffect(() => {
     fetch("/api/mr/getMaterialCategoryValues")
@@ -142,15 +147,16 @@ export default function EditMrItemButton({
         material_category_id: materialCategoryID,
         material_subcategory_id: materialSubCategoryID,
         material_description: materialDescription,
-        quantity: quantity,
-        unit: unit,
-        notes: notes,
+        quantity,
+        unit,
+        notes,
+        delivery_location: deliveryLocation,
         id: item.id,
       }),
     });
 
     if (res.ok) {
-      toast("Material request item updated", "success");
+      toast(`${materialDescription} updated`, "success");
 
       setIsOpen(false);
 
@@ -191,6 +197,7 @@ export default function EditMrItemButton({
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
+          style={{ minWidth: "900px" }}
         >
           {/* 1st row */}
           <div className="input-row half">
@@ -204,7 +211,7 @@ export default function EditMrItemButton({
             />
 
             <SingleSelectDropdown
-              label={"SUB CATEGORY"}
+              label={"SUBCATEGORY"}
               dbData={materialSubCategoryValues}
               selectedValue={materialSubCategoryID}
               onChange={(subCategoryId) => {
@@ -218,7 +225,7 @@ export default function EditMrItemButton({
                   setMaterialCategoryID(selectedSubCategory.category_id);
                 }
               }}
-              placeholder="SELECT SUB CATEGORY"
+              placeholder="SELECT SUBCATEGORY"
               required
             />
           </div>
@@ -234,12 +241,13 @@ export default function EditMrItemButton({
             />
 
             <SingleSelectDropdown
-              label={"BOQ LINE"}
+              label={"BILL OF QUANTITY"}
               dbData={boqLineValues}
               selectedValue={boqLineID}
               onChange={setBoqLineID}
-              placeholder="SELECT BOQ LINE"
+              placeholder="SELECT BILL OF QUANTITY"
               required={false}
+              disabled={projectID ? false : true}
             />
           </div>
 
@@ -250,7 +258,13 @@ export default function EditMrItemButton({
               type={"text"}
               placeholder={"ENTER QUANTITY"}
               required
-              onChange={(e) => setQuantity(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+
+                if (val === "" || /^\d+$/.test(val)) {
+                  setQuantity(val);
+                }
+              }}
             />
 
             <InputItem
@@ -286,11 +300,40 @@ export default function EditMrItemButton({
 
           <div className="input-row full">
             <InputItem
+              label={"BRAND"}
+              value={brand}
+              type={"text"}
+              onChange={(e) => setBrand(e.target.value)}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"SPECIFICATION"}
+              value={specification}
+              type={"textarea"}
+              onChange={(e) => setSpecification(e.target.value)}
+            />
+          </div>
+
+          <div className="input-row half">
+            <InputItem
+              label="DELIVERY LOCATION"
+              value={deliveryLocation}
+              type="select"
+              onChange={(e) => setDeliveryLocation(e.target.value)}
+              selectOptions={[
+                "Headquarters",
+                "Umm Al Quwain Warehouse",
+                item.project_name,
+              ].filter(Boolean)}
+              required
+            />
+            <InputItem
               label={"NOTES"}
               value={notes}
-              type={"textarea"}
+              type={"text"}
               placeholder={"ENTER NOTES"}
-              required={false}
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>

@@ -63,12 +63,12 @@ export default function DeleteMrHeaderButton({
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE MATERIAL REQUEST HEADER"}
+          header={"DELETE MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          Are you sure you want to delete this material request header?
+          Are you sure you want to delete this material request?
         </FormPopUp>
       )}
     </>

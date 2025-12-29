@@ -9,6 +9,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
+import CreateInventoryItemButton from "@/app/(protected)/inventory/components/_CreateInventoryItemButton";
 
 type AddToStockButtonProps = {
   mrLine: MrLine;
@@ -33,6 +34,8 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
 
   const [isOpen, setIsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isCreateInventoryItemOpen, setIsCreateInventoryItemOpen] =
+    useState(false);
   const [existingStock, setExistingStock] = useState<ExistingStock | null>(
     null
   );
@@ -44,14 +47,23 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
   const [inventoryItemID, setInventoryItemID] = useState<string | number>("");
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`, {
-      method: "GET",
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setInventoryItemValues(data.data);
-      });
+    fetchInventoryItems();
   }, []);
+
+  const fetchInventoryItems = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`,
+        {
+          method: "GET",
+        }
+      );
+      const data = await res.json();
+      setInventoryItemValues(data.data);
+    } catch (error) {
+      console.error("Error fetching inventory items:", error);
+    }
+  };
 
   // Check if stock already exists for this mr_line
   async function checkExistingStock() {
@@ -207,9 +219,7 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
           inventory_item_id: inventoryItemID,
           supplier_id: mrLine.approved_supplier_id,
           received_by: userInfo?.name,
-          category_id: mrLine.material_category_id,
-          subcategory_id: mrLine.material_subcategory_id,
-          unit: mrLine.unit,
+          unit_price: mrLine.approved_unit_price,
           quantity: mrLine.quantity,
           location,
           notes,
@@ -307,9 +317,19 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
               dbData={inventoryItemValues}
               required
               idField="id"
-              labelField="description"
+              /* labelField="description" */
               formatOptionLabel={(item) =>
                 `MRT-${String(item.id).padStart(5, "0")} - ${item.description}`
+              }
+              /* createButtonLabel="NEW INVENTORY ITEM +"
+              showCreateButton */
+              style={{ width: "300px" }}
+              /* onCreateClick={() => setIsCreateInventoryItemOpen(true)} */
+              bottomButtonComponent={
+                <CreateInventoryItemButton
+                  style={{ width: "100%" }}
+                  onSuccess={() => fetchInventoryItems()}
+                />
               }
             />
             <InputItem
@@ -344,15 +364,15 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
               }}
               selectOptions={[
                 "Headquarters",
-                "Umm Al Quwain warehouse",
-                `${mrLine.project_name}`,
-              ]}
+                "Umm Al Quwain Warehouse",
+                mrLine.project_name,
+              ].filter(Boolean)}
             />
           </div>
 
           <div className="input-row full">
             <InputItem
-              label={"NOTES (OPTIONAL)"}
+              label={"NOTES"}
               value={notes}
               type={"textarea"}
               placeholder={"ENTER NOTES"}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Button from "./Button";
 
 type SingleSelectDropdownProps = {
@@ -21,6 +22,7 @@ type SingleSelectDropdownProps = {
   onCreateClick?: () => void;
   style?: React.CSSProperties;
   formatOptionLabel?: (item: any) => string;
+  bottomButtonComponent?: React.ReactNode;
 };
 
 export default function SingleSelectDropdown({
@@ -41,6 +43,7 @@ export default function SingleSelectDropdown({
   style,
   onCreateClick,
   formatOptionLabel,
+  bottomButtonComponent,
 }: SingleSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,9 +51,19 @@ export default function SingleSelectDropdown({
     null
   );
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
+  const [isMounted, setIsMounted] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   function getOptions() {
     if (selectOptions) {
@@ -86,9 +99,17 @@ export default function SingleSelectDropdown({
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
-        setIsOpen(false);
-        setSearchQuery("");
-        setHoveredOption(null);
+        const dropdownElement = document.getElementById(
+          `dropdown-${containerRef.current.id}`
+        );
+        if (
+          dropdownElement &&
+          !dropdownElement.contains(event.target as Node)
+        ) {
+          setIsOpen(false);
+          setSearchQuery("");
+          setHoveredOption(null);
+        }
       }
     }
 
@@ -99,6 +120,32 @@ export default function SingleSelectDropdown({
   useEffect(() => {
     if (isOpen && searchInputRef.current) {
       searchInputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  // Update dropdown position when opened or on scroll/resize
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const updatePosition = () => {
+        if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          setDropdownPosition({
+            top: rect.bottom + 2,
+            left: rect.left,
+            width: rect.width,
+          });
+        }
+      };
+
+      updatePosition();
+
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
+
+      return () => {
+        window.removeEventListener("scroll", updatePosition, true);
+        window.removeEventListener("resize", updatePosition);
+      };
     }
   }, [isOpen]);
 
@@ -167,11 +214,169 @@ export default function SingleSelectDropdown({
     (option) => option.id === hoveredOption
   );
 
+  // Generate unique ID for this dropdown instance
+  const dropdownId = useRef(
+    `dropdown-${Math.random().toString(36).substr(2, 9)}`
+  );
+
+  const dropdownContent = isOpen && (
+    <div
+      id={dropdownId.current}
+      className="select-dropdown-portal"
+      role="listbox"
+      style={{
+        position: "fixed",
+        top: `${dropdownPosition.top}px`,
+        left: `${dropdownPosition.left}px`,
+        width: `${dropdownPosition.width}px`,
+        background: "white",
+        border: "1px solid #d9d9d9",
+        borderRadius: "5px",
+        maxHeight: "250px",
+        zIndex: 10000,
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+    >
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          background: "white",
+          zIndex: 1,
+        }}
+      >
+        <input
+          ref={searchInputRef}
+          type="text"
+          placeholder="Search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            borderRadius: "0px",
+            border: "none",
+            width: "100%",
+            outline: "none",
+          }}
+        />
+      </div>
+
+      <div
+        style={{
+          maxHeight: "200px",
+          overflowY: "auto",
+        }}
+      >
+        {filteredOptions.length > 0 ? (
+          filteredOptions.map((option) => {
+            const isSelected = String(option.id) === String(selectedValue);
+
+            return (
+              <div
+                key={option.id}
+                className={`select-option ${isSelected ? "selected" : ""}`}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => handleOptionClick(option.id)}
+                onMouseEnter={(e) => handleMouseEnter(option.id, e)}
+                onMouseLeave={handleMouseLeave}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "7px",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s",
+                  backgroundColor: isSelected ? "#f0f0f0" : "transparent",
+                }}
+                onMouseOver={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.backgroundColor = "#f5f5f5";
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }
+                }}
+              >
+                <span
+                  style={{
+                    color: "#000",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    flex: 1,
+                  }}
+                >
+                  {option.label}
+                </span>
+              </div>
+            );
+          })
+        ) : (
+          <div
+            style={{
+              padding: "12px",
+              color: "#888",
+              textAlign: "center",
+            }}
+          >
+            {searchQuery ? "No results found" : "No options available"}
+          </div>
+        )}
+      </div>
+
+      {/* Render custom bottom button component */}
+      {bottomButtonComponent && (
+        <div
+          style={{
+            borderTop: "1px solid #e0e0e0",
+            padding: "10px",
+            bottom: 0,
+            background: "white",
+            zIndex: 2,
+          }}
+        >
+          {bottomButtonComponent}
+        </div>
+      )}
+
+      {/* Legacy create button (keep for backward compatibility) */}
+      {showCreateButton && !bottomButtonComponent && (
+        <div
+          style={{
+            borderTop: "1px solid #e0e0e0",
+            padding: "10px",
+            bottom: 0,
+            background: "white",
+            zIndex: 2,
+          }}
+        >
+          <Button
+            componentType="button"
+            bgColor="black"
+            borderColor="black"
+            textColor="white"
+            onClick={handleCreateClick}
+            full
+          >
+            {createButtonLabel}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="input-item" ref={containerRef}>
       {!noLabel && (
-        <label>
-          {label} {required ? <span style={{ color: "red" }}>*</span> : ""}
+        <label className="custom">
+          <span>{label}</span>{" "}
+          {!required && (
+            <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+              (OPTIONAL)
+            </small>
+          )}
         </label>
       )}
 
@@ -209,71 +414,19 @@ export default function SingleSelectDropdown({
               cursor: "pointer",
               lineHeight: 1,
               color: "black",
+              fontSize: "14.1px",
+              zIndex: 10,
             }}
           >
             ×
           </button>
         )}
 
-        {isOpen && (
-          <div className="select-dropdown" role="listbox">
-            <div className="search-wrapper">
-              <input
-                ref={searchInputRef}
-                type="text"
-                className="search-input"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-
-            <div className="options-list">
-              {filteredOptions.length > 0 ? (
-                filteredOptions.map((option) => {
-                  const isSelected =
-                    String(option.id) === String(selectedValue);
-
-                  return (
-                    <div
-                      key={option.id}
-                      className={`select-option ${
-                        isSelected ? "selected" : ""
-                      }`}
-                      role="option"
-                      aria-selected={isSelected}
-                      onClick={() => handleOptionClick(option.id)}
-                      onMouseEnter={(e) => handleMouseEnter(option.id, e)}
-                      onMouseLeave={handleMouseLeave}
-                    >
-                      <span className="option-text">{option.label}</span>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="no-options">
-                  {searchQuery ? "No results found" : "No options available"}
-                </div>
-              )}
-            </div>
-
-            {showCreateButton && (
-              <div className="create-button-wrapper">
-                <Button
-                  componentType="button"
-                  bgColor="black"
-                  borderColor="black"
-                  textColor="white"
-                  onClick={handleCreateClick}
-                  full
-                >
-                  {createButtonLabel}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Render dropdown in portal */}
+        {isMounted &&
+          typeof document !== "undefined" &&
+          dropdownContent &&
+          createPortal(dropdownContent, document.body)}
       </div>
 
       {/* TOOLTIP */}
@@ -282,14 +435,14 @@ export default function SingleSelectDropdown({
           className="select-tooltip"
           style={{
             position: "fixed",
-            left: tooltipPosition.x,
+            left: tooltipPosition.x - 650,
             top: tooltipPosition.y,
             backgroundColor: "rgba(0,0,0,0.9)",
             color: "white",
             padding: "10px",
             borderRadius: "5px",
             maxWidth: "300px",
-            zIndex: 10000,
+            zIndex: 99999,
             pointerEvents: "none",
             whiteSpace: "pre-wrap",
           }}

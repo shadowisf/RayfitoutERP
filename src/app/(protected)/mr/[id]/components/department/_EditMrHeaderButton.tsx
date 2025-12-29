@@ -112,7 +112,7 @@ export default function EditMrHeaderButton({
 
       {isOpen && (
         <FormPopUp
-          header={"EDIT MATERIAL REQUEST HEADER"}
+          header={"EDIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

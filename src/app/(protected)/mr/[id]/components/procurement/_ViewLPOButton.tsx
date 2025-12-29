@@ -6,12 +6,18 @@ import { LpoHeader } from "../../types/lpoHeader";
 import DownloadLPOButton from "./_DownloadLPOButton";
 import { LpoPDF } from "../LpoPDF";
 import { pdf } from "@react-pdf/renderer";
+import EditLPOButton from "./_EditLPOButton";
+import { useAuth } from "@/app/context/AuthContext";
+import { MrHeader } from "../../types/mrHeader";
 
 type ViewLPOButtonProps = {
   lpoID: number;
+  mrHeader: MrHeader;
 };
 
-export default function ViewLPOButton({ lpoID }: ViewLPOButtonProps) {
+export default function ViewLPOButton({ lpoID, mrHeader }: ViewLPOButtonProps) {
+  const { userInfo } = useAuth();
+
   const externalLinkIcon = "/icons/external-link.svg";
 
   const [lpo, setLpo] = useState<LpoHeader | null>(null);
@@ -70,13 +76,16 @@ export default function ViewLPOButton({ lpoID }: ViewLPOButtonProps) {
       style={{ padding: "7px 20px", borderRadius: "25px" }}
     >
       LPO
-      <a
+      {/* <a
         href={pdfUrl ? pdfUrl : "#"}
         target="_blank"
         style={{ display: "flex" }}
       >
         <img src={externalLinkIcon} alt="external link" />
-      </a>
+      </a> */}
+      {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
+        <EditLPOButton lpoId={lpoID} />
+      )}
       <DownloadLPOButton lpoID={lpoID} />
     </Button>
   );

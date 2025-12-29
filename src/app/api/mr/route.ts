@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     `;
 
       const headerValues = [
-        Number(body.project_id) || 0,
+        Number(body.project_id) || null,
         Number(body.department_id),
         body.requested_by,
         body.required_date,
@@ -56,12 +56,12 @@ export async function POST(req: Request) {
     if (body.action === "createMrLine") {
       const lineQuery = `
   INSERT INTO mr_lines 
-  (boq_line_id, mr_header_id, material_category_id, material_subcategory_id, material_description, quantity, unit, notes)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  (boq_line_id, mr_header_id, material_category_id, material_subcategory_id, material_description, quantity, unit, notes, specification, brand, delivery_location)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
       const lineValues = [
-        Number(body.boq_line_id),
+        Number(body.boq_line_id) || null,
         Number(body.mr_header_id),
         Number(body.material_category_id),
         Number(body.material_subcategory_id),
@@ -69,6 +69,9 @@ export async function POST(req: Request) {
         Number(body.quantity),
         body.unit,
         body.notes,
+        body.specification,
+        body.brand,
+        body.delivery_location,
       ];
 
       await db.query(lineQuery, lineValues);
@@ -239,19 +242,25 @@ SET boq_line_id = ?,
     quantity = ?, 
     unit = ?, 
     notes = ?,
+    specification = ?,
+    brand = ?,
+    delivery_location = ?,
     approval_status = NULL,
     reject_comment = NULL
 WHERE id = ?
     `;
 
       const values = [
-        Number(body.boq_line_id),
+        Number(body.boq_line_id) || null,
         Number(body.material_category_id),
         Number(body.material_subcategory_id),
         body.material_description,
         Number(body.quantity),
         body.unit,
         body.notes,
+        body.specification,
+        body.brand,
+        body.delivery_location,
         Number(body.id),
       ];
 
@@ -284,6 +293,7 @@ export async function DELETE(req: Request) {
     if (body.action === "deleteItem") {
       const query = "DELETE FROM mr_lines WHERE id = ?";
       await db.query(query, [Number(body.id)]);
+      return NextResponse.json({ success: true });
     }
 
     if (body.action === "deleteSubCategory") {

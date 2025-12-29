@@ -39,8 +39,9 @@ export default function SubmitForQC({
 
     if (res.ok) {
       toast("Material request submitted", "success");
-      router.refresh();
       setIsOpen(false);
+      router.refresh();
+      router.replace(`/mr/`);
     } else {
       toast("Failed to submit material request", "error");
       setIsOpen(false);

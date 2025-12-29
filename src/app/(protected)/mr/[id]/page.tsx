@@ -106,6 +106,32 @@ export default async function MrWithID({
     } OVERDUE`;
   }
 
+  // Days left style based on days left
+  let daysLeftStyle = {
+    backgroundColor: "",
+    color: "",
+  };
+
+  if (diffDays < 0) {
+    // Overdue - dark red (same as CRITICAL)
+    daysLeftStyle = {
+      backgroundColor: "rgba(175, 61, 61, 1)",
+      color: "white",
+    };
+  } else if (diffDays <= 3) {
+    // Due in 3 days or less - light red (same as HIGH)
+    daysLeftStyle = {
+      backgroundColor: "rgba(255, 181, 181, 1)",
+      color: "rgba(248, 77, 77, 1)",
+    };
+  } else {
+    // More than 3 days - yellow (same as MEDIUM)
+    daysLeftStyle = {
+      backgroundColor: "rgba(255, 250, 189, 1)",
+      color: "rgba(134, 83, 47, 1)",
+    };
+  }
+
   const isRejected = ["reject", "fail"].some((word) =>
     mrHeader.progress_name?.toLowerCase().includes(word)
   );
@@ -168,15 +194,20 @@ export default async function MrWithID({
           <div>
             <span>PROJECT</span>
             <h2>
-              {mrHeader.project_name}{" "}
-              <a href={`/project/${mrHeader.project_id}`}>
-                <img
-                  src={externalLinkIcon}
-                  alt="external link icon"
-                  height={12}
-                  style={{ marginLeft: "5px" }}
-                />
-              </a>
+              {mrHeader.project_name ? (
+                <div style={{ display: "flex", gap: "10px" }}>
+                  {mrHeader.project_name}
+                  <a href={`/project/${mrHeader.project_name}`}>
+                    <img
+                      src={externalLinkIcon}
+                      alt="external link icon"
+                      width={12}
+                    />
+                  </a>
+                </div>
+              ) : (
+                "-"
+              )}
             </h2>
           </div>
 
@@ -204,7 +235,8 @@ export default async function MrWithID({
             <h2
               style={{
                 padding: "5px 15px",
-                backgroundColor: "rgba(231, 231, 231, 1)",
+                backgroundColor: daysLeftStyle.backgroundColor,
+                color: daysLeftStyle.color,
                 textTransform: "uppercase",
                 borderRadius: "5px",
               }}

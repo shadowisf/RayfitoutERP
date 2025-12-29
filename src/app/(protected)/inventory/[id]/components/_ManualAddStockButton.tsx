@@ -368,7 +368,7 @@ export default function ManualAddToStockButton({
               onChange={(e) => setLocation(e.target.value)}
               selectOptions={[
                 "Headquarters",
-                "Umm Al Quwain warehouse",
+                "Umm Al Quwain Warehouse",
                 ...stockLocationValues,
               ]}
             />

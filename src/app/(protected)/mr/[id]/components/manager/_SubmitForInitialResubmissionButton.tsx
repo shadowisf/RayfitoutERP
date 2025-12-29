@@ -43,6 +43,7 @@ export default function SubmitForResubmissionButton({
       setIsOpen(false);
 
       router.refresh();
+      router.replace(`/mr/`);
     } else {
       toast("Failed to submit material request", "error");
     }

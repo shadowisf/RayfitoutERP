@@ -11,6 +11,9 @@ export type MrLine = {
   quantity: number;
   unit: string;
   notes: string;
+  specification: string;
+  brand: string;
+  delivery_location: string;
   boq_header_id: number;
   boq_line_id: number;
   boq_item_name: string;

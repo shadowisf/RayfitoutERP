@@ -361,16 +361,20 @@ export default function BatchDetailsPopUpButton({
           <div>
             <small>BILL OF QUANTITY ITEM</small>
             <h3>
-              <Button
-                componentType={"link"}
-                bgColor={"transparent"}
-                borderColor={"transparent"}
-                textColor={"black"}
-                style={{ padding: "0px" }}
-                href={`/boq/${details.boq_header_id}`}
-              >
-                {boqItemNumber || "-"}
-              </Button>
+              {details.boq_header_id ? (
+                <Button
+                  componentType={"link"}
+                  bgColor={"transparent"}
+                  borderColor={"transparent"}
+                  textColor={"black"}
+                  style={{ padding: "0px" }}
+                  href={`/boq/${details.boq_header_id}`}
+                >
+                  {boqItemNumber || "-"}
+                </Button>
+              ) : (
+                "-"
+              )}
             </h3>
           </div>
           <div>
@@ -619,7 +623,7 @@ export default function BatchDetailsPopUpButton({
       >
         <h2>NOTES</h2>
         <br />
-        <small>{details.stock_notes}</small>
+        <small>{details.stock_notes || "-"}</small>
       </div>
     </>
   );
@@ -891,7 +895,25 @@ export default function BatchDetailsPopUpButton({
       {isOpen && (
         <FormPopUp
           header={
-            batchDetails?.type === "mr" ? "BATCH DETAILS" : "STOCK DETAILS"
+            batchDetails?.type === "mr" ? (
+              "BATCH DETAILS"
+            ) : (
+              <div
+                style={{ display: "flex", gap: "25px", alignItems: "center" }}
+              >
+                STOCK DETAILS{" "}
+                <h6
+                  style={{
+                    backgroundColor: "black",
+                    color: "white",
+                    padding: "7px 20px",
+                    borderRadius: "25px",
+                  }}
+                >
+                  MANUAL STOCK ENTRY
+                </h6>
+              </div>
+            )
           }
           setIsOpen={setIsOpen}
           style={{ textTransform: "uppercase" }}
