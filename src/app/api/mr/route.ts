@@ -205,6 +205,14 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "submitForLPOResubmission") {
+      await db.query(`UPDATE mr_headers SET progress_id = 22 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action === "submitForProcurementResolution") {
       await db.query(`UPDATE mr_headers SET progress_id = 23 WHERE id = ?`, [
         body.id,
@@ -226,7 +234,7 @@ export async function PUT(req: Request) {
          required_date = ?, 
          purpose_id = ? 
      WHERE id = ?`,
-        [body.project_id, body.required_date, body.purpose_id, body.id]
+        [body.project_id || null, body.required_date, body.purpose_id, body.id]
       );
 
       return NextResponse.json({ status: 200 });

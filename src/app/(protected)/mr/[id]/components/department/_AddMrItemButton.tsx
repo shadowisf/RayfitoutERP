@@ -1,5 +1,6 @@
 "use client";
 
+import BOQ from "@/app/(protected)/boq/[id]/page";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
@@ -11,7 +12,6 @@ import { useState, useEffect } from "react";
 type AddMrItemButtonProps = {
   mrHeaderID: number;
   projectID: number;
-  projectName: string;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
@@ -19,12 +19,12 @@ type AddMrItemButtonProps = {
   autoSubCategoryID?: string;
   children: React.ReactNode;
   full?: boolean;
+  purposeID: number;
 };
 
 export default function AddMrItemButton({
   mrHeaderID,
   projectID,
-  projectName,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
@@ -32,6 +32,7 @@ export default function AddMrItemButton({
   autoSubCategoryID,
   children,
   full,
+  purposeID,
 }: AddMrItemButtonProps) {
   const router = useRouter();
 
@@ -43,6 +44,7 @@ export default function AddMrItemButton({
   const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
     any[]
   >([]);
+  const [locationValues, setLocationValues] = useState<any[]>([]);
   const [boqLineValues, setBoqLineValues] = useState<any[]>([]);
 
   const [materialCategoryID, setMaterialCategoryID] = useState<string | number>(
@@ -147,6 +149,17 @@ export default function AddMrItemButton({
     }
   }, [materialCategoryID]);
 
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
+      method: "GET",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const names = data.map((item: any) => item.name);
+        setLocationValues(names);
+      });
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -156,6 +169,11 @@ export default function AddMrItemButton({
     }
     if (materialSubCategoryID === "") {
       toast("Please select a material subcategory", "error");
+      return;
+    }
+
+    if (boqLineID === "" && purposeID === 1) {
+      toast("Please select a bill of quantity line", "error");
       return;
     }
 
@@ -264,7 +282,7 @@ export default function AddMrItemButton({
               selectedValue={boqLineID}
               onChange={setBoqLineID}
               placeholder="SELECT BILL OF QUANTITY"
-              required={false}
+              required={purposeID === 1 ? true : false}
               disabled={projectID ? false : true}
             />
           </div>
@@ -343,8 +361,8 @@ export default function AddMrItemButton({
               selectOptions={[
                 "Headquarters",
                 "Umm Al Quwain Warehouse",
-                projectName,
-              ].filter(Boolean)}
+                ...locationValues,
+              ]}
               required
             />
             <InputItem

@@ -38,6 +38,7 @@ export default function EditMrItemButton({
   const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
     any[]
   >([]);
+  const [locationValues, setLocationValues] = useState<any[]>([]);
   const [boqLineValues, setBoqLineValues] = useState<any[]>([]);
 
   const [materialCategoryID, setMaterialCategoryID] = useState<string | number>(
@@ -134,6 +135,17 @@ export default function EditMrItemButton({
         });
     }
   }, [materialCategoryID]);
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
+      method: "GET",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const names = data.map((item: any) => item.name);
+        setLocationValues(names);
+      });
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -325,8 +337,8 @@ export default function EditMrItemButton({
               selectOptions={[
                 "Headquarters",
                 "Umm Al Quwain Warehouse",
-                item.project_name,
-              ].filter(Boolean)}
+                ...locationValues,
+              ]}
               required
             />
             <InputItem

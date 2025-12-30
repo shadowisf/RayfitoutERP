@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MrHeader } from "../../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
+import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 
 type EditMrHeaderButtonProps = {
   mrHeader: MrHeader;
@@ -31,18 +32,9 @@ export default function EditMrHeaderButton({
   const [projectID, setProjectID] = useState<string | number>(
     mrHeader.project_id
   );
-  const [neededBy, setNeededBy] = useState(() => {
-    if (!mrHeader.required_date) return "";
-
-    // Convert to Date object if it isn't already
-    const date = new Date(mrHeader.required_date);
-
-    // Check if date is valid
-    if (isNaN(date.getTime())) return "";
-
-    // Format as YYYY-MM-DD for the input
-    return date.toISOString().split("T")[0];
-  });
+  const [neededBy, setNeededBy] = useState(
+    new Date(mrHeader.required_date).toLocaleDateString("en-CA")
+  );
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -63,7 +55,7 @@ export default function EditMrHeaderButton({
   }, []);
 
   useEffect(() => {
-    if (purposeReasonID === "6") {
+    if (purposeReasonID === 6) {
       setProjectID("");
     }
   }, [purposeReasonID]);
@@ -112,13 +104,13 @@ export default function EditMrHeaderButton({
 
       {isOpen && (
         <FormPopUp
-          header={"EDIT MATERIAL REQUEST"}
+          header={"UPDATE MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
           <div className="input-row half">
-            <InputItem
+            {/* <InputItem
               label={"PURPOSE/REASON"}
               value={purposeReasonID}
               type={"select"}
@@ -129,6 +121,17 @@ export default function EditMrHeaderButton({
                   {pr.value}
                 </option>
               ))}
+              required
+            /> */}
+            <SingleSelectDropdown
+              label={"PURPOSE/REASON"}
+              selectedValue={purposeReasonID}
+              onChange={setPurposeReasonID}
+              placeholder={"SELECT PURPOSE/REASON"}
+              dbData={purposeReasonValues}
+              idField="id"
+              labelField="value"
+              tooltipField="tooltip"
               required
             />
 
@@ -144,7 +147,7 @@ export default function EditMrHeaderButton({
                 </option>
               ))}
               required={false}
-              disabled
+              disabled={mrHeader.progress_id !== 1 || purposeReasonID === 6}
             />
           </div>
 

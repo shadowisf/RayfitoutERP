@@ -19,7 +19,7 @@ export default function SingleUploadFileBox({
   setFileState,
   label,
   required,
-  placeholder = "UPLOAD OR DRAG ATTACHMENT",
+  placeholder = "UPLOAD/DRAG ATTACHMENT",
   acceptedFileTypes,
   buttonLabel = "UPLOAD FILE",
 }: SingleUploadFileBoxProps) {
@@ -194,6 +194,7 @@ export default function SingleUploadFileBox({
                   backgroundColor: "white",
                   borderRadius: "8px",
                   border: "1px solid #e5e7eb",
+                  gap: "25px",
                 }}
               >
                 <div style={{ display: "flex", gap: "10px" }}>

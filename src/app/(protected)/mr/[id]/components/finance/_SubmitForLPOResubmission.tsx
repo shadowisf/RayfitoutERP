@@ -4,21 +4,20 @@ import { useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
-import { MrLine } from "../../types/mrLine";
 import { toast } from "@/app/components/Toast";
 
-type DeleteMrSubCategoryButtonProps = {
-  items: MrLine[];
-  subCategory: string;
+type SubitForLPOResubmissionButtonProps = {
+  mrHeaderID: number;
+  style?: React.CSSProperties;
+  disabled?: boolean;
 };
 
-export default function DeleteMrSubCategoryButton({
-  items,
-  subCategory,
-}: DeleteMrSubCategoryButtonProps) {
+export default function SubmitForLPOResubmissionButton({
+  mrHeaderID,
+  style,
+  disabled,
+}: SubitForLPOResubmissionButtonProps) {
   const router = useRouter();
-
-  const trashIcon = "/icons/trash.svg";
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -26,24 +25,23 @@ export default function DeleteMrSubCategoryButton({
     e.preventDefault();
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "DELETE",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "deleteSubCategory",
-        item_ids: items.map((item) => item.id),
+        action: "submitForLPOResubmission",
+        id: mrHeaderID,
       }),
     });
 
     if (res.ok) {
-      toast("Material request subcategory deleted", "success");
+      toast("Material request submitted", "success");
 
       setIsOpen(false);
 
       router.refresh();
+      router.replace(`/mr/`);
     } else {
-      toast(
-        "Failed to delete material request subcategory. Something went wrong"
-      );
+      toast("Failed to submit material request", "error");
     }
   }
 
@@ -51,23 +49,24 @@ export default function DeleteMrSubCategoryButton({
     <>
       <Button
         componentType="button"
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(223, 223, 223, 1)"}
-        textColor={"black"}
+        bgColor="white"
+        borderColor="white"
+        textColor="black"
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 7px" }}
+        style={{ padding: "7px 20px", ...style }}
+        disabled={disabled}
       >
-        <img src={trashIcon} alt="trash" />
+        RETURN TO PROCUREMENT
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE MATERIAL REQUEST SUBCATEGORY"}
+          header={"SUBMIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to delete {subCategory} subcategory?</p>
+          <p>Are you sure you want to submit this material request?</p>
         </FormPopUp>
       )}
     </>

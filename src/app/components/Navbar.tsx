@@ -25,7 +25,7 @@ export default function Navbar() {
             <img src={logo_icon} alt="rayfitout logo" />
           </a>
 
-          <span>PROCUREMENT MANAGEMENT</span>
+          <span style={{ color: "white" }}>PROCUREMENT MANAGEMENT</span>
 
           <form>
             <input

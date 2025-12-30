@@ -8,18 +8,14 @@ import { toast } from "@/app/components/Toast";
 
 type SubitForInitialApprovalButtonProps = {
   mrHeaderID: number;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children?: React.ReactNode;
+  disabled?: boolean;
+  style?: React.CSSProperties;
 };
 
 export default function SubmitForInitialApprovalButton({
   mrHeaderID,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
+  disabled,
+  style,
 }: SubitForInitialApprovalButtonProps) {
   const router = useRouter();
 
@@ -53,13 +49,14 @@ export default function SubmitForInitialApprovalButton({
     <>
       <Button
         componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor="white"
+        borderColor="white"
+        textColor="black"
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 20px" }}
+        style={{ padding: "7px 20px", ...style }}
+        disabled={disabled}
       >
-        {children}
+        SUBMIT FOR INITIAL APPROVAL
       </Button>
 
       {isOpen && (

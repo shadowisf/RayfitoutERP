@@ -9,19 +9,15 @@ import { toast } from "@/app/components/Toast";
 type SubmitForLPOProps = {
   mrHeaderID: number;
   mrLines: any;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children?: React.ReactNode;
+  disabled?: boolean;
+  style?: React.CSSProperties;
 };
 
 export default function SubmitForLPO({
   mrHeaderID,
   mrLines,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
+  disabled,
+  style,
 }: SubmitForLPOProps) {
   const router = useRouter();
 
@@ -132,13 +128,14 @@ export default function SubmitForLPO({
     <>
       <Button
         componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor="white"
+        borderColor="white"
+        textColor="black"
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 20px" }}
+        style={{ padding: "7px 20px", ...style }}
+        disabled={disabled}
       >
-        {children}
+        SUBMIT FOR LOCAL PURCHASE ORDER
       </Button>
 
       {isOpen && (

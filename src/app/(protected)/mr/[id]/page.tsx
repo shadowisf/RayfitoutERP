@@ -219,7 +219,7 @@ export default async function MrWithID({
 
           <div>
             <span>REQUESTED BY</span>
-            <h2>{mrHeader.requested_by}</h2>
+            <h2>{mrHeader.requested_by || ""}</h2>
           </div>
 
           <div>
@@ -229,7 +229,9 @@ export default async function MrWithID({
 
           <div>
             <span>REQUIRED DATE</span>
-            <h2>{new Date(mrHeader.required_date).toLocaleDateString()}</h2>
+            <h2>
+              {new Date(mrHeader.required_date).toLocaleDateString("en-US")}
+            </h2>
           </div>
 
           {/* Only show days left indicator if NOT completed */}
@@ -261,6 +263,7 @@ export default async function MrWithID({
           mrHeaderID={mrHeader.id}
           projectID={mrHeader.project_id}
           projectName={mrHeader.project_name}
+          purposeID={mrHeader.purpose_id}
         />
       )}
     </div>

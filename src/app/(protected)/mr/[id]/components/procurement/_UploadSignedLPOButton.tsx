@@ -317,7 +317,7 @@ export default function UploadSignedLPOButton({
             }}
             disabled={isUploading}
           >
-            Select or Drop Signed LPO <img src={uploadIcon} alt="upload icon" />
+            Upload Signed LPO <img src={uploadIcon} alt="upload icon" />
           </Button>
         </div>
       )}

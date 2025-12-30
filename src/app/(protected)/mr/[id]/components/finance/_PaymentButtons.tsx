@@ -267,8 +267,6 @@ export default function PaymentButtons({
       });
 
       if (res.ok) {
-        toast("Payment approval reset", "success");
-
         setStatus("pending");
         setRejectComment("");
         setPaymentFileUrl("");
@@ -315,9 +313,10 @@ export default function PaymentButtons({
             backgroundColor: "rgba(34, 150, 100, 1)",
             color: "white",
             minWidth: "350px",
+            fontSize: "14.1px",
           }}
         >
-          Paid
+          <span style={{ fontWeight: "bold" }}>Paid</span>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <Button
               componentType={"link"}
@@ -340,7 +339,7 @@ export default function PaymentButtons({
               style={{
                 filter: "invert(1)",
                 cursor: "pointer",
-                width: "10px",
+                width: "12px",
               }}
               onClick={handleReset}
             />
@@ -362,16 +361,17 @@ export default function PaymentButtons({
             backgroundColor: "rgba(185, 28, 28, 1)",
             color: "white",
             minWidth: "350px",
+            fontSize: "14.1px",
           }}
         >
-          Rejected
+          <span style={{ fontWeight: "bold" }}>Rejected</span>
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <RejectCommentPopUp text={rejectComment} />
 
             <img
               src={crossIcon}
               alt="close"
-              style={{ filter: "invert(1)", cursor: "pointer", width: "10px" }}
+              style={{ filter: "invert(1)", cursor: "pointer", width: "12px" }}
               onClick={handleReset}
             />
           </div>
@@ -434,10 +434,10 @@ export default function PaymentButtons({
             fileState={selectedFile}
             setFileState={setSelectedFile}
             label=""
-            acceptedFileTypes=".pdf"
+            acceptedFileTypes=".pdf,.jpeg,.jpg,.png,.webp"
             required
             placeholder=""
-            buttonLabel="SELECT OR DROP PAYMENT RECEIPT"
+            buttonLabel="UPLOAD PAYMENT RECEIPT"
           />
         </FormPopUp>
       )}

@@ -83,7 +83,7 @@ export default function InitialApprovalButtons({
     });
 
     if (res.ok) {
-      toast(`${item.boq_item_name} rejected`, "success");
+      toast(`${item.material_description} rejected`, "success");
 
       setRejectText("");
 
@@ -109,7 +109,7 @@ export default function InitialApprovalButtons({
     });
 
     if (res.ok) {
-      toast("Material request item approval reset", "success");
+      /* toast("Material request item approval reset", "success"); */
 
       router.refresh();
     } else {
@@ -150,7 +150,7 @@ export default function InitialApprovalButtons({
               style={{
                 filter: "invert(1)",
                 cursor: "pointer",
-                width: "10px",
+                width: "12px",
               }}
               onClick={handleReset}
             />
@@ -176,7 +176,7 @@ export default function InitialApprovalButtons({
             <img
               src={crossIcon}
               alt="close"
-              style={{ filter: "invert(1)", cursor: "pointer", width: "10px" }}
+              style={{ filter: "invert(1)", cursor: "pointer", width: "12px" }}
               onClick={handleReset}
             />
           )}

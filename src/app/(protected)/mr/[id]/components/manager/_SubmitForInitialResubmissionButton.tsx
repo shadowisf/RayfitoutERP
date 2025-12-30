@@ -8,18 +8,14 @@ import { toast } from "@/app/components/Toast";
 
 type SubmitForResubmissionButtonProps = {
   mrHeaderID: number;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children?: React.ReactNode;
+  style?: React.CSSProperties;
+  disabled?: boolean;
 };
 
 export default function SubmitForResubmissionButton({
   mrHeaderID,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
+  style,
+  disabled,
 }: SubmitForResubmissionButtonProps) {
   const router = useRouter();
 
@@ -29,7 +25,7 @@ export default function SubmitForResubmissionButton({
     e.preventDefault();
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "POST",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "submitForResubmission",
@@ -53,13 +49,14 @@ export default function SubmitForResubmissionButton({
     <>
       <Button
         componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor="white"
+        borderColor="white"
+        textColor="black"
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 20px" }}
+        style={{ padding: "7px 20px", ...style }}
+        disabled={disabled}
       >
-        {children}
+        RETURN FOR MATERIAL CORRECTIONS
       </Button>
 
       {isOpen && (

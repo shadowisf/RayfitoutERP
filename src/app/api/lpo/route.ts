@@ -169,7 +169,7 @@ export async function POST(req: Request) {
     `;
 
       const lpoValues = [
-        Number(body.project_id),
+        Number(body.project_id) || null,
         Number(body.mr_header_id),
         Number(body.supplier_id),
         body.quotation_code,

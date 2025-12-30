@@ -6,12 +6,13 @@ type CreateMrLineClientProps = {
   mrHeaderID: number;
   projectID: number;
   projectName: string;
+  purposeID: number;
 };
 
 export default function CreateMrLineClient({
   mrHeaderID,
   projectID,
-  projectName,
+  purposeID,
 }: CreateMrLineClientProps) {
   const noItemImg = "/images/no-items.svg";
 
@@ -40,7 +41,7 @@ export default function CreateMrLineClient({
         full
         mrHeaderID={mrHeaderID}
         projectID={projectID}
-        projectName={projectName}
+        purposeID={purposeID}
       >
         ADD CATEGORY & ITEM +
       </AddMrItemButton>

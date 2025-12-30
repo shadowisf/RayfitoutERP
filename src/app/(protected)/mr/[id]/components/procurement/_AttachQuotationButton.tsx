@@ -85,9 +85,10 @@ export default function AttachQuotationButton({
         ref={fileInputRef}
         type="file"
         style={{ display: "none" }}
-        accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
+        accept=".pdf,.jpg,.jpeg,.png,.webp"
         onChange={handleFileChange}
         disabled={isUploading}
+        required
       />
 
       {/* DROP ZONE */}
@@ -123,7 +124,7 @@ export default function AttachQuotationButton({
             pointerEvents: isUploading ? "none" : "auto",
           }}
         >
-          Select File or Drop Quotation
+          Upload Quotation
           <img src={uploadIcon} alt="upload icon" />
         </Button>
       </div>

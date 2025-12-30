@@ -70,7 +70,7 @@ export default function CreateGRNButton({
   const [isUploading, setIsUploading] = useState(false);
 
   const [receivedDate, setReceivedDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toLocaleDateString("en-CA")
   );
 
   // State for GRN line items

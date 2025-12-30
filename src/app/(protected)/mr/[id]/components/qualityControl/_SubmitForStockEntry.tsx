@@ -8,18 +8,14 @@ import { toast } from "@/app/components/Toast";
 
 type SubmitForStockEntryProps = {
   mrHeaderID: number;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children?: React.ReactNode;
+  style?: React.CSSProperties;
+  disabled?: boolean;
 };
 
 export default function SubmitForStockEntryButton({
   mrHeaderID,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
+  style,
+  disabled,
 }: SubmitForStockEntryProps) {
   const router = useRouter();
 
@@ -52,13 +48,14 @@ export default function SubmitForStockEntryButton({
     <>
       <Button
         componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor={"white"}
+        borderColor={"white"}
+        textColor={"black"}
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 20px" }}
+        style={{ padding: "7px 20px", ...style }}
+        disabled={disabled}
       >
-        {children}
+        SUBMIT FOR STOCK ENTRY
       </Button>
 
       {isOpen && (

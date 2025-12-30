@@ -36,6 +36,7 @@ import SubmitForProcurementResolutionButton from "./qualityControl/_SubmitForPro
 import QCRecheckButton from "./procurement/_QCRecheckButton";
 import ResolutionButton from "./procurement/_AddResolutionButton";
 import CancelMaterialRequestButton from "./_CancelMaterialRequest";
+import SubmitForLPOResubmissionButton from "./finance/_SubmitForLPOResubmission";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -1317,10 +1318,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     <AddMrItemButton
                       mrHeaderID={mrHeader.id}
                       projectID={mrHeader.project_id}
-                      projectName={mrHeader.project_name}
                       bgColor="black"
                       borderColor="black"
                       textColor="white"
+                      purposeID={mrHeader.purpose_id}
                     >
                       ADD CATEGORY & ITEM +
                     </AddMrItemButton>
@@ -1370,16 +1371,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 subCategoryID={String(
                                   firstItem.material_subcategory_id
                                 )}
-                              >
-                                UPDATE
-                              </RenameMrSubCategoryButton>
+                              ></RenameMrSubCategoryButton>
 
                               <DeleteMrSubCategoryButton
                                 items={allItems}
                                 subCategory={subCategory}
-                              >
-                                DELETE
-                              </DeleteMrSubCategoryButton>
+                              />
                             </div>
                           )}
                       </div>
@@ -1465,7 +1462,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           )}
                                         </td>
                                         <td>
-                                          <NotesPopUp item={item} />
+                                          {item.notes ? (
+                                            <NotesPopUp item={item} />
+                                          ) : (
+                                            "-"
+                                          )}
                                         </td>
 
                                         {(((mrHeader.progress_id === 5 ||
@@ -1659,7 +1660,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           <>
                             <AddMrItemButton
                               projectID={mrHeader.project_id}
-                              projectName={mrHeader.project_name}
                               mrHeaderID={mrHeader.id}
                               bgColor="rgba(239, 239, 239, 1)"
                               borderColor="rgba(239, 239, 239, 1)"
@@ -1671,6 +1671,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               autoSubCategoryID={String(
                                 firstItem.material_subcategory_id
                               )}
+                              purposeID={mrHeader.purpose_id}
                             >
                               ADD ITEM +
                             </AddMrItemButton>
@@ -1713,16 +1714,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             subCategoryID={String(
                               firstItem.material_subcategory_id
                             )}
-                          >
-                            UPDATE
-                          </RenameMrSubCategoryButton>
+                          />
 
                           <DeleteMrSubCategoryButton
                             items={allItems}
                             subCategory={subCategory}
-                          >
-                            DELETE
-                          </DeleteMrSubCategoryButton>
+                          />
                         </div>
                       )}
                   </div>
@@ -1987,7 +1984,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       <>
                         <AddMrItemButton
                           projectID={mrHeader.project_id}
-                          projectName={mrHeader.project_name}
                           mrHeaderID={mrHeader.id}
                           bgColor="rgba(239, 239, 239, 1)"
                           borderColor="rgba(239, 239, 239, 1)"
@@ -1999,6 +1995,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           autoSubCategoryID={String(
                             firstItem.material_subcategory_id
                           )}
+                          purposeID={mrHeader.purpose_id}
                         >
                           ADD ITEM +
                         </AddMrItemButton>
@@ -2216,12 +2213,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             <AddMrItemButton
               projectID={mrHeader.project_id}
               mrHeaderID={mrHeader.id}
-              projectName={mrHeader.project_name}
               bgColor="rgba(239, 239, 239, 1)"
               borderColor="rgba(239, 239, 239, 1)"
               textColor="black"
               full
               autoCategoryID={getActiveCategoryID()}
+              purposeID={mrHeader.purpose_id}
             >
               ADD SUBCATEGORY & ITEM +
             </AddMrItemButton>
@@ -2235,218 +2232,247 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         )}
 
       {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-        userInfo?.departmentID === mrHeader.department_id &&
-        !hasAnyRejectedItems() && (
+        userInfo?.departmentID === mrHeader.department_id && (
           <div className="bottom-nav">
+            <div></div>
             <SubmitForInitialApprovalButton
               mrHeaderID={mrHeader.id}
-              bgColor="white"
-              borderColor="white"
-              textColor="black"
-            >
-              SUBMIT FOR INITIAL APPROVAL
-            </SubmitForInitialApprovalButton>
+              disabled={hasAnyRejectedItems()}
+              style={{
+                opacity: hasAnyRejectedItems() ? "0.5" : "1",
+                cursor: hasAnyRejectedItems() ? "not-allowed" : "pointer",
+                pointerEvents: hasAnyRejectedItems() ? "none" : "auto",
+              }}
+            />
           </div>
         )}
 
-      {mrHeader.progress_id < 12 &&
-        mrHeader.progress_id > 1 &&
-        mrHeader.department_id === userInfo?.departmentID && (
-          <div className="bottom-nav">
-            <CancelMaterialRequestButton
-              mrHeaderID={mrHeader.id}
-              bgColor="black"
-              borderColor="white"
-              textColor="white"
-            >
-              CANCEL MATERIAL REQUEST
-            </CancelMaterialRequestButton>
-          </div>
-        )}
+      {/* Progress 2-11 (before LPO) - Cancel Material Request */}
+      {/* {mrHeader.progress_id < 12 &&
+  mrHeader.progress_id > 1 &&
+  mrHeader.department_id === userInfo?.departmentID && (
+    <div className="bottom-nav">
+      <CancelMaterialRequestButton
+        mrHeaderID={mrHeader.id}
+        bgColor="black"
+        borderColor="white"
+        textColor="white"
+      >
+        CANCEL MATERIAL REQUEST
+      </CancelMaterialRequestButton>
+    </div>
+  )} */}
 
-      {hasRejectedItems() &&
-        userInfo?.departmentID === 8 &&
-        mrHeader.progress_id === 3 && (
-          <div className="bottom-nav">
-            <CancelMaterialRequestButton
-              mrHeaderID={mrHeader.id}
-              bgColor="black"
-              borderColor="white"
-              textColor="white"
-            >
-              CANCEL MATERIAL REQUEST
-            </CancelMaterialRequestButton>
+      {/* Awaiting Initial Approval (Progress 3) - Management Actions */}
+      {userInfo?.departmentID === 8 && mrHeader.progress_id === 3 && (
+        <div className="bottom-nav">
+          {/* <CancelMaterialRequestButton
+      mrHeaderID={mrHeader.id}
+      bgColor="black"
+      borderColor="white"
+      textColor="white"
+    >
+      CANCEL MATERIAL REQUEST
+    </CancelMaterialRequestButton> */}
 
-            <SubmitForResubmissionButton
-              mrHeaderID={mrHeader.id}
-              bgColor="black"
-              borderColor="white"
-              textColor="white"
-            >
-              RETURN FOR MATERIAL CORRECTIONS
-            </SubmitForResubmissionButton>
-          </div>
-        )}
+          <div></div>
 
-      {allItemsApproved() &&
-        userInfo?.departmentID === 8 &&
-        mrHeader.progress_id === 3 && (
-          <div className="bottom-nav">
-            <CancelMaterialRequestButton
-              mrHeaderID={mrHeader.id}
-              bgColor="black"
-              borderColor="white"
-              textColor="white"
-            >
-              CANCEL MATERIAL REQUEST
-            </CancelMaterialRequestButton>
-
+          {hasRejectedItems() ? (
+            <SubmitForResubmissionButton mrHeaderID={mrHeader.id} />
+          ) : (
             <SubmitForQuotationsButton
               mrHeaderID={mrHeader.id}
-              bgColor="white"
-              borderColor="white"
-              textColor="black"
-            >
-              SUBMIT FOR QUOTATIONS
-            </SubmitForQuotationsButton>
-          </div>
-        )}
+              disabled={!allItemsApproved()}
+              style={{
+                opacity: !allItemsApproved() ? "0.5" : "1",
+                cursor: !allItemsApproved() ? "not-allowed" : "pointer",
+                pointerEvents: !allItemsApproved() ? "none" : "auto",
+              }}
+            />
+          )}
+        </div>
+      )}
 
-      {allItemsHaveSupplierQuotations() &&
-        !hasAnyRejectedSuppliers() &&
-        userInfo?.departmentID === 9 &&
+      {/* Awaiting Quotations / Price Approval Rejected (Progress 7 or 11) - Procurement Submit for Pricing Approval */}
+      {userInfo?.departmentID === 9 &&
         (mrHeader.progress_id === 7 || mrHeader.progress_id === 11) && (
           <div className="bottom-nav">
-            <CancelMaterialRequestButton
-              mrHeaderID={mrHeader.id}
-              bgColor="black"
-              borderColor="white"
-              textColor="white"
-            >
-              CANCEL MATERIAL REQUEST
-            </CancelMaterialRequestButton>
+            {/* <CancelMaterialRequestButton
+        mrHeaderID={mrHeader.id}
+        bgColor="black"
+        borderColor="white"
+        textColor="white"
+      >
+        CANCEL MATERIAL REQUEST
+      </CancelMaterialRequestButton> */}
+
+            <div></div>
 
             <SubmitForPricingApprovalButton
               mrHeaderID={mrHeader.id}
-              bgColor="white"
-              borderColor="white"
-              textColor="black"
-            >
-              SUBMIT FOR PRICING APPROVAL
-            </SubmitForPricingApprovalButton>
+              disabled={
+                !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+              }
+              style={{
+                opacity:
+                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                    ? "0.5"
+                    : "1",
+                cursor:
+                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                    ? "not-allowed"
+                    : "pointer",
+                pointerEvents:
+                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                    ? "none"
+                    : "auto",
+              }}
+            />
           </div>
         )}
 
-      {hasRejectedSuppliers() &&
-        userInfo?.departmentID === 8 &&
-        mrHeader.progress_id === 10 && (
-          <div className="bottom-nav">
-            <CancelMaterialRequestButton
-              mrHeaderID={mrHeader.id}
-              bgColor="black"
-              borderColor="white"
-              textColor="white"
-            >
-              CANCEL MATERIAL REQUEST
-            </CancelMaterialRequestButton>
+      {/* Awaiting Price Approval (Progress 10) - Management Actions */}
+      {userInfo?.departmentID === 8 && mrHeader.progress_id === 10 && (
+        <div className="bottom-nav">
+          {/* <CancelMaterialRequestButton
+      mrHeaderID={mrHeader.id}
+      bgColor="black"
+      borderColor="white"
+      textColor="white"
+    >
+      CANCEL MATERIAL REQUEST
+    </CancelMaterialRequestButton> */}
 
-            <SubmitForPricingResubmissionButton
-              mrHeaderID={mrHeader.id}
-              bgColor="white"
-              borderColor="white"
-              textColor="black"
-            >
-              RETURN FOR PRICING CORRECTIONS
-            </SubmitForPricingResubmissionButton>
-          </div>
-        )}
+          <div></div>
 
-      {allSuppliersApproved() &&
-        userInfo?.departmentID === 8 &&
-        mrHeader.progress_id === 10 && (
-          <div className="bottom-nav">
-            <CancelMaterialRequestButton
-              mrHeaderID={mrHeader.id}
-              bgColor="black"
-              borderColor="white"
-              textColor="white"
-            >
-              CANCEL MATERIAL REQUEST
-            </CancelMaterialRequestButton>
-
+          {hasRejectedSuppliers() ? (
+            <SubmitForPricingResubmissionButton mrHeaderID={mrHeader.id} />
+          ) : (
             <SubmitForLPO
               mrLines={mrLines}
               mrHeaderID={mrHeader.id}
-              bgColor="white"
-              borderColor="white"
-              textColor="black"
-            >
-              SUBMIT FOR LOCAL PURCHASE ORDER
-            </SubmitForLPO>
-          </div>
-        )}
+              disabled={!allSuppliersApproved()}
+              style={{
+                opacity: !allSuppliersApproved() ? "0.5" : "1",
+                cursor: !allSuppliersApproved() ? "not-allowed" : "pointer",
+                pointerEvents: !allSuppliersApproved() ? "none" : "auto",
+              }}
+            ></SubmitForLPO>
+          )}
+        </div>
+      )}
 
-      {allSuppliersHaveLpoWithInvoicesAndSignedFiles() &&
-        userInfo?.departmentID === 9 &&
-        mrHeader.progress_id === 12 && (
-          <div className="bottom-nav">
-            <SubmitForPaymentButton mrHeaderID={mrHeader.id}>
-              SUBMIT FOR PAYMENT
-            </SubmitForPaymentButton>
-          </div>
-        )}
+      {/* Awaiting LPO & Invoice (Progress 12) - Procurement Submit for Payment */}
+      {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
+        <div className="bottom-nav">
+          <div></div>
+          <SubmitForPaymentButton
+            mrHeaderID={mrHeader.id}
+            disabled={!allSuppliersHaveLpoWithInvoicesAndSignedFiles()}
+            style={{
+              opacity: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
+                ? "0.5"
+                : "1",
+              cursor: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
+                ? "not-allowed"
+                : "pointer",
+              pointerEvents: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
+                ? "none"
+                : "auto",
+            }}
+          />
+        </div>
+      )}
 
-      {allLposHavePaymentStatus() &&
-        userInfo?.departmentID === 10 &&
-        mrHeader.progress_id === 14 && (
-          <div className="bottom-nav">
-            <SubmitForDeliveryButton mrHeaderID={mrHeader.id}>
-              SUBMIT FOR DELIVERY
-            </SubmitForDeliveryButton>
-          </div>
-        )}
+      {/* Pending Payment (Progress 14) - Finance Submit for Delivery or Return to LPO */}
+      {userInfo?.departmentID === 10 && mrHeader.progress_id === 14 && (
+        <div className="bottom-nav">
+          <div></div>
+          {(() => {
+            // Check if any LPO has rejected payment status
+            const hasRejectedPayment = Object.values(lpoPaymentStatus).some(
+              (status) => status === "rejected"
+            );
 
-      {allSuppliersHaveGrn() &&
-        userInfo?.departmentID === 11 &&
-        mrHeader.progress_id === 17 && (
-          <div className="bottom-nav">
-            <SubmitForQC mrHeaderID={mrHeader.id}>
-              SUBMIT FOR QUALITY CONTROL
-            </SubmitForQC>
-          </div>
-        )}
+            // Check if all LPOs have approved payment status
+            const allPaymentsApproved = Object.values(lpoPaymentStatus).every(
+              (status) => status === "approved"
+            );
 
-      {allItemsPassedQc() &&
-        userInfo?.departmentID === 12 &&
-        mrHeader.progress_id === 21 && (
-          <div className="bottom-nav">
-            <SubmitForStockEntryButton mrHeaderID={mrHeader.id}>
-              SUBMIT FOR STOCK ENTRY
-            </SubmitForStockEntryButton>
-          </div>
-        )}
+            // If any payment is rejected, show LPO resubmission button
+            if (hasRejectedPayment) {
+              return (
+                <SubmitForLPOResubmissionButton mrHeaderID={mrHeader.id} />
+              );
+            } else {
+              // Show Submit for Delivery button, disabled if not all payments are approved
+              return (
+                <SubmitForDeliveryButton
+                  mrHeaderID={mrHeader.id}
+                  disabled={!allPaymentsApproved}
+                  style={{
+                    opacity: !allPaymentsApproved ? "0.5" : "1",
+                    cursor: !allPaymentsApproved ? "not-allowed" : "pointer",
+                    pointerEvents: !allPaymentsApproved ? "none" : "auto",
+                  }}
+                />
+              );
+            }
+          })()}
+        </div>
+      )}
 
-      {!allItemsPassedQc() &&
-        !isCheckingQc &&
-        hasAllItemsCompletedQc() &&
-        userInfo?.departmentID === 12 &&
-        mrHeader.progress_id === 21 && (
-          <div className="bottom-nav">
-            <SubmitForProcurementResolutionButton mrHeaderID={mrHeader.id}>
-              RETURN FOR RESOLUTION
-            </SubmitForProcurementResolutionButton>
-          </div>
-        )}
+      {/* Pending Delivery (Progress 17) - Storekeeper Submit for QC */}
+      {userInfo?.departmentID === 11 && mrHeader.progress_id === 17 && (
+        <div className="bottom-nav">
+          <div></div>
+          <SubmitForQC
+            mrHeaderID={mrHeader.id}
+            disabled={!allSuppliersHaveGrn()}
+            style={{
+              opacity: !allSuppliersHaveGrn() ? "0.5" : "1",
+              cursor: !allSuppliersHaveGrn() ? "not-allowed" : "pointer",
+              pointerEvents: !allSuppliersHaveGrn() ? "none" : "auto",
+            }}
+          />
+        </div>
+      )}
 
-      {allItemsHaveStock() &&
-        userInfo?.departmentID === 11 &&
-        mrHeader.progress_id === 24 && (
-          <div className="bottom-nav">
-            <CompleteMaterialRequestButton mrHeaderID={mrHeader.id}>
-              COMPLETE MATERIAL REQUEST
-            </CompleteMaterialRequestButton>
-          </div>
-        )}
+      {/* Awaiting QC Check (Progress 21) - QC Submit for Stock Entry or Return for Resolution */}
+      {userInfo?.departmentID === 12 && mrHeader.progress_id === 21 && (
+        <div className="bottom-nav">
+          <div></div>
+          {!allItemsPassedQc() && !isCheckingQc && hasAllItemsCompletedQc() ? (
+            <SubmitForProcurementResolutionButton mrHeaderID={mrHeader.id} />
+          ) : (
+            <SubmitForStockEntryButton
+              mrHeaderID={mrHeader.id}
+              disabled={!allItemsPassedQc()}
+              style={{
+                opacity: !allItemsPassedQc() ? "0.5" : "1",
+                cursor: !allItemsPassedQc() ? "not-allowed" : "pointer",
+                pointerEvents: !allItemsPassedQc() ? "none" : "auto",
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Awaiting Stock Entry (Progress 24) - Storekeeper Complete Material Request */}
+      {userInfo?.departmentID === 11 && mrHeader.progress_id === 24 && (
+        <div className="bottom-nav">
+          <div></div>
+          <CompleteMaterialRequestButton
+            mrHeaderID={mrHeader.id}
+            disabled={!allItemsHaveStock()}
+            style={{
+              opacity: !allItemsHaveStock() ? "0.5" : "1",
+              cursor: !allItemsHaveStock() ? "not-allowed" : "pointer",
+              pointerEvents: !allItemsHaveStock() ? "none" : "auto",
+            }}
+          />
+        </div>
+      )}
     </>
   );
 }

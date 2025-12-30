@@ -8,18 +8,10 @@ import { toast } from "@/app/components/Toast";
 
 type SubmitForPricingResubmissionButtonProps = {
   mrHeaderID: number;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children?: React.ReactNode;
 };
 
 export default function SubmitForPricingResubmissionButton({
   mrHeaderID,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
 }: SubmitForPricingResubmissionButtonProps) {
   const router = useRouter();
 
@@ -53,13 +45,13 @@ export default function SubmitForPricingResubmissionButton({
     <>
       <Button
         componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor="white"
+        borderColor="white"
+        textColor="black"
         onClick={() => setIsOpen(true)}
         style={{ padding: "7px 20px" }}
       >
-        {children}
+        RETURN FOR PRICING CORRECTIONS
       </Button>
 
       {isOpen && (

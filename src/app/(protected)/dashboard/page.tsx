@@ -14,14 +14,6 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsWithBOQ, setProjectsWithBOQ] = useState<any[]>([]);
 
-  useEffect(() => {
-    // Temporarily add this to see what's being used
-    console.log("DB Host:", process.env.DB_HOST);
-    console.log("DB User:", process.env.DB_USER);
-    console.log("DB Name:", process.env.DB_NAME);
-    console.log("DB Password exists:", !!process.env.DB_PASSWORD);
-  }, []);
-
   // Fetch Projects
   useEffect(() => {
     const loadProjects = async () => {
@@ -91,9 +83,14 @@ export default function Dashboard() {
           borderRadius: "10px",
         }}
       >
-        <h2 style={{ fontSize: "14px", marginBottom: "3px" }}>Welcome back</h2>
+        <h3 style={{ fontWeight: "100", marginBottom: "3px" }}>Welcome back</h3>
 
-        <h2 style={{ fontSize: "24px" }}>Maestro {userInfo?.name}</h2>
+        <h1>
+          <span style={{ fontWeight: "100" }}>Maestro</span>{" "}
+          <span style={{ fontWeight: "900" }}>
+            {userInfo?.name?.split(" ")[0]}
+          </span>
+        </h1>
       </div>
 
       <br />

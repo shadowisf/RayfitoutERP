@@ -312,7 +312,7 @@ export default function UploadInvoiceButton({
             }}
             disabled={isUploading}
           >
-            Select or Drop Invoice
+            Upload Invoice
             <img src={uploadIcon} alt="upload icon" />
           </Button>
         </div>

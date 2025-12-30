@@ -372,7 +372,9 @@ export default function SingleSelectDropdown({
       {!noLabel && (
         <label className="custom">
           <span>{label}</span>{" "}
-          {!required && (
+          {required ? (
+            ""
+          ) : (
             <small style={{ fontStyle: "italic", fontWeight: "100" }}>
               (OPTIONAL)
             </small>

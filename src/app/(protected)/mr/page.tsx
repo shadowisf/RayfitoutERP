@@ -62,6 +62,11 @@ export default function MR() {
     // If no user info, don't show view button
     if (!userDeptId) return false;
 
+    // ALWAYS allow viewing if the MR belongs to the user's department
+    if (userDeptId === mr.department_id) {
+      return true;
+    }
+
     // Check if this is a universal progress_id (1 or 5)
     if (universalProgressIds.includes(mr.progress_id)) {
       // For universal progress IDs, user's department must match MR's department
@@ -256,11 +261,10 @@ export default function MR() {
 
   // Determine which statuses to show
   const visibleStatuses = filterRelevant
-    ? // When filter is active, only show relevant statuses that have items
+    ? // When filter is active, show statuses that have items the user can view
       allStatuses.filter((status) => {
         const mrs = groupedMRs[status] || [];
-        const relevantStatuses = getRelevantStatuses();
-        return mrs.length > 0 && relevantStatuses.includes(status);
+        return mrs.length > 0;
       })
     : // When filter is inactive, show all statuses (hide rejected with 0 count)
       allStatuses.filter((status) => {
@@ -455,7 +459,7 @@ export default function MR() {
                       <br />
 
                       <small>REQUESTER</small>
-                      <h3>{mr.requested_by}</h3>
+                      <h3>{mr.requested_by || "-"}</h3>
 
                       <br />
 
@@ -518,7 +522,9 @@ export default function MR() {
                         disabled={!hasViewPermission}
                         style={{
                           opacity: !hasViewPermission ? "0.5" : "1",
-                          cursor: !hasViewPermission ? "not-allowed" : "auto",
+                          cursor: !hasViewPermission
+                            ? "not-allowed"
+                            : "pointer",
                           pointerEvents: !hasViewPermission ? "none" : "auto",
                         }}
                       >

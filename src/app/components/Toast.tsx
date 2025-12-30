@@ -59,7 +59,7 @@ export default function GlobalToast() {
         gap: "8px",
         zIndex: 9999,
         width: "100%",
-        paddingLeft: "325px",
+        paddingLeft: "300px",
         paddingRight: "40px",
       }}
     >

@@ -7,7 +7,7 @@ import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef, SetStateAction } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import AttachQuotationButton from "./_AttachQuotationButton";
 import RejectCommentPopUp from "../manager/RejectCommentPopUp";
@@ -241,7 +241,7 @@ export default function SupplierAndQuotationButton({
     // Only filter subcategories if categories were manually selected
     if (materialCategoryID.length > 0 && categoriesManuallySelected) {
       Promise.all(
-        materialCategoryID.map((categoryId) =>
+        materialCategoryID.map((categoryId: any) =>
           fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
             {
@@ -390,9 +390,11 @@ export default function SupplierAndQuotationButton({
     if (field === "unit_price") {
       const unitPrice = parseFloat(value as string);
       const quantity = parseFloat(mrLine.quantity as any) || 0;
-      newQuotations[index].total_price = isNaN(unitPrice * quantity)
+      const totalPrice = Math.round(unitPrice * quantity);
+
+      newQuotations[index].total_price = isNaN(totalPrice)
         ? ""
-        : Math.round(unitPrice * quantity).toString();
+        : totalPrice.toString();
     }
 
     setSupplierQuotations(newQuotations);
@@ -622,6 +624,23 @@ export default function SupplierAndQuotationButton({
       (q: SupplierQuotation) => q.supplier_id !== ""
     );
 
+    // Check if any quotation has total price >= 900
+    const hasHighValueQuotation = validQuotations.some(
+      (q: { total_price: string }) => {
+        const totalPrice = parseFloat(q.total_price);
+        return !isNaN(totalPrice) && totalPrice >= 900;
+      }
+    );
+
+    // If any quotation is >= 900 AED, require minimum 3 vendors
+    if (hasHighValueQuotation && validQuotations.length < 3) {
+      toast(
+        "Minimum 3 vendors required for quotations with total price greater than or equal to 900 AED",
+        "error"
+      );
+      return;
+    }
+
     for (let i = 0; i < validQuotations.length; i++) {
       const quotation = validQuotations[i];
 
@@ -828,8 +847,8 @@ export default function SupplierAndQuotationButton({
         <FormPopUp
           header={
             mode === "edit"
-              ? "UPDATE VENDORS & QUOTATIONS"
-              : "ADD VENDORS & QUOTATIONS"
+              ? `UPDATE VENDORS & QUOTATIONS FOR ${mrLine.material_description}`
+              : `ADD VENDORS & QUOTATIONS FOR ${mrLine.material_description}`
           }
           setIsOpen={setIsOpen}
           handleSubmit={handleSupplierAndQuotationSubmit}
@@ -992,6 +1011,38 @@ export default function SupplierAndQuotationButton({
             >
               ADD VENDOR +
             </Button>
+
+            <br />
+
+            {/* Visual indicator for minimum vendor requirement */}
+            {(() => {
+              const validQuotations = supplierQuotations.filter(
+                (q: SupplierQuotation) => q.supplier_id !== ""
+              );
+
+              const hasHighValueQuotation = validQuotations.some(
+                (q: { total_price: string }) => {
+                  const totalPrice = parseFloat(q.total_price);
+                  return !isNaN(totalPrice) && totalPrice >= 900;
+                }
+              );
+
+              if (hasHighValueQuotation && validQuotations.length < 3) {
+                return (
+                  <div
+                    style={{
+                      padding: "10px 15px",
+                      color: "rgba(248, 77, 77, 1)",
+                      textAlign: "left",
+                    }}
+                  >
+                    Total price is greater than or equal to 900 AED. Minimum 3
+                    vendors required
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </>
         </FormPopUp>
       )}
@@ -1119,284 +1170,22 @@ export default function SupplierAndQuotationButton({
                 )}
 
                 <div className="input-row half">
-                  {/* <div className="input-item">
-                    <label>TRN CERTIFICATE</label>
-                    <div
-                      onDragOver={handleTrnCertificateDragOver}
-                      onDrop={handleTrnCertificateDrop}
-                      style={{
-                        border: "1px dashed #d1d5db",
-                        borderRadius: "5px",
-                        padding: "40px",
-                        textAlign: "center",
-                        backgroundColor: "#f9fafb",
-                        flexDirection: "column",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {trnCertificateFile || trnCertificatePreview ? (
-                        <div style={{ width: "100%" }}>
-                          {trnCertificateType.startsWith("image/") &&
-                          trnCertificatePreview ? (
-                            <div style={{ position: "relative" }}>
-                              <img
-                                src={trnCertificatePreview}
-                                alt="Preview"
-                                style={{
-                                  maxWidth: "100%",
-                                  maxHeight: "300px",
-                                  borderRadius: "5px",
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={removeTrnCertificateFile}
-                                style={{
-                                  position: "absolute",
-                                  top: "10px",
-                                  right: "10px",
-                                  width: "30px",
-                                  height: "30px",
-                                  borderRadius: "50%",
-                                  border: "none",
-                                  backgroundColor: "rgba(0,0,0,0.6)",
-                                  color: "white",
-                                  cursor: "pointer",
-                                  fontSize: "18px",
-                                }}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                padding: "16px",
-                                backgroundColor: "white",
-                                borderRadius: "8px",
-                                border: "1px solid #e5e7eb",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                }}
-                              >
-                                {trnCertificateFile?.name || "Existing file"}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={removeTrnCertificateFile}
-                                style={{
-                                  width: "30px",
-                                  height: "30px",
-                                  borderRadius: "50%",
-                                  border: "none",
-                                  backgroundColor: "black",
-                                  color: "white",
-                                  cursor: "pointer",
-                                  fontSize: "18px",
-                                }}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          UPLOAD OR DRAG ATTACHMENT
-                          <br />
-                          <br />
-                          <input
-                            ref={trnCertificateInputRef}
-                            type="file"
-                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                            onChange={handleTrnCertificateSelect}
-                            style={{ display: "none" }}
-                          />
-                          <Button
-                            componentType="button"
-                            bgColor="black"
-                            borderColor="black"
-                            textColor="white"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              trnCertificateInputRef.current?.click();
-                            }}
-                          >
-                            <img src={uploadIcon} alt="upload" />
-                            UPLOAD FILE
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div> */}
-
                   {type === "Local vendor" && (
                     <UploadFileBox
                       fileState={trnCertificateFile}
                       setFileState={setTrnCertificateFile}
                       label={"TRN CERTIFICATE"}
                       acceptedFileTypes={".pdf"}
+                      required={type === "Local vendor"}
                     />
                   )}
-
-                  {/* <div className="input-item">
-                    <label>TRADE LICENSE</label>
-                    <div
-                      onDragOver={handleTradeLicenseDragOver}
-                      onDragLeave={handleTradeLicenseDragLeave}
-                      onDrop={handleTradeLicenseDrop}
-                      style={{
-                        border: "1px dashed #d1d5db",
-                        borderRadius: "5px",
-                        padding: "40px",
-                        textAlign: "center",
-                        backgroundColor: isTradeLicenseDragOver
-                          ? "rgba(169, 255, 218, 1)"
-                          : "#f9fafb",
-                        flexDirection: "column",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        cursor: "pointer",
-                        height: "150px",
-                      }}
-                    >
-                      {tradeLicenseFile || tradeLicensePreview ? (
-                        <div style={{ width: "100%" }}>
-                          {tradeLicenseType.startsWith("image/") &&
-                          tradeLicensePreview ? (
-                            <div style={{ position: "relative" }}>
-                              <img
-                                src={tradeLicensePreview}
-                                alt="Preview"
-                                style={{
-                                  maxWidth: "100%",
-                                  maxHeight: "100px",
-                                  borderRadius: "5px",
-                                }}
-                              />
-                              <Button
-                                componentType={"button"}
-                                bgColor={"rgba(239, 239, 239, 1)"}
-                                borderColor={"rgba(223, 223, 223, 1)"}
-                                textColor={"black"}
-                                style={{
-                                  position: "absolute",
-                                  top: "5px",
-                                  right: "105px",
-                                  padding: "7px 7px",
-                                }}
-                                onClick={removeTradeLicenseFile}
-                              >
-                                <img src={trashIcon} alt="trash" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                padding: "16px",
-                                backgroundColor: "white",
-                                borderRadius: "8px",
-                                border: "1px solid #e5e7eb",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                }}
-                              >
-                                {tradeLicenseFile?.name || "Existing file"}
-                              </div>
-                              <Button
-                                componentType={"button"}
-                                bgColor={"rgba(239, 239, 239, 1)"}
-                                borderColor={"rgba(223, 223, 223, 1)"}
-                                textColor={"black"}
-                                style={{ padding: "7px 7px" }}
-                                onClick={removeTradeLicenseFile}
-                              >
-                                <img src={trashIcon} alt="trash" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      ) : isTradeLicenseDragOver ? (
-                        <div style={{ color: "rgba(34, 150, 100, 1)" }}>
-                          DROP HERE
-                        </div>
-                      ) : (
-                        <>
-                          UPLOAD OR DRAG ATTACHMENT
-                          <br />
-                          <br />
-                          <input
-                            ref={tradeLicenseInputRef}
-                            type="file"
-                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                            onChange={handleTradeLicenseSelect}
-                            style={{ display: "none" }}
-                          />
-                          <Button
-                            componentType="button"
-                            bgColor="black"
-                            borderColor="black"
-                            textColor="white"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              tradeLicenseInputRef.current?.click();
-                            }}
-                          >
-                            <img src={uploadIcon} alt="upload" />
-                            UPLOAD FILE
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div> */}
 
                   <UploadFileBox
                     fileState={tradeLicenseFile}
                     setFileState={setTradeLicenseFile}
                     label={"TRADE LICENSE"}
                     acceptedFileTypes={".pdf"}
-                  />
-                </div>
-
-                <div className="input-row half">
-                  <InputItem
-                    label={"AVERAGE LEAD TIME"}
-                    value={""}
-                    type={"text"}
-                    placeholder={""}
-                    required={false}
-                    onChange={() => {}}
-                    disabled
-                  />
-
-                  <InputItem
-                    label={"VENDOR RATING"}
-                    value={""}
-                    type={"text"}
-                    placeholder={""}
-                    required={false}
-                    onChange={() => {}}
-                    disabled
+                    required={type === "Local vendor"}
                   />
                 </div>
 
@@ -1444,7 +1233,7 @@ export default function SupplierAndQuotationButton({
                     value={contactPersonName}
                     type={"text"}
                     placeholder={"ENTER CONTACT PERSON NAME"}
-                    required
+                    required={type === "Local vendor"}
                     onChange={(e) => {
                       setContactPersonName(e.target.value);
                     }}
@@ -1460,6 +1249,7 @@ export default function SupplierAndQuotationButton({
                     onChange={(e) => {
                       setPhone(e.target.value);
                     }}
+                    required={type === "Local vendor"}
                   />
 
                   <InputItem
@@ -1470,6 +1260,7 @@ export default function SupplierAndQuotationButton({
                     onChange={(e) => {
                       setEmail(e.target.value);
                     }}
+                    required={type === "Local vendor"}
                   />
 
                   <InputItem
@@ -1480,6 +1271,7 @@ export default function SupplierAndQuotationButton({
                     onChange={(e) => {
                       setAddress(e.target.value);
                     }}
+                    required={type === "Local vendor"}
                   />
                 </div>
 
@@ -1489,7 +1281,7 @@ export default function SupplierAndQuotationButton({
                     value={website}
                     type={"text"}
                     placeholder={"ENTER DESCRIPTION"}
-                    required={false}
+                    required={type === "Local vendor"}
                     onChange={(e) => setWebsite(e.target.value)}
                   />
                 </div>
