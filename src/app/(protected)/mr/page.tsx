@@ -9,26 +9,90 @@ export default function MR() {
   const { userInfo } = useAuth();
 
   const [mrHeaders, setMrHeaders] = useState<MrHeader[]>([]);
+  const [filterRelevant, setFilterRelevant] = useState(false);
 
   useEffect(() => {
-    const ALL_MRS_ALLOWED = [2, 8, 9, 10, 11, 12, 15];
-
-    if (ALL_MRS_ALLOWED.includes(userInfo?.departmentID ?? 0)) {
-      /* get every mr */
-      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-        method: "GET",
-      }).then((res) => res.json().then((data) => setMrHeaders(data)));
-    } else {
-      /* get mr only specific to department */
-      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "getMrHeaders",
-          department_id: userInfo?.departmentID,
-        }),
-      }).then((res) => res.json().then((data) => setMrHeaders(data)));
-    }
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+      method: "GET",
+    }).then((res) => res.json().then((data) => setMrHeaders(data)));
   }, [userInfo]);
+
+  const departmentViewPermissions: { [key: number]: number[] } = {
+    /* JOINERY */ 1: [1, 5, 25],
+    /* MARKETING */ 2: [1, 5, 25],
+    /* ALUMINUM & GLASS */ 3: [1, 5, 25],
+    /* MEP */ 4: [1, 5, 25],
+    /* CIVIL */ 5: [1, 5, 25],
+    /* PAINT */ 6: [1, 5, 25],
+    /* DESIGN */ 7: [1, 5, 25],
+    /* DIRECTORS/MANAGEMENT */ 8: [1, 3, 5, 10, 11, 25],
+    /* PROCUREMENT */ 9: [1, 5, 7, 11, 12, 25],
+    /* FINANCE */ 10: [1, 5, 14, 25],
+    /* STOREKEEPER */ 11: [1, 5, 17, 24, 25],
+    /* QUALITY CONTORL */ 12: [1, 5, 21, 23, 25],
+    /* PROJECTS */ 13: [1, 5, 25],
+    /* AUTOMATION */ 14: [1, 5, 25],
+    /* ADMIN */ 15: [1, 3, 5, 7, 10, 11, 12, 14, 17, 21, 23, 24, 25],
+  };
+
+  // Map progress IDs to status names
+  const progressIdToStatusName: { [key: number]: string } = {
+    1: "Draft",
+    5: "Initial approval rejected",
+    3: "Awaiting initial approval",
+    11: "Price approval rejected",
+    7: "Awaiting quotations",
+    10: "Awaiting price approval",
+    12: "Awaiting LPO & invoice",
+    14: "Pending payment",
+    17: "Pending delivery",
+    21: "Awaiting QC check",
+    23: "Failed QC",
+    24: "Awaiting stock entry",
+    25: "Completed",
+  };
+
+  // Progress IDs that are accessible to everyone IF department matches
+  const universalProgressIds = [1, 5]; // Draft and Awaiting initial approval
+
+  // Function to check if user can view this MR
+  const canViewMR = (mr: any) => {
+    const userDeptId = userInfo?.departmentID;
+
+    // If no user info, don't show view button
+    if (!userDeptId) return false;
+
+    // Check if this is a universal progress_id (1 or 5)
+    if (universalProgressIds.includes(mr.progress_id)) {
+      // For universal progress IDs, user's department must match MR's department
+      return userDeptId === mr.department_id;
+    }
+
+    // Get allowed progress IDs for this department
+    const allowedProgressIds = departmentViewPermissions[userDeptId];
+
+    // If department is not in the permissions map, they can only view universal progress IDs
+    if (!allowedProgressIds) return false;
+
+    // Check if the MR's progress_id is in the allowed list
+    return allowedProgressIds.includes(mr.progress_id);
+  };
+
+  // Get relevant statuses for current user
+  const getRelevantStatuses = () => {
+    const userDeptId = userInfo?.departmentID;
+    if (!userDeptId) return [];
+
+    const allowedProgressIds = departmentViewPermissions[userDeptId] || [];
+
+    // Get status names from allowed progress IDs
+    const relevantStatuses = allowedProgressIds
+      .map((progressId) => progressIdToStatusName[progressId])
+      .filter((status) => status !== undefined);
+
+    // Return unique statuses
+    return Array.from(new Set(relevantStatuses));
+  };
 
   // Function to calculate priority based on required date
   const getPriority = (requiredDate: string) => {
@@ -175,8 +239,13 @@ export default function MR() {
     "Completed",
   ];
 
+  // Filter MRs based on "most relevant to me" toggle
+  const filteredMRs = filterRelevant
+    ? mrHeaders.filter((mr) => canViewMR(mr))
+    : mrHeaders;
+
   // Group MRs by status
-  const groupedMRs = mrHeaders.reduce((acc: any, mr: any) => {
+  const groupedMRs = filteredMRs.reduce((acc: any, mr: any) => {
     const status = mr.progress_name || "Unknown";
     if (!acc[status]) {
       acc[status] = [];
@@ -185,19 +254,82 @@ export default function MR() {
     return acc;
   }, {});
 
-  // Filter out rejected statuses with 0 count
-  const visibleStatuses = allStatuses.filter((status) => {
-    const mrs = groupedMRs[status] || [];
-    // Hide rejected statuses if they have 0 MRs
-    if (isRejectedStatus(status) && mrs.length === 0) {
-      return false;
-    }
-    return true;
-  });
+  // Determine which statuses to show
+  const visibleStatuses = filterRelevant
+    ? // When filter is active, only show relevant statuses that have items
+      allStatuses.filter((status) => {
+        const mrs = groupedMRs[status] || [];
+        const relevantStatuses = getRelevantStatuses();
+        return mrs.length > 0 && relevantStatuses.includes(status);
+      })
+    : // When filter is inactive, show all statuses (hide rejected with 0 count)
+      allStatuses.filter((status) => {
+        const mrs = groupedMRs[status] || [];
+        if (isRejectedStatus(status) && mrs.length === 0) {
+          return false;
+        }
+        return true;
+      });
 
   return (
     <div className="dashboard">
-      <h2>MATERIAL REQUESTS</h2>
+      <div
+        style={{
+          display: "flex",
+          /* justifyContent: "space-between", */
+          alignItems: "center",
+          gap: "25px",
+        }}
+      >
+        <h2>MATERIAL REQUESTS</h2>
+
+        {/* Filter Toggle */}
+        <div
+          onClick={() => setFilterRelevant(!filterRelevant)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "20px",
+            backgroundColor: "white",
+            padding: "7px 20px",
+            borderRadius: "5px",
+            border: "1px solid rgba(217, 217, 217, 1)",
+            cursor: "pointer",
+            userSelect: "none",
+          }}
+        >
+          <h4>SHOW RELATED CARDS</h4>
+
+          {/* Toggle Switch */}
+          <div
+            style={{
+              position: "relative",
+              width: "30px",
+              height: "17px",
+              backgroundColor: filterRelevant
+                ? "rgb(34, 197, 94)"
+                : "rgba(200, 200, 200, 1)",
+              borderRadius: "34px",
+              transition: "background-color 0.3s ease",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: "0px",
+                left: filterRelevant ? "15px" : "0px",
+                width: "17px",
+                border: "1px solid rgba(217, 217, 217, 1)",
+                height: "17px",
+                backgroundColor: "white",
+                borderRadius: "50%",
+                /*                 transition: "left 0.3s ease", */
+              }}
+            />
+          </div>
+        </div>
+      </div>
 
       <br />
       <br />
@@ -277,7 +409,9 @@ export default function MR() {
                 {mrs.map((mr: any) => {
                   const priority = getPriority(mr.required_date);
                   const daysLeftStyle = getDaysLeftStyle(mr.required_date);
-                  const isCompleted = mr.progress_name === "Completed";
+                  const isCompleted =
+                    mr.progress_name === "Completed" || mr.progress_id === 25;
+                  const hasViewPermission = canViewMR(mr);
 
                   return (
                     <div
@@ -331,36 +465,46 @@ export default function MR() {
                       <br />
 
                       <small>PROJECT</small>
-                      <h3>{mr.project_name}</h3>
+                      <h3>{mr.project_name || "-"}</h3>
 
                       <br />
 
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "25px",
-                        }}
-                      >
+                      {/* Only show required date and days left if NOT completed */}
+                      {!isCompleted ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "25px",
+                          }}
+                        >
+                          <div>
+                            <small>REQUIRED DATE</small>
+                            <h3>
+                              {new Date(mr.required_date).toLocaleDateString()}
+                            </h3>
+                          </div>
+
+                          <h3
+                            style={{
+                              padding: "5px 15px",
+                              backgroundColor: daysLeftStyle.backgroundColor,
+                              color: daysLeftStyle.color,
+                              textTransform: "uppercase",
+                              borderRadius: "5px",
+                            }}
+                          >
+                            {getDaysLeftText(mr.required_date)}
+                          </h3>
+                        </div>
+                      ) : (
                         <div>
                           <small>REQUIRED DATE</small>
                           <h3>
                             {new Date(mr.required_date).toLocaleDateString()}
                           </h3>
                         </div>
-
-                        <h3
-                          style={{
-                            padding: "5px 15px",
-                            backgroundColor: daysLeftStyle.backgroundColor,
-                            color: daysLeftStyle.color,
-                            textTransform: "uppercase",
-                            borderRadius: "5px",
-                          }}
-                        >
-                          {getDaysLeftText(mr.required_date)}
-                        </h3>
-                      </div>
+                      )}
 
                       <br />
 
@@ -371,6 +515,12 @@ export default function MR() {
                         textColor={"white"}
                         full
                         href={`/mr/${mr.id}`}
+                        disabled={!hasViewPermission}
+                        style={{
+                          opacity: !hasViewPermission ? "0.5" : "1",
+                          cursor: !hasViewPermission ? "not-allowed" : "auto",
+                          pointerEvents: !hasViewPermission ? "none" : "auto",
+                        }}
                       >
                         VIEW
                       </Button>

@@ -46,7 +46,8 @@ export default async function MrWithID({
     });
 
   // Check if MR is completed
-  const isCompleted = mrHeader.progress_name === "Completed";
+  const isCompleted =
+    mrHeader.progress_name === "Completed" || mrHeader.progress_id === 25;
 
   // Calculate days left and priority
   const required = new Date(mrHeader.required_date);
@@ -231,19 +232,22 @@ export default async function MrWithID({
             <h2>{new Date(mrHeader.required_date).toLocaleDateString()}</h2>
           </div>
 
-          <div>
-            <h2
-              style={{
-                padding: "5px 15px",
-                backgroundColor: daysLeftStyle.backgroundColor,
-                color: daysLeftStyle.color,
-                textTransform: "uppercase",
-                borderRadius: "5px",
-              }}
-            >
-              {daysLeftText}
-            </h2>
-          </div>
+          {/* Only show days left indicator if NOT completed */}
+          {!isCompleted && (
+            <div>
+              <h2
+                style={{
+                  padding: "5px 15px",
+                  backgroundColor: daysLeftStyle.backgroundColor,
+                  color: daysLeftStyle.color,
+                  textTransform: "uppercase",
+                  borderRadius: "5px",
+                }}
+              >
+                {daysLeftText}
+              </h2>
+            </div>
+          )}
         </div>
       </div>
 

@@ -3,19 +3,17 @@
 import { useEffect, useState } from "react";
 import Button from "@/app/components/Button";
 import { LpoHeader } from "../../types/lpoHeader";
-import DownloadLPOButton from "./_DownloadLPOButton";
 import { LpoPDF } from "../LpoPDF";
 import { pdf } from "@react-pdf/renderer";
-import EditLPOButton from "./_EditLPOButton";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../types/mrHeader";
 
-type ViewLPOButtonProps = {
+type ViewCRButton = {
   lpoID: number;
   mrHeader: MrHeader;
 };
 
-export default function ViewLPOButton({ lpoID, mrHeader }: ViewLPOButtonProps) {
+export default function ViewCRButton({ lpoID, mrHeader }: ViewCRButton) {
   const { userInfo } = useAuth();
 
   const [lpo, setLpo] = useState<LpoHeader | null>(null);
@@ -71,18 +69,7 @@ export default function ViewLPOButton({ lpoID, mrHeader }: ViewLPOButtonProps) {
       textColor={"black"}
       style={{ padding: "7px 20px", borderRadius: "25px" }}
     >
-      LPO
-      {/* <a
-        href={pdfUrl ? pdfUrl : "#"}
-        target="_blank"
-        style={{ display: "flex" }}
-      >
-        <img src={externalLinkIcon} alt="external link" />
-      </a> */}
-      {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
-        <EditLPOButton lpoId={lpoID} />
-      )}
-      <DownloadLPOButton lpoID={lpoID} />
+      CR
     </Button>
   );
 }

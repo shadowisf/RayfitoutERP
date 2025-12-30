@@ -958,23 +958,27 @@ export default function CreateGRNButton({
                             />
                           )}
                         </div>
+                      ) : isViewMode ? (
+                        // Show dash in view mode when no attachment
+                        <span style={{ color: "rgba(150, 150, 150, 1)" }}>
+                          -
+                        </span>
                       ) : (
-                        !isViewMode && (
-                          <Button
-                            componentType={"button"}
-                            bgColor={"rgba(239, 239, 239, 1)"}
-                            borderColor={"rgba(223, 223, 223, 1)"}
-                            textColor={"black"}
-                            style={{ padding: "7px 7px" }}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              openAttachmentModal(index);
-                            }}
-                            disabled={isUploading}
-                          >
-                            <img src={plusIcon} alt="plus" />
-                          </Button>
-                        )
+                        // Show plus button in edit/create mode when no attachment
+                        <Button
+                          componentType={"button"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"rgba(223, 223, 223, 1)"}
+                          textColor={"black"}
+                          style={{ padding: "7px 7px" }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            openAttachmentModal(index);
+                          }}
+                          disabled={isUploading}
+                        >
+                          <img src={plusIcon} alt="plus" />
+                        </Button>
                       )}
                     </td>
                   </tr>
