@@ -82,7 +82,7 @@ export async function POST(req: Request) {
         }
       }
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ id: result.insertId, success: true });
     }
   } catch (err: any) {
     console.error(err.sqlMessage);

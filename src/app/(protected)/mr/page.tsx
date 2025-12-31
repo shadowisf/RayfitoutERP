@@ -26,7 +26,7 @@ export default function MR() {
     /* PAINT */ 6: [1, 5, 25],
     /* DESIGN */ 7: [1, 5, 25],
     /* DIRECTORS/MANAGEMENT */ 8: [1, 3, 5, 10, 11, 25],
-    /* PROCUREMENT */ 9: [1, 5, 7, 11, 12, 25],
+    /* PROCUREMENT */ 9: [1, 5, 7, 11, 12, 13, 16, 25],
     /* FINANCE */ 10: [1, 5, 14, 25],
     /* STOREKEEPER */ 11: [1, 5, 17, 24, 25],
     /* QUALITY CONTORL */ 12: [1, 5, 21, 23, 25],
@@ -44,7 +44,9 @@ export default function MR() {
     7: "Awaiting quotations",
     10: "Awaiting price approval",
     12: "Awaiting LPO & invoice",
+    13: "Payment rejected",
     14: "Pending payment",
+    16: "GRN failed",
     17: "Pending delivery",
     21: "Awaiting QC check",
     23: "Failed QC",
@@ -195,6 +197,8 @@ export default function MR() {
     const rejectedStatuses = [
       "Initial approval rejected",
       "Price approval rejected",
+      "Payment rejected",
+      "GRN failed",
       "Failed QC",
     ];
     return rejectedStatuses.includes(status);
@@ -230,6 +234,8 @@ export default function MR() {
   const allStatuses = [
     "Initial approval rejected",
     "Price approval rejected",
+    "Payment rejected",
+    "GRN failed",
     "Failed QC",
     "Draft",
     "Awaiting initial approval",
@@ -238,7 +244,6 @@ export default function MR() {
     "Awaiting LPO & invoice",
     "Pending payment",
     "Pending delivery",
-    "GRN pending",
     "Awaiting QC check",
     "Awaiting stock entry",
     "Completed",

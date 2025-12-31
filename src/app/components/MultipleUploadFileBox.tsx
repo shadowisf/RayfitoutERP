@@ -164,7 +164,7 @@ export default function MultipleUploadFileBox({
           justifyContent: "center",
           alignItems: "center",
           cursor: "pointer",
-          minHeight: "150px",
+          minHeight: "200px",
         }}
       >
         {hasFiles ? (
@@ -176,87 +176,121 @@ export default function MultipleUploadFileBox({
               gap: "10px",
             }}
           >
-            {files.map((file, index) => {
-              const isImage = file.type.startsWith("image/");
-              const preview = isImage ? previews[index] : null;
+            {/* Separate images and non-images */}
+            {(() => {
+              const imageFiles = files.filter((f) =>
+                f.type.startsWith("image/")
+              );
+              const nonImageFiles = files.filter(
+                (f) => !f.type.startsWith("image/")
+              );
 
               return (
-                <div key={index}>
-                  {isImage && preview ? (
-                    <div
-                      style={{ position: "relative", display: "inline-block" }}
-                    >
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        style={{
-                          maxWidth: "100%",
-                          maxHeight: "100px",
-                          borderRadius: "5px",
-                        }}
-                      />
-                      <Button
-                        componentType={"button"}
-                        bgColor={"rgba(239, 239, 239, 1)"}
-                        borderColor={"rgba(223, 223, 223, 1)"}
-                        textColor={"black"}
-                        style={{
-                          position: "absolute",
-                          top: "5px",
-                          right: "5px",
-                          padding: "7px 7px",
-                        }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          removeFile(index);
-                        }}
-                      >
-                        <img src={trashIcon} alt="trash" />
-                      </Button>
-                    </div>
-                  ) : (
+                <>
+                  {/* Image files in 3-column grid */}
+                  {imageFiles.length > 0 && (
                     <div
                       style={{
                         display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "16px",
-                        backgroundColor: "white",
-                        borderRadius: "8px",
-                        border: "1px solid #e5e7eb",
+                        justifyContent: "center",
+                        gap: "25px",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "10px",
-                          alignItems: "center",
-                        }}
-                      >
-                        <img src={pdfIcon} alt="file" />
-                        <div>
-                          {file.name} <br />
-                          <small>{(file.size / 1024).toFixed(2)} KB</small>
-                        </div>
-                      </div>
-                      <Button
-                        componentType={"button"}
-                        bgColor={"rgba(239, 239, 239, 1)"}
-                        borderColor={"rgba(223, 223, 223, 1)"}
-                        textColor={"black"}
-                        style={{ padding: "7px 7px" }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          removeFile(index);
-                        }}
-                      >
-                        <img src={trashIcon} alt="trash" />
-                      </Button>
+                      {imageFiles.map((file, imgIndex) => {
+                        const fileIndex = files.indexOf(file);
+                        const preview = previews[imgIndex];
+
+                        return (
+                          <div
+                            key={fileIndex}
+                            style={{
+                              position: "relative",
+                              display: "inline-block",
+                            }}
+                          >
+                            <img
+                              src={preview}
+                              alt={`Preview ${fileIndex + 1}`}
+                              style={{
+                                maxHeight: "150px",
+                                maxWidth: "100%",
+                                borderRadius: "5px",
+                                objectFit: "contain",
+                              }}
+                            />
+                            <Button
+                              componentType={"button"}
+                              bgColor={"rgba(239, 239, 239, 1)"}
+                              borderColor={"rgba(223, 223, 223, 1)"}
+                              textColor={"black"}
+                              style={{
+                                position: "absolute",
+                                top: "5px",
+                                right: "5px",
+                                padding: "7px 7px",
+                              }}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                removeFile(fileIndex);
+                              }}
+                            >
+                              <img src={trashIcon} alt="trash" />
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
-                </div>
+
+                  {/* Non-image files stacked vertically */}
+                  {nonImageFiles.map((file) => {
+                    const fileIndex = files.indexOf(file);
+
+                    return (
+                      <div
+                        key={fileIndex}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "16px",
+                          backgroundColor: "white",
+                          borderRadius: "8px",
+                          border: "1px solid #e5e7eb",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "10px",
+                            alignItems: "center",
+                          }}
+                        >
+                          <img src={pdfIcon} alt="file" />
+                          <div>
+                            {file.name} <br />
+                            <small>{(file.size / 1024).toFixed(2)} KB</small>
+                          </div>
+                        </div>
+                        <Button
+                          componentType={"button"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"rgba(223, 223, 223, 1)"}
+                          textColor={"black"}
+                          style={{ padding: "7px 7px" }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            removeFile(fileIndex);
+                          }}
+                        >
+                          <img src={trashIcon} alt="trash" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </>
               );
-            })}
+            })()}
           </div>
         ) : isDragOver ? (
           <div style={{ color: "rgba(34, 150, 100, 1)" }}>DROP HERE</div>
@@ -298,7 +332,6 @@ export default function MultipleUploadFileBox({
                 .replace(/\./g, "")
                 .replace(/,/g, ", ")
                 .toUpperCase()}{" "}
-              (MULTIPLE FILES ALLOWED)
             </small>
           </>
         )}

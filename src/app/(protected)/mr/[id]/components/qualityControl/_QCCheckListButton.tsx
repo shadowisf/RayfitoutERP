@@ -3,8 +3,9 @@
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
+import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 import { toast } from "@/app/components/Toast";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
@@ -26,8 +27,8 @@ type UploadedFile = {
 type CheckpointData = {
   response: CheckpointResponse;
   notes: string;
-  attachment: string | null; // Changed to single attachment
-  pendingFile: UploadedFile | null; // Changed to single file
+  attachments: string[]; // Changed to array
+  pendingFiles: UploadedFile[]; // Changed to array
 };
 
 type GRN = {
@@ -69,7 +70,6 @@ export default function QCCheckListButton({
   const uploadIcon = "/icons/upload.svg";
   const plusIcon = "/icons/plus.svg";
   const trashIcon = "/icons/trash.svg";
-  const externalLinkIcon = "/icons/external-link.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [qcStatus, setQcStatus] = useState<QCStatus>("pending");
@@ -84,7 +84,9 @@ export default function QCCheckListButton({
     [key: number]: CheckpointData;
   }>({});
 
-  const [acceptedQty, setAcceptedQty] = useState<string>("");
+  const [reasonForAdequateProtection, setReasonForAdequateProtection] =
+    useState("");
+  const [acceptedQty, setAcceptedQty] = useState("");
   const [qcStatusSelection, setQcStatusSelection] = useState<
     "passed" | "failed" | null
   >(null);
@@ -101,17 +103,14 @@ export default function QCCheckListButton({
   // Track attachments marked for deletion
   const [attachmentsToDelete, setAttachmentsToDelete] = useState<string[]>([]);
 
-  // File input refs for each checkpoint
-  const fileInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
-
   useEffect(() => {
     const initialData: { [key: number]: CheckpointData } = {};
     checkpoints.forEach((_, index) => {
       initialData[index] = {
         response: null,
         notes: "",
-        attachment: null,
-        pendingFile: null,
+        attachments: [], // Initialize as array
+        pendingFiles: [], // Initialize as array
       };
     });
     setCheckpointData(initialData);
@@ -181,13 +180,12 @@ export default function QCCheckListButton({
       );
       const data = await res.json();
 
-      console.log("QC data response:", data);
-
       if (data.success && data.data) {
         const qcData = data.data;
 
         setAcceptedQty(qcData.accepted_quantity?.toString() || "");
         setQcStatusSelection(qcData.qc_status);
+        setReasonForAdequateProtection(qcData.reason_for_added_protection);
 
         if (qcData.qc_status === "failed") {
           setFailureReasons({
@@ -206,42 +204,37 @@ export default function QCCheckListButton({
           qcData.checkpoints.forEach((cp: any) => {
             const index = cp.checkpoint_number - 1;
 
-            // Parse attachment (single URL)
-            let attachmentUrl: string | null = null;
+            // Parse attachments (now expecting an array)
+            let attachmentUrls: string[] = [];
             if (cp.attachments) {
               try {
-                if (
-                  typeof cp.attachments === "string" &&
-                  cp.attachments.startsWith("http")
-                ) {
-                  attachmentUrl = cp.attachments;
-                } else if (typeof cp.attachments === "string") {
+                if (typeof cp.attachments === "string") {
                   const parsed = JSON.parse(cp.attachments);
-                  attachmentUrl = Array.isArray(parsed) ? parsed[0] : parsed;
+                  attachmentUrls = Array.isArray(parsed) ? parsed : [parsed];
                 } else if (Array.isArray(cp.attachments)) {
-                  attachmentUrl = cp.attachments[0];
+                  attachmentUrls = cp.attachments;
                 }
               } catch (error) {
                 console.error(
-                  "Error parsing attachment for checkpoint",
+                  "Error parsing attachments for checkpoint",
                   index,
                   ":",
                   error
                 );
-                attachmentUrl = null;
+                attachmentUrls = [];
               }
             }
 
             loadedCheckpoints[index] = {
               response: cp.response,
               notes: cp.notes || "",
-              attachment: attachmentUrl,
-              pendingFile: null,
+              attachments: attachmentUrls,
+              pendingFiles: [],
             };
 
             console.log(
-              `Loaded checkpoint ${index} with attachment:`,
-              attachmentUrl
+              `Loaded checkpoint ${index} with ${attachmentUrls.length} attachments:`,
+              attachmentUrls
             );
           });
 
@@ -408,26 +401,32 @@ export default function QCCheckListButton({
     }));
   };
 
-  // Handle file selection
+  // Handle multiple file selection
   const handleFileSelect = (
     index: number,
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    const preview = file.type.startsWith("image/")
-      ? URL.createObjectURL(file)
-      : "";
+    const newFiles: UploadedFile[] = [];
+
+    Array.from(files).forEach((file) => {
+      const preview = file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : "";
+
+      newFiles.push({
+        file,
+        preview,
+      });
+    });
 
     setCheckpointData((prev) => ({
       ...prev,
       [index]: {
         ...prev[index],
-        pendingFile: {
-          file,
-          preview,
-        },
+        pendingFiles: [...prev[index].pendingFiles, ...newFiles],
       },
     }));
 
@@ -435,20 +434,26 @@ export default function QCCheckListButton({
     e.target.value = "";
   };
 
-  // Remove pending file
-  const removePendingFile = (checkpointIndex: number) => {
+  // Remove pending file by index
+  const removePendingFile = (checkpointIndex: number, fileIndex: number) => {
     setCheckpointData((prev) => ({
       ...prev,
       [checkpointIndex]: {
         ...prev[checkpointIndex],
-        pendingFile: null,
+        pendingFiles: prev[checkpointIndex].pendingFiles.filter(
+          (_, idx) => idx !== fileIndex
+        ),
       },
     }));
   };
 
-  // Remove uploaded attachment - only marks for deletion
-  const removeAttachment = (checkpointIndex: number) => {
-    const urlToDelete = checkpointData[checkpointIndex].attachment;
+  // Remove uploaded attachment by index
+  const removeAttachment = (
+    checkpointIndex: number,
+    attachmentIndex: number
+  ) => {
+    const urlToDelete =
+      checkpointData[checkpointIndex].attachments[attachmentIndex];
 
     if (urlToDelete) {
       // Mark the URL for deletion
@@ -459,7 +464,9 @@ export default function QCCheckListButton({
         ...prev,
         [checkpointIndex]: {
           ...prev[checkpointIndex],
-          attachment: null,
+          attachments: prev[checkpointIndex].attachments.filter(
+            (_, idx) => idx !== attachmentIndex
+          ),
         },
       }));
     }
@@ -515,32 +522,41 @@ export default function QCCheckListButton({
 
   // Upload all pending files for all checkpoints
   const uploadAllPendingFiles = async () => {
-    const filesToUpload: { [key: number]: File } = {};
+    const allFilesToUpload: File[] = [];
+    const checkpointFileMap: { [checkpointIndex: number]: number[] } = {};
 
     // Collect all files that need to be uploaded
     Object.keys(checkpointData).forEach((key) => {
       const checkpointIndex = parseInt(key);
       const checkpoint = checkpointData[checkpointIndex];
 
-      if (checkpoint.pendingFile) {
-        filesToUpload[checkpointIndex] = checkpoint.pendingFile.file;
+      if (checkpoint.pendingFiles.length > 0) {
+        const startIndex = allFilesToUpload.length;
+        checkpoint.pendingFiles.forEach((pf) => {
+          allFilesToUpload.push(pf.file);
+        });
+        const endIndex = allFilesToUpload.length;
+
+        // Map which uploaded URLs belong to which checkpoint
+        checkpointFileMap[checkpointIndex] = Array.from(
+          { length: endIndex - startIndex },
+          (_, i) => startIndex + i
+        );
       }
     });
 
     // Upload all files
-    if (Object.keys(filesToUpload).length > 0) {
+    if (allFilesToUpload.length > 0) {
       try {
         const formData = new FormData();
 
         // Add all files to FormData
-        Object.values(filesToUpload).forEach((file) => {
+        allFilesToUpload.forEach((file) => {
           formData.append("files", file);
         });
 
         // Add folder parameter
         formData.append("folder", "qc-attachments");
-
-        console.log("Uploading files to S3...");
 
         // Upload to S3
         const response = await fetch("/api/s3", {
@@ -559,21 +575,21 @@ export default function QCCheckListButton({
 
         // Create updated checkpoint data with new attachments
         const updatedCheckpointData = { ...checkpointData };
-        let urlIndex = 0;
 
-        Object.keys(filesToUpload).forEach((key) => {
+        Object.keys(checkpointFileMap).forEach((key) => {
           const checkpointIndex = parseInt(key);
-          const uploadedUrl = uploadedUrls[urlIndex];
+          const fileIndices = checkpointFileMap[checkpointIndex];
+
+          const newUrls = fileIndices.map((idx) => uploadedUrls[idx]);
 
           updatedCheckpointData[checkpointIndex] = {
             ...updatedCheckpointData[checkpointIndex],
-            attachment: uploadedUrl,
-            pendingFile: null,
+            attachments: [
+              ...updatedCheckpointData[checkpointIndex].attachments,
+              ...newUrls,
+            ],
+            pendingFiles: [],
           };
-
-          console.log(`Checkpoint ${checkpointIndex} attachment:`, uploadedUrl);
-
-          urlIndex++;
         });
 
         // Update state
@@ -644,6 +660,7 @@ export default function QCCheckListButton({
         lpo_mr_line_id: lpoMrLineId,
         lpo_id: existingLpoId,
         checked_by: userInfo?.name || "",
+        reason_for_added_protection: reasonForAdequateProtection,
         accepted_quantity: acceptedQty,
         qc_status: qcStatusSelection,
         checkpoints: updatedCheckpointData,
@@ -651,8 +668,6 @@ export default function QCCheckListButton({
           failure_reasons: failureReasons,
         }),
       };
-
-      console.log("QC Data being sent:", JSON.stringify(qcData, null, 2));
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc`,
@@ -674,6 +689,7 @@ export default function QCCheckListButton({
         );
         setIsOpen(false);
         setQcStatus(qcStatusSelection);
+        setReasonForAdequateProtection("");
 
         // Clear the attachments to delete list
         setAttachmentsToDelete([]);
@@ -704,16 +720,67 @@ export default function QCCheckListButton({
     setIsOpen(false);
   };
 
+  // State for upload popup
+  const [uploadPopupOpen, setUploadPopupOpen] = useState(false);
+  const [currentUploadCheckpoint, setCurrentUploadCheckpoint] = useState<
+    number | null
+  >(null);
+  const [tempUploadFiles, setTempUploadFiles] = useState<File[] | null>(null);
+
+  // Open upload popup
+  const openUploadPopup = (checkpointIndex: number) => {
+    setCurrentUploadCheckpoint(checkpointIndex);
+    setTempUploadFiles(null);
+    setUploadPopupOpen(true);
+  };
+
+  // Confirm upload from popup
+  const confirmUpload = () => {
+    if (
+      currentUploadCheckpoint === null ||
+      !tempUploadFiles ||
+      tempUploadFiles.length === 0
+    ) {
+      toast("Please select files to upload", "error");
+      return;
+    }
+
+    const newFiles: UploadedFile[] = tempUploadFiles.map((file) => {
+      const preview = file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : "";
+
+      return {
+        file,
+        preview,
+      };
+    });
+
+    setCheckpointData((prev) => ({
+      ...prev,
+      [currentUploadCheckpoint]: {
+        ...prev[currentUploadCheckpoint],
+        pendingFiles: [
+          ...prev[currentUploadCheckpoint].pendingFiles,
+          ...newFiles,
+        ],
+      },
+    }));
+
+    setUploadPopupOpen(false);
+    setCurrentUploadCheckpoint(null);
+    setTempUploadFiles(null);
+  };
+
   // Render attachment cell content
   const renderAttachmentCell = (index: number) => {
     const checkpoint = checkpointData[index];
-    const hasAttachment = checkpoint?.attachment;
-    const hasPendingFile = checkpoint?.pendingFile;
+    const hasAttachments = checkpoint?.attachments.length > 0;
+    const hasPendingFiles = checkpoint?.pendingFiles.length > 0;
     const response = checkpoint?.response;
 
-    // Only show upload button if response is "no" and there's no attachment/pending file
-    const showUploadButton =
-      response === "no" && !hasAttachment && !hasPendingFile;
+    // Always show upload button if response is "no"
+    const showUploadButton = response === "no";
 
     return (
       <div
@@ -724,238 +791,228 @@ export default function QCCheckListButton({
           alignItems: "center",
         }}
       >
-        {/* Uploaded attachment */}
-        {hasAttachment && (
+        {/* Uploaded attachments */}
+        {hasAttachments && (
           <div
             style={{
-              position: "relative",
-              display: "inline-block",
-              maxWidth: "100px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+              width: "100%",
             }}
           >
-            {isImageFile(hasAttachment) ? (
-              <img
-                src={hasAttachment}
-                alt="attachment"
-                style={{
-                  maxWidth: "100px",
-                  maxHeight: "100px",
-                  borderRadius: "5px",
-                  objectFit: "contain",
-                }}
-              />
-            ) : (
+            {checkpoint.attachments.map((attachmentUrl, attachmentIndex) => (
               <div
+                key={`attachment-${attachmentIndex}`}
                 style={{
-                  width: "100px",
-                  height: "100px",
+                  position: "relative",
                   display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: "#f3f4f6",
-                  borderRadius: "5px",
-                  padding: "10px",
-                  textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: "12px", fontWeight: "bold" }}>
-                  {getFileNameFromUrl(hasAttachment)
-                    .split(".")
-                    .pop()
-                    ?.toUpperCase()}
-                </div>
-                <div
-                  style={{
-                    fontSize: "10px",
-                    marginTop: "4px",
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {getFileNameFromUrl(hasAttachment).substring(0, 20)}
-                </div>
+                {isImageFile(attachmentUrl) ? (
+                  <div
+                    style={{ position: "relative", display: "inline-block" }}
+                  >
+                    <img
+                      src={attachmentUrl}
+                      alt="attachment"
+                      style={{
+                        maxHeight: "100px",
+                        borderRadius: "5px",
+                        objectFit: "contain",
+                      }}
+                    />
+                    <Button
+                      componentType={"button"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"rgba(223, 223, 223, 1)"}
+                      textColor={"black"}
+                      style={{
+                        position: "absolute",
+                        top: "5px",
+                        right: "5px",
+                        padding: "7px 7px",
+                        minWidth: "auto",
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeAttachment(index, attachmentIndex);
+                      }}
+                    >
+                      <img
+                        src={trashIcon}
+                        alt="remove"
+                        style={{ width: "12px", height: "12px" }}
+                      />
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "16px",
+                      backgroundColor: "#f3f4f6",
+                      borderRadius: "8px",
+                      width: "100%",
+                      maxWidth: "300px",
+                    }}
+                  >
+                    <div style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      {getFileNameFromUrl(attachmentUrl)
+                        .split(".")
+                        .pop()
+                        ?.toUpperCase()}{" "}
+                      - {getFileNameFromUrl(attachmentUrl).substring(0, 20)}...
+                    </div>
+                    <Button
+                      componentType={"button"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"rgba(223, 223, 223, 1)"}
+                      textColor={"black"}
+                      style={{
+                        padding: "7px 7px",
+                        minWidth: "auto",
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeAttachment(index, attachmentIndex);
+                      }}
+                    >
+                      <img
+                        src={trashIcon}
+                        alt="remove"
+                        style={{ width: "12px", height: "12px" }}
+                      />
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
-
-            <Button
-              componentType={"button"}
-              bgColor={"rgba(239, 239, 239, 1)"}
-              borderColor={"rgba(223, 223, 223, 1)"}
-              textColor={"black"}
-              style={{
-                position: "absolute",
-                top: "5px",
-                right: "5px",
-                padding: "7px 7px",
-                minWidth: "auto",
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                removeAttachment(index);
-              }}
-            >
-              <img
-                src={trashIcon}
-                alt="remove"
-                style={{ width: "12px", height: "12px" }}
-              />
-            </Button>
-
-            {/* <Button
-              componentType={"link"}
-              bgColor={"rgba(239, 239, 239, 1)"}
-              borderColor={"rgba(223, 223, 223, 1)"}
-              textColor={"black"}
-              style={{
-                position: "absolute",
-                bottom: "-5px",
-                right: "-5px",
-                padding: "5px 5px",
-                minWidth: "auto",
-              }}
-              href={hasAttachment}
-              target="_blank"
-            >
-              <img
-                src={externalLinkIcon}
-                alt="view"
-                style={{ width: "12px", height: "12px" }}
-              />
-            </Button> */}
+            ))}
           </div>
         )}
 
-        {/* Pending file (not uploaded yet) */}
-        {hasPendingFile && !hasAttachment && (
+        {/* Pending files (not uploaded yet) */}
+        {hasPendingFiles && (
           <div
             style={{
-              position: "relative",
-              display: "inline-block",
-              maxWidth: "100px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+              width: "100%",
             }}
           >
-            {hasPendingFile.preview ? (
-              <img
-                src={hasPendingFile.preview}
-                alt="preview"
-                style={{
-                  maxWidth: "100px",
-                  maxHeight: "100px",
-                  borderRadius: "5px",
-                  objectFit: "contain",
-                }}
-              />
-            ) : (
+            {checkpoint.pendingFiles.map((pendingFile, fileIndex) => (
               <div
+                key={`pending-${fileIndex}`}
                 style={{
-                  width: "100px",
-                  height: "100px",
+                  position: "relative",
                   display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: "#f9fafb",
-                  borderRadius: "5px",
-                  padding: "10px",
-                  textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: "12px", fontWeight: "bold" }}>
-                  {hasPendingFile.file.name.split(".").pop()?.toUpperCase()}
-                </div>
-                <div
-                  style={{
-                    marginTop: "4px",
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {hasPendingFile.file.name.substring(0, 20)}
-                </div>
+                {pendingFile.preview ? (
+                  <div
+                    style={{ position: "relative", display: "inline-block" }}
+                  >
+                    <img
+                      src={pendingFile.preview}
+                      alt="preview"
+                      style={{
+                        maxHeight: "100px",
+                        borderRadius: "5px",
+                        objectFit: "contain",
+                      }}
+                    />
+                    <Button
+                      componentType={"button"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"rgba(223, 223, 223, 1)"}
+                      textColor={"black"}
+                      style={{
+                        position: "absolute",
+                        top: "5px",
+                        right: "5px",
+                        padding: "7px 7px",
+                        minWidth: "auto",
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removePendingFile(index, fileIndex);
+                      }}
+                    >
+                      <img
+                        src={trashIcon}
+                        alt="remove"
+                        style={{ width: "12px", height: "12px" }}
+                      />
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "16px",
+                      backgroundColor: "#f9fafb",
+                      borderRadius: "8px",
+                      width: "100%",
+                      maxWidth: "300px",
+                    }}
+                  >
+                    <div style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      {pendingFile.file.name.split(".").pop()?.toUpperCase()} -{" "}
+                      {pendingFile.file.name.substring(0, 20)}...
+                    </div>
+                    <Button
+                      componentType={"button"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"rgba(223, 223, 223, 1)"}
+                      textColor={"black"}
+                      style={{
+                        padding: "7px 7px",
+                        minWidth: "auto",
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removePendingFile(index, fileIndex);
+                      }}
+                    >
+                      <img
+                        src={trashIcon}
+                        alt="remove"
+                        style={{ width: "12px", height: "12px" }}
+                      />
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
-
-            <Button
-              componentType={"button"}
-              bgColor={"rgba(239, 239, 239, 1)"}
-              borderColor={"rgba(223, 223, 223, 1)"}
-              textColor={"black"}
-              style={{
-                position: "absolute",
-                top: "5px",
-                right: "5px",
-                padding: "7px 7px",
-                minWidth: "auto",
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                removePendingFile(index);
-              }}
-            >
-              <img
-                src={trashIcon}
-                alt="remove"
-                style={{ width: "12px", height: "12px" }}
-              />
-            </Button>
-
-            {/* <Button
-              componentType={"button"}
-              bgColor={"rgba(239, 239, 239, 1)"}
-              borderColor={"rgba(223, 223, 223, 1)"}
-              textColor={"black"}
-              style={{
-                position: "absolute",
-                bottom: "-5px",
-                right: "-5px",
-                padding: "5px 5px",
-                minWidth: "auto",
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                const fileUrl = URL.createObjectURL(hasPendingFile.file);
-                window.open(fileUrl, "_blank");
-              }}
-            >
-              <img
-                src={externalLinkIcon}
-                alt="view"
-                style={{ width: "12px", height: "12px" }}
-              />
-            </Button> */}
+            ))}
           </div>
         )}
 
-        {/* Upload button - only shown when response is "no" and no attachment exists */}
+        {/* Upload button - shown when response is "no" */}
         {showUploadButton && (
-          <>
-            <input
-              type="file"
-              ref={(el) => {
-                fileInputRefs.current[index] = el;
-              }}
-              onChange={(e) => handleFileSelect(index, e)}
-              accept="image/*,.pdf"
-              style={{ display: "none" }}
+          <Button
+            componentType="button"
+            bgColor="rgba(239, 239, 239, 1)"
+            borderColor="rgba(223, 223, 223, 1)"
+            textColor="black"
+            onClick={(e) => {
+              e.preventDefault();
+              openUploadPopup(index);
+            }}
+            style={{ padding: "7px 7px" }}
+          >
+            <img
+              src={uploadIcon}
+              alt="upload"
+              style={{ filter: "invert(1)" }}
             />
-
-            <Button
-              componentType="button"
-              bgColor="rgba(239, 239, 239, 1)"
-              borderColor="rgba(223, 223, 223, 1)"
-              textColor="black"
-              onClick={(e) => {
-                e.preventDefault();
-                fileInputRefs.current[index]?.click();
-              }}
-              style={{ padding: "7px 7px" }}
-            >
-              <img
-                src={uploadIcon}
-                alt="upload"
-                style={{ filter: "invert(1)" }}
-              />
-            </Button>
-          </>
+          </Button>
         )}
       </div>
     );
@@ -1096,6 +1153,7 @@ export default function QCCheckListButton({
           type={"text"}
           placeholder={"ENTER NOTES"}
           required={false}
+          noOptionalLabel
           onChange={(e) => handleNotesChange(index, e.target.value)}
         />
       </td>
@@ -1129,7 +1187,7 @@ export default function QCCheckListButton({
             <th>NO</th>
             <th>N/A</th>
             <th style={{ minWidth: "500px" }}>NOTES</th>
-            <th>ATTACHMENT</th>
+            <th>ATTACHMENTS</th>
           </tr>
         </thead>
         <tbody>
@@ -1141,6 +1199,15 @@ export default function QCCheckListButton({
 
       <br />
       <br />
+
+      <div className="input-row full">
+        <InputItem
+          label={"REASON FOR ADDING ADEQUATE WRAPPING / PROTECTION"}
+          value={reasonForAdequateProtection}
+          type={"text"}
+          onChange={(e) => setReasonForAdequateProtection(e.target.value)}
+        />
+      </div>
 
       <div className="input-row four-col">
         <InputItem
@@ -1250,12 +1317,39 @@ export default function QCCheckListButton({
 
         {isOpen && (
           <FormPopUp
-            header="QUALITY CONTROL CHECKLIST"
+            header={`QUALITY CONTROL CHECKLIST FOR ${item.material_description}`}
             setIsOpen={handleModalClose}
             handleSubmit={handleSubmit}
             addButtonLabel={"CONFIRM"}
           >
             {formContent}
+          </FormPopUp>
+        )}
+
+        {uploadPopupOpen && (
+          <FormPopUp
+            header="UPLOAD ATTACHMENTS"
+            setIsOpen={() => {
+              setUploadPopupOpen(false);
+              setCurrentUploadCheckpoint(null);
+              setTempUploadFiles(null);
+            }}
+            handleSubmit={(e) => {
+              e.preventDefault();
+              confirmUpload();
+            }}
+            addButtonLabel={"CONFIRM"}
+          >
+            <div className="input-row full">
+              <MultipleUploadFileBox
+                fileState={tempUploadFiles}
+                setFileState={setTempUploadFiles}
+                label="ATTACHMENTS"
+                required={false}
+                acceptedFileTypes=".jpg,.jpeg,.png,.webp"
+                buttonLabel="UPLOAD FILES"
+              />
+            </div>
           </FormPopUp>
         )}
       </>
@@ -1298,6 +1392,31 @@ export default function QCCheckListButton({
             {formContent}
           </FormPopUp>
         )}
+
+        {uploadPopupOpen && (
+          <FormPopUp
+            header="UPLOAD ATTACHMENTS"
+            setIsOpen={() => {
+              setUploadPopupOpen(false);
+              setCurrentUploadCheckpoint(null);
+              setTempUploadFiles(null);
+            }}
+            handleSubmit={(e) => {
+              e.preventDefault();
+              confirmUpload();
+            }}
+            addButtonLabel={"ADD FILES"}
+          >
+            <MultipleUploadFileBox
+              fileState={tempUploadFiles}
+              setFileState={setTempUploadFiles}
+              label="ATTACHMENTS"
+              required={false}
+              acceptedFileTypes="image/*,.pdf"
+              buttonLabel="UPLOAD FILES"
+            />
+          </FormPopUp>
+        )}
       </>
     );
   }
@@ -1320,12 +1439,39 @@ export default function QCCheckListButton({
 
       {isOpen && (
         <FormPopUp
-          header="QUALITY CONTROL CHECKLIST"
+          header={`QUALITY CONTROL CHECKLIST FOR ${item.material_description}`}
           setIsOpen={handleModalClose}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
           {formContent}
+        </FormPopUp>
+      )}
+
+      {uploadPopupOpen && (
+        <FormPopUp
+          header="UPLOAD ATTACHMENTS"
+          setIsOpen={() => {
+            setUploadPopupOpen(false);
+            setCurrentUploadCheckpoint(null);
+            setTempUploadFiles(null);
+          }}
+          handleSubmit={(e) => {
+            e.preventDefault();
+            confirmUpload();
+          }}
+          addButtonLabel={"CONFIRM"}
+        >
+          <div className="input-row full">
+            <MultipleUploadFileBox
+              fileState={tempUploadFiles}
+              setFileState={setTempUploadFiles}
+              label="ATTACHMENTS"
+              required={false}
+              acceptedFileTypes=".jpg,.jpeg,.png,.webp"
+              buttonLabel="UPLOAD FILES"
+            />
+          </div>
         </FormPopUp>
       )}
     </>

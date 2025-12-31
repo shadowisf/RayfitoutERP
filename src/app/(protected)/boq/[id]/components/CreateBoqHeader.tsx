@@ -68,7 +68,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
 
   return (
     <>
-      <h2>CREATE BILL OF QUANTITY HEADER</h2>
+      <h2>CREATE BILL OF QUANTITY</h2>
 
       <br />
 
@@ -110,7 +110,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
 
           <div className="input-row three-col">
             <InputItem
-              label={"CLIENT NAME (OPTIONAL)"}
+              label={"CLIENT NAME"}
               value={clientName}
               type={"text"}
               placeholder={"ENTER CLIENT NAME"}
@@ -132,7 +132,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
             />
 
             <InputItem
-              label={"DATE (OPTIONAL)"}
+              label={"DATE"}
               value={date}
               type={"date"}
               placeholder={"ENTER DATE"}
@@ -188,7 +188,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
               textColor={"white"}
               type="submit"
             >
-              ADD BILL OF QUANTITY HEADER
+              CONFIRM
             </Button>
           </div>
         </form>

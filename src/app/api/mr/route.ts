@@ -206,7 +206,15 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitForLPOResubmission") {
-      await db.query(`UPDATE mr_headers SET progress_id = 22 WHERE id = ?`, [
+      await db.query(`UPDATE mr_headers SET progress_id = 13 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForLPOResubmissionGRNFail") {
+      await db.query(`UPDATE mr_headers SET progress_id = 16 WHERE id = ?`, [
         body.id,
       ]);
 

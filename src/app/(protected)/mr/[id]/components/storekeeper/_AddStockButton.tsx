@@ -34,13 +34,13 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
 
   const [isOpen, setIsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isCreateInventoryItemOpen, setIsCreateInventoryItemOpen] =
-    useState(false);
+
   const [existingStock, setExistingStock] = useState<ExistingStock | null>(
     null
   );
 
   const [inventoryItemValues, setInventoryItemValues] = useState<any>([]);
+  const [locationValues, setLocationValues] = useState<any[]>([]);
 
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
@@ -48,6 +48,17 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
 
   useEffect(() => {
     fetchInventoryItems();
+  }, []);
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
+      method: "GET",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const names = data.map((item: any) => item.name);
+        setLocationValues(names);
+      });
   }, []);
 
   const fetchInventoryItems = async () => {
@@ -260,7 +271,11 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
 
       {isOpen && (
         <FormPopUp
-          header={isEditMode ? "UPDATE STOCK" : "ADD STOCK"}
+          header={
+            isEditMode
+              ? `UPDATE STOCK FOR ${mrLine.material_description}`
+              : `ADD STOCK FOR ${mrLine.material_description}`
+          }
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
@@ -365,8 +380,8 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
               selectOptions={[
                 "Headquarters",
                 "Umm Al Quwain Warehouse",
-                mrLine.project_name,
-              ].filter(Boolean)}
+                ...locationValues,
+              ]}
             />
           </div>
 

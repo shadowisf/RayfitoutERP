@@ -75,7 +75,9 @@ export async function POST(req: Request) {
         vat_rate = ?,
         vat = ?,
         shipping_and_handling = ?,
-        total = ?
+        total = ?,
+        payment_status = NULL,
+        payment_reject_comment = NULL
       WHERE id = ?
     `;
 

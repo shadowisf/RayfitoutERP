@@ -37,6 +37,7 @@ import QCRecheckButton from "./procurement/_QCRecheckButton";
 import ResolutionButton from "./procurement/_AddResolutionButton";
 import CancelMaterialRequestButton from "./_CancelMaterialRequest";
 import SubmitForLPOResubmissionButton from "./finance/_SubmitForLPOResubmission";
+import SubmitForLPOResubmissionGRNFailButton from "./storekeeper/_SubmitForLPOResubmissionGRNFail";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -122,6 +123,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     [itemId: number]: boolean;
   }>({});
   const [isCheckingInventory, setIsCheckingInventory] = useState<boolean>(true);
+  // Add this state near the other state declarations at the top
+  const [grnQuantityMismatch, setGrnQuantityMismatch] = useState<{
+    [supplierId: number]: boolean;
+  }>({});
+  const [isCheckingGrnQuantity, setIsCheckingGrnQuantity] =
+    useState<boolean>(true);
 
   // Regroup mrLines based on progress_id
   useEffect(() => {
@@ -157,6 +164,203 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     activeCategory === "ALL"
       ? regroupedMrLines[categories[0]] || {}
       : regroupedMrLines[activeCategory] || {};
+
+  // Add this useEffect after the other useEffect hooks
+  useEffect(() => {
+    async function checkGrnQuantityMismatch() {
+      if (mrHeader.progress_id !== 17) {
+        setIsCheckingGrnQuantity(false);
+        return;
+      }
+
+      setIsCheckingGrnQuantity(true);
+      const mismatchMap: { [supplierId: number]: boolean } = {};
+
+      try {
+        const uniqueSuppliers = new Map<number, MrLine[]>();
+
+        // Collect unique suppliers along with their items
+        for (const category in mrLines) {
+          for (const subCategory in mrLines[category]) {
+            for (const supplier in mrLines[category][subCategory]) {
+              const items = mrLines[category][subCategory][supplier];
+              if (items.length > 0) {
+                const supplierId = items[0].approved_supplier_id;
+                if (supplierId) {
+                  if (!uniqueSuppliers.has(supplierId)) {
+                    uniqueSuppliers.set(supplierId, []);
+                  }
+                  uniqueSuppliers.get(supplierId)?.push(...items);
+                }
+              }
+            }
+          }
+        }
+
+        const checkPromises = Array.from(uniqueSuppliers.entries()).map(
+          async ([supplierId, supplierItems]) => {
+            try {
+              // Get LPO
+              const lpoResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    mr_header_id: mrHeader.id,
+                    supplier_id: supplierId,
+                  }),
+                }
+              );
+
+              if (lpoResponse.ok) {
+                const lpoData = await lpoResponse.json();
+
+                if (
+                  lpoData.success &&
+                  lpoData.data &&
+                  lpoData.data.length > 0
+                ) {
+                  const lpo = lpoData.data[0];
+
+                  // Get GRN details
+                  const grnResponse = await fetch(
+                    `${process.env.NEXT_PUBLIC_BASE_URL}/api/grn/getGRNDetailsByLPOID`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ lpo_id: lpo.id }),
+                    }
+                  );
+
+                  if (grnResponse.ok) {
+                    const grnData = await grnResponse.json();
+
+                    if (grnData.success && grnData.data && grnData.data.id) {
+                      // Get LPO details to get the mr_line_id mapping
+                      const lpoDetailsResponse = await fetch(
+                        `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPODetails`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ lpo_id: lpo.id }),
+                        }
+                      );
+
+                      if (lpoDetailsResponse.ok) {
+                        const lpoDetailsData = await lpoDetailsResponse.json();
+
+                        if (
+                          lpoDetailsData.success &&
+                          lpoDetailsData.data &&
+                          lpoDetailsData.data.lpo_mr_lines
+                        ) {
+                          // Check if grn_lines exists and is an array (FIX: changed from grn_mr_lines to grn_lines)
+                          if (
+                            !grnData.data.grn_lines ||
+                            !Array.isArray(grnData.data.grn_lines)
+                          ) {
+                            console.log(
+                              `No GRN lines found for supplier ${supplierId}`
+                            );
+                            mismatchMap[supplierId] = false;
+                            return;
+                          }
+
+                          // Now check for mismatches (FIX: changed from grn_mr_lines to grn_lines)
+                          const hasMismatch = grnData.data.grn_lines.some(
+                            (grnLine: any) => {
+                              // Find the lpo_mr_line
+                              const lpoMrLine =
+                                lpoDetailsData.data.lpo_mr_lines.find(
+                                  (line: any) =>
+                                    line.id === grnLine.lpo_mr_line_id
+                                );
+
+                              if (lpoMrLine) {
+                                // Find the corresponding mr_line from supplierItems
+                                const correspondingMrLine = supplierItems.find(
+                                  (item) => item.id === lpoMrLine.mr_line_id
+                                );
+
+                                if (correspondingMrLine) {
+                                  const orderedQty =
+                                    parseFloat(
+                                      String(correspondingMrLine.quantity)
+                                    ) || 0;
+                                  const receivedQty =
+                                    parseFloat(
+                                      String(grnLine.received_quantity)
+                                    ) || 0;
+
+                                  const isMismatch = orderedQty !== receivedQty;
+
+                                  console.log(
+                                    `Supplier ${supplierId}, Item ${correspondingMrLine.id}: Ordered=${orderedQty}, Received=${receivedQty}, Mismatch=${isMismatch}`
+                                  );
+
+                                  return isMismatch;
+                                }
+                              }
+                              return false;
+                            }
+                          );
+
+                          mismatchMap[supplierId] = hasMismatch;
+                          console.log(
+                            `Supplier ${supplierId} final mismatch: ${hasMismatch}`
+                          );
+                        } else {
+                          mismatchMap[supplierId] = false;
+                        }
+                      } else {
+                        mismatchMap[supplierId] = false;
+                      }
+                    } else {
+                      mismatchMap[supplierId] = false;
+                    }
+                  } else {
+                    mismatchMap[supplierId] = false;
+                  }
+                } else {
+                  mismatchMap[supplierId] = false;
+                }
+              } else {
+                mismatchMap[supplierId] = false;
+              }
+            } catch (error) {
+              console.error(
+                `Error checking GRN quantity for supplier ${supplierId}:`,
+                error
+              );
+              mismatchMap[supplierId] = false;
+            }
+          }
+        );
+
+        await Promise.all(checkPromises);
+
+        console.log("Final mismatchMap:", mismatchMap);
+
+        setGrnQuantityMismatch(mismatchMap);
+      } catch (error) {
+        console.error("Error checking GRN quantity mismatches:", error);
+      } finally {
+        setIsCheckingGrnQuantity(false);
+      }
+    }
+
+    checkGrnQuantityMismatch();
+  }, [mrLines, mrHeader.progress_id, mrHeader.id]);
+
+  // Add this function to check if any supplier has quantity mismatch
+  function hasAnyGrnQuantityMismatch() {
+    if (isCheckingGrnQuantity) return false;
+
+    return Object.values(grnQuantityMismatch).some(
+      (hasMismatch) => hasMismatch
+    );
+  }
 
   useEffect(() => {
     const supplierGroups: GroupedMrLinesBySupplier = {};
@@ -336,7 +540,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
   useEffect(() => {
     async function checkLpoInvoices() {
-      if (mrHeader.progress_id !== 12) {
+      if (
+        mrHeader.progress_id !== 12 &&
+        mrHeader.progress_id !== 13 &&
+        mrHeader.progress_id !== 16
+      ) {
         setIsCheckingLpoInvoices(false);
         return;
       }
@@ -2049,10 +2257,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   <IssueLPOButton mrHeader={mrHeader} mrLines={items} />
                 )}
 
-                {userInfo?.departmentID === 10 &&
-                  mrHeader.progress_id === 14 && (
+                {(userInfo?.departmentID === 10 ||
+                  userInfo?.departmentID === 11) &&
+                  (mrHeader.progress_id === 13 ||
+                    mrHeader.progress_id === 14) && (
                     <PaymentButtons
-                      mrHeaderId={mrHeader.id}
+                      mrHeader={mrHeader}
                       mrLine={items[0]}
                       supplierId={items[0].approved_supplier_id}
                       portalTarget={document.getElementById(
@@ -2062,8 +2272,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   )}
 
                 {(mrHeader.progress_id >= 18 ||
-                  (mrHeader.progress_id === 17 &&
-                    userInfo?.departmentID === 11)) && (
+                  mrHeader.progress_id === 17 ||
+                  mrHeader.progress_id === 16) && (
                   <CreateGRNButton
                     mrHeader={mrHeader}
                     mrLines={items}
@@ -2121,9 +2331,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                         "-"
                       )}
                     </td>
-                    <td>
-                      <NotesPopUp item={item} />
-                    </td>
+                    <td>{item.notes ? <NotesPopUp item={item} /> : "-"}</td>
 
                     {mrHeader.progress_id >= 12 && (
                       <td>
@@ -2363,26 +2571,29 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       )}
 
       {/* Awaiting LPO & Invoice (Progress 12) - Procurement Submit for Payment */}
-      {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
-        <div className="bottom-nav">
-          <div></div>
-          <SubmitForPaymentButton
-            mrHeaderID={mrHeader.id}
-            disabled={!allSuppliersHaveLpoWithInvoicesAndSignedFiles()}
-            style={{
-              opacity: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
-                ? "0.5"
-                : "1",
-              cursor: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
-                ? "not-allowed"
-                : "pointer",
-              pointerEvents: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
-                ? "none"
-                : "auto",
-            }}
-          />
-        </div>
-      )}
+      {userInfo?.departmentID === 9 &&
+        (mrHeader.progress_id === 12 ||
+          mrHeader.progress_id === 13 ||
+          mrHeader.progress_id === 16) && (
+          <div className="bottom-nav">
+            <div></div>
+            <SubmitForPaymentButton
+              mrHeaderID={mrHeader.id}
+              disabled={!allSuppliersHaveLpoWithInvoicesAndSignedFiles()}
+              style={{
+                opacity: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
+                  ? "0.5"
+                  : "1",
+                cursor: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
+                  ? "not-allowed"
+                  : "pointer",
+                pointerEvents: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
+                  ? "none"
+                  : "auto",
+              }}
+            />
+          </div>
+        )}
 
       {/* Pending Payment (Progress 14) - Finance Submit for Delivery or Return to LPO */}
       {userInfo?.departmentID === 10 && mrHeader.progress_id === 14 && (
@@ -2422,19 +2633,26 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         </div>
       )}
 
-      {/* Pending Delivery (Progress 17) - Storekeeper Submit for QC */}
       {userInfo?.departmentID === 11 && mrHeader.progress_id === 17 && (
         <div className="bottom-nav">
           <div></div>
-          <SubmitForQC
-            mrHeaderID={mrHeader.id}
-            disabled={!allSuppliersHaveGrn()}
-            style={{
-              opacity: !allSuppliersHaveGrn() ? "0.5" : "1",
-              cursor: !allSuppliersHaveGrn() ? "not-allowed" : "pointer",
-              pointerEvents: !allSuppliersHaveGrn() ? "none" : "auto",
-            }}
-          />
+          {!isCheckingGrnQuantity && allSuppliersHaveGrn() ? (
+            hasAnyGrnQuantityMismatch() ? (
+              <SubmitForLPOResubmissionGRNFailButton mrHeaderID={mrHeader.id} />
+            ) : (
+              <SubmitForQC mrHeaderID={mrHeader.id} />
+            )
+          ) : (
+            <SubmitForQC
+              mrHeaderID={mrHeader.id}
+              disabled={true}
+              style={{
+                opacity: "0.5",
+                cursor: "not-allowed",
+                pointerEvents: "none",
+              }}
+            />
+          )}
         </div>
       )}
 

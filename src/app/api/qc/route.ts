@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
         lpo_id,
         checked_by,
         accepted_quantity,
+        reason_for_added_protection,
         qc_status,
         checkpoints,
       } = body;
@@ -138,8 +139,9 @@ export async function POST(request: NextRequest) {
           lpo_id,
           checked_by,
           accepted_quantity,
+          reason_for_added_protection,
           qc_status
-        ) VALUES (?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?)
       `;
 
       const qcValues = [
@@ -147,6 +149,7 @@ export async function POST(request: NextRequest) {
         lpo_id,
         checked_by,
         accepted_quantity,
+        reason_for_added_protection,
         qc_status,
       ];
 
@@ -177,8 +180,8 @@ export async function POST(request: NextRequest) {
             getCheckpointName(parseInt(index)),
             data.response,
             data.notes || null,
-            data.attachment && data.attachment.length > 0
-              ? JSON.stringify(data.attachment)
+            data.attachments && data.attachments.length > 0
+              ? JSON.stringify(data.attachments)
               : null,
           ]);
 
@@ -226,6 +229,7 @@ export async function PUT(request: NextRequest) {
         lpo_id,
         checked_by,
         accepted_quantity,
+        reason_for_added_protection,
         qc_status,
         checkpoints,
         qc_id,
@@ -248,11 +252,18 @@ export async function PUT(request: NextRequest) {
       SET 
         checked_by = ?,
         accepted_quantity = ?,
+      reason_for_added_protection = ?,
         qc_status = ?
       WHERE id = ?
     `;
 
-      const qcValues = [checked_by, accepted_quantity, qc_status, qc_id];
+      const qcValues = [
+        checked_by,
+        accepted_quantity,
+        reason_for_added_protection,
+        qc_status,
+        qc_id,
+      ];
 
       await db.query<ResultSetHeader>(qcUpdateQuery, qcValues);
 
@@ -283,8 +294,8 @@ export async function PUT(request: NextRequest) {
             getCheckpointName(parseInt(index)),
             data.response,
             data.notes || null,
-            data.attachment && data.attachment.length > 0
-              ? JSON.stringify(data.attachment)
+            data.attachments && data.attachments.length > 0
+              ? JSON.stringify(data.attachments)
               : null,
           ]);
 

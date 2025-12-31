@@ -372,7 +372,7 @@ export default function EditBoqItemButton({
           <div className="input-row full">
             <InputItem
               label={"ITEM DESCRIPTION"}
-              value={itemDescription}
+              value={itemDescription || ""}
               type={"textarea"}
               placeholder={"ENTER ITEM DESCRIPTION"}
               onChange={(e) => setItemDescription(e.target.value)}

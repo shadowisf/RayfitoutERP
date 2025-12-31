@@ -11,9 +11,11 @@ import { useRouter } from "next/navigation";
 import { LpoHeader } from "../../types/lpoHeader";
 import UploadFileBox from "@/app/components/SingleUploadFileBox";
 import { MrLine } from "../../types/mrLine";
+import { MrHeader } from "../../types/mrHeader";
+import { useAuth } from "@/app/context/AuthContext";
 
 type PaymentButtonsProps = {
-  mrHeaderId: number;
+  mrHeader: MrHeader;
   mrLine: MrLine;
   supplierId: number;
   portalTarget?: HTMLElement | null;
@@ -22,11 +24,13 @@ type PaymentButtonsProps = {
 type StatusType = "pending" | "approved" | "rejected";
 
 export default function PaymentButtons({
-  mrHeaderId,
+  mrHeader,
   mrLine,
   supplierId,
   portalTarget,
 }: PaymentButtonsProps) {
+  const { userInfo } = useAuth();
+
   const router = useRouter();
 
   const crossIcon = "/icons/cross-small.svg";
@@ -56,7 +60,7 @@ export default function PaymentButtons({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              mr_header_id: mrHeaderId,
+              mr_header_id: mrHeader.id,
               supplier_id: supplierId,
             }),
           }
@@ -95,7 +99,7 @@ export default function PaymentButtons({
     }
 
     fetchLpoPaymentStatus();
-  }, [mrHeaderId, supplierId]);
+  }, [mrHeader.id, supplierId]);
 
   useEffect(() => {
     async function fetchLpo() {
@@ -293,9 +297,10 @@ export default function PaymentButtons({
           style={{
             display: "flex",
             justifyContent: "space-between",
-            backgroundColor: "rgba(239, 239, 239, 1)",
+            backgroundColor: "black",
             padding: "7px 20px",
             borderRadius: "25px",
+            color: "white",
           }}
         >
           <h4>TOTAL INVOICE</h4>
@@ -316,7 +321,7 @@ export default function PaymentButtons({
             fontSize: "14.1px",
           }}
         >
-          <span style={{ fontWeight: "bold" }}>Paid</span>
+          <span style={{ fontWeight: "bold", fontSize: "14.1px" }}>Paid</span>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <Button
               componentType={"link"}
@@ -333,16 +338,19 @@ export default function PaymentButtons({
                 style={{ filter: "invert(1)", cursor: "pointer" }}
               />
             </Button>
-            <img
-              src={crossIcon}
-              alt="close"
-              style={{
-                filter: "invert(1)",
-                cursor: "pointer",
-                width: "12px",
-              }}
-              onClick={handleReset}
-            />
+
+            {userInfo?.departmentID === 10 && (
+              <img
+                src={crossIcon}
+                alt="close"
+                style={{
+                  filter: "invert(1)",
+                  cursor: "pointer",
+                  width: "12px",
+                }}
+                onClick={handleReset}
+              />
+            )}
           </div>
         </div>
         {portalTarget &&
@@ -361,20 +369,49 @@ export default function PaymentButtons({
             backgroundColor: "rgba(185, 28, 28, 1)",
             color: "white",
             minWidth: "350px",
-            fontSize: "14.1px",
           }}
         >
-          <span style={{ fontWeight: "bold" }}>Rejected</span>
+          <span style={{ fontWeight: "bold", fontSize: "14.1px" }}>
+            Rejected
+          </span>
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <RejectCommentPopUp text={rejectComment} />
 
-            <img
-              src={crossIcon}
-              alt="close"
-              style={{ filter: "invert(1)", cursor: "pointer", width: "12px" }}
-              onClick={handleReset}
-            />
+            {userInfo?.departmentID === 10 && (
+              <img
+                src={crossIcon}
+                alt="close"
+                style={{
+                  filter: "invert(1)",
+                  cursor: "pointer",
+                  width: "12px",
+                }}
+                onClick={handleReset}
+              />
+            )}
           </div>
+        </div>
+        {portalTarget &&
+          totalInvoiceSection &&
+          createPortal(totalInvoiceSection, portalTarget)}
+      </>
+    );
+  }
+
+  if (status === "pending" && userInfo?.departmentID !== 10) {
+    return (
+      <>
+        <div
+          className="approval-pill"
+          style={{
+            backgroundColor: "gray",
+            color: "white",
+            minWidth: "350px",
+          }}
+        >
+          <span style={{ fontWeight: "bold", fontSize: "14.1px" }}>
+            Payment Pending
+          </span>
         </div>
         {portalTarget &&
           totalInvoiceSection &&

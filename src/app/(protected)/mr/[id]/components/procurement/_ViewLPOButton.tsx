@@ -79,9 +79,10 @@ export default function ViewLPOButton({ lpoID, mrHeader }: ViewLPOButtonProps) {
       >
         <img src={externalLinkIcon} alt="external link" />
       </a> */}
-      {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
-        <EditLPOButton lpoId={lpoID} />
-      )}
+      {userInfo?.departmentID === 9 &&
+        (mrHeader.progress_id === 12 ||
+          mrHeader.progress_id === 13 ||
+          mrHeader.progress_id === 16) && <EditLPOButton lpoId={lpoID} />}
       <DownloadLPOButton lpoID={lpoID} />
     </Button>
   );

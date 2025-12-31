@@ -11,6 +11,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { LpoHeader } from "../../types/lpoHeader";
 import { MrHeader } from "../../types/mrHeader";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
+import { Line } from "recharts";
 
 type CreateGRNButtonProps = {
   mrHeader: MrHeader;
@@ -48,6 +49,7 @@ export default function CreateGRNButton({
   const checkGreenIcon = "/icons/check-green.svg";
   const externalLinkIcon = "/icons/external-link.svg";
   const plusIcon = "/icons/plus.svg";
+  const uploadIcon = "/icons/upload.svg";
   const crossIcon = "/icons/cross-small.svg";
 
   const [isOpen, setIsOpen] = useState(false);
@@ -90,7 +92,7 @@ export default function CreateGRNButton({
 
   // Check if we should be in view mode based on progress_id
   useEffect(() => {
-    if (mrHeader.progress_id >= 21) {
+    if (mrHeader.progress_id >= 21 || mrHeader.progress_id === 16) {
       setIsViewMode(true);
     } else {
       setIsViewMode(false);
@@ -514,6 +516,15 @@ export default function CreateGRNButton({
       return;
     }
 
+    const allLinesHaveAttachments = Object.values(grnLines).every(
+      (line) => line.attachmentFile || line.attachment
+    );
+
+    if (!allLinesHaveAttachments) {
+      toast("Please upload an attachment for all items", "error");
+      return;
+    }
+
     setIsUploading(true);
 
     try {
@@ -580,8 +591,8 @@ export default function CreateGRNButton({
       if (res.ok) {
         toast(
           isEditMode
-            ? "Good received note updated"
-            : "Good received note created",
+            ? `Good received note updated for ${mrLines[0].approved_supplier_name}`
+            : `Good received note created for ${mrLines[0].approved_supplier_name}`,
           "success"
         );
 
@@ -619,37 +630,26 @@ export default function CreateGRNButton({
 
   return (
     <>
-      {isViewMode && (
-        <Button
-          componentType={"none"}
-          bgColor={"white"}
-          borderColor={"rgba(207, 207, 207, 1)"}
-          textColor={"black"}
-          onClick={() => {}}
-          style={{ padding: "5px 20px", borderRadius: "25px" }}
-        >
-          GRN
+      <Button
+        componentType={"none"}
+        bgColor={"white"}
+        borderColor={"rgba(207, 207, 207, 1)"}
+        textColor={"black"}
+        onClick={() => {}}
+        style={{ padding: "5px 20px", borderRadius: "25px" }}
+      >
+        GRN
+        {isViewMode && (
           <img
             src={externalLinkIcon}
             alt="external link"
             onClick={() => setIsOpen(true)}
           />
-        </Button>
-      )}
-
-      {isEditMode && (
-        <Button
-          componentType={"button"}
-          bgColor={"black"}
-          borderColor={"black"}
-          textColor={"white"}
-          onClick={() => setIsOpen(true)}
-          style={{ padding: "5px 20px", borderRadius: "25px" }}
-          disabled={isUploading}
-        >
-          Edit GRN
-        </Button>
-      )}
+        )}
+        {isEditMode && (
+          <img src={pencilIcon} alt="pencil" onClick={() => setIsOpen(true)} />
+        )}
+      </Button>
 
       {!isViewMode && !isEditMode && (
         <Button
@@ -977,7 +977,11 @@ export default function CreateGRNButton({
                           }}
                           disabled={isUploading}
                         >
-                          <img src={plusIcon} alt="plus" />
+                          <img
+                            src={uploadIcon}
+                            style={{ filter: "invert(1)" }}
+                            alt="upload"
+                          />
                         </Button>
                       )}
                     </td>
@@ -1064,6 +1068,7 @@ export default function CreateGRNButton({
               acceptedFileTypes={".pdf,.jpeg,.jpg,.png,.webp"}
               placeholder=""
               buttonLabel="SELECT OR DROP FILE"
+              required
             />
           </div>
         </FormPopUp>

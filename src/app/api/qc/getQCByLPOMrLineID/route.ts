@@ -18,13 +18,7 @@ export async function POST(request: Request) {
     }
 
     const query = `
-      SELECT 
-        id,
-        lpo_mr_line_id,
-        lpo_id,
-        checked_by,
-        accepted_quantity,
-        qc_status
+      SELECT *
       FROM qc_mr_line
       WHERE lpo_mr_line_id = ?
       ORDER BY id DESC

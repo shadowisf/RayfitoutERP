@@ -10,7 +10,6 @@ import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import { LpoHeader } from "../../types/lpoHeader";
-import EditLPOButton from "./_EditLPOButton";
 import ViewLPOButton from "./_ViewLPOButton";
 import UploadInvoiceButton from "./_UploadInvoiceButton";
 import UploadSignedLPOButton from "./_UploadSignedLPOButton";
@@ -327,7 +326,10 @@ export default function IssueLPOButton({
   if (existingLpoId) {
     const supplierId = mrLines[0]?.approved_supplier_id;
     const canDelete =
-      userInfo?.departmentID === 9 && mrHeader.progress_id === 12;
+      userInfo?.departmentID === 9 &&
+      (mrHeader.progress_id === 12 ||
+        mrHeader.progress_id === 13 ||
+        mrHeader.progress_id === 16);
 
     return (
       <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>

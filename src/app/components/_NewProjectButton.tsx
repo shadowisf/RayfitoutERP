@@ -17,7 +17,7 @@ export default function NewProjectButton() {
   const [scopeTypes, setScopeTypes] = useState<[]>([]);
 
   const [name, setName] = useState("");
-  const [propertyTypeID, setPropertyTypeID] = useState<number>(0);
+  const [propertyTypeID, setPropertyTypeID] = useState<number | string>("");
   const [id, setID] = useState<number | string>("");
   const [size, setSize] = useState<number | string>("");
   const [status, setStatus] = useState("");
@@ -76,7 +76,7 @@ export default function NewProjectButton() {
       toast("Project created", "success");
 
       setName("");
-      setPropertyTypeID(0);
+      setPropertyTypeID("");
       setID("");
       setStatus("");
       setScopeIDs([0]);
@@ -90,7 +90,7 @@ export default function NewProjectButton() {
 
       router.refresh();
 
-      /* router.push(`/boq/${data.id}`); */
+      router.push(`/boq/${data.id}`);
     } else {
       toast("Failed to create project. Something went wrong", "error");
     }
@@ -148,7 +148,7 @@ export default function NewProjectButton() {
               <div className="input-prefix left">
                 <span>RAY-</span>
                 <input
-                  style={{ padding: "10px 42px" }}
+                  style={{ padding: "7px 42px" }}
                   type="text"
                   value={id}
                   onChange={(e) => {
@@ -246,6 +246,7 @@ export default function NewProjectButton() {
               onChange={setScopeIDs}
               placeholder="SELECT SCOPE"
               style={{ maxWidth: "260px" }}
+              required
             />
 
             <InputItem
