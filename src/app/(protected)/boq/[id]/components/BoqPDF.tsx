@@ -443,7 +443,7 @@ export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
           <Page key={categoryIndex} size="A4" style={styles.page}>
             {/* Category Title */}
             <Text style={styles.categoryTitle}>
-              CATEGORIES: {category.toUpperCase()}
+              {categoryIndex + 1}.1 {category.toUpperCase()}
             </Text>
 
             {/* Detailed Table */}

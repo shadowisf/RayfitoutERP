@@ -226,7 +226,7 @@ export default function ReceiveStocksButton({
               type={"text"}
               placeholder={""}
               required
-              onChange={(e) => {}}
+              onChange={() => {}}
               disabled
             />
           </div>

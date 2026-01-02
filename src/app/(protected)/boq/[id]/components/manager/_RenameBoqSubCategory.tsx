@@ -10,10 +10,6 @@ import { toast } from "@/app/components/Toast";
 
 type RenameBoqSubCategoryButtonProps = {
   item: BoqLine;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children?: React.ReactNode;
   category: string;
   subCategory: string;
 };
@@ -22,12 +18,10 @@ export default function RenameBoqSubCategoryButton({
   item,
   category,
   subCategory,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
 }: RenameBoqSubCategoryButtonProps) {
   const router = useRouter();
+
+  const pencilIcon = "/icons/pencil.svg";
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -68,12 +62,13 @@ export default function RenameBoqSubCategoryButton({
     <>
       <Button
         componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor={"rgba(239, 239, 239, 1)"}
+        borderColor={"rgba(223, 223, 223, 1)"}
+        textColor={"black"}
         onClick={() => setIsOpen(true)}
+        style={{ padding: "7px 7px" }}
       >
-        {children}
+        <img src={pencilIcon} alt="pencil" />
       </Button>
 
       {isOpen && (
@@ -85,7 +80,7 @@ export default function RenameBoqSubCategoryButton({
         >
           <div className="input-row full">
             <InputItem
-              label={"SUB CATEGORY"}
+              label={"SUBCATEGORY"}
               value={newSubCategory}
               type={"text"}
               placeholder={"ENTER SUB CATEGORY"}

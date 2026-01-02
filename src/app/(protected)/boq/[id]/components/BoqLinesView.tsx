@@ -137,23 +137,20 @@ export default function BoqLinesView({
                         {category} - {subCategory}
                       </h2>
 
-                      {userInfo?.departmentID === 8 && (
+                      {(userInfo?.departmentID === 8 ||
+                        userInfo?.departmentID === 16) && (
                         <div className="right">
-                          <DeleteBoqSubCategoryButton
-                            item={items[0]}
-                            category={category}
-                            subCategory={subCategory}
-                          >
-                            DELETE
-                          </DeleteBoqSubCategoryButton>
-
                           <RenameBoqSubCategoryButton
                             item={items[0]}
                             category={category}
                             subCategory={subCategory}
-                          >
-                            RENAME
-                          </RenameBoqSubCategoryButton>
+                          />
+
+                          <DeleteBoqSubCategoryButton
+                            item={items[0]}
+                            category={category}
+                            subCategory={subCategory}
+                          />
                         </div>
                       )}
                     </div>
@@ -166,14 +163,14 @@ export default function BoqLinesView({
                         <tr>
                           <th>#</th>
                           <th>ITEM</th>
+                          <th>DESCRIPTION</th>
+                          <th>LOCATION</th>
                           <th>QUANTITY</th>
-                          <th>UNIT</th>
                           <th>RATE</th>
                           <th>TOTAL COST</th>
-                          <th>LOCATION</th>
-                          <th>ITEM DESCRIPTION</th>
-                          <th>ATTACHMENT(S)</th>
-                          {userInfo?.departmentID === 8 && <th>ACTION</th>}
+                          <th>ATTACHMENTS</th>
+                          {(userInfo?.departmentID === 8 ||
+                            userInfo?.departmentID === 16) && <th>ACTIONS</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -185,16 +182,21 @@ export default function BoqLinesView({
                                 {itemIndex + 1}
                               </td>
                               <td>{item.item_name}</td>
-                              <td>{item.quantity}</td>
-                              <td>{item.unit}</td>
                               <td>
-                                {item.rate_per_quantity?.toLocaleString()}
+                                {item.item_description ? (
+                                  <ItemDescriptionPopUp item={item} />
+                                ) : (
+                                  "-"
+                                )}
+                              </td>
+                              <td>{item.location?.split(" - ").pop()}</td>
+                              <td>{item.quantity}</td>
+                              <td>
+                                {item.rate_per_quantity?.toLocaleString()}{" "}
+                                {item.unit}
                               </td>
                               <td>AED {item.total_cost?.toLocaleString()}</td>
-                              <td>{item.location?.split(" - ").pop()}</td>
-                              <td>
-                                <ItemDescriptionPopUp item={item} />
-                              </td>
+
                               <td className="attachments">
                                 <div className="attachments-grid">
                                   {(() => {
@@ -266,7 +268,8 @@ export default function BoqLinesView({
                                 </div>
                               </td>
 
-                              {userInfo?.departmentID === 8 && (
+                              {(userInfo?.departmentID === 8 ||
+                                userInfo?.departmentID === 16) && (
                                 <td>
                                   <div style={{ display: "flex", gap: "10px" }}>
                                     <EditBoqItemButton
@@ -297,7 +300,8 @@ export default function BoqLinesView({
 
                     <br />
 
-                    {userInfo?.departmentID === 8 && (
+                    {(userInfo?.departmentID === 8 ||
+                      userInfo?.departmentID === 16) && (
                       <AddBoqItemButton
                         boqHeaderID={boqHeader.id}
                         bgColor="rgba(239, 239, 239, 1)"
@@ -334,23 +338,20 @@ export default function BoqLinesView({
                     {subCategory}
                   </h2>
 
-                  {userInfo?.departmentID === 8 && (
+                  {(userInfo?.departmentID === 8 ||
+                    userInfo?.departmentID === 16) && (
                     <div className="right">
-                      <DeleteBoqSubCategoryButton
-                        item={items[0]}
-                        category={activeCategory}
-                        subCategory={subCategory}
-                      >
-                        DELETE
-                      </DeleteBoqSubCategoryButton>
-
                       <RenameBoqSubCategoryButton
                         item={items[0]}
                         category={activeCategory}
                         subCategory={subCategory}
-                      >
-                        RENAME
-                      </RenameBoqSubCategoryButton>
+                      />
+
+                      <DeleteBoqSubCategoryButton
+                        item={items[0]}
+                        category={activeCategory}
+                        subCategory={subCategory}
+                      />
                     </div>
                   )}
                 </div>
@@ -370,7 +371,8 @@ export default function BoqLinesView({
                       <th>LOCATION</th>
                       <th>ITEM DESCRIPTION</th>
                       <th>ATTACHMENT(S)</th>
-                      {userInfo?.departmentID === 8 && <th>ACTION</th>}
+                      {(userInfo?.departmentID === 8 ||
+                        userInfo?.departmentID === 16) && <th>ACTION</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -455,7 +457,8 @@ export default function BoqLinesView({
                             </div>
                           </td>
 
-                          {userInfo?.departmentID === 8 && (
+                          {(userInfo?.departmentID === 8 ||
+                            userInfo?.departmentID === 16) && (
                             <td>
                               <div style={{ display: "flex", gap: "10px" }}>
                                 <EditBoqItemButton
@@ -510,14 +513,14 @@ export default function BoqLinesView({
             );
           })}
 
-      {userInfo?.departmentID === 8 && (
+      {userInfo?.departmentID === 8 && activeCategory !== "ALL" && (
         <AddBoqItemButton
           boqHeaderID={boqHeader.id}
           bgColor="rgba(239, 239, 239, 1)"
           borderColor="rgba(239, 239, 239, 1)"
           textColor="black"
           full
-          autoCategory={activeCategory === "ALL" ? undefined : activeCategory}
+          autoCategory={activeCategory}
         >
           ADD SUBCATEGORY & ITEM +
         </AddBoqItemButton>

@@ -202,7 +202,7 @@ export default function AddBoqItemButton({
               disabled={autoCategory ? true : false}
             />
             <InputItem
-              label={"SUB CATEGORY"}
+              label={"SUBCATEGORY"}
               value={subCategory}
               type={"text"}
               placeholder={"ENTER SUB CATEGORY"}
@@ -234,7 +234,11 @@ export default function AddBoqItemButton({
               onChange={(e) => {
                 setScopeOfWork(e.target.value);
               }}
-              selectOptions={["Supply only", "Supply + install"]}
+              selectOptions={[
+                "Supply",
+                "Supply & installation",
+                "installation",
+              ]}
               required
             />
 
@@ -327,10 +331,10 @@ export default function AddBoqItemButton({
           {/* 5th row */}
           <div className="input-row full">
             <InputItem
-              label={"ITEM DESCRIPTION"}
+              label={"DESCRIPTION"}
               value={itemDescription}
               type={"textarea"}
-              placeholder={"ENTER ITEM DESCRIPTION"}
+              placeholder={"ENTER DESCRIPTION"}
               onChange={(e) => {
                 setItemDescription(e.target.value);
               }}

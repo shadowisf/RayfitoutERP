@@ -9,6 +9,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { InventoryItem } from "../../types/inventoryItem";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
+import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 
 type ManualAddToStockButtonProp = {
   inventoryItem: InventoryItem;
@@ -21,8 +22,6 @@ export default function ManualAddToStockButton({
 
   const router = useRouter();
 
-  const uploadIcon = "/icons/upload.svg";
-
   const [isOpen, setIsOpen] = useState(false);
 
   const [location, setLocation] = useState("");
@@ -33,15 +32,13 @@ export default function ManualAddToStockButton({
   const [projectID, setProjectID] = useState<string | number>("");
   const [boqLineID, setBoqLineID] = useState<string | number>("");
   const [condition, setCondition] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
+  const [file, setFile] = useState<File | null>(null);
   const [unitPrice, setUnitPrice] = useState("");
 
   const [supplierValues, setSupplierValues] = useState<any>([]);
   const [stockLocationValues, setStockLocationValues] = useState<any>([]);
   const [projectValues, setProjectValues] = useState<any>([]);
   const [boqLineValues, setBoqLineValues] = useState<any>([]);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     fetch("/api/boq/getAllBoqLinesWithNumberRef", {
@@ -92,79 +89,17 @@ export default function ManualAddToStockButton({
       });
   }, []);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files;
-    if (!selectedFiles || selectedFiles.length === 0) return;
-
-    const fileArray = Array.from(selectedFiles);
-
-    // Validate file types (images and PDFs only)
-    const validFiles = fileArray.filter((file) => {
-      const isImage = file.type.startsWith("image/");
-      const isPDF = file.type === "application/pdf";
-      return isImage || isPDF;
-    });
-
-    if (validFiles.length !== fileArray.length) {
-      toast("Only images and PDF files are allowed", "error");
-    }
-
-    setFiles((prevFiles) => [...prevFiles, ...validFiles]);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const droppedFiles = e.dataTransfer.files;
-    if (!droppedFiles || droppedFiles.length === 0) return;
-
-    const fileArray = Array.from(droppedFiles);
-
-    // Validate file types (images and PDFs only)
-    const validFiles = fileArray.filter((file) => {
-      const isImage = file.type.startsWith("image/");
-      const isPDF = file.type === "application/pdf";
-      return isImage || isPDF;
-    });
-
-    if (validFiles.length !== fileArray.length) {
-      toast("Only images and PDF files are allowed", "error");
-    }
-
-    setFiles((prevFiles) => [...prevFiles, ...validFiles]);
-  };
-
-  const removeFile = (indexToRemove: number) => {
-    setFiles((prevFiles) =>
-      prevFiles.filter((_, index) => index !== indexToRemove)
-    );
-  };
-
-  const getFilePreview = (file: File) => {
-    if (file.type.startsWith("image/")) {
-      return URL.createObjectURL(file);
-    }
-    return null;
-  };
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     let attachmentUrls: string[] = [];
 
     // Upload files if any selected
-    if (files.length > 0) {
+    if (file) {
       try {
         const formData = new FormData();
-        files.forEach((file) => {
-          formData.append("files", file);
-        });
+
+        formData.append("files", file);
         formData.append("folder", "stock-attachments");
 
         const uploadResponse = await fetch("/api/s3", {
@@ -217,7 +152,7 @@ export default function ManualAddToStockButton({
       setProjectID("");
       setBoqLineID("");
       setCondition("");
-      setFiles([]);
+      setFile(null);
       setUnitPrice("");
 
       router.refresh();
@@ -281,10 +216,10 @@ export default function ManualAddToStockButton({
               ]}
             />
             <SingleSelectDropdown
-              label={"SUPPLIER"}
+              label={"VENDOR"}
               selectedValue={supplierID}
               onChange={setSupplierID}
-              placeholder={"SELECT SUPPLIER"}
+              placeholder={"SELECT VENDOR"}
               dbData={supplierValues}
               idField="id"
               labelField="name"
@@ -386,7 +321,7 @@ export default function ManualAddToStockButton({
           </div>
 
           <div className="input-row half">
-            <div className="input-item">
+            {/*  <div className="input-item">
               <label>ATTACHMENT</label>
 
               <div
@@ -535,7 +470,14 @@ export default function ManualAddToStockButton({
                   </>
                 )}
               </div>
-            </div>
+            </div> */}
+
+            <SingleUploadFileBox
+              fileState={file}
+              setFileState={setFile}
+              label={"ATTACHMENT"}
+              acceptedFileTypes={".png,.jpg,.jpeg,.webp,.pdf"}
+            />
           </div>
         </FormPopUp>
       )}

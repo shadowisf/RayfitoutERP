@@ -68,6 +68,52 @@ export default async function InventoryItemWithID({
       };
     });
 
+  // Fetch available quantity for stock status
+  const availableQuantityData = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getTotalQuantityByInventoryItemID`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inventory_item_id: id }),
+    }
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success && data.data) {
+        return data.data.available_quantity || 0;
+      }
+      return 0;
+    })
+    .catch((err) => {
+      console.error(err);
+      return 0;
+    });
+
+  // Get stock status based on available quantity
+  const getStockStatus = (availableQty: number) => {
+    if (availableQty === 0) {
+      return {
+        label: "NO STOCK",
+        bgColor: "rgba(255, 181, 181, 1)",
+        textColor: "rgba(248, 77, 77, 1)",
+      };
+    } else if (availableQty <= 10) {
+      return {
+        label: "LOW STOCK",
+        bgColor: "rgba(255, 250, 189, 1)",
+        textColor: "rgba(134, 83, 47, 1)",
+      };
+    } else {
+      return {
+        label: "IN STOCK",
+        bgColor: "rgba(149, 222, 189, 1)",
+        textColor: "rgba(0, 108, 60, 1)",
+      };
+    }
+  };
+
+  const stockStatus = getStockStatus(availableQuantityData);
+
   return (
     <div className="dashboard">
       <div
@@ -81,7 +127,7 @@ export default async function InventoryItemWithID({
           <EditInventoryItemButton inventoryItem={inventoryItem} />
           <DeleteInventoryItemButton inventoryItem={inventoryItem} />
 
-          <ReceiveStocksButton inventoryItem={inventoryItem} />
+          {/* <ReceiveStocksButton inventoryItem={inventoryItem} /> */}
 
           <ManualAddToStockButton inventoryItem={inventoryItem} />
           <TransferIssueStocksButton inventoryItem={inventoryItem} />
@@ -126,14 +172,14 @@ export default async function InventoryItemWithID({
                   <p
                     style={{
                       padding: "5px 15px",
-                      backgroundColor: "rgba(149, 222, 189, 1)",
-                      color: "rgba(0, 108, 60, 1)",
+                      backgroundColor: stockStatus.bgColor,
+                      color: stockStatus.textColor,
                       width: "fit-content",
                       borderRadius: "25px",
                       fontWeight: "bold",
                     }}
                   >
-                    IN-STOCK
+                    {stockStatus.label}
                   </p>
                 </div>
                 <div>

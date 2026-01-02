@@ -28,16 +28,13 @@ export default function StockLocationChart({
 
     // Subtract issued stocks and adjust for transfers
     stocksTransferIssue.forEach((transaction) => {
-      if (transaction.type.includes("Issue")) {
-        // Only subtract issues if received is true
-        if (transaction.received) {
-          const fromLocation = transaction.from_location || "Unknown";
-          if (!locationMap[fromLocation]) {
-            locationMap[fromLocation] = 0;
-          }
-          locationMap[fromLocation] -= transaction.quantity;
+      if (transaction.type.toLowerCase().includes("issue")) {
+        const fromLocation = transaction.from_location || "Unknown";
+        if (!locationMap[fromLocation]) {
+          locationMap[fromLocation] = 0;
         }
-      } else if (transaction.type.includes("Transfer")) {
+        locationMap[fromLocation] -= transaction.quantity;
+      } else if (transaction.type.toLowerCase().includes("transfer")) {
         // For transfers, move stock from one location to another when received
         // Deduct from from_location
         const fromLocation = transaction.from_location || "Unknown";

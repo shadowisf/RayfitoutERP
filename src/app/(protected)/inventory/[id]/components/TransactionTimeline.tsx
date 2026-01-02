@@ -2,6 +2,7 @@
 
 import { InventoryItem } from "../../types/inventoryItem";
 import BatchDetailsPopUpButton from "./_BatchDetailsPopUpButton";
+import UploadSignedTSCButton from "./_UploadSignedTSCButton";
 import ViewTSNPDFButton from "./_ViewTsnPDFButton";
 
 type StockData = any;
@@ -29,6 +30,11 @@ const TransactionIcon = ({ type }: { type: string }) => {
       color: "white",
     },
     STOCK_TRANSFERRED: {
+      icon: <img src={minusIcon} alt="minus" width="12" />,
+      bg: "rgba(197, 12, 15, 1)",
+      color: "white",
+    },
+    STOCK_SENT: {
       icon: <img src={minusIcon} alt="minus" width="12" />,
       bg: "rgba(197, 12, 15, 1)",
       color: "white",
@@ -79,10 +85,12 @@ const TransactionCard = ({
     if (transaction.source_table === "stocks") {
       return "STOCK_ADDED";
     } else if (transaction.source_table === "stocks_transfer_issue") {
-      if (transaction.type.includes("Transfer")) {
+      if (transaction.type.toLowerCase().includes("transfer")) {
         return "STOCK_TRANSFERRED";
-      } else if (transaction.type.includes("Issue")) {
+      } else if (transaction.type.toLowerCase().includes("issue")) {
         return "STOCK_ISSUED";
+      } else if (transaction.type.toLowerCase().includes("send")) {
+        return "STOCK_SENT";
       }
     }
     return "STOCK_ADDED";
@@ -116,6 +124,12 @@ const TransactionCard = ({
       case "STOCK_TRANSFERRED":
         return {
           label: "STOCK TRANSFERRED",
+          bg: "rgba(255, 186, 187, 1)",
+          color: "rgba(197, 12, 15, 1)",
+        };
+      case "STOCK_SENT":
+        return {
+          label: "STOCK SENT",
           bg: "rgba(255, 186, 187, 1)",
           color: "rgba(197, 12, 15, 1)",
         };
@@ -178,8 +192,13 @@ const TransactionCard = ({
           <div style={{ paddingLeft: "40px" }}>
             <div
               style={{
-                display: "flex",
-                gap: "20px",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                /* gap: "20px", */
+                /* backgroundColor: "rgba(248, 249, 251, 1)", */
+                /* padding: "10px 20px", */
+                rowGap: "25px",
+                /* borderRadius: "10px", */
               }}
             >
               <div style={{ textWrap: "nowrap" }}>
@@ -216,19 +235,19 @@ const TransactionCard = ({
                     </div>
                   )}
 
-                  {transaction.location && (
+                  {/* {transaction.location && (
                     <div style={{ textWrap: "nowrap" }}>
                       <small>STOCK LOCATION</small>
                       <h4>{transaction.location}</h4>
                     </div>
-                  )}
+                  )} */}
 
-                  {transaction.received_by && (
+                  {/* {transaction.received_by && (
                     <div style={{ textWrap: "nowrap" }}>
                       <small>ADDED BY</small>
                       <h4>{transaction.received_by}</h4>
                     </div>
-                  )}
+                  )} */}
                 </>
               )}
 
@@ -254,7 +273,7 @@ const TransactionCard = ({
                 </>
               )} */}
 
-              {transactionType === "STOCK_TRANSFERRED" && (
+              {/* {transactionType === "STOCK_TRANSFERRED" && (
                 <>
                   {transaction.id && (
                     <>
@@ -269,26 +288,34 @@ const TransactionCard = ({
                     </>
                   )}
                 </>
-              )}
+              )} */}
 
-              {transactionType === "STOCK_ISSUED" && (
+              {(transactionType === "STOCK_ISSUED" ||
+                transactionType === "STOCK_TRANSFERRED" ||
+                transactionType === "STOCK_SENT") && (
                 <>
                   {transaction.id && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                      }}
-                    >
-                      <div style={{ textWrap: "nowrap" }}>
-                        <small>TRANSFER RECEIPT NOTE</small>
-                        <h4>
-                          TRN-{transaction.id.toString().padStart(5, "0")}
-                        </h4>
+                    <>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                        }}
+                      >
+                        <div style={{ textWrap: "nowrap" }}>
+                          <small>TRANSFER STOCK CERTIFICATE</small>
+                          <h4>
+                            TSC-{transaction.id.toString().padStart(5, "0")}
+                          </h4>
+                        </div>
+                        <ViewTSNPDFButton transferID={transaction.id} />
                       </div>
-                      <ViewTSNPDFButton transferID={transaction.id} />
-                    </div>
+
+                      <div style={{ textWrap: "nowrap" }}>
+                        <UploadSignedTSCButton transactionID={transaction.id} />
+                      </div>
+                    </>
                   )}
                 </>
               )}
@@ -388,18 +415,8 @@ export default function TransactionTimeline({
     source_table: "stocks",
   }));
 
-  // Filter transfer/issue transactions based on type
-  const filteredTransferIssue = stocksTransferIssue.filter((transaction) => {
-    // If it's a transfer, only include if received is true
-    if (transaction.type.includes("Issue")) {
-      return transaction.received;
-    }
-    // If it's an issue, always include it (no received check)
-    return true;
-  });
-
-  // Add source table identifier to filtered transfer/issue transactions
-  const transferIssueWithSource = filteredTransferIssue.map((transaction) => ({
+  // Add source table identifier to all transfer/issue transactions (no filtering)
+  const transferIssueWithSource = stocksTransferIssue.map((transaction) => ({
     ...transaction,
     source_table: "stocks_transfer_issue",
   }));

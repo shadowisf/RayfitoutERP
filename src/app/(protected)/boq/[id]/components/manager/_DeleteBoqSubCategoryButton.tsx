@@ -11,22 +11,16 @@ type DeleteBoqSubCategoryButtonProps = {
   item: BoqLine;
   category: string;
   subCategory: string;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children?: React.ReactNode;
 };
 
 export default function DeleteBoqSubCategoryButton({
   item,
   category,
   subCategory,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
 }: DeleteBoqSubCategoryButtonProps) {
   const router = useRouter();
+
+  const trashIcon = "/icons/trash.svg";
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -62,12 +56,13 @@ export default function DeleteBoqSubCategoryButton({
     <>
       <Button
         componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor={"rgba(239, 239, 239, 1)"}
+        borderColor={"rgba(223, 223, 223, 1)"}
+        textColor={"black"}
         onClick={() => setIsOpen(true)}
+        style={{ padding: "7px 7px" }}
       >
-        {children}
+        <img src={trashIcon} alt="trash" />
       </Button>
 
       {isOpen && (

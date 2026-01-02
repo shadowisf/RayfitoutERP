@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         Number(body.project_id) || null,
         Number(body.boq_line_id) || null,
         body.condition,
-        body.attachment,
+        body.attachment || null,
       ];
 
       await db.query(query, values);
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     if (body.action === "transferIssueStock") {
       // Check if this is a reverse transfer (transferring back to original location)
-      if (body.type.includes("Transfer")) {
+      if (body.type.toLowerCase().includes("transfer")) {
         // Find if there's an existing transfer that brought stock to the current "from" location
         const checkReverseTransferQuery = `
         SELECT id, quantity, from_location, to_location
@@ -121,28 +121,28 @@ export async function POST(request: NextRequest) {
       }
 
       // If not a reverse transfer, create a new transfer/issue entry as normal
-      console.log("Creating new transfer/issue entry");
 
       const insertQuery = `
       INSERT INTO stocks_transfer_issue 
-      (inventory_item_id, type, from_location, to_location, quantity, purpose, receiver_name, notes, serial_number, attachment) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (inventory_item_id, type, transferee, from_location, to_location, quantity, purpose, receiver_name, serial_number, attachment, third_party_involved, project_id, boq_line_id) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-      const [insertResult] = await db.query(insertQuery, [
+      await db.query(insertQuery, [
         body.inventory_item_id,
         body.type,
+        body.transferee,
         body.from,
         body.to,
         body.quantity,
         body.purpose,
         body.receiver_name,
-        body.notes,
         body.serial_number,
-        body.attachment,
+        body.attachment || null,
+        body.third_party_involved,
+        Number(body.project_id) || null,
+        Number(body.boq_line_id) || null,
       ]);
-
-      console.log("Insert result:", insertResult);
 
       return NextResponse.json({
         success: true,
@@ -210,6 +210,22 @@ WHERE id = ?
         body.received_quantity,
         body.transfer_id,
       ]);
+
+      return NextResponse.json({
+        success: true,
+      });
+    }
+
+    if (body.action === "updateSignedTSC") {
+      const query = `
+        UPDATE stocks_transfer_issue
+SET received = 1,
+    received_on = NOW(),
+    signed_tsc = ?
+WHERE id = ?
+      `;
+
+      await db.query(query, [body.signed_tsc_file, body.transfer_id]);
 
       return NextResponse.json({
         success: true,

@@ -41,7 +41,7 @@ export default function TopSuppliersChart({
             supplierMap[supplier] -= transaction.quantity;
           }
         }
-      } else if (transaction.type.includes("Transfer")) {
+      } else if (transaction.type.toLowerCase().includes("transfer")) {
         // For transfers, we don't subtract because stock still exists in system
         // It's just moved to a different location
         // If you want to track by original supplier regardless of location,

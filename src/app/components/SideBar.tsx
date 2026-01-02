@@ -10,7 +10,7 @@ export default function SideBar() {
   const pathname = usePathname();
 
   const INVENTORY_DEPARTMENT_IDS = [8, 11, 15];
-  const PROJECT_DEPARTMENT_IDS = [8, 10, 15];
+  const PROJECT_DEPARTMENT_IDS = [8, 10, 15, 16];
 
   const menuItems = [
     { label: "Dashboard", path: "/dashboard" },

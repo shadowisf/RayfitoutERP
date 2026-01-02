@@ -878,6 +878,13 @@ label {
   border-radius: 25px;
   width: 200px;
   /* font-size: 14.1px; */
+
+  &.normal-text {
+    display: block;
+    width: 125px;
+    font-weight: 600;
+    text-align: center;
+  }
 }
 
 .bottom-nav {

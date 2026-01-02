@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const [rows]: any = await db.query(`SELECT * FROM vw_boq_lines`);
 

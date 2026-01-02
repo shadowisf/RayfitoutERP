@@ -257,7 +257,7 @@ export default function EditBoqItemButton({
               disabled
             />
             <InputItem
-              label={"SUB CATEGORY"}
+              label={"SUBCATEGORY"}
               value={subCategory}
               type={"text"}
               placeholder={"ENTER SUB CATEGORY"}
@@ -371,10 +371,10 @@ export default function EditBoqItemButton({
           {/* 5th row */}
           <div className="input-row full">
             <InputItem
-              label={"ITEM DESCRIPTION"}
+              label={"DESCRIPTION"}
               value={itemDescription || ""}
               type={"textarea"}
-              placeholder={"ENTER ITEM DESCRIPTION"}
+              placeholder={"ENTER DESCRIPTION"}
               onChange={(e) => setItemDescription(e.target.value)}
               required={false}
             />

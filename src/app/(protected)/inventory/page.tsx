@@ -9,11 +9,14 @@ export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
 
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [stockQuantities, setStockQuantities] = useState<{
+  const [availableQuantities, setAvailableQuantities] = useState<{
     [itemId: number]: {
-      total_quantity: number;
+      available_quantity: number;
+      total_stock: number;
+      total_issued: number;
     };
   }>({});
+  const [activeCategory, setActiveCategory] = useState<string>("ALL");
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`, {
@@ -25,7 +28,7 @@ export default function Inventory() {
       });
   }, []);
 
-  // Fetch total quantities for all inventory items
+  // Fetch available quantities for all inventory items
   useEffect(() => {
     async function fetchAllQuantities() {
       if (!inventory || inventory.length === 0) {
@@ -34,8 +37,9 @@ export default function Inventory() {
 
       const quantities: {
         [itemId: number]: {
-          total_quantity: number;
-          batch_count: number;
+          available_quantity: number;
+          total_stock: number;
+          total_issued: number;
         };
       } = {};
 
@@ -57,13 +61,15 @@ export default function Inventory() {
 
             if (data.success && data.data) {
               quantities[item.id] = {
-                total_quantity: data.data.total_quantity || 0,
-                batch_count: data.data.batch_count || 0,
+                available_quantity: data.data.available_quantity || 0,
+                total_stock: data.data.total_stock || 0,
+                total_issued: data.data.total_issued || 0,
               };
             } else {
               quantities[item.id] = {
-                total_quantity: 0,
-                batch_count: 0,
+                available_quantity: 0,
+                total_stock: 0,
+                total_issued: 0,
               };
             }
           } catch (error) {
@@ -72,21 +78,61 @@ export default function Inventory() {
               error
             );
             quantities[item.id] = {
-              total_quantity: 0,
-              batch_count: 0,
+              available_quantity: 0,
+              total_stock: 0,
+              total_issued: 0,
             };
           }
         });
 
         await Promise.all(fetchPromises);
-        setStockQuantities(quantities);
+        setAvailableQuantities(quantities);
       } catch (error) {
-        console.error("Error fetching stock quantities:", error);
+        console.error("Error fetching available quantities:", error);
       }
     }
 
     fetchAllQuantities();
   }, [inventory]);
+
+  // Get unique categories
+  const categories = Array.from(
+    new Set(inventory.map((item) => item.category_name))
+  ).sort();
+
+  // Get item count per category
+  const getCategoryCount = (category: string) => {
+    return inventory.filter((item) => item.category_name === category).length;
+  };
+
+  // Filter inventory based on active category
+  const filteredInventory =
+    activeCategory === "ALL"
+      ? inventory
+      : inventory.filter((item) => item.category_name === activeCategory);
+
+  // Get stock status based on available quantity
+  const getStockStatus = (availableQty: number) => {
+    if (availableQty === 0) {
+      return {
+        label: "NO STOCK",
+        bgColor: "rgba(255, 181, 181, 1)",
+        textColor: "rgba(248, 77, 77, 1)",
+      };
+    } else if (availableQty <= 10) {
+      return {
+        label: "LOW STOCK",
+        bgColor: "rgba(255, 250, 189, 1)",
+        textColor: "rgba(134, 83, 47, 1)",
+      };
+    } else {
+      return {
+        label: "IN STOCK",
+        bgColor: "rgba(149, 222, 189, 1)",
+        textColor: "rgba(0, 108, 60, 1)",
+      };
+    }
+  };
 
   return (
     <div className="dashboard">
@@ -103,26 +149,51 @@ export default function Inventory() {
 
       <br />
       <br />
+
+      {/* Category Tabs */}
+      <div className="category-grid">
+        <div>
+          <button
+            className={`item ${activeCategory === "ALL" ? "active" : ""}`}
+            onClick={() => setActiveCategory("ALL")}
+            style={{ textTransform: "uppercase" }}
+          >
+            ALL ({inventory.length})
+          </button>
+
+          {categories.map((category) => (
+            <button
+              key={category}
+              className={`item ${activeCategory === category ? "active" : ""}`}
+              onClick={() => setActiveCategory(category)}
+            >
+              {category.toUpperCase()} ({getCategoryCount(category)})
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <br />
       <br />
 
       <div style={{ overflowX: "auto" }}>
-        {inventory ? (
+        {filteredInventory.length > 0 ? (
           <table className="items-table">
             <thead>
               <tr>
                 <th>#</th>
                 <th>ID</th>
-                <th>CATEGORY</th>
-                <th>SUBCATEGORY</th>
-                <th>DESCRIPTION</th>
+                <th>MATERIAL</th>
                 <th>TOTAL QUANTITY</th>
-                <th>DETAILS</th>
+                <th>STATUS</th>
+                <th>ACTION</th>
               </tr>
             </thead>
             <tbody>
-              {inventory.map((item, index) => {
-                const stockData = stockQuantities[item.id];
-                const totalQty = stockData?.total_quantity ?? 0;
+              {filteredInventory.map((item, index) => {
+                const quantityData = availableQuantities[item.id];
+                const availableQty = quantityData?.available_quantity ?? 0;
+                const stockStatus = getStockStatus(availableQty);
 
                 return (
                   <tr key={item.id}>
@@ -130,11 +201,41 @@ export default function Inventory() {
                     <td style={{ whiteSpace: "nowrap" }}>
                       INV-{String(item.id).padStart(5, "0")}
                     </td>
-                    <td>{item.category_name}</td>
-                    <td>{item.subcategory_name}</td>
-                    <td>{item.description}</td>
-                    <td>{`${totalQty} ${item.unit || ""}`}</td>
+                    <td>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "25px",
+                        }}
+                      >
+                        <div style={{ width: "50px" }}>
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt="reference image"
+                              width={50}
+                            />
+                          ) : (
+                            "-"
+                          )}
+                        </div>
+                        {item.description}
+                      </div>
+                    </td>
 
+                    <td>{`${availableQty} ${item.unit || ""}`}</td>
+                    <td>
+                      <div
+                        className="approval-pill normal-text"
+                        style={{
+                          backgroundColor: stockStatus.bgColor,
+                          color: stockStatus.textColor,
+                        }}
+                      >
+                        {stockStatus.label}
+                      </div>
+                    </td>
                     <td>
                       <Button
                         componentType={"link"}
@@ -153,7 +254,9 @@ export default function Inventory() {
             </tbody>
           </table>
         ) : (
-          ""
+          <div style={{ textAlign: "center", padding: "40px", color: "#888" }}>
+            No items found in this category
+          </div>
         )}
       </div>
     </div>
