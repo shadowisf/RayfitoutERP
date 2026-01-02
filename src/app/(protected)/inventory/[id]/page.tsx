@@ -263,6 +263,7 @@ export default async function InventoryItemWithID({
               stocks={stockData.stocks}
               stocksTransferIssue={stockData.stocksTransferIssue}
               unit={inventoryItem.unit}
+              inventoryItemCreatedAt={inventoryItem.created_at}
             />
           </div>
 

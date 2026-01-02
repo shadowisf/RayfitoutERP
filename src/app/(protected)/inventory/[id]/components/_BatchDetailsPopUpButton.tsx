@@ -130,6 +130,9 @@ export default function BatchDetailsPopUpButton({
   inventoryItem,
   batchID,
 }: BatchDetailsPopUpButtonProps) {
+  const arrowUpChartIcon = "/icons/arrow-up-chart.svg";
+  const arrowDownChartIcon = "/icons/arrow-down-chart.svg";
+
   const [isOpen, setIsOpen] = useState(false);
   const [batchDetails, setBatchDetails] = useState<BatchDetails | null>(null);
   const [boqItemNumber, setBoqItemNumber] = useState<string | null>(null);
@@ -328,7 +331,7 @@ export default function BatchDetailsPopUpButton({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "1px",
+          gap: "5px",
           padding: "0px 5px",
           borderRadius: "20px",
           backgroundColor: isIncrease
@@ -348,32 +351,16 @@ export default function BatchDetailsPopUpButton({
           }}
         >
           {isIncrease ? "+" : ""}
-          {priceAnalytics.percentageChange.toFixed(1)}%
+          {priceAnalytics.percentageChange.toFixed(0)}%
         </span>
 
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          style={{
-            transform: isDecrease ? "rotate(180deg)" : "rotate(0deg)",
-          }}
-        >
-          <path
-            d="M7 14L12 9L17 14"
-            stroke={
-              isIncrease
-                ? "rgba(159, 71, 71, 1)"
-                : isDecrease
-                ? "rgba(0, 108, 60, 1)"
-                : "#737373"
-            }
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        {isIncrease && (
+          <img src={arrowUpChartIcon} width={14} alt="arrow up chart" />
+        )}
+
+        {isDecrease && (
+          <img src={arrowDownChartIcon} width={14} alt="arrow down chart" />
+        )}
       </div>
     );
   };

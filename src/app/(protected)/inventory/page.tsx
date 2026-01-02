@@ -8,6 +8,7 @@ import EditInventoryItemButton from "./components/_EditInventoryItemButton";
 
 export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
+  const searchIcon = "/icons/search.svg";
 
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [availableQuantities, setAvailableQuantities] = useState<{
@@ -18,6 +19,10 @@ export default function Inventory() {
     };
   }>({});
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<"none" | "high-low" | "low-high">(
+    "none"
+  );
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`, {
@@ -106,11 +111,43 @@ export default function Inventory() {
     return inventory.filter((item) => item.category_name === category).length;
   };
 
-  // Filter inventory based on active category
-  const filteredInventory =
-    activeCategory === "ALL"
-      ? inventory
-      : inventory.filter((item) => item.category_name === activeCategory);
+  // Filter, search, and sort inventory
+  const getProcessedInventory = () => {
+    let processed = inventory;
+
+    // Filter by category
+    if (activeCategory !== "ALL") {
+      processed = processed.filter(
+        (item) => item.category_name === activeCategory
+      );
+    }
+
+    // Filter by search query
+    if (searchQuery.trim() !== "") {
+      const query = searchQuery.toLowerCase();
+      processed = processed.filter((item) =>
+        item.description.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort by stock quantity
+    if (sortOrder !== "none") {
+      processed = [...processed].sort((a, b) => {
+        const qtyA = availableQuantities[a.id]?.available_quantity ?? 0;
+        const qtyB = availableQuantities[b.id]?.available_quantity ?? 0;
+
+        if (sortOrder === "high-low") {
+          return qtyB - qtyA; // Highest to lowest
+        } else {
+          return qtyA - qtyB; // Lowest to highest
+        }
+      });
+    }
+
+    return processed;
+  };
+
+  const processedInventory = getProcessedInventory();
 
   // Get stock status based on available quantity
   const getStockStatus = (availableQty: number) => {
@@ -145,11 +182,77 @@ export default function Inventory() {
         }}
       >
         <h2>INVENTORY</h2>
-        <CreateInventoryItemButton />
+        <div style={{ display: "flex", gap: "10px" }}>
+          <select
+            value={sortOrder}
+            onChange={(e) =>
+              setSortOrder(e.target.value as "none" | "high-low" | "low-high")
+            }
+            style={{
+              padding: "10px 15px",
+              borderRadius: "8px",
+              border: "1px solid rgba(223, 223, 223, 1)",
+              backgroundColor: "white",
+              cursor: "pointer",
+              width: "250px",
+            }}
+          >
+            <option value="none">SORT BY STOCK</option>
+            <option value="high-low">HIGHEST TO LOWEST STOCK</option>
+            <option value="low-high">LOWEST TO HIGHEST STOCK</option>
+          </select>
+          <CreateInventoryItemButton />
+          <div
+            style={{
+              position: "relative",
+              flex: 1,
+              maxWidth: "400px",
+              backgroundColor: "white",
+            }}
+          >
+            <input
+              type="text"
+              placeholder="SEARCH"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: "400px",
+                padding: "10px 40px 10px 15px",
+                borderRadius: "8px",
+                border: "1px solid rgba(223, 223, 223, 1)",
+                fontSize: "14px",
+              }}
+            />
+            <img
+              src={searchIcon}
+              alt="search"
+              style={{
+                position: "absolute",
+                right: "15px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "16px",
+                height: "16px",
+                opacity: 0.5,
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       <br />
       <br />
+
+      <div
+        style={{
+          display: "flex",
+          gap: "15px",
+          marginBottom: "20px",
+          alignItems: "center",
+        }}
+      >
+        {/* Sort Dropdown */}
+      </div>
 
       {/* Category Tabs */}
       <div className="category-grid">
@@ -208,8 +311,10 @@ export default function Inventory() {
       <br />
       <br />
 
+      {/* Search and Sort Controls */}
+
       <div style={{ overflowX: "auto" }}>
-        {filteredInventory.length > 0 ? (
+        {processedInventory.length > 0 ? (
           <table className="items-table two-toned">
             <thead>
               <tr>
@@ -222,7 +327,7 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody>
-              {filteredInventory.map((item, index) => {
+              {processedInventory.map((item, index) => {
                 const quantityData = availableQuantities[item.id];
                 const availableQty = quantityData?.available_quantity ?? 0;
                 const stockStatus = getStockStatus(availableQty);
@@ -301,7 +406,9 @@ export default function Inventory() {
           </table>
         ) : (
           <div style={{ textAlign: "center", padding: "40px", color: "#888" }}>
-            No items found in this category
+            {searchQuery.trim() !== ""
+              ? "No items found matching your search"
+              : "No items found in this category"}
           </div>
         )}
       </div>

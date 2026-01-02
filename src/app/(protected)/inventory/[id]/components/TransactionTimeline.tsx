@@ -348,9 +348,11 @@ const TransactionCard = ({
                     <h4>{transaction.project_name || "-"}</h4>
                   </div>
                   <div></div>
-                  <div style={{ textWrap: "nowrap" }}>
-                    <UploadSignedTSCButton transactionID={transaction.id} />
-                  </div>
+                  {!transaction.received && (
+                    <div style={{ textWrap: "nowrap" }}>
+                      <UploadSignedTSCButton transactionID={transaction.id} />
+                    </div>
+                  )}
                 </>
               )}
 
@@ -386,9 +388,13 @@ const TransactionCard = ({
                         <small>TRANSFER TO</small>
                         <h4>{transaction.to_location}</h4>
                       </div>
-                      <div style={{ textWrap: "nowrap" }}>
-                        <UploadSignedTSCButton transactionID={transaction.id} />
-                      </div>
+                      {!transaction.received && (
+                        <div style={{ textWrap: "nowrap" }}>
+                          <UploadSignedTSCButton
+                            transactionID={transaction.id}
+                          />
+                        </div>
+                      )}
                     </>
                   )}
                 </>
@@ -417,9 +423,11 @@ const TransactionCard = ({
                     <h4>{transaction.purpose}</h4>
                   </div>
                   <div></div>
-                  <div style={{ textWrap: "nowrap" }}>
-                    <UploadSignedTSCButton transactionID={transaction.id} />
-                  </div>
+                  {!transaction.received && (
+                    <div style={{ textWrap: "nowrap" }}>
+                      <UploadSignedTSCButton transactionID={transaction.id} />
+                    </div>
+                  )}
                 </>
               )}
               {/* {(transactionType === "STOCK_ISSUED" ||
@@ -490,6 +498,7 @@ const ItemCreatedCard = ({
           paddingBottom: "50px",
           marginLeft: "-20px",
           textTransform: "uppercase",
+          backgroundColor: "rgba(223, 223, 223, 1)",
         }}
       >
         <div

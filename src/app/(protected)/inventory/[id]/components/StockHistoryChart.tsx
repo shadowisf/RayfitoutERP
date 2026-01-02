@@ -2,25 +2,49 @@
 
 import { useState } from "react";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
   ReferenceLine,
   Tooltip,
+  Cell,
 } from "recharts";
 
 interface StockHistoryChartProps {
   stocks: any[];
   stocksTransferIssue: any[];
   unit: string;
+  inventoryItemCreatedAt: string;
 }
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
+
+    // Check if this is the creation point
+    if (data.isCreationPoint) {
+      return (
+        <div
+          style={{
+            backgroundColor: "white",
+            border: "2px solid #737373",
+            padding: "12px",
+            borderRadius: "8px",
+            fontSize: "12px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            minWidth: "200px",
+          }}
+        >
+          <div style={{ fontWeight: "600", marginBottom: "8px" }}>
+            {data.displayDate}
+          </div>
+          <div style={{ color: "#737373" }}>Item Created</div>
+        </div>
+      );
+    }
 
     return (
       <div
@@ -38,18 +62,70 @@ const CustomTooltip = ({ active, payload }: any) => {
           {data.displayDate}
         </div>
 
-        <div style={{ marginBottom: "4px" }}>
-          <span style={{ color: "#00804C", fontWeight: "600" }}>
-            +{data.added} {data.unit}
-          </span>
-          <span style={{ color: "#737373", fontSize: "11px" }}> added</span>
-        </div>
+        {/* Stock Additions */}
+        {data.addedTransactions && data.addedTransactions.length > 0 && (
+          <div style={{ marginBottom: "8px" }}>
+            <div
+              style={{
+                color: "#00804C",
+                fontWeight: "600",
+                marginBottom: "4px",
+              }}
+            >
+              Added (+{data.added} {data.unit}):
+            </div>
+            {data.addedTransactions.map((transaction: any, index: number) => (
+              <div
+                key={index}
+                style={{
+                  fontSize: "11px",
+                  color: "#737373",
+                  marginLeft: "8px",
+                }}
+              >
+                • TA-{String(transaction.batch_id).padStart(5, "0")}:{" "}
+                {transaction.quantity} {data.unit}
+              </div>
+            ))}
+          </div>
+        )}
 
-        <div>
-          <span style={{ color: "#C50C0F", fontWeight: "600" }}>
-            -{data.removed} {data.unit}
-          </span>
-          <span style={{ color: "#737373", fontSize: "11px" }}> issued</span>
+        {/* Stock Issues */}
+        {data.removedTransactions && data.removedTransactions.length > 0 && (
+          <div style={{ marginBottom: "8px" }}>
+            <div
+              style={{
+                color: "#C50C0F",
+                fontWeight: "600",
+                marginBottom: "4px",
+              }}
+            >
+              Issued (-{data.removed} {data.unit}):
+            </div>
+            {data.removedTransactions.map((transaction: any, index: number) => (
+              <div
+                key={index}
+                style={{
+                  fontSize: "11px",
+                  color: "#737373",
+                  marginLeft: "8px",
+                }}
+              >
+                • TA-{String(transaction.id).padStart(5, "0")}:{" "}
+                {transaction.quantity} {data.unit}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div
+          style={{
+            borderTop: "1px solid #E5E5E5",
+            paddingTop: "8px",
+            fontWeight: "700",
+          }}
+        >
+          Total: {data.netChange} {data.unit}
         </div>
       </div>
     );
@@ -61,6 +137,7 @@ export default function StockHistoryChart({
   stocks,
   stocksTransferIssue,
   unit,
+  inventoryItemCreatedAt,
 }: StockHistoryChartProps) {
   const [timePeriod, setTimePeriod] = useState<string>("all");
 
@@ -73,6 +150,9 @@ export default function StockHistoryChart({
         timestamp: number;
         displayDate: string;
         shortDate: string;
+        isCreationPoint?: boolean;
+        addedTransactions: any[];
+        removedTransactions: any[];
       };
     } = {};
 
@@ -128,6 +208,20 @@ export default function StockHistoryChart({
       }
     };
 
+    // Add creation point (starting at 0)
+    const creationDate = new Date(inventoryItemCreatedAt);
+    const creationKey = getKey(creationDate);
+    dataMap[creationKey] = {
+      added: 0,
+      removed: 0,
+      timestamp: creationDate.getTime(),
+      displayDate: formatDisplayDate(creationDate, groupByDay),
+      shortDate: formatShortDate(creationDate, groupByDay),
+      isCreationPoint: true,
+      addedTransactions: [],
+      removedTransactions: [],
+    };
+
     // Process stock additions
     stocks.forEach((stock) => {
       const date = new Date(stock.created_at);
@@ -140,10 +234,16 @@ export default function StockHistoryChart({
           timestamp: date.getTime(),
           displayDate: formatDisplayDate(date, groupByDay),
           shortDate: formatShortDate(date, groupByDay),
+          addedTransactions: [],
+          removedTransactions: [],
         };
       }
 
       dataMap[key].added += stock.quantity;
+      dataMap[key].addedTransactions.push({
+        batch_id: stock.batch_id,
+        quantity: stock.quantity,
+      });
     });
 
     // Process only issues (not transfers)
@@ -159,23 +259,35 @@ export default function StockHistoryChart({
             timestamp: date.getTime(),
             displayDate: formatDisplayDate(date, groupByDay),
             shortDate: formatShortDate(date, groupByDay),
+            addedTransactions: [],
+            removedTransactions: [],
           };
         }
 
         dataMap[key].removed += Math.abs(item.quantity);
+        dataMap[key].removedTransactions.push({
+          id: item.id,
+          quantity: Math.abs(item.quantity),
+        });
       }
     });
 
-    // Convert to array and calculate net change
-    const allData = Object.values(dataMap)
-      .map((item) => ({
-        ...item,
-        netChange: item.added - item.removed,
-        unit: unit,
-      }))
-      .sort((a, b) => a.timestamp - b.timestamp);
+    // Convert to array and calculate cumulative quantity
+    const allData = Object.values(dataMap).sort(
+      (a, b) => a.timestamp - b.timestamp
+    );
 
-    return allData;
+    let cumulativeQuantity = 0;
+    const dataWithCumulative = allData.map((item) => {
+      cumulativeQuantity += item.added - item.removed;
+      return {
+        ...item,
+        netChange: cumulativeQuantity,
+        unit: unit,
+      };
+    });
+
+    return dataWithCumulative;
   };
 
   // Determine if we should group by day
@@ -221,7 +333,7 @@ export default function StockHistoryChart({
     chartData.length > 0
       ? Math.max(...chartData.map((d) => Math.abs(d.netChange)))
       : 100;
-  const yAxisDomain = [-maxValue * 1.2, maxValue * 1.2];
+  const yAxisDomain = [0, maxValue * 1.2];
 
   // Generate unique months for dropdown
   const getAvailableMonths = () => {
@@ -288,9 +400,10 @@ export default function StockHistoryChart({
 
       {chartData.length > 0 ? (
         <ResponsiveContainer width="100%" height="85%">
-          <LineChart
+          <BarChart
             data={chartData}
             margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+            barCategoryGap={0}
           >
             <CartesianGrid
               strokeDasharray="3 3"
@@ -313,33 +426,26 @@ export default function StockHistoryChart({
               axisLine={false}
               tickLine={false}
               tick={{ fill: "#737373", fontSize: 12 }}
-              tickFormatter={(value) => `${value > 0 ? "+" : ""}${value}`}
+              tickFormatter={(value) => `${value}`}
             />
 
-            <Tooltip content={<CustomTooltip />} cursor={false} />
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ fill: "rgba(0,0,0,0.05)" }}
+            />
 
             {/* Zero reference line */}
             <ReferenceLine y={0} stroke="#737373" strokeWidth={2} />
 
-            <Line
-              type="monotone"
-              dataKey="netChange"
-              stroke="#00804C"
-              strokeWidth={3}
-              dot={{
-                fill: "#00804C",
-                stroke: "white",
-                strokeWidth: 2,
-                r: 5,
-              }}
-              activeDot={{
-                fill: "#00804C",
-                stroke: "white",
-                strokeWidth: 2,
-                r: 7,
-              }}
-            />
-          </LineChart>
+            <Bar dataKey="netChange" radius={[0, 0, 0, 0]}>
+              {chartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.isCreationPoint ? "#737373" : "#00804C"}
+                />
+              ))}
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       ) : (
         <div
