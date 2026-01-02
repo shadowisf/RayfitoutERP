@@ -230,7 +230,7 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
         <View style={styles.header}>
           <Image src={logo} style={styles.logo} />
           <Text style={styles.title}>
-            TRANSFER STOCK <Text style={styles.titleBold}>CERTIFICATE</Text>
+            DELIVERY <Text style={styles.titleBold}>NOTE</Text>
           </Text>
         </View>
 
@@ -454,9 +454,7 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
                 <Text style={styles.signatureLabel}>
                   SIGNATURE OF DRIVER / TRANSPORT CUSTODY
                 </Text>
-                <Text style={styles.receiverName}>
-                  {transaction?.transferee || ""}
-                </Text>
+                <Text style={styles.receiverName}></Text>
               </View>
             </View>
           )}

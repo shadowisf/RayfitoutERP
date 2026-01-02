@@ -127,7 +127,7 @@ export default function TransferIssueStocksButton({
         const locations = data.map((item: { name: string }) => item.name);
         setToValues(locations);
       });
-  }, []);
+  }, [isOpen]);
 
   // Calculate available quantity when "from" location changes
   useEffect(() => {
@@ -253,6 +253,7 @@ export default function TransferIssueStocksButton({
       setThirdParty(false);
 
       router.refresh();
+
       setIsOpen(false);
     } else {
       toast("Failed to transfer or issue stock", "error");

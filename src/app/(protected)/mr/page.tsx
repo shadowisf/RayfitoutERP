@@ -232,18 +232,18 @@ export default function MR() {
 
   // Define ALL statuses in order
   const allStatuses = [
-    "Initial approval rejected",
-    "Price approval rejected",
-    "Payment rejected",
-    "GRN failed",
-    "Failed QC",
     "Draft",
+    "Initial approval rejected",
     "Awaiting initial approval",
     "Awaiting quotations",
+    "Price approval rejected",
     "Awaiting price approval",
     "Awaiting LPO & invoice",
+    "Payment rejected",
     "Pending payment",
+    "GRN failed",
     "Pending delivery",
+    "Failed QC",
     "Awaiting QC check",
     "Awaiting stock entry",
     "Completed",

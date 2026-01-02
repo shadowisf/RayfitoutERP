@@ -15,7 +15,7 @@ type Transaction = {
   received_on: string | null;
   serial_number: string;
   signed_tsc_file: JSON;
-  third_party_involved: boolean;
+  third_party_involved: number;
   attachment: any;
 
   // Inventory Item fields

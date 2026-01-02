@@ -6,16 +6,15 @@ import { pdf } from "@react-pdf/renderer";
 import { TsnPDF } from "../../components/TsnPDF";
 
 type ViewTSNPDFButtonProps = {
-  transferID: number;
+  transactionID: number;
 };
 
 export default function ViewTSNPDFButton({
-  transferID,
+  transactionID,
 }: ViewTSNPDFButtonProps) {
-  const externalLinkIcon = "/icons/external-link.svg";
+  const downloadIcon = "/icons/download.svg";
 
   const [transaction, setTransaction] = useState<any>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   async function urlToBase64(url: string): Promise<string> {
@@ -24,24 +23,13 @@ export default function ViewTSNPDFButton({
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3/getImage`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url }),
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const data = await response.json();
-
-      if (!data.success || !data.dataUrl) {
-        throw new Error("Invalid response from proxy");
-      }
-
-      return data.dataUrl;
+      return data.success && data.dataUrl ? data.dataUrl : "";
     } catch (error) {
       console.error("Failed to convert image:", url, error);
       return "";
@@ -56,11 +44,11 @@ export default function ViewTSNPDFButton({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: transferID }),
+            body: JSON.stringify({ id: transactionID }),
           }
         );
-        const data = await response.json();
 
+        const data = await response.json();
         if (data.success && data.data) {
           setTransaction(data.data);
         }
@@ -68,101 +56,74 @@ export default function ViewTSNPDFButton({
         console.error("Error fetching transfer details:", error);
       }
     }
+
     fetchTransferDetails();
-  }, [transferID]);
+  }, [transactionID]);
 
-  useEffect(() => {
-    async function generatePdfBlob() {
-      if (!transaction) return;
+  const handleDownload = async () => {
+    if (!transaction || isProcessing) return;
 
-      setIsProcessing(true);
+    setIsProcessing(true);
 
-      try {
-        // Process attachment images if they exist
-        let processedTransaction: any = { ...transaction };
+    try {
+      let processedTransaction = { ...transaction };
 
-        if (transaction.attachment) {
-          try {
-            let urls: string[] = [];
+      if (transaction.attachment) {
+        let urls: string[] = [];
 
-            // Parse attachment field
-            if (Array.isArray(transaction.attachment)) {
-              urls = transaction.attachment;
-            } else if (typeof transaction.attachment === "string") {
-              if (transaction.attachment.trim() !== "") {
-                const parsed = JSON.parse(transaction.attachment);
-
-                urls = Array.isArray(parsed) ? parsed : [];
-              }
-            } else if (typeof transaction.attachment === "object") {
-              // It might be a JSON object already parsed by the database driver
-              if (Array.isArray(transaction.attachment)) {
-                urls = transaction.attachment;
-              }
-            }
-
-            if (Array.isArray(urls) && urls.length > 0) {
-              // Convert all images to base64
-              const base64Images = await Promise.all(
-                urls.map((url) => {
-                  return urlToBase64(url);
-                })
-              );
-
-              // Filter out failed conversions
-              const validImages = base64Images.filter((img) => img !== "");
-
-              processedTransaction = {
-                ...transaction,
-                attachment: validImages,
-              };
-            }
-          } catch (error) {
-            console.error("Error processing transaction attachments:", error);
+        try {
+          if (Array.isArray(transaction.attachment)) {
+            urls = transaction.attachment;
+          } else if (typeof transaction.attachment === "string") {
+            const parsed = JSON.parse(transaction.attachment);
+            if (Array.isArray(parsed)) urls = parsed;
           }
+
+          if (urls.length > 0) {
+            const base64Images = await Promise.all(
+              urls.map((url) => urlToBase64(url))
+            );
+
+            processedTransaction.attachment = base64Images.filter(Boolean);
+          }
+        } catch (err) {
+          console.error("Attachment processing failed:", err);
         }
-
-        // Generate PDF blob with processed images
-        const blob = await pdf(
-          <TsnPDF transaction={processedTransaction} />
-        ).toBlob();
-
-        // Create blob URL
-        const url = URL.createObjectURL(blob);
-        setPdfUrl(url);
-
-        // Cleanup function to revoke the URL when component unmounts
-        return () => {
-          URL.revokeObjectURL(url);
-        };
-      } catch (error) {
-        console.error("Error generating PDF blob:", error);
-      } finally {
-        setIsProcessing(false);
       }
-    }
 
-    generatePdfBlob();
-  }, [transaction]);
+      const blob = await pdf(
+        <TsnPDF transaction={processedTransaction} />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `DN-${transactionID.toString().padStart(5, "0")}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("PDF download failed:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
-    <>
-      <Button
-        componentType={"link"}
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(223, 223, 223, 1)"}
-        textColor={"black"}
-        href={pdfUrl ?? ""}
-        target="_blank"
-        style={{
-          padding: "7px 7px",
-          cursor: isProcessing ? "not-allowed" : "pointer",
-          opacity: isProcessing ? 0.5 : 1,
-        }}
-        disabled={isProcessing || !pdfUrl}
-      >
-        <img src={externalLinkIcon} alt="view pdf" />
-      </Button>
-    </>
+    <Button
+      componentType={"none"}
+      bgColor={"rgba(255, 255, 255, 1)"}
+      borderColor={"rgba(207, 207, 207, 1)"}
+      textColor={"black"}
+      style={{ padding: "7px 20px", borderRadius: "25px" }}
+      disabled={isProcessing}
+    >
+      DN (UNSIGNED)
+      <img src={downloadIcon} alt="download" onClick={handleDownload} />
+    </Button>
   );
 }

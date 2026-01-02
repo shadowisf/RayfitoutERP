@@ -142,7 +142,7 @@ export default function NewMrButton() {
                   RAY-{pr.id} - {pr.name}
                 </option>
               ))}
-              required={false}
+              required={purposeReasonID === 1 || purposeReasonID === 2}
               disabled={purposeReasonID === 6}
             />
 

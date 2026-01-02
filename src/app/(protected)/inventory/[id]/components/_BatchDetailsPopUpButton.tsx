@@ -8,6 +8,7 @@ import { BoqLine } from "@/app/(protected)/boq/[id]/types/boqLine";
 
 type BatchDetailsPopUpButtonProps = {
   inventoryItem: InventoryItem;
+  batchID: number;
 };
 
 type MRBatchDetails = {
@@ -124,6 +125,7 @@ type BatchDetails = MRBatchDetails | ManualStockDetails;
 
 export default function BatchDetailsPopUpButton({
   inventoryItem,
+  batchID,
 }: BatchDetailsPopUpButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -144,6 +146,7 @@ export default function BatchDetailsPopUpButton({
           },
           body: JSON.stringify({
             inventoryItemId: inventoryItem.id,
+            batchId: batchID,
           }),
         }
       );
@@ -253,7 +256,9 @@ export default function BatchDetailsPopUpButton({
         }}
       >
         <h2>OVERVIEW</h2>
+
         <br />
+
         <div
           style={{
             display: "grid",
@@ -273,7 +278,7 @@ export default function BatchDetailsPopUpButton({
               bgColor={"transparent"}
               borderColor={"transparent"}
               textColor={"black"}
-              style={{ padding: "0px" }}
+              style={{ padding: "0px", textDecoration: "underline" }}
               href={`/mr/${details.mr_header_id}`}
             >
               MR-{String(details.mr_header_id).padStart(5, "0")}
@@ -299,14 +304,6 @@ export default function BatchDetailsPopUpButton({
           <div>
             <small>REQUESTED BY</small>
             <h3>{details.requested_by || "-"}</h3>
-          </div>
-          <div>
-            <small>QUALITY CONTROL STATUS</small>
-            <h3>{details.qc_status ? details.qc_status.toUpperCase() : "-"}</h3>
-          </div>
-          <div>
-            <small>QUANTITY MISSING</small>
-            <h3>{getQuantityMissing()}</h3>
           </div>
         </div>
       </div>
@@ -343,7 +340,7 @@ export default function BatchDetailsPopUpButton({
                 bgColor={"transparent"}
                 borderColor={"transparent"}
                 textColor={"black"}
-                style={{ padding: "0px" }}
+                style={{ padding: "0px", textDecoration: "underline" }}
                 href={`/mr/${details.mr_header_id}`}
               >
                 MR-{String(details.mr_header_id).padStart(5, "0")}
@@ -367,7 +364,7 @@ export default function BatchDetailsPopUpButton({
                   bgColor={"transparent"}
                   borderColor={"transparent"}
                   textColor={"black"}
-                  style={{ padding: "0px" }}
+                  style={{ padding: "0px", textDecoration: "underline" }}
                   href={`/boq/${details.boq_header_id}`}
                 >
                   {boqItemNumber || "-"}
@@ -896,12 +893,12 @@ export default function BatchDetailsPopUpButton({
         <FormPopUp
           header={
             batchDetails?.type === "mr" ? (
-              "BATCH DETAILS"
+              "TRANSACTION DETAILS"
             ) : (
               <div
                 style={{ display: "flex", gap: "25px", alignItems: "center" }}
               >
-                STOCK DETAILS{" "}
+                TRANSACTION DETAILS{" "}
                 <h6
                   style={{
                     backgroundColor: "black",

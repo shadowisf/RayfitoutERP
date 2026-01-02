@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
+import FormPopUp from "@/app/components/FormPopup";
+import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 
 type UploadSignedTSCButtonProps = {
   transactionID: number;
@@ -14,21 +16,21 @@ export default function UploadSignedTSCButton({
 }: UploadSignedTSCButtonProps) {
   const router = useRouter();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadIcon = "/icons/upload.svg";
 
   const [isUploading, setIsUploading] = useState(false);
   const [tscFiles, setTscFiles] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isUploadFormOpen, setIsUploadFormOpen] = useState(false);
+
+  const [signedDN, setSignedDN] = useState<File | null>(null);
 
   const closeIcon = "/icons/cross-small.svg";
   const downloadIcon = "/icons/download.svg";
-  const uploadIcon = "/icons/upload.svg";
 
   // Fetch existing TSC files on mount using getStockTransferByID
   useEffect(() => {
     async function fetchExistingTSC() {
       try {
-        setIsLoading(true);
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getStockDetailsByID`,
           {
@@ -62,25 +64,11 @@ export default function UploadSignedTSCButton({
       } catch (error) {
         console.error("Error fetching existing TSC:", error);
         setTscFiles([]);
-      } finally {
-        setIsLoading(false);
       }
     }
 
     fetchExistingTSC();
   }, [transactionID]);
-
-  function handleUploadClick() {
-    if (!isUploading) {
-      fileInputRef.current?.click();
-    }
-  }
-
-  function getFileName(url: string): string {
-    const urlParts = url.split("/");
-    const fileName = urlParts[urlParts.length - 1];
-    return decodeURIComponent(fileName) || "View File";
-  }
 
   async function handleDownload(url: string, event: React.MouseEvent) {
     event.stopPropagation();
@@ -96,7 +84,7 @@ export default function UploadSignedTSCButton({
 
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `TSC-${String(transactionID).padStart(5, "0")}`;
+      link.download = `Signed-DN-${String(transactionID).padStart(5, "0")}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -104,18 +92,23 @@ export default function UploadSignedTSCButton({
       window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error("Error downloading file:", error);
-      toast("Failed to download signed TSC", "error");
+      toast("Failed to download signed DN", "error");
     }
   }
 
-  async function uploadFile(file: File) {
+  async function handleSubmit() {
+    if (!signedDN) {
+      toast("Please select a file to upload", "error");
+      return;
+    }
+
     setIsUploading(true);
 
     try {
       // Upload to S3
       const formData = new FormData();
-      formData.append("folder", "signed-tsc");
-      formData.append("files", file);
+      formData.append("folder", "signed-dn");
+      formData.append("files", signedDN);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
@@ -138,7 +131,7 @@ export default function UploadSignedTSCButton({
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`,
         {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "updateSignedTSC",
@@ -152,80 +145,22 @@ export default function UploadSignedTSCButton({
         throw new Error("Failed to update database");
       }
 
-      toast("Signed TSC uploaded successfully", "success");
+      toast("Signed DN uploaded successfully", "success");
 
       // Update local state
       setTscFiles(updatedTscFiles);
 
+      // Reset form
+      setSignedDN(null);
+      setIsUploadFormOpen(false);
+
       router.refresh();
     } catch (error) {
-      console.error("Error uploading TSC:", error);
-      toast("Failed to upload signed TSC", "error");
+      console.error("Error uploading DN:", error);
+      toast("Failed to upload signed DN", "error");
     } finally {
       setIsUploading(false);
     }
-  }
-
-  async function handleFileSelection(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-
-    // Validate file type
-    const allowedTypes = [
-      "application/pdf",
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-    ];
-    if (!allowedTypes.includes(file.type)) {
-      toast("Please upload a PDF, JPG, JPEG, or PNG file", "error");
-      return;
-    }
-
-    await uploadFile(file);
-
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  }
-
-  function handleDragOver(event: React.DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
-  function handleDragLeave(event: React.DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
-  async function handleDrop(event: React.DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const files = event.dataTransfer.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-
-    // Validate file type
-    const allowedTypes = [
-      "application/pdf",
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-    ];
-    if (!allowedTypes.includes(file.type)) {
-      toast("Please upload a PDF, JPG, JPEG, or PNG file", "error");
-      return;
-    }
-
-    await uploadFile(file);
   }
 
   async function handleRemoveFile(url: string, event: React.MouseEvent) {
@@ -256,15 +191,11 @@ export default function UploadSignedTSCButton({
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`,
         {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action: "updateSignedTSC",
+            action: "deleteSignedTSC",
             transaction_id: transactionID,
-            signed_tsc_file:
-              updatedTscFiles.length > 0
-                ? JSON.stringify(updatedTscFiles)
-                : null,
           }),
         }
       );
@@ -273,51 +204,22 @@ export default function UploadSignedTSCButton({
         throw new Error("Failed to update database");
       }
 
-      toast("Signed TSC deleted successfully", "success");
+      toast("Signed DN deleted", "success");
 
       // Update local state
       setTscFiles(updatedTscFiles);
 
       router.refresh();
     } catch (error) {
-      console.error("Error deleting TSC:", error);
-      toast("Failed to delete signed TSC", "error");
+      console.error("Error deleting DN:", error);
+      toast("Failed to delete signed DN", "error");
     } finally {
       setIsUploading(false);
     }
   }
 
-  if (isLoading) {
-    return (
-      <Button
-        componentType={"button"}
-        onClick={() => {}}
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(207, 207, 207, 1)"}
-        textColor={"black"}
-        style={{
-          padding: "7px 20px",
-          borderRadius: "25px",
-          cursor: "not-allowed",
-        }}
-        disabled
-      >
-        Loading...
-      </Button>
-    );
-  }
-
   return (
     <>
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf,.jpg,.jpeg,.png"
-        style={{ display: "none" }}
-        onChange={handleFileSelection}
-      />
-
       {/* TSC Files */}
       {tscFiles.length > 0 ? (
         <>
@@ -335,7 +237,7 @@ export default function UploadSignedTSCButton({
               }}
               key={fileUrl}
             >
-              Signed TSC
+              DN (SIGNED)
               <img
                 src={downloadIcon}
                 alt="download"
@@ -350,35 +252,51 @@ export default function UploadSignedTSCButton({
           ))}
         </>
       ) : (
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+        <Button
+          componentType={"button"}
+          bgColor={"black"}
+          borderColor={"black"}
+          textColor={"white"}
           style={{
+            padding: "7px 20px",
             borderRadius: "25px",
+            textTransform: "none",
           }}
+          disabled={isUploading}
+          onClick={() => setIsUploadFormOpen(true)}
         >
-          <Button
-            componentType={"none"}
-            bgColor={"white"}
-            borderColor={"rgba(207, 207, 207, 1)"}
-            textColor={"black"}
+          <div
             style={{
-              padding: "7px 20px",
+              backgroundColor: "rgba(248, 77, 77, 1)",
+              padding: "1px 8px",
               borderRadius: "25px",
-              textTransform: "none",
             }}
-            disabled={isUploading}
           >
-            Signed TSC
-            <img
-              src={uploadIcon}
-              alt="upload icon"
-              style={{ filter: "invert(1)" }}
-              onClick={handleUploadClick}
+            !
+          </div>
+          Upload Signed DN
+          <img src={uploadIcon} alt="upload" />
+        </Button>
+      )}
+
+      {/* Upload Form Popup */}
+      {isUploadFormOpen && (
+        <FormPopUp
+          header={"UPLOAD SIGNED DELIVERY NOTE"}
+          setIsOpen={setIsUploadFormOpen}
+          addButtonLabel="CONFIRM"
+          handleSubmit={handleSubmit}
+        >
+          <div className="input-row full">
+            <SingleUploadFileBox
+              fileState={signedDN}
+              setFileState={setSignedDN}
+              label={"SIGNED DELIVERY NOTE"}
+              acceptedFileTypes={".pdf,.jpg,.jpeg,.png"}
+              required
             />
-          </Button>
-        </div>
+          </div>
+        </FormPopUp>
       )}
     </>
   );

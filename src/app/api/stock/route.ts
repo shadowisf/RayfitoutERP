@@ -221,11 +221,25 @@ WHERE id = ?
         UPDATE stocks_transfer_issue
 SET received = 1,
     received_on = NOW(),
-    signed_tsc = ?
+    signed_tsc_file = ?
 WHERE id = ?
       `;
 
-      await db.query(query, [body.signed_tsc_file, body.transfer_id]);
+      await db.query(query, [body.signed_tsc_file, body.transaction_id]);
+
+      return NextResponse.json({
+        success: true,
+      });
+    }
+
+    if (body.action === "deleteSignedTSC") {
+      const query = `
+        UPDATE stocks_transfer_issue
+SET signed_tsc_file = NULL, received = 0
+WHERE id = ?
+      `;
+
+      await db.query(query, [body.transaction_id]);
 
       return NextResponse.json({
         success: true,

@@ -156,9 +156,23 @@ export default function Inventory() {
           <button
             className={`item ${activeCategory === "ALL" ? "active" : ""}`}
             onClick={() => setActiveCategory("ALL")}
-            style={{ textTransform: "uppercase" }}
           >
-            ALL ({inventory.length})
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span>ALL</span>
+              <span
+                style={{
+                  backgroundColor:
+                    activeCategory === "ALL"
+                      ? "white"
+                      : "rgba(205, 205, 205, 1)",
+                  color: "black",
+                  borderRadius: "5px",
+                  padding: "2px 10px",
+                }}
+              >
+                {inventory.length}
+              </span>
+            </div>
           </button>
 
           {categories.map((category) => (
@@ -167,7 +181,24 @@ export default function Inventory() {
               className={`item ${activeCategory === category ? "active" : ""}`}
               onClick={() => setActiveCategory(category)}
             >
-              {category.toUpperCase()} ({getCategoryCount(category)})
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "10px" }}
+              >
+                <span>{category.toUpperCase()} </span>
+                <span
+                  style={{
+                    backgroundColor:
+                      activeCategory === category
+                        ? "white"
+                        : "rgba(205, 205, 205, 1)",
+                    color: "black",
+                    borderRadius: "5px",
+                    padding: "2px 10px",
+                  }}
+                >
+                  {getCategoryCount(category)}
+                </span>
+              </div>
             </button>
           ))}
         </div>
@@ -178,7 +209,7 @@ export default function Inventory() {
 
       <div style={{ overflowX: "auto" }}>
         {filteredInventory.length > 0 ? (
-          <table className="items-table">
+          <table className="items-table two-toned">
             <thead>
               <tr>
                 <th>#</th>
@@ -215,9 +246,19 @@ export default function Inventory() {
                               src={item.image}
                               alt="reference image"
                               width={50}
+                              style={{ aspectRatio: "1/1" }}
                             />
                           ) : (
-                            "-"
+                            <div
+                              style={{
+                                height: "50px",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                              }}
+                            >
+                              -
+                            </div>
                           )}
                         </div>
                         {item.description}

@@ -3,21 +3,21 @@
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { InventoryItem } from "../../types/inventoryItem";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
+import { InventoryItem } from "../../types/inventoryItem";
 
-type ManualAddToStockButtonProp = {
+type ManualAddToStockButtonProps = {
   inventoryItem: InventoryItem;
 };
 
 export default function ManualAddToStockButton({
   inventoryItem,
-}: ManualAddToStockButtonProp) {
+}: ManualAddToStockButtonProps) {
   const { userInfo } = useAuth();
 
   const router = useRouter();
@@ -233,7 +233,7 @@ export default function ManualAddToStockButton({
                 QUANTITY <span style={{ color: "red" }}>*</span>
               </label>
               <div className="input-prefix right">
-                <span>{inventoryItem.unit}</span>
+                <span>{inventoryItem?.unit}</span>
                 <input
                   type="text"
                   inputMode="numeric"

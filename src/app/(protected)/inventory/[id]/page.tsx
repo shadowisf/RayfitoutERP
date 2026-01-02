@@ -10,6 +10,8 @@ import EditInventoryItemButton from "../components/_EditInventoryItemButton";
 import DeleteInventoryItemButton from "./components/_DeleteInventoryItemButton";
 import ReceiveStocksButton from "./components/_ReceiveStocksButton";
 import TopSuppliersChart from "./components/TopSuppliersChart";
+import StockHistoryChart from "./components/StockHistoryChart";
+import TopRequestingProjectsChart from "./components/TopRequestingProjectsChart";
 
 export default async function InventoryItemWithID({
   params,
@@ -126,11 +128,12 @@ export default async function InventoryItemWithID({
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <EditInventoryItemButton inventoryItem={inventoryItem} />
           <DeleteInventoryItemButton inventoryItem={inventoryItem} />
-
           {/* <ReceiveStocksButton inventoryItem={inventoryItem} /> */}
-
           <ManualAddToStockButton inventoryItem={inventoryItem} />
-          <TransferIssueStocksButton inventoryItem={inventoryItem} />
+
+          {availableQuantityData > 0 && (
+            <TransferIssueStocksButton inventoryItem={inventoryItem} />
+          )}
         </div>
       </div>
 
@@ -256,7 +259,7 @@ export default async function InventoryItemWithID({
       >
         <div>
           <div className="widget-container">
-            <StockLocationChart
+            <StockHistoryChart
               stocks={stockData.stocks}
               stocksTransferIssue={stockData.stocksTransferIssue}
               unit={inventoryItem.unit}
@@ -267,13 +270,46 @@ export default async function InventoryItemWithID({
           <br />
 
           <div className="widget-container">
-            <TopSuppliersChart
+            <StockLocationChart
               stocks={stockData.stocks}
-              unit={inventoryItem.unit}
               stocksTransferIssue={stockData.stocksTransferIssue}
+              unit={inventoryItem.unit}
             />
           </div>
+
+          <br />
+          <br />
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "25px",
+            }}
+          >
+            <div className="widget-container">
+              <TopSuppliersChart
+                stocks={stockData.stocks}
+                unit={inventoryItem.unit}
+                stocksTransferIssue={stockData.stocksTransferIssue}
+              />
+            </div>
+            <div className="widget-container">
+              <TopRequestingProjectsChart
+                stocks={stockData.stocks}
+                unit={inventoryItem.unit}
+                stocksTransferIssue={stockData.stocksTransferIssue}
+              />
+            </div>
+          </div>
         </div>
+
+        {/* <div>
+          <StockHistoryChart
+            stocks={stockData.stocks}
+            stocksTransferIssue={stockData.stocksTransferIssue}
+          />
+        </div> */}
 
         <div className="widget-container">
           <h2>TRANSACTION & MOVEMENT</h2>

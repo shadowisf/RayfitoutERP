@@ -2,6 +2,7 @@
 
 import { InventoryItem } from "../../types/inventoryItem";
 import BatchDetailsPopUpButton from "./_BatchDetailsPopUpButton";
+import TransactionDetailsPopUpButton from "./_IssueDetailsPopUpButton";
 import UploadSignedTSCButton from "./_UploadSignedTSCButton";
 import ViewTSNPDFButton from "./_ViewTsnPDFButton";
 
@@ -14,7 +15,13 @@ type TransactionTimelineProps = {
   inventoryItem: InventoryItem;
 };
 
-const TransactionIcon = ({ type }: { type: string }) => {
+const TransactionIcon = ({
+  type,
+  transaction,
+}: {
+  type: string;
+  transaction?: any;
+}) => {
   const plusIcon = "/icons/plus-green.svg";
   const minusIcon = "/icons/minus.svg";
 
@@ -26,17 +33,26 @@ const TransactionIcon = ({ type }: { type: string }) => {
     },
     STOCK_ISSUED: {
       icon: <img src={minusIcon} alt="minus" width="12" />,
-      bg: "rgba(197, 12, 15, 1)",
+      bg:
+        transaction?.received === 1
+          ? "rgba(197, 12, 15, 1)"
+          : "rgba(131, 131, 131, 1)",
       color: "white",
     },
     STOCK_TRANSFERRED: {
       icon: <img src={minusIcon} alt="minus" width="12" />,
-      bg: "rgba(197, 12, 15, 1)",
+      bg:
+        transaction?.received === 1
+          ? "rgba(197, 12, 15, 1)"
+          : "rgba(131, 131, 131, 1)",
       color: "white",
     },
     STOCK_SENT: {
       icon: <img src={minusIcon} alt="minus" width="12" />,
-      bg: "rgba(197, 12, 15, 1)",
+      bg:
+        transaction?.received === 1
+          ? "rgba(197, 12, 15, 1)"
+          : "rgba(131, 131, 131, 1)",
       color: "white",
     },
     ITEM_CREATED: {
@@ -81,6 +97,8 @@ const TransactionCard = ({
   transaction: any;
   inventoryItem: InventoryItem;
 }) => {
+  const warningIcon = "/icons/warning.svg";
+
   const getTransactionType = () => {
     if (transaction.source_table === "stocks") {
       return "STOCK_ADDED";
@@ -118,20 +136,38 @@ const TransactionCard = ({
       case "STOCK_ISSUED":
         return {
           label: "STOCK ISSUED",
-          bg: "rgba(255, 186, 187, 1)",
-          color: "rgba(197, 12, 15, 1)",
+          bg:
+            transaction.received === 1
+              ? "rgba(255, 186, 187, 1)"
+              : "rgba(239, 239, 239, 1)",
+          color:
+            transaction.received === 1
+              ? "rgba(197, 12, 15, 1)"
+              : "rgba(131, 131, 131, 1)",
         };
       case "STOCK_TRANSFERRED":
         return {
           label: "STOCK TRANSFERRED",
-          bg: "rgba(255, 186, 187, 1)",
-          color: "rgba(197, 12, 15, 1)",
+          bg:
+            transaction.received === 1
+              ? "rgba(255, 186, 187, 1)"
+              : "rgba(239, 239, 239, 1)",
+          color:
+            transaction.received === 1
+              ? "rgba(197, 12, 15, 1)"
+              : "rgba(131, 131, 131, 1)",
         };
       case "STOCK_SENT":
         return {
-          label: "STOCK SENT",
-          bg: "rgba(255, 186, 187, 1)",
-          color: "rgba(197, 12, 15, 1)",
+          label: "STOCK UNDER PROCESSING",
+          bg:
+            transaction.received === 1
+              ? "rgba(255, 186, 187, 1)"
+              : "rgba(239, 239, 239, 1)",
+          color:
+            transaction.received === 1
+              ? "rgba(197, 12, 15, 1)"
+              : "rgba(131, 131, 131, 1)",
         };
       default:
         return {
@@ -160,7 +196,7 @@ const TransactionCard = ({
           zIndex: 1,
         }}
       >
-        <TransactionIcon type={transactionType} />
+        <TransactionIcon type={transactionType} transaction={transaction} />
       </div>
 
       <div
@@ -176,15 +212,33 @@ const TransactionCard = ({
         >
           <div
             style={{
-              backgroundColor: status.bg,
-              color: status.color,
-              padding: "4px 40px",
-              fontWeight: "bold",
-              borderRadius: "25px",
-              width: "250px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
-            {status.label}
+            <div
+              style={{
+                backgroundColor: status.bg,
+                color: status.color,
+                padding: "4px 40px",
+                fontWeight: "bold",
+                borderRadius: "25px",
+                width: "250px",
+              }}
+            >
+              {status.label}
+            </div>
+            {status.label !== "STOCK ADDED" && !transaction.received && (
+              <span
+                style={{
+                  color: "rgba(197, 12, 15, 1)",
+                  fontStyle: "italic",
+                }}
+              >
+                TRANSACTION IS MISSING SIGNED DN
+              </span>
+            )}
           </div>
 
           <br />
@@ -205,7 +259,6 @@ const TransactionCard = ({
                 <small>DATE</small>
                 <h4>{transactionDate}</h4>
               </div>
-
               <div style={{ textWrap: "nowrap" }}>
                 <small>QUANTITY</small>
                 <h4>
@@ -213,27 +266,27 @@ const TransactionCard = ({
                   {transaction.unit || inventoryItem.unit}
                 </h4>
               </div>
-
               {transactionType === "STOCK_ADDED" && (
                 <>
-                  {transaction.batch_id && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                      }}
-                    >
-                      <div style={{ textWrap: "nowrap" }}>
-                        <small>BATCH ID</small>
-                        <h4>
-                          BA-{transaction.batch_id.toString().padStart(5, "0")}
-                        </h4>
-                      </div>
-
-                      <BatchDetailsPopUpButton inventoryItem={inventoryItem} />
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    <div style={{ textWrap: "nowrap" }}>
+                      <small>TRANSACTION ID</small>
+                      <h4>
+                        TA-{transaction.batch_id.toString().padStart(5, "0")}
+                      </h4>
                     </div>
-                  )}
+
+                    <BatchDetailsPopUpButton
+                      inventoryItem={inventoryItem}
+                      batchID={transaction.batchID}
+                    />
+                  </div>
 
                   {/* {transaction.location && (
                     <div style={{ textWrap: "nowrap" }}>
@@ -250,7 +303,6 @@ const TransactionCard = ({
                   )} */}
                 </>
               )}
-
               {/* {transactionType === "STOCK_TRANSFERRED" && (
                 <>
                   {transaction.id && (
@@ -273,24 +325,112 @@ const TransactionCard = ({
                 </>
               )} */}
 
-              {/* {transactionType === "STOCK_TRANSFERRED" && (
+              {transactionType === "STOCK_ISSUED" && (
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    {transaction.received === 0 && <img src={warningIcon} />}
+                    <div style={{ textWrap: "nowrap" }}>
+                      <small>TRANSACTION ID</small>
+                      <h4>TA-{transaction.id.toString().padStart(5, "0")}</h4>
+                    </div>
+                    <TransactionDetailsPopUpButton
+                      transferID={transaction.id}
+                    />
+                  </div>
+                  <div style={{ textWrap: "nowrap" }}>
+                    <small>PROJECT</small>
+                    <h4>{transaction.project_name || "-"}</h4>
+                  </div>
+                  <div></div>
+                  {!transaction.received && (
+                    <div style={{ textWrap: "nowrap" }}>
+                      <UploadSignedTSCButton transactionID={transaction.id} />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {transactionType === "STOCK_TRANSFERRED" && (
                 <>
                   {transaction.id && (
                     <>
-                      <div style={{ textWrap: "nowrap" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                        }}
+                      >
+                        {transaction.received === 0 && (
+                          <img src={warningIcon} />
+                        )}
+                        <div style={{ textWrap: "nowrap" }}>
+                          <small>TRANSACTION ID</small>
+                          <h4>
+                            TA-{transaction.id.toString().padStart(5, "0")}
+                          </h4>
+                        </div>
+                        <TransactionDetailsPopUpButton
+                          transferID={transaction.id}
+                        />
+                      </div>
+                      <div>
                         <small>TRANSFER FROM</small>
                         <h4>{transaction.from_location}</h4>
                       </div>
-                      <div style={{ textWrap: "nowrap" }}>
+                      <div>
                         <small>TRANSFER TO</small>
                         <h4>{transaction.to_location}</h4>
                       </div>
+                      {!transaction.received && (
+                        <div style={{ textWrap: "nowrap" }}>
+                          <UploadSignedTSCButton
+                            transactionID={transaction.id}
+                          />
+                        </div>
+                      )}
                     </>
                   )}
                 </>
-              )} */}
+              )}
 
-              {(transactionType === "STOCK_ISSUED" ||
+              {transactionType === "STOCK_SENT" && (
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    {transaction.received === 0 && <img src={warningIcon} />}
+                    <div style={{ textWrap: "nowrap" }}>
+                      <small>TRANSACTION ID</small>
+                      <h4>TA-{transaction.id.toString().padStart(5, "0")}</h4>
+                    </div>
+                    <TransactionDetailsPopUpButton
+                      transferID={transaction.id}
+                    />
+                  </div>
+                  <div style={{ textWrap: "nowrap" }}>
+                    <small>PURPOSE</small>
+                    <h4>{transaction.purpose}</h4>
+                  </div>
+                  <div></div>
+                  {!transaction.received && (
+                    <div style={{ textWrap: "nowrap" }}>
+                      <UploadSignedTSCButton transactionID={transaction.id} />
+                    </div>
+                  )}
+                </>
+              )}
+              {/* {(transactionType === "STOCK_ISSUED" ||
                 transactionType === "STOCK_TRANSFERRED" ||
                 transactionType === "STOCK_SENT") && (
                 <>
@@ -304,9 +444,9 @@ const TransactionCard = ({
                         }}
                       >
                         <div style={{ textWrap: "nowrap" }}>
-                          <small>TRANSFER STOCK CERTIFICATE</small>
+                          <small>DELIVERY NOTE</small>
                           <h4>
-                            TSC-{transaction.id.toString().padStart(5, "0")}
+                            DN-{transaction.id.toString().padStart(5, "0")}
                           </h4>
                         </div>
                         <ViewTSNPDFButton transferID={transaction.id} />
@@ -318,7 +458,7 @@ const TransactionCard = ({
                     </>
                   )}
                 </>
-              )}
+              )} */}
             </div>
           </div>
         </div>

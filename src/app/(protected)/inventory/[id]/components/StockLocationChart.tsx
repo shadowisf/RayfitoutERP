@@ -87,7 +87,7 @@ export default function StockLocationChart({
 
   return (
     <div style={{ textTransform: "uppercase" }}>
-      <h2>STOCKS BY LOCATION</h2>
+      <h2>STOCKS</h2>
 
       <br />
 
@@ -129,9 +129,7 @@ export default function StockLocationChart({
             >
               TOTAL
             </div>
-            <div style={{ fontSize: "36px", fontWeight: "bold" }}>
-              {totalStock}
-            </div>
+            <div style={{ fontSize: "36px" }}>{totalStock}</div>
             <div
               style={{
                 color: "#737373",

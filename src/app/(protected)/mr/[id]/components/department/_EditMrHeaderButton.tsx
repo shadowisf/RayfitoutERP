@@ -146,7 +146,7 @@ export default function EditMrHeaderButton({
                   RAY-{pr.id} - {pr.name}
                 </option>
               ))}
-              required={false}
+              required={purposeReasonID === 1 || purposeReasonID === 2}
               disabled={mrHeader.progress_id !== 1 || purposeReasonID === 6}
             />
           </div>

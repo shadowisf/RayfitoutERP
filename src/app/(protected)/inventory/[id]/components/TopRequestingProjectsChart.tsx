@@ -2,74 +2,62 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
-interface TopSuppliersChartProps {
+interface TopRequestingProjectsChartProps {
   stocks: any[];
   stocksTransferIssue: any[];
   unit: string;
 }
 
-export default function TopSuppliersChart({
+export default function TopRequestingProjectsChart({
   stocks,
   stocksTransferIssue,
   unit,
-}: TopSuppliersChartProps) {
-  // Calculate net stock by supplier (accounting for issues and transfers)
-  const calculateStockBySupplier = () => {
-    const supplierMap: { [key: string]: number } = {};
+}: TopRequestingProjectsChartProps) {
+  // Calculate total quantity requested by project (from stocks and issues only)
+  const calculateRequestsByProject = () => {
+    const projectMap: { [key: string]: number } = {};
 
-    // Add initial stock quantities by supplier
+    // Add stock quantities by project
     stocks.forEach((stock) => {
-      const supplier = stock.supplier_name || "Others";
-      if (!supplierMap[supplier]) {
-        supplierMap[supplier] = 0;
+      const project = stock.project_name || "Others";
+      if (!projectMap[project]) {
+        projectMap[project] = 0;
       }
-      supplierMap[supplier] += stock.quantity;
+      projectMap[project] += stock.quantity;
     });
 
-    // Subtract issued/transferred quantities
+    // Add only ISSUE transaction quantities by project (not transfers or sends)
     stocksTransferIssue.forEach((transaction) => {
-      if (transaction.type.includes("Issue")) {
-        // Subtract issues if received
-        if (transaction.received) {
-          // Find the original stock entry to get supplier
-          const originalStock = stocks.find(
-            (s) => s.location === transaction.from_location
-          );
-          const supplier = originalStock?.supplier_name || "Others";
-
-          if (supplierMap[supplier]) {
-            supplierMap[supplier] -= transaction.quantity;
-          }
+      // Only count issues
+      if (transaction.type.toLowerCase().includes("issue")) {
+        const project = transaction.project_name || "Others";
+        if (!projectMap[project]) {
+          projectMap[project] = 0;
         }
-      } else if (transaction.type.toLowerCase().includes("transfer")) {
-        // For transfers, we don't subtract because stock still exists in system
-        // It's just moved to a different location
-        // If you want to track by original supplier regardless of location,
-        // transfers don't affect supplier totals
+        projectMap[project] += Math.abs(transaction.quantity);
       }
     });
 
-    // Filter out suppliers with zero or negative stock
     // Convert to array and sort by quantity (descending)
-    const supplierArray = Object.entries(supplierMap)
-      .map(([supplier, quantity]) => ({ supplier, quantity }))
+    const projectArray = Object.entries(projectMap)
+      .map(([project, quantity]) => ({ project, quantity }))
       .filter((item) => item.quantity > 0)
       .sort((a, b) => b.quantity - a.quantity);
 
-    return supplierArray;
+    return projectArray;
   };
 
-  const stockBySupplier = calculateStockBySupplier();
+  const requestsByProject = calculateRequestsByProject();
 
-  // Calculate total stock
-  const totalStock = stockBySupplier.reduce(
+  // Calculate total requests
+  const totalRequests = requestsByProject.reduce(
     (sum, item) => sum + item.quantity,
     0
   );
 
-  // Define colors for different suppliers
+  // Define colors for different projects
   const COLORS = [
-    "#00804C", // Green - Top supplier
+    "#00804C", // Green - Top project
     "#7B68EE", // Purple
     "#87CEEB", // Light Blue
     "#FFD700", // Gold
@@ -78,32 +66,26 @@ export default function TopSuppliersChart({
   ];
 
   // Transform data for the chart
-  const chartData = stockBySupplier.map((item, index) => ({
-    name: item.supplier,
+  const chartData = requestsByProject.map((item, index) => ({
+    name: item.project,
     value: item.quantity,
     color: COLORS[index % COLORS.length],
   }));
 
-  // Calculate percentage for top supplier
-  const topSupplierPercentage =
-    totalStock > 0 && stockBySupplier.length > 0
-      ? Math.round((stockBySupplier[0].quantity / totalStock) * 100)
+  // Calculate percentage for top project
+  const topProjectPercentage =
+    totalRequests > 0 && requestsByProject.length > 0
+      ? Math.round((requestsByProject[0].quantity / totalRequests) * 100)
       : 0;
-
-  // Get the initial of the top supplier
-  const topSupplierInitial =
-    stockBySupplier.length > 0
-      ? stockBySupplier[0].supplier.charAt(0).toUpperCase()
-      : "N";
 
   return (
     <div>
-      <h2>TOP VENDORS</h2>
+      <h2>TOP REQUESTING PROJECTS</h2>
 
       <br />
       <br />
 
-      {stockBySupplier.length > 0 ? (
+      {requestsByProject.length > 0 ? (
         <>
           <div
             style={{ position: "relative", width: "200px", height: "200px" }}
@@ -126,7 +108,7 @@ export default function TopSuppliersChart({
               </PieChart>
             </ResponsiveContainer>
 
-            {/* Center "ALL TIME" with Top Supplier Initial Badge */}
+            {/* Center "ALL TIME" */}
             <div
               style={{
                 position: "absolute",
@@ -173,13 +155,13 @@ export default function TopSuppliersChart({
                   backgroundColor: chartData[0]?.color || "#00804C",
                 }}
               />
-              {topSupplierPercentage}%
+              {topProjectPercentage}%
             </div>
           </div>
 
-          {/* Supplier Legend */}
+          {/* Project Legend */}
           <div style={{ marginTop: "16px", fontSize: "12px" }}>
-            {chartData.map((supplier, index) => (
+            {chartData.map((project, index) => (
               <div
                 key={index}
                 style={{
@@ -197,15 +179,15 @@ export default function TopSuppliersChart({
                       width: "8px",
                       height: "8px",
                       borderRadius: "50%",
-                      backgroundColor: supplier.color,
+                      backgroundColor: project.color,
                     }}
                   />
                   <span style={{ textTransform: "uppercase" }}>
-                    {supplier.name}
+                    {project.name}
                   </span>
                 </div>
                 <span style={{ fontWeight: "600" }}>
-                  {supplier.value} {unit}
+                  {project.value} {unit}
                 </span>
               </div>
             ))}
@@ -219,7 +201,7 @@ export default function TopSuppliersChart({
             color: "#737373",
           }}
         >
-          No supplier data available
+          No project data available
         </div>
       )}
     </div>

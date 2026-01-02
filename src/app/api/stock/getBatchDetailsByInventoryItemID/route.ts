@@ -2,118 +2,12 @@ import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { RowDataPacket } from "mysql2";
 
-// Define the interface for batch details with MR
-interface BatchDetailsWithMRRow extends RowDataPacket {
-  // Stock Entry Details
-  stock_id: number;
-  batch_id: number;
-  stock_quantity: number;
-  stock_location: string;
-  stock_received_by: string;
-  entry_date: string;
-  reason_for_entry: string | null;
-  stock_notes: string | null;
-
-  // Material Request Header
-  mr_header_id: number;
-  date_requested: string;
-  required_date: string;
-  requested_by: string;
-  purpose: string;
-  progress: string;
-  department: string;
-
-  // Material Request Line
-  mr_line_id: number;
-  requested_quantity: number;
-  material_description: string;
-  material_unit: string;
-  material_category: string;
-  material_subcategory: string;
-
-  // Project Details
-  project_id: number | null;
-  project_name: string | null;
-
-  // BOQ Details
-  boq_line_id: number | null;
-  boq_item_name: string | null;
-  boq_quantity: number | null;
-
-  // Supplier Details
-  supplier_id: number | null;
-  supplier_name: string | null;
-  supplier_contact: string | null;
-  supplier_email: string | null;
-  supplier_phone: string | null;
-
-  // LPO Details
-  lpo_id: number | null;
-  lpo_code: string | null;
-  delivery_date: string | null;
-  unit_price: number | null;
-  line_total_price: number | null;
-  lpo_subtotal: number | null;
-  lpo_discount: number | null;
-  lpo_vat: number | null;
-  lpo_total: number | null;
-  payment_status: string | null;
-  invoice_file: string | null;
-  lpo_signed_file: string | null;
-
-  // GRN Details
-  grn_id: number | null;
-  grn_date: string | null;
-  grn_received_by: string | null;
-  received_quantity: number | null;
-  grn_notes: string | null;
-
-  // QC Details
-  qc_id: number | null;
-  qc_checked_by: string | null;
-  qc_accepted_quantity: number | null;
-  qc_status: string | null;
-
-  // QC Resolution
-  qc_resolution_id: number | null;
-  resolution_type: string | null;
-}
-
-// Define interface for manual stock entry (without MR)
-interface ManualStockDetailsRow extends RowDataPacket {
-  stock_id: number;
-  batch_id: number;
-  stock_quantity: number;
-  stock_location: string;
-  stock_received_by: string;
-  entry_date: string;
-  reason_for_entry: string | null;
-  stock_notes: string | null;
-  stock_condition: string | null;
-  stock_attachment: string | null;
-
-  // Project Details
-  project_id: number | null;
-  project_name: string | null;
-
-  // BOQ Details
-  boq_line_id: number | null;
-  boq_header_id: number | null;
-  boq_item_name: string | null;
-  boq_quantity: number | null;
-
-  // Supplier Details
-  supplier_id: number | null;
-  supplier_name: string | null;
-  supplier_contact: string | null;
-  supplier_email: string | null;
-  supplier_phone: string | null;
-}
+// ... (keep all existing type definitions)
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { inventoryItemId } = body;
+    const { inventoryItemId, batchId } = body; // ✅ ADDED: Accept batchId
 
     if (!inventoryItemId) {
       return NextResponse.json(
@@ -139,16 +33,17 @@ export async function POST(request: NextRequest) {
         boq_line_id,
         item_condition,
         attachment,
-        created_at
+        created_at,
+        unit_price
       FROM stocks
       WHERE inventory_item_id = ?
+      ${batchId ? 'AND batch_id = ?' : ''}
       ORDER BY created_at DESC
       LIMIT 1
     `;
 
-    const [stockRows] = await db.query<RowDataPacket[]>(stockQuery, [
-      inventoryItemId,
-    ]);
+    const stockParams = batchId ? [inventoryItemId, batchId] : [inventoryItemId];
+    const [stockRows] = await db.query<RowDataPacket[]>(stockQuery, stockParams);
 
     if (stockRows.length === 0) {
       return NextResponse.json(
@@ -162,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     // Check if this is a manual entry (no MR references)
     if (!mr_header_id || !mr_line_id) {
-      // Manual stock entry - simplified query
+      // Manual stock entry - simplified query with batch_id filter
       const manualStockQuery = `
         SELECT 
           s.id as stock_id,
@@ -207,13 +102,15 @@ export async function POST(request: NextRequest) {
         LEFT JOIN suppliers sup ON s.supplier_id = sup.id
         
         WHERE s.inventory_item_id = ?
+        ${batchId ? 'AND s.batch_id = ?' : ''}
         ORDER BY s.created_at DESC
         LIMIT 1
       `;
 
-      const [manualRows] = await db.query<ManualStockDetailsRow[]>(
+      const manualParams = batchId ? [inventoryItemId, batchId] : [inventoryItemId];
+      const [manualRows] = await db.query<any[]>(
         manualStockQuery,
-        [inventoryItemId]
+        manualParams
       );
 
       if (manualRows.length > 0) {
@@ -368,7 +265,7 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `;
 
-      const [rows] = await db.query<BatchDetailsWithMRRow[]>(detailsQuery, [
+      const [rows] = await db.query<any[]>(detailsQuery, [
         mr_header_id,
         mr_line_id,
       ]);

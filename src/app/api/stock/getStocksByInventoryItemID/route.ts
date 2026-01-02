@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       // Query stocks_transfer_issue table
       const transferIssueQuery = `
         SELECT * 
-        FROM stocks_transfer_issue 
+        FROM vw_stocks_transfer_issue 
         WHERE inventory_item_id = ?
       `;
       const [transferIssueRows] = await db.execute<RowDataPacket[]>(
