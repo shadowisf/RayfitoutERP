@@ -100,7 +100,10 @@ type ManualStockDetails = {
   reason_for_entry: string | null;
   stock_notes: string | null;
   stock_condition: string | null;
-  stock_attachment: string[] | null;
+  grn_file: string[] | null;
+  qc_report_file: string[] | null;
+  lpo_file: string[] | null;
+  dn_file: string[] | null;
   unit_price: number;
 
   // Project Details
@@ -128,12 +131,46 @@ export default function BatchDetailsPopUpButton({
   batchID,
 }: BatchDetailsPopUpButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
-
   const [batchDetails, setBatchDetails] = useState<BatchDetails | null>(null);
   const [boqItemNumber, setBoqItemNumber] = useState<string | null>(null);
+  const [allStocks, setAllStocks] = useState<any[]>([]);
+
+  // Price analytics state
+  const [priceAnalytics, setPriceAnalytics] = useState<{
+    averagePrice: number;
+    currentPrice: number;
+    percentageChange: number;
+  } | null>(null);
 
   const externalLinkIcon = "/icons/external-link.svg";
   const downloadIcon = "/icons/download.svg";
+
+  // Fetch all stocks for this inventory item
+  const fetchAllStocks = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch stocks");
+      }
+
+      const data = await response.json();
+
+      // Filter stocks for this specific inventory item
+      const filteredStocks = data.filter(
+        (stock: any) => stock.inventory_item_id === inventoryItem.id
+      );
+
+      setAllStocks(filteredStocks);
+    } catch (error) {
+      console.error("Error fetching stocks:", error);
+    }
+  };
 
   const fetchBatchDetails = async () => {
     try {
@@ -195,9 +232,44 @@ export default function BatchDetailsPopUpButton({
     }
   };
 
+  // Calculate price analytics
+  useEffect(() => {
+    if (batchDetails && allStocks && allStocks.length > 0) {
+      const stocksWithPrice = allStocks.filter(
+        (stock) => stock.unit_price !== null && stock.unit_price !== undefined
+      );
+
+      if (stocksWithPrice.length > 0) {
+        // Calculate average
+        const totalPrice = stocksWithPrice.reduce(
+          (sum, stock) => sum + parseFloat(stock.unit_price),
+          0
+        );
+        const avg = totalPrice / stocksWithPrice.length;
+
+        // Get current price from batch details
+        const currentPrice =
+          batchDetails.type === "mr"
+            ? parseFloat(batchDetails.unit_price?.toString() || "0")
+            : parseFloat(batchDetails.unit_price?.toString() || "0");
+
+        if (currentPrice > 0) {
+          const change = ((currentPrice - avg) / avg) * 100;
+
+          setPriceAnalytics({
+            averagePrice: avg,
+            currentPrice: currentPrice,
+            percentageChange: change,
+          });
+        }
+      }
+    }
+  }, [batchDetails, allStocks]);
+
   useEffect(() => {
     if (isOpen && !batchDetails) {
       fetchBatchDetails();
+      fetchAllStocks();
     }
   }, [isOpen]);
 
@@ -242,6 +314,68 @@ export default function BatchDetailsPopUpButton({
     const missing = requested - received;
 
     return missing > 0 ? missing : 0;
+  };
+
+  // Price Analytics Component
+  const renderPriceAnalytics = () => {
+    if (!priceAnalytics) return null;
+
+    const isIncrease = priceAnalytics.percentageChange > 0;
+    const isDecrease = priceAnalytics.percentageChange < 0;
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "1px",
+          padding: "0px 5px",
+          borderRadius: "20px",
+          backgroundColor: isIncrease
+            ? "rgba(244, 197, 197, 1)"
+            : isDecrease
+            ? "rgba(218, 255, 218, 1)"
+            : "rgba(239, 239, 239, 1)",
+        }}
+      >
+        <span
+          style={{
+            color: isIncrease
+              ? "rgba(159, 71, 71, 1)"
+              : isDecrease
+              ? "rgba(0, 108, 60, 1)"
+              : "#737373",
+          }}
+        >
+          {isIncrease ? "+" : ""}
+          {priceAnalytics.percentageChange.toFixed(1)}%
+        </span>
+
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          style={{
+            transform: isDecrease ? "rotate(180deg)" : "rotate(0deg)",
+          }}
+        >
+          <path
+            d="M7 14L12 9L17 14"
+            stroke={
+              isIncrease
+                ? "rgba(159, 71, 71, 1)"
+                : isDecrease
+                ? "rgba(0, 108, 60, 1)"
+                : "#737373"
+            }
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    );
   };
 
   // Render MR-based stock details
@@ -299,7 +433,10 @@ export default function BatchDetailsPopUpButton({
           </div>
           <div>
             <small>UNIT PRICE</small>
-            <h3>{formatCurrency(details.unit_price)}</h3>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <h3>{formatCurrency(details.unit_price)}</h3>
+              {renderPriceAnalytics()}
+            </div>
           </div>
           <div>
             <small>REQUESTED BY</small>
@@ -626,61 +763,34 @@ export default function BatchDetailsPopUpButton({
   );
 
   // Render manual stock details
-  const renderManualStockDetails = (details: ManualStockDetails) => (
-    <>
-      {/* OVERVIEW SECTION */}
-      <div
-        style={{
-          backgroundColor: "rgba(243, 243, 243, 1)",
-          padding: "20px",
-          borderRadius: "10px",
-        }}
-      >
-        <h2>OVERVIEW</h2>
-        <br />
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(5, max-content)",
-            gap: "25px",
-            width: "fit-content",
-          }}
-        >
-          <div>
-            <small>ENTRY DATE</small>
-            <h3>{formatDate(details.entry_date)}</h3>
-          </div>
-          <div>
-            <small>UNIT PRICE</small>
-            <h3>{formatCurrency(details.unit_price)}</h3>
-          </div>
-          <div>
-            <small>REASON FOR ENTRY</small>
-            <h3>{details.reason_for_entry || "-"}</h3>
-          </div>
-          <div>
-            <small>PROJECT</small>
-            <h3>{details.project_name || "-"}</h3>
-          </div>
-          <div>
-            <small>RECEIVED BY</small>
-            <h3>{details.stock_received_by || "-"}</h3>
-          </div>
-        </div>
-      </div>
+  const renderManualStockDetails = (details: ManualStockDetails) => {
+    // Helper function to download file
+    const handleDownload = async (url: string, fileName: string) => {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error("Download failed");
+        }
 
-      <br />
-      <br />
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
 
-      {/* GRID OF 2 SECTIONS */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, auto)",
-          gap: "25px",
-        }}
-      >
-        {/* SUPPLIER DETAILS */}
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error("Error downloading file:", error);
+      }
+    };
+
+    return (
+      <>
+        {/* OVERVIEW SECTION */}
         <div
           style={{
             backgroundColor: "rgba(243, 243, 243, 1)",
@@ -688,93 +798,54 @@ export default function BatchDetailsPopUpButton({
             borderRadius: "10px",
           }}
         >
-          <h2>SUPPLIER</h2>
-          <br />
-          <div
-            style={{
-              display: "inline-grid",
-              gridTemplateColumns: "repeat(2, auto)",
-              gap: "25px",
-            }}
-          >
-            <div>
-              <small>SUPPLIER NAME</small>
-              <h3>{details.supplier_name || "-"}</h3>
-            </div>
-          </div>
-          <br />
-          <br />
-          <div
-            style={{
-              display: "inline-grid",
-              gridTemplateColumns: "repeat(2, auto)",
-              gap: "25px",
-            }}
-          >
-            <div>
-              <small>TOTAL PRICE</small>
-              <h3>AED {details.unit_price * details.stock_quantity} </h3>
-            </div>
-          </div>
-        </div>
-
-        {/* STOCK ENTRY DETAILS */}
-        <div
-          style={{
-            backgroundColor: "rgba(243, 243, 243, 1)",
-            padding: "20px",
-            borderRadius: "10px",
-          }}
-        >
-          <h2>STOCK ENTRY DETAILS</h2>
-          <br />
-          <div
-            style={{
-              display: "inline-grid",
-              gridTemplateColumns: "repeat(2, auto)",
-              gap: "25px",
-            }}
-          >
-            <div>
-              <small>DATE</small>
-              <h3>
-                {new Date(details.entry_date).toLocaleDateString("en-US", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })}
-              </h3>
-            </div>
-          </div>
-          <br />
+          <h2>OVERVIEW</h2>
           <br />
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
+              gridTemplateColumns: "repeat(5, max-content)",
               gap: "25px",
+              width: "fit-content",
             }}
           >
             <div>
-              <small>ADDED QUANTITY</small>
-              <h3>
-                {details.stock_quantity || "-"} {inventoryItem.unit}
-              </h3>
+              <small>ENTRY DATE</small>
+              <h3>{formatDate(details.entry_date)}</h3>
             </div>
             <div>
-              <small>STOCK LOCATION</small>
-              <h3>{details.stock_location || "-"}</h3>
+              <small>UNIT PRICE</small>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <h3>{formatCurrency(details.unit_price)}</h3>
+                {renderPriceAnalytics()}
+              </div>
+            </div>
+            <div>
+              <small>REASON FOR ENTRY</small>
+              <h3>{details.reason_for_entry || "-"}</h3>
+            </div>
+            <div>
+              <small>PROJECT</small>
+              <h3>{details.project_name || "-"}</h3>
+            </div>
+            <div>
+              <small>RECEIVED BY</small>
+              <h3>{details.stock_received_by || "-"}</h3>
             </div>
           </div>
         </div>
-      </div>
 
-      <br />
-      <br />
+        <br />
+        <br />
 
-      {/* BOQ DETAILS */}
-      {details.boq_line_id && (
-        <>
+        {/* GRID OF 2 SECTIONS */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, auto)",
+            gap: "25px",
+          }}
+        >
+          {/* SUPPLIER DETAILS */}
           <div
             style={{
               backgroundColor: "rgba(243, 243, 243, 1)",
@@ -782,45 +853,269 @@ export default function BatchDetailsPopUpButton({
               borderRadius: "10px",
             }}
           >
-            <h2>BILL OF QUANTITY</h2>
+            <h2>SUPPLIER</h2>
+            <br />
+            <div
+              style={{
+                display: "inline-grid",
+                gridTemplateColumns: "repeat(2, auto)",
+                gap: "25px",
+              }}
+            >
+              <div>
+                <small>SUPPLIER NAME</small>
+                <h3>{details.supplier_name || "-"}</h3>
+              </div>
+            </div>
+            <br />
+            <br />
+            <div
+              style={{
+                display: "inline-grid",
+                gridTemplateColumns: "repeat(2, auto)",
+                gap: "25px",
+              }}
+            >
+              <div>
+                <small>TOTAL PRICE</small>
+                <h3>AED {details.unit_price * details.stock_quantity} </h3>
+              </div>
+            </div>
+          </div>
+
+          {/* STOCK ENTRY DETAILS */}
+          <div
+            style={{
+              backgroundColor: "rgba(243, 243, 243, 1)",
+              padding: "20px",
+              borderRadius: "10px",
+            }}
+          >
+            <h2>STOCK ENTRY DETAILS</h2>
+            <br />
+            <div
+              style={{
+                display: "inline-grid",
+                gridTemplateColumns: "repeat(2, auto)",
+                gap: "25px",
+              }}
+            >
+              <div>
+                <small>DATE</small>
+                <h3>
+                  {new Date(details.entry_date).toLocaleDateString("en-US", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
+                </h3>
+              </div>
+            </div>
+            <br />
             <br />
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(3, auto)",
+                gridTemplateColumns: "1fr 1fr",
                 gap: "25px",
-                width: "fit-content",
               }}
             >
               <div>
-                <small>BILL OF QUANTITY CODE</small>
+                <small>ADDED QUANTITY</small>
                 <h3>
-                  <Button
-                    componentType={"link"}
-                    bgColor={"transparent"}
-                    borderColor={"transparent"}
-                    textColor={"black"}
-                    style={{ padding: "0px" }}
-                    href={`/boq/${details.boq_header_id}`}
-                  >
-                    {boqItemNumber || "-"}
-                  </Button>
+                  {details.stock_quantity || "-"} {inventoryItem.unit}
                 </h3>
               </div>
               <div>
-                <small>ITEM NAME</small>
-                <h3>{details.boq_item_name || "-"}</h3>
+                <small>STOCK LOCATION</small>
+                <h3>{details.stock_location || "-"}</h3>
               </div>
             </div>
           </div>
-          <br />
-          <br />
-        </>
-      )}
+        </div>
 
-      {/* ATTACHMENTS */}
-      {details.stock_attachment && details.stock_attachment.length > 0 && (
-        <>
+        <br />
+        <br />
+
+        {/* BOQ DETAILS */}
+        {details.boq_line_id && (
+          <>
+            <div
+              style={{
+                backgroundColor: "rgba(243, 243, 243, 1)",
+                padding: "20px",
+                borderRadius: "10px",
+              }}
+            >
+              <h2>BILL OF QUANTITY</h2>
+              <br />
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, auto)",
+                  gap: "25px",
+                  width: "fit-content",
+                }}
+              >
+                <div>
+                  <small>BILL OF QUANTITY CODE</small>
+                  <h3>
+                    <Button
+                      componentType={"link"}
+                      bgColor={"transparent"}
+                      borderColor={"transparent"}
+                      textColor={"black"}
+                      style={{ padding: "0px" }}
+                      href={`/boq/${details.boq_header_id}`}
+                    >
+                      {boqItemNumber || "-"}
+                    </Button>
+                  </h3>
+                </div>
+                <div>
+                  <small>ITEM NAME</small>
+                  <h3>{details.boq_item_name || "-"}</h3>
+                </div>
+              </div>
+            </div>
+            <br />
+            <br />
+          </>
+        )}
+
+        {/* ATTACHMENTS */}
+        {((details.grn_file && details.grn_file.length > 0) ||
+          (details.qc_report_file && details.qc_report_file.length > 0) ||
+          (details.lpo_file && details.lpo_file.length > 0) ||
+          (details.dn_file && details.dn_file.length > 0)) && (
+          <>
+            <div
+              style={{
+                backgroundColor: "rgba(243, 243, 243, 1)",
+                padding: "20px",
+                borderRadius: "10px",
+              }}
+            >
+              <h2>ATTACHMENTS</h2>
+              <br />
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, auto)",
+                  gap: "15px",
+                }}
+              >
+                {/* GRN Files */}
+                {details.grn_file &&
+                  details.grn_file.map((url, index) => (
+                    <Button
+                      key={`grn-${index}`}
+                      componentType={"none"}
+                      bgColor={"rgba(255, 255, 255, 1)"}
+                      borderColor={"rgba(207, 207, 207, 1)"}
+                      textColor={"black"}
+                      style={{ borderRadius: "25px", padding: "7px 20px" }}
+                    >
+                      GRN
+                      <img
+                        src={downloadIcon}
+                        alt="Download"
+                        onClick={() =>
+                          handleDownload(
+                            url,
+                            `GRN-${String(details.stock_id).padStart(5, "0")}`
+                          )
+                        }
+                      />
+                    </Button>
+                  ))}
+
+                {/* QC Report Files */}
+                {details.qc_report_file &&
+                  details.qc_report_file.map((url, index) => (
+                    <Button
+                      key={`qc-${index}`}
+                      componentType={"none"}
+                      bgColor={"rgba(255, 255, 255, 1)"}
+                      borderColor={"rgba(207, 207, 207, 1)"}
+                      textColor={"black"}
+                      style={{ borderRadius: "25px", padding: "7px 20px" }}
+                    >
+                      QC REPORT
+                      <img
+                        src={downloadIcon}
+                        alt="Download"
+                        onClick={() =>
+                          handleDownload(
+                            url,
+                            `QC-Report-${String(details.stock_id).padStart(
+                              5,
+                              "0"
+                            )}`
+                          )
+                        }
+                      />
+                    </Button>
+                  ))}
+
+                {/* LPO Files */}
+                {details.lpo_file &&
+                  details.lpo_file.map((url, index) => (
+                    <Button
+                      key={`lpo-${index}`}
+                      componentType={"none"}
+                      bgColor={"rgba(255, 255, 255, 1)"}
+                      borderColor={"rgba(207, 207, 207, 1)"}
+                      textColor={"black"}
+                      style={{ borderRadius: "25px", padding: "7px 20px" }}
+                    >
+                      LPO
+                      <img
+                        src={downloadIcon}
+                        alt="Download"
+                        onClick={() =>
+                          handleDownload(
+                            url,
+                            `LPO-${String(details.stock_id).padStart(5, "0")}`
+                          )
+                        }
+                      />
+                    </Button>
+                  ))}
+
+                {/* DN Files */}
+                {details.dn_file &&
+                  details.dn_file.map((url, index) => (
+                    <Button
+                      key={`dn-${index}`}
+                      componentType={"none"}
+                      bgColor={"rgba(255, 255, 255, 1)"}
+                      borderColor={"rgba(207, 207, 207, 1)"}
+                      textColor={"black"}
+                      style={{ borderRadius: "25px", padding: "7px 20px" }}
+                    >
+                      DN
+                      <img
+                        src={downloadIcon}
+                        alt="Download"
+                        onClick={() =>
+                          handleDownload(
+                            url,
+                            `DN-${String(details.stock_id).padStart(5, "0")}`
+                          )
+                        }
+                      />
+                    </Button>
+                  ))}
+              </div>
+            </div>
+            <br />
+            <br />
+          </>
+        )}
+
+        {/* NOTES */}
+        {details.stock_notes && (
           <div
             style={{
               backgroundColor: "rgba(243, 243, 243, 1)",
@@ -828,53 +1123,14 @@ export default function BatchDetailsPopUpButton({
               borderRadius: "10px",
             }}
           >
-            <h2>ATTACHMENTS</h2>
+            <h2>NOTES</h2>
             <br />
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, auto)",
-                gap: "15px",
-              }}
-            >
-              {details.stock_attachment.map((url, index) => (
-                <Button
-                  key={index}
-                  componentType={"link"}
-                  bgColor={"rgba(255, 255, 255, 1)"}
-                  borderColor={"rgba(207, 207, 207, 1)"}
-                  textColor={"black"}
-                  style={{ borderRadius: "25px" }}
-                  href={url}
-                  target="_blank"
-                >
-                  FILE {index + 1}
-                  <img src={downloadIcon} alt="Download" />
-                </Button>
-              ))}
-            </div>
+            <small>{details.stock_notes}</small>
           </div>
-          <br />
-          <br />
-        </>
-      )}
-
-      {/* NOTES */}
-      {details.stock_notes && (
-        <div
-          style={{
-            backgroundColor: "rgba(243, 243, 243, 1)",
-            padding: "20px",
-            borderRadius: "10px",
-          }}
-        >
-          <h2>NOTES</h2>
-          <br />
-          <small>{details.stock_notes}</small>
-        </div>
-      )}
-    </>
-  );
+        )}
+      </>
+    );
+  };
 
   return (
     <>

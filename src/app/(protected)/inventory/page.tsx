@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { InventoryItem } from "./types/inventoryItem";
 import CreateInventoryItemButton from "./components/_CreateInventoryItemButton";
 import Button from "@/app/components/Button";
+import EditInventoryItemButton from "./components/_EditInventoryItemButton";
 
 export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
@@ -278,16 +279,20 @@ export default function Inventory() {
                       </div>
                     </td>
                     <td>
-                      <Button
-                        componentType={"link"}
-                        bgColor={"rgba(239, 239, 239, 1)"}
-                        borderColor={"rgba(223, 223, 223, 1)"}
-                        textColor={"white"}
-                        style={{ padding: "7px 7px" }}
-                        href={`/inventory/${item.id}`}
-                      >
-                        <img src={externalLinkIcon} alt="external link"></img>
-                      </Button>
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        <EditInventoryItemButton inventoryItem={item} />
+
+                        <Button
+                          componentType={"link"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"rgba(223, 223, 223, 1)"}
+                          textColor={"white"}
+                          style={{ padding: "7px 7px" }}
+                          href={`/inventory/${item.id}`}
+                        >
+                          <img src={externalLinkIcon} alt="external link"></img>
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );

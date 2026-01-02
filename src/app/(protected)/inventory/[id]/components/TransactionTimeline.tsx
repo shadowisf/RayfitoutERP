@@ -284,7 +284,7 @@ const TransactionCard = ({
 
                     <BatchDetailsPopUpButton
                       inventoryItem={inventoryItem}
-                      batchID={transaction.batchID}
+                      batchID={transaction.batch_id}
                     />
                   </div>
 
@@ -348,11 +348,9 @@ const TransactionCard = ({
                     <h4>{transaction.project_name || "-"}</h4>
                   </div>
                   <div></div>
-                  {!transaction.received && (
-                    <div style={{ textWrap: "nowrap" }}>
-                      <UploadSignedTSCButton transactionID={transaction.id} />
-                    </div>
-                  )}
+                  <div style={{ textWrap: "nowrap" }}>
+                    <UploadSignedTSCButton transactionID={transaction.id} />
+                  </div>
                 </>
               )}
 
@@ -388,13 +386,9 @@ const TransactionCard = ({
                         <small>TRANSFER TO</small>
                         <h4>{transaction.to_location}</h4>
                       </div>
-                      {!transaction.received && (
-                        <div style={{ textWrap: "nowrap" }}>
-                          <UploadSignedTSCButton
-                            transactionID={transaction.id}
-                          />
-                        </div>
-                      )}
+                      <div style={{ textWrap: "nowrap" }}>
+                        <UploadSignedTSCButton transactionID={transaction.id} />
+                      </div>
                     </>
                   )}
                 </>
@@ -423,11 +417,9 @@ const TransactionCard = ({
                     <h4>{transaction.purpose}</h4>
                   </div>
                   <div></div>
-                  {!transaction.received && (
-                    <div style={{ textWrap: "nowrap" }}>
-                      <UploadSignedTSCButton transactionID={transaction.id} />
-                    </div>
-                  )}
+                  <div style={{ textWrap: "nowrap" }}>
+                    <UploadSignedTSCButton transactionID={transaction.id} />
+                  </div>
                 </>
               )}
               {/* {(transactionType === "STOCK_ISSUED" ||

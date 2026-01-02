@@ -32,7 +32,10 @@ export default function ManualAddToStockButton({
   const [projectID, setProjectID] = useState<string | number>("");
   const [boqLineID, setBoqLineID] = useState<string | number>("");
   const [condition, setCondition] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [grnFile, setGrnFile] = useState<File | null>(null);
+  const [qcReportFile, setQcReportFile] = useState<File | null>(null);
+  const [lpoFile, setLpoFile] = useState<File | null>(null);
+  const [dnFile, setDnFile] = useState<File | null>(null);
   const [unitPrice, setUnitPrice] = useState("");
 
   const [supplierValues, setSupplierValues] = useState<any>([]);
@@ -92,15 +95,18 @@ export default function ManualAddToStockButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    let attachmentUrls: string[] = [];
+    let grnFileUrl: string[] = [];
+    let qcReportFileUrl: string[] = [];
+    let lpoFileUrl: string[] = [];
+    let dnFileUrl: string[] = [];
 
     // Upload files if any selected
-    if (file) {
+    if (grnFile) {
       try {
         const formData = new FormData();
 
-        formData.append("files", file);
-        formData.append("folder", "stock-attachments");
+        formData.append("files", grnFile);
+        formData.append("folder", "stock-grns");
 
         const uploadResponse = await fetch("/api/s3", {
           method: "POST",
@@ -112,7 +118,82 @@ export default function ManualAddToStockButton({
         }
 
         const uploadResult = await uploadResponse.json();
-        attachmentUrls = uploadResult.urls;
+        grnFileUrl = uploadResult.urls;
+      } catch (error) {
+        console.error("Error uploading files:", error);
+        toast("Failed to upload files", "error");
+        return;
+      }
+    }
+
+    if (qcReportFile) {
+      try {
+        const formData = new FormData();
+
+        formData.append("files", qcReportFile);
+        formData.append("folder", "stock-qc-reports");
+
+        const uploadResponse = await fetch("/api/s3", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload files");
+        }
+
+        const uploadResult = await uploadResponse.json();
+        qcReportFileUrl = uploadResult.urls;
+      } catch (error) {
+        console.error("Error uploading files:", error);
+        toast("Failed to upload files", "error");
+        return;
+      }
+    }
+
+    if (lpoFile) {
+      try {
+        const formData = new FormData();
+
+        formData.append("files", lpoFile);
+        formData.append("folder", "stock-lpos");
+
+        const uploadResponse = await fetch("/api/s3", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload files");
+        }
+
+        const uploadResult = await uploadResponse.json();
+        lpoFileUrl = uploadResult.urls;
+      } catch (error) {
+        console.error("Error uploading files:", error);
+        toast("Failed to upload files", "error");
+        return;
+      }
+    }
+
+    if (dnFile) {
+      try {
+        const formData = new FormData();
+
+        formData.append("files", dnFile);
+        formData.append("folder", "stock-dns");
+
+        const uploadResponse = await fetch("/api/s3", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload files");
+        }
+
+        const uploadResult = await uploadResponse.json();
+        dnFileUrl = uploadResult.urls;
       } catch (error) {
         console.error("Error uploading files:", error);
         toast("Failed to upload files", "error");
@@ -136,7 +217,10 @@ export default function ManualAddToStockButton({
         project_id: projectID,
         boq_line_id: boqLineID,
         condition,
-        attachment: JSON.stringify(attachmentUrls),
+        grn_file: JSON.stringify(grnFileUrl),
+        qc_report_file: JSON.stringify(qcReportFileUrl),
+        lpo_file: JSON.stringify(lpoFileUrl),
+        dn_file: JSON.stringify(dnFileUrl),
       }),
     });
 
@@ -152,7 +236,10 @@ export default function ManualAddToStockButton({
       setProjectID("");
       setBoqLineID("");
       setCondition("");
-      setFile(null);
+      setGrnFile(null);
+      setQcReportFile(null);
+      setLpoFile(null);
+      setDnFile(null);
       setUnitPrice("");
 
       router.refresh();
@@ -321,162 +408,32 @@ export default function ManualAddToStockButton({
           </div>
 
           <div className="input-row half">
-            {/*  <div className="input-item">
-              <label>ATTACHMENT</label>
-
-              <div
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                style={{
-                  border: "1px dashed #d1d5db",
-                  borderRadius: "5px",
-                  padding: "40px",
-                  textAlign: "center",
-                  backgroundColor: "#f9fafb",
-                  flexDirection: "column",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                {files.length > 0 ? (
-                  <div
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                    }}
-                  >
-                    {files.map((file, index) => {
-                      const preview = getFilePreview(file);
-                      const isPDF = file.type === "application/pdf";
-
-                      return (
-                        <div
-                          key={index}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            padding: "10px",
-                            border: "1px solid #e5e7eb",
-                            borderRadius: "5px",
-                            backgroundColor: "white",
-                          }}
-                        >
-                          {preview ? (
-                            <img
-                              src={preview}
-                              alt={file.name}
-                              style={{
-                                width: "60px",
-                                height: "60px",
-                                objectFit: "cover",
-                                borderRadius: "3px",
-                              }}
-                            />
-                          ) : isPDF ? (
-                            <div
-                              style={{
-                                width: "60px",
-                                height: "60px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                backgroundColor: "#ef4444",
-                                borderRadius: "3px",
-                                color: "white",
-                                fontSize: "12px",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              PDF
-                            </div>
-                          ) : null}
-                          <div style={{ flex: 1, textAlign: "left" }}>
-                            <div
-                              style={{
-                                fontSize: "14px",
-                                fontWeight: "500",
-                                color: "#111827",
-                              }}
-                            >
-                              {file.name}
-                            </div>
-                            <div style={{ fontSize: "12px", color: "#6b7280" }}>
-                              {(file.size / 1024).toFixed(2)} KB
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            style={{
-                              width: "30px",
-                              height: "30px",
-                              borderRadius: "50%",
-                              border: "none",
-                              backgroundColor: "rgba(0,0,0,0.6)",
-                              color: "white",
-                              cursor: "pointer",
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      );
-                    })}
-                    <Button
-                      componentType="button"
-                      bgColor="black"
-                      borderColor="black"
-                      textColor="white"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        fileInputRef.current?.click();
-                      }}
-                      full
-                    >
-                      <img src={uploadIcon} alt="upload" />
-                      ADD MORE FILES
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    UPLOAD OR DRAG ATTACHMENT
-                    <br />
-                    <br />
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={handleFileSelect}
-                      style={{ display: "none" }}
-                      multiple
-                    />
-                    <Button
-                      componentType="button"
-                      bgColor="black"
-                      borderColor="black"
-                      textColor="white"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        fileInputRef.current?.click();
-                      }}
-                    >
-                      <img src={uploadIcon} alt="upload" />
-                      UPLOAD FILE
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div> */}
-
             <SingleUploadFileBox
-              fileState={file}
-              setFileState={setFile}
-              label={"ATTACHMENT"}
-              acceptedFileTypes={".png,.jpg,.jpeg,.webp,.pdf"}
+              fileState={grnFile}
+              setFileState={setGrnFile}
+              label={"GRN"}
+              acceptedFileTypes={".pdf"}
+            />
+            <SingleUploadFileBox
+              fileState={qcReportFile}
+              setFileState={setQcReportFile}
+              label={"QC REPORT"}
+              acceptedFileTypes={".pdf"}
+            />
+          </div>
+
+          <div className="input-row half">
+            <SingleUploadFileBox
+              fileState={lpoFile}
+              setFileState={setLpoFile}
+              label={"LPO"}
+              acceptedFileTypes={".pdf"}
+            />
+            <SingleUploadFileBox
+              fileState={dnFile}
+              setFileState={setDnFile}
+              label={"DN"}
+              acceptedFileTypes={".pdf"}
             />
           </div>
         </FormPopUp>

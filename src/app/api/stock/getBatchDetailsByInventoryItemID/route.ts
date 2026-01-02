@@ -2,12 +2,10 @@ import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { RowDataPacket } from "mysql2";
 
-// ... (keep all existing type definitions)
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { inventoryItemId, batchId } = body; // ✅ ADDED: Accept batchId
+    const { inventoryItemId, batchId } = body;
 
     if (!inventoryItemId) {
       return NextResponse.json(
@@ -32,18 +30,26 @@ export async function POST(request: NextRequest) {
         project_id,
         boq_line_id,
         item_condition,
-        attachment,
+        grn_file,
+        qc_report_file,
+        lpo_file,
+        dn_file,
         created_at,
         unit_price
       FROM stocks
       WHERE inventory_item_id = ?
-      ${batchId ? 'AND batch_id = ?' : ''}
+      ${batchId ? "AND batch_id = ?" : ""}
       ORDER BY created_at DESC
       LIMIT 1
     `;
 
-    const stockParams = batchId ? [inventoryItemId, batchId] : [inventoryItemId];
-    const [stockRows] = await db.query<RowDataPacket[]>(stockQuery, stockParams);
+    const stockParams = batchId
+      ? [inventoryItemId, batchId]
+      : [inventoryItemId];
+    const [stockRows] = await db.query<RowDataPacket[]>(
+      stockQuery,
+      stockParams
+    );
 
     if (stockRows.length === 0) {
       return NextResponse.json(
@@ -54,6 +60,27 @@ export async function POST(request: NextRequest) {
 
     const stock = stockRows[0];
     const { mr_header_id, mr_line_id } = stock;
+
+    // Helper function to parse attachment fields
+    const parseAttachment = (att: any) => {
+      if (!att) return null;
+
+      // If MySQL already returned parsed JSON
+      if (Array.isArray(att) || typeof att === "object") {
+        return att;
+      }
+
+      // If returned as stringified JSON
+      if (typeof att === "string") {
+        try {
+          return JSON.parse(att);
+        } catch {
+          return null;
+        }
+      }
+
+      return null;
+    };
 
     // Check if this is a manual entry (no MR references)
     if (!mr_header_id || !mr_line_id) {
@@ -69,8 +96,11 @@ export async function POST(request: NextRequest) {
           s.reason_for_entry,
           s.notes as stock_notes,
           s.item_condition as stock_condition,
-          s.attachment as stock_attachment,
-          s.unit_price as unit_price,
+          s.grn_file,
+          s.qc_report_file,
+          s.lpo_file,
+          s.dn_file,
+          s.unit_price,
           
           -- Project Details
           p.id as project_id,
@@ -102,12 +132,14 @@ export async function POST(request: NextRequest) {
         LEFT JOIN suppliers sup ON s.supplier_id = sup.id
         
         WHERE s.inventory_item_id = ?
-        ${batchId ? 'AND s.batch_id = ?' : ''}
+        ${batchId ? "AND s.batch_id = ?" : ""}
         ORDER BY s.created_at DESC
         LIMIT 1
       `;
 
-      const manualParams = batchId ? [inventoryItemId, batchId] : [inventoryItemId];
+      const manualParams = batchId
+        ? [inventoryItemId, batchId]
+        : [inventoryItemId];
       const [manualRows] = await db.query<any[]>(
         manualStockQuery,
         manualParams
@@ -119,27 +151,10 @@ export async function POST(request: NextRequest) {
         const response = {
           type: "manual",
           ...manualDetails,
-          stock_attachment: (() => {
-            const att = manualDetails.stock_attachment;
-
-            if (!att) return null;
-
-            // If MySQL already returned parsed JSON
-            if (Array.isArray(att) || typeof att === "object") {
-              return att;
-            }
-
-            // If returned as stringified JSON
-            if (typeof att === "string") {
-              try {
-                return JSON.parse(att);
-              } catch {
-                return null;
-              }
-            }
-
-            return null;
-          })(),
+          grn_file: parseAttachment(manualDetails.grn_file),
+          qc_report_file: parseAttachment(manualDetails.qc_report_file),
+          lpo_file: parseAttachment(manualDetails.lpo_file),
+          dn_file: parseAttachment(manualDetails.dn_file),
         };
 
         return NextResponse.json(response);
@@ -276,16 +291,8 @@ export async function POST(request: NextRequest) {
         const response = {
           type: "mr",
           ...batchDetails,
-          invoice_file: batchDetails.invoice_file
-            ? Array.isArray(batchDetails.invoice_file)
-              ? batchDetails.invoice_file
-              : [batchDetails.invoice_file]
-            : null,
-          lpo_signed_file: batchDetails.lpo_signed_file
-            ? Array.isArray(batchDetails.lpo_signed_file)
-              ? batchDetails.lpo_signed_file
-              : [batchDetails.lpo_signed_file]
-            : null,
+          invoice_file: parseAttachment(batchDetails.invoice_file),
+          lpo_signed_file: parseAttachment(batchDetails.lpo_signed_file),
         };
 
         return NextResponse.json(response);

@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { RowDataPacket } from "mysql2";
 
+export async function GET() {
+  try {
+    const [rows] = await db.query("SELECT * FROM vw_stocks_with_supplier");
+
+    return NextResponse.json(rows, { status: 200 });
+  } catch (err: any) {
+    console.error("SQL Error:", err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -23,8 +34,8 @@ export async function POST(request: NextRequest) {
 
       const query = `
         INSERT INTO stocks 
-        (batch_id, mr_header_id, mr_line_id, inventory_item_id, supplier_id, received_by, reason_for_entry, quantity, unit_price, location, notes, project_id, boq_line_id, item_condition, attachment)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (batch_id, mr_header_id, mr_line_id, inventory_item_id, supplier_id, received_by, reason_for_entry, quantity, unit_price, location, notes, project_id, boq_line_id, item_condition, grn_file, qc_report_file, lpo_file, dn_file)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
@@ -42,7 +53,10 @@ export async function POST(request: NextRequest) {
         Number(body.project_id) || null,
         Number(body.boq_line_id) || null,
         body.condition,
-        body.attachment || null,
+        body.grn_file || null,
+        body.qc_report_file || null,
+        body.lpo_file || null,
+        body.dn_file || null,
       ];
 
       await db.query(query, values);

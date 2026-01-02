@@ -73,56 +73,139 @@ export default function TransactionDetailsPopUpButton({
 
             <br />
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, max-content)",
-                gap: "25px",
-                width: "fit-content",
-              }}
-            >
-              <div>
-                <small>TRANSFER TYPE</small>
-                <h3>{transaction?.type}</h3>
+            {transaction?.type.toLowerCase().includes("transfer") && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, max-content)",
+                  gap: "25px",
+                  width: "fit-content",
+                }}
+              >
+                <div>
+                  <small>TRANSFER TYPE</small>
+                  <h3>{transaction?.type}</h3>
+                </div>
+                <div>
+                  <small>QUANTITY</small>
+                  <h3>
+                    {transaction?.quantity} {transaction?.unit}
+                  </h3>
+                </div>
+                <div>
+                  <small>TRANSFEREE</small>
+                  <h3>{transaction?.transferee}</h3>
+                </div>
+                <div>
+                  <small>FULL NAME OF SITE RECIPIENT</small>
+                  <h3>{transaction?.receiver_name}</h3>
+                </div>
+                <div>
+                  <small>PURPOSE</small>
+                  <h3>{transaction?.purpose}</h3>
+                </div>
+                <div>
+                  <small>TRANSFER FROM</small>
+                  <h3>{transaction?.from_location}</h3>
+                </div>
+                <div>
+                  <small>TRANSFER TO</small>
+                  <h3>{transaction.to_location}</h3>
+                </div>
+                <div>
+                  <small>3RD PARTY TRANSPORTATION INVOLVED?</small>
+                  <h3>
+                    {transaction?.third_party_involved === 1 ? "YES" : "NO"}
+                  </h3>
+                </div>
               </div>
-              <div>
-                <small>QUANTITY</small>
-                <h3>
-                  {transaction?.quantity} {transaction?.unit}
-                </h3>
+            )}
+
+            {transaction?.type.toLowerCase().includes("issue") && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, max-content)",
+                  gap: "25px",
+                  width: "fit-content",
+                }}
+              >
+                <div>
+                  <small>TRANSFER TYPE</small>
+                  <h3>{transaction?.type}</h3>
+                </div>
+                <div>
+                  <small>REASON</small>
+                  <h3>{transaction.purpose}</h3>
+                </div>
+                <div>
+                  <small>PROJECT</small>
+                  <h3>{transaction?.project_name}</h3>
+                </div>
+                <div>
+                  <small>BOQ REFERENCE</small>
+                  <h3>{transaction?.boq_item_number}</h3>
+                </div>
+                <div>
+                  <small>ISSUED FROM</small>
+                  <h3>{transaction?.from_location}</h3>
+                </div>
+                <div>
+                  <small>FULL NAME OF SITE RECIPIENT</small>
+                  <h3>{transaction?.receiver_name}</h3>
+                </div>
+                <div>
+                  <small>ISSUED QUANTITY</small>
+                  <h3>
+                    {transaction.quantity} {transaction.unit}
+                  </h3>
+                </div>
+                <div>
+                  <small>SERIAL / MODEL NUMBER</small>
+                  <h3>{transaction.serial_number}</h3>
+                </div>
               </div>
-              <div>
-                <small>TRANSFEREE</small>
-                <h3>{transaction?.transferee}</h3>
+            )}
+
+            {transaction?.type.toLowerCase().includes("send") && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, max-content)",
+                  gap: "25px",
+                  width: "fit-content",
+                }}
+              >
+                <div>
+                  <small>TRANSFER TYPE</small>
+                  <h3>{transaction?.type}</h3>
+                </div>
+                <div>
+                  <small>REASON</small>
+                  <h3>{transaction.purpose}</h3>
+                </div>
+                <div>
+                  <small>TRANSFERRED QUANTTIY</small>
+                  <h3>
+                    {transaction.quantity} {transaction.unit}
+                  </h3>
+                </div>
+                <div>
+                  <small>FULL NAME OF RECIPIENT</small>
+                  <h3>{transaction?.receiver_name}</h3>
+                </div>
+                <div>
+                  <small>ISSUED FROM</small>
+                  <h3>{transaction?.from_location}</h3>
+                </div>
+                <div>
+                  <small>3RD PARTY TRANSPORTATION INVOLVED?</small>
+                  <h3>
+                    {transaction?.third_party_involved === 1 ? "YES" : "NO"}
+                  </h3>
+                </div>
               </div>
-              <div>
-                <small>FULL NAME OF SITE RECIPIENT</small>
-                <h3>{transaction?.receiver_name}</h3>
-              </div>
-              <div>
-                <small>PURPOSE</small>
-                <h3>{transaction?.purpose}</h3>
-              </div>
-              <div>
-                <small>TRANSFER FROM</small>
-                <h3>{transaction?.from_location}</h3>
-              </div>
-              <div>
-                <small>TRANSFER TO</small>
-                <h3>
-                  {transaction?.to_location ||
-                    transaction?.project_name ||
-                    transaction?.receiver_name ||
-                    "-"}
-                </h3>
-              </div>
-              <div>
-                <small>THIRD PARTY TRANSPORTATION INVOLVED?</small>
-                <h3>
-                  {transaction?.third_party_involved === 1 ? "YES" : "NO"}
-                </h3>
-              </div>
-            </div>
+            )}
           </div>
 
           <br />
