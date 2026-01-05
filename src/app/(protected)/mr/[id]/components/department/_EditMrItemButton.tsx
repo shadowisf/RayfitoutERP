@@ -343,13 +343,13 @@ export default function EditMrItemButton({
               ]}
               required
             />
-            <InputItem
+            {/* <InputItem
               label={"NOTES"}
               value={notes}
               type={"text"}
               placeholder={"ENTER NOTES"}
               onChange={(e) => setNotes(e.target.value)}
-            />
+            /> */}
           </div>
         </FormPopUp>
       )}

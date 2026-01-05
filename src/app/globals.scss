@@ -259,15 +259,21 @@ button {
 .dashboard {
   .widget-grid.overview {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+
     gap: 20px;
 
+    &.five-col {
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    &.three-col {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
     .item {
-      /* width: 250px; */
-      height: 200px;
-      border: 1px solid rgba(217, 217, 217, 1);
+      height: 175px;
       padding: 20px;
-      border-radius: 5px;
+      border-radius: 15px;
 
       display: flex;
       flex-direction: column;
@@ -275,9 +281,25 @@ button {
 
       background-color: white;
 
-      .icon {
+      .top,
+      .bottom {
         display: flex;
-        justify-content: end;
+        justify-content: space-between;
+      }
+
+      .bottom {
+        .data-pill {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          padding: 3px 10px;
+          background-color: white;
+          border-radius: 50px;
+          color: black;
+          font-size: 14px;
+          font-weight: 600;
+        }
       }
 
       .number {
@@ -285,7 +307,7 @@ button {
         font-weight: 600;
       }
 
-      .label {
+      .description {
         font-size: 16px;
         font-weight: 400;
       }
@@ -298,11 +320,8 @@ button {
     gap: 20px;
 
     .item {
-      min-width: 350px;
-      min-height: 200px;
-      border: 1px solid rgba(217, 217, 217, 1);
       background-color: white;
-      border-radius: 5px;
+      border-radius: 15px;
       padding: 15px;
       position: relative;
       display: flex;

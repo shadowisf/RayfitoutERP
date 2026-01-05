@@ -3,9 +3,16 @@
 import { useEffect, useState } from "react";
 import Button from "@/app/components/Button";
 import { useAuth } from "@/app/context/AuthContext";
+import ActiveMrsWidget from "./components/manager/W_ActiveMrs";
+import PendingApprovalMrsWidget from "./components/manager/W_PendingApprovalMrs";
+import PendingPaymentMrsWidget from "./components/manager/W_PendingPaymentsMrs";
+import PendingDeliveryMrsWidget from "./components/manager/W_PendingDeliveryMrs";
+import OutboundPaymentMrsWidget from "./components/manager/W_OutboundPaymentMrs";
+import ProjectBox from "@/app/components/ProjectBox";
+import AlertsAndRiskMrsWidget from "./components/manager/W_AlertsAndRisksMrs";
+import ExpectedDeliveriesWidget from "./components/manager/W_ExpectedDeliveries";
 
 export default function Dashboard() {
-  const file_icon = "/icons/file.svg";
   const external_link_icon = "/icons/external-link.svg";
   const bannerBackground = "/images/welcome-banner.jpg";
 
@@ -97,97 +104,47 @@ export default function Dashboard() {
       <br />
       <br />
 
-      <h2>OVERVIEW</h2>
-      <br />
-
-      {/* OVERVIEW GRID */}
-      <div className="widget-grid overview">
-        {[1, 2, 3, 4].map((i) => (
-          <div className="item" key={i}>
-            <div className="icon">
-              <img src={file_icon} alt="file icon" />
-            </div>
-            <div>
-              <p className="number">17</p>
-              <p className="label">TOTAL MRS THIS WEEK</p>
-            </div>
+      {userInfo?.departmentID === 8 && (
+        <>
+          <h2>OVERVIEW</h2>
+          <br />
+          <div className="widget-grid overview five-col">
+            <ActiveMrsWidget />
+            <PendingApprovalMrsWidget />
+            <PendingPaymentMrsWidget />
+            <OutboundPaymentMrsWidget />
+            <PendingDeliveryMrsWidget />
           </div>
-        ))}
-      </div>
 
-      <br />
-      <br />
-      <br />
+          <br />
+          <br />
+          <br />
 
-      <h2>ACTIVE PROJECTS</h2>
-      <br />
-
-      {/* PROJECTS GRID */}
-      <div className="widget-grid active-projects">
-        {projectsWithBOQ.map((proj: any) => (
-          <div className="item" key={proj.id}>
-            <span
-              className="status"
-              style={
-                proj.status === "Completed"
-                  ? {
-                      backgroundColor: "rgba(134,241,181,1)",
-                      color: "rgba(52,100,73,1)",
-                    }
-                  : {
-                      backgroundColor: "rgba(255, 250, 189, 1)",
-                      color: "rgba(134, 83, 47, 1)",
-                    }
-              }
-            >
-              {proj.status === "Completed" ? "COMPLETED" : "ONGOING"}
-            </span>
-
-            <div>
-              <span>Name</span>
-              <p>{proj.name}</p>
-              <br />
-              <span>Budget</span>
-              <p>
-                AED{" "}
-                {Number(proj.quoted_budget).toLocaleString(undefined, {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 2,
-                })}
-              </p>
-            </div>
-
-            <br />
-
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <Button
-                componentType={"link"}
-                bgColor={"rgba(239, 239, 239, 1)"}
-                borderColor={"rgba(223, 223, 223, 1)"}
-                textColor={"black"}
-                href={`boq/${proj.id}`}
-                full={false}
-              >
-                <>
-                  {proj.hasBOQ ? "VIEW BOQ" : "CREATE BOQ"}
-                  <img src={external_link_icon} alt="external link icon" />
-                </>
-              </Button>
-
-              <Button
-                componentType={"link"}
-                bgColor={"rgba(29, 44, 66, 1)"}
-                borderColor={"rgba(29, 44, 66, 1)"}
-                textColor={"white"}
-                full={false}
-                href={`project/${proj.id}`}
-              >
-                {`VIEW`}
-              </Button>
-            </div>
+          <div className="widget-grid overview three-col">
+            <AlertsAndRiskMrsWidget />
           </div>
-        ))}
-      </div>
+
+          <br />
+          <br />
+          <br />
+
+          <h2>ACTIVE PROJECTS</h2>
+          <br />
+          <div className="widget-grid active-projects">
+            {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
+              <ProjectBox proj={proj} key={index} />
+            ))}
+          </div>
+
+          <br />
+          <br />
+          <br />
+
+          <h2>EXPECTED DELIVERIES</h2>
+          <br />
+          <ExpectedDeliveriesWidget />
+        </>
+      )}
     </div>
   );
 }
