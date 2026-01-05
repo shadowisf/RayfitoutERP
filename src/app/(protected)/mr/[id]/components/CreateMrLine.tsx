@@ -42,6 +42,7 @@ export default function CreateMrLineClient({
         mrHeaderID={mrHeaderID}
         projectID={projectID}
         purposeID={purposeID}
+        style={{ padding: "20px 0px" }}
       >
         ADD CATEGORY & ITEM +
       </AddMrItemButton>

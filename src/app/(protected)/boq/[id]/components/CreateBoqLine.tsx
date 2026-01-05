@@ -35,7 +35,11 @@ export default function CreateBoqLineClient({
       <br />
 
       {userInfo?.departmentID === 8 && (
-        <AddBoqItemButton full boqHeaderID={boqHeader.id}>
+        <AddBoqItemButton
+          full
+          boqHeaderID={boqHeader.id}
+          style={{ padding: "20px 0px" }}
+        >
           ADD CATEGORY & ITEM +
         </AddBoqItemButton>
       )}

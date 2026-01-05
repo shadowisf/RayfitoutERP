@@ -20,6 +20,7 @@ type AddMrItemButtonProps = {
   children: React.ReactNode;
   full?: boolean;
   purposeID: number;
+  style?: React.CSSProperties;
 };
 
 export default function AddMrItemButton({
@@ -33,6 +34,7 @@ export default function AddMrItemButton({
   children,
   full,
   purposeID,
+  style,
 }: AddMrItemButtonProps) {
   const router = useRouter();
 
@@ -224,6 +226,7 @@ export default function AddMrItemButton({
         textColor={textColor}
         onClick={() => setIsOpen(true)}
         full={full ? true : false}
+        style={style}
       >
         {children}
       </Button>
@@ -365,13 +368,13 @@ export default function AddMrItemButton({
               ]}
               required
             />
-            <InputItem
+            {/* <InputItem
               label={"NOTES"}
               value={notes}
               type={"text"}
               placeholder={"ENTER NOTES"}
               onChange={(e) => setNotes(e.target.value)}
-            />
+            /> */}
           </div>
         </FormPopUp>
       )}

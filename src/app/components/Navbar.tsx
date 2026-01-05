@@ -12,6 +12,7 @@ export default function Navbar() {
   const logo_icon = "/icons/logo.svg";
   const search_icon = "/icons/search.svg";
   const notification_icon = "/icons/notification.svg";
+  const logoutIcon = "/icons/logout.svg";
 
   const handleSearch = (e: string) => {
     /* insert search query here */
@@ -38,15 +39,17 @@ export default function Navbar() {
         </div>
 
         <div className="right">
-          <button className="notifications">
-            <img src={notification_icon} alt="notification icon" />
-          </button>
           <NewMrButton />
 
           {userInfo?.departmentID === 8 && <NewProjectButton />}
 
+          <button className="notifications">
+            <img src={notification_icon} alt="notification icon" />
+          </button>
+
           <span style={{ textTransform: "uppercase", color: "white" }}>
-            {userInfo?.role} - {userInfo?.departmentID}
+            {userInfo?.name?.split(" ")[0]} - {userInfo?.role} (
+            {userInfo?.departmentID})
           </span>
 
           <Button
@@ -55,8 +58,9 @@ export default function Navbar() {
             borderColor={"white"}
             textColor={"white"}
             onClick={logout}
+            style={{ padding: "10px 10px" }}
           >
-            LOGOUT
+            <img src={logoutIcon} alt="logout" />
           </Button>
         </div>
       </div>

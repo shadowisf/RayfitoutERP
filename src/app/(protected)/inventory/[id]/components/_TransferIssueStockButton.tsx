@@ -10,6 +10,7 @@ import { InventoryItem } from "../../types/inventoryItem";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { useAuth } from "@/app/context/AuthContext";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
+import FormContextHeader from "@/app/components/FormContextHeader";
 
 type TransferIssueStockButtonProps = {
   inventoryItem: InventoryItem;
@@ -274,12 +275,13 @@ export default function TransferIssueStocksButton({
 
       {isOpen && (
         <FormPopUp
-          header={`ISSUE/TRANSFER STOCK - ${inventoryItem.description}`}
+          header={`ISSUE/TRANSFER STOCK - ${inventoryItem.description.toUpperCase()}`}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
           style={{ minWidth: "1000px" }}
         >
+          <FormContextHeader>TRANSFER CONTEXT</FormContextHeader>
           <div className="input-row half">
             <InputItem
               label={"TYPE"}
@@ -309,25 +311,26 @@ export default function TransferIssueStocksButton({
                 selectOptions={
                   type.toLowerCase().includes("transfer")
                     ? [
-                        "Project execution",
-                        "Internal reallocation",
-                        "Replacement",
+                        "Relocation/re-racking",
+                        "Storage consolidation",
+                        "Temporary holding",
+                        "Space optimization",
                       ]
                     : type.toLowerCase().includes("issue")
                     ? [
-                        "Installation",
-                        "Trial/mockup",
-                        "Temporary use",
-                        "Replacement/repair",
+                        "Project execution",
+                        "Equipment/laptop/tools",
+                        "Administrative/non-project work",
                       ]
                     : [
-                        "Veneer pressing",
-                        "Painting/coating",
-                        "Polishing/finishing",
-                        "CNC cutting/trimming",
-                        "Repair",
+                        "Return from processing/external work",
+                        "Return from employee/department",
+                        "Replacement/exchange from vendor",
+                        "Production/assembly output",
+                        "Stock count adjustment (gain)",
                         "Rectification",
-                        "Testing/certification",
+                        "Refurbished/reconditioned stock added (optional)",
+                        "Project close-out material recovered (optional)",
                       ]
                 }
               />
@@ -358,8 +361,11 @@ export default function TransferIssueStocksButton({
             </div>
           )}
 
+          <br />
+
           {type !== "" && (
             <>
+              <FormContextHeader>QUANTITY & RESPONSIBILITY</FormContextHeader>
               <div className="input-row half">
                 <InputItem
                   label={
@@ -412,7 +418,6 @@ export default function TransferIssueStocksButton({
 
               {type.toLowerCase().includes("transfer") && (
                 <div className="input-row half">
-                  <div></div>
                   <div
                     className="input-item"
                     style={{ flexDirection: "row", alignItems: "center" }}
@@ -587,6 +592,9 @@ export default function TransferIssueStocksButton({
                 )}
               </div>
 
+              <br />
+
+              <FormContextHeader>PROOF/ATTACHMENTS</FormContextHeader>
               <div className="input-row half">
                 <SingleUploadFileBox
                   fileState={file}

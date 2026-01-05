@@ -38,6 +38,7 @@ import ResolutionButton from "./procurement/_AddResolutionButton";
 import CancelMaterialRequestButton from "./_CancelMaterialRequest";
 import SubmitForLPOResubmissionButton from "./finance/_SubmitForLPOResubmission";
 import SubmitForLPOResubmissionGRNFailButton from "./storekeeper/_SubmitForLPOResubmissionGRNFail";
+import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -1602,7 +1603,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   <th>DESCRIPTION</th>
                                   <th>QUANTITY</th>
                                   <th>BILL OF QUANTITY</th>
-                                  <th>NOTES</th>
+                                  <th>BRAND & SPECIFICATION</th>
                                   {((mrHeader.progress_id === 5 &&
                                     (userInfo?.departmentID ===
                                       mrHeader.department_id ||
@@ -1670,8 +1671,21 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           )}
                                         </td>
                                         <td>
-                                          {item.notes ? (
-                                            <NotesPopUp item={item} />
+                                          {item.brand || item.specification ? (
+                                            <InfoPopUpButton
+                                              text={
+                                                <>
+                                                  <small>BRAND</small>
+                                                  <h2>{item.brand}</h2>
+
+                                                  <br />
+
+                                                  <small>SPECIFICATION</small>
+                                                  <h2>{item.specification}</h2>
+                                                </>
+                                              }
+                                              header="BRAND & SPECIFICATION"
+                                            />
                                           ) : (
                                             "-"
                                           )}
@@ -1880,6 +1894,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 firstItem.material_subcategory_id
                               )}
                               purposeID={mrHeader.purpose_id}
+                              style={{ padding: "20px 0px" }}
                             >
                               ADD ITEM +
                             </AddMrItemButton>
@@ -1945,7 +1960,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               <th>DESCRIPTION</th>
                               <th>QUANTITY</th>
                               <th>BILL OF QUANTITY</th>
-                              <th>NOTES</th>
+                              <th>BRAND & SPECIFICATION</th>
                               {((mrHeader.progress_id === 5 &&
                                 (userInfo?.departmentID ===
                                   mrHeader.department_id ||
@@ -2009,7 +2024,24 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       )}
                                     </td>
                                     <td>
-                                      <NotesPopUp item={item} />
+                                      {item.brand || item.specification ? (
+                                        <InfoPopUpButton
+                                          text={
+                                            <>
+                                              <small>BRAND</small>
+                                              <h2>{item.brand}</h2>
+
+                                              <br />
+
+                                              <small>SPECIFICATION</small>
+                                              <h2>{item.specification}</h2>
+                                            </>
+                                          }
+                                          header="BRAND & SPECIFICATION"
+                                        />
+                                      ) : (
+                                        "-"
+                                      )}
                                     </td>
 
                                     {(((mrHeader.progress_id === 5 ||
@@ -2204,6 +2236,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             firstItem.material_subcategory_id
                           )}
                           purposeID={mrHeader.purpose_id}
+                          style={{ padding: "20px 0px" }}
                         >
                           ADD ITEM +
                         </AddMrItemButton>
@@ -2295,7 +2328,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   <th>DESCRIPTION</th>
                   <th>QUANTITY</th>
                   <th>BILL OF QUANTITY</th>
-                  <th>NOTES</th>
+                  <th>BRAND & SPECIFICATION</th>
                   {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>}
                   {userInfo?.departmentID === 12 &&
                     mrHeader.progress_id === 21 && <th>QUALITY CONTROL</th>}
@@ -2331,7 +2364,26 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                         "-"
                       )}
                     </td>
-                    <td>{item.notes ? <NotesPopUp item={item} /> : "-"}</td>
+                    <td>
+                      {item.brand || item.specification ? (
+                        <InfoPopUpButton
+                          text={
+                            <>
+                              <small>BRAND</small>
+                              <h2>{item.brand}</h2>
+
+                              <br />
+
+                              <small>SPECIFICATION</small>
+                              <h2>{item.specification}</h2>
+                            </>
+                          }
+                          header="BRAND & SPECIFICATION"
+                        />
+                      ) : (
+                        "-"
+                      )}
+                    </td>
 
                     {mrHeader.progress_id >= 12 && (
                       <td>
@@ -2410,6 +2462,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
       {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
         userInfo?.departmentID === mrHeader.department_id &&
+        activeCategory !== "ALL" &&
         showByItem && (
           <>
             <br />
@@ -2427,6 +2480,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               full
               autoCategoryID={getActiveCategoryID()}
               purposeID={mrHeader.purpose_id}
+              style={{ padding: "20px 0px", backgroundColor: "white" }}
             >
               ADD SUBCATEGORY & ITEM +
             </AddMrItemButton>

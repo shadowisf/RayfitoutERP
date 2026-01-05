@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { InventoryItem } from "./types/inventoryItem";
 import CreateInventoryItemButton from "./components/_CreateInventoryItemButton";
 import Button from "@/app/components/Button";
@@ -23,15 +23,28 @@ export default function Inventory() {
   const [sortOrder, setSortOrder] = useState<"none" | "high-low" | "low-high">(
     "none"
   );
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  async function getInventoryItems() {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`,
+        {
+          method: "GET",
+        }
+      );
+      const data = await response.json();
+      setInventory(data.data);
+    } catch (error) {
+      console.error("Error fetching inventory items:", error);
+    }
+  }
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`, {
-      method: "GET",
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setInventory(data.data);
-      });
+    getInventoryItems();
   }, []);
 
   // Fetch available quantities for all inventory items
@@ -101,10 +114,36 @@ export default function Inventory() {
     fetchAllQuantities();
   }, [inventory]);
 
+  // Check scroll position to show/hide arrows
+  const checkScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } =
+        scrollContainerRef.current;
+      setShowLeftArrow(scrollLeft > 0);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 300;
+      scrollContainerRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
   // Get unique categories
   const categories = Array.from(
     new Set(inventory.map((item) => item.category_name))
   ).sort();
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener("resize", checkScroll);
+    return () => window.removeEventListener("resize", checkScroll);
+  }, [categories]);
 
   // Get item count per category
   const getCategoryCount = (category: string) => {
@@ -137,9 +176,9 @@ export default function Inventory() {
         const qtyB = availableQuantities[b.id]?.available_quantity ?? 0;
 
         if (sortOrder === "high-low") {
-          return qtyB - qtyA; // Highest to lowest
+          return qtyB - qtyA;
         } else {
-          return qtyA - qtyB; // Lowest to highest
+          return qtyA - qtyB;
         }
       });
     }
@@ -201,7 +240,7 @@ export default function Inventory() {
             <option value="high-low">HIGHEST TO LOWEST STOCK</option>
             <option value="low-high">LOWEST TO HIGHEST STOCK</option>
           </select>
-          <CreateInventoryItemButton />
+          <CreateInventoryItemButton onSuccess={() => getInventoryItems()} />
           <div
             style={{
               position: "relative",
@@ -254,45 +293,62 @@ export default function Inventory() {
         {/* Sort Dropdown */}
       </div>
 
-      {/* Category Tabs */}
-      <div className="category-grid">
-        <div>
+      {/* Category Tabs with Scroll */}
+      <div style={{ position: "relative" }}>
+        {showLeftArrow && (
           <button
-            className={`item ${activeCategory === "ALL" ? "active" : ""}`}
-            onClick={() => setActiveCategory("ALL")}
+            onClick={() => scroll("left")}
+            style={{
+              position: "absolute",
+              left: 0,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 10,
+              backgroundColor: "white",
+              border: "1px solid rgba(223, 223, 223, 1)",
+              borderRadius: "50%",
+              width: "40px",
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span>ALL</span>
-              <span
-                style={{
-                  backgroundColor:
-                    activeCategory === "ALL"
-                      ? "white"
-                      : "rgba(205, 205, 205, 1)",
-                  color: "black",
-                  borderRadius: "5px",
-                  padding: "2px 10px",
-                }}
-              >
-                {inventory.length}
-              </span>
-            </div>
+            ←
           </button>
+        )}
 
-          {categories.map((category) => (
+        <div
+          ref={scrollContainerRef}
+          onScroll={checkScroll}
+          className="category-grid"
+          style={{
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+          }}
+        >
+          <style jsx>{`
+            .category-grid::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+          <div style={{ display: "flex", gap: "10px" }}>
             <button
-              key={category}
-              className={`item ${activeCategory === category ? "active" : ""}`}
-              onClick={() => setActiveCategory(category)}
+              className={`item ${activeCategory === "ALL" ? "active" : ""}`}
+              onClick={() => setActiveCategory("ALL")}
+              style={{ flexShrink: 0 }}
             >
               <div
                 style={{ display: "flex", alignItems: "center", gap: "10px" }}
               >
-                <span>{category.toUpperCase()} </span>
+                <span>ALL</span>
                 <span
                   style={{
                     backgroundColor:
-                      activeCategory === category
+                      activeCategory === "ALL"
                         ? "white"
                         : "rgba(205, 205, 205, 1)",
                     color: "black",
@@ -300,12 +356,67 @@ export default function Inventory() {
                     padding: "2px 10px",
                   }}
                 >
-                  {getCategoryCount(category)}
+                  {inventory.length}
                 </span>
               </div>
             </button>
-          ))}
+
+            {categories.map((category) => (
+              <button
+                key={category}
+                className={`item ${
+                  activeCategory === category ? "active" : ""
+                }`}
+                onClick={() => setActiveCategory(category)}
+                style={{ flexShrink: 0 }}
+              >
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                >
+                  <span>{category.toUpperCase()} </span>
+                  <span
+                    style={{
+                      backgroundColor:
+                        activeCategory === category
+                          ? "white"
+                          : "rgba(205, 205, 205, 1)",
+                      color: "black",
+                      borderRadius: "5px",
+                      padding: "2px 10px",
+                    }}
+                  >
+                    {getCategoryCount(category)}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
+
+        {showRightArrow && (
+          <button
+            onClick={() => scroll("right")}
+            style={{
+              position: "absolute",
+              right: 0,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 10,
+              backgroundColor: "white",
+              border: "1px solid rgba(223, 223, 223, 1)",
+              borderRadius: "50%",
+              width: "40px",
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
+            →
+          </button>
+        )}
       </div>
 
       <br />
@@ -352,7 +463,10 @@ export default function Inventory() {
                               src={item.image}
                               alt="reference image"
                               width={50}
-                              style={{ aspectRatio: "1/1" }}
+                              style={{
+                                aspectRatio: "1/1",
+                                borderRadius: "5px",
+                              }}
                             />
                           ) : (
                             <div

@@ -18,6 +18,7 @@ type AddBoqItemButtonProps = {
   autoSubCategory?: string;
   children: React.ReactNode;
   full?: boolean;
+  style?: React.CSSProperties;
 };
 
 export default function AddBoqItemButton({
@@ -29,6 +30,7 @@ export default function AddBoqItemButton({
   autoSubCategory = "",
   children,
   full,
+  style,
 }: AddBoqItemButtonProps) {
   const router = useRouter();
 
@@ -177,6 +179,7 @@ export default function AddBoqItemButton({
         textColor={textColor}
         onClick={() => setIsOpen(true)}
         full={full ? true : false}
+        style={style}
       >
         {children}
       </Button>

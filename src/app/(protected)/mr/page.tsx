@@ -8,6 +8,8 @@ import { MrHeader } from "./[id]/types/mrHeader";
 export default function MR() {
   const { userInfo } = useAuth();
 
+  const clockIcon = "/icons/clock.svg";
+
   const [mrHeaders, setMrHeaders] = useState<MrHeader[]>([]);
   const [filterRelevant, setFilterRelevant] = useState(false);
 
@@ -177,17 +179,20 @@ export default function MR() {
       };
     }
     // Due in 3 days or less (0-3 days)
-    else if (diffDays <= 3) {
+    else if (diffDays <= 1) {
       return {
         backgroundColor: "rgba(255, 181, 181, 1)",
         color: "rgba(248, 77, 77, 1)",
       };
-    }
-    // More than 3 days
-    else {
+    } else if (diffDays <= 3) {
       return {
         backgroundColor: "rgba(255, 250, 189, 1)",
         color: "rgba(134, 83, 47, 1)",
+      };
+    } else {
+      return {
+        backgroundColor: "rgba(231, 231, 231, 1)",
+        color: "black",
       };
     }
   };
@@ -415,7 +420,7 @@ export default function MR() {
                   gap: "20px",
                 }}
               >
-                {mrs.map((mr: any) => {
+                {mrs.map((mr: MrHeader) => {
                   const priority = getPriority(mr.required_date);
                   const daysLeftStyle = getDaysLeftStyle(mr.required_date);
                   const isCompleted =
@@ -445,8 +450,7 @@ export default function MR() {
                           <h3>MR-{String(mr.id).padStart(5, "0")}</h3>
                         </div>
 
-                        <div style={{ display: "flex", gap: "10px" }}>
-                          {/* Only show priority badge if NOT completed */}
+                        {/* <div style={{ display: "flex", gap: "10px" }}>
                           {!isCompleted && (
                             <small
                               className="status"
@@ -458,6 +462,28 @@ export default function MR() {
                               {priority.label}
                             </small>
                           )}
+                        </div> */}
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <small
+                            className="status"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "5px",
+                              backgroundColor: priority.backgroundColor,
+                              color: priority.color,
+                            }}
+                          >
+                            <img src={clockIcon} />
+                            HOUR
+                          </small>
                         </div>
                       </div>
 

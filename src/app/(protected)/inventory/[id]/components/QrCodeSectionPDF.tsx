@@ -30,12 +30,12 @@ const styles = StyleSheet.create({
   },
   small: {
     textTransform: "uppercase",
-    fontSize: 14,
+    fontSize: 11,
     marginBottom: 10,
   },
   smallBold: {
     textTransform: "uppercase",
-    fontSize: 14,
+    fontSize: 11,
     fontFamily: "Mont-SemiBold",
   },
 });
@@ -62,7 +62,7 @@ export default function QrCodeSectionPDF({
             {inventoryItem.category_name} / {inventoryItem.subcategory_name}
           </Text>
           <Text style={styles.smallBold}>
-            MRT-
+            INV-
             {inventoryItem.id.toString().padStart(5, "0")}
           </Text>
         </View>

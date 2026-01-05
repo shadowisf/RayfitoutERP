@@ -162,6 +162,8 @@ export default function EditMrItemButton({
         quantity,
         unit,
         notes,
+        specification,
+        brand,
         delivery_location: deliveryLocation,
         id: item.id,
       }),

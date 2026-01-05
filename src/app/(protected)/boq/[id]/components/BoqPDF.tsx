@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Mont-SemiBold",
     marginBottom: 20,
-    marginTop: 10,
+    marginTop: 30,
     color: "#000000",
     textTransform: "uppercase",
   },
@@ -199,21 +199,22 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: "#333333",
     minHeight: 40,
+    alignItems: "flex-start",
   },
   detailColItemNo: {
-    width: "4%",
+    width: "6%",
     paddingRight: 5,
   },
   detailColCategory: {
-    width: "15%",
+    width: "10%",
     paddingRight: 5,
   },
   detailColQty: {
-    width: "7%",
+    width: "10%",
     paddingRight: 5,
   },
   detailColRate: {
-    width: "8%",
+    width: "10%",
     paddingRight: 5,
   },
   detailColTotal: {
@@ -225,25 +226,25 @@ const styles = StyleSheet.create({
     paddingRight: 5,
   },
   detailColDescription: {
-    width: "28%",
-    paddingRight: 10,
+    width: "35%",
+    paddingRight: 5,
   },
   detailColAttachment: {
-    width: "20%",
+    width: "13%",
   },
 
   // Attachment Image
   attachmentImage: {
-    width: 50,
+    width: 36,
     objectFit: "contain",
   },
   attachmentContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    width: 130,
+    width: 120,
   },
   attachmentWrapper: {
-    width: 50,
+    width: 36,
     marginRight: 5,
     marginBottom: 5,
   },
@@ -432,96 +433,108 @@ export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
           </Text>
         </View>
 
-        <Text style={styles.pageNumber}>01</Text>
+        <Text
+          style={styles.pageNumber}
+          render={({ pageNumber }) => `${String(pageNumber).padStart(2, "0")}`}
+        />
       </Page>
 
-      {/* Detail Pages - One page per category */}
-      {categories.map((category, categoryIndex) => {
-        const subCategories = Object.entries(boqLines[category]);
+      {/* Detail Pages - All categories in continuous pages */}
+      <Page size="A4" style={styles.page} wrap>
+        {categories.map((category, categoryIndex) => {
+          const subCategories = Object.entries(boqLines[category]);
 
-        return (
-          <Page key={categoryIndex} size="A4" style={styles.page}>
-            {/* Category Title */}
-            <Text style={styles.categoryTitle}>
-              {categoryIndex + 1}.1 {category.toUpperCase()}
-            </Text>
+          return (
+            <View key={categoryIndex} wrap={false}>
+              {/* Category Title */}
+              <Text style={styles.categoryTitle}>
+                {categoryIndex + 1}.1 {category.toUpperCase()}
+              </Text>
 
-            {/* Detailed Table */}
-            <View style={styles.table}>
-              <View style={styles.detailTableHeader}>
-                <Text style={styles.detailColItemNo}>#</Text>
-                <Text style={styles.detailColCategory}>ITEM</Text>
-                <Text style={styles.detailColQty}>QTY</Text>
-                <Text style={styles.detailColRate}>RATE</Text>
-                <Text style={styles.detailColTotal}>TOTAL COST</Text>
-                <Text style={styles.detailColLocation}>LOCATION</Text>
-                <Text style={styles.detailColDescription}>
-                  ITEM DESCRIPTION
-                </Text>
-                <Text style={styles.detailColAttachment}>ATTACHMENT(S)</Text>
-              </View>
+              {/* Detailed Table */}
+              <View style={styles.table}>
+                <View style={styles.detailTableHeader}>
+                  <Text style={styles.detailColItemNo}>#</Text>
+                  <Text style={styles.detailColCategory}>ITEM</Text>
+                  <Text style={styles.detailColDescription}>DESCRIPTION</Text>
+                  <Text style={styles.detailColLocation}>LOCATION</Text>
+                  <Text style={styles.detailColQty}>QUANTITY</Text>
+                  <Text style={styles.detailColRate}>RATE</Text>
+                  <Text style={styles.detailColTotal}>TOTAL COST</Text>
+                  <Text style={styles.detailColAttachment}>ATTACHMENT(S)</Text>
+                </View>
 
-              {subCategories.map(([subCategory, items], subIndex) =>
-                items.map((item, itemIndex) => (
-                  <View key={item.id} style={styles.detailTableRow}>
-                    <Text style={styles.detailColItemNo}>
-                      {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
-                    </Text>
-                    <Text style={styles.detailColCategory}>
-                      {item.item_name}
-                    </Text>
-                    <Text style={styles.detailColQty}>
-                      {item.quantity} {item.unit}
-                    </Text>
-                    <Text style={styles.detailColRate}>
-                      {item.rate_per_quantity?.toLocaleString()}
-                    </Text>
-                    <Text style={styles.detailColTotal}>
-                      {item.total_cost?.toLocaleString()} AED
-                    </Text>
-                    <Text style={styles.detailColLocation}>
-                      {item.location?.split(" - ").pop()}
-                    </Text>
-                    <Text style={styles.detailColDescription}>
-                      {item.item_description || ""}
-                    </Text>
-                    <View style={styles.detailColAttachment}>
-                      {item.attachments &&
-                        Array.isArray(item.attachments) &&
-                        item.attachments.length > 0 && (
-                          <View style={styles.attachmentContainer}>
-                            {item.attachments.map(
-                              (base64Url: string, i: number) => {
-                                if (!base64Url || base64Url.trim() === "")
-                                  return null;
+                {subCategories.map(([subCategory, items], subIndex) =>
+                  items.map((item, itemIndex) => (
+                    <View key={item.id} style={styles.detailTableRow}>
+                      <View style={styles.detailColItemNo}>
+                        <Text>
+                          {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
+                        </Text>
+                      </View>
+                      <View style={styles.detailColCategory}>
+                        <Text>{item.item_name}</Text>
+                      </View>
+                      <View style={styles.detailColDescription}>
+                        <Text>{item.item_description || ""}</Text>
+                      </View>
+                      <View style={styles.detailColLocation}>
+                        <Text>{item.location?.split("-").pop()}</Text>
+                      </View>
+                      <View style={styles.detailColQty}>
+                        <Text>
+                          {item.quantity} {item.unit}
+                        </Text>
+                      </View>
+                      <View style={styles.detailColRate}>
+                        <Text>
+                          AED {item.rate_per_quantity?.toLocaleString()}
+                        </Text>
+                      </View>
+                      <View style={styles.detailColTotal}>
+                        <Text>AED {item.total_cost?.toLocaleString()}</Text>
+                      </View>
 
-                                return (
-                                  <View
-                                    key={i}
-                                    style={styles.attachmentWrapper}
-                                  >
-                                    <Image
-                                      src={base64Url}
-                                      style={styles.attachmentImage}
-                                    />
-                                  </View>
-                                );
-                              }
-                            )}
-                          </View>
-                        )}
+                      <View style={styles.detailColAttachment}>
+                        {item.attachments &&
+                          Array.isArray(item.attachments) &&
+                          item.attachments.length > 0 && (
+                            <View style={styles.attachmentContainer}>
+                              {item.attachments.map(
+                                (base64Url: string, i: number) => {
+                                  if (!base64Url || base64Url.trim() === "")
+                                    return null;
+
+                                  return (
+                                    <View
+                                      key={i}
+                                      style={styles.attachmentWrapper}
+                                    >
+                                      <Image
+                                        src={base64Url}
+                                        style={styles.attachmentImage}
+                                      />
+                                    </View>
+                                  );
+                                }
+                              )}
+                            </View>
+                          )}
+                      </View>
                     </View>
-                  </View>
-                ))
-              )}
+                  ))
+                )}
+              </View>
             </View>
+          );
+        })}
 
-            <Text style={styles.pageNumber}>
-              {String(categoryIndex + 2).padStart(2, "0")}
-            </Text>
-          </Page>
-        );
-      })}
+        <Text
+          style={styles.pageNumber}
+          render={({ pageNumber }) => `${String(pageNumber).padStart(2, "0")}`}
+          fixed
+        />
+      </Page>
     </Document>
   );
 }

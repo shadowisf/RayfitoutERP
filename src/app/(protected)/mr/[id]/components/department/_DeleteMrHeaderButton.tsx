@@ -30,6 +30,7 @@ export default function DeleteMrHeaderButton({
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        action: "deleteMrHeader",
         id: mrHeader.id,
       }),
     });

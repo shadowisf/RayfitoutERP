@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { InventoryItem } from "../../types/inventoryItem";
+import { useAuth } from "@/app/context/AuthContext";
 
 type DeleteInventoryItemButtonProps = {
   inventoryItem: InventoryItem;
@@ -15,6 +16,8 @@ export default function DeleteInventoryItemButton({
   inventoryItem,
 }: DeleteInventoryItemButtonProps) {
   const router = useRouter();
+
+  const { userInfo } = useAuth();
 
   const trashIcon = "/icons/trash.svg";
 
@@ -69,6 +72,10 @@ export default function DeleteInventoryItemButton({
     } else {
       toast("Failed to delete inventory item", "error");
     }
+  }
+
+  if (userInfo?.departmentID !== 8) {
+    return null;
   }
 
   return (

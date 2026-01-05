@@ -21,7 +21,7 @@ export default function NewMrButton() {
 
   const [purposeReasonID, setPurposeReasonID] = useState<string | number>("");
   /* const [boqLineID, setBoqLineID] = useState<(string | number)[]>([]); */
-  const [projectID, setProjectID] = useState("");
+  const [projectID, setProjectID] = useState<string | number>("");
   const [requestedBy, setRequestedBy] = useState(userInfo?.name);
   const [neededBy, setNeededBy] = useState("");
 
@@ -131,7 +131,19 @@ export default function NewMrButton() {
               required
             />
 
-            <InputItem
+            <SingleSelectDropdown
+              label={"PROJECT"}
+              selectedValue={projectID}
+              onChange={setProjectID}
+              placeholder={"SELECT PROJECT"}
+              dbData={[...projects]}
+              idField="id"
+              labelField="name"
+              required={purposeReasonID === 1 || purposeReasonID === 2}
+              disabled={purposeReasonID === 6}
+            />
+
+            {/* <InputItem
               label={"PROJECT"}
               value={projectID}
               type={"select"}
@@ -144,7 +156,7 @@ export default function NewMrButton() {
               ))}
               required={purposeReasonID === 1 || purposeReasonID === 2}
               disabled={purposeReasonID === 6}
-            />
+            /> */}
 
             {/* <SingleSelectDropdown
               label={"BOQ LINE ID"}

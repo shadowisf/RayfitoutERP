@@ -327,7 +327,10 @@ export async function DELETE(req: Request) {
 
     if (body.action === "deleteMrHeader") {
       const query = "DELETE FROM mr_headers WHERE id = ?";
+
       await db.query(query, [Number(body.id)]);
+
+      return NextResponse.json({ success: true });
     }
   } catch (err: any) {
     console.error(err.sqlMessage);

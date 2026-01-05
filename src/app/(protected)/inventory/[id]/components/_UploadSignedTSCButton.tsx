@@ -243,11 +243,11 @@ export default function UploadSignedTSCButton({
                 alt="download"
                 onClick={(e) => handleDownload(fileUrl, e)}
               />
-              <img
+              {/* <img
                 src={closeIcon}
                 alt="remove"
                 onClick={(e) => handleRemoveFile(fileUrl, e)}
-              />
+              /> */}
             </Button>
           ))}
         </>

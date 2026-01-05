@@ -105,7 +105,7 @@ export default function NewProjectButton() {
         textColor={"white"}
         onClick={() => setIsOpen(true)}
       >
-        + NEW PROJECT
+        NEW PROJECT +
       </Button>
 
       {isOpen && (
@@ -148,7 +148,11 @@ export default function NewProjectButton() {
               <div className="input-prefix left">
                 <span>RAY-</span>
                 <input
-                  style={{ padding: "7px 42px" }}
+                  style={{
+                    padding: "7px 42px",
+                    width: "100%",
+                    borderRadius: "5px",
+                  }}
                   type="text"
                   value={id}
                   onChange={(e) => {
@@ -263,7 +267,13 @@ export default function NewProjectButton() {
           {/* 4th row */}
           <div className="input-row">
             <div className="input-item">
-              <label>QUOTED BUDGET (OPTIONAL)</label>
+              <label className="custom">
+                <span>QUOTED PRICE</span>
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  (OPTIONAL)
+                </small>
+              </label>
+
               <div className="input-prefix right">
                 <span>{currency}</span>
                 <input
@@ -330,7 +340,12 @@ export default function NewProjectButton() {
           {/* 5th row */}
           <div className="input-row full">
             <div className="input-item">
-              <label>ALLOCATED BUDGET (OPTIONAL)</label>
+              <label className="custom">
+                <span>ALLOCATED BUDGET</span>
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  (OPTIONAL)
+                </small>
+              </label>
               <div className="input-prefix right">
                 <span>{currency}</span>
                 <input
@@ -373,7 +388,7 @@ export default function NewProjectButton() {
           {/* 6th row */}
           <div className="input-row three-col" style={{ marginBottom: "40px" }}>
             <InputItem
-              label={"START DATE (OPTIONAL)"}
+              label={"START DATE"}
               value={startDate}
               type={"date"}
               placeholder={"ENTER START DATE"}
@@ -382,7 +397,7 @@ export default function NewProjectButton() {
             />
 
             <InputItem
-              label={"END DATE (OPTIONAL)"}
+              label={"END DATE"}
               value={endDate}
               type={"date"}
               placeholder={"ENTER END DATE"}

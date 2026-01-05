@@ -273,8 +273,8 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
         <FormPopUp
           header={
             isEditMode
-              ? `UPDATE STOCK FOR ${mrLine.material_description}`
-              : `ADD STOCK FOR ${mrLine.material_description}`
+              ? `UPDATE STOCK FOR ${mrLine.material_description.toUpperCase()}`
+              : `ADD STOCK FOR ${mrLine.material_description.toUpperCase()}`
           }
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}

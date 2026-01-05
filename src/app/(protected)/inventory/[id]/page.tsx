@@ -12,6 +12,8 @@ import ReceiveStocksButton from "./components/_ReceiveStocksButton";
 import TopSuppliersChart from "./components/TopSuppliersChart";
 import StockHistoryChart from "./components/StockHistoryChart";
 import TopRequestingProjectsChart from "./components/TopRequestingProjectsChart";
+import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
+import { useAuth } from "@/app/context/AuthContext";
 
 export default async function InventoryItemWithID({
   params,
@@ -121,13 +123,16 @@ export default async function InventoryItemWithID({
       <div
         style={{
           display: "flex",
-          justifyContent: "space-betweens",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
-        <div></div>
+        <h2>INVENTORY &gt; {inventoryItem?.description}</h2>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <EditInventoryItemButton inventoryItem={inventoryItem} />
+
           <DeleteInventoryItemButton inventoryItem={inventoryItem} />
+
           {/* <ReceiveStocksButton inventoryItem={inventoryItem} /> */}
           <ManualAddToStockButton inventoryItem={inventoryItem} />
 
@@ -172,18 +177,15 @@ export default async function InventoryItemWithID({
                 </div>
                 <div>
                   <small>STATUS</small>
-                  <p
+                  <span
+                    className="approval-pill normal-text"
                     style={{
-                      padding: "5px 15px",
                       backgroundColor: stockStatus.bgColor,
                       color: stockStatus.textColor,
-                      width: "fit-content",
-                      borderRadius: "25px",
-                      fontWeight: "bold",
                     }}
                   >
                     {stockStatus.label}
-                  </p>
+                  </span>
                 </div>
                 <div>
                   <small>ITEM NAME</small>
@@ -199,9 +201,16 @@ export default async function InventoryItemWithID({
                 </div>
                 <div>
                   <small>SPECIFICATION</small>
-                  <h2 style={{ whiteSpace: "pre-wrap", maxWidth: "300px" }}>
-                    {inventoryItem?.specification || "-"}
-                  </h2>
+                  {inventoryItem?.specification ? (
+                    <InfoPopUpButton
+                      text={inventoryItem?.specification}
+                      header={"SPECIFICATION"}
+                    />
+                  ) : (
+                    <h2 style={{ whiteSpace: "pre-wrap", maxWidth: "300px" }}>
+                      {inventoryItem?.specification || "-"}
+                    </h2>
+                  )}
                 </div>
                 <div>
                   <small>SUBCATEGORY</small>
@@ -266,7 +275,6 @@ export default async function InventoryItemWithID({
               inventoryItemCreatedAt={inventoryItem.created_at}
             />
           </div>
-
           <br />
           <br />
 
@@ -277,10 +285,8 @@ export default async function InventoryItemWithID({
               unit={inventoryItem.unit}
             />
           </div>
-
           <br />
           <br />
-
           <div
             style={{
               display: "grid",

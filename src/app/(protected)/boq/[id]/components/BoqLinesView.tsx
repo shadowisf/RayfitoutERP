@@ -310,6 +310,7 @@ export default function BoqLinesView({
                         full
                         autoCategory={category}
                         autoSubCategory={subCategory}
+                        style={{ padding: "20px 0px" }}
                       >
                         ADD ITEM +
                       </AddBoqItemButton>
@@ -498,6 +499,7 @@ export default function BoqLinesView({
                     full
                     autoCategory={activeCategory}
                     autoSubCategory={subCategory}
+                    style={{ padding: "20px 0px" }}
                   >
                     ADD ITEM +
                   </AddBoqItemButton>
@@ -521,6 +523,7 @@ export default function BoqLinesView({
           textColor="black"
           full
           autoCategory={activeCategory}
+          style={{ padding: "20px 0px", backgroundColor: "white" }}
         >
           ADD SUBCATEGORY & ITEM +
         </AddBoqItemButton>

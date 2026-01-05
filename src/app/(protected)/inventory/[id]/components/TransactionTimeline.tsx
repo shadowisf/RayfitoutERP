@@ -203,6 +203,7 @@ const TransactionCard = ({
         style={{
           paddingBottom: "50px",
           marginLeft: "-20px",
+          flex: 1,
         }}
       >
         <div
@@ -215,6 +216,7 @@ const TransactionCard = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              gap: "25px",
             }}
           >
             <div
@@ -243,16 +245,15 @@ const TransactionCard = ({
 
           <br />
 
-          <div style={{ paddingLeft: "40px" }}>
+          <div style={{ paddingLeft: "25px" }}>
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr 1fr",
-                /* gap: "20px", */
-                /* backgroundColor: "rgba(248, 249, 251, 1)", */
-                /* padding: "10px 20px", */
-                rowGap: "25px",
-                /* borderRadius: "10px", */
+                gap: "25px",
+                padding: "10px 15px",
+                borderRadius: "10px",
+                backgroundColor: "rgba(248, 249, 251, 1)",
               }}
             >
               <div style={{ textWrap: "nowrap" }}>
@@ -348,11 +349,11 @@ const TransactionCard = ({
                     <h4>{transaction.project_name || "-"}</h4>
                   </div>
                   <div></div>
-                  {!transaction.received && (
+                  {/* {!transaction.received && (
                     <div style={{ textWrap: "nowrap" }}>
                       <UploadSignedTSCButton transactionID={transaction.id} />
                     </div>
-                  )}
+                  )} */}
                 </>
               )}
 
@@ -388,13 +389,13 @@ const TransactionCard = ({
                         <small>TRANSFER TO</small>
                         <h4>{transaction.to_location}</h4>
                       </div>
-                      {!transaction.received && (
+                      {/* {!transaction.received && (
                         <div style={{ textWrap: "nowrap" }}>
                           <UploadSignedTSCButton
                             transactionID={transaction.id}
                           />
                         </div>
-                      )}
+                      )} */}
                     </>
                   )}
                 </>
@@ -423,11 +424,11 @@ const TransactionCard = ({
                     <h4>{transaction.purpose}</h4>
                   </div>
                   <div></div>
-                  {!transaction.received && (
+                  {/* {!transaction.received && (
                     <div style={{ textWrap: "nowrap" }}>
                       <UploadSignedTSCButton transactionID={transaction.id} />
                     </div>
-                  )}
+                  )} */}
                 </>
               )}
               {/* {(transactionType === "STOCK_ISSUED" ||
@@ -498,7 +499,7 @@ const ItemCreatedCard = ({
           paddingBottom: "50px",
           marginLeft: "-20px",
           textTransform: "uppercase",
-          backgroundColor: "rgba(223, 223, 223, 1)",
+          flex: 1,
         }}
       >
         <div
@@ -521,11 +522,19 @@ const ItemCreatedCard = ({
 
           <br />
 
-          <div style={{ paddingLeft: "40px" }}>
+          <div
+            style={{
+              marginLeft: "25px",
+              padding: "10px 15px",
+              borderRadius: "10px",
+              backgroundColor: "rgba(248, 249, 251, 1)",
+            }}
+          >
             <div
               style={{
-                display: "flex",
-                gap: "20px",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: "25px",
               }}
             >
               <div>

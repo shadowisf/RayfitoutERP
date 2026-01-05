@@ -138,7 +138,9 @@ export default function SingleUploadFileBox({
           borderRadius: "5px",
           padding: "40px",
           textAlign: "center",
-          backgroundColor: isDragOver ? "rgba(169, 255, 218, 1)" : "#f9fafb",
+          backgroundColor: isDragOver
+            ? "rgba(169, 255, 218, 1)"
+            : "rgba(244, 244, 244, 1)",
           flexDirection: "column",
           display: "flex",
           justifyContent: "center",

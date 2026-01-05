@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { InventoryItem } from "../../types/inventoryItem";
+import FormContextHeader from "@/app/components/FormContextHeader";
 
 type ManualAddToStockButtonProps = {
   inventoryItem: InventoryItem;
@@ -264,12 +265,13 @@ export default function ManualAddToStockButton({
 
       {isOpen && (
         <FormPopUp
-          header={"ADD STOCK"}
+          header={`ADD STOCK - ${inventoryItem.description.toUpperCase()}`}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <div className="input-row full">
+          <FormContextHeader>STOCK CONTEXT</FormContextHeader>
+          <div className="input-row half">
             <InputItem
               label={"RECEIVED BY"}
               value={userInfo?.name || ""}
@@ -279,8 +281,6 @@ export default function ManualAddToStockButton({
               disabled
               onChange={() => {}}
             />
-          </div>
-          <div className="input-row half">
             <InputItem
               label={"REASON FOR ENTRY"}
               value={reasonForEntry}
@@ -302,6 +302,12 @@ export default function ManualAddToStockButton({
                 "Data entry correction",
               ]}
             />
+          </div>
+
+          <br />
+
+          <FormContextHeader>SOURCE & RESPONSIBLITY</FormContextHeader>
+          <div className="input-row half">
             <SingleSelectDropdown
               label={"VENDOR"}
               selectedValue={supplierID}
@@ -312,29 +318,6 @@ export default function ManualAddToStockButton({
               labelField="name"
               required={false}
             />
-          </div>
-
-          <div className="input-row half">
-            <div className="input-item">
-              <label>
-                QUANTITY <span style={{ color: "red" }}>*</span>
-              </label>
-              <div className="input-prefix right">
-                <span>{inventoryItem?.unit}</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="ENTER QUANTITY"
-                  required
-                  value={quantity}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, "");
-                    setQuantity(value);
-                  }}
-                />
-              </div>
-            </div>
             <InputItem
               label={"UNIT PRICE"}
               value={unitPrice}
@@ -370,17 +353,30 @@ export default function ManualAddToStockButton({
             />
           </div>
 
-          <div className="input-row half">
-            <InputItem
-              label={"CONDITION AT ENTRY"}
-              value={condition}
-              type={"select"}
-              placeholder={"SELECT CONDITION"}
-              required={false}
-              onChange={(e) => setCondition(e.target.value)}
-              selectOptions={["Good", "Fair", "Damaged"]}
-            />
+          <br />
 
+          <FormContextHeader>STOCK DETAILS</FormContextHeader>
+          <div className="input-row half">
+            <div className="input-item">
+              <label>
+                QUANTITY <span style={{ color: "red" }}>*</span>
+              </label>
+              <div className="input-prefix right">
+                <span>{inventoryItem?.unit}</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="ENTER QUANTITY"
+                  required
+                  value={quantity}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "");
+                    setQuantity(value);
+                  }}
+                />
+              </div>
+            </div>
             <InputItem
               label={"STOCK LOCATION"}
               value={location}
@@ -396,7 +392,21 @@ export default function ManualAddToStockButton({
             />
           </div>
 
-          <div className="input-row full">
+          {/* <div className="input-row half">
+            <InputItem
+              label={"CONDITION AT ENTRY"}
+              value={condition}
+              type={"select"}
+              placeholder={"SELECT CONDITION"}
+              required={false}
+              onChange={(e) => setCondition(e.target.value)}
+              selectOptions={["Good", "Fair", "Damaged"]}
+            />
+          </div> */}
+
+          <br />
+
+          {/* <div className="input-row full">
             <InputItem
               label={"NOTES"}
               value={notes}
@@ -405,8 +415,9 @@ export default function ManualAddToStockButton({
               required={false}
               onChange={(e) => setNotes(e.target.value)}
             />
-          </div>
+          </div> */}
 
+          <FormContextHeader>PROOF/ATTACHMENTS</FormContextHeader>
           <div className="input-row half">
             <SingleUploadFileBox
               fileState={grnFile}
