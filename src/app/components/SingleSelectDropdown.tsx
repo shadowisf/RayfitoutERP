@@ -60,6 +60,9 @@ export default function SingleSelectDropdown({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const dropdownId = useRef(
+    `dropdown-${Math.random().toString(36).substr(2, 9)}`
+  );
 
   useEffect(() => {
     setIsMounted(true);
@@ -93,29 +96,39 @@ export default function SingleSelectDropdown({
     option.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Click outside handler
   useEffect(() => {
+    if (!isOpen) return;
+
     function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        const dropdownElement = document.getElementById(
-          `dropdown-${containerRef.current.id}`
-        );
-        if (
-          dropdownElement &&
-          !dropdownElement.contains(event.target as Node)
-        ) {
-          setIsOpen(false);
-          setSearchQuery("");
-          setHoveredOption(null);
-        }
+      const target = event.target as Node;
+
+      // Check if click is outside the container
+      const isOutsideContainer =
+        containerRef.current && !containerRef.current.contains(target);
+
+      // Check if click is outside the dropdown portal
+      const dropdownElement = document.getElementById(dropdownId.current);
+      const isOutsideDropdown =
+        dropdownElement && !dropdownElement.contains(target);
+
+      // Close if clicked outside both
+      if (isOutsideContainer && isOutsideDropdown) {
+        setIsOpen(false);
+        setSearchQuery("");
+        setHoveredOption(null);
       }
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    // Add slight delay to prevent immediate closing when opening
+    setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 0);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && searchInputRef.current) {
@@ -212,11 +225,6 @@ export default function SingleSelectDropdown({
   const isPlaceholder = !selectedValue && selectedValue !== 0;
   const hoveredOptionData = options.find(
     (option) => option.id === hoveredOption
-  );
-
-  // Generate unique ID for this dropdown instance
-  const dropdownId = useRef(
-    `dropdown-${Math.random().toString(36).substr(2, 9)}`
   );
 
   const dropdownContent = isOpen && (

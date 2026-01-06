@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     objectFit: "contain",
   },
   title: {
-    fontSize: 20,
+    fontSize: 14,
     color: "#000000",
     textTransform: "uppercase",
   },

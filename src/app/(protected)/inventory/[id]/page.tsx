@@ -130,7 +130,7 @@ export default async function InventoryItemWithID({
           alignItems: "center",
         }}
       >
-        <h2>INVENTORY &gt; {inventoryItem?.description}</h2>
+        <h2>INVENTORY &gt; {inventoryItem?.description.toUpperCase()}</h2>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <EditInventoryItemButton inventoryItem={inventoryItem} />
 
@@ -191,8 +191,10 @@ export default async function InventoryItemWithID({
                   </span>
                 </div>
                 <div>
-                  <small>ITEM NAME</small>
-                  <h2>{inventoryItem?.description}</h2>
+                  <small>NAME</small>
+                  <h2 style={{ maxWidth: "300px" }}>
+                    {inventoryItem?.description}
+                  </h2>
                 </div>
                 <div>
                   <small>CATEGORY</small>
@@ -274,7 +276,7 @@ export default async function InventoryItemWithID({
         }}
       >
         <div>
-          <div className="widget-container">
+          {/* <div className="widget-container">
             <StockHistoryChart
               stocks={stockData.stocks}
               stocksTransferIssue={stockData.stocksTransferIssue}
@@ -283,7 +285,7 @@ export default async function InventoryItemWithID({
             />
           </div>
           <br />
-          <br />
+          <br /> */}
 
           <div className="widget-container">
             <StockLocationChart

@@ -1532,7 +1532,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       textColor="white"
                       purposeID={mrHeader.purpose_id}
                     >
-                      ADD CATEGORY & ITEM +
+                      ADD ITEM +
                     </AddMrItemButton>
                   </>
                 )}

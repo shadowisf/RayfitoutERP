@@ -87,7 +87,7 @@ export default function AlertsAndRiskMrsWidget() {
           </div>
           <div style={{ color: "rgba(134, 146, 30, 1)" }}>
             <div className="bottom">
-              <p className="number">1</p>
+              <p className="number">0</p>
             </div>
             <span>Pending Resolutions</span>
           </div>

@@ -240,7 +240,7 @@ export default function AddBoqItemButton({
               selectOptions={[
                 "Supply",
                 "Supply & installation",
-                "installation",
+                "Installation",
               ]}
               required
             />

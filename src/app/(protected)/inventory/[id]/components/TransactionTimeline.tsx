@@ -36,7 +36,7 @@ const TransactionIcon = ({
       bg:
         transaction?.received === 1
           ? "rgba(197, 12, 15, 1)"
-          : "rgba(131, 131, 131, 1)",
+          : "rgba(255, 133, 3, 1)",
       color: "white",
     },
     STOCK_TRANSFERRED: {
@@ -44,7 +44,7 @@ const TransactionIcon = ({
       bg:
         transaction?.received === 1
           ? "rgba(197, 12, 15, 1)"
-          : "rgba(131, 131, 131, 1)",
+          : "rrgba(255, 133, 3, 1)",
       color: "white",
     },
     STOCK_SENT: {
@@ -52,7 +52,7 @@ const TransactionIcon = ({
       bg:
         transaction?.received === 1
           ? "rgba(197, 12, 15, 1)"
-          : "rgba(131, 131, 131, 1)",
+          : "rgba(255, 133, 3, 1)",
       color: "white",
     },
     ITEM_CREATED: {
@@ -139,11 +139,11 @@ const TransactionCard = ({
           bg:
             transaction.received === 1
               ? "rgba(255, 186, 187, 1)"
-              : "rgba(239, 239, 239, 1)",
+              : "rgba(255, 242, 196, 1)",
           color:
             transaction.received === 1
               ? "rgba(197, 12, 15, 1)"
-              : "rgba(131, 131, 131, 1)",
+              : "rgba(180, 98, 10, 1)",
         };
       case "STOCK_TRANSFERRED":
         return {
@@ -151,11 +151,11 @@ const TransactionCard = ({
           bg:
             transaction.received === 1
               ? "rgba(255, 186, 187, 1)"
-              : "rgba(239, 239, 239, 1)",
+              : "rgba(255, 242, 196, 1)",
           color:
             transaction.received === 1
               ? "rgba(197, 12, 15, 1)"
-              : "rgba(131, 131, 131, 1)",
+              : "rgba(180, 98, 10, 1)",
         };
       case "STOCK_SENT":
         return {
@@ -163,11 +163,11 @@ const TransactionCard = ({
           bg:
             transaction.received === 1
               ? "rgba(255, 186, 187, 1)"
-              : "rgba(239, 239, 239, 1)",
+              : "rgba(255, 242, 196, 1)",
           color:
             transaction.received === 1
               ? "rgba(197, 12, 15, 1)"
-              : "rgba(131, 131, 131, 1)",
+              : "rgba(180, 98, 10, 1)",
         };
       default:
         return {

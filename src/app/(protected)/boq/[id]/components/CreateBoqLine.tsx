@@ -40,7 +40,7 @@ export default function CreateBoqLineClient({
           boqHeaderID={boqHeader.id}
           style={{ padding: "20px 0px" }}
         >
-          ADD CATEGORY & ITEM +
+          ADD ITEM +
         </AddBoqItemButton>
       )}
     </div>

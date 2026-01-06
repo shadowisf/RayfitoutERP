@@ -282,7 +282,11 @@ export default function EditBoqItemButton({
               type={"select"}
               placeholder={"SELECT SCOPE OF WORK"}
               onChange={(e) => setScopeOfWork(e.target.value)}
-              selectOptions={["Supply only", "Supply + install"]}
+              selectOptions={[
+                "Supply",
+                "Supply & installation",
+                "Installation",
+              ]}
               required
             />
             <SingleSelectDropdown

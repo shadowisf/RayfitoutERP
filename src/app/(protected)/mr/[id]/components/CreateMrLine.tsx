@@ -44,7 +44,7 @@ export default function CreateMrLineClient({
         purposeID={purposeID}
         style={{ padding: "20px 0px" }}
       >
-        ADD CATEGORY & ITEM +
+        ADD ITEM +
       </AddMrItemButton>
     </div>
   );

@@ -323,14 +323,12 @@ export default function TransferIssueStocksButton({
                         "Administrative/non-project work",
                       ]
                     : [
-                        "Return from processing/external work",
-                        "Return from employee/department",
-                        "Replacement/exchange from vendor",
-                        "Production/assembly output",
-                        "Stock count adjustment (gain)",
-                        "Rectification",
-                        "Refurbished/reconditioned stock added (optional)",
-                        "Project close-out material recovered (optional)",
+                        "Veneer pressing",
+                        "Painting/coating",
+                        "Polishing/finishing",
+                        "CNC cutting/trimming",
+                        "Repair/rectification",
+                        "Testing/certification",
                       ]
                 }
               />

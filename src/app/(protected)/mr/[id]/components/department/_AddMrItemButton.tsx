@@ -271,7 +271,7 @@ export default function AddMrItemButton({
 
           <div className="input-row half">
             <InputItem
-              label={"DESCRIPTION"}
+              label={"ITEM"}
               value={materialDescription}
               type={"text"}
               placeholder={"ENTER DESCRIPTION"}
