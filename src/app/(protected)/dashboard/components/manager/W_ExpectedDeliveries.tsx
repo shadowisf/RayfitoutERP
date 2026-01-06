@@ -27,14 +27,35 @@ export default function ExpectedDeliveriesWidget() {
         </tr>
       </thead>
       <tbody>
-        {deliveries.map((delivery) => (
-          <tr key={delivery.id}>
-            <td>{delivery.supplier_id}</td>
-            <td>{delivery.delivery_date}</td>
-            <td>{delivery.delivered}</td>
-            <td>{delivery.remaining}</td>
-          </tr>
-        ))}
+        {deliveries.map((delivery) => {
+          const deliveryDate = new Date(delivery.delivery_date);
+          const today = new Date();
+          const isOverdue = deliveryDate < today;
+
+          return (
+            <tr key={delivery.id}>
+              <td>LPO-{String(delivery.id).padStart(5, "0")}</td>
+              <td>{delivery.supplier_name}</td>
+              <td>{deliveryDate.toLocaleDateString("en-US")}</td>
+              <td>{delivery.item_count}</td>
+              <td>
+                <div
+                  className="approval-pill normal-text"
+                  style={{
+                    backgroundColor: isOverdue
+                      ? "rgba(254, 218, 218, 1)"
+                      : "rgba(154, 245, 206, 1)",
+                    color: isOverdue
+                      ? "rgba(165, 57, 57, 1)"
+                      : "rgba(23, 148, 94, 1)",
+                  }}
+                >
+                  {isOverdue ? "Overdue" : "On Schedule"}
+                </div>
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

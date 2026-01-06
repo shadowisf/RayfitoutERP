@@ -135,6 +135,11 @@ export async function PUT(req: Request) {
         body.id,
       ]);
 
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 3, ?)`,
+        [body.id, body.changed_by]
+      );
+
       return NextResponse.json({ status: 200 });
     }
 

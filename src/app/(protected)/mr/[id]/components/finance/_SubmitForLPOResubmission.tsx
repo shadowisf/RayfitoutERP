@@ -56,7 +56,7 @@ export default function SubmitForLPOResubmissionButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        RETURN TO PROCUREMENT
+        RETURN FOR REVISION
       </Button>
 
       {isOpen && (

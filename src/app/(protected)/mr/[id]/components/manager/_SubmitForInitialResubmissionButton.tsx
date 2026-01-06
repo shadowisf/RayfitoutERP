@@ -56,7 +56,7 @@ export default function SubmitForResubmissionButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        RETURN FOR MATERIAL CORRECTIONS
+        RETURN FOR REVISION
       </Button>
 
       {isOpen && (

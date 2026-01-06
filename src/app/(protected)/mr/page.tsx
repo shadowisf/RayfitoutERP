@@ -12,12 +12,99 @@ export default function MR() {
 
   const [mrHeaders, setMrHeaders] = useState<MrHeader[]>([]);
   const [filterRelevant, setFilterRelevant] = useState(false);
+  const [mrDurations, setMrDurations] = useState<{
+    [key: string]: { duration: string; style: any };
+  }>({});
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "GET",
     }).then((res) => res.json().then((data) => setMrHeaders(data)));
   }, [userInfo]);
+
+  // Fetch durations for all MRs
+  useEffect(() => {
+    if (mrHeaders.length === 0) return;
+
+    const fetchDurations = async () => {
+      const durationsMap: {
+        [key: string]: { duration: string; style: any };
+      } = {};
+
+      await Promise.all(
+        mrHeaders.map(async (mr) => {
+          try {
+            const res = await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getProgressDuration`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  mr_header_id: mr.id,
+                  progress_id: mr.progress_id,
+                }),
+              }
+            );
+            const data = await res.json();
+
+            let hoursDecimal = 0;
+            if (
+              data &&
+              data.hours_in_stage != null &&
+              data.minutes_in_stage != null
+            ) {
+              hoursDecimal =
+                Number(data.hours_in_stage) +
+                Number(data.minutes_in_stage) / 60;
+            }
+
+            const roundedHours = Math.round(hoursDecimal * 10) / 10;
+            let durationStyle = {
+              color: "black",
+              backgroundColor: "rgba(231, 231, 231, 1)",
+            };
+
+            // Set color based on thresholds
+            if (roundedHours > 48) {
+              durationStyle = {
+                color: "white",
+                backgroundColor: "rgba(175, 61, 61, 1)",
+              };
+            }
+            if (roundedHours >= 24 && roundedHours <= 48) {
+              durationStyle = {
+                color: "rgba(248, 77, 77, 1)",
+                backgroundColor: "rgba(255, 181, 181, 1)",
+              };
+            } else if (roundedHours >= 12 && roundedHours <= 24) {
+              durationStyle = {
+                color: "rgba(134, 83, 47, 1)",
+                backgroundColor: "rgba(255, 250, 189, 1)",
+              };
+            }
+
+            durationsMap[`${mr.id}-${mr.progress_id}`] = {
+              duration: `${roundedHours} HRS`,
+              style: durationStyle,
+            };
+          } catch (err) {
+            console.error(`Error fetching duration for MR ${mr.id}:`, err);
+            durationsMap[`${mr.id}-${mr.progress_id}`] = {
+              duration: "0 HRS",
+              style: {
+                color: "black",
+                backgroundColor: "rgba(231, 231, 231, 1)",
+              },
+            };
+          }
+        })
+      );
+
+      setMrDurations(durationsMap);
+    };
+
+    fetchDurations();
+  }, [mrHeaders]);
 
   const departmentViewPermissions: { [key: number]: number[] } = {
     /* JOINERY */ 1: [1, 5, 25],
@@ -57,53 +144,20 @@ export default function MR() {
   };
 
   // Progress IDs that are accessible to everyone IF department matches
-  const universalProgressIds = [1, 5]; // Draft and Awaiting initial approval
+  const universalProgressIds = [1, 5];
 
-  // Function to check if user can view this MR
   const canViewMR = (mr: any) => {
     const userDeptId = userInfo?.departmentID;
-
-    // If no user info, don't show view button
     if (!userDeptId) return false;
-
-    // ALWAYS allow viewing if the MR belongs to the user's department
-    if (userDeptId === mr.department_id) {
-      return true;
-    }
-
-    // Check if this is a universal progress_id (1 or 5)
+    if (userDeptId === mr.department_id) return true;
     if (universalProgressIds.includes(mr.progress_id)) {
-      // For universal progress IDs, user's department must match MR's department
       return userDeptId === mr.department_id;
     }
-
-    // Get allowed progress IDs for this department
     const allowedProgressIds = departmentViewPermissions[userDeptId];
-
-    // If department is not in the permissions map, they can only view universal progress IDs
     if (!allowedProgressIds) return false;
-
-    // Check if the MR's progress_id is in the allowed list
     return allowedProgressIds.includes(mr.progress_id);
   };
 
-  // Get relevant statuses for current user
-  const getRelevantStatuses = () => {
-    const userDeptId = userInfo?.departmentID;
-    if (!userDeptId) return [];
-
-    const allowedProgressIds = departmentViewPermissions[userDeptId] || [];
-
-    // Get status names from allowed progress IDs
-    const relevantStatuses = allowedProgressIds
-      .map((progressId) => progressIdToStatusName[progressId])
-      .filter((status) => status !== undefined);
-
-    // Return unique statuses
-    return Array.from(new Set(relevantStatuses));
-  };
-
-  // Function to calculate priority based on required date
   const getPriority = (requiredDate: string) => {
     const required = new Date(requiredDate);
     const today = new Date();
@@ -140,7 +194,6 @@ export default function MR() {
     }
   };
 
-  // Function to get days left text
   const getDaysLeftText = (requiredDate: string) => {
     const required = new Date(requiredDate);
     const today = new Date();
@@ -161,7 +214,6 @@ export default function MR() {
     }
   };
 
-  // Function to get days left background style
   const getDaysLeftStyle = (requiredDate: string) => {
     const required = new Date(requiredDate);
     const today = new Date();
@@ -171,15 +223,12 @@ export default function MR() {
       (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    // Overdue (negative days)
     if (diffDays < 0) {
       return {
         backgroundColor: "rgba(175, 61, 61, 1)",
         color: "white",
       };
-    }
-    // Due in 3 days or less (0-3 days)
-    else if (diffDays <= 1) {
+    } else if (diffDays <= 1) {
       return {
         backgroundColor: "rgba(255, 181, 181, 1)",
         color: "rgba(248, 77, 77, 1)",
@@ -197,7 +246,6 @@ export default function MR() {
     }
   };
 
-  // Function to check if status is rejected or failed
   const isRejectedStatus = (status: string) => {
     const rejectedStatuses = [
       "Initial approval rejected",
@@ -230,12 +278,10 @@ export default function MR() {
     };
   };
 
-  // Function to check if status is completed
   const isCompletedStatus = (status: string) => {
     return status === "Completed";
   };
 
-  // Define ALL statuses in order
   const allStatuses = [
     "Draft",
     "Initial approval rejected",
@@ -254,12 +300,10 @@ export default function MR() {
     "Completed",
   ];
 
-  // Filter MRs based on "most relevant to me" toggle
   const filteredMRs = filterRelevant
     ? mrHeaders.filter((mr) => canViewMR(mr))
     : mrHeaders;
 
-  // Group MRs by status
   const groupedMRs = filteredMRs.reduce((acc: any, mr: any) => {
     const status = mr.progress_name || "Unknown";
     if (!acc[status]) {
@@ -269,15 +313,12 @@ export default function MR() {
     return acc;
   }, {});
 
-  // Determine which statuses to show
   const visibleStatuses = filterRelevant
-    ? // When filter is active, show statuses that have items the user can view
-      allStatuses.filter((status) => {
+    ? allStatuses.filter((status) => {
         const mrs = groupedMRs[status] || [];
         return mrs.length > 0;
       })
-    : // When filter is inactive, show all statuses (hide rejected with 0 count)
-      allStatuses.filter((status) => {
+    : allStatuses.filter((status) => {
         const mrs = groupedMRs[status] || [];
         if (isRejectedStatus(status) && mrs.length === 0) {
           return false;
@@ -290,14 +331,12 @@ export default function MR() {
       <div
         style={{
           display: "flex",
-          /* justifyContent: "space-between", */
           alignItems: "center",
           gap: "25px",
         }}
       >
         <h2>MATERIAL REQUESTS</h2>
 
-        {/* Filter Toggle */}
         <div
           onClick={() => setFilterRelevant(!filterRelevant)}
           style={{
@@ -315,7 +354,6 @@ export default function MR() {
         >
           <h4>SHOW RELATED CARDS</h4>
 
-          {/* Toggle Switch */}
           <div
             style={{
               position: "relative",
@@ -338,7 +376,6 @@ export default function MR() {
                 height: "17px",
                 backgroundColor: "white",
                 borderRadius: "50%",
-                /*                 transition: "left 0.3s ease", */
               }}
             />
           </div>
@@ -349,7 +386,6 @@ export default function MR() {
       <br />
       <br />
 
-      {/* Horizontal scrolling container for status groups */}
       <div
         style={{
           display: "flex",
@@ -373,7 +409,6 @@ export default function MR() {
                 flexShrink: 0,
               }}
             >
-              {/* Status header with count */}
               <div
                 style={{
                   display: "flex",
@@ -412,7 +447,6 @@ export default function MR() {
                 </span>
               </div>
 
-              {/* Vertical stack of cards */}
               <div
                 style={{
                   display: "flex",
@@ -426,6 +460,16 @@ export default function MR() {
                   const isCompleted =
                     mr.progress_name === "Completed" || mr.progress_id === 25;
                   const hasViewPermission = canViewMR(mr);
+
+                  // Get duration data from state
+                  const durationKey = `${mr.id}-${mr.progress_id}`;
+                  const durationData = mrDurations[durationKey] || {
+                    duration: "0 HRS",
+                    style: {
+                      color: "black",
+                      backgroundColor: "rgba(231, 231, 231, 1)",
+                    },
+                  };
 
                   return (
                     <div
@@ -450,20 +494,6 @@ export default function MR() {
                           <h3>MR-{String(mr.id).padStart(5, "0")}</h3>
                         </div>
 
-                        {/* <div style={{ display: "flex", gap: "10px" }}>
-                          {!isCompleted && (
-                            <small
-                              className="status"
-                              style={{
-                                backgroundColor: priority.backgroundColor,
-                                color: priority.color,
-                              }}
-                            >
-                              {priority.label}
-                            </small>
-                          )}
-                        </div> */}
-
                         <div
                           style={{
                             display: "flex",
@@ -471,18 +501,8 @@ export default function MR() {
                             justifyContent: "center",
                           }}
                         >
-                          <small
-                            className="status"
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "5px",
-                              backgroundColor: priority.backgroundColor,
-                              color: priority.color,
-                            }}
-                          >
-                            <img src={clockIcon} />
-                            HOUR
+                          <small className="status" style={durationData.style}>
+                            {durationData.duration}
                           </small>
                         </div>
                       </div>
@@ -504,7 +524,6 @@ export default function MR() {
 
                       <br />
 
-                      {/* Only show required date and days left if NOT completed */}
                       {!isCompleted ? (
                         <div
                           style={{

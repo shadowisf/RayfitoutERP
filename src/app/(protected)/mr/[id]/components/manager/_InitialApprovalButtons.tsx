@@ -118,7 +118,11 @@ export default function InitialApprovalButtons({
     }
   }
 
-  if (status === "pending" && userInfo?.departmentID !== 8) {
+  if (
+    status !== "rejected" &&
+    ((status === "pending" && userInfo?.departmentID !== 8) ||
+      (progressID === 5 && userInfo?.departmentID === 8))
+  ) {
     return (
       <div
         className="approval-pill"

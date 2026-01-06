@@ -460,7 +460,7 @@ label {
   border-radius: 5px;
   position: relative;
   min-width: 750px;
-  margin: 40px;
+
   max-height: 95dvh;
   overflow: visible; /* Allow dropdowns to escape */
   display: flex;
@@ -483,6 +483,7 @@ label {
     overflow-x: visible; /* Changed from hidden to visible */
     max-height: calc(95dvh - 200px);
     min-height: 175px;
+    padding-right: 30px;
   }
 
   .input-row {

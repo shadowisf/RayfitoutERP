@@ -94,14 +94,14 @@ export default async function InventoryItemWithID({
     });
 
   // Get stock status based on available quantity
-  const getStockStatus = (availableQty: number) => {
+  const getStockStatus = (availableQty: number, minimumStock: number) => {
     if (availableQty === 0) {
       return {
-        label: "NO STOCK",
+        label: "OUT OF STOCK",
         bgColor: "rgba(255, 181, 181, 1)",
         textColor: "rgba(248, 77, 77, 1)",
       };
-    } else if (availableQty <= 10) {
+    } else if (availableQty <= minimumStock) {
       return {
         label: "LOW STOCK",
         bgColor: "rgba(255, 250, 189, 1)",
@@ -116,7 +116,10 @@ export default async function InventoryItemWithID({
     }
   };
 
-  const stockStatus = getStockStatus(availableQuantityData);
+  const stockStatus = getStockStatus(
+    availableQuantityData,
+    inventoryItem.minimum_stock_quantity
+  );
 
   return (
     <div className="dashboard">
@@ -219,6 +222,10 @@ export default async function InventoryItemWithID({
                 <div>
                   <small>TYPE</small>
                   <h2>{inventoryItem?.type}</h2>
+                </div>
+                <div>
+                  <small>ORIGIN</small>
+                  <h2>{inventoryItem?.country_of_origin || "-"}</h2>
                 </div>
               </div>
             </div>

@@ -1,18 +1,59 @@
 "use client";
 
 import FormPopUp from "@/app/components/FormPopup";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MrLine } from "../types/mrLine";
 import Button from "@/app/components/Button";
+import { MrHeader } from "../types/mrHeader";
+import BudgetTrackerMeter from "./BudgetTrackerMeter";
 
 type BoqReferencePopUpProps = {
+  mrHeader: MrHeader;
   item: MrLine;
 };
 
-export default function BoqReferencePopUp({ item }: BoqReferencePopUpProps) {
+export default function BoqReferencePopUp({
+  item,
+  mrHeader,
+}: BoqReferencePopUpProps) {
   const externalLinkIcon = "/icons/external-link.svg";
 
   const [isOpen, setIsOpen] = useState(false);
+  const [quotedBudget, setQuotedBudget] = useState(0);
+  const [allocatedBudget, setAllocatedBudget] = useState(0);
+
+  useEffect(() => {
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getBudgetTrackingDetails`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mr_header_id: mrHeader.id,
+        }),
+      }
+    )
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setQuotedBudget(Number(data.quoted_budget) || 0);
+        setAllocatedBudget(Number(data.allocated_budget) || 0);
+      })
+      .catch((err) => {
+        console.error("Error fetching budget details:", err);
+      });
+  }, [mrHeader.id]);
+
+  const percentageUsed =
+    quotedBudget > 0
+      ? Math.min((allocatedBudget / quotedBudget) * 100, 100)
+      : 0;
 
   return (
     <>
@@ -42,6 +83,12 @@ export default function BoqReferencePopUp({ item }: BoqReferencePopUpProps) {
           setIsOpen={setIsOpen}
           style={{ whiteSpace: "pre-wrap" }}
         >
+          {/* Budget Tracking Section */}
+          <BudgetTrackerMeter mrHeader={mrHeader} />
+
+          <br />
+          <br />
+
           <table className="items-table">
             <thead>
               <tr>
@@ -62,37 +109,10 @@ export default function BoqReferencePopUp({ item }: BoqReferencePopUpProps) {
                 <td>
                   {item.quantity} {item.unit}
                 </td>
-                <td>{item.boq_rate?.toLocaleString()}</td>
+                <td>AED {item.boq_rate?.toLocaleString()}</td>
                 <td>AED {item.boq_total_cost?.toLocaleString()}</td>
                 <td>{item.boq_location?.split(" - ").pop()}</td>
-                {/* <td
-                  className="item-description"
-                  style={{ whiteSpace: "pre-wrap", width: "300px" }}
-                >
-                  {needsCollapse ? (
-                    <>
-                      {expanded
-                        ? item.item_description
-                        : item.item_description.substring(0, maxLength) + "..."}
-                      <br />
-                      <br />
-                      <span
-                        className="toggle-btn"
-                        onClick={function () {
-                          toggleDescription(item.id);
-                        }}
-                      >
-                        {expanded ? "SHOW LESS" : "SHOW MORE"}
-                      </span>
-                    </>
-                  ) : (
-                    item.item_description
-                  )}
-                </td> */}
                 <td>{item.boq_item_description}</td>
-                {/* <td>
-                  <BoqReferenceItemDescriptionPopUp item={item} />
-                </td> */}
 
                 <td className="attachments">
                   <div className="attachments-grid">
@@ -120,14 +140,12 @@ export default function BoqReferencePopUp({ item }: BoqReferencePopUpProps) {
                           });
                         }
 
-                        // Handle if it's a string (JSON or plain string)
                         const attachmentString = String(item.boq_attachments);
 
                         if (attachmentString.trim() === "") {
                           return null;
                         }
 
-                        // Try to parse as JSON
                         const attachments = JSON.parse(attachmentString);
 
                         if (!Array.isArray(attachments)) {

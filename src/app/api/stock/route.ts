@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         body.received_by,
         body.reason_for_entry,
         Number(body.quantity),
-        Number(body.unit_price),
+        Number(body.unit_price) || null,
         body.location,
         body.notes,
         Number(body.project_id) || null,

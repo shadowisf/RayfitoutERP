@@ -367,7 +367,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
 
               <br />
 
-              <table className="items-table">
+              <table className="items-table" style={{ fontSize: "12px" }}>
                 <thead>
                   <tr>
                     <th>#</th>
@@ -377,7 +377,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                     <th>TOTAL PRICE</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody style={{ fontWeight: "normal" }}>
                   {lpoData.lpo_mr_lines.map((line, index) => (
                     <tr key={line.id || index}>
                       <td>{index + 1}</td>

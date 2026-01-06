@@ -18,21 +18,25 @@ export default function OutboundPaymentMrsWidget() {
     )
       .then((res) => res.json())
       .then((data) => {
-        const thisWeekCount = data.this_week || 0;
-        const lastWeekCount = data.last_week || 0;
+        const thisWeekCount = data.this_week_total || 0;
+        const lastWeekCount = data.last_week_total || 0;
 
         setThisWeek(thisWeekCount);
         setLastWeek(lastWeekCount);
 
         // Calculate percentage change
         if (lastWeekCount === 0) {
-          // If last week was 0, any value this week is 100% increase
-          setPercentageChange(thisWeekCount > 0 ? 100 : 0);
-          setIsIncrease(thisWeekCount > 0);
+          if (thisWeekCount > 0) {
+            setPercentageChange(100);
+            setIsIncrease(true);
+          } else {
+            setPercentageChange(0);
+            setIsIncrease(true);
+          }
         } else {
           const change =
             ((thisWeekCount - lastWeekCount) / lastWeekCount) * 100;
-          setPercentageChange(Math.abs(change));
+          setPercentageChange(Math.min(Math.abs(change), 100));
           setIsIncrease(change >= 0);
         }
       })
@@ -41,7 +45,7 @@ export default function OutboundPaymentMrsWidget() {
       });
   }, []);
 
-  // Check if there are no pending approvals
+  // Check if there are no outbound payments
   const hasNoOutboundPayments = thisWeek === 0;
 
   // Determine if change is substantial (>=10%) or slight (<10%)
@@ -49,7 +53,7 @@ export default function OutboundPaymentMrsWidget() {
   const changemagnitude = isSubstantial ? "Substantial" : "Slight";
 
   // Determine styling based on increase/decrease
-  // Increase = bad (red), Decrease = good (green) for pending approvals
+  // Increase = bad (red), Decrease = good (green) for outbound payments
   const pillBackgroundColor = hasNoOutboundPayments
     ? "rgba(156, 156, 156, 1)"
     : isIncrease
@@ -74,7 +78,13 @@ export default function OutboundPaymentMrsWidget() {
       </div>
       <div>
         <div className="bottom">
-          <p className="number">{thisWeek}</p>
+          <p className="number">
+            AED{" "}
+            {thisWeek.toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            })}
+          </p>
           {!hasNoOutboundPayments && (
             <div
               className="data-pill"

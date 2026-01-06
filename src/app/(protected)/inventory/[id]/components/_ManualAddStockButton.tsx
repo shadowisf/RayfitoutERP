@@ -289,17 +289,14 @@ export default function ManualAddToStockButton({
               required
               onChange={(e) => setReasonForEntry(e.target.value)}
               selectOptions={[
-                "Purchase order",
-                "New shipment",
-                "Vendor delivery",
-                "Stock transfer",
-                "Production return",
-                "Finished goods",
-                "Customer return",
-                "Order cancellation",
-                "Inventory adjustment",
-                "Found stock",
-                "Data entry correction",
+                "Opening stock quantity",
+                "Production output",
+                "Direct purchase (out of workflow)",
+                "Vendor replacement",
+                "Return from processing",
+                "Return from use",
+                "Return from site",
+                "Found stock/inventory adjustment",
               ]}
             />
           </div>
@@ -323,7 +320,6 @@ export default function ManualAddToStockButton({
               value={unitPrice}
               type={"text"}
               placeholder={"ENTER UNIT PRICE"}
-              required
               onChange={(e) => {
                 const value = e.target.value.replace(/\D/g, "");
                 setUnitPrice(value);

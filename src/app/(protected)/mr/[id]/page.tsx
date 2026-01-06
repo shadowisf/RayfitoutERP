@@ -45,6 +45,75 @@ export default async function MrWithID({
       console.error(err);
     });
 
+  const { duration, durationStyle } = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getProgressDuration`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mr_header_id: id,
+        progress_id: mrHeader.progress_id,
+      }),
+    }
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      let hoursDecimal = 0;
+
+      if (
+        data &&
+        data.hours_in_stage != null &&
+        data.minutes_in_stage != null
+      ) {
+        hoursDecimal =
+          Number(data.hours_in_stage) + Number(data.minutes_in_stage) / 60;
+      }
+
+      // Round to 1 decimal place
+      const roundedHours = Math.round(hoursDecimal * 10) / 10;
+      const durationString = `${roundedHours} HRS`;
+
+      // Set style based on thresholds
+      let style = { color: "", backgroundColor: "" };
+
+      if (roundedHours > 48) {
+        // Right now (default styling, e.g., red for overdue)
+        style = {
+          color: "white",
+          backgroundColor: "rgba(175, 61, 61, 1)",
+        };
+      }
+      if (roundedHours >= 24 && roundedHours <= 48) {
+        style = {
+          color: "rgba(248, 77, 77, 1)",
+          backgroundColor: "rgba(255, 181, 181, 1)",
+        };
+      } else if (roundedHours >= 12 && roundedHours <= 24) {
+        style = {
+          color: "rgba(134, 83, 47, 1)",
+          backgroundColor: "rgba(255, 250, 189, 1)",
+        };
+      } else {
+        // Below 12 hours
+        style = {
+          color: "black",
+          backgroundColor: "rgba(231, 231, 231, 1)",
+        };
+      }
+
+      return { duration: durationString, durationStyle: style };
+    })
+    .catch((err) => {
+      console.error("Error fetching duration:", err);
+      return {
+        duration: "0 HRS",
+        durationStyle: {
+          color: "black",
+          backgroundColor: "rgba(231, 231, 231, 1)",
+        },
+      };
+    });
+
   // Check if MR is completed
   const isCompleted =
     mrHeader.progress_name === "Completed" || mrHeader.progress_id === 25;
@@ -65,7 +134,7 @@ export default async function MrWithID({
     color: "",
   };
 
-  if (diffDays < 0) {
+  /* if (diffDays < 0) {
     // Overdue
     priority = "CRITICAL";
     priorityStyle = {
@@ -93,7 +162,7 @@ export default async function MrWithID({
       backgroundColor: "rgba(87, 244, 176, 1)",
       color: "rgba(31, 101, 71, 1)",
     };
-  }
+  } */
 
   // Days left text
   let daysLeftText = "";
@@ -119,17 +188,23 @@ export default async function MrWithID({
       backgroundColor: "rgba(175, 61, 61, 1)",
       color: "white",
     };
-  } else if (diffDays <= 3) {
+  } else if (diffDays <= 1) {
     // Due in 3 days or less - light red (same as HIGH)
     daysLeftStyle = {
       backgroundColor: "rgba(255, 181, 181, 1)",
       color: "rgba(248, 77, 77, 1)",
     };
-  } else {
-    // More than 3 days - yellow (same as MEDIUM)
+  } else if (diffDays <= 3) {
+    // Due in 3 days or less - light red (same as HIGH)
     daysLeftStyle = {
       backgroundColor: "rgba(255, 250, 189, 1)",
       color: "rgba(134, 83, 47, 1)",
+    };
+  } else {
+    // More than 3 days - yellow (same as MEDIUM)
+    daysLeftStyle = {
+      backgroundColor: "rgba(231, 231, 231, 1)",
+      color: "black",
     };
   }
 
@@ -166,7 +241,7 @@ export default async function MrWithID({
           >
             <div style={{ display: "flex", gap: "50px", alignItems: "center" }}>
               <div>
-                <span>MATERIAL REQUEST ID</span>
+                <small>MATERIAL REQUEST ID</small>
                 <h2>MR-{String(id).padStart(5, "0")}</h2>
               </div>
 
@@ -176,11 +251,11 @@ export default async function MrWithID({
                 </p>
 
                 {/* Only show priority badge if NOT completed */}
-                {!isCompleted && (
+                {/* {!isCompleted && (
                   <p className="status" style={priorityStyle}>
                     {priority}
                   </p>
-                )}
+                )} */}
               </div>
             </div>
 
@@ -193,7 +268,7 @@ export default async function MrWithID({
 
         <div className="bottom">
           <div>
-            <span>PROJECT</span>
+            <small>PROJECT</small>
             <h2>
               {mrHeader.project_name ? (
                 <div style={{ display: "flex", gap: "10px" }}>
@@ -213,22 +288,22 @@ export default async function MrWithID({
           </div>
 
           <div>
-            <span>PURPOSE</span>
+            <small>PURPOSE</small>
             <h2>{mrHeader.purpose_name}</h2>
           </div>
 
           <div>
-            <span>REQUESTED BY</span>
+            <small>REQUESTED BY</small>
             <h2>{mrHeader.requested_by || ""}</h2>
           </div>
 
           <div>
-            <span>DEPARTMENT</span>
+            <small>DEPARTMENT</small>
             <h2>{mrHeader.department_name}</h2>
           </div>
 
           <div>
-            <span>REQUIRED DATE</span>
+            <small>REQUIRED DATE</small>
             <h2>
               {new Date(mrHeader.required_date).toLocaleDateString("en-US")}
             </h2>
@@ -236,19 +311,31 @@ export default async function MrWithID({
 
           {/* Only show days left indicator if NOT completed */}
           {!isCompleted && (
-            <div>
-              <h2
-                style={{
-                  padding: "5px 15px",
-                  backgroundColor: daysLeftStyle.backgroundColor,
-                  color: daysLeftStyle.color,
-                  textTransform: "uppercase",
-                  borderRadius: "5px",
-                }}
-              >
-                {daysLeftText}
-              </h2>
-            </div>
+            <>
+              <div>
+                <h2
+                  style={{
+                    padding: "5px 15px",
+                    backgroundColor: daysLeftStyle.backgroundColor,
+                    color: daysLeftStyle.color,
+                    textTransform: "uppercase",
+                    borderRadius: "5px",
+                  }}
+                >
+                  {daysLeftText}
+                </h2>
+              </div>
+
+              <div>
+                <small>CURRENT DURATION</small>
+                <div
+                  className="approval-pill normal-text"
+                  style={durationStyle}
+                >
+                  {duration}
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>

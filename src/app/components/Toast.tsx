@@ -59,7 +59,7 @@ export default function GlobalToast() {
         gap: "8px",
         zIndex: 9999,
         width: "100%",
-        paddingLeft: "300px",
+        paddingLeft: "275px",
         paddingRight: "40px",
       }}
     >
@@ -75,9 +75,9 @@ export default function GlobalToast() {
             color: "white",
             background:
               t.type === "success"
-                ? "#16a34a"
+                ? "rgba(34, 150, 100, 1)"
                 : t.type === "error"
-                ? "#dc2626"
+                ? "rgba(194, 60, 60, 1)"
                 : t.type === "warning"
                 ? "#d97706"
                 : "#2563eb",

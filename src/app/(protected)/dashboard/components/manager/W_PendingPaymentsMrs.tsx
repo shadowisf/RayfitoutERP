@@ -26,13 +26,18 @@ export default function PendingPaymentMrsWidget() {
 
         // Calculate percentage change
         if (lastWeekCount === 0) {
-          // If last week was 0, any value this week is 100% increase
-          setPercentageChange(thisWeekCount > 0 ? 100 : 0);
-          setIsIncrease(thisWeekCount > 0);
+          // If last week was 0, cap at 100% increase
+          if (thisWeekCount > 0) {
+            setPercentageChange(100);
+            setIsIncrease(true);
+          } else {
+            setPercentageChange(0);
+            setIsIncrease(true);
+          }
         } else {
           const change =
             ((thisWeekCount - lastWeekCount) / lastWeekCount) * 100;
-          setPercentageChange(Math.abs(change));
+          setPercentageChange(Math.min(Math.abs(change), 100));
           setIsIncrease(change >= 0);
         }
       })

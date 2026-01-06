@@ -630,28 +630,7 @@ export default function CreateGRNButton({
 
   return (
     <>
-      <Button
-        componentType={"none"}
-        bgColor={"white"}
-        borderColor={"rgba(207, 207, 207, 1)"}
-        textColor={"black"}
-        onClick={() => {}}
-        style={{ padding: "5px 20px", borderRadius: "25px" }}
-      >
-        GRN
-        {isViewMode && (
-          <img
-            src={externalLinkIcon}
-            alt="external link"
-            onClick={() => setIsOpen(true)}
-          />
-        )}
-        {isEditMode && (
-          <img src={pencilIcon} alt="pencil" onClick={() => setIsOpen(true)} />
-        )}
-      </Button>
-
-      {!isViewMode && !isEditMode && (
+      {!isViewMode && !isEditMode ? (
         <Button
           componentType={"button"}
           bgColor={"black"}
@@ -662,6 +641,29 @@ export default function CreateGRNButton({
           disabled={isUploading}
         >
           Create GRN +
+        </Button>
+      ) : (
+        <Button
+          componentType={"none"}
+          bgColor={"white"}
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
+          onClick={() => {}}
+          style={{ padding: "5px 20px", borderRadius: "25px" }}
+        >
+          GRN
+          <img
+            src={externalLinkIcon}
+            alt="external link"
+            onClick={() => setIsOpen(true)}
+          />
+          {isEditMode && (
+            <img
+              src={pencilIcon}
+              alt="pencil"
+              onClick={() => setIsOpen(true)}
+            />
+          )}
         </Button>
       )}
 

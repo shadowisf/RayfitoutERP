@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Button from "./Button";
 
 type ProjectBoxProps = {
@@ -7,11 +10,44 @@ type ProjectBoxProps = {
 export default function ProjectBox({ proj }: ProjectBoxProps) {
   const externalLinkIcon = "/icons/external-link.svg";
 
-  // Calculate progress percentage (spent / budget * 100)
+  const [quotedBudget, setQuotedBudget] = useState(0);
+  const [allocatedBudget, setAllocatedBudget] = useState(0);
+
+  useEffect(() => {
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getBudgetTrackingDetails`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: proj.id }),
+      }
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        setQuotedBudget(Number(data.quoted_budget) || 0);
+        setAllocatedBudget(Number(data.allocated_budget) || 0);
+      })
+      .catch((err) => console.error("Error fetching budget details:", err));
+  }, [proj.id]);
+
+  // Calculate progress percentage (spent / budget)
   const progressPercentage =
-    proj.quoted_budget > 0
-      ? Math.min(((proj.allocated_budget || 0) / proj.quoted_budget) * 100, 100)
+    quotedBudget > 0
+      ? Math.min((allocatedBudget / quotedBudget) * 100, 100)
       : 0;
+
+  // Determine color based on percentage
+  const getProgressColor = () => {
+    if (progressPercentage >= 100) {
+      return "rgba(194, 60, 60, 1)"; // Red - full/exceeded
+    } else if (progressPercentage >= 80) {
+      return "rgba(255, 250, 189, 1)"; // Yellow - close to full
+    } else {
+      return "rgba(26, 216, 135, 1)"; // Green - good
+    }
+  };
+
+  const progressColor = getProgressColor();
 
   return (
     <div className="item" key={proj.id}>
@@ -41,8 +77,8 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
         <small>BUDGET</small>
         <h2>
           AED{" "}
-          {Number(proj.quoted_budget).toLocaleString(undefined, {
-            minimumFractionDigits: 0,
+          {quotedBudget.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}
         </h2>
@@ -67,30 +103,43 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
               style={{
                 width: `${progressPercentage}%`,
                 height: "100%",
-                backgroundColor: "rgba(26, 216, 135, 1)",
+                backgroundColor: progressColor,
                 borderRadius: "25px",
-                transition: "width 0.3s ease",
                 position: "relative",
+                transition: "background-color 0.3s ease, width 0.3s ease",
               }}
             >
+              {progressPercentage > 10 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    right: "10px",
+                    transform: "translateY(-50%)",
+                    fontWeight: "bold",
+                    color: progressPercentage >= 80 ? "black" : "white",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {progressPercentage.toFixed(0)}%
+                </div>
+              )}
+            </div>
+            {progressPercentage <= 10 && (
               <div
                 style={{
                   position: "absolute",
                   top: "50%",
-                  right: progressPercentage === 0 ? "auto" : "10px",
-                  left: progressPercentage === 0 ? "50%" : "auto",
-                  transform:
-                    progressPercentage === 0
-                      ? "translate(-50%, -50%)"
-                      : "translateY(-50%)",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
                   fontWeight: "bold",
-                  color: progressPercentage === 0 ? "black" : "white",
+                  color: "black",
                   whiteSpace: "nowrap",
                 }}
               >
                 {progressPercentage.toFixed(0)}%
               </div>
-            </div>
+            )}
           </div>
 
           {/* Legend */}
@@ -107,8 +156,9 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
                 style={{
                   width: "12px",
                   height: "12px",
-                  backgroundColor: "rgba(26, 216, 135, 1)",
+                  backgroundColor: progressColor,
                   borderRadius: "50%",
+                  transition: "background-color 0.3s ease",
                 }}
               />
               <small style={{ color: "black" }}>SPENT</small>
@@ -150,7 +200,7 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
             bgColor={"transparent"}
             borderColor={"rgba(223, 223, 223, 1)"}
             textColor={"black"}
-            href={``}
+            href={`#`}
             style={{ borderRadius: "50px" }}
           >
             <>

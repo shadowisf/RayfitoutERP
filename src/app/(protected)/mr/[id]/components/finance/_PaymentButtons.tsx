@@ -321,7 +321,7 @@ export default function PaymentButtons({
             fontSize: "14.1px",
           }}
         >
-          <span style={{ fontWeight: "bold", fontSize: "14.1px" }}>Paid</span>
+          <span style={{ fontSize: "14.1px" }}>Paid</span>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <Button
               componentType={"link"}
@@ -371,9 +371,7 @@ export default function PaymentButtons({
             minWidth: "350px",
           }}
         >
-          <span style={{ fontWeight: "bold", fontSize: "14.1px" }}>
-            Rejected
-          </span>
+          <span style={{ fontSize: "14.1px" }}>Rejected</span>
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <RejectCommentPopUp text={rejectComment} />
 
@@ -409,9 +407,7 @@ export default function PaymentButtons({
             minWidth: "350px",
           }}
         >
-          <span style={{ fontWeight: "bold", fontSize: "14.1px" }}>
-            Payment Pending
-          </span>
+          <span style={{ fontSize: "14.1px" }}>Payment Pending</span>
         </div>
         {portalTarget &&
           totalInvoiceSection &&

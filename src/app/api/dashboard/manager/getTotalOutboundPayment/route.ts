@@ -8,7 +8,7 @@ export async function GET() {
         SUM(
           CASE
             WHEN h.date_requested >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
-            THEN COALESCE(l.approved_total_price, 0)
+            THEN COALESCE(lpo.total, 0)
             ELSE 0
           END
         ) AS this_week_total,
@@ -17,14 +17,15 @@ export async function GET() {
           CASE
             WHEN h.date_requested >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) + 7 DAY)
              AND h.date_requested < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
-            THEN COALESCE(l.approved_total_price, 0)
+            THEN COALESCE(lpo.total, 0)
             ELSE 0
           END
         ) AS last_week_total
 
-      FROM vw_mr_lines l
-      JOIN vw_mr_headers h
-        ON l.mr_header_id = h.id
+      FROM lpo
+      JOIN mr_headers h
+        ON lpo.mr_header_id = h.id
+      WHERE lpo.payment_status != 'Approved'
     `);
 
     return NextResponse.json(rows[0], { status: 200 });

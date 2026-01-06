@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Button from "@/app/components/Button";
 import { useAuth } from "@/app/context/AuthContext";
 import ActiveMrsWidget from "./components/manager/W_ActiveMrs";
 import PendingApprovalMrsWidget from "./components/manager/W_PendingApprovalMrs";
@@ -11,9 +10,10 @@ import OutboundPaymentMrsWidget from "./components/manager/W_OutboundPaymentMrs"
 import ProjectBox from "@/app/components/ProjectBox";
 import AlertsAndRiskMrsWidget from "./components/manager/W_AlertsAndRisksMrs";
 import ExpectedDeliveriesWidget from "./components/manager/W_ExpectedDeliveries";
+import AvgTimeSpentPerStageWidget from "./components/manager/W_AvgTimeSpentPerStage";
+import MedianMRLifespanWidget from "./components/manager/W_MedianMrLifeSpan";
 
 export default function Dashboard() {
-  const external_link_icon = "/icons/external-link.svg";
   const bannerBackground = "/images/welcome-banner.jpg";
 
   const { userInfo } = useAuth();
@@ -122,6 +122,8 @@ export default function Dashboard() {
 
           <div className="widget-grid overview three-col">
             <AlertsAndRiskMrsWidget />
+            <AvgTimeSpentPerStageWidget />
+            <MedianMRLifespanWidget />
           </div>
 
           <br />

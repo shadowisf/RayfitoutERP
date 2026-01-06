@@ -534,7 +534,7 @@ export default function BatchDetailsPopUpButton({
             }}
           >
             <div>
-              <small>SUPPLIER</small>
+              <small>VENDOR</small>
               <h3>{details.supplier_name || "-"}</h3>
             </div>
           </div>
@@ -815,7 +815,7 @@ export default function BatchDetailsPopUpButton({
               <h3>{details.project_name || "-"}</h3>
             </div>
             <div>
-              <small>RECEIVED BY</small>
+              <small>ADDED BY</small>
               <h3>{details.stock_received_by || "-"}</h3>
             </div>
           </div>
@@ -840,7 +840,7 @@ export default function BatchDetailsPopUpButton({
               borderRadius: "10px",
             }}
           >
-            <h2>SUPPLIER</h2>
+            <h2>VENDOR</h2>
             <br />
             <div
               style={{
@@ -850,7 +850,7 @@ export default function BatchDetailsPopUpButton({
               }}
             >
               <div>
-                <small>SUPPLIER NAME</small>
+                <small>NAME</small>
                 <h3>{details.supplier_name || "-"}</h3>
               </div>
             </div>

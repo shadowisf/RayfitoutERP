@@ -1601,8 +1601,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 <tr>
                                   <th>#</th>
                                   <th>DESCRIPTION</th>
-                                  <th>QUANTITY</th>
-                                  <th>BILL OF QUANTITY</th>
+                                  <th>QTY</th>
+                                  <th>BOF REF.</th>
                                   <th>BRAND & SPECIFICATION</th>
                                   {((mrHeader.progress_id === 5 &&
                                     (userInfo?.departmentID ===
@@ -1610,7 +1610,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       userInfo?.departmentID === 8)) ||
                                     (mrHeader.progress_id === 3 &&
                                       userInfo?.departmentID ===
-                                        mrHeader.department_id)) && (
+                                        mrHeader.department_id &&
+                                      userInfo?.departmentID !== 8)) && (
                                     <th>APPROVAL STATUS</th>
                                   )}
                                   {(mrHeader.progress_id === 1 ||
@@ -1664,7 +1665,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                               }}
                                             >
                                               {item.boq_item_number}
-                                              <BoqReferencePopUp item={item} />
+                                              <BoqReferencePopUp
+                                                item={item}
+                                                mrHeader={mrHeader}
+                                              />
                                             </div>
                                           ) : (
                                             "-"
@@ -1958,8 +1962,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             <tr>
                               <th>#</th>
                               <th>DESCRIPTION</th>
-                              <th>QUANTITY</th>
-                              <th>BILL OF QUANTITY</th>
+                              <th>QTY</th>
+                              <th>BOQ REF.</th>
                               <th>BRAND & SPECIFICATION</th>
                               {((mrHeader.progress_id === 5 &&
                                 (userInfo?.departmentID ===
@@ -2017,7 +2021,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           }}
                                         >
                                           {item.boq_item_number}
-                                          <BoqReferencePopUp item={item} />
+                                          <BoqReferencePopUp
+                                            item={item}
+                                            mrHeader={mrHeader}
+                                          />
                                         </div>
                                       ) : (
                                         "-"
@@ -2304,15 +2311,33 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     />
                   )}
 
-                {(mrHeader.progress_id >= 18 ||
-                  mrHeader.progress_id === 17 ||
-                  mrHeader.progress_id === 16) && (
+                {(mrHeader.progress_id === 16 || mrHeader.progress_id === 17) &&
+                  userInfo?.departmentID === 11 && (
+                    <CreateGRNButton
+                      mrHeader={mrHeader}
+                      mrLines={items}
+                      progress_id={mrHeader.progress_id}
+                    />
+                  )}
+
+                {mrHeader.progress_id >= 18 && (
                   <CreateGRNButton
                     mrHeader={mrHeader}
                     mrLines={items}
                     progress_id={mrHeader.progress_id}
                   />
                 )}
+
+                {/* {(mrHeader.progress_id >= 18 ||
+                  mrHeader.progress_id === 17 ||
+                  mrHeader.progress_id === 16) &&
+                  userInfo?.departmentID === 11 && (
+                    <CreateGRNButton
+                      mrHeader={mrHeader}
+                      mrLines={items}
+                      progress_id={mrHeader.progress_id}
+                    />
+                  )} */}
               </div>
             </div>
 
@@ -2326,8 +2351,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   <th>CATEGORY</th>
                   <th>SUBCATEGORY</th>
                   <th>DESCRIPTION</th>
-                  <th>QUANTITY</th>
-                  <th>BILL OF QUANTITY</th>
+                  <th>QTY</th>
+                  <th>BOQ REF.</th>
                   <th>BRAND & SPECIFICATION</th>
                   {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>}
                   {userInfo?.departmentID === 12 &&
@@ -2358,7 +2383,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           }}
                         >
                           {item.boq_item_number}
-                          <BoqReferencePopUp item={item} />
+                          <BoqReferencePopUp item={item} mrHeader={mrHeader} />
                         </div>
                       ) : (
                         "-"
