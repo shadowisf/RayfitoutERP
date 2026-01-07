@@ -112,8 +112,22 @@ export default function SingleSelectDropdown({
       const isOutsideDropdown =
         dropdownElement && !dropdownElement.contains(target);
 
-      // Close if clicked outside both
-      if (isOutsideContainer && isOutsideDropdown) {
+      // Check if click is on another dropdown or modal
+      const clickedElement = target as HTMLElement;
+      const isOnAnotherDropdown = clickedElement.closest(
+        ".select-dropdown-portal"
+      );
+      const isOnModal =
+        clickedElement.closest(".form-popup-overlay") ||
+        clickedElement.closest(".form-popup");
+
+      // Close if clicked outside both AND not on another dropdown/modal
+      if (
+        isOutsideContainer &&
+        isOutsideDropdown &&
+        !isOnAnotherDropdown &&
+        !isOnModal
+      ) {
         setIsOpen(false);
         setSearchQuery("");
         setHoveredOption(null);
@@ -128,12 +142,6 @@ export default function SingleSelectDropdown({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
   }, [isOpen]);
 
   // Update dropdown position when opened or on scroll/resize

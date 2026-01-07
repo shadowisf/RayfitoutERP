@@ -89,7 +89,7 @@ export default function BoqLinesView({
         </div>
 
         <div style={{ display: "flex", gap: "10px" }}>
-          {userInfo?.departmentID === 8 && (
+          {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
             <>
               <AddBoqItemButton
                 boqHeaderID={boqHeader.id}
@@ -528,7 +528,8 @@ export default function BoqLinesView({
 
                 <br />
 
-                {userInfo?.departmentID === 8 && (
+                {(userInfo?.departmentID === 8 ||
+                  userInfo?.departmentID === 16) && (
                   <AddBoqItemButton
                     boqHeaderID={boqHeader.id}
                     bgColor="rgba(239, 239, 239, 1)"
@@ -553,19 +554,20 @@ export default function BoqLinesView({
             );
           })}
 
-      {userInfo?.departmentID === 8 && activeCategory !== "ALL" && (
-        <AddBoqItemButton
-          boqHeaderID={boqHeader.id}
-          bgColor="rgba(239, 239, 239, 1)"
-          borderColor="rgba(239, 239, 239, 1)"
-          textColor="black"
-          full
-          autoCategory={activeCategory}
-          style={{ padding: "20px 0px", backgroundColor: "white" }}
-        >
-          ADD SUBCATEGORY & ITEM +
-        </AddBoqItemButton>
-      )}
+      {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) &&
+        activeCategory !== "ALL" && (
+          <AddBoqItemButton
+            boqHeaderID={boqHeader.id}
+            bgColor="rgba(239, 239, 239, 1)"
+            borderColor="rgba(239, 239, 239, 1)"
+            textColor="black"
+            full
+            autoCategory={activeCategory}
+            style={{ padding: "20px 0px", backgroundColor: "white" }}
+          >
+            ADD SUBCATEGORY & ITEM +
+          </AddBoqItemButton>
+        )}
     </>
   );
 }

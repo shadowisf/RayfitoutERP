@@ -34,7 +34,7 @@ export default function CreateBoqLineClient({
       <br />
       <br />
 
-      {userInfo?.departmentID === 8 && (
+      {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
         <AddBoqItemButton
           full
           boqHeaderID={boqHeader.id}

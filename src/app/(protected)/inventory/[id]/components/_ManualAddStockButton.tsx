@@ -11,6 +11,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { InventoryItem } from "../../types/inventoryItem";
 import FormContextHeader from "@/app/components/FormContextHeader";
+import CreateVendorButton from "../../components/_CreateVendorButton";
 
 type ManualAddToStockButtonProps = {
   inventoryItem: InventoryItem;
@@ -23,6 +24,7 @@ export default function ManualAddToStockButton({
 
   const router = useRouter();
 
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
   const [location, setLocation] = useState("");
@@ -314,6 +316,7 @@ export default function ManualAddToStockButton({
               idField="id"
               labelField="name"
               required={false}
+              bottomButtonComponent={<CreateVendorButton full={true} />}
             />
             <InputItem
               label={"UNIT PRICE"}
