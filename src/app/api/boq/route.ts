@@ -43,7 +43,7 @@ export async function POST(req: Request) {
         body.sub_category,
         /* body.item_code, */
         body.scope_of_work,
-        Number(body.location_id),
+        Number(body.location_id) || null,
         Number(body.quantity),
         body.unit,
         Number(body.rate_per_quantity) || 0,
@@ -81,7 +81,7 @@ export async function PUT(req: Request) {
         body.sub_category,
         /* body.item_code, */
         body.scope_of_work,
-        Number(body.location_id),
+        Number(body.location_id) || null,
         Number(body.quantity),
         body.unit,
         Number(body.rate_per_quantity) || 0,

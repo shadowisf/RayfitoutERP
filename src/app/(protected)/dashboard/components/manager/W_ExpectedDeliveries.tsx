@@ -30,13 +30,21 @@ export default function ExpectedDeliveriesWidget() {
         {deliveries.map((delivery) => {
           const deliveryDate = new Date(delivery.delivery_date);
           const today = new Date();
+
+          // Set hours to 0 for date-only comparison
+          deliveryDate.setHours(0, 0, 0, 0);
+          today.setHours(0, 0, 0, 0);
+
+          // Only overdue if delivery date is BEFORE today (not today itself)
           const isOverdue = deliveryDate < today;
 
           return (
             <tr key={delivery.id}>
               <td>LPO-{String(delivery.id).padStart(5, "0")}</td>
               <td>{delivery.supplier_name}</td>
-              <td>{deliveryDate.toLocaleDateString("en-US")}</td>
+              <td>
+                {new Date(delivery.delivery_date).toLocaleDateString("en-US")}
+              </td>
               <td>{delivery.item_count}</td>
               <td>
                 <div

@@ -354,9 +354,7 @@ export default function ManualAddToStockButton({
           <FormContextHeader>STOCK DETAILS</FormContextHeader>
           <div className="input-row half">
             <div className="input-item">
-              <label>
-                QUANTITY <span style={{ color: "red" }}>*</span>
-              </label>
+              <label>QUANTITY</label>
               <div className="input-prefix right">
                 <span>{inventoryItem?.unit}</span>
                 <input

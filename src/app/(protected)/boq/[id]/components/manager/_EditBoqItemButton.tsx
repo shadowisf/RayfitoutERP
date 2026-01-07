@@ -341,6 +341,9 @@ export default function EditBoqItemButton({
                 "BOX",
                 "BAG",
                 "ROLL",
+                "MONTHS",
+                "DAYS",
+                "GLB",
               ]}
               required
             />

@@ -287,7 +287,7 @@ export default function BatchDetailsPopUpButton({
   };
 
   const formatCurrency = (amount: number | null) => {
-    if (amount === null || amount === undefined) return "N/A";
+    if (amount === null || amount === undefined) return "-";
     return `AED ${amount.toLocaleString()}`;
   };
 
@@ -411,7 +411,22 @@ export default function BatchDetailsPopUpButton({
           </div>
           <div>
             <small>PROJECT</small>
-            <h3>{details.project_name || "-"}</h3>
+            <h3>
+              {details.project_name ? (
+                <Button
+                  componentType={"link"}
+                  bgColor={"transparent"}
+                  borderColor={"transparent"}
+                  textColor={"black"}
+                  href={`/project/${details.project_id}`}
+                  style={{ padding: "0px" }}
+                >
+                  {details.project_name}
+                </Button>
+              ) : (
+                "-"
+              )}
+            </h3>
           </div>
           <div></div>
           <div>
@@ -934,7 +949,7 @@ export default function BatchDetailsPopUpButton({
                 borderRadius: "10px",
               }}
             >
-              <h2>BILL OF QUANTITY</h2>
+              <h2>PROJECT DETAILS</h2>
               <br />
               <div
                 style={{
@@ -944,6 +959,25 @@ export default function BatchDetailsPopUpButton({
                   width: "fit-content",
                 }}
               >
+                <div>
+                  <small>PROJECT</small>
+                  <h3>
+                    {details.project_name ? (
+                      <Button
+                        componentType={"link"}
+                        bgColor={"transparent"}
+                        borderColor={"transparent"}
+                        textColor={"black"}
+                        href={`/project/${details.project_id}`}
+                        style={{ padding: "0px" }}
+                      >
+                        {details.project_name}
+                      </Button>
+                    ) : (
+                      "-"
+                    )}
+                  </h3>
+                </div>
                 <div>
                   <small>BILL OF QUANTITY CODE</small>
                   <h3>

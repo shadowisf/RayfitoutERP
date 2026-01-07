@@ -65,7 +65,7 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
               }
         }
       >
-        {proj.status === "Completed" ? "COMPLETED" : "ONGOING"}
+        {proj.status}
       </span>
 
       <div>

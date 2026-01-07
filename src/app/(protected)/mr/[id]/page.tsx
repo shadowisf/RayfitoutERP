@@ -1,3 +1,4 @@
+import Button from "@/app/components/Button";
 import CreateMrLineClient from "./components/CreateMrLine";
 import DeleteMrHeaderButton from "./components/department/_DeleteMrHeaderButton";
 import EditMrHeaderButton from "./components/department/_EditMrHeaderButton";
@@ -69,32 +70,35 @@ export default async function MrWithID({
           Number(data.hours_in_stage) + Number(data.minutes_in_stage) / 60;
       }
 
-      // Round to 1 decimal place
-      const roundedHours = Math.round(hoursDecimal * 10) / 10;
-      const durationString = `${roundedHours} HRS`;
+      // Calculate hours and minutes separately
+      const totalMinutes = Math.round(hoursDecimal * 60);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
 
-      // Set style based on thresholds
+      // Format as HHH:MMM
+      const durationString = `${String(hours).padStart(2, "0")}H:${String(
+        minutes
+      ).padStart(2, "0")}M`;
+
+      // Set style based on thresholds (using total hours)
       let style = { color: "", backgroundColor: "" };
 
-      if (roundedHours > 48) {
-        // Right now (default styling, e.g., red for overdue)
+      if (hoursDecimal > 48) {
         style = {
           color: "white",
           backgroundColor: "rgba(175, 61, 61, 1)",
         };
-      }
-      if (roundedHours >= 24 && roundedHours <= 48) {
+      } else if (hoursDecimal >= 24 && hoursDecimal <= 48) {
         style = {
           color: "rgba(248, 77, 77, 1)",
           backgroundColor: "rgba(255, 181, 181, 1)",
         };
-      } else if (roundedHours >= 12 && roundedHours <= 24) {
+      } else if (hoursDecimal >= 12 && hoursDecimal <= 24) {
         style = {
           color: "rgba(134, 83, 47, 1)",
           backgroundColor: "rgba(255, 250, 189, 1)",
         };
       } else {
-        // Below 12 hours
         style = {
           color: "black",
           backgroundColor: "rgba(231, 231, 231, 1)",
@@ -106,7 +110,7 @@ export default async function MrWithID({
     .catch((err) => {
       console.error("Error fetching duration:", err);
       return {
-        duration: "0 HRS",
+        duration: "00H:00M",
         durationStyle: {
           color: "black",
           backgroundColor: "rgba(231, 231, 231, 1)",
@@ -236,7 +240,7 @@ export default async function MrWithID({
             style={{
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center",
+              alignItems: "flex-start",
             }}
           >
             <div style={{ display: "flex", gap: "50px", alignItems: "center" }}>
@@ -267,34 +271,38 @@ export default async function MrWithID({
         </div>
 
         <div className="bottom">
-          <div>
-            <small>PROJECT</small>
-            <h2>
-              {mrHeader.project_name ? (
-                <div style={{ display: "flex", gap: "10px" }}>
-                  {mrHeader.project_name}
-                  <a href={`/project/${mrHeader.project_name}`}>
-                    <img
-                      src={externalLinkIcon}
-                      alt="external link icon"
-                      width={12}
-                    />
-                  </a>
-                </div>
-              ) : (
-                "-"
-              )}
-            </h2>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <div>
+              <small>PROJECT</small>
+              <h2 style={{ textWrap: "nowrap" }}>
+                {mrHeader.project_name || "-"}
+              </h2>
+            </div>
+
+            {mrHeader.project_name && (
+              <Button
+                componentType={"link"}
+                bgColor={"rgba(239, 239, 239, 1)"}
+                borderColor={"rgba(223, 223, 223, 1)"}
+                textColor={"black"}
+                href={`/project/${mrHeader.project_id}`}
+                style={{ padding: "7px 7px" }}
+              >
+                <img src={externalLinkIcon} />
+              </Button>
+            )}
           </div>
 
           <div>
             <small>PURPOSE</small>
-            <h2>{mrHeader.purpose_name}</h2>
+            <h2 style={{ textWrap: "nowrap" }}>{mrHeader.purpose_name}</h2>
           </div>
 
           <div>
-            <small>REQUESTED BY</small>
-            <h2>{mrHeader.requested_by || ""}</h2>
+            <small style={{ textWrap: "nowrap" }}>REQUESTED BY</small>
+            <h2 style={{ textWrap: "nowrap" }}>
+              {mrHeader.requested_by || ""}
+            </h2>
           </div>
 
           <div>
@@ -303,7 +311,7 @@ export default async function MrWithID({
           </div>
 
           <div>
-            <small>REQUIRED DATE</small>
+            <small style={{ textWrap: "nowrap" }}>REQUIRED DATE</small>
             <h2>
               {new Date(mrHeader.required_date).toLocaleDateString("en-US")}
             </h2>
@@ -314,12 +322,12 @@ export default async function MrWithID({
             <>
               <div>
                 <h2
+                  className="approval-pill normal-text"
                   style={{
-                    padding: "5px 15px",
                     backgroundColor: daysLeftStyle.backgroundColor,
                     color: daysLeftStyle.color,
-                    textTransform: "uppercase",
                     borderRadius: "5px",
+                    textWrap: "nowrap",
                   }}
                 >
                   {daysLeftText}
@@ -327,13 +335,43 @@ export default async function MrWithID({
               </div>
 
               <div>
-                <small>CURRENT DURATION</small>
-                <div
+                {/* <small>CURRENT DURATION</small> */}
+                <h2
                   className="approval-pill normal-text"
-                  style={durationStyle}
+                  style={{
+                    ...durationStyle,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    borderRadius: "5px",
+                    textWrap: "nowrap",
+                    color: durationStyle.color, // Ensure color is applied to parent
+                  }}
                 >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 11 11"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    style={{ color: durationStyle.color }} // Apply the text color to SVG
+                  >
+                    <path
+                      d="M5.5 2.5V5.5H8.5"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+
                   {duration}
-                </div>
+                </h2>
               </div>
             </>
           )}

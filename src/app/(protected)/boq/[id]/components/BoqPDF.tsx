@@ -11,6 +11,7 @@ import {
 } from "@react-pdf/renderer";
 import { BoqLine } from "../types/boqLine";
 import { BoqHeader } from "../types/boqHeader";
+import { useAuth } from "@/app/context/AuthContext";
 
 Font.register({
   family: "Mont",
@@ -271,6 +272,8 @@ type BoqPDFProps = {
 };
 
 export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
+  const { userInfo } = useAuth();
+
   const logo = "/icons/logo.jpg";
 
   // Calculate totals for each category and subcategory
@@ -459,8 +462,15 @@ export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
                   <Text style={styles.detailColDescription}>DESCRIPTION</Text>
                   <Text style={styles.detailColLocation}>LOCATION</Text>
                   <Text style={styles.detailColQty}>QUANTITY</Text>
-                  <Text style={styles.detailColRate}>RATE</Text>
-                  <Text style={styles.detailColTotal}>TOTAL COST</Text>
+                  {(userInfo?.departmentID === 8 ||
+                    userInfo?.departmentID === 12 ||
+                    userInfo?.departmentID === 10) && (
+                    <>
+                      <Text style={styles.detailColRate}>RATE</Text>
+                      <Text style={styles.detailColTotal}>TOTAL PRICE</Text>
+                    </>
+                  )}
+
                   <Text style={styles.detailColAttachment}>ATTACHMENT(S)</Text>
                 </View>
 
@@ -486,14 +496,20 @@ export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
                           {item.quantity} {item.unit}
                         </Text>
                       </View>
-                      <View style={styles.detailColRate}>
-                        <Text>
-                          AED {item.rate_per_quantity?.toLocaleString()}
-                        </Text>
-                      </View>
-                      <View style={styles.detailColTotal}>
-                        <Text>AED {item.total_cost?.toLocaleString()}</Text>
-                      </View>
+                      {(userInfo?.departmentID === 8 ||
+                        userInfo?.departmentID === 12 ||
+                        userInfo?.departmentID === 10) && (
+                        <>
+                          <View style={styles.detailColRate}>
+                            <Text>
+                              AED {item.rate_per_quantity?.toLocaleString()}
+                            </Text>
+                          </View>
+                          <View style={styles.detailColTotal}>
+                            <Text>AED {item.total_cost?.toLocaleString()}</Text>
+                          </View>
+                        </>
+                      )}
 
                       <View style={styles.detailColAttachment}>
                         {item.attachments &&

@@ -16,7 +16,7 @@ export default function BudgetTrackerMeter({
 
   useEffect(() => {
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getBudgetTrackingDetails`,
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getBudgetTrackingDetailsByMrHeaderID`,
       {
         method: "POST",
         headers: {

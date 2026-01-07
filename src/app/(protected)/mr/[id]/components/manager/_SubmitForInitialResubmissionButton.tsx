@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { useAuth } from "@/app/context/AuthContext";
 
 type SubmitForResubmissionButtonProps = {
   mrHeaderID: number;
@@ -19,6 +20,8 @@ export default function SubmitForResubmissionButton({
 }: SubmitForResubmissionButtonProps) {
   const router = useRouter();
 
+  const { userInfo } = useAuth();
+
   const [isOpen, setIsOpen] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -30,6 +33,7 @@ export default function SubmitForResubmissionButton({
       body: JSON.stringify({
         action: "submitForResubmission",
         id: mrHeaderID,
+        changed_by: userInfo?.name,
       }),
     });
 

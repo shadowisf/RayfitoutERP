@@ -14,14 +14,14 @@ export default function SideBar() {
 
   const menuItems = [
     { label: "Dashboard", path: "/dashboard" },
-    { label: "Material Request", path: "/mr" },
-
-    ...(INVENTORY_DEPARTMENT_IDS.includes(userInfo?.departmentID ?? 0)
-      ? [{ label: "Inventory Management", path: "/inventory" }]
-      : []),
+    { label: "Material Requests", path: "/mr" },
 
     ...(PROJECT_DEPARTMENT_IDS.includes(userInfo?.departmentID ?? 0)
-      ? [{ label: "Project Management", path: "/project" }]
+      ? [{ label: "Projects", path: "/project" }]
+      : []),
+
+    ...(INVENTORY_DEPARTMENT_IDS.includes(userInfo?.departmentID ?? 0)
+      ? [{ label: "Inventory", path: "/inventory" }]
       : []),
   ];
 

@@ -25,7 +25,7 @@ export async function GET() {
       FROM lpo
       JOIN mr_headers h
         ON lpo.mr_header_id = h.id
-      WHERE lpo.payment_status != 'Approved'
+      WHERE lpo.payment_status = 'Approved'
     `);
 
     return NextResponse.json(rows[0], { status: 200 });

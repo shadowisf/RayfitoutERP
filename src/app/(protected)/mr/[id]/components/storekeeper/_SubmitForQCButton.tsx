@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { useAuth } from "@/app/context/AuthContext";
 
 type SubmitForQCProps = {
   mrHeaderID: number;
@@ -19,6 +20,8 @@ export default function SubmitForQC({
 }: SubmitForQCProps) {
   const router = useRouter();
 
+  const { userInfo } = useAuth();
+
   const [isOpen, setIsOpen] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -30,6 +33,7 @@ export default function SubmitForQC({
       body: JSON.stringify({
         action: "submitForQC",
         id: mrHeaderID,
+        changed_by: userInfo?.name,
       }),
     });
 

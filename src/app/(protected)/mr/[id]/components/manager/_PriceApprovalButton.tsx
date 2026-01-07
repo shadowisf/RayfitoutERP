@@ -30,6 +30,7 @@ export default function PriceApprovalButton({
   full,
   style,
 }: PriceApprovalButtonProps) {
+  const diamondIcon = "/icons/diamond.svg";
   const externalLinkIcon = "/icons/external-link.svg";
   const crossIcon = "/icons/cross-small.svg";
 
@@ -168,8 +169,6 @@ export default function PriceApprovalButton({
     );
 
     if (res.ok) {
-      toast("Vendor selection reset", "success");
-
       setRejectText("");
 
       fetchQuotations();
@@ -177,6 +176,48 @@ export default function PriceApprovalButton({
       router.refresh();
     } else {
       toast("Failed to reset vendor selection", "error");
+    }
+  }
+
+  // Smart Select: Find supplier with lowest total price
+  async function handleSmartSelect() {
+    if (supplierQuotations.length === 0) {
+      toast("No suppliers available to select", "error");
+      return;
+    }
+
+    // Find the supplier with the lowest total price
+    const lowestPriceSupplier = supplierQuotations.reduce(
+      (prev: any, current: any) => {
+        return Number(current.total_price) < Number(prev.total_price)
+          ? current
+          : prev;
+      }
+    );
+
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "approveSupplierAndQuotation",
+          mr_line_id: mrLine.id,
+          supplier_id: lowestPriceSupplier.supplier_id,
+        }),
+      }
+    );
+
+    if (res.ok) {
+      toast(
+        `Smart Select: ${lowestPriceSupplier.supplier_name} approved with lowest price (AED ${lowestPriceSupplier.total_price})`,
+        "success"
+      );
+
+      fetchQuotations();
+      router.refresh();
+    } else {
+      toast("Failed to approve vendor", "error");
     }
   }
 
@@ -250,16 +291,29 @@ export default function PriceApprovalButton({
 
   return (
     <>
-      <Button
-        componentType={"button"}
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
-        onClick={() => setIsOpen(true)}
-        style={style}
-      >
-        Manually Select <img src={externalLinkIcon} alt="external link icon" />
-      </Button>
+      <div style={{ display: "flex", gap: "10px" }}>
+        <Button
+          componentType={"button"}
+          bgColor={bgColor}
+          borderColor={borderColor}
+          textColor={textColor}
+          onClick={() => setIsOpen(true)}
+          style={style}
+        >
+          Manually Select{" "}
+          <img src={externalLinkIcon} alt="external link icon" />
+        </Button>
+        <Button
+          componentType={"button"}
+          bgColor={bgColor}
+          borderColor={borderColor}
+          textColor={textColor}
+          onClick={handleSmartSelect}
+          style={style}
+        >
+          Smart Select <img src={diamondIcon} alt="diamond icon" />
+        </Button>
+      </div>
 
       {isOpen && (
         <FormPopUp
@@ -295,58 +349,62 @@ export default function PriceApprovalButton({
                 </tr>
               </thead>
               <tbody>
-                {supplierQuotations.map((quotation, index: number) => (
-                  <tr key={index}>
-                    <td>
-                      <input
-                        type="radio"
-                        name="supplier"
-                        value={quotation.supplier_id}
-                        onChange={(e) => setSelectedSupplierID(e.target.value)}
-                        required
-                      />
-                    </td>
-                    <td>
-                      <SupplierDetailsPopUp
-                        item={quotation}
-                        style={{
-                          padding: "7px 20px",
-                          textWrap: "nowrap",
-                          minWidth: "300px",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          borderRadius: "25px",
-                        }}
-                      >
-                        {quotation.supplier_name}
-                        <img
-                          src="/icons/external-link.svg"
-                          alt="external link icon"
+                {supplierQuotations.map(
+                  (quotation: SupplierQuotation, index: number) => (
+                    <tr key={index}>
+                      <td>
+                        <input
+                          type="radio"
+                          name="supplier"
+                          value={quotation.supplier_id}
+                          onChange={(e) =>
+                            setSelectedSupplierID(e.target.value)
+                          }
+                          required
                         />
-                      </SupplierDetailsPopUp>
-                    </td>
-                    <td>
-                      <Button
-                        componentType={"link"}
-                        bgColor={"white"}
-                        borderColor={"rgba(207, 207, 207, 1)"}
-                        textColor={"black"}
-                        href={quotation.quotation_file[0]}
-                        target="_blank"
-                        style={{ padding: "7px 20px", borderRadius: "25px" }}
-                      >
-                        Quotation
-                        <img
-                          src="/icons/external-link.svg"
-                          alt="external link icon"
-                        />
-                      </Button>
-                    </td>
-                    {/* <td>{quotation.supplier_rating}</td> */}
-                    <td>{quotation.unit_price} AED</td>
-                    <td>{quotation.total_price} AED</td>
-                  </tr>
-                ))}
+                      </td>
+                      <td>
+                        <SupplierDetailsPopUp
+                          item={quotation}
+                          style={{
+                            padding: "7px 20px",
+                            textWrap: "nowrap",
+                            minWidth: "300px",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            borderRadius: "25px",
+                          }}
+                        >
+                          {quotation.supplier_name}
+                          <img
+                            src="/icons/external-link.svg"
+                            alt="external link icon"
+                          />
+                        </SupplierDetailsPopUp>
+                      </td>
+                      <td>
+                        <Button
+                          componentType={"link"}
+                          bgColor={"white"}
+                          borderColor={"rgba(207, 207, 207, 1)"}
+                          textColor={"black"}
+                          href={quotation.quotation_file[0]}
+                          target="_blank"
+                          style={{ padding: "7px 20px", borderRadius: "25px" }}
+                        >
+                          Quotation
+                          <img
+                            src="/icons/external-link.svg"
+                            alt="external link icon"
+                          />
+                        </Button>
+                      </td>
+                      {/* <td>{quotation.supplier_rating}</td> */}
+                      <td>{quotation.unit_price} AED</td>
+                      <td>{quotation.total_price} AED</td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           </>

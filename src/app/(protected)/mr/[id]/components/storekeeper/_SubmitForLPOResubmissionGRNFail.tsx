@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { useAuth } from "@/app/context/AuthContext";
 
 type SubitForLPOResubmissionGRNFailButtonProps = {
   mrHeaderID: number;
@@ -21,6 +22,8 @@ export default function SubmitForLPOResubmissionGRNFailButton({
 
   const [isOpen, setIsOpen] = useState(false);
 
+  const { userInfo } = useAuth();
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -30,6 +33,7 @@ export default function SubmitForLPOResubmissionGRNFailButton({
       body: JSON.stringify({
         action: "submitForLPOResubmissionGRNFail",
         id: mrHeaderID,
+        changed_by: userInfo?.name,
       }),
     });
 

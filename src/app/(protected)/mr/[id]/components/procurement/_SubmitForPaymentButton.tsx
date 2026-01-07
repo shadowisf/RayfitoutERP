@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { useAuth } from "@/app/context/AuthContext";
 
 type SubitForPaymentButtonProps = {
   mrHeaderID: number;
@@ -19,6 +20,8 @@ export default function SubmitForPaymentButton({
 }: SubitForPaymentButtonProps) {
   const router = useRouter();
 
+  const { userInfo } = useAuth();
+
   const [isOpen, setIsOpen] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -30,6 +33,7 @@ export default function SubmitForPaymentButton({
       body: JSON.stringify({
         action: "submitForPayment",
         id: mrHeaderID,
+        changed_by: userInfo?.name,
       }),
     });
 

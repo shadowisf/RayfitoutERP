@@ -13,4 +13,5 @@ export type MrHeader = {
   progress_id: number;
   progress_name: string;
   date_requested: string;
+  delivery_date: string;
 };

@@ -103,6 +103,11 @@ export async function PUT(req: Request) {
         body.id,
       ]);
 
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 12, ?)`,
+        [body.id, body.changed_by]
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -110,6 +115,11 @@ export async function PUT(req: Request) {
       await db.query(`UPDATE mr_headers SET progress_id = 11 WHERE id = ?`, [
         body.id,
       ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 11, ?)`,
+        [body.id, body.changed_by]
+      );
 
       return NextResponse.json({ status: 200 });
     }
@@ -119,6 +129,11 @@ export async function PUT(req: Request) {
         body.id,
       ]);
 
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 21, ?)`,
+        [body.id, body.changed_by]
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -126,6 +141,11 @@ export async function PUT(req: Request) {
       await db.query(`UPDATE mr_headers SET progress_id = 24 WHERE id = ?`, [
         body.id,
       ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 24, ?)`,
+        [body.id, body.changed_by]
+      );
 
       return NextResponse.json({ status: 200 });
     }
@@ -175,6 +195,11 @@ export async function PUT(req: Request) {
         body.id,
       ]);
 
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 5, ?)`,
+        [body.id, body.changed_by]
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -182,6 +207,11 @@ export async function PUT(req: Request) {
       await db.query(`UPDATE mr_headers SET progress_id = 7 WHERE id = ?`, [
         body.id,
       ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 7, ?)`,
+        [body.id, body.changed_by]
+      );
 
       return NextResponse.json({ status: 200 });
     }
@@ -191,6 +221,11 @@ export async function PUT(req: Request) {
         body.id,
       ]);
 
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 10, ?)`,
+        [body.id, body.changed_by]
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -198,6 +233,11 @@ export async function PUT(req: Request) {
       await db.query(`UPDATE mr_headers SET progress_id = 14 WHERE id = ?`, [
         body.id,
       ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 14, ?)`,
+        [body.id, body.changed_by]
+      );
 
       return NextResponse.json({ status: 200 });
     }
@@ -207,6 +247,11 @@ export async function PUT(req: Request) {
         body.id,
       ]);
 
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 17, ?)`,
+        [body.id, body.changed_by]
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -214,6 +259,11 @@ export async function PUT(req: Request) {
       await db.query(`UPDATE mr_headers SET progress_id = 13 WHERE id = ?`, [
         body.id,
       ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 13, ?)`,
+        [body.id, body.changed_by]
+      );
 
       return NextResponse.json({ status: 200 });
     }
@@ -223,6 +273,11 @@ export async function PUT(req: Request) {
         body.id,
       ]);
 
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 16, ?)`,
+        [body.id, body.changed_by]
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -231,6 +286,11 @@ export async function PUT(req: Request) {
         body.id,
       ]);
 
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 23, ?)`,
+        [body.id, body.changed_by]
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -238,6 +298,11 @@ export async function PUT(req: Request) {
       await db.query(`UPDATE mr_headers SET progress_id = 25 WHERE id = ?`, [
         body.id,
       ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 25, ?)`,
+        [body.id, body.changed_by]
+      );
     }
 
     if (body.action === "updateMrHeader") {

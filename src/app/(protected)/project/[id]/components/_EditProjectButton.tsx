@@ -11,6 +11,8 @@ import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 export function EditProjectButton({ project }: { project: any }) {
   const router = useRouter();
 
+  const pencilIcon = "/icons/pencil.svg";
+
   const [isOpen, setIsOpen] = useState(false);
   const [propertyTypes, setPropertyTypes] = useState<[]>([]);
   const [scopeTypes, setScopeTypes] = useState<[]>([]);
@@ -58,23 +60,22 @@ export function EditProjectButton({ project }: { project: any }) {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`,
       {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "updateProject",
+          id,
           name,
           property_type_id: propertyTypeID,
-          id,
-          size: Number(String(size).replace(/,/g, "")) | 0,
+          size,
           status,
           scope_ids: scopeIDs,
           type_of_work: typeOfWork,
-          quoted_budget: Number(String(quotedBudget).replace(/,/g, "")) | 0,
+          quoted_budget: Number(String(quotedBudget).replace(/,/g, "")),
           currency,
-          allocated_budget:
-            Number(String(allocatedBudget).replace(/,/g, "")) | 0,
-          start_date: startDate || null,
-          end_date: endDate || null,
+          allocated_budget: Number(String(allocatedBudget).replace(/,/g, "")),
+          start_date: startDate,
+          end_date: endDate,
         }),
       }
     );
@@ -92,12 +93,13 @@ export function EditProjectButton({ project }: { project: any }) {
     <>
       <Button
         componentType={"button"}
-        bgColor={"black"}
-        borderColor={"black"}
-        textColor={"white"}
+        bgColor={"rgba(239, 239, 239, 1)"}
+        borderColor={"rgba(223, 223, 223, 1)"}
+        textColor={"black"}
         onClick={() => setIsOpen(true)}
+        style={{ padding: "7px 7px" }}
       >
-        Edit
+        <img src={pencilIcon} />
       </Button>
 
       {isOpen && (
@@ -238,6 +240,8 @@ export function EditProjectButton({ project }: { project: any }) {
               selectedValues={scopeIDs}
               onChange={setScopeIDs}
               placeholder="SELECT SCOPE"
+              style={{ maxWidth: "260px" }}
+              required
             />
 
             <InputItem
@@ -254,7 +258,12 @@ export function EditProjectButton({ project }: { project: any }) {
           {/* 4th row */}
           <div className="input-row">
             <div className="input-item">
-              <label>QUOTED BUDGET (OPTIONAL)</label>
+              <label className="custom">
+                <span>QUOTED PRICE</span>
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  (OPTIONAL)
+                </small>
+              </label>
               <div className="input-prefix right">
                 <span>{currency}</span>
                 <input
@@ -321,7 +330,12 @@ export function EditProjectButton({ project }: { project: any }) {
           {/* 5th row */}
           <div className="input-row full">
             <div className="input-item">
-              <label>ALLOCATED BUDGET (OPTIONAL)</label>
+              <label className="custom">
+                <span>ALLOCATED BUDGET</span>
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  (OPTIONAL)
+                </small>
+              </label>
               <div className="input-prefix right">
                 <span>{currency}</span>
                 <input
@@ -364,7 +378,7 @@ export function EditProjectButton({ project }: { project: any }) {
           {/* 6th row */}
           <div className="input-row three-col" style={{ marginBottom: "40px" }}>
             <InputItem
-              label={"START DATE (OPTIONAL)"}
+              label={"START DATE"}
               value={startDate}
               type={"date"}
               placeholder={"ENTER START DATE"}
@@ -373,7 +387,7 @@ export function EditProjectButton({ project }: { project: any }) {
             />
 
             <InputItem
-              label={"END DATE (OPTIONAL)"}
+              label={"END DATE"}
               value={endDate}
               type={"date"}
               placeholder={"ENTER END DATE"}

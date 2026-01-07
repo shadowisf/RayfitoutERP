@@ -251,7 +251,6 @@ export default function AddBoqItemButton({
               onChange={setLocationID}
               placeholder={"SELECT LOCATION"}
               dbData={locationValues}
-              required
             />
           </div>
 
@@ -299,6 +298,9 @@ export default function AddBoqItemButton({
                 "BOX",
                 "BAG",
                 "ROLL",
+                "MONTHS",
+                "DAYS",
+                "GLB",
               ]}
               required
             />

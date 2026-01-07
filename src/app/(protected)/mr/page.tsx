@@ -8,8 +8,6 @@ import { MrHeader } from "./[id]/types/mrHeader";
 export default function MR() {
   const { userInfo } = useAuth();
 
-  const clockIcon = "/icons/clock.svg";
-
   const [mrHeaders, setMrHeaders] = useState<MrHeader[]>([]);
   const [filterRelevant, setFilterRelevant] = useState(false);
   const [mrDurations, setMrDurations] = useState<{
@@ -22,6 +20,7 @@ export default function MR() {
     }).then((res) => res.json().then((data) => setMrHeaders(data)));
   }, [userInfo]);
 
+  // Fetch durations for all MRs
   // Fetch durations for all MRs
   useEffect(() => {
     if (mrHeaders.length === 0) return;
@@ -58,25 +57,33 @@ export default function MR() {
                 Number(data.minutes_in_stage) / 60;
             }
 
-            const roundedHours = Math.round(hoursDecimal * 10) / 10;
+            // Calculate hours and minutes separately
+            const totalMinutes = Math.round(hoursDecimal * 60);
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+
+            // Format as HHH:MMM
+            const durationString = `${String(hours).padStart(2, "0")}H:${String(
+              minutes
+            ).padStart(2, "0")}M`;
+
             let durationStyle = {
               color: "black",
               backgroundColor: "rgba(231, 231, 231, 1)",
             };
 
             // Set color based on thresholds
-            if (roundedHours > 48) {
+            if (hoursDecimal > 48) {
               durationStyle = {
                 color: "white",
                 backgroundColor: "rgba(175, 61, 61, 1)",
               };
-            }
-            if (roundedHours >= 24 && roundedHours <= 48) {
+            } else if (hoursDecimal >= 24 && hoursDecimal <= 48) {
               durationStyle = {
                 color: "rgba(248, 77, 77, 1)",
                 backgroundColor: "rgba(255, 181, 181, 1)",
               };
-            } else if (roundedHours >= 12 && roundedHours <= 24) {
+            } else if (hoursDecimal >= 12 && hoursDecimal <= 24) {
               durationStyle = {
                 color: "rgba(134, 83, 47, 1)",
                 backgroundColor: "rgba(255, 250, 189, 1)",
@@ -84,13 +91,13 @@ export default function MR() {
             }
 
             durationsMap[`${mr.id}-${mr.progress_id}`] = {
-              duration: `${roundedHours} HRS`,
+              duration: durationString,
               style: durationStyle,
             };
           } catch (err) {
             console.error(`Error fetching duration for MR ${mr.id}:`, err);
             durationsMap[`${mr.id}-${mr.progress_id}`] = {
-              duration: "0 HRS",
+              duration: "00H:00M",
               style: {
                 color: "black",
                 backgroundColor: "rgba(231, 231, 231, 1)",
@@ -320,9 +327,17 @@ export default function MR() {
       })
     : allStatuses.filter((status) => {
         const mrs = groupedMRs[status] || [];
+
+        // Hide rejected statuses with 0 count
         if (isRejectedStatus(status) && mrs.length === 0) {
           return false;
         }
+
+        // Hide Draft if there are no draft MRs
+        if (status === "Draft" && mrs.length === 0) {
+          return false;
+        }
+
         return true;
       });
 
@@ -464,7 +479,7 @@ export default function MR() {
                   // Get duration data from state
                   const durationKey = `${mr.id}-${mr.progress_id}`;
                   const durationData = mrDurations[durationKey] || {
-                    duration: "0 HRS",
+                    duration: "00H:00M",
                     style: {
                       color: "black",
                       backgroundColor: "rgba(231, 231, 231, 1)",
@@ -501,7 +516,36 @@ export default function MR() {
                             justifyContent: "center",
                           }}
                         >
-                          <small className="status" style={durationData.style}>
+                          <small
+                            className="status"
+                            style={{
+                              ...durationData.style,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                            }}
+                          >
+                            <svg
+                              width="11"
+                              height="11"
+                              viewBox="0 0 11 11"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              style={{ color: durationData.style.color }}
+                            >
+                              <path
+                                d="M5.5 2.5V5.5H8.5"
+                                stroke="currentColor"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                stroke="currentColor"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
                             {durationData.duration}
                           </small>
                         </div>
@@ -521,6 +565,19 @@ export default function MR() {
 
                       <small>PROJECT</small>
                       <h3>{mr.project_name || "-"}</h3>
+
+                      {mr.progress_id === 17 && (
+                        <>
+                          <br />
+
+                          <small>DELIVERY DATE/S</small>
+                          <h3>
+                            {new Date(mr.delivery_date).toLocaleDateString(
+                              "en-US"
+                            )}
+                          </h3>
+                        </>
+                      )}
 
                       <br />
 

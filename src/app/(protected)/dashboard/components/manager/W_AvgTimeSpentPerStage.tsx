@@ -4,12 +4,10 @@ import { useEffect, useState } from "react";
 
 export default function AvgTimeSpentPerStageWidget() {
   const [data, setData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    setIsLoading(true);
     setError(null);
 
     fetch(
@@ -29,13 +27,11 @@ export default function AvgTimeSpentPerStageWidget() {
           setData([]);
           setError("Invalid data format received");
         }
-        setIsLoading(false);
       })
       .catch((err) => {
         console.error("Error fetching stage times:", err);
         setError(err.message);
         setData([]);
-        setIsLoading(false);
       });
   }, []);
 
@@ -71,11 +67,7 @@ export default function AvgTimeSpentPerStageWidget() {
         <h3 style={{ margin: 0 }}>Average Time Spent Per Stage</h3>
       </div>
 
-      {isLoading ? (
-        <div style={{ textAlign: "center", padding: "40px", color: "#888" }}>
-          Loading...
-        </div>
-      ) : error ? (
+      {error ? (
         <div
           style={{
             textAlign: "center",
@@ -106,9 +98,7 @@ export default function AvgTimeSpentPerStageWidget() {
                     marginBottom: "5px",
                   }}
                 >
-                  <span style={{ fontSize: "14px", fontWeight: "500" }}>
-                    {item.stage}
-                  </span>
+                  <span>{item.stage}</span>
                 </div>
 
                 <div

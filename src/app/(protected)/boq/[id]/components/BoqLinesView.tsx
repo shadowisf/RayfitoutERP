@@ -166,8 +166,14 @@ export default function BoqLinesView({
                           <th>DESCRIPTION</th>
                           <th>LOCATION</th>
                           <th>QUANTITY</th>
-                          <th>RATE</th>
-                          <th>TOTAL COST</th>
+                          {(userInfo?.departmentID === 8 ||
+                            userInfo?.departmentID === 12 ||
+                            userInfo?.departmentID === 10) && (
+                            <>
+                              <th>RATE</th>
+                              <th>TOTAL PRICE</th>
+                            </>
+                          )}
                           <th>ATTACHMENTS</th>
                           {(userInfo?.departmentID === 8 ||
                             userInfo?.departmentID === 16) && <th>ACTIONS</th>}
@@ -189,13 +195,25 @@ export default function BoqLinesView({
                                   "-"
                                 )}
                               </td>
-                              <td>{item.location?.split(" - ").pop()}</td>
-                              <td>{item.quantity}</td>
                               <td>
-                                {item.rate_per_quantity?.toLocaleString()}{" "}
-                                {item.unit}
+                                {item.location?.split(" - ").pop() || "-"}
                               </td>
-                              <td>AED {item.total_cost?.toLocaleString()}</td>
+                              <td>
+                                {item.quantity} {item.unit}
+                              </td>
+                              {(userInfo?.departmentID === 8 ||
+                                userInfo?.departmentID === 12 ||
+                                userInfo?.departmentID === 10) && (
+                                <>
+                                  <td>
+                                    AED{" "}
+                                    {item.rate_per_quantity?.toLocaleString()}
+                                  </td>
+                                  <td>
+                                    AED {item.total_cost?.toLocaleString()}
+                                  </td>
+                                </>
+                              )}
 
                               <td className="attachments">
                                 <div className="attachments-grid">
@@ -365,15 +383,20 @@ export default function BoqLinesView({
                     <tr>
                       <th>#</th>
                       <th>ITEM</th>
-                      <th>QUANTITY</th>
-                      <th>UNIT</th>
-                      <th>RATE</th>
-                      <th>TOTAL COST</th>
+                      <th>DESCRIPTION</th>
                       <th>LOCATION</th>
-                      <th>ITEM DESCRIPTION</th>
-                      <th>ATTACHMENT(S)</th>
+                      <th>QUANTITY</th>
                       {(userInfo?.departmentID === 8 ||
-                        userInfo?.departmentID === 16) && <th>ACTION</th>}
+                        userInfo?.departmentID === 12 ||
+                        userInfo?.departmentID === 10) && (
+                        <>
+                          <th>RATE</th>
+                          <th>TOTAL PRICE</th>
+                        </>
+                      )}
+                      <th>ATTACHMENTS</th>
+                      {(userInfo?.departmentID === 8 ||
+                        userInfo?.departmentID === 16) && <th>ACTIONS</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -385,14 +408,29 @@ export default function BoqLinesView({
                             .{itemIndex + 1}
                           </td>
                           <td>{item.item_name}</td>
-                          <td>{item.quantity}</td>
-                          <td>{item.unit}</td>
-                          <td>{item.rate_per_quantity?.toLocaleString()}</td>
-                          <td>AED {item.total_cost?.toLocaleString()}</td>
-                          <td>{item.location?.split(" - ").pop()}</td>
                           <td>
-                            <ItemDescriptionPopUp item={item} />
+                            {item.item_description ? (
+                              <ItemDescriptionPopUp item={item} />
+                            ) : (
+                              "-"
+                            )}
                           </td>
+                          <td>{item.location?.split(" - ").pop() || "-"}</td>
+                          <td>
+                            {item.quantity} {item.unit}
+                          </td>
+
+                          {(userInfo?.departmentID === 8 ||
+                            userInfo?.departmentID === 12 ||
+                            userInfo?.departmentID === 10) && (
+                            <>
+                              <td>
+                                AED {item.rate_per_quantity?.toLocaleString()}
+                              </td>
+                              <td>AED {item.total_cost?.toLocaleString()}</td>
+                            </>
+                          )}
+
                           <td className="attachments">
                             <div className="attachments-grid">
                               {(() => {

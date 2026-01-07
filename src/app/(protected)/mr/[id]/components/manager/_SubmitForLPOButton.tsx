@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { useAuth } from "@/app/context/AuthContext";
 
 type SubmitForLPOProps = {
   mrHeaderID: number;
@@ -20,6 +21,8 @@ export default function SubmitForLPO({
   style,
 }: SubmitForLPOProps) {
   const router = useRouter();
+
+  const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -106,6 +109,7 @@ export default function SubmitForLPO({
         body: JSON.stringify({
           action: "submitForLPO",
           id: mrHeaderID,
+          changed_by: userInfo?.name,
         }),
       });
 

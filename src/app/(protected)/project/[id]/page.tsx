@@ -1,4 +1,7 @@
+import Button from "@/app/components/Button";
 import { EditProjectButton } from "./components/_EditProjectButton";
+import { Project } from "./types/project";
+import { DeleteProjectButton } from "./components/_DeleteProjectButton";
 
 export default async function ProjectWithID({
   params,
@@ -7,7 +10,9 @@ export default async function ProjectWithID({
 }) {
   const { id } = await params;
 
-  const project = await fetch(
+  const externalLinkIcon = "/icons/external-link.svg";
+
+  const project: Project = await fetch(
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getProjectByID`,
     {
       method: "POST",
@@ -25,55 +30,142 @@ export default async function ProjectWithID({
 
   return (
     <div className="dashboard">
-      <h2>PROJECTS</h2>
+      <h2>PROJECTS &gt; {project?.name.toUpperCase()}</h2>
 
-      <br />
       <br />
       <br />
 
       <div className="project-with-id">
-        <div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            borderBottom: "rgba(227, 219, 219, 1) 1px solid",
+            paddingBottom: "25px",
+          }}
+        >
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
+              gap: "25px",
+              textTransform: "uppercase",
             }}
           >
-            <span>CODE</span>
-            <EditProjectButton project={project} />
+            <div>
+              <small>NAME</small>
+              <h2>{project.name}</h2>
+            </div>
+
+            <Button
+              componentType={"link"}
+              bgColor={"transparent"}
+              borderColor={"rgba(207, 207, 207, 1)"}
+              textColor={"black"}
+              style={{ borderRadius: "50px" }}
+              href={`/boq/${project.id}`}
+            >
+              BOQ <img src={externalLinkIcon} alt="external link" />
+            </Button>
           </div>
-
-          <h2>RAY-{project.id}</h2>
-
-          <br />
-
-          <span>NAME</span>
-          <h2>{project.name}</h2>
-
-          <br />
-          <br />
-
-          <span>STATUS</span>
-          <p
-            className="status"
-            style={
-              project.status === "Completed"
-                ? {
-                    backgroundColor: "rgba(134,241,181,1)",
-                    color: "rgba(52,100,73,1)",
-                  }
-                : {
-                    backgroundColor: "rgba(255,244,93,1)",
-                    color: "rgba(132,107,26,1)",
-                  }
-            }
-          >
-            {project.status === "Completed" ? "COMPLETED" : "ONGOING"}
-          </p>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <EditProjectButton project={project} />
+            <DeleteProjectButton project={project} />
+          </div>
         </div>
 
-        <div></div>
+        <br />
+        <br />
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(8, 1fr)",
+            gap: "25px",
+            textTransform: "uppercase",
+          }}
+        >
+          <div>
+            <small>ID</small>
+            <h2>RAY-{String(project.id).padStart(5, "0")}</h2>
+          </div>
+
+          <div>
+            <small>SIZE</small>
+            <h2>{project.size.toLocaleString("en-US")} SQFT</h2>
+          </div>
+
+          <div>
+            <small>STATUS</small>
+            <div
+              className="approval-pill normal-text"
+              style={{
+                background: project.status.toLowerCase().includes("completed")
+                  ? "rgba(134,241,181,1)"
+                  : "rgba(255, 250, 189, 1)",
+                color: project.status.toLowerCase().includes("completed")
+                  ? "rgba(52,100,73,1)"
+                  : "rgba(134, 83, 47, 1)",
+              }}
+            >
+              {project.status}
+            </div>
+          </div>
+
+          <div>
+            <small>TYPE OF WORK</small>
+            <h2 style={{ textWrap: "nowrap" }}>
+              {project.type_of_work || "-"}
+            </h2>
+          </div>
+
+          <div>
+            <small>QUOTED PRICE</small>
+            <h2>
+              {project.quoted_budget
+                ? `AED ${Number(project.quoted_budget).toLocaleString("en-US")}`
+                : "-"}
+            </h2>
+          </div>
+
+          <div>
+            <small>ALLOCATED BUDGET</small>
+            <h2>
+              {project.allocated_budget
+                ? `AED ${Number(project.allocated_budget).toLocaleString(
+                    "en-US"
+                  )}`
+                : "-"}
+            </h2>
+          </div>
+
+          <div>
+            <small>START DATE</small>
+            <h2>
+              {project.start_date
+                ? new Date(project.start_date).toLocaleDateString("en-US")
+                : "-"}
+            </h2>
+          </div>
+
+          <div>
+            <small>END DATE</small>
+            <h2>
+              {project.end_date
+                ? new Date(project.end_date).toLocaleDateString("en-US")
+                : "-"}
+            </h2>
+          </div>
+        </div>
+
+        <br />
+        <br />
+
+        <div style={{ textTransform: "uppercase" }}>
+          <small>SCOPE</small>
+          <h2>{project.scope}</h2>
+        </div>
       </div>
     </div>
   );
