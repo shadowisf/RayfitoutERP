@@ -30,6 +30,7 @@ export type MrLine = {
   approval_status: string;
   reject_comment: string;
   approved_supplier_id: number;
+  approved_supplier_type: string;
   approved_supplier_name: string;
   approved_unit_price: number;
   approved_total_price: number;

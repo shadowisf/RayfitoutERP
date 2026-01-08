@@ -163,6 +163,49 @@ export async function POST(request: NextRequest) {
         message: "Stock transferred/issued successfully",
       });
     }
+
+    if (body.action === "transferIssueMultipleStocks") {
+      const connection = await db.getConnection();
+
+      try {
+        await connection.beginTransaction();
+
+        for (const item of body.items) {
+          const insertQuery = `
+        INSERT INTO stocks_transfer_issue 
+        (inventory_item_id, type, transferee, from_location, to_location, quantity, purpose, receiver_name, attachment, third_party_involved, project_id, boq_line_id) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+          await connection.query(insertQuery, [
+            item.inventory_item_id,
+            body.type,
+            body.transferee,
+            body.from,
+            body.to || null,
+            item.quantity,
+            body.purpose,
+            body.receiver_name,
+            body.attachment || null,
+            body.third_party_involved,
+            Number(body.project_id) || null,
+            Number(body.boq_line_id) || null,
+          ]);
+        }
+
+        await connection.commit();
+        connection.release();
+
+        return NextResponse.json({
+          success: true,
+          message: "Multiple stocks transferred/issued successfully",
+        });
+      } catch (error) {
+        await connection.rollback();
+        connection.release();
+        throw error;
+      }
+    }
   } catch (error: any) {
     console.error(error.sqlMessage);
     return NextResponse.json(

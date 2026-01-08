@@ -50,7 +50,10 @@ export default function TransactionDetailsPopUpButton({
         bgColor={"rgba(239, 239, 239, 1)"}
         borderColor={"rgba(223, 223, 223, 1)"}
         textColor={"black"}
-        onClick={() => setIsOpen(true)}
+        onClick={(e) => {
+          e.preventDefault();
+          setIsOpen(true);
+        }}
         style={{ padding: "7px 7px" }}
       >
         <img src={externalLinkIcon} alt="batch details" />

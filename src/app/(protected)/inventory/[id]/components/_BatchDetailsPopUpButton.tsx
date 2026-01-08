@@ -419,7 +419,7 @@ export default function BatchDetailsPopUpButton({
                   borderColor={"transparent"}
                   textColor={"black"}
                   href={`/project/${details.project_id}`}
-                  style={{ padding: "0px" }}
+                  style={{ padding: "0px", textDecoration: "underline" }}
                 >
                   {details.project_name}
                 </Button>
@@ -827,7 +827,21 @@ export default function BatchDetailsPopUpButton({
             </div>
             <div>
               <small>PROJECT</small>
-              <h3>{details.project_name || "-"}</h3>
+              <h3>
+                {details.project_name ? (
+                  <Button
+                    componentType={"link"}
+                    bgColor={"transparent"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                    style={{ padding: "0px", textDecoration: "underline" }}
+                  >
+                    {details.project_name}
+                  </Button>
+                ) : (
+                  "-"
+                )}
+              </h3>
             </div>
             <div>
               <small>ADDED BY</small>
@@ -880,7 +894,11 @@ export default function BatchDetailsPopUpButton({
             >
               <div>
                 <small>TOTAL PRICE</small>
-                <h3>AED {details.unit_price * details.stock_quantity} </h3>
+                <h3>
+                  {details.unit_price * details.stock_quantity
+                    ? `AED ${details.unit_price} * ${details.stock_quantity}`
+                    : "-"}{" "}
+                </h3>
               </div>
             </div>
           </div>
@@ -1160,7 +1178,10 @@ export default function BatchDetailsPopUpButton({
         bgColor={"rgba(239, 239, 239, 1)"}
         borderColor={"rgba(223, 223, 223, 1)"}
         textColor={"black"}
-        onClick={() => setIsOpen(true)}
+        onClick={(e) => {
+          e.preventDefault();
+          setIsOpen(true);
+        }}
         style={{ padding: "7px 7px" }}
       >
         <img src={externalLinkIcon} alt="batch details" />

@@ -652,11 +652,13 @@ export default function CreateGRNButton({
           style={{ padding: "5px 20px", borderRadius: "25px" }}
         >
           GRN
-          <img
-            src={externalLinkIcon}
-            alt="external link"
-            onClick={() => setIsOpen(true)}
-          />
+          {isViewMode && (
+            <img
+              src={externalLinkIcon}
+              alt="external link"
+              onClick={() => setIsOpen(true)}
+            />
+          )}
           {isEditMode && (
             <img
               src={pencilIcon}
@@ -682,10 +684,9 @@ export default function CreateGRNButton({
         >
           <div className="input-row full">
             <InputItem
-              label={"SUPPLIER NAME"}
+              label={"VENDOR NAME"}
               value={mrLines[0].approved_supplier_name}
               type={"text"}
-              placeholder={"ENTER SUPPLIER NAME"}
               required
               onChange={() => {}}
               disabled

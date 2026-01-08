@@ -28,6 +28,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     padding: 20,
     fontFamily: "Mont",
+    textTransform: "uppercase",
   },
 
   // Header Section
@@ -98,15 +99,20 @@ const styles = StyleSheet.create({
     borderBottom: "1 solid #e0e0e0",
     fontSize: 8,
     color: "#333333",
+    minHeight: 40,
+    alignItems: "flex-start",
   },
   tableColItemNo: {
     width: "10%",
+    paddingRight: 8,
   },
   tableColDescription: {
     width: "55%",
+    paddingRight: 8,
   },
   tableColPageRef: {
     width: "15%",
+    paddingRight: 8,
   },
   tableColAmount: {
     width: "20%",
@@ -174,8 +180,8 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
 
-  // Detail Page Styles
-  categoryTitle: {
+  // Detail Page Styles - Subcategory Title (was categoryTitle)
+  subCategoryTitle: {
     fontSize: 16,
     fontFamily: "Mont-SemiBold",
     marginBottom: 20,
@@ -197,57 +203,56 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: "8 12",
     borderBottom: "1 solid #e0e0e0",
-    fontSize: 8,
+    fontSize: 7,
     color: "#333333",
-    minHeight: 40,
     alignItems: "flex-start",
   },
   detailColItemNo: {
-    width: "6%",
-    paddingRight: 5,
+    width: "5%",
+    paddingRight: 4,
   },
   detailColCategory: {
-    width: "10%",
-    paddingRight: 5,
+    width: "15%",
+    paddingRight: 4,
   },
-  detailColQty: {
-    width: "10%",
-    paddingRight: 5,
-  },
-  detailColRate: {
-    width: "10%",
-    paddingRight: 5,
-  },
-  detailColTotal: {
-    width: "12%",
-    paddingRight: 5,
+  detailColDescription: {
+    width: "28%",
+    paddingRight: 4,
   },
   detailColLocation: {
     width: "10%",
-    paddingRight: 5,
+    paddingRight: 4,
   },
-  detailColDescription: {
-    width: "35%",
-    paddingRight: 5,
+  detailColQty: {
+    width: "10%",
+    paddingRight: 4,
+  },
+  detailColRate: {
+    width: "10%",
+    paddingRight: 4,
+  },
+  detailColTotal: {
+    width: "10%",
+    paddingRight: 4,
   },
   detailColAttachment: {
-    width: "13%",
+    width: "17%",
   },
 
   // Attachment Image
   attachmentImage: {
-    width: 36,
+    width: 40,
+    height: 40,
     objectFit: "contain",
   },
   attachmentContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    width: 120,
+    gap: 3,
   },
   attachmentWrapper: {
-    width: 36,
-    marginRight: 5,
-    marginBottom: 5,
+    width: 40,
+    height: 40,
   },
 
   // Page Number
@@ -442,72 +447,78 @@ export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
         />
       </Page>
 
-      {/* Detail Pages - All categories in continuous pages */}
+      {/* Detail Pages - Subcategories as main headers */}
       <Page size="A4" style={styles.page} wrap>
         {categories.map((category, categoryIndex) => {
           const subCategories = Object.entries(boqLines[category]);
 
           return (
-            <View key={categoryIndex} wrap={false}>
-              {/* Category Title */}
-              <Text style={styles.categoryTitle}>
-                {categoryIndex + 1}.1 {category.toUpperCase()}
-              </Text>
+            <View key={categoryIndex}>
+              {/* ✅ Loop through subcategories - each is now the main header */}
+              {subCategories.map(([subCategory, items], subIndex) => (
+                <View key={subIndex}>
+                  {/* ✅ Subcategory Title (1.1 GENERAL REQUIREMENTS) */}
+                  <View wrap={false}>
+                    <Text style={styles.subCategoryTitle}>
+                      {categoryIndex + 1}.{subIndex + 1}{" "}
+                      {subCategory.toUpperCase()}
+                    </Text>
 
-              {/* Detailed Table */}
-              <View style={styles.table}>
-                <View style={styles.detailTableHeader}>
-                  <Text style={styles.detailColItemNo}>#</Text>
-                  <Text style={styles.detailColCategory}>ITEM</Text>
-                  <Text style={styles.detailColDescription}>DESCRIPTION</Text>
-                  <Text style={styles.detailColLocation}>LOCATION</Text>
-                  <Text style={styles.detailColQty}>QUANTITY</Text>
-                  {(userInfo?.departmentID === 8 ||
-                    userInfo?.departmentID === 12 ||
-                    userInfo?.departmentID === 10) && (
-                    <>
-                      <Text style={styles.detailColRate}>RATE</Text>
-                      <Text style={styles.detailColTotal}>TOTAL PRICE</Text>
-                    </>
-                  )}
-
-                  <Text style={styles.detailColAttachment}>ATTACHMENT(S)</Text>
-                </View>
-
-                {subCategories.map(([subCategory, items], subIndex) =>
-                  items.map((item, itemIndex) => (
-                    <View key={item.id} style={styles.detailTableRow}>
-                      <View style={styles.detailColItemNo}>
-                        <Text>
-                          {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
-                        </Text>
-                      </View>
-                      <View style={styles.detailColCategory}>
-                        <Text>{item.item_name}</Text>
-                      </View>
-                      <View style={styles.detailColDescription}>
-                        <Text>{item.item_description || ""}</Text>
-                      </View>
-                      <View style={styles.detailColLocation}>
-                        <Text>{item.location?.split("-").pop()}</Text>
-                      </View>
-                      <View style={styles.detailColQty}>
-                        <Text>
-                          {item.quantity} {item.unit}
-                        </Text>
-                      </View>
+                    {/* Table Header */}
+                    <View style={styles.detailTableHeader}>
+                      <Text style={styles.detailColItemNo}>#</Text>
+                      <Text style={styles.detailColCategory}>ITEM</Text>
+                      <Text style={styles.detailColDescription}>
+                        DESCRIPTION
+                      </Text>
+                      <Text style={styles.detailColLocation}>LOCATION</Text>
+                      <Text style={styles.detailColQty}>QUANTITY</Text>
                       {(userInfo?.departmentID === 8 ||
                         userInfo?.departmentID === 12 ||
                         userInfo?.departmentID === 10) && (
                         <>
-                          <View style={styles.detailColRate}>
-                            <Text>
-                              AED {item.rate_per_quantity?.toLocaleString()}
-                            </Text>
-                          </View>
-                          <View style={styles.detailColTotal}>
-                            <Text>AED {item.total_cost?.toLocaleString()}</Text>
-                          </View>
+                          <Text style={styles.detailColRate}>RATE</Text>
+                          <Text style={styles.detailColTotal}>TOTAL PRICE</Text>
+                        </>
+                      )}
+                      <Text style={styles.detailColAttachment}>
+                        ATTACHMENT(S)
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* ✅ BOQ Line Items (1.1.1, 1.1.2, etc.) */}
+                  {items.map((item, itemIndex) => (
+                    <View
+                      key={item.id}
+                      style={styles.detailTableRow}
+                      wrap={false}
+                    >
+                      <Text style={styles.detailColItemNo}>
+                        {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
+                      </Text>
+                      <Text style={styles.detailColCategory}>
+                        {item.item_name}
+                      </Text>
+                      <Text style={styles.detailColDescription}>
+                        {item.item_description || ""}
+                      </Text>
+                      <Text style={styles.detailColLocation}>
+                        {item.location?.split("-").pop()}
+                      </Text>
+                      <Text style={styles.detailColQty}>
+                        {item.quantity} {item.unit}
+                      </Text>
+                      {(userInfo?.departmentID === 8 ||
+                        userInfo?.departmentID === 12 ||
+                        userInfo?.departmentID === 10) && (
+                        <>
+                          <Text style={styles.detailColRate}>
+                            AED {item.rate_per_quantity?.toLocaleString()}
+                          </Text>
+                          <Text style={styles.detailColTotal}>
+                            AED {item.total_cost?.toLocaleString()}
+                          </Text>
                         </>
                       )}
 
@@ -538,9 +549,9 @@ export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
                           )}
                       </View>
                     </View>
-                  ))
-                )}
-              </View>
+                  ))}
+                </View>
+              ))}
             </View>
           );
         })}

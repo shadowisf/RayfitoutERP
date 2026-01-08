@@ -92,7 +92,7 @@ export default function InputItem({
           </label>
           <input
             type="text"
-            value={value}
+            value={value || ""}
             onChange={onChange}
             placeholder={placeholder || `ENTER ${label}`}
             required={required}

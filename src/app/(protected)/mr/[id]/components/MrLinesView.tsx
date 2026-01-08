@@ -94,6 +94,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       hasLpo: boolean;
       hasInvoice: boolean;
       hasSignedFile: boolean;
+      supplierType: string;
     };
   }>({});
   const [isCheckingLpoInvoices, setIsCheckingLpoInvoices] =
@@ -556,11 +557,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           hasLpo: boolean;
           hasInvoice: boolean;
           hasSignedFile: boolean;
+          supplierType: string;
         };
       } = {};
 
       try {
-        const uniqueSuppliers = new Map<number, string>();
+        const uniqueSuppliers = new Map<
+          number,
+          { name: string; type: string }
+        >();
 
         for (const category in mrLines) {
           for (const subCategory in mrLines[category]) {
@@ -568,16 +573,21 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               const items = mrLines[category][subCategory][supplier];
               if (items.length > 0) {
                 const supplierId = items[0].approved_supplier_id;
+                const supplierType = items[0].approved_supplier_type || ""; // ✅ Get supplier type
                 if (supplierId) {
-                  uniqueSuppliers.set(supplierId, supplier);
+                  uniqueSuppliers.set(supplierId, {
+                    name: supplier,
+                    type: supplierType,
+                  });
                 }
               }
             }
           }
         }
 
-        const checkPromises = Array.from(uniqueSuppliers.keys()).map(
-          async (supplierId) => {
+        const checkPromises = Array.from(uniqueSuppliers.entries()).map(
+          async ([supplierId, supplierInfo]) => {
+            // ✅ Changed to entries()
             try {
               const response = await fetch(
                 `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
@@ -631,12 +641,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     hasLpo: true,
                     hasInvoice: hasInvoice,
                     hasSignedFile: hasSignedFile,
+                    supplierType: supplierInfo.type, // ✅ Add supplier type
                   };
                 } else {
                   statusMap[supplierId] = {
                     hasLpo: false,
                     hasInvoice: false,
                     hasSignedFile: false,
+                    supplierType: supplierInfo.type, // ✅ Add supplier type
                   };
                 }
               } else {
@@ -644,6 +656,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   hasLpo: false,
                   hasInvoice: false,
                   hasSignedFile: false,
+                  supplierType: supplierInfo.type, // ✅ Add supplier type
                 };
               }
             } catch (error) {
@@ -655,6 +668,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 hasLpo: false,
                 hasInvoice: false,
                 hasSignedFile: false,
+                supplierType: supplierInfo.type, // ✅ Add supplier type
               };
             }
           }
@@ -1254,12 +1268,16 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     for (const supplierId of uniqueSupplierIds) {
       const status = lpoInvoiceStatus[supplierId];
 
-      if (
-        !status ||
-        !status.hasLpo ||
-        !status.hasInvoice ||
-        !status.hasSignedFile
-      ) {
+      if (!status || !status.hasLpo || !status.hasInvoice) {
+        return false;
+      }
+
+      // ✅ Only require signed file for local suppliers
+      const isMarketplace = status.supplierType
+        ?.toLowerCase()
+        .includes("marketplace");
+
+      if (!isMarketplace && !status.hasSignedFile) {
         return false;
       }
     }
@@ -2277,7 +2295,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
                 <SupplierDetailsPopUp
                   item={items[0]}
-                  style={{ padding: "0px", border: "none" }}
+                  style={{
+                    padding: "7px 7px",
+                    backgroundColor: "rgba(239, 239, 239, 1)",
+                    borderColor: "rgba(223, 223, 223, 1)",
+                  }}
                 >
                   <img
                     src={externalLinkIcon}

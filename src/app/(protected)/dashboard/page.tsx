@@ -7,7 +7,7 @@ import PendingApprovalMrsWidget from "./components/manager/W_PendingApprovalMrs"
 import PendingPaymentMrsWidget from "./components/manager/W_PendingPaymentsMrs";
 import PendingDeliveryMrsWidget from "./components/manager/W_PendingDeliveryMrs";
 import OutboundPaymentMrsWidget from "./components/manager/W_OutboundPaymentMrs";
-import ProjectBox from "@/app/components/ProjectBox";
+import ProjectBox from "@/app/(protected)/project/components/ProjectBox";
 import AlertsAndRiskMrsWidget from "./components/manager/W_AlertsAndRisksMrs";
 import ExpectedDeliveriesWidget from "./components/manager/W_ExpectedDeliveries";
 import AvgTimeSpentPerStageWidget from "./components/manager/W_AvgTimeSpentPerStage";
@@ -142,8 +142,6 @@ export default function Dashboard() {
           <br />
           <br />
 
-          <h2>EXPECTED DELIVERIES</h2>
-          <br />
           <ExpectedDeliveriesWidget />
         </>
       )}

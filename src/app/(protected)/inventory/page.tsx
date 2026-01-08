@@ -5,6 +5,8 @@ import { InventoryItem } from "./types/inventoryItem";
 import CreateInventoryItemButton from "./components/_CreateInventoryItemButton";
 import Button from "@/app/components/Button";
 import EditInventoryItemButton from "./components/_EditInventoryItemButton";
+import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStocks";
+import TransactionAndMovementPopUpButton from "./[id]/components/_Transaction&MovementPopUpButton";
 
 export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
@@ -240,7 +242,10 @@ export default function Inventory() {
             <option value="high-low">HIGHEST TO LOWEST STOCK</option>
             <option value="low-high">LOWEST TO HIGHEST STOCK</option>
           </select>
-          <CreateInventoryItemButton onSuccess={() => getInventoryItems()} />
+          <div style={{ display: "flex", gap: "10px" }}>
+            <CreateInventoryItemButton onSuccess={() => getInventoryItems()} />
+            <TransferIssueMultipleStocks />
+          </div>
           <div
             style={{
               position: "relative",
@@ -434,6 +439,7 @@ export default function Inventory() {
                 <th>MATERIAL</th>
                 <th>TOTAL QUANTITY</th>
                 <th>STATUS</th>
+                <th>TRANSACTION & MOVEMENT</th>
                 <th>ACTION</th>
               </tr>
             </thead>
@@ -499,6 +505,9 @@ export default function Inventory() {
                       >
                         {stockStatus.label}
                       </div>
+                    </td>
+                    <td>
+                      <TransactionAndMovementPopUpButton inventoryItem={item} />
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: "10px" }}>

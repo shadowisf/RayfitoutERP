@@ -12,6 +12,7 @@ type UploadSignedLPOButtonProps = {
   mrLine: MrLine;
   LpoID: number;
   supplierId: number;
+  supplierType: string;
   signedLpoFiles: string[];
   onFilesUpdate: (files: string[]) => void;
   canDelete?: boolean;
@@ -22,6 +23,7 @@ export default function UploadSignedLPOButton({
   mrLine,
   LpoID,
   supplierId,
+  supplierType,
   signedLpoFiles,
   onFilesUpdate,
   canDelete = false,
@@ -246,6 +248,10 @@ export default function UploadSignedLPOButton({
     } finally {
       setIsUploading(false);
     }
+  }
+
+  if (supplierType.toLowerCase().includes("marketplace")) {
+    return null;
   }
 
   return (

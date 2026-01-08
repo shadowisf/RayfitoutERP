@@ -9,9 +9,13 @@ import { useEffect, useState } from "react";
 
 type CreateVendorButtonProps = {
   full?: boolean;
+  onSuccess?: () => void;
 };
 
-export default function CreateVendorButton({ full }: CreateVendorButtonProps) {
+export default function CreateVendorButton({
+  full,
+  onSuccess,
+}: CreateVendorButtonProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -125,6 +129,10 @@ export default function CreateVendorButton({ full }: CreateVendorButtonProps) {
 
       if (res.ok) {
         toast("Vendor created", "success");
+
+        {
+          onSuccess && onSuccess();
+        }
 
         setType("");
         setName("");

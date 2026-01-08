@@ -11,9 +11,12 @@ import DeleteInventoryItemButton from "./components/_DeleteInventoryItemButton";
 import ReceiveStocksButton from "./components/_ReceiveStocksButton";
 import TopSuppliersChart from "./components/TopSuppliersChart";
 import StockHistoryChart from "./components/StockHistoryChart";
-import TopRequestingProjectsChart from "./components/TopRequestingProjectsChart";
+import ReservedStocksChart from "./components/ReservedStocksChart";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import { useAuth } from "@/app/context/AuthContext";
+import AvgTimeSpentPerStageWidget from "../../dashboard/components/manager/W_AvgTimeSpentPerStage";
+import AverageLeadTimeWidget from "./components/_AvgLeadTimeWidget";
+import TotalQuantityWidget from "./components/_TotalQuantityWidget";
 
 export default async function InventoryItemWithID({
   params,
@@ -296,22 +299,38 @@ export default async function InventoryItemWithID({
           </div>
           <br />
           <br />
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "25px",
-            }}
-          >
-            <div className="widget-container">
+          <div className="widget-container">
+            <h2>DATA & STATISTICS</h2>
+            <br />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1.5fr",
+                gap: "5px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "5px",
+                }}
+              >
+                <TotalQuantityWidget
+                  stocks={stockData.stocks}
+                  unit={inventoryItem.unit}
+                  stocksTransferIssue={stockData.stocksTransferIssue}
+                />
+                <AverageLeadTimeWidget inventoryItemId={inventoryItem.id} />
+              </div>
+
               <TopSuppliersChart
                 stocks={stockData.stocks}
                 unit={inventoryItem.unit}
                 stocksTransferIssue={stockData.stocksTransferIssue}
               />
-            </div>
-            <div className="widget-container">
-              <TopRequestingProjectsChart
+
+              <ReservedStocksChart
                 stocks={stockData.stocks}
                 unit={inventoryItem.unit}
                 stocksTransferIssue={stockData.stocksTransferIssue}

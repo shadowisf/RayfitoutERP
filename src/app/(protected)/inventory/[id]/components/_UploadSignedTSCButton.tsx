@@ -145,7 +145,9 @@ export default function UploadSignedTSCButton({
         throw new Error("Failed to update database");
       }
 
-      toast("Signed DN uploaded successfully", "success");
+      router.refresh();
+
+      toast("Signed DN uploaded", "success");
 
       // Update local state
       setTscFiles(updatedTscFiles);
@@ -153,8 +155,6 @@ export default function UploadSignedTSCButton({
       // Reset form
       setSignedDN(null);
       setIsUploadFormOpen(false);
-
-      router.refresh();
     } catch (error) {
       console.error("Error uploading DN:", error);
       toast("Failed to upload signed DN", "error");
@@ -263,7 +263,10 @@ export default function UploadSignedTSCButton({
             textTransform: "none",
           }}
           disabled={isUploading}
-          onClick={() => setIsUploadFormOpen(true)}
+          onClick={(e) => {
+            e.preventDefault();
+            setIsUploadFormOpen(true);
+          }}
         >
           <div
             style={{
@@ -285,7 +288,10 @@ export default function UploadSignedTSCButton({
           header={"UPLOAD SIGNED DELIVERY NOTE"}
           setIsOpen={setIsUploadFormOpen}
           addButtonLabel="CONFIRM"
-          handleSubmit={handleSubmit}
+          handleSubmit={(e) => {
+            e.preventDefault();
+            handleSubmit();
+          }}
         >
           <div className="input-row full">
             <SingleUploadFileBox

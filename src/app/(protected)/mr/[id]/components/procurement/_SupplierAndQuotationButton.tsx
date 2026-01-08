@@ -853,6 +853,7 @@ export default function SupplierAndQuotationButton({
           setIsOpen={setIsOpen}
           handleSubmit={handleSupplierAndQuotationSubmit}
           addButtonLabel={"CONFIRM"}
+          style={{ minWidth: "1500px" }}
         >
           <>
             <table className="items-table">
@@ -1008,6 +1009,7 @@ export default function SupplierAndQuotationButton({
                 handleAddRow();
               }}
               full
+              style={{ padding: "20px 0px" }}
             >
               ADD VENDOR +
             </Button>

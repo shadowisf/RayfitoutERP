@@ -39,8 +39,8 @@ export async function POST(req: Request) {
       const values = [
         Number(body.boq_id),
         body.item_name,
-        body.category,
-        body.sub_category,
+        body.category.toUpperCase(),
+        body.sub_category.toUpperCase(),
         /* body.item_code, */
         body.scope_of_work,
         Number(body.location_id) || null,
@@ -77,8 +77,8 @@ export async function PUT(req: Request) {
 
       const values = [
         body.item_name,
-        body.category,
-        body.sub_category,
+        body.category.toUpperCase(),
+        body.sub_category.toUpperCase(),
         /* body.item_code, */
         body.scope_of_work,
         Number(body.location_id) || null,
@@ -106,9 +106,9 @@ export async function PUT(req: Request) {
     `;
 
       const values = [
-        body.new_sub_category,
+        body.new_sub_category.toUpperCase(),
         body.old_sub_category,
-        body.category,
+        body.category.toUpperCase(),
         body.boq_id,
       ];
 

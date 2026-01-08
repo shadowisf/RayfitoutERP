@@ -7,6 +7,24 @@ export default function AvgTimeSpentPerStageWidget() {
   const [error, setError] = useState<string | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
+  // ✅ Define stage order based on MR progression
+  const stageOrder = [
+    "Draft",
+    "Initial approval rejected",
+    "Awaiting initial approval",
+    "Awaiting quotations",
+    "Price approval rejected",
+    "Awaiting price approval",
+    "Awaiting LPO & invoice",
+    "Payment rejected",
+    "Pending payment",
+    "GRN failed",
+    "Pending delivery",
+    "Awaiting QC check",
+    "Failed QC",
+    "Awaiting stock entry",
+  ];
+
   useEffect(() => {
     setError(null);
 
@@ -21,7 +39,28 @@ export default function AvgTimeSpentPerStageWidget() {
       })
       .then((responseData) => {
         if (Array.isArray(responseData)) {
-          setData(responseData);
+          // Filter out "Completed" stage
+          const filteredData = responseData.filter(
+            (item) => item.stage.toLowerCase() !== "completed"
+          );
+
+          // ✅ Sort by stage order
+          const sortedData = filteredData.sort((a, b) => {
+            const indexA = stageOrder.findIndex(
+              (stage) => stage.toLowerCase() === a.stage.toLowerCase()
+            );
+            const indexB = stageOrder.findIndex(
+              (stage) => stage.toLowerCase() === b.stage.toLowerCase()
+            );
+
+            // If stage not found in order, put it at the end
+            const orderA = indexA === -1 ? 999 : indexA;
+            const orderB = indexB === -1 ? 999 : indexB;
+
+            return orderA - orderB;
+          });
+
+          setData(sortedData);
         } else {
           console.error("Response is not an array:", responseData);
           setData([]);
@@ -37,15 +76,25 @@ export default function AvgTimeSpentPerStageWidget() {
 
   const maxHours =
     data.length > 0 ? Math.max(...data.map((d) => d.averageHours), 0) : 0;
+  const minHours =
+    data.length > 0 ? Math.min(...data.map((d) => d.averageHours), 0) : 0;
 
-  const getBarColor = (hours: number, stageName: string) => {
-    if (stageName.toLowerCase().includes("delivery") && hours > 30) {
-      return "rgba(248, 77, 77, 1)"; // Red
+  // ✅ Calculate color based on hours relative to min/max
+  const getBarColor = (hours: number) => {
+    if (maxHours === minHours) {
+      // If all values are the same, use middle color
+      return "rgba(121, 121, 158, 1)";
     }
-    if (stageName.toLowerCase().includes("lpo") && hours < 5) {
-      return "rgba(26, 216, 135, 1)"; // Green
-    }
-    return "rgba(200, 200, 200, 1)"; // Gray
+
+    // Calculate percentage from min to max
+    const percentage = (hours - minHours) / (maxHours - minHours);
+
+    // Interpolate between green (lowest) and red (highest)
+    const red = Math.round(26 + percentage * (216 - 26));
+    const green = Math.round(216 - percentage * (216 - 26));
+    const blue = Math.round(135 - percentage * (135 - 26));
+
+    return `rgba(${red}, ${green}, ${blue}, 1)`;
   };
 
   return (
@@ -61,11 +110,12 @@ export default function AvgTimeSpentPerStageWidget() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "30px",
         }}
       >
         <h3 style={{ margin: 0 }}>Average Time Spent Per Stage</h3>
       </div>
+
+      <br />
 
       {error ? (
         <div
@@ -82,33 +132,37 @@ export default function AvgTimeSpentPerStageWidget() {
           No data available
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
           {data.map((item, index) => {
             const barWidth =
               maxHours > 0 ? (item.averageHours / maxHours) * 100 : 0;
-            const barColor = getBarColor(item.averageHours, item.stage);
+            const barColor = getBarColor(item.averageHours); // ✅ Use gradient color
             const isHovered = hoveredIndex === index;
 
             return (
-              <div key={index}>
+              <div
+                key={index}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "15px",
+                }}
+              >
+                {/* Stage label on the left */}
                 <div
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: "5px",
+                    minWidth: "200px",
                   }}
                 >
-                  <span>{item.stage}</span>
+                  {item.stage}
                 </div>
 
+                {/* Bar on the right with dynamic width */}
                 <div
                   style={{
                     position: "relative",
-                    width: "100%",
+                    flex: 1,
                     height: "25px",
-                    backgroundColor: "rgba(240, 240, 240, 1)",
-                    borderRadius: "20px",
-                    overflow: "visible",
                   }}
                   onMouseEnter={() => setHoveredIndex(index)}
                   onMouseLeave={() => setHoveredIndex(null)}
@@ -120,6 +174,7 @@ export default function AvgTimeSpentPerStageWidget() {
                       backgroundColor: barColor,
                       borderRadius: "20px",
                       position: "relative",
+                      transition: "background-color 0.3s ease",
                     }}
                   >
                     {/* Hover Tooltip */}

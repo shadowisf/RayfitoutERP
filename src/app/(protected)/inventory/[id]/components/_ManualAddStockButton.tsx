@@ -316,7 +316,20 @@ export default function ManualAddToStockButton({
               idField="id"
               labelField="name"
               required={false}
-              bottomButtonComponent={<CreateVendorButton full={true} />}
+              bottomButtonComponent={
+                <CreateVendorButton
+                  full={true}
+                  onSuccess={() => {
+                    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
+                      method: "GET",
+                    })
+                      .then((res) => res.json())
+                      .then((data) => {
+                        setSupplierValues(data);
+                      });
+                  }}
+                />
+              }
             />
             <InputItem
               label={"UNIT PRICE"}

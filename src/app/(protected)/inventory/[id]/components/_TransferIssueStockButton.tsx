@@ -252,6 +252,8 @@ export default function TransferIssueStocksButton({
       setAvailableQuantity("");
       setFile(null);
       setThirdParty(false);
+      setProjectID("");
+      setBoqLineID("");
 
       router.refresh();
 

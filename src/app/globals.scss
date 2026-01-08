@@ -471,6 +471,7 @@ label {
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
+    text-transform: uppercase;
 
     img {
       width: auto;
@@ -939,6 +940,13 @@ label {
     width: fit-content;
     font-weight: 900;
     text-align: center;
+
+    &.centered {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
   }
 }
 

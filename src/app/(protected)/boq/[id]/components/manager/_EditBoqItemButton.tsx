@@ -359,7 +359,7 @@ export default function EditBoqItemButton({
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === "" || /^\d+$/.test(val)) {
-                  setRatePerQuantity(val === "" ? "" : Number(val));
+                  setRatePerQuantity(val);
                 }
               }}
               required

@@ -97,7 +97,13 @@ export default function TopSuppliersChart({
       : "N";
 
   return (
-    <div>
+    <div
+      style={{
+        backgroundColor: "rgba(248, 249, 251, 1)",
+        padding: "15px",
+        borderRadius: "10px",
+      }}
+    >
       <h2>TOP VENDORS</h2>
 
       <br />

@@ -56,8 +56,10 @@ export default function SubmitForProcurementResolutionButton({
         borderColor={"white"}
         textColor={"black"}
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 20px", ...style }}
-        disabled={disabled}
+        /* style={{ padding: "7px 20px", ...style }} */
+        /* disabled={disabled} */
+        style={{ opacity: "0.5" }} // commented because resolution is not fully implemented
+        disabled // commented because resolution is not fully implemented
       >
         RETURN FOR RESOLUTION
       </Button>

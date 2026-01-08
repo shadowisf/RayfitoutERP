@@ -97,7 +97,7 @@ export default function StockLocationChart({
 
   return (
     <div style={{ textTransform: "uppercase" }}>
-      <h2>STOCKS</h2>
+      <h2>STOCKS BY LOCATION</h2>
 
       <br />
 
@@ -151,8 +151,16 @@ export default function StockLocationChart({
         </div>
 
         {/* Stock Locations Legend */}
-        <div style={{ flex: 1, textTransform: "uppercase" }}>
-          <h3>STOCK LOCATIONS</h3>
+        <div
+          style={{
+            flex: 1,
+            textTransform: "uppercase",
+            backgroundColor: "rgba(248, 249, 251, 1)",
+            padding: "15px",
+            borderRadius: "10px",
+          }}
+        >
+          <h3>LOCATIONS</h3>
 
           <br />
 

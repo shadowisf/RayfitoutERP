@@ -20,7 +20,7 @@ export default function MedianMRLifespanWidget() {
         return res.json();
       })
       .then((responseData) => {
-        console.log("Chart Data:", responseData); // Debug log
+        console.log("Received data:", responseData);
         setData(responseData);
       })
       .catch((err) => {
@@ -29,7 +29,7 @@ export default function MedianMRLifespanWidget() {
       });
   }, []);
 
-  if (error || !data) {
+  if (error) {
     return (
       <div
         style={{
@@ -40,22 +40,37 @@ export default function MedianMRLifespanWidget() {
           color: "rgba(248, 77, 77, 1)",
         }}
       >
-        Error: {error || "No data available"}
+        Error: {error}
       </div>
     );
   }
 
-  // Get max value, ensure it's at least 1 to avoid division by zero
+  if (!data) {
+    return (
+      <div
+        style={{
+          backgroundColor: "white",
+          padding: "15px",
+          borderRadius: "15px",
+          textAlign: "center",
+          color: "#888",
+        }}
+      >
+        Loading...
+      </div>
+    );
+  }
+
+  // Get max value from the chart data
   const maxValue = Math.max(
     ...data.chartData.map((d: any) => d.median).filter((m: number) => m > 0),
-    data.overallMedian,
     1
   );
 
-  const chartHeight = 200; // Increased height for better visibility
-  const minBarHeight = 10; // Minimum visible height for bars with data
+  const chartHeight = 125;
+  const minBarHeight = 10;
 
-  // Check if we have any data
+  // Check if we have any completed MRs
   const hasData = data.chartData.some((d: any) => d.median > 0);
 
   return (
@@ -73,18 +88,27 @@ export default function MedianMRLifespanWidget() {
         <h1 style={{ fontSize: "32px", fontWeight: "900" }}>
           {data.currentMedian} Hrs
         </h1>
-        <span
-          style={{
-            margin: 0,
-            color: data.isFaster
-              ? "rgba(26, 216, 135, 1)"
-              : "rgba(248, 77, 77, 1)",
-            fontWeight: "600",
-          }}
-        >
-          {data.percentageChange}% {data.isFaster ? "FASTER" : "SLOWER"}{" "}
-          <span style={{ color: "black" }}>THAN LAST WEEK</span>
-        </span>
+        {data.previousMedian > 0 ? (
+          <span
+            style={{
+              margin: 0,
+              color: data.isFaster
+                ? "rgba(26, 216, 135, 1)"
+                : "rgba(248, 77, 77, 1)",
+              fontWeight: "600",
+            }}
+          >
+            {data.changeDescription.toUpperCase()}{" "}
+            <span style={{ color: "black" }}>
+              ({data.percentageChange}% {data.isFaster ? "FASTER" : "SLOWER"}{" "}
+              THAN LAST WEEK)
+            </span>
+          </span>
+        ) : (
+          <span style={{ color: "#888", fontWeight: "600" }}>
+            {data.changeDescription.toUpperCase()}
+          </span>
+        )}
       </div>
 
       {/* Bar Chart */}
@@ -110,7 +134,7 @@ export default function MedianMRLifespanWidget() {
             alignItems: "flex-end",
             justifyContent: "center",
             gap: "10px",
-            paddingBottom: "20px",
+            paddingLeft: "60px",
           }}
         >
           {/* Median Line */}
@@ -121,7 +145,7 @@ export default function MedianMRLifespanWidget() {
                 left: "60px",
                 right: 0,
                 bottom: `${
-                  20 + (data.overallMedian / maxValue) * (chartHeight - 20)
+                  (data.overallMedian / maxValue) * (chartHeight - 30)
                 }px`,
                 height: "2px",
                 backgroundColor: "rgba(180, 180, 180, 1)",
@@ -147,8 +171,6 @@ export default function MedianMRLifespanWidget() {
                     color: "white",
                     padding: "4px 10px",
                     borderRadius: "6px",
-                    fontSize: "12px",
-                    fontWeight: "bold",
                   }}
                 >
                   MED.
@@ -172,71 +194,95 @@ export default function MedianMRLifespanWidget() {
             // Calculate bar height
             let barHeight = 0;
             if (item.median > 0) {
-              barHeight = (item.median / maxValue) * (chartHeight - 20);
-              // Ensure minimum visible height
+              barHeight = (item.median / maxValue) * (chartHeight - 30);
               barHeight = Math.max(barHeight, minBarHeight);
             }
 
             const isHovered = hoveredIndex === index;
             const hasValue = item.median > 0;
 
+            // Format date for display
+            const date = new Date(item.date);
+            const dayLabel = date.toLocaleDateString("en-US", {
+              weekday: "short",
+            });
+
             return (
               <div
                 key={index}
                 style={{
                   flex: 1,
-                  maxWidth: "60px",
-                  height: `${barHeight}px`,
-                  background: hasValue
-                    ? "linear-gradient(180deg, rgba(26, 216, 135, 1) 0%, rgba(26, 216, 135, 0.6) 100%)"
-                    : "rgba(230, 230, 230, 0.3)", // Light gray for empty days
-                  borderRadius: "50px 50px 50px 50px",
-                  position: "relative",
-                  transition: "opacity 0.2s ease",
-                  cursor: hasValue ? "pointer" : "default",
-                  opacity: isHovered ? 0.85 : 1,
-                  minHeight: hasValue ? `${minBarHeight}px` : "5px", // Thin line for empty days
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "5px",
                 }}
-                onMouseEnter={() => hasValue && setHoveredIndex(index)}
-                onMouseLeave={() => setHoveredIndex(null)}
               >
-                {/* Tooltip on hover */}
-                {isHovered && hasValue && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: "100%",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      marginBottom: "10px",
-                      backgroundColor: "black",
-                      color: "white",
-                      padding: "6px 12px",
-                      borderRadius: "8px",
-                      fontSize: "13px",
-                      fontWeight: "bold",
-                      whiteSpace: "nowrap",
-                      zIndex: 20,
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                    }}
-                  >
-                    {item.median} Hrs ({item.count} MRs)
-                    {/* Tooltip Arrow */}
+                {/* Bar */}
+                <div
+                  style={{
+                    width: "100%",
+                    maxWidth: "60px",
+                    height: `${barHeight}px`,
+                    background: hasValue
+                      ? "linear-gradient(180deg, rgba(26, 216, 135, 1) 0%, rgba(26, 216, 135, 0.6) 100%)"
+                      : "rgba(230, 230, 230, 0.3)",
+                    borderRadius: "50px",
+                    position: "relative",
+                    minHeight: hasValue ? `${minBarHeight}px` : "5px",
+                  }}
+                  onMouseEnter={() => hasValue && setHoveredIndex(index)}
+                  onMouseLeave={() => setHoveredIndex(null)}
+                >
+                  {/* Tooltip on hover */}
+                  {isHovered && hasValue && (
                     <div
                       style={{
                         position: "absolute",
-                        top: "100%",
+                        bottom: "100%",
                         left: "50%",
                         transform: "translateX(-50%)",
-                        width: 0,
-                        height: 0,
-                        borderLeft: "5px solid transparent",
-                        borderRight: "5px solid transparent",
-                        borderTop: "5px solid black",
+                        marginBottom: "10px",
+                        backgroundColor: "black",
+                        color: "white",
+                        padding: "6px 12px",
+                        borderRadius: "8px",
+                        fontSize: "13px",
+                        fontWeight: "bold",
+                        whiteSpace: "nowrap",
+                        zIndex: 20,
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
                       }}
-                    />
-                  </div>
-                )}
+                    >
+                      {item.median} Hrs ({item.count}{" "}
+                      {item.count === 1 ? "MR" : "MRs"}){/* Tooltip Arrow */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "100%",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          width: 0,
+                          height: 0,
+                          borderLeft: "5px solid transparent",
+                          borderRight: "5px solid transparent",
+                          borderTop: "5px solid black",
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Day label */}
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "#666",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {dayLabel}
+                </div>
               </div>
             );
           })}

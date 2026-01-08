@@ -134,7 +134,7 @@ export default function BoqLinesView({
                         <span style={{ marginRight: "25px" }}>
                           {categoryIndex + 1}.{subCategoryIndex + 1}
                         </span>
-                        {category} - {subCategory}
+                        {category} / {subCategory}
                       </h2>
 
                       {(userInfo?.departmentID === 8 ||
@@ -195,17 +195,17 @@ export default function BoqLinesView({
                                   "-"
                                 )}
                               </td>
-                              <td>
+                              <td style={{ textWrap: "nowrap" }}>
                                 {item.location?.split(" - ").pop() || "-"}
                               </td>
-                              <td>
+                              <td style={{ textWrap: "nowrap" }}>
                                 {item.quantity} {item.unit}
                               </td>
                               {(userInfo?.departmentID === 8 ||
                                 userInfo?.departmentID === 12 ||
                                 userInfo?.departmentID === 10) && (
                                 <>
-                                  <td>
+                                  <td style={{ textWrap: "nowrap" }}>
                                     AED{" "}
                                     {item.rate_per_quantity?.toLocaleString()}
                                   </td>
@@ -415,8 +415,10 @@ export default function BoqLinesView({
                               "-"
                             )}
                           </td>
-                          <td>{item.location?.split(" - ").pop() || "-"}</td>
-                          <td>
+                          <td style={{ textWrap: "nowrap" }}>
+                            {item.location?.split(" - ").pop() || "-"}
+                          </td>
+                          <td style={{ textWrap: "nowrap" }}>
                             {item.quantity} {item.unit}
                           </td>
 
@@ -424,7 +426,7 @@ export default function BoqLinesView({
                             userInfo?.departmentID === 12 ||
                             userInfo?.departmentID === 10) && (
                             <>
-                              <td>
+                              <td style={{ textWrap: "nowrap" }}>
                                 AED {item.rate_per_quantity?.toLocaleString()}
                               </td>
                               <td>AED {item.total_cost?.toLocaleString()}</td>

@@ -316,8 +316,8 @@ export default function AddBoqItemButton({
               onChange={(e) => {
                 const val = e.target.value;
 
-                if (val === "" || /^\d+$/.test(val)) {
-                  setRatePerQuantity(val === "" ? "" : Number(val));
+                if (val === "" || /^\d*$/.test(val)) {
+                  setRatePerQuantity(val);
                 }
               }}
               required

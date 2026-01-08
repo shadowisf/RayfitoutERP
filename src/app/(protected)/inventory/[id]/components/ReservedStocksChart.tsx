@@ -2,35 +2,31 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
-interface TopRequestingProjectsChartProps {
+interface ReservedStocksChart {
   stocks: any[];
   stocksTransferIssue: any[];
   unit: string;
 }
 
-export default function TopRequestingProjectsChart({
+export default function ReservedStocksChart({
   stocks,
   stocksTransferIssue,
   unit,
-}: TopRequestingProjectsChartProps) {
-  // Calculate total quantity requested by project (from stocks and issues only)
+}: ReservedStocksChart) {
+  // Calculate total quantity issued by project (only from stocksTransferIssue)
   const calculateRequestsByProject = () => {
     const projectMap: { [key: string]: number } = {};
 
-    // Add stock quantities by project
-    stocks.forEach((stock) => {
-      const project = stock.project_name || "Others";
-      if (!projectMap[project]) {
-        projectMap[project] = 0;
-      }
-      projectMap[project] += stock.quantity;
-    });
-
-    // Add only ISSUE transaction quantities by project (not transfers or sends)
+    // Only process ISSUE transactions from stocksTransferIssue table
     stocksTransferIssue.forEach((transaction) => {
       // Only count issues
       if (transaction.type.toLowerCase().includes("issue")) {
-        const project = transaction.project_name || "Others";
+        // Check if project exists, otherwise group as "Others"
+        const project =
+          transaction.project_name && transaction.project_id
+            ? transaction.project_name
+            : "Others";
+
         if (!projectMap[project]) {
           projectMap[project] = 0;
         }
@@ -79,8 +75,14 @@ export default function TopRequestingProjectsChart({
       : 0;
 
   return (
-    <div>
-      <h2>TOP REQUESTING PROJECTS</h2>
+    <div
+      style={{
+        backgroundColor: "rgba(248, 249, 251, 1)",
+        padding: "15px",
+        borderRadius: "10px",
+      }}
+    >
+      <h2>RESERVED STOCKS</h2>
 
       <br />
       <br />
@@ -201,7 +203,7 @@ export default function TopRequestingProjectsChart({
             color: "#737373",
           }}
         >
-          No project data available
+          No reserved stocks data available
         </div>
       )}
     </div>

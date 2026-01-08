@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
-import ProjectBox from "@/app/components/ProjectBox";
+import ProjectBox from "@/app/(protected)/project/components/ProjectBox";
 
 export default function Project() {
   const [projectsWithBOQ, setProjectsWithBOQ] = useState<any[]>([]);

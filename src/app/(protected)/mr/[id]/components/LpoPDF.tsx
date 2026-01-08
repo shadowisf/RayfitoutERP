@@ -309,12 +309,14 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Quotation Reference</Text>
             <Text style={styles.infoValue}>
-              QT-{String(lpo.quotation_code).padStart(5, "0")}
+              {String(lpo.quotation_code).padStart(5, "0")}
             </Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>TRN</Text>
-            <Text style={styles.infoValue}>{lpo.supplier_trn_number}</Text>
+            <Text style={styles.infoValue}>
+              {lpo.supplier_trn_number || "-"}
+            </Text>
           </View>
         </View>
 

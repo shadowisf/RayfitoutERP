@@ -289,6 +289,42 @@ export default function MR() {
     return status === "Completed";
   };
 
+  // Add this function at the top of the component, before the return statement
+  const getDepartmentStyle = (departmentId: number) => {
+    const styles: {
+      [key: number]: { backgroundColor: string; color: string };
+    } = {
+      8: {
+        backgroundColor: "rgba(205, 222, 255, 1)",
+        color: "rgba(23, 92, 220, 1)",
+      },
+      9: {
+        backgroundColor: "rgba(254, 215, 170, 1)",
+        color: "rgba(185, 104, 10, 1)",
+      },
+      10: {
+        backgroundColor: "rgba(187, 247, 208, 1)",
+        color: "rgba(3, 130, 46, 1)",
+      },
+      11: {
+        backgroundColor: "rgba(143, 236, 255, 1)",
+        color: "rgba(21, 104, 120, 1)",
+      },
+      12: {
+        backgroundColor: "rgba(233, 213, 255, 1)",
+        color: "rgba(129, 68, 196, 1)",
+      },
+    };
+
+    // Default style for all other departments
+    return (
+      styles[departmentId] || {
+        backgroundColor: "rgba(186, 230, 253, 1)",
+        color: "rgba(0, 112, 170, 1)",
+      }
+    );
+  };
+
   const allStatuses = [
     "Draft",
     "Initial approval rejected",
@@ -430,32 +466,32 @@ export default function MR() {
                   alignItems: "center",
                   justifyContent: "space-between",
                   marginBottom: "20px",
-                  padding: "15px",
-                  backgroundColor: "white",
-                  borderRadius: "5px",
+                  padding: "15px 20px",
+                  borderRadius: "50px",
+                  backgroundColor: isRejected
+                    ? "rgba(255, 216, 216, 1)"
+                    : isCompleted && hasItems
+                    ? "rgba(87, 244, 176, 1)"
+                    : hasItems
+                    ? "rgba(255, 251, 208, 1)"
+                    : "rgba(231, 231, 231, 1)",
+                  color: isRejected
+                    ? "rgba(248, 77, 77, 1)"
+                    : isCompleted && hasItems
+                    ? "rgba(31, 101, 71, 1)"
+                    : hasItems
+                    ? "rgba(134, 83, 47, 1)"
+                    : "rgba(100, 100, 100, 1)",
                 }}
               >
                 <h3 style={{ margin: 0 }}>{status.toUpperCase()}</h3>
                 <span
                   style={{
-                    backgroundColor: isRejected
-                      ? "rgba(255, 181, 181, 1)"
-                      : isCompleted && hasItems
-                      ? "rgba(87, 244, 176, 1)"
-                      : hasItems
-                      ? "rgba(255, 250, 189, 1)"
-                      : "rgba(231, 231, 231, 1)",
-                    color: isRejected
-                      ? "rgba(248, 77, 77, 1)"
-                      : isCompleted && hasItems
-                      ? "rgba(31, 101, 71, 1)"
-                      : hasItems
-                      ? "rgba(134, 83, 47, 1)"
-                      : "rgba(100, 100, 100, 1)",
-                    padding: "4px 12px",
-                    borderRadius: "5px",
+                    padding: "7px 12px",
+                    borderRadius: "50px",
                     fontSize: "12px",
                     fontWeight: "600",
+                    backgroundColor: "white",
                   }}
                 >
                   {mrs.length}
@@ -471,7 +507,12 @@ export default function MR() {
               >
                 {mrs.map((mr: MrHeader) => {
                   const priority = getPriority(mr.required_date);
-                  const daysLeftStyle = getDaysLeftStyle(mr.required_date);
+                  const RequireDateDaysLeftStyle = getDaysLeftStyle(
+                    mr.required_date
+                  );
+                  const DeliveryDateDaysLeftStyle = getDaysLeftStyle(
+                    mr.delivery_date
+                  );
                   const isCompleted =
                     mr.progress_name === "Completed" || mr.progress_id === 25;
                   const hasViewPermission = canViewMR(mr);
@@ -486,15 +527,16 @@ export default function MR() {
                     },
                   };
 
+                  const departmentStyle = getDepartmentStyle(mr.department_id);
+
                   return (
                     <div
                       key={mr.id}
                       style={{
                         padding: "15px",
                         backgroundColor: "white",
-                        border: "1px solid rgba(217, 217, 217, 1)",
                         width: "350px",
-                        borderRadius: "5px",
+                        borderRadius: "15px",
                       }}
                     >
                       <div
@@ -504,10 +546,17 @@ export default function MR() {
                           justifyContent: "space-between",
                         }}
                       >
-                        <div>
-                          <small>MR NUMBER</small>
-                          <h3>MR-{String(mr.id).padStart(5, "0")}</h3>
-                        </div>
+                        <small
+                          className="approval-pill normal-text centered"
+                          style={{
+                            backgroundColor: departmentStyle.backgroundColor, // ✅ Use dynamic background
+                            color: departmentStyle.color, // ✅ Use dynamic color
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          <span style={{ scale: 2.5 }}>•</span>{" "}
+                          {mr.department_name}
+                        </small>
 
                         <div
                           style={{
@@ -516,50 +565,55 @@ export default function MR() {
                             justifyContent: "center",
                           }}
                         >
-                          <small
-                            className="status"
-                            style={{
-                              ...durationData.style,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "10px",
-                            }}
-                          >
-                            <svg
-                              width="11"
-                              height="11"
-                              viewBox="0 0 11 11"
-                              fill="none"
-                              xmlns="http://www.w3.org/2000/svg"
-                              style={{ color: durationData.style.color }}
+                          {mr.progress_id !== 1 && mr.progress_id !== 25 && (
+                            <small
+                              className="status"
+                              style={{
+                                ...durationData.style,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "10px",
+                                borderRadius: "5px",
+                              }}
                             >
-                              <path
-                                d="M5.5 2.5V5.5H8.5"
-                                stroke="currentColor"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                              <path
-                                d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                                stroke="currentColor"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                            {durationData.duration}
-                          </small>
+                              <svg
+                                width="11"
+                                height="11"
+                                viewBox="0 0 11 11"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                style={{ color: durationData.style.color }}
+                              >
+                                <path
+                                  d="M5.5 2.5V5.5H8.5"
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                                <path
+                                  d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                              {durationData.duration}
+                            </small>
+                          )}
                         </div>
+                      </div>
+
+                      <br />
+
+                      <div>
+                        <small>MR NUMBER</small>
+                        <h3>MR-{String(mr.id).padStart(5, "0")}</h3>
                       </div>
 
                       <br />
 
                       <small>REQUESTER</small>
                       <h3>{mr.requested_by || "-"}</h3>
-
-                      <br />
-
-                      <small>DEPARTMENT</small>
-                      <h3>{mr.department_name}</h3>
 
                       <br />
 
@@ -570,12 +624,35 @@ export default function MR() {
                         <>
                           <br />
 
-                          <small>DELIVERY DATE/S</small>
-                          <h3>
-                            {new Date(mr.delivery_date).toLocaleDateString(
-                              "en-US"
-                            )}
-                          </h3>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "25px",
+                            }}
+                          >
+                            <div>
+                              <small>DELIVERY DATE/S</small>
+                              <h3>
+                                {new Date(mr.delivery_date).toLocaleDateString(
+                                  "en-US"
+                                )}
+                              </h3>
+                            </div>
+
+                            <h3
+                              style={{
+                                padding: "5px 15px",
+                                backgroundColor:
+                                  DeliveryDateDaysLeftStyle.backgroundColor,
+                                color: DeliveryDateDaysLeftStyle.color,
+                                textTransform: "uppercase",
+                                borderRadius: "5px",
+                              }}
+                            >
+                              {getDaysLeftText(mr.delivery_date)}
+                            </h3>
+                          </div>
                         </>
                       )}
 
@@ -599,8 +676,9 @@ export default function MR() {
                           <h3
                             style={{
                               padding: "5px 15px",
-                              backgroundColor: daysLeftStyle.backgroundColor,
-                              color: daysLeftStyle.color,
+                              backgroundColor:
+                                RequireDateDaysLeftStyle.backgroundColor,
+                              color: RequireDateDaysLeftStyle.color,
                               textTransform: "uppercase",
                               borderRadius: "5px",
                             }}
@@ -633,6 +711,7 @@ export default function MR() {
                             ? "not-allowed"
                             : "pointer",
                           pointerEvents: !hasViewPermission ? "none" : "auto",
+                          borderRadius: "15px",
                         }}
                       >
                         VIEW

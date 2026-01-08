@@ -3,8 +3,6 @@
 import { InventoryItem } from "../../types/inventoryItem";
 import BatchDetailsPopUpButton from "./_BatchDetailsPopUpButton";
 import TransactionDetailsPopUpButton from "./_IssueDetailsPopUpButton";
-import UploadSignedTSCButton from "./_UploadSignedTSCButton";
-import ViewTSNPDFButton from "./_ViewTsnPDFButton";
 
 type StockData = any;
 type TransferIssueData = any;

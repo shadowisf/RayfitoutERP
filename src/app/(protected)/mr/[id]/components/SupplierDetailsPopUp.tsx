@@ -117,7 +117,7 @@ export default function SupplierDetailsPopUp({
           >
             <div>
               <span>CONTACT PERSON NAME</span>
-              <h2>{item.approved_supplier_contact_person}</h2>
+              <h2>{item.approved_supplier_contact_person || "-"}</h2>
             </div>
           </div>
 
@@ -133,15 +133,15 @@ export default function SupplierDetailsPopUp({
           >
             <div>
               <span>PHONE</span>
-              <h2>{item.approved_supplier_phone}</h2>
+              <h2>{item.approved_supplier_phone || "-"}</h2>
             </div>
             <div>
               <span>EMAIL</span>
-              <h2>{item.approved_supplier_email}</h2>
+              <h2>{item.approved_supplier_email || "-"}</h2>
             </div>
             <div>
               <span>ADDRESS</span>
-              <h2>{item.approved_supplier_address}</h2>
+              <h2>{item.approved_supplier_address || "-"}</h2>
             </div>
           </div>
         </FormPopUp>

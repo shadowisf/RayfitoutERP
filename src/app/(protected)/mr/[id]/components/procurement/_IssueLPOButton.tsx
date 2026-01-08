@@ -24,7 +24,10 @@ export default function IssueLPOButton({
   mrLines,
 }: IssueLPOButtonProps) {
   const router = useRouter();
+
   const { userInfo } = useAuth();
+
+  const warningIcon = "/icons/warning.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
@@ -325,6 +328,7 @@ export default function IssueLPOButton({
 
   if (existingLpoId) {
     const supplierId = mrLines[0]?.approved_supplier_id;
+    const supplierType = mrLines[0]?.approved_supplier_type;
     const canDelete =
       userInfo?.departmentID === 9 &&
       (mrHeader.progress_id === 12 ||
@@ -344,6 +348,7 @@ export default function IssueLPOButton({
           mrLine={mrLines[0]}
           LpoID={existingLpoId}
           supplierId={supplierId}
+          supplierType={supplierType}
           signedLpoFiles={signedLpoFiles}
           onFilesUpdate={setSignedLpoFiles}
           canDelete={canDelete}
@@ -397,7 +402,7 @@ export default function IssueLPOButton({
             />
             <InputItem
               label={"VENDOR ADDRESS"}
-              value={mrLines[0].approved_supplier_address}
+              value={mrLines[0].approved_supplier_address || "-"}
               type={"text"}
               required
               onChange={() => {}}
@@ -440,6 +445,16 @@ export default function IssueLPOButton({
               onChange={(e) => setDeliveryDate(e.target.value)}
             />
           </div>
+
+          {mrHeader.required_date < deliveryDate && (
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <img src={warningIcon} />
+              <p style={{ color: "red" }}>
+                Selected delivery date is beyond the material request's required
+                date.
+              </p>
+            </div>
+          )}
 
           <br />
 

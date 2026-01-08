@@ -122,7 +122,7 @@ export default async function MrWithID({
   const isCompleted =
     mrHeader.progress_name === "Completed" || mrHeader.progress_id === 25;
 
-  // Calculate days left and priority
+  // Calculate days left for REQUIRED DATE
   const required = new Date(mrHeader.required_date);
   const today = new Date();
   required.setHours(0, 0, 0, 0);
@@ -131,44 +131,14 @@ export default async function MrWithID({
     (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  // Determine priority based on days left
-  let priority = "";
-  let priorityStyle = {
-    backgroundColor: "",
-    color: "",
-  };
+  // ✅ Calculate days left for DELIVERY DATE
+  const delivery = new Date(mrHeader.delivery_date);
+  delivery.setHours(0, 0, 0, 0);
+  const deliveryDiffDays = Math.ceil(
+    (delivery.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
 
-  /* if (diffDays < 0) {
-    // Overdue
-    priority = "CRITICAL";
-    priorityStyle = {
-      backgroundColor: "rgba(175, 61, 61, 1)",
-      color: "white",
-    };
-  } else if (diffDays <= 1) {
-    // Today or 1 day
-    priority = "HIGH";
-    priorityStyle = {
-      backgroundColor: "rgba(255, 181, 181, 1)",
-      color: "rgba(248, 77, 77, 1)",
-    };
-  } else if (diffDays <= 3) {
-    // 2-3 days
-    priority = "MEDIUM";
-    priorityStyle = {
-      backgroundColor: "rgba(255, 250, 189, 1)",
-      color: "rgba(134, 83, 47, 1)",
-    };
-  } else {
-    // More than 3 days
-    priority = "LOW";
-    priorityStyle = {
-      backgroundColor: "rgba(87, 244, 176, 1)",
-      color: "rgba(31, 101, 71, 1)",
-    };
-  } */
-
-  // Days left text
+  // Days left text for REQUIRED DATE
   let daysLeftText = "";
   if (diffDays > 0) {
     daysLeftText = `${diffDays} ${diffDays === 1 ? "DAY" : "DAYS"} LEFT`;
@@ -180,33 +150,71 @@ export default async function MrWithID({
     } OVERDUE`;
   }
 
-  // Days left style based on days left
+  // ✅ Days left text for DELIVERY DATE
+  let deliveryDaysLeftText = "";
+  if (deliveryDiffDays > 0) {
+    deliveryDaysLeftText = `${deliveryDiffDays} ${
+      deliveryDiffDays === 1 ? "DAY" : "DAYS"
+    } LEFT`;
+  } else if (deliveryDiffDays === 0) {
+    deliveryDaysLeftText = "DUE TODAY";
+  } else {
+    deliveryDaysLeftText = `${Math.abs(deliveryDiffDays)} ${
+      Math.abs(deliveryDiffDays) === 1 ? "DAY" : "DAYS"
+    } OVERDUE`;
+  }
+
+  // Days left style for REQUIRED DATE
   let daysLeftStyle = {
     backgroundColor: "",
     color: "",
   };
 
   if (diffDays < 0) {
-    // Overdue - dark red (same as CRITICAL)
     daysLeftStyle = {
       backgroundColor: "rgba(175, 61, 61, 1)",
       color: "white",
     };
   } else if (diffDays <= 1) {
-    // Due in 3 days or less - light red (same as HIGH)
     daysLeftStyle = {
       backgroundColor: "rgba(255, 181, 181, 1)",
       color: "rgba(248, 77, 77, 1)",
     };
   } else if (diffDays <= 3) {
-    // Due in 3 days or less - light red (same as HIGH)
     daysLeftStyle = {
       backgroundColor: "rgba(255, 250, 189, 1)",
       color: "rgba(134, 83, 47, 1)",
     };
   } else {
-    // More than 3 days - yellow (same as MEDIUM)
     daysLeftStyle = {
+      backgroundColor: "rgba(231, 231, 231, 1)",
+      color: "black",
+    };
+  }
+
+  // ✅ Days left style for DELIVERY DATE
+  let deliveryDaysLeftStyle = {
+    backgroundColor: "",
+    color: "",
+  };
+
+  if (deliveryDiffDays < 0) {
+    deliveryDaysLeftStyle = {
+      backgroundColor: "rgba(175, 61, 61, 1)",
+      color: "white",
+    };
+  } else if (deliveryDiffDays <= 1) {
+    deliveryDaysLeftStyle = {
+      backgroundColor: "rgba(255, 181, 181, 1)",
+      color: "rgba(248, 77, 77, 1)",
+    };
+  } else if (deliveryDiffDays <= 3) {
+    deliveryDaysLeftStyle = {
+      backgroundColor: "rgba(255, 250, 189, 1)",
+      color: "rgba(134, 83, 47, 1)",
+    };
+  } else {
+    deliveryDaysLeftStyle = {
       backgroundColor: "rgba(231, 231, 231, 1)",
       color: "black",
     };
@@ -253,14 +261,48 @@ export default async function MrWithID({
                 <p className="status" style={progressStyle}>
                   {mrHeader.progress_name}
                 </p>
-
-                {/* Only show priority badge if NOT completed */}
-                {/* {!isCompleted && (
-                  <p className="status" style={priorityStyle}>
-                    {priority}
-                  </p>
-                )} */}
               </div>
+
+              {!isCompleted && (
+                <div>
+                  <h2
+                    className="approval-pill normal-text"
+                    style={{
+                      ...durationStyle,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      borderRadius: "5px",
+                      textWrap: "nowrap",
+                      color: durationStyle.color,
+                    }}
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 11 11"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{ color: durationStyle.color }}
+                    >
+                      <path
+                        d="M5.5 2.5V5.5H8.5"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+
+                    {duration}
+                  </h2>
+                </div>
+              )}
             </div>
 
             <div style={{ display: "flex", gap: "10px" }}>
@@ -310,16 +352,14 @@ export default async function MrWithID({
             <h2>{mrHeader.department_name}</h2>
           </div>
 
-          <div>
-            <small style={{ textWrap: "nowrap" }}>REQUIRED DATE</small>
-            <h2>
-              {new Date(mrHeader.required_date).toLocaleDateString("en-US")}
-            </h2>
-          </div>
-
-          {/* Only show days left indicator if NOT completed */}
-          {!isCompleted && (
-            <>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <div>
+              <small style={{ textWrap: "nowrap" }}>REQUIRED DATE</small>
+              <h2>
+                {new Date(mrHeader.required_date).toLocaleDateString("en-US")}
+              </h2>
+            </div>
+            {!isCompleted && (
               <div>
                 <h2
                   className="approval-pill normal-text"
@@ -333,48 +373,32 @@ export default async function MrWithID({
                   {daysLeftText}
                 </h2>
               </div>
+            )}
+          </div>
 
+          <div style={{ display: "flex", gap: "10px" }}>
+            <div>
+              <small style={{ textWrap: "nowrap" }}>DELIVERY DATE/S</small>
+              <h2>
+                {new Date(mrHeader.delivery_date).toLocaleDateString("en-US")}
+              </h2>
+            </div>
+            {!isCompleted && (
               <div>
-                {/* <small>CURRENT DURATION</small> */}
                 <h2
                   className="approval-pill normal-text"
                   style={{
-                    ...durationStyle,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
+                    backgroundColor: deliveryDaysLeftStyle.backgroundColor,
+                    color: deliveryDaysLeftStyle.color,
                     borderRadius: "5px",
                     textWrap: "nowrap",
-                    color: durationStyle.color, // Ensure color is applied to parent
                   }}
                 >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 11 11"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    style={{ color: durationStyle.color }} // Apply the text color to SVG
-                  >
-                    <path
-                      d="M5.5 2.5V5.5H8.5"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-
-                  {duration}
+                  {deliveryDaysLeftText}
                 </h2>
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
