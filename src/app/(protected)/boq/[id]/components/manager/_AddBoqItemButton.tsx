@@ -256,12 +256,11 @@ export default function AddBoqItemButton({
               label={"QUANTITY"}
               value={quantity}
               type={"text"}
-              placeholder={"ENTER QUANTITY"}
               onChange={(e) => {
                 const val = e.target.value;
 
-                if (val === "" || /^\d+$/.test(val)) {
-                  setQuantity(val === "" ? "" : Number(val));
+                if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                  setQuantity(val);
                 }
               }}
               required
@@ -312,7 +311,7 @@ export default function AddBoqItemButton({
               onChange={(e) => {
                 const val = e.target.value;
 
-                if (val === "" || /^\d*$/.test(val)) {
+                if (val === "" || /^\d*\.?\d*$/.test(val)) {
                   setRatePerQuantity(val);
                 }
               }}

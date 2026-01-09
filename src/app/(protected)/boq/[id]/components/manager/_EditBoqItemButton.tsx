@@ -307,7 +307,6 @@ export default function EditBoqItemButton({
               onChange={(e) => {
                 const val = e.target.value;
 
-                // Allow empty string, whole numbers, or decimals (e.g. 1, 1.5, 0.25)
                 if (val === "" || /^\d*\.?\d*$/.test(val)) {
                   setQuantity(val);
                 }
