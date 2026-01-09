@@ -5,12 +5,14 @@ import { InventoryItem } from "./types/inventoryItem";
 import CreateInventoryItemButton from "./components/_CreateInventoryItemButton";
 import Button from "@/app/components/Button";
 import EditInventoryItemButton from "./components/_EditInventoryItemButton";
-import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStocks";
-import TransactionAndMovementPopUpButton from "./[id]/components/_Transaction&MovementPopUpButton";
+import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStocksButton";
+import DeleteInventoryItemButton from "./[id]/components/_DeleteInventoryItemButton";
+import TransactionDetailsPopUpButton from "./[id]/components/_IssueDetailsPopUpButton";
 
 export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
   const searchIcon = "/icons/search.svg";
+  const warningIcon = "/icons/warning.svg";
 
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [availableQuantities, setAvailableQuantities] = useState<{
@@ -20,6 +22,9 @@ export default function Inventory() {
       total_issued: number;
     };
   }>({});
+  const [activeTab, setActiveTab] = useState<"inventory" | "transfer-log">(
+    "inventory"
+  );
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortOrder, setSortOrder] = useState<"none" | "high-low" | "low-high">(
@@ -27,6 +32,8 @@ export default function Inventory() {
   );
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
+  const [allTransactions, setAllTransactions] = useState<any[]>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +122,50 @@ export default function Inventory() {
 
     fetchAllQuantities();
   }, [inventory]);
+
+  async function fetchAllTransactions() {
+    if (activeTab !== "transfer-log") {
+      return;
+    }
+
+    setIsLoadingTransactions(true);
+
+    try {
+      // Fetch all transfer/issue transactions
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAllTransferIssueTransactions`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch transactions");
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.transactions) {
+        // Sort by date (newest first)
+        const sorted = data.transactions.sort((a: any, b: any) => {
+          const dateA = new Date(a.created_on).getTime();
+          const dateB = new Date(b.created_on).getTime();
+          return dateB - dateA;
+        });
+
+        setAllTransactions(sorted);
+      }
+    } catch (error) {
+      console.error("Error fetching all transactions:", error);
+    } finally {
+      setIsLoadingTransactions(false);
+    }
+  }
+
+  // Fetch all transactions when Transfer Log tab is active
+  useEffect(() => {
+    fetchAllTransactions();
+  }, [activeTab]);
 
   // Check scroll position to show/hide arrows
   const checkScroll = () => {
@@ -213,6 +264,96 @@ export default function Inventory() {
     }
   };
 
+  // Get transfer type label
+  const getTransferTypeLabel = (transaction: any) => {
+    if (transaction.type?.toLowerCase().includes("transfer")) {
+      return "MATERIAL TRANSFER";
+    } else if (transaction.type?.toLowerCase().includes("issue")) {
+      return "ISSUE FOR USE";
+    } else if (transaction.type?.toLowerCase().includes("send")) {
+      return "SEND FOR PROCESSING";
+    }
+
+    return transaction.type || "-";
+  };
+
+  // Get status for transfer log
+  const getTransferStatus = (transaction: any) => {
+    if (transaction.received === 1) {
+      if (transaction.type?.toLowerCase().includes("issue")) {
+        return {
+          label: "STOCK ISSUED",
+          bgColor: "rgba(255, 186, 187, 1)",
+          textColor: "rgba(197, 12, 15, 1)",
+        };
+      } else if (transaction.type?.toLowerCase().includes("transfer")) {
+        return {
+          label: "STOCK TRANSFERRED",
+          bgColor: "rgba(255, 186, 187, 1)",
+          textColor: "rgba(197, 12, 15, 1)",
+        };
+      } else if (transaction.type?.toLowerCase().includes("send")) {
+        return {
+          label: "STOCK SENT FOR PROCESSING",
+          bgColor: "rgba(255, 186, 187, 1)",
+          textColor: "rgba(197, 12, 15, 1)",
+        };
+      }
+    } else {
+      if (transaction.type?.toLowerCase().includes("send")) {
+        return {
+          label: "SENT FOR PROCESSING",
+          bgColor: "rgba(255, 242, 196, 1)",
+          textColor: "rgba(180, 98, 10, 1)",
+        };
+      }
+      if (transaction.type?.toLowerCase().includes("issue")) {
+        return {
+          label: "ISSUED FOR USE",
+          bgColor: "rgba(255, 242, 196, 1)",
+          textColor: "rgba(180, 98, 10, 1)",
+        };
+      }
+      if (transaction.type?.toLowerCase().includes("transfer")) {
+        return {
+          label: "STOCK TRANSFERRED",
+          bgColor: "rgba(255, 242, 196, 1)",
+          textColor: "rgba(180, 98, 10, 1)",
+        };
+      }
+    }
+
+    return {
+      label: "COMPLETED",
+      bgColor: "rgba(149, 222, 189, 1)",
+      textColor: "rgba(0, 108, 60, 1)",
+    };
+  };
+
+  // Filter transactions based on search
+  const getFilteredTransactions = () => {
+    if (searchQuery.trim() === "") {
+      return allTransactions;
+    }
+
+    const query = searchQuery.toLowerCase();
+    return allTransactions.filter((transaction) => {
+      // Search in materials
+      const materialMatch = transaction.items?.some((item: any) =>
+        item.description?.toLowerCase().includes(query)
+      );
+
+      // Search in locations
+      const locationMatch =
+        transaction.from_location?.toLowerCase().includes(query) ||
+        transaction.to_location?.toLowerCase().includes(query);
+
+      return materialMatch || locationMatch;
+    });
+  };
+
+  const filteredTransactions = getFilteredTransactions();
+
   return (
     <div className="dashboard">
       <div
@@ -224,320 +365,465 @@ export default function Inventory() {
       >
         <h2>INVENTORY</h2>
         <div style={{ display: "flex", gap: "10px" }}>
-          <select
-            value={sortOrder}
-            onChange={(e) =>
-              setSortOrder(e.target.value as "none" | "high-low" | "low-high")
-            }
-            style={{
-              padding: "10px 15px",
-              borderRadius: "8px",
-              border: "1px solid rgba(223, 223, 223, 1)",
-              backgroundColor: "white",
-              cursor: "pointer",
-              width: "250px",
-            }}
+          <CreateInventoryItemButton onSuccess={() => getInventoryItems()} />
+
+          {inventory.length > 0 && <TransferIssueMultipleStocks />}
+        </div>
+      </div>
+
+      <br />
+
+      <div className="category-grid">
+        <div>
+          <button
+            className={`item-alt ${activeTab === "inventory" ? "active" : ""}`}
+            onClick={() => setActiveTab("inventory")}
           >
-            <option value="none">SORT BY STOCK</option>
-            <option value="high-low">HIGHEST TO LOWEST STOCK</option>
-            <option value="low-high">LOWEST TO HIGHEST STOCK</option>
-          </select>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <CreateInventoryItemButton onSuccess={() => getInventoryItems()} />
-            <TransferIssueMultipleStocks />
-          </div>
-          <div
-            style={{
-              position: "relative",
-              flex: 1,
-              maxWidth: "400px",
-              backgroundColor: "white",
-            }}
+            INVENTORY
+          </button>
+          <button
+            className={`item-alt ${
+              activeTab === "transfer-log" ? "active" : ""
+            }`}
+            onClick={() => setActiveTab("transfer-log")}
           >
-            <input
-              type="text"
-              placeholder="SEARCH"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+            TRANSFER LOG
+          </button>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px" }}>
+          {activeTab === "inventory" && (
+            <select
+              value={sortOrder}
+              onChange={(e) =>
+                setSortOrder(e.target.value as "none" | "high-low" | "low-high")
+              }
               style={{
-                width: "400px",
-                padding: "10px 40px 10px 15px",
+                padding: "10px 15px",
                 borderRadius: "8px",
                 border: "1px solid rgba(223, 223, 223, 1)",
-                fontSize: "14px",
+                backgroundColor: "white",
+                cursor: "pointer",
+                width: "250px",
               }}
-            />
-            <img
-              src={searchIcon}
-              alt="search"
+            >
+              <option value="none">SORT BY STOCK</option>
+              <option value="high-low">HIGHEST TO LOWEST STOCK</option>
+              <option value="low-high">LOWEST TO HIGHEST STOCK</option>
+            </select>
+          )}
+          {activeTab === "inventory" && (
+            <div
               style={{
-                position: "absolute",
-                right: "15px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: "16px",
-                height: "16px",
-                opacity: 0.5,
+                position: "relative",
+                flex: 1,
+                maxWidth: "400px",
+                backgroundColor: "white",
               }}
-            />
-          </div>
+            >
+              <input
+                type="text"
+                placeholder="SEARCH"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: "400px",
+                  padding: "10px 40px 10px 15px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(223, 223, 223, 1)",
+                  fontSize: "14px",
+                }}
+              />
+              <img
+                src={searchIcon}
+                alt="search"
+                style={{
+                  position: "absolute",
+                  right: "15px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "16px",
+                  height: "16px",
+                  opacity: 0.5,
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
       <br />
       <br />
 
-      <div
-        style={{
-          display: "flex",
-          gap: "15px",
-          marginBottom: "20px",
-          alignItems: "center",
-        }}
-      >
-        {/* Sort Dropdown */}
-      </div>
-
-      {/* Category Tabs with Scroll */}
-      <div style={{ position: "relative" }}>
-        {showLeftArrow && (
-          <button
-            onClick={() => scroll("left")}
-            style={{
-              position: "absolute",
-              left: 0,
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 10,
-              backgroundColor: "white",
-              border: "1px solid rgba(223, 223, 223, 1)",
-              borderRadius: "50%",
-              width: "40px",
-              height: "40px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            }}
-          >
-            ←
-          </button>
-        )}
-
-        <div
-          ref={scrollContainerRef}
-          onScroll={checkScroll}
-          className="category-grid"
-          style={{
-            overflowX: "auto",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          }}
-        >
-          <style jsx>{`
-            .category-grid::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              className={`item ${activeCategory === "ALL" ? "active" : ""}`}
-              onClick={() => setActiveCategory("ALL")}
-              style={{ flexShrink: 0 }}
-            >
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "10px" }}
-              >
-                <span>ALL</span>
-                <span
-                  style={{
-                    backgroundColor:
-                      activeCategory === "ALL"
-                        ? "white"
-                        : "rgba(205, 205, 205, 1)",
-                    color: "black",
-                    borderRadius: "5px",
-                    padding: "2px 10px",
-                  }}
-                >
-                  {inventory.length}
-                </span>
-              </div>
-            </button>
-
-            {categories.map((category) => (
+      {activeTab === "inventory" && (
+        <>
+          {/* Category Tabs with Scroll */}
+          <div style={{ position: "relative" }}>
+            {showLeftArrow && (
               <button
-                key={category}
-                className={`item ${
-                  activeCategory === category ? "active" : ""
-                }`}
-                onClick={() => setActiveCategory(category)}
-                style={{ flexShrink: 0 }}
+                onClick={() => scroll("left")}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  backgroundColor: "white",
+                  border: "1px solid rgba(223, 223, 223, 1)",
+                  borderRadius: "50%",
+                  width: "40px",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                }}
               >
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                ←
+              </button>
+            )}
+
+            <div
+              ref={scrollContainerRef}
+              onScroll={checkScroll}
+              className="category-grid"
+              style={{
+                overflowX: "auto",
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+              }}
+            >
+              <style jsx>{`
+                .category-grid::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  className={`item ${activeCategory === "ALL" ? "active" : ""}`}
+                  onClick={() => setActiveCategory("ALL")}
+                  style={{ flexShrink: 0 }}
                 >
-                  <span>{category.toUpperCase()} </span>
-                  <span
+                  <div
                     style={{
-                      backgroundColor:
-                        activeCategory === category
-                          ? "white"
-                          : "rgba(205, 205, 205, 1)",
-                      color: "black",
-                      borderRadius: "5px",
-                      padding: "2px 10px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
                     }}
                   >
-                    {getCategoryCount(category)}
-                  </span>
-                </div>
+                    <span>ALL</span>
+                    <span
+                      style={{
+                        backgroundColor:
+                          activeCategory === "ALL"
+                            ? "white"
+                            : "rgba(205, 205, 205, 1)",
+                        color: "black",
+                        borderRadius: "5px",
+                        padding: "2px 10px",
+                      }}
+                    >
+                      {inventory.length}
+                    </span>
+                  </div>
+                </button>
+
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    className={`item ${
+                      activeCategory === category ? "active" : ""
+                    }`}
+                    onClick={() => setActiveCategory(category)}
+                    style={{ flexShrink: 0 }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                      }}
+                    >
+                      <span>{category.toUpperCase()} </span>
+                      <span
+                        style={{
+                          backgroundColor:
+                            activeCategory === category
+                              ? "white"
+                              : "rgba(205, 205, 205, 1)",
+                          color: "black",
+                          borderRadius: "5px",
+                          padding: "2px 10px",
+                        }}
+                      >
+                        {getCategoryCount(category)}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {showRightArrow && (
+              <button
+                onClick={() => scroll("right")}
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  backgroundColor: "white",
+                  border: "1px solid rgba(223, 223, 223, 1)",
+                  borderRadius: "50%",
+                  width: "40px",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                }}
+              >
+                →
               </button>
-            ))}
+            )}
           </div>
-        </div>
 
-        {showRightArrow && (
-          <button
-            onClick={() => scroll("right")}
-            style={{
-              position: "absolute",
-              right: 0,
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 10,
-              backgroundColor: "white",
-              border: "1px solid rgba(223, 223, 223, 1)",
-              borderRadius: "50%",
-              width: "40px",
-              height: "40px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            }}
-          >
-            →
-          </button>
-        )}
-      </div>
+          <br />
+          <br />
 
-      <br />
-      <br />
-
-      {/* Search and Sort Controls */}
-
-      <div style={{ overflowX: "auto" }}>
-        {processedInventory.length > 0 ? (
-          <table className="items-table two-toned">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>ID</th>
-                <th>MATERIAL</th>
-                <th>TOTAL QUANTITY</th>
-                <th>STATUS</th>
-                <th>TRANSACTION & MOVEMENT</th>
-                <th>ACTION</th>
-              </tr>
-            </thead>
-            <tbody>
-              {processedInventory.map((item, index) => {
-                const quantityData = availableQuantities[item.id];
-                const availableQty = quantityData?.available_quantity ?? 0;
-                const stockStatus = getStockStatus(
-                  availableQty,
-                  item.minimum_stock_quantity
-                );
-
-                return (
-                  <tr key={item.id}>
-                    <td>{index + 1}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      INV-{String(item.id).padStart(5, "0")}
-                    </td>
-                    <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "25px",
-                        }}
-                      >
-                        <div style={{ width: "50px" }}>
-                          {item.image ? (
-                            <img
-                              src={item.image}
-                              alt="reference image"
-                              width={50}
-                              style={{
-                                aspectRatio: "1/1",
-                                borderRadius: "5px",
-                              }}
-                            />
-                          ) : (
-                            <div
-                              style={{
-                                height: "50px",
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                              }}
-                            >
-                              -
-                            </div>
-                          )}
-                        </div>
-                        {item.description}
-                      </div>
-                    </td>
-
-                    <td>{`${availableQty} ${item.unit || ""}`}</td>
-                    <td>
-                      <div
-                        className="approval-pill normal-text"
-                        style={{
-                          backgroundColor: stockStatus.bgColor,
-                          color: stockStatus.textColor,
-                        }}
-                      >
-                        {stockStatus.label}
-                      </div>
-                    </td>
-                    <td>
-                      <TransactionAndMovementPopUpButton inventoryItem={item} />
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", gap: "10px" }}>
-                        <EditInventoryItemButton inventoryItem={item} />
-
-                        <Button
-                          componentType={"link"}
-                          bgColor={"rgba(239, 239, 239, 1)"}
-                          borderColor={"rgba(223, 223, 223, 1)"}
-                          textColor={"white"}
-                          style={{ padding: "7px 7px" }}
-                          href={`/inventory/${item.id}`}
-                        >
-                          <img src={externalLinkIcon} alt="external link"></img>
-                        </Button>
-                      </div>
-                    </td>
+          {/* Inventory Table */}
+          <div style={{ overflowX: "auto" }}>
+            {processedInventory.length > 0 ? (
+              <table className="items-table two-toned">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>ID</th>
+                    <th>MATERIAL</th>
+                    <th>TOTAL QUANTITY</th>
+                    <th>STATUS</th>
+                    <th>ACTION</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <div style={{ textAlign: "center", padding: "40px", color: "#888" }}>
-            {searchQuery.trim() !== ""
-              ? "No items found matching your search"
-              : "No items found in this category"}
+                </thead>
+                <tbody>
+                  {processedInventory.map((item, index) => {
+                    const quantityData = availableQuantities[item.id];
+                    const availableQty = quantityData?.available_quantity ?? 0;
+                    const stockStatus = getStockStatus(
+                      availableQty,
+                      item.minimum_stock_quantity
+                    );
+
+                    return (
+                      <tr key={item.id}>
+                        <td>{index + 1}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          INV-{String(item.id).padStart(5, "0")}
+                        </td>
+                        <td>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "25px",
+                            }}
+                          >
+                            <div style={{ width: "50px" }}>
+                              {item.image ? (
+                                <img
+                                  src={item.image}
+                                  alt="reference image"
+                                  width={50}
+                                  style={{
+                                    aspectRatio: "1/1",
+                                    objectFit: "cover",
+                                    borderRadius: "5px",
+                                  }}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    height: "50px",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  -
+                                </div>
+                              )}
+                            </div>
+                            {item.description}
+                          </div>
+                        </td>
+
+                        <td>{`${availableQty} ${item.unit || ""}`}</td>
+                        <td>
+                          <div
+                            className="approval-pill normal-text"
+                            style={{
+                              backgroundColor: stockStatus.bgColor,
+                              color: stockStatus.textColor,
+                            }}
+                          >
+                            {stockStatus.label}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", gap: "10px" }}>
+                            <EditInventoryItemButton inventoryItem={item} />
+
+                            <Button
+                              componentType={"link"}
+                              bgColor={"rgba(239, 239, 239, 1)"}
+                              borderColor={"rgba(223, 223, 223, 1)"}
+                              textColor={"white"}
+                              style={{ padding: "7px 7px" }}
+                              href={`/inventory/${item.id}`}
+                            >
+                              <img
+                                src={externalLinkIcon}
+                                alt="external link"
+                              ></img>
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div
+                style={{ textAlign: "center", padding: "40px", color: "#888" }}
+              >
+                {searchQuery.trim() !== ""
+                  ? "No items found matching your search"
+                  : "No items found in this category"}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
+
+      {activeTab === "transfer-log" && (
+        <div style={{ overflowX: "auto" }}>
+          {isLoadingTransactions ? (
+            <div
+              style={{ textAlign: "center", padding: "40px", color: "#888" }}
+            >
+              Loading transactions...
+            </div>
+          ) : filteredTransactions.length > 0 ? (
+            <table className="items-table two-toned">
+              <thead>
+                <tr>
+                  <th>DATE & TIME</th>
+                  <th>TRANSACTION ID</th>
+                  <th>MATERIAL</th>
+                  <th>TRANSFER TYPE</th>
+                  <th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTransactions.map((transaction, index) => {
+                  const date = new Date(transaction.created_on);
+                  const formattedDate = date
+                    .toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
+                    .toUpperCase();
+
+                  const status = getTransferStatus(transaction);
+                  const transferType = getTransferTypeLabel(transaction);
+
+                  return (
+                    <tr key={`${transaction.id}-${index}`}>
+                      <td style={{ whiteSpace: "nowrap" }}>{formattedDate}</td>
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                          }}
+                        >
+                          {transaction.received === 0 && (
+                            <img src={warningIcon} alt="warning" />
+                          )}
+                          <span>
+                            TA-{transaction.id?.toString().padStart(5, "0")}
+                          </span>
+                          <TransactionDetailsPopUpButton
+                            transferID={transaction.id}
+                            onSuccess={() => fetchAllTransactions()}
+                          />
+                        </div>
+                      </td>
+                      <td>
+                        {/* Display all materials */}
+                        {transaction.items && transaction.items.length > 0 ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "5px",
+                            }}
+                          >
+                            {transaction.items.map(
+                              (item: any, itemIndex: number) => (
+                                <div key={itemIndex}>{item.description}</div>
+                              )
+                            )}
+                          </div>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td style={{ textTransform: "uppercase" }}>
+                        {transferType}
+                      </td>
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "10px",
+                          }}
+                        >
+                          <div
+                            className="approval-pill normal-text"
+                            style={{
+                              backgroundColor: status.bgColor,
+                              color: status.textColor,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {status.label}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <div
+              style={{ textAlign: "center", padding: "40px", color: "#888" }}
+            >
+              {searchQuery.trim() !== ""
+                ? "No transactions found matching your search"
+                : "No transactions found"}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

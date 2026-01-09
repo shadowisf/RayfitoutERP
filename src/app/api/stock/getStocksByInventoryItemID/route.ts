@@ -28,11 +28,21 @@ export async function POST(req: NextRequest) {
         inventoryItemId,
       ]);
 
-      // Query stocks_transfer_issue table
+      // Query stocks_transfer_issue table with junction table
+      // Note: You'll need to create a view for this or adjust the query
       const transferIssueQuery = `
-        SELECT * 
-        FROM vw_stocks_transfer_issue 
-        WHERE inventory_item_id = ?
+        SELECT 
+          sti.*,
+          jt.inventory_item_id,
+          jt.quantity,
+          jt.serial_number,
+          jt.received_quantity,
+          i.description,
+          i.unit
+        FROM stocks_transfer_issue sti
+        INNER JOIN jt_stocks_transfer_issue_inventory_item jt ON sti.id = jt.stocks_transfer_issue_id
+        INNER JOIN inventory i ON jt.inventory_item_id = i.id
+        WHERE jt.inventory_item_id = ?
       `;
       const [transferIssueRows] = await db.execute<RowDataPacket[]>(
         transferIssueQuery,

@@ -68,141 +68,178 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.action === "transferIssueStock") {
-      // Check if this is a reverse transfer (transferring back to original location)
-      if (body.type.toLowerCase().includes("transfer")) {
-        // Find if there's an existing transfer that brought stock to the current "from" location
-        const checkReverseTransferQuery = `
-        SELECT id, quantity, from_location, to_location
-        FROM stocks_transfer_issue 
-        WHERE inventory_item_id = ? 
-          AND type LIKE '%Transfer%' 
-          AND to_location = ? 
-          AND from_location = ?
-        ORDER BY received_on DESC
-        LIMIT 1
-      `;
-
-        const [existingTransfers] = await db.query<RowDataPacket[]>(
-          checkReverseTransferQuery,
-          [body.inventory_item_id, body.from, body.to]
-        );
-
-        // If we found a matching reverse transfer
-        if (existingTransfers.length > 0) {
-          const existingTransfer = existingTransfers[0];
-
-          // If the quantity matches exactly, delete the transfer entry
-          if (existingTransfer.quantity === Number(body.quantity)) {
-            const deleteQuery = `
-            DELETE FROM stocks_transfer_issue 
-            WHERE id = ?
+      try {
+        // Check if this is a reverse transfer (transferring back to original location)
+        if (body.type.toLowerCase().includes("transfer")) {
+          // Find if there's an existing transfer that brought stock to the current "from" location
+          const checkReverseTransferQuery = `
+            SELECT sti.id, jt.inventory_item_id, jt.quantity, sti.from_location, sti.to_location
+            FROM stocks_transfer_issue sti
+            JOIN jt_stocks_transfer_issue_inventory_item jt ON sti.id = jt.stocks_transfer_issue_id
+            WHERE jt.inventory_item_id = ? 
+              AND sti.type LIKE '%Transfer%' 
+              AND sti.to_location = ? 
+              AND sti.from_location = ?
+            ORDER BY sti.received_on DESC
+            LIMIT 1
           `;
-            await db.query(deleteQuery, [existingTransfer.id]);
 
-            return NextResponse.json({
-              success: true,
-              message: "Transfer reversed and entry deleted",
-              deletedId: existingTransfer.id,
-            });
-          }
-          // If quantity is less, update the existing transfer quantity
-          else if (existingTransfer.quantity > Number(body.quantity)) {
-            const updateQuery = `
-            UPDATE stocks_transfer_issue 
-            SET quantity = quantity - ? 
-            WHERE id = ?
-          `;
-            await db.query(updateQuery, [
-              Number(body.quantity),
-              existingTransfer.id,
-            ]);
+          const [existingTransfers] = await db.query<RowDataPacket[]>(
+            checkReverseTransferQuery,
+            [body.inventory_item_id, body.from, body.to]
+          );
 
-            return NextResponse.json({
-              success: true,
-              message: "Transfer quantity reduced",
-              updatedId: existingTransfer.id,
-            });
+          // If we found a matching reverse transfer
+          if (existingTransfers.length > 0) {
+            const existingTransfer = existingTransfers[0];
+
+            // If the quantity matches exactly, delete the junction entry
+            if (existingTransfer.quantity === Number(body.quantity)) {
+              const deleteJunctionQuery = `
+                DELETE FROM jt_stocks_transfer_issue_inventory_item 
+                WHERE stocks_transfer_issue_id = ? AND inventory_item_id = ?
+              `;
+              await db.query(deleteJunctionQuery, [
+                existingTransfer.id,
+                body.inventory_item_id,
+              ]);
+
+              // Check if the transfer has any other items
+              const [remainingItems] = await db.query<RowDataPacket[]>(
+                `SELECT COUNT(*) as count FROM jt_stocks_transfer_issue_inventory_item WHERE stocks_transfer_issue_id = ?`,
+                [existingTransfer.id]
+              );
+
+              // If no other items, delete the transfer header
+              if (remainingItems[0].count === 0) {
+                const deleteTransferQuery = `
+                  DELETE FROM stocks_transfer_issue 
+                  WHERE id = ?
+                `;
+                await db.query(deleteTransferQuery, [existingTransfer.id]);
+              }
+
+              return NextResponse.json({
+                success: true,
+                message: "Transfer reversed and entry deleted",
+                deletedId: existingTransfer.id,
+              });
+            }
+            // If quantity is less, update the existing junction entry quantity
+            else if (existingTransfer.quantity > Number(body.quantity)) {
+              const updateQuery = `
+                UPDATE jt_stocks_transfer_issue_inventory_item 
+                SET quantity = quantity - ? 
+                WHERE stocks_transfer_issue_id = ? AND inventory_item_id = ?
+              `;
+              await db.query(updateQuery, [
+                Number(body.quantity),
+                existingTransfer.id,
+                body.inventory_item_id,
+              ]);
+
+              return NextResponse.json({
+                success: true,
+                message: "Transfer quantity reduced",
+                updatedId: existingTransfer.id,
+              });
+            }
           }
-          // If quantity is more, we need to create a new transfer for the difference
-          else {
-            console.log(
-              "Quantity exceeds original transfer, creating new entry"
-            );
-          }
-        } else {
-          console.log("No matching reverse transfer found, creating new entry");
         }
+
+        // If not a reverse transfer, create a new transfer/issue entry
+        // ✅ Removed attachment from header - no longer storing attachments here
+        const insertTransferQuery = `
+          INSERT INTO stocks_transfer_issue 
+          (project_id, boq_line_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const [transferResult] = await db.query<any>(insertTransferQuery, [
+          Number(body.project_id) || null,
+          Number(body.boq_line_id) || null,
+          body.transferee,
+          body.type,
+          body.from,
+          body.to,
+          body.purpose,
+          body.receiver_name,
+          body.third_party_involved,
+        ]);
+
+        const transferId = transferResult.insertId;
+
+        // ✅ Insert into junction table WITH attachment for this specific item
+        const insertJunctionQuery = `
+          INSERT INTO jt_stocks_transfer_issue_inventory_item 
+          (stocks_transfer_issue_id, inventory_item_id, quantity, serial_number, attachment) 
+          VALUES (?, ?, ?, ?, ?)
+        `;
+
+        await db.query(insertJunctionQuery, [
+          transferId,
+          body.inventory_item_id,
+          body.quantity,
+          body.serial_number || null,
+          body.attachment || null, // ✅ Attachment now stored per item
+        ]);
+
+        return NextResponse.json({
+          success: true,
+          message: "Stock transferred/issued successfully",
+          transferId: transferId,
+        });
+      } catch (error) {
+        throw error;
       }
-
-      // If not a reverse transfer, create a new transfer/issue entry as normal
-
-      const insertQuery = `
-      INSERT INTO stocks_transfer_issue 
-      (inventory_item_id, type, transferee, from_location, to_location, quantity, purpose, receiver_name, serial_number, attachment, third_party_involved, project_id, boq_line_id) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-      await db.query(insertQuery, [
-        body.inventory_item_id,
-        body.type,
-        body.transferee,
-        body.from,
-        body.to,
-        body.quantity,
-        body.purpose,
-        body.receiver_name,
-        body.serial_number,
-        body.attachment || null,
-        body.third_party_involved,
-        Number(body.project_id) || null,
-        Number(body.boq_line_id) || null,
-      ]);
-
-      return NextResponse.json({
-        success: true,
-        message: "Stock transferred/issued successfully",
-      });
     }
 
     if (body.action === "transferIssueMultipleStocks") {
-      const connection = await db.getConnection();
-
       try {
-        await connection.beginTransaction();
+        // ✅ Insert the transfer header WITHOUT attachments
+        const insertTransferQuery = `
+          INSERT INTO stocks_transfer_issue 
+          (project_id, boq_line_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
 
+        const [transferResult] = await db.query<any>(insertTransferQuery, [
+          Number(body.project_id) || null,
+          Number(body.boq_line_id) || null,
+          body.transferee,
+          body.type,
+          body.from,
+          body.to || null,
+          body.purpose,
+          body.receiver_name,
+          body.third_party_involved,
+        ]);
+
+        const transferId = transferResult.insertId;
+
+        // ✅ Insert all items into the junction table WITH individual attachments
         for (const item of body.items) {
-          const insertQuery = `
-        INSERT INTO stocks_transfer_issue 
-        (inventory_item_id, type, transferee, from_location, to_location, quantity, purpose, receiver_name, attachment, third_party_involved, project_id, boq_line_id) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+          const insertJunctionQuery = `
+            INSERT INTO jt_stocks_transfer_issue_inventory_item 
+            (stocks_transfer_issue_id, inventory_item_id, quantity, serial_number, attachment) 
+            VALUES (?, ?, ?, ?, ?)
+          `;
 
-          await connection.query(insertQuery, [
+          await db.query(insertJunctionQuery, [
+            transferId,
             item.inventory_item_id,
-            body.type,
-            body.transferee,
-            body.from,
-            body.to || null,
             item.quantity,
-            body.purpose,
-            body.receiver_name,
-            body.attachment || null,
-            body.third_party_involved,
-            Number(body.project_id) || null,
-            Number(body.boq_line_id) || null,
+            item.serial_number || null,
+            item.attachment ? JSON.stringify([item.attachment]) : null,
           ]);
         }
-
-        await connection.commit();
-        connection.release();
 
         return NextResponse.json({
           success: true,
           message: "Multiple stocks transferred/issued successfully",
+          transferId: transferId,
         });
       } catch (error) {
-        await connection.rollback();
-        connection.release();
         throw error;
       }
     }
@@ -253,33 +290,56 @@ export async function PUT(request: NextRequest) {
     }
 
     if (body.action === "receiveStock") {
-      const query = `
-        UPDATE stocks_transfer_issue
-SET received = 1,
-    received_on = NOW(),
-    full_name_of_receiver = ?,
-    received_quantity = ?
-WHERE id = ?
-      `;
+      try {
+        await db.beginTransaction();
 
-      await db.query(query, [
-        body.receiver_full_name,
-        body.received_quantity,
-        body.transfer_id,
-      ]);
+        // Update the transfer header
+        const updateTransferQuery = `
+          UPDATE stocks_transfer_issue
+          SET received = 1,
+              received_on = NOW(),
+              full_name_of_receiver = ?
+          WHERE id = ?
+        `;
 
-      return NextResponse.json({
-        success: true,
-      });
+        await db.query(updateTransferQuery, [
+          body.receiver_full_name,
+          body.transfer_id,
+        ]);
+
+        // Update the junction table with received quantity
+        // Assuming body.items is an array of {inventory_item_id, received_quantity}
+        if (body.items && Array.isArray(body.items)) {
+          for (const item of body.items) {
+            const updateJunctionQuery = `
+              UPDATE jt_stocks_transfer_issue_inventory_item
+              SET received_quantity = ?
+              WHERE stocks_transfer_issue_id = ? AND inventory_item_id = ?
+            `;
+
+            await db.query(updateJunctionQuery, [
+              item.received_quantity,
+              body.transfer_id,
+              item.inventory_item_id,
+            ]);
+          }
+        }
+
+        return NextResponse.json({
+          success: true,
+        });
+      } catch (error) {
+        throw error;
+      }
     }
 
     if (body.action === "updateSignedTSC") {
       const query = `
         UPDATE stocks_transfer_issue
-SET received = 1,
-    received_on = NOW(),
-    signed_tsc_file = ?
-WHERE id = ?
+        SET received = 1,
+            received_on = NOW(),
+            signed_tsc_file = ?
+        WHERE id = ?
       `;
 
       await db.query(query, [body.signed_tsc_file, body.transaction_id]);
@@ -292,8 +352,8 @@ WHERE id = ?
     if (body.action === "deleteSignedTSC") {
       const query = `
         UPDATE stocks_transfer_issue
-SET signed_tsc_file = NULL, received = 0
-WHERE id = ?
+        SET signed_tsc_file = NULL, received = 0
+        WHERE id = ?
       `;
 
       await db.query(query, [body.transaction_id]);

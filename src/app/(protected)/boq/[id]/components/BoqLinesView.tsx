@@ -10,7 +10,6 @@ import RenameBoqSubCategoryButton from "./manager/_RenameBoqSubCategory";
 import { useAuth } from "@/app/context/AuthContext";
 import ItemDescriptionPopUp from "./ItemDescriptionPopUp";
 import { BoqHeader } from "../types/boqHeader";
-import DownloadBoqWithPriceButton from "./manager/_DownloadBoqWithPriceButton";
 import DownloadBoqButton from "./manager/_DownloadBoqButton";
 
 type GroupedBoqLines = {
@@ -159,7 +158,7 @@ export default function BoqLinesView({
                     <br />
                     <br />
 
-                    <table className="items-table">
+                    <table className="items-table two-toned">
                       <thead>
                         <tr>
                           <th>#</th>
@@ -188,16 +187,16 @@ export default function BoqLinesView({
                                 {categoryIndex + 1}.{subCategoryIndex + 1}.
                                 {itemIndex + 1}
                               </td>
-                              <td>{item.item_name}</td>
+                              <td style={{ fontWeight: "600" }}>
+                                {item.item_name}
+                              </td>
                               <td>
-                                {item.item_description ? (
+                                {item.item_description && (
                                   <ItemDescriptionPopUp item={item} />
-                                ) : (
-                                  "-"
                                 )}
                               </td>
                               <td style={{ textWrap: "nowrap" }}>
-                                {item.location?.split(" - ").pop() || "-"}
+                                {item.location?.split(" - ").pop()}
                               </td>
                               <td style={{ textWrap: "nowrap" }}>
                                 {item.quantity} {item.unit}
@@ -444,7 +443,7 @@ export default function BoqLinesView({
                             )}
                           </td>
                           <td style={{ textWrap: "nowrap" }}>
-                            {item.location?.split(" - ").pop() || "-"}
+                            {item.location?.split(" - ").pop()}
                           </td>
                           <td style={{ textWrap: "nowrap" }}>
                             {item.quantity} {item.unit}

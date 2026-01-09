@@ -34,14 +34,18 @@ export default function EditBoqItemButton({
   const [itemName, setItemName] = useState(item.item_name);
   const [category, setCategory] = useState(item.category);
   const [subCategory, setSubCategory] = useState(item.sub_category);
-  const [scopeOfWork, setScopeOfWork] = useState(item.scope_of_work);
+  const [scopeOfWork, setScopeOfWork] = useState<string | number>(
+    item.scope_of_work
+  );
   const [locationID, setLocationID] = useState<string | number>(
     item.location_id
   );
-  const [quantity, setQuantity] = useState<string | number>(item.quantity);
+  const [quantity, setQuantity] = useState<string | number>(
+    String(item.quantity)
+  );
   const [unit, setUnit] = useState(item.unit);
   const [ratePerQuantity, setRatePerQuantity] = useState<string | number>(
-    item.rate_per_quantity
+    String(item.rate_per_quantity)
   );
   const [totalCost, setTotalCost] = useState<string | number>(item.total_cost);
   const [itemDescription, setItemDescription] = useState(item.item_description);
@@ -87,20 +91,18 @@ export default function EditBoqItemButton({
     }
   }, [isOpen, item.attachments]);
 
-  useEffect(
-    function () {
-      const timer = setTimeout(function () {
-        if (ratePerQuantity && quantity) {
-          setTotalCost(Number(ratePerQuantity) * Number(quantity));
-        }
-      }, 500);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (ratePerQuantity !== "" && quantity !== "") {
+        const total = Number(ratePerQuantity) * Number(quantity);
 
-      return function () {
-        clearTimeout(timer);
-      };
-    },
-    [ratePerQuantity, quantity]
-  );
+        // ✅ force 2 decimal places
+        setTotalCost(Number(total.toFixed(2)));
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [ratePerQuantity, quantity]);
 
   async function deleteFilesFromS3(urls: string[]) {
     const deletePromises = urls.map(async (url) => {
@@ -189,10 +191,10 @@ export default function EditBoqItemButton({
           sub_category: subCategory,
           scope_of_work: scopeOfWork,
           location_id: locationID,
-          quantity,
+          quantity: Number(quantity),
           unit,
-          rate_per_quantity: ratePerQuantity,
-          total_cost: totalCost,
+          rate_per_quantity: Number(ratePerQuantity),
+          total_cost: Number(totalCost),
           item_description: itemDescription,
           attachments: JSON.stringify(allAttachments),
         }),
@@ -276,18 +278,16 @@ export default function EditBoqItemButton({
 
           {/* 2nd row */}
           <div className="input-row half">
-            <InputItem
+            <SingleSelectDropdown
               label={"SCOPE OF WORK"}
-              value={scopeOfWork}
-              type={"select"}
-              placeholder={"SELECT SCOPE OF WORK"}
-              onChange={(e) => setScopeOfWork(e.target.value)}
+              selectedValue={scopeOfWork}
+              onChange={setScopeOfWork}
               selectOptions={[
                 "Supply",
                 "Supply & installation",
                 "Installation",
               ]}
-              required
+              placeholder="SELECT SCOPE OF WORK"
             />
             <SingleSelectDropdown
               label={"LOCATION"}
@@ -304,11 +304,12 @@ export default function EditBoqItemButton({
               label={"QUANTITY"}
               value={quantity}
               type={"text"}
-              placeholder={"ENTER QUANTITY"}
               onChange={(e) => {
                 const val = e.target.value;
-                if (val === "" || /^\d+$/.test(val)) {
-                  setQuantity(val === "" ? "" : Number(val));
+
+                // Allow empty string, whole numbers, or decimals (e.g. 1, 1.5, 0.25)
+                if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                  setQuantity(val);
                 }
               }}
               required
@@ -358,7 +359,7 @@ export default function EditBoqItemButton({
               placeholder={"ENTER RATE / QUANTITY"}
               onChange={(e) => {
                 const val = e.target.value;
-                if (val === "" || /^\d+$/.test(val)) {
+                if (val === "" || /^\d*\.?\d*$/.test(val)) {
                   setRatePerQuantity(val);
                 }
               }}

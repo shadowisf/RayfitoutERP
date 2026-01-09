@@ -42,7 +42,7 @@ export async function POST(req: Request) {
         body.category.toUpperCase(),
         body.sub_category.toUpperCase(),
         /* body.item_code, */
-        body.scope_of_work,
+        body.scope_of_work || null,
         Number(body.location_id) || null,
         Number(body.quantity),
         body.unit,
@@ -80,7 +80,7 @@ export async function PUT(req: Request) {
         body.category.toUpperCase(),
         body.sub_category.toUpperCase(),
         /* body.item_code, */
-        body.scope_of_work,
+        body.scope_of_work || null,
         Number(body.location_id) || null,
         Number(body.quantity),
         body.unit,

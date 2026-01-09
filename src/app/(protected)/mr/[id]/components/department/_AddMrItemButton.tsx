@@ -95,6 +95,7 @@ export default function AddMrItemButton({
         setMaterialSubCategoryValues(data);
       });
 
+    // Fetch BOQ lines with category and sub_category
     fetch("/api/boq/getAllBoqLinesWithNumberRef", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -104,21 +105,19 @@ export default function AddMrItemButton({
     })
       .then((res) => res.json())
       .then(function (data) {
-        setBoqLineValues(data);
-
-        const map = data.reduce(function (acc: any, boqL: any) {
-          acc[boqL.id] = `${boqL.item_name} (${boqL.item_number})`;
-          return acc;
-        }, {});
-
-        const array = Object.entries(map).map(function ([id, label]) {
+        // Transform data to include category and sub_category for categorized dropdown
+        const transformedData = data.map(function (boqLine: any) {
           return {
-            id: Number(id),
-            value: label,
+            id: boqLine.id,
+            value: `${boqLine.item_number} ${boqLine.item_name}`,
+            category: boqLine.category,
+            sub_category: boqLine.sub_category,
+            // Keep original data for reference
+            raw: boqLine,
           };
         });
 
-        setBoqLineValues(array);
+        setBoqLineValues(transformedData);
       });
   }, [projectID]);
 
@@ -210,6 +209,9 @@ export default function AddMrItemButton({
       setUnit("");
       setNotes("");
       setBoqLineID("");
+      setBrand("");
+      setSpecification("");
+      setDeliveryLocation("");
 
       router.refresh();
     } else {
@@ -287,6 +289,9 @@ export default function AddMrItemButton({
               placeholder="SELECT BILL OF QUANTITY"
               required={purposeID === 1 ? true : false}
               disabled={projectID ? false : true}
+              categorized={true}
+              categoryField="category"
+              subCategoryField="sub_category"
             />
           </div>
 
@@ -368,13 +373,6 @@ export default function AddMrItemButton({
               ]}
               required
             />
-            {/* <InputItem
-              label={"NOTES"}
-              value={notes}
-              type={"text"}
-              placeholder={"ENTER NOTES"}
-              onChange={(e) => setNotes(e.target.value)}
-            /> */}
           </div>
         </FormPopUp>
       )}

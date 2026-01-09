@@ -1753,6 +1753,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                     projectID={
                                                       mrHeader.project_id
                                                     }
+                                                    purposeID={
+                                                      mrHeader.purpose_id
+                                                    }
                                                     item={item}
                                                     bgColor={
                                                       "rgba(239, 239, 239, 1)"
@@ -2105,6 +2108,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             <>
                                               <EditMrItemButton
                                                 projectID={mrHeader.project_id}
+                                                purposeID={mrHeader.purpose_id}
                                                 item={item}
                                                 bgColor={
                                                   "rgba(239, 239, 239, 1)"

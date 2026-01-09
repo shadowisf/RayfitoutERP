@@ -8,17 +8,18 @@ import UploadSignedTSCButton from "./_UploadSignedTSCButton";
 
 type TransactionDetailsPopUpButtonProps = {
   transferID: number;
+  onSuccess?: () => void;
 };
 
 export default function TransactionDetailsPopUpButton({
   transferID,
+  onSuccess,
 }: TransactionDetailsPopUpButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const [transaction, setTransaction] = useState<any | null>(null);
 
   const externalLinkIcon = "/icons/external-link.svg";
-  const downloadIcon = "/icons/download.svg";
 
   useEffect(() => {
     async function fetchTransferDetails() {
@@ -90,12 +91,6 @@ export default function TransactionDetailsPopUpButton({
                   <h3>{transaction?.type}</h3>
                 </div>
                 <div>
-                  <small>QUANTITY</small>
-                  <h3>
-                    {transaction?.quantity} {transaction?.unit}
-                  </h3>
-                </div>
-                <div>
                   <small>TRANSFEREE</small>
                   <h3>{transaction?.transferee}</h3>
                 </div>
@@ -113,7 +108,7 @@ export default function TransactionDetailsPopUpButton({
                 </div>
                 <div>
                   <small>TRANSFER TO</small>
-                  <h3>{transaction.to_location}</h3>
+                  <h3>{transaction?.to_location}</h3>
                 </div>
                 <div>
                   <small>3RD PARTY TRANSPORTATION INVOLVED?</small>
@@ -139,15 +134,15 @@ export default function TransactionDetailsPopUpButton({
                 </div>
                 <div>
                   <small>REASON</small>
-                  <h3>{transaction.purpose}</h3>
+                  <h3>{transaction?.purpose}</h3>
                 </div>
                 <div>
                   <small>PROJECT</small>
-                  <h3>{transaction?.project_name}</h3>
+                  <h3>{transaction?.project_name || "-"}</h3>
                 </div>
                 <div>
                   <small>BOQ REFERENCE</small>
-                  <h3>{transaction?.boq_item_number}</h3>
+                  <h3>{transaction?.boq_item_number || "-"}</h3>
                 </div>
                 <div>
                   <small>ISSUED FROM</small>
@@ -156,16 +151,6 @@ export default function TransactionDetailsPopUpButton({
                 <div>
                   <small>FULL NAME OF SITE RECIPIENT</small>
                   <h3>{transaction?.receiver_name}</h3>
-                </div>
-                <div>
-                  <small>ISSUED QUANTITY</small>
-                  <h3>
-                    {transaction.quantity} {transaction.unit}
-                  </h3>
-                </div>
-                <div>
-                  <small>SERIAL / MODEL NUMBER</small>
-                  <h3>{transaction.serial_number}</h3>
                 </div>
               </div>
             )}
@@ -185,13 +170,7 @@ export default function TransactionDetailsPopUpButton({
                 </div>
                 <div>
                   <small>REASON</small>
-                  <h3>{transaction.purpose}</h3>
-                </div>
-                <div>
-                  <small>TRANSFERRED QUANTTIY</small>
-                  <h3>
-                    {transaction.quantity} {transaction.unit}
-                  </h3>
+                  <h3>{transaction?.purpose}</h3>
                 </div>
                 <div>
                   <small>FULL NAME OF RECIPIENT</small>
@@ -214,6 +193,96 @@ export default function TransactionDetailsPopUpButton({
           <br />
           <br />
 
+          <h2>MATERIALS</h2>
+          <br />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "15px",
+            }}
+          >
+            <table className="items-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>ITEM</th>
+                  <th>QUANTITY</th>
+                  <th>ATTACHMENT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transaction?.items?.map((item: any, index: number) => (
+                  <tr key={index}>
+                    <td>{index + 1}</td>
+                    <td>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "25px",
+                        }}
+                      >
+                        <div style={{ width: "50px" }}>
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt="reference image"
+                              width={50}
+                              style={{
+                                aspectRatio: "1/1",
+                                objectFit: "cover",
+                                borderRadius: "5px",
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                height: "50px",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                              }}
+                            >
+                              -
+                            </div>
+                          )}
+                        </div>
+                        {item.description}
+                      </div>
+                    </td>
+                    <td>{item.quantity}</td>
+                    <td>
+                      {item.attachment ? (
+                        <a
+                          href={item.attachment}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <img
+                            src={item.attachment}
+                            alt="item attachment"
+                            width="50"
+                            height="50"
+                            style={{
+                              objectFit: "cover",
+                              borderRadius: "5px",
+                            }}
+                          />
+                        </a>
+                      ) : (
+                        ""
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <br />
+          <br />
+
           <div
             style={{
               backgroundColor: "rgba(243, 243, 243, 1)",
@@ -228,7 +297,10 @@ export default function TransactionDetailsPopUpButton({
             <div style={{ maxWidth: "750px" }}>
               <div style={{ display: "flex", gap: "10px" }}>
                 <ViewTSNPDFButton transactionID={transferID} />
-                <UploadSignedTSCButton transactionID={transferID} />
+                <UploadSignedTSCButton
+                  transactionID={transferID}
+                  onSuccess={onSuccess}
+                />
               </div>
 
               <br />
@@ -241,43 +313,6 @@ export default function TransactionDetailsPopUpButton({
                 submissions may be rejected.
               </small>
             </div>
-          </div>
-
-          <br />
-          <br />
-
-          <div
-            style={{
-              backgroundColor: "rgba(243, 243, 243, 1)",
-              padding: "20px",
-              borderRadius: "10px",
-            }}
-          >
-            <h2>ATTACHMENTS</h2>
-
-            <br />
-
-            {transaction?.attachment && transaction?.attachment.length > 0 ? (
-              <div style={{ display: "flex", gap: "10px" }}>
-                {transaction?.attachment.map((attachment: any) => (
-                  <a
-                    href={attachment}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    key={attachment}
-                  >
-                    <img
-                      src={attachment}
-                      alt="attachment"
-                      width="100"
-                      height="100"
-                    />
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p>No attachments found.</p>
-            )}
           </div>
         </FormPopUp>
       )}

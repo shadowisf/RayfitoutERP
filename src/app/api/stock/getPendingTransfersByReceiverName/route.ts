@@ -9,18 +9,19 @@ export async function POST(request: NextRequest) {
     const query = `
       SELECT 
         sti.id,
-        sti.inventory_item_id,
-        sti.quantity,
+        jt.inventory_item_id,
+        jt.quantity,
         sti.from_location,
         sti.to_location,
         sti.created_on,
         sti.receiver_name,
         i.description
       FROM stocks_transfer_issue sti
-      INNER JOIN inventory i ON sti.inventory_item_id = i.id
+      INNER JOIN jt_stocks_transfer_issue_inventory_item jt ON sti.id = jt.stocks_transfer_issue_id
+      INNER JOIN inventory i ON jt.inventory_item_id = i.id
       WHERE (sti.receiver_name LIKE ? AND sti.receiver_name LIKE ?)
         AND sti.type LIKE '%Issue%'
-        AND sti.inventory_item_id = ?
+        AND jt.inventory_item_id = ?
         AND (sti.received IS NULL OR sti.received = 0)
       ORDER BY sti.created_on DESC
     `;

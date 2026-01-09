@@ -13,15 +13,21 @@ export default function SideBar() {
   const PROJECT_DEPARTMENT_IDS = [8, 10, 15, 16];
 
   const menuItems = [
-    { label: "Dashboard", path: "/dashboard" },
-    { label: "Material Requests", path: "/mr" },
+    { label: "Dashboard", path: "/dashboard", icon: "/icons/dashboard.svg" },
+    { label: "Material Requisitions", path: "/mr", icon: "/icons/mr.svg" },
 
     ...(PROJECT_DEPARTMENT_IDS.includes(userInfo?.departmentID ?? 0)
-      ? [{ label: "Projects", path: "/project" }]
+      ? [{ label: "Projects", path: "/project", icon: "/icons/projects.svg" }]
       : []),
 
     ...(INVENTORY_DEPARTMENT_IDS.includes(userInfo?.departmentID ?? 0)
-      ? [{ label: "Inventory", path: "/inventory" }]
+      ? [
+          {
+            label: "Inventory",
+            path: "/inventory",
+            icon: "/icons/inventory.svg",
+          },
+        ]
       : []),
   ];
 
@@ -43,6 +49,7 @@ export default function SideBar() {
             className={isActive(item.path) ? "nav-active" : ""}
             onClick={() => router.push(item.path)}
           >
+            <img src={item.icon} alt="icon" />
             {item.label}
           </button>
         ))}

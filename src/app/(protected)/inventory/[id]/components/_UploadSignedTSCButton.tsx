@@ -9,10 +9,12 @@ import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 
 type UploadSignedTSCButtonProps = {
   transactionID: number;
+  onSuccess?: () => void;
 };
 
 export default function UploadSignedTSCButton({
   transactionID,
+  onSuccess,
 }: UploadSignedTSCButtonProps) {
   const router = useRouter();
 
@@ -148,6 +150,10 @@ export default function UploadSignedTSCButton({
       router.refresh();
 
       toast("Signed DN uploaded", "success");
+
+      {
+        onSuccess && onSuccess();
+      }
 
       // Update local state
       setTscFiles(updatedTscFiles);

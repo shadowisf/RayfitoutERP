@@ -35,13 +35,14 @@ export async function POST(request: NextRequest) {
     const totalStock = stockRows.length > 0 ? stockRows[0].total_quantity : 0;
     const batchCount = stockRows.length > 0 ? stockRows[0].batch_count : 0;
 
-    // Get total issued quantity from stocks_transfer_issue table where type contains 'issue'
+    // Get total issued quantity from junction table where type contains 'issue'
     const issueQuery = `
       SELECT 
-        COALESCE(SUM(quantity), 0) as total_issued
-      FROM stocks_transfer_issue
-      WHERE inventory_item_id = ?
-      AND LOWER(type) LIKE '%issue%'
+        COALESCE(SUM(jt.quantity), 0) as total_issued
+      FROM stocks_transfer_issue sti
+      INNER JOIN jt_stocks_transfer_issue_inventory_item jt ON sti.id = jt.stocks_transfer_issue_id
+      WHERE jt.inventory_item_id = ?
+      AND LOWER(sti.type) LIKE '%issue%'
     `;
 
     const [issueRows] = await db.query<RowDataPacket[]>(issueQuery, [

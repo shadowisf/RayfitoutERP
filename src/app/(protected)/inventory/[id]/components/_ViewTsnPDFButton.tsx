@@ -68,27 +68,23 @@ export default function ViewTSNPDFButton({
     try {
       let processedTransaction = { ...transaction };
 
-      if (transaction.attachment) {
-        let urls: string[] = [];
+      // ✅ Process attachments for each item in the items array
+      if (transaction.items && Array.isArray(transaction.items)) {
+        processedTransaction.items = await Promise.all(
+          transaction.items.map(async (item: any) => {
+            let attachmentBase64 = null;
 
-        try {
-          if (Array.isArray(transaction.attachment)) {
-            urls = transaction.attachment;
-          } else if (typeof transaction.attachment === "string") {
-            const parsed = JSON.parse(transaction.attachment);
-            if (Array.isArray(parsed)) urls = parsed;
-          }
+            // If item has an attachment URL, convert it to base64
+            if (item.attachment) {
+              attachmentBase64 = await urlToBase64(item.attachment);
+            }
 
-          if (urls.length > 0) {
-            const base64Images = await Promise.all(
-              urls.map((url) => urlToBase64(url))
-            );
-
-            processedTransaction.attachment = base64Images.filter(Boolean);
-          }
-        } catch (err) {
-          console.error("Attachment processing failed:", err);
-        }
+            return {
+              ...item,
+              attachmentBase64, // ✅ Add base64 version for PDF rendering
+            };
+          })
+        );
       }
 
       const blob = await pdf(

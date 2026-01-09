@@ -27,10 +27,13 @@ Font.register({
   src: "/fonts/Mont-Bold.otf",
 });
 
+Font.registerHyphenationCallback((word) => [word]);
+
 const styles = StyleSheet.create({
   page: {
     backgroundColor: "#ffffff",
     padding: 20,
+    paddingBottom: 60, // ✅ Added bottom padding to prevent overlap
     fontFamily: "Mont",
   },
 
@@ -163,12 +166,15 @@ const styles = StyleSheet.create({
   // ✅ Subtotal Row - Inside table with aligned columns
   subtotalRow: {
     flexDirection: "row",
-    padding: "8 12",
+    paddingTop: 8,
+    paddingBottom: 6,
+    paddingRight: 12,
+    paddingLeft: 12,
     backgroundColor: "white",
     fontSize: 8,
     fontFamily: "Mont-SemiBold",
     alignItems: "flex-start",
-    marginBottom: 20,
+    marginBottom: 40, // ✅ Increased margin to give more space before next section
     border: "1px solid #f5f5f5",
   },
 
@@ -260,17 +266,9 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   detailColCategory: {
-    width: "35%",
+    width: "45%",
     paddingRight: 4,
     fontSize: 7,
-  },
-  detailColDescription: {
-    width: "28%",
-    paddingRight: 4,
-  },
-  detailColLocation: {
-    width: "15%",
-    paddingRight: 4,
   },
   detailColQty: {
     width: "10%",
@@ -291,8 +289,8 @@ const styles = StyleSheet.create({
 
   // Attachment Image
   attachmentImage: {
-    width: 40,
-    height: 40,
+    width: 30,
+    height: 30,
     objectFit: "contain",
   },
   attachmentContainer: {
@@ -301,8 +299,43 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   attachmentWrapper: {
-    width: 40,
-    height: 40,
+    width: 30,
+    height: 30,
+  },
+
+  // Location and Scope styles - same line
+  locationScopeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  locationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  locationIcon: {
+    width: 10,
+    marginBottom: 3,
+  },
+  locationText: {
+    color: "rgba(105, 105, 105, 1)",
+    fontSize: 7,
+    marginTop: 3,
+  },
+  scopeBadge: {
+    paddingTop: 3,
+    paddingBottom: 1,
+    paddingRight: 8,
+    paddingLeft: 8,
+    borderRadius: 50,
+    backgroundColor: "rgba(225, 225, 225, 1)",
+  },
+  scopeText: {
+    fontFamily: "Mont-Bold",
+    fontSize: 6,
   },
 
   // Page Number
@@ -328,6 +361,7 @@ type BoqPDFProps = {
 
 export function BoqPDFWithNoPrice({ boqLines, boqHeader }: BoqPDFProps) {
   const logo = "/icons/logo.jpg";
+  const locationIcon = "/icons/location-boq.png";
 
   // Calculate totals for each category and subcategory
   const categoryTotals: {
@@ -411,13 +445,21 @@ export function BoqPDFWithNoPrice({ boqLines, boqHeader }: BoqPDFProps) {
 
             return (
               <View key={categoryIndex} style={rowStyle}>
-                <Text style={styles.tableColItemNo}>{categoryIndex + 1}</Text>
+                <Text style={styles.tableColItemNo}>{categoryIndex + 1}.0</Text>
                 <Text style={styles.tableColDescription}>
                   {category.toUpperCase()}
                 </Text>
               </View>
             );
           })}
+        </View>
+
+        {/* Total Row */}
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>GRAND TOTAL</Text>
+          <Text style={styles.totalValue}>
+            AED {grandTotal.toLocaleString()}
+          </Text>
         </View>
 
         {/* Bottom Section - Terms */}
@@ -476,7 +518,10 @@ export function BoqPDFWithNoPrice({ boqLines, boqHeader }: BoqPDFProps) {
                   <View key={subIndex}>
                     {/* Subcategory Title */}
                     <View wrap={false}>
-                      <Text style={styles.subCategoryTitle}>
+                      <Text
+                        style={styles.subCategoryTitle}
+                        hyphenationCallback={(word) => [word]}
+                      >
                         {categoryIndex + 1}.{subIndex + 1}{" "}
                         {category.toUpperCase()} / {subCategory.toUpperCase()}
                       </Text>
@@ -485,8 +530,7 @@ export function BoqPDFWithNoPrice({ boqLines, boqHeader }: BoqPDFProps) {
                       <View style={styles.detailTableHeader}>
                         <Text style={styles.detailColItemNo}>#</Text>
                         <Text style={styles.detailColCategory}>ITEM</Text>
-                        <Text style={styles.detailColLocation}>LOCATION</Text>
-                        <Text style={styles.detailColQty}>QUANTITY</Text>
+                        <Text style={styles.detailColQty}>QTY</Text>
                         <Text style={styles.detailColAttachment}>
                           ATTACHMENT(S)
                         </Text>
@@ -507,49 +551,61 @@ export function BoqPDFWithNoPrice({ boqLines, boqHeader }: BoqPDFProps) {
                           </Text>
 
                           <View style={styles.detailColCategory}>
+                            {/* Item Name */}
                             <Text
                               style={{
                                 fontFamily: "Mont-Bold",
-                                marginBottom: 7,
+                                marginBottom: 5,
                               }}
+                              hyphenationCallback={(word) => [word]}
                             >
                               {item.item_name}
                             </Text>
 
+                            {/* Item Description */}
                             {item.item_description && (
-                              <Text style={{ marginBottom: 7 }}>
+                              <Text
+                                style={{ marginBottom: 5 }}
+                                hyphenationCallback={(word) => [word]}
+                              >
                                 {item.item_description}
                               </Text>
                             )}
 
-                            <View
-                              style={{
-                                paddingTop: 3,
-                                paddingBottom: 1,
-                                paddingRight: 5,
-                                paddingLeft: 5,
-                                borderRadius: 50,
-                                backgroundColor: "rgba(225, 225, 225, 1)",
-                                alignSelf: "flex-start",
-                                display: "flex",
-                                flexDirection: "row",
-                                alignItems: "center",
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  fontFamily: "Mont-Bold",
-                                  fontSize: 7,
-                                }}
-                              >
-                                {item.scope_of_work}
-                              </Text>
-                            </View>
+                            {/* Location and Scope on same line */}
+                            {(item.location || item.scope_of_work) && (
+                              <View style={styles.locationScopeRow}>
+                                {/* Location with Icon */}
+                                {item.location && (
+                                  <View style={styles.locationContainer}>
+                                    <Image
+                                      src={locationIcon}
+                                      style={styles.locationIcon}
+                                    />
+                                    <Text
+                                      style={styles.locationText}
+                                      hyphenationCallback={(word) => [word]}
+                                    >
+                                      {item.location}
+                                    </Text>
+                                  </View>
+                                )}
+
+                                {/* Scope of Work Badge */}
+                                {item.scope_of_work && (
+                                  <View style={styles.scopeBadge}>
+                                    <Text
+                                      style={styles.scopeText}
+                                      hyphenationCallback={(word) => [word]}
+                                    >
+                                      {item.scope_of_work}
+                                    </Text>
+                                  </View>
+                                )}
+                              </View>
+                            )}
                           </View>
 
-                          <Text style={styles.detailColLocation}>
-                            {item.location?.split("-").pop()}
-                          </Text>
                           <Text style={styles.detailColQty}>
                             {item.quantity} {item.unit}
                           </Text>

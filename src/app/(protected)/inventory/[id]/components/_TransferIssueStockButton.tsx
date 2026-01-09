@@ -68,21 +68,18 @@ export default function TransferIssueStocksButton({
     })
       .then((res) => res.json())
       .then(function (data) {
-        setBoqLineValues(data);
-
-        const map = data.reduce(function (acc: any, boqL: any) {
-          acc[boqL.id] = `${boqL.item_name} (${boqL.item_number})`;
-          return acc;
-        }, {});
-
-        const array = Object.entries(map).map(function ([id, label]) {
+        const transformedData = data.map(function (boqLine: any) {
           return {
-            id: Number(id),
-            value: label,
+            id: boqLine.id,
+            value: `${boqLine.item_number} ${boqLine.item_name}`,
+            category: boqLine.category,
+            sub_category: boqLine.sub_category,
+            // Keep original data for reference
+            raw: boqLine,
           };
         });
 
-        setBoqLineValues(array);
+        setBoqLineValues(transformedData);
       });
   }, [projectID]);
 
@@ -168,6 +165,17 @@ export default function TransferIssueStocksButton({
 
     setAvailableQuantity(locationQuantity > 0 ? locationQuantity : 0);
   }, [from, stocksData]);
+
+  useEffect(() => {
+    setFrom("");
+    setTo("");
+    setPurpose("");
+    setReceiverName("");
+    setFile(null);
+    setThirdParty(false);
+    setProjectID("");
+    setBoqLineID("");
+  }, [type]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -357,6 +365,9 @@ export default function TransferIssueStocksButton({
                 placeholder="SELECT BILL OF QUANTITY REFERENCE"
                 required={false}
                 disabled={projectID === ""}
+                categorized={true}
+                categoryField="category"
+                subCategoryField="sub_category"
               />
             </div>
           )}

@@ -58,7 +58,7 @@ export default function DownloadBoqButton({
               >
                 <div style={{ display: "flex", gap: "20px" }}>
                   <img src={fileIcon} style={{ scale: 2 }} />{" "}
-                  <span>DOWNLOAD WITH PRICE</span>
+                  <span>Priced BOQ</span>
                 </div>{" "}
                 <img src={downloadIcon} />
               </div>
@@ -83,7 +83,7 @@ export default function DownloadBoqButton({
               >
                 <div style={{ display: "flex", gap: "20px" }}>
                   <img src={fileIcon} style={{ scale: 2 }} />{" "}
-                  <span>DOWNLOAD WITHOUT PRICE</span>
+                  <span>Unpriced BOQ</span>
                 </div>{" "}
                 <img src={downloadIcon} />
               </div>

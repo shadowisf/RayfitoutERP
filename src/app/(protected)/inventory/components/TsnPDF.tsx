@@ -21,10 +21,13 @@ Font.register({
   src: "/fonts/Mont-SemiBold.otf",
 });
 
+Font.registerHyphenationCallback((word) => [word]);
+
 const styles = StyleSheet.create({
   page: {
     backgroundColor: "#ffffff",
     padding: 20,
+    paddingBottom: 60,
     fontFamily: "Mont",
     textTransform: "uppercase",
   },
@@ -132,15 +135,19 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: "#333333",
     minHeight: 60,
+    alignItems: "flex-start",
   },
   tableColIndex: {
     width: "5%",
   },
   tableColDescription: {
-    width: "25%",
+    width: "30%",
   },
   tableColQuantity: {
-    width: "25%",
+    width: "20%",
+  },
+  tableColSerial: {
+    width: "20%",
   },
   tableColAttachments: {
     width: "25%",
@@ -148,18 +155,18 @@ const styles = StyleSheet.create({
 
   // Attachment Image Styles
   attachmentImage: {
-    width: 50,
+    width: 40,
+    height: 40,
     objectFit: "contain",
   },
   attachmentContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    width: 130,
+    gap: 3,
   },
   attachmentWrapper: {
-    width: 50,
-    marginRight: 5,
-    marginBottom: 5,
+    width: 40,
+    height: 40,
   },
 
   // Bottom Section
@@ -222,6 +229,24 @@ type TsnPDFProps = {
 
 export function TsnPDF({ transaction }: TsnPDFProps) {
   const logo = "/icons/logo.jpg";
+  const items = transaction?.items || [];
+
+  // Calculate dynamic margin based on number of items
+  const calculateBottomMargin = () => {
+    const itemCount = items.length;
+    const isIssue = transaction?.type?.toLowerCase().includes("issue");
+
+    // Base margin
+    let margin = isIssue ? 0 : 0;
+
+    // Reduce margin by 30 for each additional item beyond 1
+    if (itemCount > 1) {
+      margin -= (itemCount - 1) * 30;
+    }
+
+    // Ensure margin doesn't go below 20
+    return Math.max(margin, 20);
+  };
 
   return (
     <Document>
@@ -357,63 +382,61 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <Text style={styles.tableColIndex}>#</Text>
-            <Text style={styles.tableColDescription}>MATERIAL DESCRIPTION</Text>
-            <Text style={styles.tableColQuantity}>QUANTITY TRANSFERRED</Text>
+            <Text style={styles.tableColDescription}>ITEM</Text>
+            <Text style={styles.tableColQuantity}>QUANTITY</Text>
             {transaction.type.toLowerCase().includes("issue") && (
-              <Text style={styles.tableColQuantity}>MODEL / SERIAL NUMBER</Text>
+              <Text style={styles.tableColSerial}>MODEL / SERIAL NUMBER</Text>
             )}
             <Text style={styles.tableColAttachments}>ATTACHMENT(S)</Text>
           </View>
-          <View style={styles.tableRow}>
-            <Text style={styles.tableColIndex}>1</Text>
-            <Text style={styles.tableColDescription}>
-              {transaction?.description}
-            </Text>
-            <Text style={styles.tableColQuantity}>
-              {transaction?.quantity} {transaction?.unit}
-            </Text>
-            {transaction.type.toLowerCase().includes("issue") && (
-              <Text style={styles.tableColQuantity}>
-                {transaction.serial_number || "N/A"}
-              </Text>
-            )}
-            <View style={styles.tableColAttachments}>
-              {transaction.attachment &&
-                Array.isArray(transaction.attachment) &&
-                transaction.attachment.length > 0 && (
-                  <View style={styles.attachmentContainer}>
-                    {transaction.attachment.map(
-                      (base64Url: string, i: number) => {
-                        if (!base64Url || base64Url.trim() === "") return null;
 
-                        return (
-                          <View key={i} style={styles.attachmentWrapper}>
-                            <Image
-                              src={base64Url}
-                              style={styles.attachmentImage}
-                            />
-                          </View>
-                        );
-                      }
-                    )}
-                  </View>
+          {/* Map through all items */}
+          {items.length > 0 ? (
+            items.map((item: any, index: number) => (
+              <View key={index} style={styles.tableRow}>
+                <Text style={styles.tableColIndex}>{index + 1}</Text>
+                <Text
+                  style={styles.tableColDescription}
+                  hyphenationCallback={(word) => [word]}
+                >
+                  {item.description}
+                </Text>
+                <Text style={styles.tableColQuantity}>
+                  {item.quantity} {item.unit}
+                </Text>
+                {transaction.type.toLowerCase().includes("issue") && (
+                  <Text
+                    style={styles.tableColSerial}
+                    hyphenationCallback={(word) => [word]}
+                  >
+                    {item.serial_number || "N/A"}
+                  </Text>
                 )}
+                <View style={styles.tableColAttachments}>
+                  {item.attachmentBase64 && (
+                    <View style={styles.attachmentContainer}>
+                      <View style={styles.attachmentWrapper}>
+                        <Image
+                          src={item.attachmentBase64}
+                          style={styles.attachmentImage}
+                        />
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={styles.tableRow}>
+              <Text style={{ width: "100%", textAlign: "center" }}>
+                No items found
+              </Text>
             </View>
-          </View>
+          )}
         </View>
 
         {/* Bottom Section - Two Signatures */}
-        <View
-          style={
-            transaction.type.toLowerCase().includes("issue")
-              ? {
-                  marginTop: 175,
-                }
-              : {
-                  marginTop: 125,
-                }
-          }
-        >
+        <View style={{ marginTop: calculateBottomMargin() }}>
           {/* Driver/Transport Custody Section */}
           {(transaction.type.toLowerCase().includes("transfer") ||
             transaction.type.toLowerCase().includes("send")) && (

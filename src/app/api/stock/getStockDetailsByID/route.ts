@@ -19,16 +19,20 @@ export async function POST(request: NextRequest) {
         sti.from_location,
         sti.to_location,
         sti.receiver_name,
-        sti.quantity,
         sti.received,
         sti.received_on,
         sti.signed_tsc_file,
         sti.third_party_involved,
-        sti.attachment,
-        sti.serial_number,
+        sti.receiver_name,
+        
+        -- Junction table fields (inventory items)
+        jt.inventory_item_id,
+        jt.quantity,
+        jt.serial_number,
+        jt.received_quantity,
+        jt.attachment,
         
         -- Inventory Item fields
-        sti.inventory_item_id,
         i.description,
         i.unit,
         i.category_id,
@@ -52,13 +56,14 @@ export async function POST(request: NextRequest) {
         (
           SELECT s.batch_id 
           FROM stocks s 
-          WHERE s.inventory_item_id = sti.inventory_item_id 
+          WHERE s.inventory_item_id = jt.inventory_item_id 
           ORDER BY s.created_at DESC 
           LIMIT 1
         ) as batch_id
         
       FROM stocks_transfer_issue sti
-      INNER JOIN inventory i ON sti.inventory_item_id = i.id
+      LEFT JOIN jt_stocks_transfer_issue_inventory_item jt ON sti.id = jt.stocks_transfer_issue_id
+      LEFT JOIN inventory i ON jt.inventory_item_id = i.id
       LEFT JOIN projects p ON sti.project_id = p.id
       LEFT JOIN boq_lines bl ON sti.boq_line_id = bl.id
       WHERE sti.id = ?
@@ -73,16 +78,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const row = rows[0];
+    // Group the results - one transfer can have multiple items
+    const transferData = {
+      id: rows[0].id,
+      project_id: rows[0].project_id,
+      boq_line_id: rows[0].boq_line_id,
+      created_on: rows[0].created_on,
+      type: rows[0].type,
+      transferee: rows[0].transferee,
+      purpose: rows[0].purpose,
+      from_location: rows[0].from_location,
+      to_location: rows[0].to_location,
+      receiver_name: rows[0].receiver_name,
+      received: rows[0].received,
+      received_on: rows[0].received_on,
+      signed_tsc_file: rows[0].signed_tsc_file,
+      third_party_involved: rows[0].third_party_involved,
+      full_name_of_receiver: rows[0].receiver_name,
+      project_name: rows[0].project_name,
+      boq_category: rows[0].boq_category,
+      boq_sub_category: rows[0].boq_sub_category,
+      items: [] as any[],
+    };
 
     // Calculate BOQ item number if project_id and boq_line_id exist
     let boq_item_number = null;
-    if (row.project_id && row.boq_line_id) {
+    if (rows[0].project_id && rows[0].boq_line_id) {
       try {
         // Fetch all BOQ lines for this project
         const [boqRows]: any = await db.query(
           `SELECT * FROM vw_boq_lines WHERE project_id = ?`,
-          [row.project_id]
+          [rows[0].project_id]
         );
 
         // Track numbering
@@ -118,7 +144,7 @@ export async function POST(request: NextRequest) {
           const itemNumber = currentCount + 1;
 
           // Check if this is our target BOQ line
-          if (boqRow.id === row.boq_line_id) {
+          if (boqRow.id === rows[0].boq_line_id) {
             boq_item_number = `${categoryNumber}.${subCategoryNumber}.${itemNumber}`;
             break;
           }
@@ -128,10 +154,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Process each inventory item in the transfer
+    for (const row of rows) {
+      if (row.inventory_item_id) {
+        transferData.items.push({
+          inventory_item_id: row.inventory_item_id,
+          quantity: row.quantity,
+          serial_number: row.serial_number,
+          received_quantity: row.received_quantity,
+          attachment: row.attachment, // ✅ Added attachment from junction table
+          batch_id: row.batch_id,
+          description: row.description,
+          unit: row.unit,
+          category_id: row.category_id,
+          subcategory_id: row.subcategory_id,
+          type_item: row.type_item,
+          stockable: row.stockable,
+          minimum_stock_quantity: row.minimum_stock_quantity,
+          brand: row.brand,
+          country_of_origin: row.country_of_origin,
+          specification: row.specification,
+          image: row.image,
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
-        ...row,
+        ...transferData,
         boq_item_number,
       },
     });

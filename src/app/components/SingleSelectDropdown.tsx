@@ -4,6 +4,15 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Button from "./Button";
 
+type OptionType = {
+  id: string | number;
+  label: string;
+  tooltip: string | null;
+  category?: string | null;
+  subcategory?: string | null;
+  raw: any;
+};
+
 type SingleSelectDropdownProps = {
   label: string;
   selectedValue: string | number;
@@ -23,6 +32,9 @@ type SingleSelectDropdownProps = {
   style?: React.CSSProperties;
   formatOptionLabel?: (item: any) => string;
   bottomButtonComponent?: React.ReactNode;
+  categorized?: boolean;
+  categoryField?: string;
+  subCategoryField?: string;
 };
 
 export default function SingleSelectDropdown({
@@ -44,6 +56,9 @@ export default function SingleSelectDropdown({
   onCreateClick,
   formatOptionLabel,
   bottomButtonComponent,
+  categorized = false,
+  categoryField = "category",
+  subCategoryField = "subcategory",
 }: SingleSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,12 +83,14 @@ export default function SingleSelectDropdown({
     setIsMounted(true);
   }, []);
 
-  function getOptions() {
+  function getOptions(): OptionType[] {
     if (selectOptions) {
       return selectOptions.map((o) => ({
         id: o,
         label: o,
         tooltip: null,
+        category: null,
+        subcategory: null,
         raw: o,
       }));
     }
@@ -83,6 +100,8 @@ export default function SingleSelectDropdown({
         id: item[idField],
         label: formatOptionLabel ? formatOptionLabel(item) : item[labelField],
         tooltip: item[tooltipField] || null,
+        category: categorized ? item[categoryField] || null : null,
+        subcategory: categorized ? item[subCategoryField] || null : null,
         raw: item,
       }));
     }
@@ -96,6 +115,38 @@ export default function SingleSelectDropdown({
     option.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Group options by category and subcategory if categorized
+  function getGroupedOptions() {
+    if (!categorized) {
+      return null;
+    }
+
+    const grouped: {
+      [category: string]: {
+        [subcategory: string]: OptionType[];
+      };
+    } = {};
+
+    filteredOptions.forEach((option) => {
+      const cat = option.category || "Uncategorized";
+      const subcat = option.subcategory || "General";
+
+      if (!grouped[cat]) {
+        grouped[cat] = {};
+      }
+
+      if (!grouped[cat][subcat]) {
+        grouped[cat][subcat] = [];
+      }
+
+      grouped[cat][subcat].push(option);
+    });
+
+    return grouped;
+  }
+
+  const groupedOptions = getGroupedOptions();
+
   // Click outside handler
   useEffect(() => {
     if (!isOpen) return;
@@ -103,16 +154,13 @@ export default function SingleSelectDropdown({
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
 
-      // Check if click is outside the container
       const isOutsideContainer =
         containerRef.current && !containerRef.current.contains(target);
 
-      // Check if click is outside the dropdown portal
       const dropdownElement = document.getElementById(dropdownId.current);
       const isOutsideDropdown =
         dropdownElement && !dropdownElement.contains(target);
 
-      // Check if click is on another dropdown or modal
       const clickedElement = target as HTMLElement;
       const isOnAnotherDropdown = clickedElement.closest(
         ".select-dropdown-portal"
@@ -121,7 +169,6 @@ export default function SingleSelectDropdown({
         clickedElement.closest(".form-popup-overlay") ||
         clickedElement.closest(".form-popup");
 
-      // Close if clicked outside both AND not on another dropdown/modal
       if (
         isOutsideContainer &&
         isOutsideDropdown &&
@@ -134,7 +181,6 @@ export default function SingleSelectDropdown({
       }
     }
 
-    // Add slight delay to prevent immediate closing when opening
     setTimeout(() => {
       document.addEventListener("mousedown", handleClickOutside);
     }, 0);
@@ -248,7 +294,7 @@ export default function SingleSelectDropdown({
         background: "white",
         border: "1px solid #d9d9d9",
         borderRadius: "5px",
-        maxHeight: "250px",
+        maxHeight: "400px",
         zIndex: 10000,
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
       }}
@@ -279,66 +325,176 @@ export default function SingleSelectDropdown({
 
       <div
         style={{
-          maxHeight: "200px",
+          maxHeight: "300px",
           overflowY: "auto",
         }}
       >
-        {filteredOptions.length > 0 ? (
-          filteredOptions.map((option) => {
-            const isSelected = String(option.id) === String(selectedValue);
-
-            return (
-              <div
-                key={option.id}
-                className={`select-option ${isSelected ? "selected" : ""}`}
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => handleOptionClick(option.id)}
-                onMouseEnter={(e) => handleMouseEnter(option.id, e)}
-                onMouseLeave={handleMouseLeave}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "7px",
-                  cursor: "pointer",
-                  transition: "background-color 0.2s",
-                  backgroundColor: isSelected ? "#f0f0f0" : "transparent",
-                }}
-                onMouseOver={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.backgroundColor = "#f5f5f5";
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }
-                }}
-              >
-                <span
+        {categorized && groupedOptions ? (
+          // Render categorized options
+          Object.entries(groupedOptions).length > 0 ? (
+            Object.entries(groupedOptions).map(([category, subcategories]) => (
+              <div key={category}>
+                {/* Category Header */}
+                <div
                   style={{
+                    padding: "8px 12px",
+                    fontWeight: "bold",
+                    fontSize: "12px",
+                    textTransform: "uppercase",
                     color: "#000",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    flex: 1,
+                    backgroundColor: "#f5f5f5",
                   }}
                 >
-                  {option.label}
-                </span>
+                  {category}
+                </div>
+
+                {/* Subcategories */}
+                {Object.entries(subcategories).map(
+                  ([subcategory, subOptions]) => (
+                    <div key={subcategory}>
+                      {/* Subcategory Header */}
+                      <div
+                        style={{
+                          padding: "6px 12px 6px 24px",
+                          fontSize: "11px",
+                          textTransform: "uppercase",
+                          color: "#666",
+                          fontWeight: "600",
+                        }}
+                      >
+                        {subcategory}
+                      </div>
+
+                      {/* Options */}
+                      {subOptions.map((option) => {
+                        const isSelected =
+                          String(option.id) === String(selectedValue);
+
+                        return (
+                          <div
+                            key={option.id}
+                            className={`select-option ${
+                              isSelected ? "selected" : ""
+                            }`}
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => handleOptionClick(option.id)}
+                            onMouseEnter={(e) => handleMouseEnter(option.id, e)}
+                            onMouseLeave={handleMouseLeave}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              padding: "7px 12px 7px 40px",
+                              cursor: "pointer",
+                              transition: "background-color 0.2s",
+                              backgroundColor: isSelected
+                                ? "#f0f0f0"
+                                : "transparent",
+                            }}
+                            onMouseOver={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.backgroundColor =
+                                  "#f9f9f9";
+                              }
+                            }}
+                            onMouseOut={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.backgroundColor =
+                                  "transparent";
+                              }
+                            }}
+                          >
+                            <span
+                              style={{
+                                color: "#000",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                flex: 1,
+                              }}
+                            >
+                              {option.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )
+                )}
               </div>
-            );
-          })
+            ))
+          ) : (
+            <div
+              style={{
+                padding: "12px",
+                color: "#888",
+                textAlign: "center",
+              }}
+            >
+              {searchQuery ? "No results found" : "No options available"}
+            </div>
+          )
         ) : (
-          <div
-            style={{
-              padding: "12px",
-              color: "#888",
-              textAlign: "center",
-            }}
-          >
-            {searchQuery ? "No results found" : "No options available"}
-          </div>
+          // Render flat options
+          <>
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option) => {
+                const isSelected = String(option.id) === String(selectedValue);
+
+                return (
+                  <div
+                    key={option.id}
+                    className={`select-option ${isSelected ? "selected" : ""}`}
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => handleOptionClick(option.id)}
+                    onMouseEnter={(e) => handleMouseEnter(option.id, e)}
+                    onMouseLeave={handleMouseLeave}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "7px",
+                      cursor: "pointer",
+                      transition: "background-color 0.2s",
+                      backgroundColor: isSelected ? "#f0f0f0" : "transparent",
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.backgroundColor = "#f5f5f5";
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "#000",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        flex: 1,
+                      }}
+                    >
+                      {option.label}
+                    </span>
+                  </div>
+                );
+              })
+            ) : (
+              <div
+                style={{
+                  padding: "12px",
+                  color: "#888",
+                  textAlign: "center",
+                }}
+              >
+                {searchQuery ? "No results found" : "No options available"}
+              </div>
+            )}
+          </>
         )}
       </div>
 

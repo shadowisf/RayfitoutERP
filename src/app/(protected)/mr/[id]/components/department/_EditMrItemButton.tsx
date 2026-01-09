@@ -17,6 +17,7 @@ type EditMrItemButtonProps = {
   borderColor?: string;
   children?: React.ReactNode;
   full?: boolean;
+  purposeID: number;
 };
 
 export default function EditMrItemButton({
@@ -27,6 +28,7 @@ export default function EditMrItemButton({
   borderColor = "rgba(239, 239, 239, 1)",
   children,
   full,
+  purposeID,
 }: EditMrItemButtonProps) {
   const router = useRouter();
 
@@ -89,21 +91,19 @@ export default function EditMrItemButton({
     })
       .then((res) => res.json())
       .then(function (data) {
-        setBoqLineValues(data);
-
-        const map = data.reduce(function (acc: any, boqL: any) {
-          acc[boqL.id] = `${boqL.item_name} (${boqL.item_number})`;
-          return acc;
-        }, {});
-
-        const array = Object.entries(map).map(function ([id, label]) {
+        // Transform data to include category and sub_category for categorized dropdown
+        const transformedData = data.map(function (boqLine: any) {
           return {
-            id: Number(id),
-            value: label,
+            id: boqLine.id,
+            value: `${boqLine.item_number} ${boqLine.item_name}`,
+            category: boqLine.category,
+            sub_category: boqLine.sub_category,
+            // Keep original data for reference
+            raw: boqLine,
           };
         });
 
-        setBoqLineValues(array);
+        setBoqLineValues(transformedData);
       });
   }, [projectID]);
 
@@ -260,8 +260,11 @@ export default function EditMrItemButton({
               selectedValue={boqLineID}
               onChange={setBoqLineID}
               placeholder="SELECT BILL OF QUANTITY"
-              required={false}
+              required={purposeID === 1 ? true : false}
               disabled={projectID ? false : true}
+              categorized={true}
+              categoryField="category"
+              subCategoryField="sub_category"
             />
           </div>
 

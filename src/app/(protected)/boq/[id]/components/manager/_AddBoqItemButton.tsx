@@ -41,7 +41,7 @@ export default function AddBoqItemButton({
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
-  const [scopeOfWork, setScopeOfWork] = useState("");
+  const [scopeOfWork, setScopeOfWork] = useState<string | number>("");
   const [locationID, setLocationID] = useState<string | number>("");
   const [quantity, setQuantity] = useState<string | number>("");
   const [unit, setUnit] = useState("");
@@ -229,20 +229,16 @@ export default function AddBoqItemButton({
 
           {/* 2nd row */}
           <div className="input-row half">
-            <InputItem
+            <SingleSelectDropdown
               label={"SCOPE OF WORK"}
-              value={scopeOfWork}
-              type={"select"}
-              placeholder={"SELECT SCOPE OF WORK"}
-              onChange={(e) => {
-                setScopeOfWork(e.target.value);
-              }}
+              selectedValue={scopeOfWork}
+              onChange={setScopeOfWork}
               selectOptions={[
                 "Supply",
                 "Supply & installation",
                 "Installation",
               ]}
-              required
+              placeholder="SELECT SCOPE OF WORK"
             />
 
             <SingleSelectDropdown

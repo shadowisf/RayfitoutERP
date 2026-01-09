@@ -17,6 +17,7 @@ type SelectedItem = {
   unit: string;
   available_qty: number;
   quantity: number;
+  serial_number?: string;
   attachment?: File | null;
 };
 
@@ -132,11 +133,18 @@ export default function TransferIssueMultipleStocks() {
       })
         .then((res) => res.json())
         .then(function (data) {
-          const array = data.map((item: any) => ({
-            id: item.id,
-            value: `${item.item_name} (${item.item_number})`,
-          }));
-          setBoqLineValues(array);
+          const transformedData = data.map(function (boqLine: any) {
+            return {
+              id: boqLine.id,
+              value: `${boqLine.item_number} ${boqLine.item_name}`,
+              category: boqLine.category,
+              sub_category: boqLine.sub_category,
+              // Keep original data for reference
+              raw: boqLine,
+            };
+          });
+
+          setBoqLineValues(transformedData);
         });
     }
   }, [projectID]);
@@ -168,6 +176,18 @@ export default function TransferIssueMultipleStocks() {
       fetchMaterialQuantitiesForLocation();
     }
   }, [isSelectMaterialOpen, inventoryItems, from]);
+
+  useEffect(() => {
+    setFrom("");
+    setTo("");
+    setPurpose("");
+    setReceiverName("");
+    setFile(null);
+    setThirdParty(false);
+    setProjectID("");
+    setBoqLineID("");
+    setSelectedItems([]);
+  }, [type]);
 
   // Fetch available quantity for a specific item from a location
   async function fetchAvailableQuantity(
@@ -250,6 +270,7 @@ export default function TransferIssueMultipleStocks() {
           unit: inventoryItem.unit,
           available_qty: availableQty,
           quantity: 0,
+          serial_number: "",
           attachment: null,
         });
       }
@@ -264,6 +285,19 @@ export default function TransferIssueMultipleStocks() {
       selectedItems.map((item) =>
         item.inventory_item_id === inventoryItemId
           ? { ...item, quantity }
+          : item
+      )
+    );
+  }
+
+  function handleSerialNumberChange(
+    inventoryItemId: number,
+    serialNumber: string
+  ) {
+    setSelectedItems(
+      selectedItems.map((item) =>
+        item.inventory_item_id === inventoryItemId
+          ? { ...item, serial_number: serialNumber }
           : item
       )
     );
@@ -333,91 +367,101 @@ export default function TransferIssueMultipleStocks() {
       }
     }
 
-    // Upload individual attachments for each item
-    const itemsWithAttachments = await Promise.all(
-      selectedItems.map(async (item) => {
-        let attachmentUrl: string[] = [];
+    try {
+      // ✅ Upload each item's attachment individually and prepare items with their attachment URLs
+      const itemsForBackend = await Promise.all(
+        selectedItems.map(async (item) => {
+          let attachmentUrl = null;
 
-        if (item.attachment) {
-          try {
-            const formData = new FormData();
-            formData.append("files", item.attachment);
-            formData.append("folder", "stock-issue-attachments");
+          if (item.attachment) {
+            try {
+              const formData = new FormData();
+              formData.append("files", item.attachment);
+              formData.append("folder", "stock-issue-attachments");
 
-            const uploadResponse = await fetch("/api/s3", {
-              method: "POST",
-              body: formData,
-            });
+              const uploadResponse = await fetch("/api/s3", {
+                method: "POST",
+                body: formData,
+              });
 
-            if (!uploadResponse.ok) {
-              throw new Error(`Failed to upload file for ${item.description}`);
+              if (!uploadResponse.ok) {
+                throw new Error(
+                  `Failed to upload file for ${item.description}`
+                );
+              }
+
+              const uploadResult = await uploadResponse.json();
+              attachmentUrl = uploadResult.urls[0]; // Get the S3 URL
+            } catch (error) {
+              console.error(
+                `Error uploading file for ${item.description}:`,
+                error
+              );
+              toast(`Failed to upload file for ${item.description}`, "error");
+              throw error;
             }
-
-            const uploadResult = await uploadResponse.json();
-            attachmentUrl = uploadResult.urls;
-          } catch (error) {
-            console.error(
-              `Error uploading file for ${item.description}:`,
-              error
-            );
-            toast(`Failed to upload file for ${item.description}`, "error");
-            throw error;
           }
-        }
 
-        return {
-          inventory_item_id: item.inventory_item_id,
-          quantity: item.quantity,
-          attachment:
-            attachmentUrl.length > 0 ? JSON.stringify(attachmentUrl) : null,
-        };
-      })
-    );
-
-    // Submit all items
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "transferIssueMultipleStocks",
-        items: itemsWithAttachments,
-        project_id: projectID,
-        boq_line_id: boqLineID,
-        type,
-        transferee: userInfo?.name,
-        from,
-        to,
-        purpose,
-        third_party_involved: thirdParty,
-        receiver_name: receiverName,
-      }),
-    });
-
-    if (res.ok) {
-      toast(
-        type.toLowerCase().includes("transfer")
-          ? "Stock transferred"
-          : type.toLowerCase().includes("issue")
-          ? "Stock issued"
-          : "Stock sent",
-        "success"
+          // ✅ Return item with its individual attachment URL
+          return {
+            inventory_item_id: item.inventory_item_id,
+            quantity: item.quantity,
+            serial_number: item.serial_number || null,
+            attachment: attachmentUrl, // ✅ Each item has its own attachment
+          };
+        })
       );
 
-      // Reset form
-      setType("");
-      setFrom("");
-      setTo("");
-      setPurpose("");
-      setReceiverName("");
-      setFile(null);
-      setThirdParty(false);
-      setProjectID("");
-      setBoqLineID("");
-      setSelectedItems([]);
+      // ✅ Submit to backend with items containing their individual attachments
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "transferIssueMultipleStocks",
+          items: itemsForBackend, // ✅ Each item now has its own attachment
+          project_id: projectID,
+          boq_line_id: boqLineID,
+          type,
+          transferee: userInfo?.name,
+          from,
+          to,
+          purpose,
+          third_party_involved: thirdParty,
+          receiver_name: receiverName,
+          // ✅ No attachment field here - attachments are per item now
+        }),
+      });
 
-      router.refresh();
-      setIsOpen(false);
-    } else {
+      if (res.ok) {
+        toast(
+          type.toLowerCase().includes("transfer")
+            ? "Stock transferred"
+            : type.toLowerCase().includes("issue")
+            ? "Stock issued"
+            : "Stock sent",
+          "success"
+        );
+
+        // Reset form
+        setType("");
+        setFrom("");
+        setTo("");
+        setPurpose("");
+        setReceiverName("");
+        setFile(null);
+        setThirdParty(false);
+        setProjectID("");
+        setBoqLineID("");
+        setSelectedItems([]);
+
+        router.refresh();
+        setIsOpen(false);
+      } else {
+        const errorData = await res.json();
+        toast(errorData.error || "Failed to transfer or issue stock", "error");
+      }
+    } catch (error) {
+      console.error("Error submitting transfer:", error);
       toast("Failed to transfer or issue stock", "error");
     }
   }
@@ -431,7 +475,7 @@ export default function TransferIssueMultipleStocks() {
         textColor={"white"}
         onClick={() => setIsOpen(true)}
       >
-        ISSUE/TRANSFER MULTIPLE STOCK -
+        ISSUE/TRANSFER MULTIPLE STOCK
       </Button>
 
       {isOpen && (
@@ -515,6 +559,9 @@ export default function TransferIssueMultipleStocks() {
                 placeholder="SELECT BILL OF QUANTITY REFERENCE"
                 required={false}
                 disabled={projectID === ""}
+                categorized={true}
+                categoryField="category"
+                subCategoryField="sub_category"
               />
             </div>
           )}
@@ -716,6 +763,7 @@ export default function TransferIssueMultipleStocks() {
                           <th>ITEM</th>
                           <th>TOTAL AVAILABLE QUANTITY</th>
                           <th>QUANTITY</th>
+                          <th>SERIAL/MODEL NUMBER</th>
                           <th>PROOF/ATTACHMENTS</th>
                           <th>ACTION</th>
                         </tr>
@@ -747,34 +795,30 @@ export default function TransferIssueMultipleStocks() {
                                 }}
                                 required
                               />
-                              {/* <input
-                                type="number"
-                                min="0"
-                                max={item.available_qty}
-                                value={item.quantity || ""}
-                                onChange={(e) =>
-                                  handleQuantityChange(
+                            </td>
+                            <td>
+                              <InputItem
+                                label=""
+                                placeholder="SERIAL NUMBER"
+                                noOptionalLabel={true}
+                                value={item.serial_number || ""}
+                                type={"text"}
+                                onChange={(e) => {
+                                  handleSerialNumberChange(
                                     item.inventory_item_id,
-                                    Number(e.target.value)
-                                  )
-                                }
-                                style={{
-                                  width: "100px",
-                                  padding: "5px",
-                                  border: "1px solid #d9d9d9",
-                                  borderRadius: "3px",
+                                    e.target.value
+                                  );
                                 }}
-                              /> */}
+                              />
                             </td>
                             <td>
                               <Button
                                 componentType={"button"}
                                 bgColor={"rgba(239, 239, 239, 1)"}
                                 borderColor={"rgba(223, 223, 223, 1)"}
-                                textColor={"black"}
+                                textColor={item.attachment ? "white" : "black"}
                                 onClick={(e) => {
                                   e.preventDefault();
-
                                   handleOpenAttachmentModal(
                                     item.inventory_item_id
                                   );
@@ -783,7 +827,9 @@ export default function TransferIssueMultipleStocks() {
                               >
                                 <img
                                   src={uploadIcon}
-                                  style={{ filter: "invert(1)" }}
+                                  style={{
+                                    filter: "invert(1)",
+                                  }}
                                 />
                               </Button>
                             </td>

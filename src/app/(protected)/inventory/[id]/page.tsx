@@ -8,15 +8,11 @@ import StockLocationChart from "./components/StockLocationChart";
 import QrCodePrintButton from "./components/_QrCodePrintButton";
 import EditInventoryItemButton from "../components/_EditInventoryItemButton";
 import DeleteInventoryItemButton from "./components/_DeleteInventoryItemButton";
-import ReceiveStocksButton from "./components/_ReceiveStocksButton";
 import TopSuppliersChart from "./components/TopSuppliersChart";
-import StockHistoryChart from "./components/StockHistoryChart";
 import ReservedStocksChart from "./components/ReservedStocksChart";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
-import { useAuth } from "@/app/context/AuthContext";
-import AvgTimeSpentPerStageWidget from "../../dashboard/components/manager/W_AvgTimeSpentPerStage";
-import AverageLeadTimeWidget from "./components/_AvgLeadTimeWidget";
-import TotalQuantityWidget from "./components/_TotalQuantityWidget";
+import AverageLeadTimeWidget from "./components/AvgLeadTimeWidget";
+import TotalQuantityWidget from "./components/TotalQuantityWidget";
 
 export default async function InventoryItemWithID({
   params,

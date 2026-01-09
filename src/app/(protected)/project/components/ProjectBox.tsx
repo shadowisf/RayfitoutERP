@@ -245,7 +245,7 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
             style={{ borderRadius: "50px" }}
           >
             <>
-              BOQ
+              {proj.hasBOQ ? "BOQ" : "CREATE BOQ"}
               <img src={externalLinkIcon} alt="external link icon" />
             </>
           </Button>
