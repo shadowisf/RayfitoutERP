@@ -5,6 +5,9 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { InventoryItem } from "../../types/inventoryItem";
 import { BoqLine } from "@/app/(protected)/boq/[id]/types/boqLine";
+import DownloadLPOButton from "@/app/(protected)/mr/[id]/components/procurement/_DownloadLPOButton";
+import GRNRefPopUp from "@/app/(protected)/mr/[id]/components/storekeeper/_GRNRefPopUp";
+import { MrLine } from "@/app/(protected)/mr/[id]/types/mrLine";
 
 type BatchDetailsPopUpButtonProps = {
   inventoryItem: InventoryItem;
@@ -671,17 +674,27 @@ export default function BatchDetailsPopUpButton({
             }}
           >
             <div>
-              {details.grn_id && (
-                <Button
-                  componentType={"button"}
+              {details.grn_id && details.mr_line_id && (
+                <GRNRefPopUp
+                  mrLine={
+                    {
+                      id: details.mr_line_id,
+                      mr_header_id: details.mr_header_id,
+                      material_description: details.material_description,
+                      quantity: details.requested_quantity,
+                      unit: details.material_unit,
+                      approved_supplier_name: details.supplier_name || "",
+                      approved_supplier_id: details.supplier_id || 0,
+                    } as MrLine
+                  }
                   bgColor={"rgba(255, 255, 255, 1)"}
                   borderColor={"rgba(207, 207, 207, 1)"}
                   textColor={"black"}
-                  style={{ borderRadius: "25px" }}
+                  style={{ borderRadius: "25px", padding: "7px 20px" }}
                 >
                   GRN
-                  <img src={downloadIcon} alt="Download" />
-                </Button>
+                  <img src={externalLinkIcon} alt="external link" />
+                </GRNRefPopUp>
               )}
             </div>
             <div>
@@ -711,6 +724,14 @@ export default function BatchDetailsPopUpButton({
             }}
           >
             <div>
+              {details.lpo_id && (
+                <DownloadLPOButton lpoID={details.lpo_id}>
+                  LPO (UNSIGNED)
+                  <img src={downloadIcon} alt="Download" />
+                </DownloadLPOButton>
+              )}
+            </div>
+            <div>
               {details.lpo_signed_file &&
                 details.lpo_signed_file.length > 0 && (
                   <Button
@@ -722,12 +743,12 @@ export default function BatchDetailsPopUpButton({
                     href={details.lpo_signed_file[0]}
                     target="_blank"
                   >
-                    LPO
+                    LPO (SIGNED)
                     <img src={downloadIcon} alt="Download" />
                   </Button>
                 )}
             </div>
-            <div>
+            {/* <div>
               {details.resolution_type && (
                 <Button
                   componentType={"link"}
@@ -742,7 +763,7 @@ export default function BatchDetailsPopUpButton({
                   <img src={downloadIcon} alt="Download" />
                 </Button>
               )}
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

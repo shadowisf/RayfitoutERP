@@ -451,7 +451,7 @@ export default function IssueLPOButton({
               <img src={warningIcon} />
               <p style={{ color: "red" }}>
                 Selected delivery date is beyond the material request's required
-                date.
+                date: {mrHeader.required_date}
               </p>
             </div>
           )}

@@ -11,7 +11,6 @@ import {
 } from "@react-pdf/renderer";
 import { BoqLine } from "../types/boqLine";
 import { BoqHeader } from "../types/boqHeader";
-import { useAuth } from "@/app/context/AuthContext";
 
 Font.register({
   family: "Mont",
@@ -23,12 +22,16 @@ Font.register({
   src: "/fonts/Mont-SemiBold.otf",
 });
 
+Font.register({
+  family: "Mont-Bold",
+  src: "/fonts/Mont-Bold.otf",
+});
+
 const styles = StyleSheet.create({
   page: {
     backgroundColor: "#ffffff",
     padding: 20,
     fontFamily: "Mont",
-    textTransform: "uppercase",
   },
 
   // Header Section
@@ -55,11 +58,9 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: "row",
     marginBottom: 30,
-    gap: 30,
+    gap: 25,
   },
-  infoItem: {
-    flex: 1,
-  },
+  infoItem: {},
   infoLabel: {
     fontSize: 8,
     color: "#666666",
@@ -76,7 +77,7 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 16,
     fontFamily: "Mont-SemiBold",
-    marginBottom: 15,
+    marginBottom: 10,
     marginTop: 10,
     color: "#000000",
   },
@@ -96,22 +97,38 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: "row",
     padding: "8 12",
-    borderBottom: "1 solid #e0e0e0",
     fontSize: 8,
     color: "#333333",
     minHeight: 40,
     alignItems: "flex-start",
+  },
+  // Alternating row styles for summary table
+  tableRowEven: {
+    flexDirection: "row",
+    padding: "8 12",
+    fontSize: 8,
+    color: "#333333",
+    minHeight: 40,
+    alignItems: "flex-start",
+    backgroundColor: "#f5f5f5",
+    border: "1px solid #f5f5f5",
+  },
+  tableRowOdd: {
+    flexDirection: "row",
+    padding: "8 12",
+    fontSize: 8,
+    color: "#333333",
+    minHeight: 40,
+    alignItems: "flex-start",
+    backgroundColor: "#ffffff",
+    border: "1px solid #f5f5f5",
   },
   tableColItemNo: {
     width: "10%",
     paddingRight: 8,
   },
   tableColDescription: {
-    width: "55%",
-    paddingRight: 8,
-  },
-  tableColPageRef: {
-    width: "15%",
+    width: "70%",
     paddingRight: 8,
   },
   tableColAmount: {
@@ -141,6 +158,18 @@ const styles = StyleSheet.create({
   totalValue: {
     fontFamily: "Mont-SemiBold",
     fontSize: 8,
+  },
+
+  // ✅ Subtotal Row - Inside table with aligned columns
+  subtotalRow: {
+    flexDirection: "row",
+    padding: "8 12",
+    backgroundColor: "white",
+    fontSize: 8,
+    fontFamily: "Mont-SemiBold",
+    alignItems: "flex-start",
+    marginBottom: 20,
+    border: "1px solid #f5f5f5",
   },
 
   // Bottom Section
@@ -180,11 +209,11 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
 
-  // Detail Page Styles - Subcategory Title (was categoryTitle)
+  // Detail Page Styles - Subcategory Title
   subCategoryTitle: {
     fontSize: 16,
     fontFamily: "Mont-SemiBold",
-    marginBottom: 20,
+    marginBottom: 10,
     marginTop: 30,
     color: "#000000",
     textTransform: "uppercase",
@@ -198,29 +227,49 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontFamily: "Mont-SemiBold",
     textTransform: "uppercase",
+    border: "1px solid #f5f5f5",
   },
   detailTableRow: {
     flexDirection: "row",
     padding: "8 12",
-    borderBottom: "1 solid #e0e0e0",
     fontSize: 7,
     color: "#333333",
     alignItems: "flex-start",
+  },
+  // Alternating row styles for detail table
+  detailTableRowEven: {
+    flexDirection: "row",
+    padding: "8 12",
+    fontSize: 7,
+    color: "#333333",
+    alignItems: "flex-start",
+    backgroundColor: "#f5f5f5",
+    border: "1px solid #f5f5f5",
+  },
+  detailTableRowOdd: {
+    flexDirection: "row",
+    padding: "8 12",
+    fontSize: 7,
+    color: "#333333",
+    alignItems: "flex-start",
+    backgroundColor: "#ffffff",
+    border: "1px solid #f5f5f5",
   },
   detailColItemNo: {
     width: "5%",
     paddingRight: 4,
   },
   detailColCategory: {
-    width: "15%",
+    width: "35%",
     paddingRight: 4,
+    fontSize: 7,
   },
   detailColDescription: {
     width: "28%",
     paddingRight: 4,
   },
   detailColLocation: {
-    width: "10%",
+    width: "15%",
     paddingRight: 4,
   },
   detailColQty: {
@@ -232,8 +281,9 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   detailColTotal: {
-    width: "10%",
+    width: "15%",
     paddingRight: 4,
+    fontSize: 7,
   },
   detailColAttachment: {
     width: "17%",
@@ -276,9 +326,7 @@ type BoqPDFProps = {
   boqHeader: BoqHeader;
 };
 
-export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
-  const { userInfo } = useAuth();
-
+export function BoqPDFWithNoPrice({ boqLines, boqHeader }: BoqPDFProps) {
   const logo = "/icons/logo.jpg";
 
   // Calculate totals for each category and subcategory
@@ -322,6 +370,14 @@ export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
             </Text>
           </View>
           <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>DATE</Text>
+            <Text style={styles.infoValue}>
+              {boqHeader.boq_date
+                ? new Date(boqHeader.boq_date).toLocaleDateString()
+                : new Date().toLocaleDateString()}
+            </Text>
+          </View>
+          <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>PROJECT</Text>
             <Text style={styles.infoValue}>{boqHeader.project_name}</Text>
           </View>
@@ -331,83 +387,37 @@ export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
               {boqHeader.client_name || "N/A"}
             </Text>
           </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>DATE</Text>
-            <Text style={styles.infoValue}>
-              {boqHeader.boq_date
-                ? new Date(boqHeader.boq_date).toLocaleDateString()
-                : "N/A"}
-            </Text>
-          </View>
         </View>
 
         {/* Summary Title */}
         <Text style={styles.summaryTitle}>SUMMARY</Text>
 
-        {/* Items Table - Summary */}
+        {/* Items Table - Summary - Only Categories */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <Text style={styles.tableColItemNo}>ITEM NO</Text>
             <Text style={styles.tableColDescription}>DESCRIPTION</Text>
-            <Text style={styles.tableColPageRef}>PAGE REF</Text>
-            <Text style={styles.tableColAmount}>AMOUNT (AED)</Text>
           </View>
 
           {categories.map((category, categoryIndex) => {
-            const subCategories = Object.entries(boqLines[category]);
             const categoryTotal = Object.values(
               categoryTotals[category]
             ).reduce((sum, val) => sum + val, 0);
 
-            return (
-              <View key={categoryIndex}>
-                {/* Category Row with first subcategory combined */}
-                <View style={styles.tableRow}>
-                  <Text style={styles.tableColItemNo}>
-                    {categoryIndex + 1}
-                    {"\n\n"}
-                    {categoryIndex + 1}.1
-                  </Text>
-                  <Text style={styles.tableColDescription}>
-                    BILL NO {categoryIndex + 1} - {category.toUpperCase()}
-                    {"\n\n"}
-                    {subCategories[0]?.[0]?.toUpperCase()}
-                  </Text>
-                  <Text style={styles.tableColPageRef}></Text>
-                  <Text style={styles.tableColAmount}>
-                    AED {categoryTotal.toLocaleString()}
-                  </Text>
-                </View>
+            const rowStyle =
+              categoryIndex % 2 === 0
+                ? styles.tableRowOdd
+                : styles.tableRowEven;
 
-                {/* Remaining Subcategory Rows (starting from index 1) */}
-                {subCategories
-                  .slice(1)
-                  .map(([subCategory, items], subIndex) => (
-                    <View key={subIndex + 1} style={styles.tableRow}>
-                      <Text style={styles.tableColItemNo}>
-                        {categoryIndex + 1}.{subIndex + 2}
-                      </Text>
-                      <Text style={styles.tableColDescription}>
-                        {subCategory.toUpperCase()}
-                      </Text>
-                      <Text style={styles.tableColPageRef}></Text>
-                      <Text style={styles.tableColAmount}>
-                        AED{" "}
-                        {categoryTotals[category][subCategory].toLocaleString()}
-                      </Text>
-                    </View>
-                  ))}
+            return (
+              <View key={categoryIndex} style={rowStyle}>
+                <Text style={styles.tableColItemNo}>{categoryIndex + 1}</Text>
+                <Text style={styles.tableColDescription}>
+                  {category.toUpperCase()}
+                </Text>
               </View>
             );
           })}
-        </View>
-
-        {/* Total Row */}
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>TOTAL</Text>
-          <Text style={styles.totalValue}>
-            AED {grandTotal.toLocaleString()}
-          </Text>
         </View>
 
         {/* Bottom Section - Terms */}
@@ -430,12 +440,12 @@ export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
 
           {/* Completion */}
           <View style={styles.termsSection}>
-            <Text style={styles.termsTitle}>Completion</Text>
+            <Text style={styles.termsTitle}>COMPLETION</Text>
             <Text style={styles.termsText}>TBD</Text>
           </View>
 
           {/* Terms and Conditions */}
-          <Text style={styles.conditionsTitle}>Terms and condition</Text>
+          <Text style={styles.conditionsTitle}>TERMS & CONDITIONS</Text>
           <Text style={styles.conditionItem}>
             {boqHeader.terms_and_conditions || "N/A"}
           </Text>
@@ -454,104 +464,128 @@ export function BoqPDF({ boqLines, boqHeader }: BoqPDFProps) {
 
           return (
             <View key={categoryIndex}>
-              {/* ✅ Loop through subcategories - each is now the main header */}
-              {subCategories.map(([subCategory, items], subIndex) => (
-                <View key={subIndex}>
-                  {/* ✅ Subcategory Title (1.1 GENERAL REQUIREMENTS) */}
-                  <View wrap={false}>
-                    <Text style={styles.subCategoryTitle}>
-                      {categoryIndex + 1}.{subIndex + 1}{" "}
-                      {subCategory.toUpperCase()}
-                    </Text>
+              {/* Loop through subcategories */}
+              {subCategories.map(([subCategory, items], subIndex) => {
+                // Calculate subcategory total
+                const subCategoryTotal = items.reduce(
+                  (sum, item) => sum + (item.total_cost || 0),
+                  0
+                );
 
-                    {/* Table Header */}
-                    <View style={styles.detailTableHeader}>
-                      <Text style={styles.detailColItemNo}>#</Text>
-                      <Text style={styles.detailColCategory}>ITEM</Text>
-                      <Text style={styles.detailColDescription}>
-                        DESCRIPTION
+                return (
+                  <View key={subIndex}>
+                    {/* Subcategory Title */}
+                    <View wrap={false}>
+                      <Text style={styles.subCategoryTitle}>
+                        {categoryIndex + 1}.{subIndex + 1}{" "}
+                        {category.toUpperCase()} / {subCategory.toUpperCase()}
                       </Text>
-                      <Text style={styles.detailColLocation}>LOCATION</Text>
-                      <Text style={styles.detailColQty}>QUANTITY</Text>
-                      {(userInfo?.departmentID === 8 ||
-                        userInfo?.departmentID === 12 ||
-                        userInfo?.departmentID === 10) && (
-                        <>
-                          <Text style={styles.detailColRate}>RATE</Text>
-                          <Text style={styles.detailColTotal}>TOTAL PRICE</Text>
-                        </>
-                      )}
-                      <Text style={styles.detailColAttachment}>
-                        ATTACHMENT(S)
-                      </Text>
-                    </View>
-                  </View>
 
-                  {/* ✅ BOQ Line Items (1.1.1, 1.1.2, etc.) */}
-                  {items.map((item, itemIndex) => (
-                    <View
-                      key={item.id}
-                      style={styles.detailTableRow}
-                      wrap={false}
-                    >
-                      <Text style={styles.detailColItemNo}>
-                        {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
-                      </Text>
-                      <Text style={styles.detailColCategory}>
-                        {item.item_name}
-                      </Text>
-                      <Text style={styles.detailColDescription}>
-                        {item.item_description || ""}
-                      </Text>
-                      <Text style={styles.detailColLocation}>
-                        {item.location?.split("-").pop()}
-                      </Text>
-                      <Text style={styles.detailColQty}>
-                        {item.quantity} {item.unit}
-                      </Text>
-                      {(userInfo?.departmentID === 8 ||
-                        userInfo?.departmentID === 12 ||
-                        userInfo?.departmentID === 10) && (
-                        <>
-                          <Text style={styles.detailColRate}>
-                            AED {item.rate_per_quantity?.toLocaleString()}
-                          </Text>
-                          <Text style={styles.detailColTotal}>
-                            AED {item.total_cost?.toLocaleString()}
-                          </Text>
-                        </>
-                      )}
-
-                      <View style={styles.detailColAttachment}>
-                        {item.attachments &&
-                          Array.isArray(item.attachments) &&
-                          item.attachments.length > 0 && (
-                            <View style={styles.attachmentContainer}>
-                              {item.attachments.map(
-                                (base64Url: string, i: number) => {
-                                  if (!base64Url || base64Url.trim() === "")
-                                    return null;
-
-                                  return (
-                                    <View
-                                      key={i}
-                                      style={styles.attachmentWrapper}
-                                    >
-                                      <Image
-                                        src={base64Url}
-                                        style={styles.attachmentImage}
-                                      />
-                                    </View>
-                                  );
-                                }
-                              )}
-                            </View>
-                          )}
+                      {/* Table Header */}
+                      <View style={styles.detailTableHeader}>
+                        <Text style={styles.detailColItemNo}>#</Text>
+                        <Text style={styles.detailColCategory}>ITEM</Text>
+                        <Text style={styles.detailColLocation}>LOCATION</Text>
+                        <Text style={styles.detailColQty}>QUANTITY</Text>
+                        <Text style={styles.detailColAttachment}>
+                          ATTACHMENT(S)
+                        </Text>
                       </View>
                     </View>
-                  ))}
-                </View>
-              ))}
+
+                    {/* BOQ Line Items */}
+                    {items.map((item, itemIndex) => {
+                      const rowStyle =
+                        itemIndex % 2 === 0
+                          ? styles.detailTableRowOdd
+                          : styles.detailTableRowEven;
+
+                      return (
+                        <View key={item.id} style={rowStyle} wrap={false}>
+                          <Text style={styles.detailColItemNo}>
+                            {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
+                          </Text>
+
+                          <View style={styles.detailColCategory}>
+                            <Text
+                              style={{
+                                fontFamily: "Mont-Bold",
+                                marginBottom: 7,
+                              }}
+                            >
+                              {item.item_name}
+                            </Text>
+
+                            {item.item_description && (
+                              <Text style={{ marginBottom: 7 }}>
+                                {item.item_description}
+                              </Text>
+                            )}
+
+                            <View
+                              style={{
+                                paddingTop: 3,
+                                paddingBottom: 1,
+                                paddingRight: 5,
+                                paddingLeft: 5,
+                                borderRadius: 50,
+                                backgroundColor: "rgba(225, 225, 225, 1)",
+                                alignSelf: "flex-start",
+                                display: "flex",
+                                flexDirection: "row",
+                                alignItems: "center",
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontFamily: "Mont-Bold",
+                                  fontSize: 7,
+                                }}
+                              >
+                                {item.scope_of_work}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <Text style={styles.detailColLocation}>
+                            {item.location?.split("-").pop()}
+                          </Text>
+                          <Text style={styles.detailColQty}>
+                            {item.quantity} {item.unit}
+                          </Text>
+
+                          <View style={styles.detailColAttachment}>
+                            {item.attachments &&
+                              Array.isArray(item.attachments) &&
+                              item.attachments.length > 0 && (
+                                <View style={styles.attachmentContainer}>
+                                  {item.attachments.map(
+                                    (base64Url: string, i: number) => {
+                                      if (!base64Url || base64Url.trim() === "")
+                                        return null;
+
+                                      return (
+                                        <View
+                                          key={i}
+                                          style={styles.attachmentWrapper}
+                                        >
+                                          <Image
+                                            src={base64Url}
+                                            style={styles.attachmentImage}
+                                          />
+                                        </View>
+                                      );
+                                    }
+                                  )}
+                                </View>
+                              )}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })}
             </View>
           );
         })}

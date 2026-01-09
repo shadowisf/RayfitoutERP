@@ -19,8 +19,8 @@ type GRNRefPopUpProps = {
 type GRNLineItem = {
   lpo_mr_line_id: number;
   received_quantity: string;
-  packaging_condition: "good" | "bad" | null;
   notes: string;
+  attachment: string;
 };
 
 type GRN = {
@@ -39,8 +39,6 @@ export default function GRNRefPopUp({
   style,
   children,
 }: GRNRefPopUpProps) {
-  const checkIcon = "/icons/check.svg";
-  const crossIcon = "/icons/cross-small.svg";
   const warningIcon = "/icons/warning.svg";
   const checkGreenIcon = "/icons/check-green.svg";
   const externalLinkIcon = "/icons/external-link.svg";
@@ -57,6 +55,11 @@ export default function GRNRefPopUp({
     null
   );
   const [isLoadingGrn, setIsLoadingGrn] = useState(false);
+
+  // State for QC accepted quantity
+  const [qcAcceptedQuantity, setQcAcceptedQuantity] = useState<number | null>(
+    null
+  );
 
   // Fetch LPO when component mounts
   useEffect(() => {
@@ -79,6 +82,13 @@ export default function GRNRefPopUp({
       findGrnLineForItem();
     }
   }, [existingGrn, lpoMrLine]);
+
+  // Fetch QC accepted quantity when lpoMrLine is available
+  useEffect(() => {
+    if (lpoMrLine && isOpen) {
+      fetchQcAcceptedQuantity();
+    }
+  }, [lpoMrLine, isOpen]);
 
   async function checkExistingLpo() {
     try {
@@ -163,6 +173,33 @@ export default function GRNRefPopUp({
     }
   }
 
+  async function fetchQcAcceptedQuantity() {
+    if (!lpoMrLine) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getQCByLPOMrLineID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lpo_mr_line_id: lpoMrLine.id,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success && data.data && data.data.accepted_quantity) {
+        setQcAcceptedQuantity(data.data.accepted_quantity);
+      } else {
+        setQcAcceptedQuantity(null);
+      }
+    } catch (error) {
+      console.error("Error fetching QC accepted quantity:", error);
+    }
+  }
+
   function findGrnLineForItem() {
     if (!existingGrn || !lpoMrLine) return;
 
@@ -172,18 +209,37 @@ export default function GRNRefPopUp({
     );
 
     if (grnLine) {
-      setGrnLineForItem(grnLine);
+      // Parse attachment if it's a JSON string
+      let attachmentUrl = "";
+      if (grnLine.attachment) {
+        try {
+          if (typeof grnLine.attachment === "string") {
+            attachmentUrl = JSON.parse(grnLine.attachment);
+          } else {
+            attachmentUrl = grnLine.attachment;
+          }
+        } catch (e) {
+          attachmentUrl = grnLine.attachment;
+        }
+      }
+
+      setGrnLineForItem({
+        lpo_mr_line_id: grnLine.lpo_mr_line_id,
+        received_quantity: grnLine.received_quantity?.toString() || "0",
+        notes: grnLine.notes || "",
+        attachment: attachmentUrl || "",
+      });
     }
   }
 
-  // Format received date
-  const getFormattedReceivedDate = () => {
-    if (!existingGrn?.received_date) return "-";
-    return new Date(existingGrn.received_date).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+  // Format date
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
   // Function to check if received quantity matches ordered quantity
@@ -203,6 +259,9 @@ export default function GRNRefPopUp({
   const quantityMatch = checkQuantityMatch();
   const receivedQty = parseFloat(grnLineForItem?.received_quantity || "0");
   const orderedQty = mrLine.quantity;
+
+  // Determine if QC column should be shown (if progress_id >= 21)
+  const showQcColumn = qcAcceptedQuantity !== null;
 
   return (
     <>
@@ -224,11 +283,10 @@ export default function GRNRefPopUp({
         <FormPopUp header={"VIEW GOOD RECEIVED NOTE"} setIsOpen={setIsOpen}>
           <div className="input-row full">
             <InputItem
-              label={"SUPPLIER NAME"}
+              label={"VENDOR NAME"}
               value={mrLine.approved_supplier_name || ""}
               type={"text"}
-              placeholder={""}
-              required={false}
+              required
               onChange={() => {}}
               disabled
             />
@@ -237,27 +295,19 @@ export default function GRNRefPopUp({
           <div className="input-row three-col">
             <InputItem
               label={"DELIVERY DATE"}
-              value={
-                lpo?.delivery_date
-                  ? new Date(lpo.delivery_date).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })
-                  : ""
-              }
-              type={"text"}
-              placeholder={""}
-              required={false}
+              value={formatDate(lpo?.delivery_date || null)}
+              type={"date"}
+              placeholder={"ENTER DELIVERY DATE"}
+              required
               onChange={() => {}}
               disabled
             />
             <InputItem
               label={"RECEIVED DATE"}
-              value={getFormattedReceivedDate()}
-              type={"text"}
-              placeholder={""}
-              required={false}
+              value={formatDate(existingGrn?.received_date || null)}
+              type={"date"}
+              placeholder={"ENTER RECEIVED DATE"}
+              required
               onChange={() => {}}
               disabled
             />
@@ -265,8 +315,8 @@ export default function GRNRefPopUp({
               label={"RECEIVED BY"}
               value={existingGrn?.received_by || ""}
               type={"text"}
-              placeholder={""}
-              required={false}
+              placeholder={"ENTER RECEIVED BY"}
+              required
               onChange={() => {}}
               disabled
             />
@@ -281,8 +331,9 @@ export default function GRNRefPopUp({
                 <th>DESCRIPTION</th>
                 <th>ORDERED QUANTITY</th>
                 <th>RECEIVED QUANTITY</th>
-                <th>PACKAGING CONDITION</th>
+                {showQcColumn && <th>ACCEPTED QUANTITY</th>}
                 <th>NOTES</th>
+                <th>ATTACHMENT</th>
               </tr>
             </thead>
             <tbody>
@@ -293,152 +344,18 @@ export default function GRNRefPopUp({
                   {mrLine.quantity} {mrLine.unit}
                 </td>
                 <td>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "8px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                      }}
-                    >
-                      <InputItem
-                        label={""}
-                        value={grnLineForItem?.received_quantity || "0"}
-                        type={"text"}
-                        placeholder={""}
-                        required
-                        onChange={() => {}}
-                        style={{ minWidth: "200px", marginBottom: "0px" }}
-                        disabled
-                      />
-                      {quantityMatch !== null && (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            flexShrink: 0,
-                          }}
-                        >
-                          {quantityMatch ? (
-                            <img
-                              src={checkGreenIcon}
-                              alt="match"
-                              style={{
-                                width: "32px",
-                              }}
-                            />
-                          ) : (
-                            <img
-                              src={warningIcon}
-                              alt="warning"
-                              style={{
-                                width: "32px",
-                              }}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {quantityMatch === false && (
-                      <span
-                        style={{
-                          fontWeight: "500",
-                          color: "rgba(248, 77, 77, 1)",
-                          fontStyle: "italic",
-                          paddingLeft: "4px",
-                        }}
-                      >
-                        {receivedQty > orderedQty
-                          ? "Excess quantity beyond the request"
-                          : "Quantity is less than the request"}
-                      </span>
+                  {`${grnLineForItem?.received_quantity || "0"} ${mrLine.unit}`}
+                </td>
+                {showQcColumn && (
+                  <td>
+                    {qcAcceptedQuantity !== null &&
+                    qcAcceptedQuantity !== undefined ? (
+                      `${qcAcceptedQuantity} ${mrLine.unit}`
+                    ) : (
+                      <span style={{ color: "rgba(150, 150, 150, 1)" }}>-</span>
                     )}
-                  </div>
-                </td>
-                <td>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <Button
-                      componentType={"button"}
-                      bgColor={
-                        grnLineForItem?.packaging_condition === "good"
-                          ? "rgba(0, 163, 93, 1)"
-                          : "white"
-                      }
-                      borderColor={
-                        grnLineForItem?.packaging_condition === "good"
-                          ? "rgba(0, 163, 93, 1)"
-                          : "rgba(207, 207, 207, 1)"
-                      }
-                      textColor={
-                        grnLineForItem?.packaging_condition === "good"
-                          ? "white"
-                          : "black"
-                      }
-                      style={{
-                        borderRadius: "50px",
-                        padding: "10px 10px",
-                        cursor: "default",
-                      }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                      }}
-                    >
-                      <img
-                        src={checkIcon}
-                        alt="check"
-                        style={{
-                          filter:
-                            grnLineForItem?.packaging_condition === "good"
-                              ? "invert(1)"
-                              : "none",
-                        }}
-                      />
-                    </Button>
-                    <Button
-                      componentType={"button"}
-                      bgColor={
-                        grnLineForItem?.packaging_condition === "bad"
-                          ? "rgba(248, 77, 77, 1)"
-                          : "white"
-                      }
-                      borderColor={
-                        grnLineForItem?.packaging_condition === "bad"
-                          ? "rgba(248, 77, 77, 1)"
-                          : "rgba(207, 207, 207, 1)"
-                      }
-                      textColor={
-                        grnLineForItem?.packaging_condition === "bad"
-                          ? "white"
-                          : "black"
-                      }
-                      style={{
-                        borderRadius: "50px",
-                        padding: "10px 10px",
-                        cursor: "default",
-                      }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                      }}
-                    >
-                      <img
-                        src={crossIcon}
-                        alt="cross"
-                        style={{
-                          filter:
-                            grnLineForItem?.packaging_condition === "bad"
-                              ? "invert(1)"
-                              : "none",
-                        }}
-                      />
-                    </Button>
-                  </div>
-                </td>
+                  </td>
+                )}
                 <td>
                   {grnLineForItem?.notes ? (
                     <Button
@@ -456,6 +373,23 @@ export default function GRNRefPopUp({
                       }}
                     >
                       <img src={externalLinkIcon} alt="notes" />
+                    </Button>
+                  ) : (
+                    <span style={{ color: "rgba(150, 150, 150, 1)" }}>-</span>
+                  )}
+                </td>
+                <td>
+                  {grnLineForItem?.attachment ? (
+                    <Button
+                      componentType={"link"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"rgba(223, 223, 223, 1)"}
+                      textColor={"black"}
+                      style={{ padding: "7px 7px" }}
+                      href={grnLineForItem.attachment}
+                      target="_blank"
+                    >
+                      <img src={externalLinkIcon} alt="view" />
                     </Button>
                   ) : (
                     <span style={{ color: "rgba(150, 150, 150, 1)" }}>-</span>

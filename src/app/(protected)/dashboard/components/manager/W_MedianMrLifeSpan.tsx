@@ -191,21 +191,16 @@ export default function MedianMRLifespanWidget() {
 
           {/* Bars */}
           {data.chartData.map((item: any, index: number) => {
-            // Calculate bar height
-            let barHeight = 0;
-            if (item.median > 0) {
-              barHeight = (item.median / maxValue) * (chartHeight - 30);
-              barHeight = Math.max(barHeight, minBarHeight);
-            }
-
-            const isHovered = hoveredIndex === index;
             const hasValue = item.median > 0;
 
-            // Format date for display
-            const date = new Date(item.date);
-            const dayLabel = date.toLocaleDateString("en-US", {
-              weekday: "short",
-            });
+            // Skip rendering if no value
+            if (!hasValue) return null;
+
+            // Calculate bar height
+            let barHeight = (item.median / maxValue) * chartHeight;
+            barHeight = Math.max(barHeight, minBarHeight);
+
+            const isHovered = hoveredIndex === index;
 
             return (
               <div
@@ -215,7 +210,6 @@ export default function MedianMRLifespanWidget() {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: "5px",
                 }}
               >
                 {/* Bar */}
@@ -224,18 +218,16 @@ export default function MedianMRLifespanWidget() {
                     width: "100%",
                     maxWidth: "60px",
                     height: `${barHeight}px`,
-                    background: hasValue
-                      ? "linear-gradient(180deg, rgba(26, 216, 135, 1) 0%, rgba(26, 216, 135, 0.6) 100%)"
-                      : "rgba(230, 230, 230, 0.3)",
+                    background:
+                      "linear-gradient(180deg, rgba(26, 216, 135, 1) 0%, rgba(26, 216, 135, 0.6) 100%)",
                     borderRadius: "50px",
                     position: "relative",
-                    minHeight: hasValue ? `${minBarHeight}px` : "5px",
                   }}
-                  onMouseEnter={() => hasValue && setHoveredIndex(index)}
+                  onMouseEnter={() => setHoveredIndex(index)}
                   onMouseLeave={() => setHoveredIndex(null)}
                 >
                   {/* Tooltip on hover */}
-                  {isHovered && hasValue && (
+                  {isHovered && (
                     <div
                       style={{
                         position: "absolute",
@@ -271,17 +263,6 @@ export default function MedianMRLifespanWidget() {
                       />
                     </div>
                   )}
-                </div>
-
-                {/* Day label */}
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "#666",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {dayLabel}
                 </div>
               </div>
             );

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Button from "../../../components/Button";
+import { useAuth } from "@/app/context/AuthContext";
 
 type ProjectBoxProps = {
   proj: any;
@@ -9,6 +10,8 @@ type ProjectBoxProps = {
 
 export default function ProjectBox({ proj }: ProjectBoxProps) {
   const externalLinkIcon = "/icons/external-link.svg";
+
+  const { userInfo } = useAuth();
 
   const [quotedBudget, setQuotedBudget] = useState(0);
   const [allocatedBudget, setAllocatedBudget] = useState(0);
@@ -86,140 +89,147 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
 
         <br />
 
-        <small>PROGRESS</small>
+        {(userInfo?.departmentID === 8 || userInfo?.departmentID === 10) && (
+          <>
+            <small>PROGRESS</small>
 
-        {/* Progress Bar */}
-        <div style={{ marginTop: "10px", position: "relative" }}>
-          <div
-            style={{
-              width: "100%",
-              height: "25px",
-              backgroundColor: "rgba(238, 238, 238, 1)",
-              borderRadius: "25px",
-              overflow: "hidden",
-              position: "relative",
-            }}
-            onMouseEnter={() => setIsHovering(true)}
-            onMouseLeave={() => setIsHovering(false)}
-          >
-            <div
-              style={{
-                width: `${progressPercentage}%`,
-                height: "100%",
-                backgroundColor: progressColor,
-                borderRadius: "25px",
-                position: "relative",
-                transition: "background-color 0.3s ease, width 0.3s ease",
-              }}
-            >
-              {progressPercentage > 10 && (
+            <div style={{ marginTop: "10px", position: "relative" }}>
+              <div
+                style={{
+                  width: "100%",
+                  height: "25px",
+                  backgroundColor: "rgba(238, 238, 238, 1)",
+                  borderRadius: "25px",
+                  overflow: "hidden",
+                  position: "relative",
+                }}
+                onMouseEnter={() => setIsHovering(true)}
+                onMouseLeave={() => setIsHovering(false)}
+              >
+                <div
+                  style={{
+                    width: `${progressPercentage}%`,
+                    height: "100%",
+                    backgroundColor: progressColor,
+                    borderRadius: "25px",
+                    position: "relative",
+                    transition: "background-color 0.3s ease, width 0.3s ease",
+                  }}
+                >
+                  {progressPercentage > 10 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        right: "10px",
+                        transform: "translateY(-50%)",
+                        fontWeight: "bold",
+                        color: progressPercentage >= 80 ? "black" : "white",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {progressPercentage.toFixed(0)}%
+                    </div>
+                  )}
+                </div>
+                {progressPercentage <= 10 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)",
+                      fontWeight: "bold",
+                      color: "black",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {progressPercentage.toFixed(0)}%
+                  </div>
+                )}
+              </div>
+
+              {/* ✅ Tooltip popup */}
+              {isHovering && (
                 <div
                   style={{
                     position: "absolute",
-                    top: "50%",
-                    right: "10px",
-                    transform: "translateY(-50%)",
-                    fontWeight: "bold",
-                    color: progressPercentage >= 80 ? "black" : "white",
+                    top: "-40px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    backgroundColor: "rgba(0, 0, 0, 0.9)",
+                    color: "white",
+                    padding: "8px 16px",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    fontWeight: "600",
                     whiteSpace: "nowrap",
+                    zIndex: 10,
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
                   }}
                 >
-                  {progressPercentage.toFixed(0)}%
+                  AED{" "}
+                  {allocatedBudget.toLocaleString("en-US", {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}
+                  {/* ✅ Tooltip arrow */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: "-6px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: 0,
+                      height: 0,
+                      borderLeft: "6px solid transparent",
+                      borderRight: "6px solid transparent",
+                      borderTop: "6px solid rgba(0, 0, 0, 0.9)",
+                    }}
+                  />
                 </div>
               )}
-            </div>
-            {progressPercentage <= 10 && (
+
+              {/* Legend */}
               <div
                 style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  fontWeight: "bold",
-                  color: "black",
-                  whiteSpace: "nowrap",
+                  display: "flex",
+                  gap: "20px",
+                  marginTop: "10px",
+                  alignItems: "center",
                 }}
               >
-                {progressPercentage.toFixed(0)}%
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  <div
+                    style={{
+                      width: "12px",
+                      height: "12px",
+                      backgroundColor: progressColor,
+                      borderRadius: "50%",
+                      transition: "background-color 0.3s ease",
+                    }}
+                  />
+                  <small style={{ color: "black" }}>SPENT</small>
+                </div>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  <div
+                    style={{
+                      width: "12px",
+                      height: "12px",
+                      backgroundColor: "rgba(238, 238, 238, 1)",
+                      borderRadius: "50%",
+                    }}
+                  />
+                  <small style={{ color: "black" }}>BUDGET</small>
+                </div>
               </div>
-            )}
-          </div>
-
-          {/* ✅ Tooltip popup */}
-          {isHovering && (
-            <div
-              style={{
-                position: "absolute",
-                top: "-40px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                backgroundColor: "rgba(0, 0, 0, 0.9)",
-                color: "white",
-                padding: "8px 16px",
-                borderRadius: "8px",
-                fontSize: "12px",
-                fontWeight: "600",
-                whiteSpace: "nowrap",
-                zIndex: 10,
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-              }}
-            >
-              AED{" "}
-              {allocatedBudget.toLocaleString("en-US", {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              })}
-              {/* ✅ Tooltip arrow */}
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: "-6px",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: 0,
-                  height: 0,
-                  borderLeft: "6px solid transparent",
-                  borderRight: "6px solid transparent",
-                  borderTop: "6px solid rgba(0, 0, 0, 0.9)",
-                }}
-              />
             </div>
-          )}
-
-          {/* Legend */}
-          <div
-            style={{
-              display: "flex",
-              gap: "20px",
-              marginTop: "10px",
-              alignItems: "center",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  backgroundColor: progressColor,
-                  borderRadius: "50%",
-                  transition: "background-color 0.3s ease",
-                }}
-              />
-              <small style={{ color: "black" }}>SPENT</small>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  backgroundColor: "rgba(238, 238, 238, 1)",
-                  borderRadius: "50%",
-                }}
-              />
-              <small style={{ color: "black" }}>BUDGET</small>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       <br />

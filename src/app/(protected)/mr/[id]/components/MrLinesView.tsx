@@ -2741,10 +2741,23 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             hasAnyGrnQuantityMismatch() ? (
               <SubmitForLPOResubmissionGRNFailButton mrHeaderID={mrHeader.id} />
             ) : (
-              <SubmitForQC mrHeaderID={mrHeader.id} />
+              /* <SubmitForQC mrHeaderID={mrHeader.id} /> */
+              // uncomment this when qc is ready
+              <SubmitForStockEntryButton mrHeaderID={mrHeader.id} />
             )
           ) : (
-            <SubmitForQC
+            /* <SubmitForQC
+              mrHeaderID={mrHeader.id}
+              disabled={true}
+              style={{
+                opacity: "0.5",
+                cursor: "not-allowed",
+                pointerEvents: "none",
+              }}
+            /> */
+            // uncomment this when qc is ready
+
+            <SubmitForStockEntryButton
               mrHeaderID={mrHeader.id}
               disabled={true}
               style={{

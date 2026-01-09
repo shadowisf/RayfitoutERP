@@ -1,10 +1,12 @@
 "use client";
 
+import FormPopUp from "@/app/components/FormPopup";
+import { useState } from "react";
 import Button from "@/app/components/Button";
+import DownloadBoqWithPriceButton from "./_DownloadBoqWithPriceButton";
 import { BoqHeader } from "../../types/boqHeader";
 import { BoqLine } from "../../types/boqLine";
-import { pdf } from "@react-pdf/renderer";
-import { BoqPDF } from "../BoqPDF";
+import DownloadBoqWithNoPriceButton from "./_DownloadBoqWithNoPriceButton";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -15,153 +17,80 @@ type GroupedBoqLines = {
 type DownloadBoqButtonProps = {
   boqHeader: BoqHeader;
   boqLines: GroupedBoqLines;
-  children: React.ReactNode;
-  bgColor: string;
-  textColor: string;
-  borderColor: string;
-  style?: React.CSSProperties;
 };
 
 export default function DownloadBoqButton({
   boqHeader,
   boqLines,
-  bgColor,
-  textColor,
-  borderColor,
-  children,
-  style,
 }: DownloadBoqButtonProps) {
-  async function urlToBase64(url: string): Promise<string> {
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3/getImage`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ url }),
-        }
-      );
+  const downloadIcon = "/icons/download.svg";
+  const fileIcon = "/icons/file-boq.svg";
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.success || !data.dataUrl) {
-        throw new Error("Invalid response from proxy");
-      }
-
-      return data.dataUrl;
-    } catch (error) {
-      console.error("Failed to convert image:", url, error);
-      return "";
-    }
-  }
-
-  async function handleDownload() {
-    if (!boqHeader || !boqLines) {
-      return;
-    }
-
-    try {
-      console.log("Processing images...");
-
-      // Process BOQ lines and convert images to base64
-      const processedLines: any = {};
-
-      for (const category of Object.keys(boqLines)) {
-        processedLines[category] = {};
-
-        for (const subCategory of Object.keys(boqLines[category])) {
-          const items = boqLines[category][subCategory];
-
-          processedLines[category][subCategory] = await Promise.all(
-            items.map(async (item) => {
-              if (!item.attachments) return item;
-
-              try {
-                let urls: string[] = [];
-
-                if (Array.isArray(item.attachments)) {
-                  urls = item.attachments;
-                } else if (typeof item.attachments === "string") {
-                  if (item.attachments.trim() === "") return item;
-                  urls = JSON.parse(item.attachments);
-                }
-
-                if (!Array.isArray(urls) || urls.length === 0) return item;
-
-                console.log(
-                  `Processing ${urls.length} images for item: ${item.item_name}`
-                );
-
-                // Convert first 3 images to base64
-                // Convert all images to base64
-                const base64Images = await Promise.all(
-                  urls.map((url) => urlToBase64(url)) // ← Removed .slice(0, 3)
-                );
-
-                // Filter out failed conversions
-                const validImages = base64Images.filter((img) => img !== "");
-
-                console.log(
-                  `Successfully converted ${validImages.length} images`
-                );
-
-                return {
-                  ...item,
-                  attachments: validImages,
-                };
-              } catch (error) {
-                console.error("Error processing item attachments:", error);
-                return item;
-              }
-            })
-          );
-        }
-      }
-
-      // Generate PDF blob
-      const blob = await pdf(
-        <BoqPDF boqHeader={boqHeader} boqLines={processedLines} />
-      ).toBlob();
-
-      console.log("PDF generated successfully");
-
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `BOQ-${String(boqHeader.id).padStart(5, "0")}.pdf`;
-
-      // Trigger download
-      document.body.appendChild(link);
-      link.click();
-
-      // Cleanup
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      console.log("Download complete");
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF. Please check console for details.");
-    }
-  }
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <Button
-      componentType={"button"}
-      bgColor={bgColor}
-      borderColor={borderColor}
-      textColor={textColor}
-      onClick={handleDownload}
-      style={style}
-    >
-      {children}
-    </Button>
+    <>
+      <Button
+        componentType={"button"}
+        bgColor={"white"}
+        borderColor={"black"}
+        textColor={"black"}
+        onClick={() => setIsOpen(true)}
+      >
+        EXPORT BOQ <img src={downloadIcon} />
+      </Button>
+
+      {isOpen && (
+        <FormPopUp header={"EXPORT BOQ"} setIsOpen={setIsOpen}>
+          <div className="input-row full">
+            <DownloadBoqWithPriceButton
+              boqHeader={boqHeader}
+              boqLines={boqLines}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginLeft: "25px",
+                  marginRight: "25px",
+                }}
+              >
+                <div style={{ display: "flex", gap: "20px" }}>
+                  <img src={fileIcon} style={{ scale: 2 }} />{" "}
+                  <span>DOWNLOAD WITH PRICE</span>
+                </div>{" "}
+                <img src={downloadIcon} />
+              </div>
+            </DownloadBoqWithPriceButton>
+          </div>
+
+          <br />
+
+          <div className="input-row full">
+            <DownloadBoqWithNoPriceButton
+              boqHeader={boqHeader}
+              boqLines={boqLines}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginLeft: "25px",
+                  marginRight: "25px",
+                }}
+              >
+                <div style={{ display: "flex", gap: "20px" }}>
+                  <img src={fileIcon} style={{ scale: 2 }} />{" "}
+                  <span>DOWNLOAD WITHOUT PRICE</span>
+                </div>{" "}
+                <img src={downloadIcon} />
+              </div>
+            </DownloadBoqWithNoPriceButton>
+          </div>
+        </FormPopUp>
+      )}
+    </>
   );
 }

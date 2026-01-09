@@ -4,12 +4,17 @@ import { useEffect, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
 import { LpoPDF } from "@/app/(protected)/mr/[id]/components/LpoPDF";
 import { LpoHeader } from "../../types/lpoHeader";
+import Button from "@/app/components/Button";
 
 type DownloadLPOButtonProps = {
   lpoID: number;
+  children?: React.ReactNode;
 };
 
-export default function DownloadLPOButton({ lpoID }: DownloadLPOButtonProps) {
+export default function DownloadLPOButton({
+  lpoID,
+  children,
+}: DownloadLPOButtonProps) {
   const downloadIcon = "/icons/download.svg";
 
   const [lpo, setLpo] = useState<LpoHeader | null>(null);
@@ -61,6 +66,21 @@ export default function DownloadLPOButton({ lpoID }: DownloadLPOButtonProps) {
     } catch (error) {
       console.error("Error generating PDF:", error);
     }
+  }
+
+  if (children) {
+    return (
+      <Button
+        componentType={"button"}
+        bgColor={"rgba(255, 255, 255, 1)"}
+        borderColor={"rgba(207, 207, 207, 1)"}
+        textColor={"black"}
+        style={{ borderRadius: "25px" }}
+        onClick={handleDownload}
+      >
+        {children}
+      </Button>
+    );
   }
 
   return <img src={downloadIcon} alt="download" onClick={handleDownload} />;

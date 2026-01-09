@@ -263,7 +263,7 @@ export default async function MrWithID({
                 </p>
               </div>
 
-              {!isCompleted && (
+              {mrHeader.progress_id !== 1 && (
                 <div>
                   <h2
                     className="approval-pill normal-text"
@@ -377,13 +377,15 @@ export default async function MrWithID({
           </div>
 
           <div style={{ display: "flex", gap: "10px" }}>
-            <div>
-              <small style={{ textWrap: "nowrap" }}>DELIVERY DATE/S</small>
-              <h2>
-                {new Date(mrHeader.delivery_date).toLocaleDateString("en-US")}
-              </h2>
-            </div>
-            {!isCompleted && (
+            {mrHeader.department_id === 17 && (
+              <div>
+                <small style={{ textWrap: "nowrap" }}>DELIVERY DATE/S</small>
+                <h2>
+                  {new Date(mrHeader.delivery_date).toLocaleDateString("en-US")}
+                </h2>
+              </div>
+            )}
+            {mrHeader.department_id === 17 && (
               <div>
                 <h2
                   className="approval-pill normal-text"

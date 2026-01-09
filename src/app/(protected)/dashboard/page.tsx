@@ -3,15 +3,17 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import ActiveMrsWidget from "./components/manager/W_ActiveMrs";
-import PendingApprovalMrsWidget from "./components/manager/W_PendingApprovalMrs";
-import PendingPaymentMrsWidget from "./components/manager/W_PendingPaymentsMrs";
+import PendingApprovalMrsWidget from "./components/W_PendingApprovalMrs";
+import PendingPaymentMrsWidget from "./components/W_PendingPaymentsMrs";
 import PendingDeliveryMrsWidget from "./components/manager/W_PendingDeliveryMrs";
 import OutboundPaymentMrsWidget from "./components/manager/W_OutboundPaymentMrs";
 import ProjectBox from "@/app/(protected)/project/components/ProjectBox";
 import AlertsAndRiskMrsWidget from "./components/manager/W_AlertsAndRisksMrs";
-import ExpectedDeliveriesWidget from "./components/manager/W_ExpectedDeliveries";
+import ExpectedDeliveriesWidget from "./components/W_ExpectedDeliveries";
 import AvgTimeSpentPerStageWidget from "./components/manager/W_AvgTimeSpentPerStage";
 import MedianMRLifespanWidget from "./components/manager/W_MedianMrLifeSpan";
+import PendingQuotationsMrsWidget from "./components/procurement/W_PendingQuotations";
+import DraftMrsWidget from "./components/department/W_DraftMrs";
 
 export default function Dashboard() {
   const bannerBackground = "/images/welcome-banner.jpg";
@@ -20,6 +22,8 @@ export default function Dashboard() {
 
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsWithBOQ, setProjectsWithBOQ] = useState<any[]>([]);
+
+  const DEPARTMENT_IDS = [1, 2, 3, 4, 5, 6, 7, 13, 14, 16];
 
   // Fetch Projects
   useEffect(() => {
@@ -104,6 +108,7 @@ export default function Dashboard() {
       <br />
       <br />
 
+      {/* MANAGER */}
       {userInfo?.departmentID === 8 && (
         <>
           <h2>OVERVIEW</h2>
@@ -130,6 +135,14 @@ export default function Dashboard() {
           <br />
           <br />
 
+          <div className="widget-grid">
+            <div></div> {/* active project allocated budget  */}
+          </div>
+
+          <br />
+          <br />
+          <br />
+
           <h2>ACTIVE PROJECTS</h2>
           <br />
           <div className="widget-grid active-projects">
@@ -143,6 +156,104 @@ export default function Dashboard() {
           <br />
 
           <ExpectedDeliveriesWidget />
+        </>
+      )}
+
+      {/* PROCUREMENT */}
+      {userInfo?.departmentID === 9 && (
+        <>
+          <h2>OVERVIEW</h2>
+          <br />
+          <div className="widget-grid overview five-col">
+            <PendingQuotationsMrsWidget />
+            <PendingPaymentMrsWidget />
+            <div></div>
+            <div></div>
+            <PendingDeliveryMrsWidget />
+          </div>
+
+          <br />
+          <br />
+          <br />
+
+          <div className="widget-grid overview two-col">
+            <div></div> {/* Top Vendors by QC Performance */}
+            <div></div> {/* Top Vendors by Spend */}
+          </div>
+
+          <br />
+          <br />
+          <br />
+
+          <div className="widget-grid overview two-col">
+            <div></div> {/* Top Vendors by Order Volume */}
+            <div></div> {/* Top Vendors with Delivery Rate */}
+          </div>
+
+          <br />
+          <br />
+          <br />
+
+          <h2>ACTIVE PROJECTS</h2>
+          <br />
+          <div className="widget-grid active-projects">
+            {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
+              <ProjectBox proj={proj} key={index} />
+            ))}
+          </div>
+
+          <br />
+          <br />
+          <br />
+
+          <div className="widget-grid">
+            <div></div> {/* Active project allocated budget */}
+          </div>
+
+          <br />
+          <br />
+          <br />
+
+          <ExpectedDeliveriesWidget />
+        </>
+      )}
+
+      {/* DEPARTMENT */}
+      {DEPARTMENT_IDS.includes(Number(userInfo?.departmentID)) && (
+        <>
+          <h2>OVERVIEW</h2>
+
+          <br />
+
+          <div className="widget-grid overview four-col">
+            <DraftMrsWidget />
+            <PendingPaymentMrsWidget />
+            <PendingApprovalMrsWidget />
+            <PendingDeliveryMrsWidget />
+          </div>
+
+          <br />
+          <br />
+          <br />
+
+          <div className="widget-grid overview two-col">
+            <div></div> {/* MR REJECTED, MR COMPLETED */}
+            <div></div> {/* TOP PROJECTS WITH MR REQUESTS */}
+          </div>
+
+          <br />
+          <br />
+          <br />
+
+          <h2>ACTIVE PROJECTS</h2>
+
+          <br />
+
+          <div className="widget-grid active-projects">
+            {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
+              <ProjectBox proj={proj} key={index} />
+            ))}
+          </div>
         </>
       )}
     </div>

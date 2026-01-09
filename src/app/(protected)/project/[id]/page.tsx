@@ -164,7 +164,29 @@ export default async function ProjectWithID({
 
         <div style={{ textTransform: "uppercase" }}>
           <small>SCOPE</small>
-          <h2>{project.scope}</h2>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+            }}
+          >
+            {project.scope?.split(",").map((item: string, index: number) => (
+              <h2
+                key={index}
+                className=""
+                style={{
+                  padding: "4px 10px",
+                  backgroundColor: "rgba(225, 225, 225, 1)",
+                  borderRadius: "5px",
+                  color: "black",
+                }}
+              >
+                {item.trim()}
+              </h2>
+            ))}
+          </div>
         </div>
       </div>
     </div>

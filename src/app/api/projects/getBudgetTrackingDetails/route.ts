@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
       project?.project_allocated_budget ?? 0
     );
 
-    // 2️⃣ Sum total from LPOs with this project_id
+    // 2️⃣ Sum total from LPOs with this project_id and payment_status = 'Approved'
     const [lpoRows] = await db.query(
-      "SELECT COALESCE(SUM(total), 0) AS lpo_total FROM lpo WHERE project_id = ?",
+      "SELECT COALESCE(SUM(total), 0) AS lpo_total FROM lpo WHERE project_id = ? AND payment_status = 'Approved'",
       [projectId]
     );
 

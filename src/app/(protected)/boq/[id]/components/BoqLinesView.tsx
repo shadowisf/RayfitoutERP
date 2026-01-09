@@ -10,6 +10,7 @@ import RenameBoqSubCategoryButton from "./manager/_RenameBoqSubCategory";
 import { useAuth } from "@/app/context/AuthContext";
 import ItemDescriptionPopUp from "./ItemDescriptionPopUp";
 import { BoqHeader } from "../types/boqHeader";
+import DownloadBoqWithPriceButton from "./manager/_DownloadBoqWithPriceButton";
 import DownloadBoqButton from "./manager/_DownloadBoqButton";
 
 type GroupedBoqLines = {
@@ -59,6 +60,11 @@ export default function BoqLinesView({
     return expandedDescriptions.includes(itemId);
   }
 
+  // ✅ Calculate subtotal for a subcategory
+  const calculateSubtotal = (items: BoqLine[]) => {
+    return items.reduce((sum, item) => sum + (item.total_cost || 0), 0);
+  };
+
   return (
     <>
       <div className="category-grid">
@@ -102,15 +108,7 @@ export default function BoqLinesView({
             </>
           )}
 
-          <DownloadBoqButton
-            boqHeader={boqHeader}
-            boqLines={boqLines}
-            bgColor="black"
-            borderColor="black"
-            textColor="white"
-          >
-            DOWNLOAD BOQ
-          </DownloadBoqButton>
+          <DownloadBoqButton boqHeader={boqHeader} boqLines={boqLines} />
         </div>
       </div>
 
@@ -124,6 +122,9 @@ export default function BoqLinesView({
                 [subCategory, items],
                 subCategoryIndex
               ) {
+                // ✅ Calculate subtotal
+                const subtotal = calculateSubtotal(items);
+
                 return (
                   <div
                     key={`${category}-${subCategory}`}
@@ -206,7 +207,6 @@ export default function BoqLinesView({
                                 userInfo?.departmentID === 10) && (
                                 <>
                                   <td style={{ textWrap: "nowrap" }}>
-                                    AED{" "}
                                     {item.rate_per_quantity?.toLocaleString()}
                                   </td>
                                   <td>
@@ -316,22 +316,47 @@ export default function BoqLinesView({
                       </tbody>
                     </table>
 
-                    <br />
-
                     {(userInfo?.departmentID === 8 ||
                       userInfo?.departmentID === 16) && (
-                      <AddBoqItemButton
-                        boqHeaderID={boqHeader.id}
-                        bgColor="rgba(239, 239, 239, 1)"
-                        borderColor="rgba(239, 239, 239, 1)"
-                        textColor="black"
-                        full
-                        autoCategory={category}
-                        autoSubCategory={subCategory}
-                        style={{ padding: "20px 0px" }}
+                      <div
+                        style={{ backgroundColor: "white", padding: "20px" }}
                       >
-                        ADD ITEM +
-                      </AddBoqItemButton>
+                        <AddBoqItemButton
+                          boqHeaderID={boqHeader.id}
+                          bgColor="rgba(239, 239, 239, 1)"
+                          borderColor="rgba(239, 239, 239, 1)"
+                          textColor="black"
+                          full
+                          autoCategory={category}
+                          autoSubCategory={subCategory}
+                          style={{ padding: "20px 0px" }}
+                        >
+                          ADD ITEM +
+                        </AddBoqItemButton>
+                      </div>
+                    )}
+
+                    {/* ✅ Subtotal Row */}
+                    {(userInfo?.departmentID === 8 ||
+                      userInfo?.departmentID === 12 ||
+                      userInfo?.departmentID === 10) && (
+                      <>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "20px",
+                            backgroundColor: "white",
+                            borderTop: "1px solid rgba(232, 223, 223, 1)",
+                          }}
+                        >
+                          <h3 style={{ textTransform: "uppercase" }}>
+                            SUBTOTAL FOR {subCategory}
+                          </h3>
+                          <h3>AED {subtotal.toLocaleString()}</h3>
+                        </div>
+                      </>
                     )}
 
                     <br />
@@ -347,6 +372,9 @@ export default function BoqLinesView({
             [subCategory, items],
             index
           ) {
+            // ✅ Calculate subtotal
+            const subtotal = calculateSubtotal(items);
+
             return (
               <div key={subCategory} className="subcategory-section">
                 <div className="subcategory-header">
@@ -378,7 +406,7 @@ export default function BoqLinesView({
                 <br />
                 <br />
 
-                <table className="items-table">
+                <table className="items-table two-toned">
                   <thead>
                     <tr>
                       <th>#</th>
@@ -427,7 +455,7 @@ export default function BoqLinesView({
                             userInfo?.departmentID === 10) && (
                             <>
                               <td style={{ textWrap: "nowrap" }}>
-                                AED {item.rate_per_quantity?.toLocaleString()}
+                                {item.rate_per_quantity?.toLocaleString()}
                               </td>
                               <td>AED {item.total_cost?.toLocaleString()}</td>
                             </>
@@ -528,26 +556,46 @@ export default function BoqLinesView({
                   </tbody>
                 </table>
 
-                <br />
-
                 {(userInfo?.departmentID === 8 ||
                   userInfo?.departmentID === 16) && (
-                  <AddBoqItemButton
-                    boqHeaderID={boqHeader.id}
-                    bgColor="rgba(239, 239, 239, 1)"
-                    borderColor="rgba(239, 239, 239, 1)"
-                    textColor="black"
-                    full
-                    autoCategory={activeCategory}
-                    autoSubCategory={subCategory}
-                    style={{ padding: "20px 0px" }}
+                  <div style={{ backgroundColor: "white", padding: "20px" }}>
+                    <AddBoqItemButton
+                      boqHeaderID={boqHeader.id}
+                      bgColor="rgba(239, 239, 239, 1)"
+                      borderColor="rgba(239, 239, 239, 1)"
+                      textColor="black"
+                      full
+                      autoCategory={activeCategory}
+                      autoSubCategory={subCategory}
+                      style={{ padding: "20px 0px" }}
+                    >
+                      ADD ITEM +
+                    </AddBoqItemButton>
+                  </div>
+                )}
+
+                {/* ✅ Subtotal Row */}
+                {(userInfo?.departmentID === 8 ||
+                  userInfo?.departmentID === 12 ||
+                  userInfo?.departmentID === 10) && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "20px",
+                      backgroundColor: "white",
+                      borderTop: "1px solid rgba(232, 223, 223, 1)",
+                    }}
                   >
-                    ADD ITEM +
-                  </AddBoqItemButton>
+                    <h3 style={{ textTransform: "uppercase" }}>
+                      SUBTOTAL FOR {subCategory}
+                    </h3>
+                    <h3>AED {subtotal.toLocaleString()}</h3>
+                  </div>
                 )}
 
                 <br />
-
                 <br />
                 <br />
                 <br />
@@ -561,11 +609,11 @@ export default function BoqLinesView({
           <AddBoqItemButton
             boqHeaderID={boqHeader.id}
             bgColor="rgba(239, 239, 239, 1)"
-            borderColor="rgba(239, 239, 239, 1)"
+            borderColor="transparent"
             textColor="black"
             full
             autoCategory={activeCategory}
-            style={{ padding: "20px 0px", backgroundColor: "white" }}
+            style={{ padding: "40px 0px", backgroundColor: "white" }}
           >
             ADD SUBCATEGORY & ITEM +
           </AddBoqItemButton>

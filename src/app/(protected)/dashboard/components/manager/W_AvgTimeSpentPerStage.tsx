@@ -2,12 +2,21 @@
 
 import { useEffect, useState } from "react";
 
+type StageData = {
+  stage: string;
+  averageMinutes: number;
+  averageHoursFloat: number;
+  hours: number;
+  minutes: number;
+  count: number;
+};
+
 export default function AvgTimeSpentPerStageWidget() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<StageData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  // ✅ Define stage order based on MR progression
+  // ✅ Define MR stage order
   const stageOrder = [
     "Draft",
     "Initial approval rejected",
@@ -38,34 +47,31 @@ export default function AvgTimeSpentPerStageWidget() {
         return res.json();
       })
       .then((responseData) => {
-        if (Array.isArray(responseData)) {
-          // Filter out "Completed" stage
-          const filteredData = responseData.filter(
-            (item) => item.stage.toLowerCase() !== "completed"
+        if (!Array.isArray(responseData)) {
+          throw new Error("Invalid data format");
+        }
+
+        // ❌ Remove Completed stage and filter out < 1 minute or 0
+        const filtered = responseData.filter(
+          (item) =>
+            item.stage.toLowerCase() !== "completed" && item.averageMinutes >= 1
+        );
+
+        // ✅ Sort by defined stage order
+        const sorted = filtered.sort((a, b) => {
+          const indexA = stageOrder.findIndex(
+            (stage) => stage.toLowerCase() === a.stage.toLowerCase()
+          );
+          const indexB = stageOrder.findIndex(
+            (stage) => stage.toLowerCase() === b.stage.toLowerCase()
           );
 
-          // ✅ Sort by stage order
-          const sortedData = filteredData.sort((a, b) => {
-            const indexA = stageOrder.findIndex(
-              (stage) => stage.toLowerCase() === a.stage.toLowerCase()
-            );
-            const indexB = stageOrder.findIndex(
-              (stage) => stage.toLowerCase() === b.stage.toLowerCase()
-            );
+          return (
+            (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB)
+          );
+        });
 
-            // If stage not found in order, put it at the end
-            const orderA = indexA === -1 ? 999 : indexA;
-            const orderB = indexB === -1 ? 999 : indexB;
-
-            return orderA - orderB;
-          });
-
-          setData(sortedData);
-        } else {
-          console.error("Response is not an array:", responseData);
-          setData([]);
-          setError("Invalid data format received");
-        }
+        setData(sorted);
       })
       .catch((err) => {
         console.error("Error fetching stage times:", err);
@@ -74,27 +80,46 @@ export default function AvgTimeSpentPerStageWidget() {
       });
   }, []);
 
-  const maxHours =
-    data.length > 0 ? Math.max(...data.map((d) => d.averageHours), 0) : 0;
-  const minHours =
-    data.length > 0 ? Math.min(...data.map((d) => d.averageHours), 0) : 0;
+  // ✅ Use logarithmic scaling for better visibility of small values
+  const maxMinutes =
+    data.length > 0 ? Math.max(...data.map((d) => d.averageMinutes)) : 0;
 
-  // ✅ Calculate color based on hours relative to min/max
-  const getBarColor = (hours: number) => {
-    if (maxHours === minHours) {
-      // If all values are the same, use middle color
-      return "rgba(121, 121, 158, 1)";
+  const minMinutes =
+    data.length > 0 ? Math.min(...data.map((d) => d.averageMinutes)) : 0;
+
+  // ✅ Calculate bar width with logarithmic scaling for better visibility
+  const getBarWidth = (minutes: number) => {
+    if (maxMinutes === 0) return 0;
+
+    // Use log scale to make small values more visible
+    const logMin = Math.log10(Math.max(minMinutes, 1));
+    const logMax = Math.log10(maxMinutes);
+    const logValue = Math.log10(Math.max(minutes, 1));
+
+    if (logMax === logMin) return 100;
+
+    const percentage = ((logValue - logMin) / (logMax - logMin)) * 100;
+
+    // Ensure minimum 5% width for visibility
+    return Math.max(percentage, 5);
+  };
+
+  // ✅ Color: green for lowest, red for highest, gray for rest
+  const getBarColor = (minutes: number) => {
+    if (minutes === minMinutes) {
+      return "rgba(26, 216, 135, 1)"; // Green for lowest
     }
+    if (minutes === maxMinutes) {
+      return "rgba(216, 26, 26, 1)"; // Red for highest
+    }
+    return "rgba(206, 206, 206, 1)"; // Gray for all others
+  };
 
-    // Calculate percentage from min to max
-    const percentage = (hours - minHours) / (maxHours - minHours);
-
-    // Interpolate between green (lowest) and red (highest)
-    const red = Math.round(26 + percentage * (216 - 26));
-    const green = Math.round(216 - percentage * (216 - 26));
-    const blue = Math.round(135 - percentage * (135 - 26));
-
-    return `rgba(${red}, ${green}, ${blue}, 1)`;
+  const formatDuration = (h: number, m: number) => {
+    if (h === 0 && m === 0) return "0 min";
+    if (h > 0 && m > 0) return `${h} hr ${m} min`;
+    if (h > 0) return `${h} hr`;
+    return `${m} min`;
   };
 
   return (
@@ -105,26 +130,12 @@ export default function AvgTimeSpentPerStageWidget() {
         borderRadius: "15px",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <h3 style={{ margin: 0 }}>Average Time Spent Per Stage</h3>
-      </div>
+      <h3 style={{ margin: 0 }}>Average Time Spent Per Stage</h3>
 
       <br />
 
       {error ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "40px",
-            color: "rgba(248, 77, 77, 1)",
-          }}
-        >
+        <div style={{ textAlign: "center", padding: "40px", color: "#f84d4d" }}>
           Error: {error}
         </div>
       ) : data.length === 0 ? (
@@ -132,38 +143,25 @@ export default function AvgTimeSpentPerStageWidget() {
           No data available
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
           {data.map((item, index) => {
-            const barWidth =
-              maxHours > 0 ? (item.averageHours / maxHours) * 100 : 0;
-            const barColor = getBarColor(item.averageHours); // ✅ Use gradient color
+            const barWidth = getBarWidth(item.averageMinutes);
+            const barColor = getBarColor(item.averageMinutes);
             const isHovered = hoveredIndex === index;
 
             return (
               <div
                 key={index}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "15px",
-                }}
+                style={{ display: "flex", alignItems: "center" }}
               >
-                {/* Stage label on the left */}
-                <div
-                  style={{
-                    minWidth: "200px",
-                  }}
-                >
+                {/* Stage name */}
+                <div style={{ minWidth: "200px", fontSize: "14px" }}>
                   {item.stage}
                 </div>
 
-                {/* Bar on the right with dynamic width */}
+                {/* Bar */}
                 <div
-                  style={{
-                    position: "relative",
-                    flex: 1,
-                    height: "25px",
-                  }}
+                  style={{ flex: 1, height: "15px", position: "relative" }}
                   onMouseEnter={() => setHoveredIndex(index)}
                   onMouseLeave={() => setHoveredIndex(null)}
                 >
@@ -173,51 +171,44 @@ export default function AvgTimeSpentPerStageWidget() {
                       height: "100%",
                       backgroundColor: barColor,
                       borderRadius: "20px",
-                      position: "relative",
-                      transition: "background-color 0.3s ease",
                     }}
-                  >
-                    {/* Hover Tooltip */}
-                    {isHovered && item.averageHours > 0 && (
+                  />
+
+                  {/* Tooltip */}
+                  {isHovered && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: `${barWidth}%`,
+                        top: "-40px",
+                        transform: "translateX(-50%)",
+                        backgroundColor: "black",
+                        color: "white",
+                        padding: "6px 12px",
+                        borderRadius: "8px",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                        zIndex: 10,
+                      }}
+                    >
+                      {formatDuration(item.hours, item.minutes)}
+
                       <div
                         style={{
                           position: "absolute",
+                          bottom: "-5px",
                           left: "50%",
-                          top: "-40px",
                           transform: "translateX(-50%)",
-                          backgroundColor: "black",
-                          color: "white",
-                          padding: "6px 12px",
-                          borderRadius: "8px",
-                          fontSize: "13px",
-                          fontWeight: "600",
-                          whiteSpace: "nowrap",
-                          zIndex: 10,
-                          boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                          width: 0,
+                          height: 0,
+                          borderLeft: "5px solid transparent",
+                          borderRight: "5px solid transparent",
+                          borderTop: "5px solid black",
                         }}
-                      >
-                        {item.averageHours < 1
-                          ? `${Math.round(item.averageHours * 60)} Minutes`
-                          : `${item.averageHours} Hr${
-                              item.averageHours !== 1 ? "s" : ""
-                            }`}
-                        {/* Tooltip Arrow */}
-                        <div
-                          style={{
-                            position: "absolute",
-                            bottom: "-5px",
-                            left: "50%",
-                            transform: "translateX(-50%)",
-                            width: "0",
-                            height: "0",
-                            borderLeft: "5px solid transparent",
-                            borderRight: "5px solid transparent",
-                            borderTop: "5px solid black",
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             );
