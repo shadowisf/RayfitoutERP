@@ -29,20 +29,37 @@ export async function POST(req: NextRequest) {
       ]);
 
       // Query stocks_transfer_issue table with junction table
-      // Note: You'll need to create a view for this or adjust the query
+      // Get all transfer/issue transactions for this inventory item
       const transferIssueQuery = `
         SELECT 
-          sti.*,
+          sti.id,
+          sti.project_id,
+          sti.boq_line_id,
+          sti.created_on,
+          sti.type,
+          sti.transferee,
+          sti.purpose,
+          sti.from_location,
+          sti.to_location,
+          sti.receiver_name,
+          sti.received,
+          sti.received_on,
+          sti.signed_tsc_file,
+          sti.third_party_involved,
           jt.inventory_item_id,
           jt.quantity,
           jt.serial_number,
           jt.received_quantity,
+          jt.attachment,
           i.description,
-          i.unit
+          i.unit,
+          p.name as project_name
         FROM stocks_transfer_issue sti
         INNER JOIN jt_stocks_transfer_issue_inventory_item jt ON sti.id = jt.stocks_transfer_issue_id
         INNER JOIN inventory i ON jt.inventory_item_id = i.id
+        LEFT JOIN projects p ON sti.project_id = p.id
         WHERE jt.inventory_item_id = ?
+        ORDER BY sti.created_on DESC
       `;
       const [transferIssueRows] = await db.execute<RowDataPacket[]>(
         transferIssueQuery,

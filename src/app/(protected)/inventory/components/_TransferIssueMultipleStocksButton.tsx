@@ -19,11 +19,20 @@ type SelectedItem = {
   quantity: number;
   serial_number?: string;
   attachment?: File | null;
+  image: string;
 };
 
-export default function TransferIssueMultipleStocks() {
+type TransferIssueMultipleStocksProps = {
+  onSuccess?: () => void;
+};
+
+export default function TransferIssueMultipleStocks({
+  onSuccess,
+}: TransferIssueMultipleStocksProps) {
   const trashIcon = "/icons/trash.svg";
   const uploadIcon = "/icons/upload.svg";
+  const crossIcon = "/icons/cross-small.svg";
+  const noImageIcon = "/icons/no-image.jpg";
 
   const router = useRouter();
 
@@ -272,6 +281,7 @@ export default function TransferIssueMultipleStocks() {
           quantity: 0,
           serial_number: "",
           attachment: null,
+          image: inventoryItem.image || "",
         });
       }
     }
@@ -442,6 +452,10 @@ export default function TransferIssueMultipleStocks() {
           "success"
         );
 
+        {
+          onSuccess && onSuccess();
+        }
+
         // Reset form
         setType("");
         setFrom("");
@@ -484,6 +498,7 @@ export default function TransferIssueMultipleStocks() {
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
+          style={{ minWidth: from ? "1650px" : "" }}
         >
           <FormContextHeader>TRANSFER CONTEXT</FormContextHeader>
           <div className="input-row half">
@@ -621,9 +636,11 @@ export default function TransferIssueMultipleStocks() {
                 )}
               </div>
 
-              <div className="input-row half">
-                {type.toLowerCase().includes("transfer") && (
-                  <>
+              {type.toLowerCase().includes("transfer") && (
+                <>
+                  <br />
+
+                  <div className="input-row half">
                     <InputItem
                       label={"FULL NAME OF SITE RECIPIENT"}
                       value={receiverName}
@@ -631,6 +648,15 @@ export default function TransferIssueMultipleStocks() {
                       onChange={(e) => setReceiverName(e.target.value)}
                       required
                     />
+                  </div>
+                </>
+              )}
+
+              <br />
+
+              <div className="input-row half">
+                {type.toLowerCase().includes("transfer") && (
+                  <>
                     <div
                       className="input-item"
                       style={{ flexDirection: "row", alignItems: "center" }}
@@ -772,7 +798,42 @@ export default function TransferIssueMultipleStocks() {
                         {selectedItems.map((item, index) => (
                           <tr key={item.inventory_item_id}>
                             <td>{index + 1}</td>
-                            <td>{item.description}</td>
+                            <td>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "25px",
+                                }}
+                              >
+                                <div style={{ width: "50px" }}>
+                                  {item.image ? (
+                                    <img
+                                      src={item.image}
+                                      alt={item.description}
+                                      width={50}
+                                      style={{
+                                        aspectRatio: "1/1",
+                                        borderRadius: "5px",
+                                        objectFit: "cover",
+                                      }}
+                                    />
+                                  ) : (
+                                    <img
+                                      src={noImageIcon}
+                                      alt="reference image"
+                                      width={50}
+                                      style={{
+                                        aspectRatio: "1/1",
+                                        objectFit: "cover",
+                                        borderRadius: "5px",
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                                <div>{item.description}</div>
+                              </div>
+                            </td>
                             <td>
                               {item.available_qty} {item.unit}
                             </td>
@@ -799,7 +860,7 @@ export default function TransferIssueMultipleStocks() {
                             <td>
                               <InputItem
                                 label=""
-                                placeholder="SERIAL NUMBER"
+                                placeholder="ENTER MODEL/SERIAL NUMBER"
                                 noOptionalLabel={true}
                                 value={item.serial_number || ""}
                                 type={"text"}
@@ -812,26 +873,68 @@ export default function TransferIssueMultipleStocks() {
                               />
                             </td>
                             <td>
-                              <Button
-                                componentType={"button"}
-                                bgColor={"rgba(239, 239, 239, 1)"}
-                                borderColor={"rgba(223, 223, 223, 1)"}
-                                textColor={item.attachment ? "white" : "black"}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handleOpenAttachmentModal(
-                                    item.inventory_item_id
-                                  );
-                                }}
-                                style={{ padding: "7px 7px" }}
-                              >
-                                <img
-                                  src={uploadIcon}
+                              {item.attachment ? (
+                                <div
                                   style={{
-                                    filter: "invert(1)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "10px",
                                   }}
-                                />
-                              </Button>
+                                >
+                                  <img
+                                    src={URL.createObjectURL(item.attachment)}
+                                    alt="Preview"
+                                    style={{
+                                      width: "50px",
+                                      height: "50px",
+                                      objectFit: "cover",
+                                      borderRadius: "5px",
+                                      border: "1px solid #ddd",
+                                    }}
+                                  />
+                                  <Button
+                                    componentType={"button"}
+                                    bgColor={"rgba(239, 239, 239, 1)"}
+                                    borderColor={"rgba(223, 223, 223, 1)"}
+                                    textColor={"black"}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setSelectedItems(
+                                        selectedItems.map((i) =>
+                                          i.inventory_item_id ===
+                                          item.inventory_item_id
+                                            ? { ...i, attachment: null }
+                                            : i
+                                        )
+                                      );
+                                    }}
+                                    style={{ padding: "7px 7px" }}
+                                  >
+                                    <img src={crossIcon} alt="Remove" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button
+                                  componentType={"button"}
+                                  bgColor={"rgba(239, 239, 239, 1)"}
+                                  borderColor={"rgba(223, 223, 223, 1)"}
+                                  textColor={"black"}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleOpenAttachmentModal(
+                                      item.inventory_item_id
+                                    );
+                                  }}
+                                  style={{ padding: "7px 7px" }}
+                                >
+                                  <img
+                                    src={uploadIcon}
+                                    style={{
+                                      filter: "invert(1)",
+                                    }}
+                                  />
+                                </Button>
+                              )}
                             </td>
                             <td>
                               <Button
@@ -989,11 +1092,7 @@ export default function TransferIssueMultipleStocks() {
                             <div style={{ width: "50px" }}>
                               {item.image ? (
                                 <img
-                                  src={
-                                    typeof item.image === "string"
-                                      ? JSON.parse(item.image)[0]
-                                      : item.image
-                                  }
+                                  src={item.image}
                                   alt={item.description}
                                   width={50}
                                   style={{
@@ -1003,16 +1102,16 @@ export default function TransferIssueMultipleStocks() {
                                   }}
                                 />
                               ) : (
-                                <div
+                                <img
+                                  src={noImageIcon}
+                                  alt="reference image"
+                                  width={50}
                                   style={{
-                                    height: "50px",
-                                    display: "flex",
-                                    justifyContent: "center",
-                                    alignItems: "center",
+                                    aspectRatio: "1/1",
+                                    objectFit: "cover",
+                                    borderRadius: "5px",
                                   }}
-                                >
-                                  -
-                                </div>
+                                />
                               )}
                             </div>
                             <div>{item.description}</div>
@@ -1067,7 +1166,7 @@ export default function TransferIssueMultipleStocks() {
               fileState={tempAttachment}
               setFileState={setTempAttachment}
               label={"IMAGE OF MATERIAL / EQUIPMENT"}
-              acceptedFileTypes={".png,.jpg,.jpeg,.pdf"}
+              acceptedFileTypes={".png,.jpg,.jpeg"}
               required
             />
           </div>

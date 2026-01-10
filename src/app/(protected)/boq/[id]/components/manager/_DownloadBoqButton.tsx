@@ -7,6 +7,7 @@ import DownloadBoqWithPriceButton from "./_DownloadBoqWithPriceButton";
 import { BoqHeader } from "../../types/boqHeader";
 import { BoqLine } from "../../types/boqLine";
 import DownloadBoqWithNoPriceButton from "./_DownloadBoqWithNoPriceButton";
+import { useAuth } from "@/app/context/AuthContext";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -23,6 +24,8 @@ export default function DownloadBoqButton({
   boqHeader,
   boqLines,
 }: DownloadBoqButtonProps) {
+  const { userInfo } = useAuth();
+
   const downloadIcon = "/icons/download.svg";
   const fileIcon = "/icons/file-boq.svg";
 
@@ -42,30 +45,36 @@ export default function DownloadBoqButton({
 
       {isOpen && (
         <FormPopUp header={"EXPORT BOQ"} setIsOpen={setIsOpen}>
-          <div className="input-row full">
-            <DownloadBoqWithPriceButton
-              boqHeader={boqHeader}
-              boqLines={boqLines}
-            >
-              <div
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginLeft: "25px",
-                  marginRight: "25px",
-                }}
-              >
-                <div style={{ display: "flex", gap: "20px" }}>
-                  <img src={fileIcon} style={{ scale: 2 }} />{" "}
-                  <span>Priced BOQ</span>
-                </div>{" "}
-                <img src={downloadIcon} />
+          {(userInfo?.departmentID === 8 ||
+            userInfo?.departmentID === 10 ||
+            userInfo?.departmentID === 16) && (
+            <>
+              <div className="input-row full">
+                <DownloadBoqWithPriceButton
+                  boqHeader={boqHeader}
+                  boqLines={boqLines}
+                >
+                  <div
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginLeft: "25px",
+                      marginRight: "25px",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: "20px" }}>
+                      <img src={fileIcon} style={{ scale: 2 }} />{" "}
+                      <span>Priced BOQ</span>
+                    </div>{" "}
+                    <img src={downloadIcon} />
+                  </div>
+                </DownloadBoqWithPriceButton>
               </div>
-            </DownloadBoqWithPriceButton>
-          </div>
 
-          <br />
+              <br />
+            </>
+          )}
 
           <div className="input-row full">
             <DownloadBoqWithNoPriceButton

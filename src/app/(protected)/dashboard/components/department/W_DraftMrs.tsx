@@ -1,8 +1,11 @@
 "use client";
 
+import { useAuth } from "@/app/context/AuthContext";
 import { useEffect, useState } from "react";
 
 export default function DraftMrsWidget() {
+  const { userInfo } = useAuth();
+
   const fileIcon = "/icons/file.svg";
   const upArrow = "/icons/arrow-up-chart-green-big.svg";
   const downArrow = "/icons/arrow-down-chart-red-big.svg";
@@ -14,7 +17,16 @@ export default function DraftMrsWidget() {
 
   useEffect(() => {
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/department/getTotalDraftMrs`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/department/getTotalDraftMrs`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          department_id: userInfo?.departmentID,
+        }),
+      }
     )
       .then((res) => res.json())
       .then((data) => {

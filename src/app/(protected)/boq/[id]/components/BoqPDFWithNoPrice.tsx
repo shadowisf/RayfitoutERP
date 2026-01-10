@@ -454,14 +454,6 @@ export function BoqPDFWithNoPrice({ boqLines, boqHeader }: BoqPDFProps) {
           })}
         </View>
 
-        {/* Total Row */}
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>GRAND TOTAL</Text>
-          <Text style={styles.totalValue}>
-            AED {grandTotal.toLocaleString()}
-          </Text>
-        </View>
-
         {/* Bottom Section - Terms */}
         <View style={styles.bottomSection}>
           {/* Payment Terms */}

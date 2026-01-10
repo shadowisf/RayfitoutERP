@@ -20,6 +20,7 @@ export default function TransactionDetailsPopUpButton({
   const [transaction, setTransaction] = useState<any | null>(null);
 
   const externalLinkIcon = "/icons/external-link.svg";
+  const noImageIcon = "/icons/no-image.jpg";
 
   useEffect(() => {
     async function fetchTransferDetails() {
@@ -236,16 +237,16 @@ export default function TransactionDetailsPopUpButton({
                               }}
                             />
                           ) : (
-                            <div
+                            <img
+                              src={noImageIcon}
+                              alt="reference image"
+                              width={50}
                               style={{
-                                height: "50px",
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
+                                aspectRatio: "1/1",
+                                objectFit: "cover",
+                                borderRadius: "5px",
                               }}
-                            >
-                              -
-                            </div>
+                            />
                           )}
                         </div>
                         {item.description}
@@ -253,7 +254,7 @@ export default function TransactionDetailsPopUpButton({
                     </td>
                     <td>{item.quantity}</td>
                     <td>
-                      {item.attachment ? (
+                      {item.attachment && (
                         <a
                           href={item.attachment}
                           target="_blank"
@@ -270,8 +271,6 @@ export default function TransactionDetailsPopUpButton({
                             }}
                           />
                         </a>
-                      ) : (
-                        ""
                       )}
                     </td>
                   </tr>

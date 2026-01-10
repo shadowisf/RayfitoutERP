@@ -8,6 +8,8 @@ import UploadFilesButton from "./_UploadFilesButton";
 import { useRouter } from "next/navigation";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
+import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
+import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 
 type AddBoqItemButtonProps = {
   boqHeaderID: number;
@@ -42,7 +44,7 @@ export default function AddBoqItemButton({
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
   const [scopeOfWork, setScopeOfWork] = useState<string | number>("");
-  const [locationID, setLocationID] = useState<string | number>("");
+  const [locationID, setLocationID] = useState<(string | number)[]>([]);
   const [quantity, setQuantity] = useState<string | number>("");
   const [unit, setUnit] = useState("");
   const [ratePerQuantity, setRatePerQuantity] = useState<string | number>("");
@@ -127,7 +129,7 @@ export default function AddBoqItemButton({
           category,
           sub_category: subCategory,
           scope_of_work: scopeOfWork,
-          location_id: locationID,
+          location_ids: locationID,
           quantity,
           unit,
           rate_per_quantity: ratePerQuantity,
@@ -144,7 +146,7 @@ export default function AddBoqItemButton({
         setCategory("");
         setSubCategory("");
         setScopeOfWork("");
-        setLocationID("");
+        setLocationID([]);
         setQuantity("");
         setUnit("");
         setRatePerQuantity("");
@@ -241,11 +243,18 @@ export default function AddBoqItemButton({
               placeholder="SELECT SCOPE OF WORK"
             />
 
-            <SingleSelectDropdown
+            {/* <SingleSelectDropdown
               label={"LOCATION"}
               selectedValue={locationID}
               onChange={setLocationID}
               placeholder={"SELECT LOCATION"}
+              dbData={locationValues}
+            /> */}
+            <MultiSelectDropdown
+              label={"LOCATION"}
+              selectedValues={locationID}
+              onChange={setLocationID}
+              placeholder="SELECT LOCATION"
               dbData={locationValues}
             />
           </div>

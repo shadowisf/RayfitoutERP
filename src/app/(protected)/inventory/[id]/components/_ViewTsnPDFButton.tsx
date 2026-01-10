@@ -111,15 +111,16 @@ export default function ViewTSNPDFButton({
 
   return (
     <Button
-      componentType={"none"}
+      componentType={"button"}
       bgColor={"rgba(255, 255, 255, 1)"}
       borderColor={"rgba(207, 207, 207, 1)"}
       textColor={"black"}
       style={{ padding: "7px 20px", borderRadius: "25px" }}
       disabled={isProcessing}
+      onClick={handleDownload}
     >
       DN (UNSIGNED)
-      <img src={downloadIcon} alt="download" onClick={handleDownload} />
+      <img src={downloadIcon} alt="download" />
     </Button>
   );
 }

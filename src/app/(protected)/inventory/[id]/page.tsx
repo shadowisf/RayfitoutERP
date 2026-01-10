@@ -21,6 +21,8 @@ export default async function InventoryItemWithID({
 }) {
   const { id } = await params;
 
+  const noImageIcon = "/icons/no-image.jpg";
+
   const inventoryItem: InventoryItem = await fetch(
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory/getInventoryItemByID`,
     {
@@ -129,7 +131,10 @@ export default async function InventoryItemWithID({
           alignItems: "center",
         }}
       >
-        <h2>INVENTORY &gt; {inventoryItem?.description.toUpperCase()}</h2>
+        <h2>
+          <a href="/inventory">INVENTORY</a> &gt;{" "}
+          {inventoryItem?.description.toUpperCase()}
+        </h2>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <EditInventoryItemButton inventoryItem={inventoryItem} />
 
@@ -232,10 +237,16 @@ export default async function InventoryItemWithID({
             </div>
 
             <div>
-              {inventoryItem.image && (
+              {inventoryItem.image ? (
                 <img
                   src={inventoryItem?.image}
                   alt="Inventory item"
+                  style={{ maxHeight: "200px" }}
+                />
+              ) : (
+                <img
+                  src={noImageIcon}
+                  alt="reference image"
                   style={{ maxHeight: "200px" }}
                 />
               )}

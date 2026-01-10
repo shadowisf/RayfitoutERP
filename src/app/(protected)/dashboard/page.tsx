@@ -14,6 +14,8 @@ import AvgTimeSpentPerStageWidget from "./components/manager/W_AvgTimeSpentPerSt
 import MedianMRLifespanWidget from "./components/manager/W_MedianMrLifeSpan";
 import PendingQuotationsMrsWidget from "./components/procurement/W_PendingQuotations";
 import DraftMrsWidget from "./components/department/W_DraftMrs";
+import MrsRejectedCompleted from "./components/department/W_MrsRejectedCompleted";
+import TopProjectsWithMrs from "./components/department/W_TopProjectsWithMrs";
 
 export default function Dashboard() {
   const bannerBackground = "/images/welcome-banner.jpg";
@@ -237,8 +239,8 @@ export default function Dashboard() {
           <br />
 
           <div className="widget-grid overview two-col">
-            <div></div> {/* MR REJECTED, MR COMPLETED */}
-            <div></div> {/* TOP PROJECTS WITH MR REQUESTS */}
+            <MrsRejectedCompleted />
+            <TopProjectsWithMrs />
           </div>
 
           <br />

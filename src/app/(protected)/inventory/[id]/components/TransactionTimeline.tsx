@@ -42,7 +42,7 @@ const TransactionIcon = ({
       bg:
         transaction?.received === 1
           ? "rgba(197, 12, 15, 1)"
-          : "rrgba(255, 133, 3, 1)",
+          : "rgba(255, 133, 3, 1)",
       color: "white",
     },
     STOCK_SENT: {
@@ -587,7 +587,7 @@ export default function TransactionTimeline({
           position: "absolute",
           left: "12px",
           top: "24px",
-          bottom: "48px",
+          bottom: "130px",
           width: "2px",
           backgroundColor: "rgba(229, 229, 229, 1)",
         }}

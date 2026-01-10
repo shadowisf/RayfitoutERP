@@ -13,6 +13,7 @@ export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
   const searchIcon = "/icons/search.svg";
   const warningIcon = "/icons/warning.svg";
+  const noImageIcon = "/icons/no-image.jpg";
 
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [availableQuantities, setAvailableQuantities] = useState<{
@@ -367,7 +368,11 @@ export default function Inventory() {
         <div style={{ display: "flex", gap: "10px" }}>
           <CreateInventoryItemButton onSuccess={() => getInventoryItems()} />
 
-          {inventory.length > 0 && <TransferIssueMultipleStocks />}
+          {inventory.length > 0 && (
+            <TransferIssueMultipleStocks
+              onSuccess={() => fetchAllTransactions()}
+            />
+          )}
         </div>
       </div>
 
@@ -602,7 +607,7 @@ export default function Inventory() {
                   <tr>
                     <th>#</th>
                     <th>ID</th>
-                    <th>MATERIAL</th>
+                    <th style={{ minWidth: "600px" }}>MATERIAL</th>
                     <th>TOTAL QUANTITY</th>
                     <th>STATUS</th>
                     <th>ACTION</th>
@@ -644,16 +649,16 @@ export default function Inventory() {
                                   }}
                                 />
                               ) : (
-                                <div
+                                <img
+                                  src={noImageIcon}
+                                  alt="reference image"
+                                  width={50}
                                   style={{
-                                    height: "50px",
-                                    display: "flex",
-                                    justifyContent: "center",
-                                    alignItems: "center",
+                                    aspectRatio: "1/1",
+                                    objectFit: "cover",
+                                    borderRadius: "5px",
                                   }}
-                                >
-                                  -
-                                </div>
+                                />
                               )}
                             </div>
                             {item.description}
@@ -722,8 +727,9 @@ export default function Inventory() {
               <thead>
                 <tr>
                   <th>DATE & TIME</th>
-                  <th>TRANSACTION ID</th>
-                  <th>MATERIAL</th>
+                  <th></th>
+                  <th style={{ paddingLeft: "5px" }}>TRANSACTION ID</th>
+                  <th style={{ minWidth: "500px" }}>MATERIAL</th>
                   <th>TRANSFER TYPE</th>
                   <th>STATUS</th>
                 </tr>
@@ -745,7 +751,19 @@ export default function Inventory() {
                   return (
                     <tr key={`${transaction.id}-${index}`}>
                       <td style={{ whiteSpace: "nowrap" }}>{formattedDate}</td>
-                      <td>
+                      <td style={{ padding: 0 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                          }}
+                        >
+                          {transaction.received === 0 && (
+                            <img src={warningIcon} alt="warning" />
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ paddingLeft: "5px" }}>
                         <div
                           style={{
                             display: "flex",
@@ -753,9 +771,6 @@ export default function Inventory() {
                             gap: "10px",
                           }}
                         >
-                          {transaction.received === 0 && (
-                            <img src={warningIcon} alt="warning" />
-                          )}
                           <span>
                             TA-{transaction.id?.toString().padStart(5, "0")}
                           </span>
@@ -777,7 +792,15 @@ export default function Inventory() {
                           >
                             {transaction.items.map(
                               (item: any, itemIndex: number) => (
-                                <div key={itemIndex}>{item.description}</div>
+                                <div
+                                  key={itemIndex}
+                                  style={{
+                                    marginBottom: "10px",
+                                    marginTop: "10px",
+                                  }}
+                                >
+                                  {item.description}
+                                </div>
                               )
                             )}
                           </div>

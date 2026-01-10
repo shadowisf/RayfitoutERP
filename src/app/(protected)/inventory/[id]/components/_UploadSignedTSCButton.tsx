@@ -234,21 +234,17 @@ export default function UploadSignedTSCButton({
               bgColor={"white"}
               borderColor={"rgba(207, 207, 207, 1)"}
               textColor={"black"}
-              onClick={() => {}}
-              componentType="none"
+              componentType="button"
               style={{
                 padding: "7px 20px",
                 borderRadius: "25px",
                 textTransform: "none",
               }}
               key={fileUrl}
+              onClick={(e) => handleDownload(fileUrl, e)}
             >
               DN (SIGNED)
-              <img
-                src={downloadIcon}
-                alt="download"
-                onClick={(e) => handleDownload(fileUrl, e)}
-              />
+              <img src={downloadIcon} alt="download" />
               {/* <img
                 src={closeIcon}
                 alt="remove"

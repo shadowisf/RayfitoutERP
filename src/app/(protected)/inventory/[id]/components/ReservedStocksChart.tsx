@@ -1,6 +1,7 @@
 "use client";
 
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { useState } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 interface ReservedStocksChart {
   stocks: any[];
@@ -8,19 +9,73 @@ interface ReservedStocksChart {
   unit: string;
 }
 
+// Custom tooltip component
+const CustomTooltip = ({ active, payload, totalRequests, unit }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0];
+    const color = data.payload.color || data.color || "#00804C";
+
+    const percentage =
+      totalRequests > 0 ? ((data.value / totalRequests) * 100).toFixed(0) : 0;
+
+    return (
+      <div
+        style={{
+          backgroundColor: "white",
+          padding: "10px",
+          borderRadius: "25px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          border: "1px solid #e0e0e0",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <span
+            style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              backgroundColor: color,
+              display: "inline-block",
+            }}
+          />
+          <strong style={{ fontSize: "12px" }}>{percentage}%</strong>
+        </div>
+
+        {/* <div style={{ fontSize: "12px", color: "#737373" }}>
+          {data.value} {unit} ({percentage}%)
+        </div> */}
+      </div>
+    );
+  }
+
+  return null;
+};
+
 export default function ReservedStocksChart({
   stocks,
   stocksTransferIssue,
   unit,
 }: ReservedStocksChart) {
+  const [isHovered, setIsHovered] = useState(false);
+
   // Calculate total quantity issued by project (only from stocksTransferIssue)
   const calculateRequestsByProject = () => {
     const projectMap: { [key: string]: number } = {};
 
-    // Only process ISSUE transactions from stocksTransferIssue table
+    // Process ISSUE transactions from stocksTransferIssue table
+    // Note: Each transaction now has quantity from the junction table
     stocksTransferIssue.forEach((transaction) => {
-      // Only count issues
-      if (transaction.type.toLowerCase().includes("issue")) {
+      // Only count issues that have been received (completed)
+      if (
+        transaction.type.toLowerCase().includes("issue") &&
+        transaction.received === 1
+      ) {
         // Check if project exists, otherwise group as "Others"
         const project =
           transaction.project_name && transaction.project_id
@@ -30,7 +85,9 @@ export default function ReservedStocksChart({
         if (!projectMap[project]) {
           projectMap[project] = 0;
         }
-        projectMap[project] += Math.abs(transaction.quantity);
+
+        // Use the quantity from junction table
+        projectMap[project] += Math.abs(transaction.quantity || 0);
       }
     });
 
@@ -91,6 +148,8 @@ export default function ReservedStocksChart({
         <>
           <div
             style={{ position: "relative", width: "200px", height: "200px" }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
           >
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -107,6 +166,12 @@ export default function ReservedStocksChart({
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
+                <Tooltip
+                  content={
+                    <CustomTooltip totalRequests={totalRequests} unit={unit} />
+                  }
+                  wrapperStyle={{ zIndex: 100 }}
+                />
               </PieChart>
             </ResponsiveContainer>
 
@@ -118,6 +183,8 @@ export default function ReservedStocksChart({
                 left: "50%",
                 transform: "translate(-50%, -50%)",
                 textAlign: "center",
+                pointerEvents: "none",
+                zIndex: 1,
               }}
             >
               <div
@@ -132,33 +199,52 @@ export default function ReservedStocksChart({
               </div>
             </div>
 
-            {/* Percentage Badge */}
-            <div
-              style={{
-                position: "absolute",
-                top: "10px",
-                left: "10px",
-                backgroundColor: "white",
-                padding: "4px 8px",
-                borderRadius: "12px",
-                fontSize: "12px",
-                fontWeight: "600",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-              }}
-            >
+            {/* Percentage Badge - Only show on hover */}
+            {/* {isHovered && (
               <div
                 style={{
-                  width: "8px",
-                  height: "8px",
-                  borderRadius: "50%",
-                  backgroundColor: chartData[0]?.color || "#00804C",
+                  position: "absolute",
+                  top: "10px",
+                  left: "10px",
+                  backgroundColor: "white",
+                  padding: "10px",
+                  borderRadius: "5px",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                  border: "1px solid #e0e0e0",
+                  pointerEvents: "none",
+                  zIndex: 50,
+                  opacity: 1,
+                  transition: "opacity 0.15s ease-in",
                 }}
-              />
-              {topProjectPercentage}%
-            </div>
+              >
+                <p style={{ margin: 0, fontWeight: "600", fontSize: "12px" }}>
+                  {chartData[0]?.name}
+                </p>
+                <p
+                  style={{
+                    margin: "4px 0 0 0",
+                    fontSize: "12px",
+                    color: "#737373",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      backgroundColor: chartData[0]?.color || "#00804C",
+                      display: "inline-block",
+                    }}
+                  />
+                  {topProjectPercentage}%
+                </p>
+              </div>
+            )} */}
           </div>
 
           {/* Project Legend */}

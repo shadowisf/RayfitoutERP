@@ -33,7 +33,7 @@ export async function POST(req: Request) {
         sub_category: row.sub_category,
         item_code: row.item_code,
         scope_of_work: row.scope_of_work,
-        location_id: row.location_id,
+        location_ids: row.location_ids,
         location: row.location,
         quantity: row.quantity,
         unit: row.unit,

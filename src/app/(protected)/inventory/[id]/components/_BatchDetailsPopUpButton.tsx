@@ -917,8 +917,8 @@ export default function BatchDetailsPopUpButton({
                 <small>TOTAL PRICE</small>
                 <h3>
                   {details.unit_price * details.stock_quantity
-                    ? `AED ${details.unit_price} * ${details.stock_quantity}`
-                    : "-"}{" "}
+                    ? `AED ${details.unit_price * details.stock_quantity}`
+                    : "-"}
                 </h3>
               </div>
             </div>

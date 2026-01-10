@@ -6,7 +6,7 @@ export type BoqLine = {
   sub_category: string;
   /* item_code: string; */
   scope_of_work: string;
-  location_id: number;
+  location_ids: string;
   location: string;
   quantity: number;
   unit: string;

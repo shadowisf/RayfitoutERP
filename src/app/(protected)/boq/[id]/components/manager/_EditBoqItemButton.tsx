@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { BoqLine } from "../../types/boqLine";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
+import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 
 type EditBoqItemButtonProps = {
   item: BoqLine;
@@ -37,8 +38,15 @@ export default function EditBoqItemButton({
   const [scopeOfWork, setScopeOfWork] = useState<string | number>(
     item.scope_of_work
   );
-  const [locationID, setLocationID] = useState<string | number>(
-    item.location_id
+  const [locationID, setLocationID] = useState<(string | number)[]>(
+    Array.isArray(item.location_ids)
+      ? item.location_ids
+      : typeof item.location_ids === "string"
+      ? item.location_ids
+          .split(",")
+          .map((id) => Number(id.trim()))
+          .filter((id) => !isNaN(id))
+      : []
   );
   const [quantity, setQuantity] = useState<string | number>(
     String(item.quantity)
@@ -190,7 +198,7 @@ export default function EditBoqItemButton({
           category: category,
           sub_category: subCategory,
           scope_of_work: scopeOfWork,
-          location_id: locationID,
+          location_ids: locationID,
           quantity: Number(quantity),
           unit,
           rate_per_quantity: Number(ratePerQuantity),
@@ -289,12 +297,20 @@ export default function EditBoqItemButton({
               ]}
               placeholder="SELECT SCOPE OF WORK"
             />
-            <SingleSelectDropdown
+            {/* <SingleSelectDropdown
               label={"LOCATION"}
               selectedValue={locationID}
               onChange={setLocationID}
               placeholder={"SELECT LOCATION"}
               dbData={locationValues}
+            /> */}
+            <MultiSelectDropdown
+              label={"LOCATION"}
+              selectedValues={locationID}
+              onChange={setLocationID}
+              placeholder="SELECT LOCATION"
+              dbData={locationValues}
+              style={{ width: "400px" }}
             />
           </div>
 
