@@ -1,9 +1,26 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function POST(request: Request) {
   try {
-    const [rows]: any = await db.query(`
+    const body = await request.json();
+    const { filter } = body;
+
+    // Validate filter parameter (0 means all time, positive number means days)
+    if (filter === undefined || typeof filter !== "number" || filter < 0) {
+      return NextResponse.json(
+        { error: "Invalid 'filter' parameter. Must be a non-negative number." },
+        { status: 400 }
+      );
+    }
+
+    // Build the WHERE clause based on filter
+    const whereClause =
+      filter > 0
+        ? `WHERE pl1.changed_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`
+        : "";
+
+    const query = `
       SELECT 
         p.value AS stage_name,
         AVG(
@@ -25,9 +42,13 @@ export async function GET() {
         )
       INNER JOIN lut_mr_headers_progress p 
         ON pl1.progress_id = p.id
+      ${whereClause}
       GROUP BY pl1.progress_id, p.value
       ORDER BY avg_minutes DESC
-    `);
+    `;
+
+    const params = filter > 0 ? [filter] : [];
+    const [rows]: any = await db.query(query, params);
 
     if (!rows || rows.length === 0) {
       return NextResponse.json([], { status: 200 });

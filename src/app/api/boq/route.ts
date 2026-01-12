@@ -91,6 +91,22 @@ export async function POST(req: Request) {
         throw error;
       }
     }
+
+    if (body.action === "duplicateBoqLine") {
+      const query = `
+        INSERT INTO boq_lines 
+        (boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments)
+        SELECT boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments
+        FROM boq_lines
+        WHERE id = ?
+      `;
+
+      const values = [Number(body.id)];
+
+      await db.query<ResultSetHeader>(query, values);
+
+      return NextResponse.json({ success: true });
+    }
   } catch (err: any) {
     console.error("SQL Error:", err.sqlMessage || err.message);
     return NextResponse.json(
@@ -105,12 +121,7 @@ export async function PUT(req: Request) {
     const body = await req.json();
 
     if (body.action === "updateAll") {
-      // Start a transaction
-      const connection = await db.getConnection();
-
       try {
-        await connection.beginTransaction();
-
         // Update BOQ line without location_id (deprecated field)
         const query = `
           UPDATE boq_lines 
@@ -134,11 +145,11 @@ export async function PUT(req: Request) {
           Number(body.id),
         ];
 
-        await connection.query(query, values);
+        await db.query(query, values);
 
         // Update location associations
         // First, delete existing associations
-        await connection.query(
+        await db.query(
           `DELETE FROM jt_boq_line_location WHERE boq_line_id = ?`,
           [Number(body.id)]
         );
@@ -155,19 +166,14 @@ export async function PUT(req: Request) {
             Number(locationId),
           ]);
 
-          await connection.query(
+          await db.query(
             `INSERT INTO jt_boq_line_location (boq_line_id, location_id) VALUES ?`,
             [locationValues]
           );
         }
 
-        await connection.commit();
-        connection.release();
-
         return NextResponse.json({ success: true });
       } catch (error) {
-        await connection.rollback();
-        connection.release();
         throw error;
       }
     }
@@ -189,6 +195,54 @@ export async function PUT(req: Request) {
       await db.query(query, values);
 
       return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "updateLocation") {
+      try {
+        const boqLineId = Number(body.id);
+
+        if (Number.isNaN(boqLineId)) {
+          return NextResponse.json(
+            { success: false, error: "Invalid BOQ line ID" },
+            { status: 400 }
+          );
+        }
+
+        // 1️⃣ Remove existing locations
+        await db.query(
+          `DELETE FROM jt_boq_line_location WHERE boq_line_id = ?`,
+          [boqLineId]
+        );
+
+        // 2️⃣ Insert new locations (if any)
+        if (
+          body.location_ids &&
+          Array.isArray(body.location_ids) &&
+          body.location_ids.length > 0
+        ) {
+          const locationValues = body.location_ids
+            .map((locationId: number) => {
+              const id = Number(locationId);
+              return Number.isNaN(id) ? null : [boqLineId, id];
+            })
+            .filter(Boolean);
+
+          if (locationValues.length > 0) {
+            await db.query(
+              `INSERT INTO jt_boq_line_location (boq_line_id, location_id) VALUES ?`,
+              [locationValues]
+            );
+          }
+        }
+
+        return NextResponse.json({ success: true });
+      } catch (error) {
+        console.error("updateLocation failed:", error);
+        return NextResponse.json(
+          { success: false, error: "Failed to update location" },
+          { status: 500 }
+        );
+      }
     }
   } catch (err: any) {
     console.error("SQL Error:", err.sqlMessage || err.message);

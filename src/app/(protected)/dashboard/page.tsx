@@ -25,6 +25,8 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsWithBOQ, setProjectsWithBOQ] = useState<any[]>([]);
 
+  const [overviewFilter, setOverviewFilter] = useState(7);
+
   const DEPARTMENT_IDS = [1, 2, 3, 4, 5, 6, 7, 13, 14, 16];
 
   // Fetch Projects
@@ -113,14 +115,35 @@ export default function Dashboard() {
       {/* MANAGER */}
       {userInfo?.departmentID === 8 && (
         <>
-          <h2>OVERVIEW</h2>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h2>OVERVIEW</h2>
+            <select
+              onChange={(e) => setOverviewFilter(Number(e.target.value))}
+              value={overviewFilter}
+              style={{
+                width: "150px",
+                backgroundColor: "white",
+                borderRadius: "50px",
+              }}
+            >
+              <option value={7}>Last 7 Days</option>
+              <option value={14}>Last 14 Days</option>
+              <option value={30}>Last month</option>
+            </select>
+          </div>
           <br />
           <div className="widget-grid overview five-col">
-            <ActiveMrsWidget />
-            <PendingApprovalMrsWidget />
-            <PendingPaymentMrsWidget />
-            <OutboundPaymentMrsWidget />
-            <PendingDeliveryMrsWidget />
+            <ActiveMrsWidget filterDays={overviewFilter} />
+            <PendingApprovalMrsWidget filterDays={overviewFilter} />
+            <PendingPaymentMrsWidget filterDays={overviewFilter} />
+            <OutboundPaymentMrsWidget filterDays={overviewFilter} />
+            <PendingDeliveryMrsWidget filterDays={overviewFilter} />
           </div>
 
           <br />

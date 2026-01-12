@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-export default function PendingApprovalMrsWidget() {
+type props = {
+  filterDays?: number;
+};
+
+export default function PendingApprovalMrsWidget({ filterDays = 7 }: props) {
   const approvalsIcon = "/icons/approvals.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";
@@ -11,10 +15,20 @@ export default function PendingApprovalMrsWidget() {
   const [lastWeek, setLastWeek] = useState<number>(0);
   const [percentageChange, setPercentageChange] = useState<number>(0);
   const [isIncrease, setIsIncrease] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    setIsLoading(true);
+
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getTotalPendingApprovalMrs`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getTotalPendingApprovalMrs`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ filter: filterDays }),
+      }
     )
       .then((res) => res.json())
       .then((data) => {
@@ -26,7 +40,6 @@ export default function PendingApprovalMrsWidget() {
 
         // Calculate percentage change
         if (lastWeekCount === 0) {
-          // If last week was 0, any value this week is 100% increase
           // If last week was 0, cap at 100% increase
           if (thisWeekCount > 0) {
             setPercentageChange(100);
@@ -44,15 +57,18 @@ export default function PendingApprovalMrsWidget() {
       })
       .catch((err) => {
         console.error("Error fetching MR data:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-  }, []);
+  }, [filterDays]);
 
   // Check if there are no pending approvals
   const hasNoPendingApprovals = thisWeek === 0;
 
   // Determine if change is substantial (>=10%) or slight (<10%)
   const isSubstantial = percentageChange >= 10;
-  const changemagnitude = isSubstantial ? "Substantial" : "Slight";
+  const changeMagnitude = isSubstantial ? "Substantial" : "Slight";
 
   // Determine styling based on increase/decrease
   // Increase = bad (red), Decrease = good (green) for pending approvals
@@ -66,11 +82,13 @@ export default function PendingApprovalMrsWidget() {
 
   const arrow = isIncrease ? upArrow : downArrow;
 
+  // ✅ Updated text to be more generic
+  const periodLabel = filterDays === 7 ? "week" : `${filterDays} days`;
   const changeText = hasNoPendingApprovals
     ? "No pending approvals"
     : isIncrease
-    ? `${changemagnitude} increase this week`
-    : `${changemagnitude} decrease this week`;
+    ? `${changeMagnitude} increase from last ${periodLabel}`
+    : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
     <div className="item">
@@ -80,8 +98,8 @@ export default function PendingApprovalMrsWidget() {
       </div>
       <div>
         <div className="bottom">
-          <p className="number">{thisWeek}</p>
-          {!hasNoPendingApprovals && (
+          <p className="number">{isLoading ? "..." : thisWeek}</p>
+          {!hasNoPendingApprovals && !isLoading && (
             <div
               className="data-pill"
               style={{ backgroundColor: pillBackgroundColor }}
@@ -95,7 +113,7 @@ export default function PendingApprovalMrsWidget() {
           )}
         </div>
         <br />
-        <span>{changeText}</span>
+        <span>{isLoading ? "Loading..." : changeText}</span>
       </div>
     </div>
   );

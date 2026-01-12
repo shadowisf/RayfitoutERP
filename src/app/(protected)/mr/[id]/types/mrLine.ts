@@ -19,6 +19,7 @@ export type MrLine = {
   boq_item_name: string;
   boq_item_number: string;
   boq_item_description: string;
+  boq_scope_of_work: string;
   boq_quantity: number;
   boq_unit: string;
   boq_category: string;

@@ -88,6 +88,7 @@ h3 {
 }
 
 h4 {
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -109,6 +110,7 @@ button {
     padding: 7px 20px;
     font-size: 14px;
     font-weight: 600;
+    text-wrap: nowrap;
 
     img {
       width: 12px;
@@ -800,6 +802,7 @@ label {
 .category-grid {
   display: flex;
   justify-content: space-between;
+  gap: 25px;
 
   .item {
     padding: 10px;
@@ -860,13 +863,12 @@ label {
   }
 
   td {
-    padding: 10px 30px;
+    padding: 25px 30px;
     text-align: left;
-    border-bottom: 1px solid #eee;
   }
 
   th {
-    padding: 20px 30px;
+    padding: 25px 30px;
     text-align: left;
     border-bottom: 1px solid #eee;
   }
@@ -891,7 +893,6 @@ label {
       width: 60px;
       height: 100%;
       object-fit: contain;
-      border-radius: 5px;
     }
   }
 

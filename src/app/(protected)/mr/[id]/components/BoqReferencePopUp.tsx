@@ -28,6 +28,7 @@ export default function BoqReferencePopUp({
   const { userInfo } = useAuth();
 
   const externalLinkIcon = "/icons/external-link.svg";
+  const locationIcon = "/icons/location-boq.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [quotedBudget, setQuotedBudget] = useState(0);
@@ -164,8 +165,8 @@ export default function BoqReferencePopUp({
               <tr>
                 <th>#</th>
                 <th>ITEM</th>
-                <th>DESCRIPTION</th>
-                <th>LOCATION</th>
+                {/* <th>DESCRIPTION</th>
+                <th>LOCATION</th> */}
                 <th>QUANTITY</th>
                 {(userInfo?.departmentID === 8 ||
                   userInfo?.departmentID === 12 ||
@@ -181,8 +182,60 @@ export default function BoqReferencePopUp({
             <tbody>
               <tr key={item.id}>
                 <td>{item.boq_item_number}</td>
-                <td>{item.boq_item_name}</td>
                 <td>
+                  <strong>{item.boq_item_name}</strong>
+
+                  {item.boq_item_description && (
+                    <>
+                      <br />
+                      <br />
+                      {item.boq_item_description}
+                    </>
+                  )}
+
+                  {item.boq_location && (
+                    <>
+                      <br />
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "10px",
+                          alignItems: "center",
+                        }}
+                      >
+                        <img src={locationIcon} />
+                        <span
+                          style={{
+                            fontWeight: 600,
+                            marginTop: "4px",
+                            color: "rgba(105, 105, 105, 1)",
+                          }}
+                        >
+                          {item.boq_location}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {item.boq_scope_of_work && (
+                    <>
+                      <br />
+
+                      <div
+                        style={{
+                          backgroundColor: "rgba(225, 225, 225, 1)",
+                          borderRadius: "50px",
+                          padding: "4px 10px",
+                          width: "fit-content",
+                        }}
+                      >
+                        <strong>{item.boq_scope_of_work}</strong>
+                      </div>
+                    </>
+                  )}
+                </td>
+
+                {/* <td>
                   {item.boq_item_description ? (
                     <InfoPopUpButton
                       text={item.boq_item_description}
@@ -192,7 +245,7 @@ export default function BoqReferencePopUp({
                     "-"
                   )}
                 </td>
-                <td>{item.boq_location?.split(" - ").pop()}</td>
+                <td>{item.boq_location?.split(" - ").pop()}</td> */}
                 <td>
                   {item.quantity} {item.unit}
                 </td>

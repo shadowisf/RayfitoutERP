@@ -15,6 +15,9 @@ export default function AvgTimeSpentPerStageWidget() {
   const [data, setData] = useState<StageData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const [filter, setFilter] = useState(0);
 
   // ✅ Define MR stage order
   const stageOrder = [
@@ -36,9 +39,15 @@ export default function AvgTimeSpentPerStageWidget() {
 
   useEffect(() => {
     setError(null);
+    setIsLoading(true);
 
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getAvgTimeSpentPerStage`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getAvgTimeSpentPerStage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filter }),
+      }
     )
       .then((res) => {
         if (!res.ok) {
@@ -77,8 +86,11 @@ export default function AvgTimeSpentPerStageWidget() {
         console.error("Error fetching stage times:", err);
         setError(err.message);
         setData([]);
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-  }, []);
+  }, [filter]); // ✅ Added filter to dependency array
 
   // ✅ Use logarithmic scaling for better visibility of small values
   const maxMinutes =
@@ -130,11 +142,37 @@ export default function AvgTimeSpentPerStageWidget() {
         borderRadius: "15px",
       }}
     >
-      <h3 style={{ margin: 0 }}>Average Time Spent Per Stage</h3>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <h3 style={{ margin: 0 }}>Average Time Spent Per Stage</h3>
+        <select
+          onChange={(e) => setFilter(Number(e.target.value))}
+          value={filter}
+          style={{
+            width: "150px",
+            backgroundColor: "rgba(236, 236, 236, 1)",
+            borderRadius: "50px",
+          }}
+        >
+          <option value={0}>All time</option>
+          <option value={7}>Last 7 Days</option>
+          <option value={14}>Last 14 Days</option>
+          <option value={30}>Last month</option>
+        </select>
+      </div>
 
       <br />
 
-      {error ? (
+      {isLoading ? (
+        <div style={{ textAlign: "center", padding: "40px", color: "#888" }}>
+          Loading...
+        </div>
+      ) : error ? (
         <div style={{ textAlign: "center", padding: "40px", color: "#f84d4d" }}>
           Error: {error}
         </div>

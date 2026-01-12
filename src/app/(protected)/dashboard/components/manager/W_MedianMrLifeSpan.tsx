@@ -6,12 +6,21 @@ export default function MedianMRLifespanWidget() {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const [filter, setFilter] = useState(7);
 
   useEffect(() => {
     setError(null);
+    setIsLoading(true);
 
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getMedianMrLifeSpan`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getMedianMrLifeSpan`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filter }),
+      }
     )
       .then((res) => {
         if (!res.ok) {
@@ -26,8 +35,11 @@ export default function MedianMRLifespanWidget() {
       .catch((err) => {
         console.error("Error fetching median lifespan:", err);
         setError(err.message);
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-  }, []);
+  }, [filter]);
 
   if (error) {
     return (
@@ -45,7 +57,7 @@ export default function MedianMRLifespanWidget() {
     );
   }
 
-  if (!data) {
+  if (isLoading || !data) {
     return (
       <div
         style={{
@@ -73,6 +85,25 @@ export default function MedianMRLifespanWidget() {
   // Check if we have any completed MRs
   const hasData = data.chartData.some((d: any) => d.median > 0);
 
+  // Dynamic label for time period
+  const periodLabel =
+    filter === 7
+      ? "last 7 days"
+      : filter === 14
+      ? "last 14 days"
+      : filter === 30
+      ? "last month"
+      : `last ${filter} days`;
+
+  const comparisonLabel =
+    filter === 7
+      ? "LAST WEEK"
+      : filter === 14
+      ? "PREVIOUS 14 DAYS"
+      : filter === 30
+      ? "PREVIOUS MONTH"
+      : `PREVIOUS ${filter} DAYS`;
+
   return (
     <div
       style={{
@@ -83,7 +114,28 @@ export default function MedianMRLifespanWidget() {
     >
       {/* Header */}
       <div style={{ marginBottom: "20px" }}>
-        <h3>Median MR Lifespan</h3>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <h3>Median MR Lifespan</h3>
+          <select
+            onChange={(e) => setFilter(Number(e.target.value))}
+            value={filter}
+            style={{
+              width: "150px",
+              backgroundColor: "rgba(236, 236, 236, 1)",
+              borderRadius: "50px",
+            }}
+          >
+            <option value={7}>7 days</option>
+            <option value={14}>14 days</option>
+            <option value={30}>1 month</option>
+          </select>
+        </div>
         <br />
         <h1 style={{ fontSize: "32px", fontWeight: "900" }}>
           {data.currentMedian} Hrs
@@ -101,7 +153,7 @@ export default function MedianMRLifespanWidget() {
             {data.changeDescription.toUpperCase()}{" "}
             <span style={{ color: "black" }}>
               ({data.percentageChange}% {data.isFaster ? "FASTER" : "SLOWER"}{" "}
-              THAN LAST WEEK)
+              THAN {comparisonLabel})
             </span>
           </span>
         ) : (
@@ -123,7 +175,7 @@ export default function MedianMRLifespanWidget() {
             fontSize: "14px",
           }}
         >
-          No completed MRs in the last 7 days
+          No completed MRs in the {periodLabel}
         </div>
       ) : (
         <div

@@ -57,7 +57,7 @@ export default function AlertsAndRiskMrsWidget() {
           </div>
           <div style={{ color: "rgba(190, 20, 20, 1)" }}>
             <div className="bottom">
-              <p className="number">{totalCriticalMrs}</p>
+              <p className="number">{totalCriticalMrs || 0}</p>
             </div>
             <span>Critical MRs</span>
           </div>
@@ -72,7 +72,7 @@ export default function AlertsAndRiskMrsWidget() {
           </div>
           <div style={{ color: "rgba(190, 20, 20, 1)" }}>
             <div className="bottom">
-              <p className="number">{totalLateDeliveries}</p>
+              <p className="number">{totalLateDeliveries || 0}</p>
             </div>
             <span>Late Deliveries</span>
           </div>

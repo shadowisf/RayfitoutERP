@@ -1,11 +1,22 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function POST(request: Request) {
   try {
-    const days = 7;
+    const body = await request.json();
+    const { filter } = body;
 
-    // ✅ Get only the completion records (progress_id = 25) for the last 7 days
+    // Validate filter parameter
+    if (!filter || typeof filter !== "number" || filter <= 0) {
+      return NextResponse.json(
+        { error: "Invalid 'filter' parameter. Must be a positive number." },
+        { status: 400 }
+      );
+    }
+
+    const days = filter;
+
+    // ✅ Get only the completion records (progress_id = 25) for the specified period
     const [completedMRs]: any = await db.query(
       `
       SELECT 

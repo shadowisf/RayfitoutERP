@@ -6,7 +6,6 @@ import CreateInventoryItemButton from "./components/_CreateInventoryItemButton";
 import Button from "@/app/components/Button";
 import EditInventoryItemButton from "./components/_EditInventoryItemButton";
 import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStocksButton";
-import DeleteInventoryItemButton from "./[id]/components/_DeleteInventoryItemButton";
 import TransactionDetailsPopUpButton from "./[id]/components/_IssueDetailsPopUpButton";
 
 export default function Inventory() {

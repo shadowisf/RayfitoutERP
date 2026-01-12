@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   page: {
     backgroundColor: "#ffffff",
     padding: 20,
-    paddingBottom: 60, // ✅ Added bottom padding to prevent overlap
+    paddingBottom: 60,
     fontFamily: "Mont",
   },
 
@@ -105,7 +105,6 @@ const styles = StyleSheet.create({
     minHeight: 40,
     alignItems: "flex-start",
   },
-  // Alternating row styles for summary table
   tableRowEven: {
     flexDirection: "row",
     padding: "8 12",
@@ -138,6 +137,15 @@ const styles = StyleSheet.create({
     width: "20%",
     textAlign: "right",
   },
+  // Unpriced table columns
+  tableColItemNoUnpriced: {
+    width: "10%",
+    paddingRight: 8,
+  },
+  tableColDescriptionUnpriced: {
+    width: "90%",
+    paddingRight: 8,
+  },
 
   // Total Row
   totalRow: {
@@ -163,7 +171,7 @@ const styles = StyleSheet.create({
     fontSize: 8,
   },
 
-  // ✅ Subtotal Row - Inside table with aligned columns
+  // Subtotal Row
   subtotalRow: {
     flexDirection: "row",
     paddingTop: 8,
@@ -174,7 +182,7 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontFamily: "Mont-SemiBold",
     alignItems: "flex-start",
-    marginBottom: 40, // ✅ Increased margin to give more space before next section
+    marginBottom: 40,
     border: "1px solid #f5f5f5",
   },
 
@@ -242,7 +250,6 @@ const styles = StyleSheet.create({
     color: "#333333",
     alignItems: "flex-start",
   },
-  // Alternating row styles for detail table
   detailTableRowEven: {
     flexDirection: "row",
     padding: "8 12",
@@ -267,6 +274,11 @@ const styles = StyleSheet.create({
   },
   detailColCategory: {
     width: "45%",
+    paddingRight: 4,
+    fontSize: 7,
+  },
+  detailColCategoryUnpriced: {
+    width: "60%",
     paddingRight: 4,
     fontSize: 7,
   },
@@ -303,7 +315,7 @@ const styles = StyleSheet.create({
     height: 30,
   },
 
-  // Location and Scope styles - same line
+  // Location and Scope styles
   locationScopeRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -357,9 +369,14 @@ type GroupedBoqLines = {
 type BoqPDFProps = {
   boqLines: GroupedBoqLines;
   boqHeader: BoqHeader;
+  showPrices?: boolean;
 };
 
-export function BoqPDFWithPrice({ boqLines, boqHeader }: BoqPDFProps) {
+export function BoqPDF({
+  boqLines,
+  boqHeader,
+  showPrices = true,
+}: BoqPDFProps) {
   const logo = "/icons/logo.jpg";
   const locationIcon = "/icons/location-boq.png";
 
@@ -429,9 +446,25 @@ export function BoqPDFWithPrice({ boqLines, boqHeader }: BoqPDFProps) {
         {/* Items Table - Summary - Only Categories */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.tableColItemNo}>ITEM NO</Text>
-            <Text style={styles.tableColDescription}>DESCRIPTION</Text>
-            <Text style={styles.tableColAmount}>AMOUNT</Text>
+            <Text
+              style={
+                showPrices
+                  ? styles.tableColItemNo
+                  : styles.tableColItemNoUnpriced
+              }
+            >
+              ITEM NO
+            </Text>
+            <Text
+              style={
+                showPrices
+                  ? styles.tableColDescription
+                  : styles.tableColDescriptionUnpriced
+              }
+            >
+              DESCRIPTION
+            </Text>
+            {showPrices && <Text style={styles.tableColAmount}>AMOUNT</Text>}
           </View>
 
           {categories.map((category, categoryIndex) => {
@@ -446,25 +479,43 @@ export function BoqPDFWithPrice({ boqLines, boqHeader }: BoqPDFProps) {
 
             return (
               <View key={categoryIndex} style={rowStyle}>
-                <Text style={styles.tableColItemNo}>{categoryIndex + 1}.0</Text>
-                <Text style={styles.tableColDescription}>
+                <Text
+                  style={
+                    showPrices
+                      ? styles.tableColItemNo
+                      : styles.tableColItemNoUnpriced
+                  }
+                >
+                  {categoryIndex + 1}.0
+                </Text>
+                <Text
+                  style={
+                    showPrices
+                      ? styles.tableColDescription
+                      : styles.tableColDescriptionUnpriced
+                  }
+                >
                   {category.toUpperCase()}
                 </Text>
-                <Text style={styles.tableColAmount}>
-                  AED {categoryTotal.toLocaleString()}
-                </Text>
+                {showPrices && (
+                  <Text style={styles.tableColAmount}>
+                    AED {categoryTotal.toLocaleString()}
+                  </Text>
+                )}
               </View>
             );
           })}
         </View>
 
-        {/* Total Row */}
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>GRAND TOTAL</Text>
-          <Text style={styles.totalValue}>
-            AED {grandTotal.toLocaleString()}
-          </Text>
-        </View>
+        {/* Total Row - Only show if showPrices is true */}
+        {showPrices && (
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>GRAND TOTAL</Text>
+            <Text style={styles.totalValue}>
+              AED {grandTotal.toLocaleString()}
+            </Text>
+          </View>
+        )}
 
         {/* Bottom Section - Terms */}
         <View style={styles.bottomSection}>
@@ -533,10 +584,22 @@ export function BoqPDFWithPrice({ boqLines, boqHeader }: BoqPDFProps) {
                       {/* Table Header */}
                       <View style={styles.detailTableHeader}>
                         <Text style={styles.detailColItemNo}>#</Text>
-                        <Text style={styles.detailColCategory}>ITEM</Text>
+                        <Text
+                          style={
+                            showPrices
+                              ? styles.detailColCategory
+                              : styles.detailColCategoryUnpriced
+                          }
+                        >
+                          ITEM
+                        </Text>
                         <Text style={styles.detailColQty}>QTY</Text>
-                        <Text style={styles.detailColRate}>RATE</Text>
-                        <Text style={styles.detailColTotal}>TOTAL PRICE</Text>
+                        {showPrices && (
+                          <Text style={styles.detailColRate}>RATE</Text>
+                        )}
+                        {showPrices && (
+                          <Text style={styles.detailColTotal}>TOTAL PRICE</Text>
+                        )}
                         <Text style={styles.detailColAttachment}>
                           ATTACHMENT(S)
                         </Text>
@@ -556,7 +619,13 @@ export function BoqPDFWithPrice({ boqLines, boqHeader }: BoqPDFProps) {
                             {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
                           </Text>
 
-                          <View style={styles.detailColCategory}>
+                          <View
+                            style={
+                              showPrices
+                                ? styles.detailColCategory
+                                : styles.detailColCategoryUnpriced
+                            }
+                          >
                             {/* Item Name */}
                             <Text
                               style={{
@@ -615,12 +684,16 @@ export function BoqPDFWithPrice({ boqLines, boqHeader }: BoqPDFProps) {
                           <Text style={styles.detailColQty}>
                             {item.quantity} {item.unit}
                           </Text>
-                          <Text style={styles.detailColRate}>
-                            {item.rate_per_quantity?.toLocaleString()}
-                          </Text>
-                          <Text style={styles.detailColTotal}>
-                            AED {item.total_cost?.toLocaleString()}
-                          </Text>
+                          {showPrices && (
+                            <Text style={styles.detailColRate}>
+                              {item.rate_per_quantity?.toLocaleString()}
+                            </Text>
+                          )}
+                          {showPrices && (
+                            <Text style={styles.detailColTotal}>
+                              AED {item.total_cost?.toLocaleString()}
+                            </Text>
+                          )}
 
                           <View style={styles.detailColAttachment}>
                             {item.attachments &&
@@ -652,23 +725,25 @@ export function BoqPDFWithPrice({ boqLines, boqHeader }: BoqPDFProps) {
                       );
                     })}
 
-                    {/* ✅ Subtotal Row - Inside table with aligned columns */}
-                    <View style={styles.subtotalRow}>
-                      {/* Empty columns to align with table structure */}
-                      <Text style={styles.detailColItemNo}></Text>
-                      <Text
-                        style={styles.detailColCategory}
-                        hyphenationCallback={(word) => [word]}
-                      >
-                        SUBTOTAL FOR {subCategory.toUpperCase()}
-                      </Text>
-                      <Text style={styles.detailColQty}></Text>
-                      <Text style={styles.detailColRate}></Text>
-                      <Text style={styles.detailColTotal}>
-                        AED {subCategoryTotal.toLocaleString()}
-                      </Text>
-                      <Text style={styles.detailColAttachment}></Text>
-                    </View>
+                    {/* Subtotal Row - Only show if showPrices is true */}
+                    {showPrices && (
+                      <View style={styles.subtotalRow}>
+                        {/* Empty columns to align with table structure */}
+                        <Text style={styles.detailColItemNo}></Text>
+                        <Text
+                          style={styles.detailColCategory}
+                          hyphenationCallback={(word) => [word]}
+                        >
+                          SUBTOTAL FOR {subCategory.toUpperCase()}
+                        </Text>
+                        <Text style={styles.detailColQty}></Text>
+                        <Text style={styles.detailColRate}></Text>
+                        <Text style={styles.detailColTotal}>
+                          AED {subCategoryTotal.toLocaleString()}
+                        </Text>
+                        <Text style={styles.detailColAttachment}></Text>
+                      </View>
+                    )}
                   </View>
                 );
               })}

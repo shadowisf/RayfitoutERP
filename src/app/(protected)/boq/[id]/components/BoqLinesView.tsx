@@ -1,16 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import AddBoqItemButton from "./manager/_AddBoqItemButton";
-import EditBoqItemButton from "./manager/_EditBoqItemButton";
 import { BoqLine } from "../types/boqLine";
-import DeleteBoqItemButton from "./manager/_DeleteBoqItemButton";
 import DeleteBoqSubCategoryButton from "./manager/_DeleteBoqSubCategoryButton";
 import RenameBoqSubCategoryButton from "./manager/_RenameBoqSubCategory";
 import { useAuth } from "@/app/context/AuthContext";
-import ItemDescriptionPopUp from "./ItemDescriptionPopUp";
 import { BoqHeader } from "../types/boqHeader";
 import DownloadBoqButton from "./manager/_DownloadBoqButton";
+import ThreeDotsMenuButton from "./_ThreeDotsMenuButton";
+import EditBoqItemLocationButton from "./manager/_EditBoqItemLocationButton";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -29,13 +28,14 @@ export default function BoqLinesView({
 }: BoqLinesViewProps) {
   const { userInfo } = useAuth();
 
-  const pencilIcon = "/icons/pencil.svg";
-  const trashIcon = "/icons/trash.svg";
+  const locationIcon = "/icons/location-boq.svg";
+  const arrowRight = "/icons/arrow-right.svg";
 
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
-  const [expandedDescriptions, setExpandedDescriptions] = useState<number[]>(
-    []
-  );
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const categories = Object.keys(boqLines);
   const subCategories =
@@ -43,54 +43,201 @@ export default function BoqLinesView({
       ? boqLines[categories[0]] || {}
       : boqLines[activeCategory] || {};
 
-  function toggleDescription(itemId: number) {
-    setExpandedDescriptions(function (prev) {
-      if (prev.includes(itemId)) {
-        return prev.filter(function (id) {
-          return id !== itemId;
-        });
-      } else {
-        return [...prev, itemId];
-      }
-    });
-  }
+  // Check scroll position to show/hide arrows
+  const checkScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } =
+        scrollContainerRef.current;
+      setShowLeftArrow(scrollLeft > 0);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
 
-  function isExpanded(itemId: number) {
-    return expandedDescriptions.includes(itemId);
-  }
+  const scroll = (direction: "left" | "right") => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 300;
+      scrollContainerRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener("resize", checkScroll);
+    return () => window.removeEventListener("resize", checkScroll);
+  }, [categories]);
 
   // ✅ Calculate subtotal for a subcategory
   const calculateSubtotal = (items: BoqLine[]) => {
     return items.reduce((sum, item) => sum + (item.total_cost || 0), 0);
   };
 
+  // ✅ Parse attachments helper function
+  const parseAttachments = (attachments: any): string[] => {
+    if (!attachments) return [];
+
+    // If it's already an array, return it
+    if (Array.isArray(attachments)) return attachments;
+
+    // If it's a string, try to parse it
+    if (typeof attachments === "string") {
+      try {
+        // Remove any whitespace and check if it's empty
+        if (attachments.trim() === "") return [];
+
+        const parsed = JSON.parse(attachments);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        console.error("Failed to parse attachments:", error);
+        return [];
+      }
+    }
+
+    return [];
+  };
+
+  const canSeePrice =
+    userInfo?.departmentID === 8 ||
+    userInfo?.departmentID === 12 ||
+    userInfo?.departmentID === 10;
+
+  const canManage =
+    userInfo?.departmentID === 8 || userInfo?.departmentID === 16;
+
   return (
     <>
       <div className="category-grid">
-        <div>
-          <button
-            className={`item ${activeCategory === "ALL" ? "active" : ""}`}
-            onClick={() => setActiveCategory("ALL")}
-            style={{ textTransform: "uppercase" }}
-          >
-            ALL
-          </button>
+        {/* Category Tabs with Scroll */}
+        <div style={{ position: "relative", flex: 1 }}>
+          {/* Left Fade Gradient */}
+          {showLeftArrow && (
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: "300px",
+                background:
+                  "linear-gradient(to right, #f8f9fb 0%, rgba(255, 255, 255, 0) 100%)",
+                pointerEvents: "none",
+                zIndex: 5,
+              }}
+            />
+          )}
 
-          {categories.map(function (category) {
-            return (
+          {/* Left Arrow Button */}
+          {showLeftArrow && (
+            <button
+              onClick={() => scroll("left")}
+              style={{
+                position: "absolute",
+                left: "10px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 10,
+                backgroundColor: "black",
+                color: "white",
+                border: "none",
+                borderRadius: "5px",
+                width: "40px",
+                height: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <img src={arrowRight} style={{ transform: "rotate(-180deg)" }} />
+            </button>
+          )}
+
+          <div
+            ref={scrollContainerRef}
+            onScroll={checkScroll}
+            style={{
+              overflowX: "auto",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+          >
+            <style jsx>{`
+              div::-webkit-scrollbar {
+                display: none;
+              }
+            `}</style>
+            <div style={{ display: "flex", gap: "1px" }}>
               <button
-                key={category}
-                className={`item ${
-                  activeCategory === category ? "active" : ""
-                }`}
-                onClick={function () {
-                  setActiveCategory(category);
-                }}
+                className={`item ${activeCategory === "ALL" ? "active" : ""}`}
+                onClick={() => setActiveCategory("ALL")}
+                style={{ flexShrink: 0, textTransform: "uppercase" }}
               >
-                {category}
+                ALL
               </button>
-            );
-          })}
+
+              {categories.map(function (category) {
+                return (
+                  <button
+                    key={category}
+                    className={`item ${
+                      activeCategory === category ? "active" : ""
+                    }`}
+                    onClick={function () {
+                      setActiveCategory(category);
+                    }}
+                    style={{ flexShrink: 0 }}
+                  >
+                    {category}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Right Fade Gradient */}
+          {showRightArrow && (
+            <div
+              style={{
+                position: "absolute",
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: "300px",
+                background:
+                  "linear-gradient(to left, #f8f9fb 0%, rgba(255, 255, 255, 0) 100%)",
+                pointerEvents: "none",
+                zIndex: 5,
+              }}
+            />
+          )}
+
+          {/* Right Arrow Button */}
+          {showRightArrow && (
+            <button
+              onClick={() => scroll("right")}
+              style={{
+                position: "absolute",
+                right: "10px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 10,
+                backgroundColor: "black",
+                borderRadius: "10px",
+                color: "white",
+                border: "none",
+                width: "40px",
+                height: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <img src={arrowRight} />
+            </button>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: "10px" }}>
@@ -162,50 +309,99 @@ export default function BoqLinesView({
                       <thead>
                         <tr>
                           <th>#</th>
-                          <th>ITEM</th>
-                          <th>DESCRIPTION</th>
-                          <th>LOCATION</th>
+                          <th style={{ minWidth: "600px" }}>ITEM</th>
                           <th>QUANTITY</th>
-                          {(userInfo?.departmentID === 8 ||
-                            userInfo?.departmentID === 12 ||
-                            userInfo?.departmentID === 10) && (
+
+                          {canSeePrice && (
                             <>
                               <th>RATE</th>
                               <th>TOTAL PRICE</th>
                             </>
                           )}
+
                           <th>ATTACHMENTS</th>
-                          {(userInfo?.departmentID === 8 ||
-                            userInfo?.departmentID === 16) && <th>ACTIONS</th>}
+                          {canManage && <th></th>}
                         </tr>
                       </thead>
+
                       <tbody>
-                        {items.map(function (item, itemIndex) {
+                        {items.map((item, itemIndex) => {
+                          // ✅ Parse attachments for each item
+                          const attachmentUrls = parseAttachments(
+                            item.attachments
+                          );
+
                           return (
                             <tr key={item.id}>
                               <td>
                                 {categoryIndex + 1}.{subCategoryIndex + 1}.
                                 {itemIndex + 1}
                               </td>
-                              <td style={{ fontWeight: "600" }}>
-                                {item.item_name}
-                              </td>
+
                               <td>
+                                <strong>{item.item_name}</strong>
+
+                                <br />
+                                <br />
+
                                 {item.item_description && (
-                                  <ItemDescriptionPopUp item={item} />
+                                  <>
+                                    <p>{item.item_description}</p>
+
+                                    <br />
+                                  </>
+                                )}
+
+                                {item.location && (
+                                  <>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: "10px",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      <img src={locationIcon} />
+                                      <span
+                                        style={{
+                                          fontWeight: 600,
+                                          marginTop: "4px",
+                                          color: "rgba(105, 105, 105, 1)",
+                                        }}
+                                      >
+                                        {item.location}
+                                      </span>
+                                      <EditBoqItemLocationButton item={item} />
+                                    </div>
+
+                                    <br />
+                                  </>
+                                )}
+
+                                {item.scope_of_work && (
+                                  <>
+                                    <div
+                                      style={{
+                                        backgroundColor:
+                                          "rgba(225, 225, 225, 1)",
+                                        borderRadius: "50px",
+                                        padding: "4px 10px",
+                                        width: "fit-content",
+                                      }}
+                                    >
+                                      <strong>{item.scope_of_work}</strong>
+                                    </div>
+                                  </>
                                 )}
                               </td>
-                              <td style={{ textWrap: "nowrap" }}>
-                                {item.location?.split(" - ").pop()}
-                              </td>
-                              <td style={{ textWrap: "nowrap" }}>
+
+                              <td>
                                 {item.quantity} {item.unit}
                               </td>
-                              {(userInfo?.departmentID === 8 ||
-                                userInfo?.departmentID === 12 ||
-                                userInfo?.departmentID === 10) && (
+
+                              {canSeePrice && (
                                 <>
-                                  <td style={{ textWrap: "nowrap" }}>
+                                  <td>
                                     {item.rate_per_quantity?.toLocaleString()}
                                   </td>
                                   <td>
@@ -216,147 +412,71 @@ export default function BoqLinesView({
 
                               <td className="attachments">
                                 <div className="attachments-grid">
-                                  {(() => {
-                                    try {
-                                      if (!item.attachments) {
-                                        return null;
-                                      }
-
-                                      if (Array.isArray(item.attachments)) {
-                                        return item.attachments.map(function (
-                                          url: string,
-                                          i: number
-                                        ) {
-                                          return (
-                                            <img
-                                              key={i}
-                                              src={url}
-                                              alt="attachment"
-                                            />
-                                          );
-                                        });
-                                      }
-
-                                      if (
-                                        typeof item.attachments === "string"
-                                      ) {
-                                        if (item.attachments.trim() === "") {
-                                          return null;
-                                        }
-
-                                        const attachments = JSON.parse(
-                                          item.attachments
-                                        );
-
-                                        if (!Array.isArray(attachments)) {
-                                          return null;
-                                        }
-
-                                        return attachments.map(function (
-                                          url: string,
-                                          i: number
-                                        ) {
-                                          return (
-                                            <a
-                                              href={url}
-                                              key={i}
-                                              target="_blank"
-                                            >
-                                              <img
-                                                key={i}
-                                                src={url}
-                                                alt="attachment"
-                                              />
-                                            </a>
-                                          );
-                                        });
-                                      }
-
-                                      return null;
-                                    } catch (error) {
-                                      console.error(
-                                        "Failed to parse attachments:",
-                                        error,
-                                        item.attachments
-                                      );
-                                      return null;
-                                    }
-                                  })()}
+                                  {attachmentUrls.map((url, i) => (
+                                    <img key={i} src={url} alt="attachment" />
+                                  ))}
                                 </div>
                               </td>
 
-                              {(userInfo?.departmentID === 8 ||
-                                userInfo?.departmentID === 16) && (
+                              {canManage && (
                                 <td>
-                                  <div style={{ display: "flex", gap: "10px" }}>
-                                    <EditBoqItemButton
-                                      item={item}
-                                      bgColor={"rgba(239, 239, 239, 1)"}
-                                      borderColor={"rgba(223, 223, 223, 1)"}
-                                      textColor={"black"}
-                                    >
-                                      <img src={pencilIcon} alt="pencil icon" />
-                                    </EditBoqItemButton>
-
-                                    <DeleteBoqItemButton
-                                      item={item}
-                                      bgColor={"rgba(239, 239, 239, 1)"}
-                                      borderColor={"rgba(223, 223, 223, 1)"}
-                                      textColor={"black"}
-                                    >
-                                      <img src={trashIcon} alt="trash icon" />
-                                    </DeleteBoqItemButton>
-                                  </div>
+                                  <ThreeDotsMenuButton item={item} />
                                 </td>
                               )}
                             </tr>
                           );
                         })}
                       </tbody>
-                    </table>
 
-                    {(userInfo?.departmentID === 8 ||
-                      userInfo?.departmentID === 16) && (
-                      <div
-                        style={{ backgroundColor: "white", padding: "20px" }}
-                      >
-                        <AddBoqItemButton
-                          boqHeaderID={boqHeader.id}
-                          bgColor="rgba(239, 239, 239, 1)"
-                          borderColor="rgba(239, 239, 239, 1)"
-                          textColor="black"
-                          full
-                          autoCategory={category}
-                          autoSubCategory={subCategory}
-                          style={{ padding: "20px 0px" }}
-                        >
-                          ADD ITEM +
-                        </AddBoqItemButton>
-                      </div>
-                    )}
-
-                    {/* ✅ Subtotal Row */}
-                    {(userInfo?.departmentID === 8 ||
-                      userInfo?.departmentID === 12 ||
-                      userInfo?.departmentID === 10) && (
-                      <>
-                        <div
+                      {/* ✅ SUBTOTAL ROW — PERFECTLY ALIGNED */}
+                      {canSeePrice && (
+                        <tfoot
                           style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "20px",
-                            backgroundColor: "white",
                             borderTop: "1px solid rgba(232, 223, 223, 1)",
                           }}
                         >
-                          <h3 style={{ textTransform: "uppercase" }}>
-                            SUBTOTAL FOR {subCategory}
-                          </h3>
-                          <h3>AED {subtotal.toLocaleString()}</h3>
-                        </div>
-                      </>
-                    )}
+                          <tr>
+                            <td></td>
+                            <td>
+                              <h3>SUBTOTAL FOR {subCategory}</h3>
+                            </td>
+                            <td colSpan={canSeePrice ? 2 : 1}></td>
+                            <td>
+                              <h3 style={{ textWrap: "nowrap" }}>
+                                AED {subtotal.toLocaleString()}
+                              </h3>
+                            </td>
+                            <td colSpan={canManage ? 2 : 1}></td>
+                          </tr>
+                        </tfoot>
+                      )}
+
+                      {(userInfo?.departmentID === 8 ||
+                        userInfo?.departmentID === 16) && (
+                        <tfoot
+                          style={{
+                            borderTop: "1px solid rgba(232, 223, 223, 1)",
+                          }}
+                        >
+                          <tr>
+                            <td colSpan={7}>
+                              <AddBoqItemButton
+                                boqHeaderID={boqHeader.id}
+                                bgColor="rgba(239, 239, 239, 1)"
+                                borderColor="rgba(239, 239, 239, 1)"
+                                textColor="black"
+                                full
+                                autoCategory={category}
+                                autoSubCategory={subCategory}
+                                style={{ padding: "20px 0px" }}
+                              >
+                                ADD ITEM +
+                              </AddBoqItemButton>
+                            </td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
 
                     <br />
                     <br />
@@ -409,51 +529,96 @@ export default function BoqLinesView({
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>ITEM</th>
-                      <th>DESCRIPTION</th>
-                      <th>LOCATION</th>
+                      <th style={{ minWidth: "600px" }}>ITEM</th>
                       <th>QUANTITY</th>
-                      {(userInfo?.departmentID === 8 ||
-                        userInfo?.departmentID === 12 ||
-                        userInfo?.departmentID === 10) && (
+
+                      {canSeePrice && (
                         <>
                           <th>RATE</th>
                           <th>TOTAL PRICE</th>
                         </>
                       )}
+
                       <th>ATTACHMENTS</th>
-                      {(userInfo?.departmentID === 8 ||
-                        userInfo?.departmentID === 16) && <th>ACTIONS</th>}
+                      {canManage && <th></th>}
                     </tr>
                   </thead>
+
                   <tbody>
-                    {items.map(function (item, itemIndex) {
+                    {items.map((item, itemIndex) => {
+                      // ✅ Parse attachments for each item
+                      const attachmentUrls = parseAttachments(item.attachments);
+
                       return (
                         <tr key={item.id}>
                           <td>
                             {categories.indexOf(activeCategory) + 1}.{index + 1}
                             .{itemIndex + 1}
                           </td>
-                          <td>{item.item_name}</td>
+
                           <td>
-                            {item.item_description ? (
-                              <ItemDescriptionPopUp item={item} />
-                            ) : (
-                              "-"
+                            <strong>{item.item_name}</strong>
+
+                            {item.item_description && (
+                              <>
+                                <br />
+                                <br />
+                                {item.item_description}
+                              </>
+                            )}
+
+                            {item.location && (
+                              <>
+                                <br />
+                                <br />
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "10px",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <img src={locationIcon} />
+                                  <span
+                                    style={{
+                                      fontWeight: 600,
+                                      marginTop: "4px",
+                                      color: "rgba(105, 105, 105, 1)",
+                                    }}
+                                  >
+                                    {item.location}
+                                  </span>
+                                  <EditBoqItemLocationButton item={item} />
+                                </div>
+                              </>
+                            )}
+
+                            {item.scope_of_work && (
+                              <>
+                                <br />
+                                <br />
+
+                                <div
+                                  style={{
+                                    backgroundColor: "rgba(225, 225, 225, 1)",
+                                    borderRadius: "50px",
+                                    padding: "4px 10px",
+                                    width: "fit-content",
+                                  }}
+                                >
+                                  <strong>{item.scope_of_work}</strong>
+                                </div>
+                              </>
                             )}
                           </td>
-                          <td style={{ textWrap: "nowrap" }}>
-                            {item.location?.split(" - ").pop()}
-                          </td>
-                          <td style={{ textWrap: "nowrap" }}>
+
+                          <td>
                             {item.quantity} {item.unit}
                           </td>
 
-                          {(userInfo?.departmentID === 8 ||
-                            userInfo?.departmentID === 12 ||
-                            userInfo?.departmentID === 10) && (
+                          {canSeePrice && (
                             <>
-                              <td style={{ textWrap: "nowrap" }}>
+                              <td>
                                 {item.rate_per_quantity?.toLocaleString()}
                               </td>
                               <td>AED {item.total_cost?.toLocaleString()}</td>
@@ -462,137 +627,71 @@ export default function BoqLinesView({
 
                           <td className="attachments">
                             <div className="attachments-grid">
-                              {(() => {
-                                try {
-                                  if (!item.attachments) {
-                                    return null;
-                                  }
-
-                                  if (Array.isArray(item.attachments)) {
-                                    return item.attachments.map(function (
-                                      url: string,
-                                      i: number
-                                    ) {
-                                      return (
-                                        <img
-                                          key={i}
-                                          src={url}
-                                          alt="attachment"
-                                        />
-                                      );
-                                    });
-                                  }
-
-                                  if (typeof item.attachments === "string") {
-                                    if (item.attachments.trim() === "") {
-                                      return null;
-                                    }
-
-                                    const attachments = JSON.parse(
-                                      item.attachments
-                                    );
-
-                                    if (!Array.isArray(attachments)) {
-                                      return null;
-                                    }
-
-                                    return attachments.map(function (
-                                      url: string,
-                                      i: number
-                                    ) {
-                                      return (
-                                        <a href={url} key={i} target="_blank">
-                                          <img
-                                            key={i}
-                                            src={url}
-                                            alt="attachment"
-                                          />
-                                        </a>
-                                      );
-                                    });
-                                  }
-
-                                  return null;
-                                } catch (error) {
-                                  console.error(
-                                    "Failed to parse attachments:",
-                                    error,
-                                    item.attachments
-                                  );
-                                  return null;
-                                }
-                              })()}
+                              {attachmentUrls.map((url, i) => (
+                                <img key={i} src={url} alt="attachment" />
+                              ))}
                             </div>
                           </td>
 
-                          {(userInfo?.departmentID === 8 ||
-                            userInfo?.departmentID === 16) && (
+                          {canManage && (
                             <td>
-                              <div style={{ display: "flex", gap: "10px" }}>
-                                <EditBoqItemButton
-                                  item={item}
-                                  bgColor={"rgba(239, 239, 239, 1)"}
-                                  borderColor={"rgba(223, 223, 223, 1)"}
-                                  textColor={"black"}
-                                >
-                                  <img src={pencilIcon} alt="pencil icon" />
-                                </EditBoqItemButton>
-
-                                <DeleteBoqItemButton
-                                  item={item}
-                                  bgColor={"rgba(239, 239, 239, 1)"}
-                                  borderColor={"rgba(223, 223, 223, 1)"}
-                                  textColor={"black"}
-                                >
-                                  <img src={trashIcon} alt="trash icon" />
-                                </DeleteBoqItemButton>
-                              </div>
+                              <ThreeDotsMenuButton item={item} />
                             </td>
                           )}
                         </tr>
                       );
                     })}
                   </tbody>
-                </table>
 
-                {(userInfo?.departmentID === 8 ||
-                  userInfo?.departmentID === 16) && (
-                  <div style={{ backgroundColor: "white", padding: "20px" }}>
-                    <AddBoqItemButton
-                      boqHeaderID={boqHeader.id}
-                      bgColor="rgba(239, 239, 239, 1)"
-                      borderColor="rgba(239, 239, 239, 1)"
-                      textColor="black"
-                      full
-                      autoCategory={activeCategory}
-                      autoSubCategory={subCategory}
-                      style={{ padding: "20px 0px" }}
+                  {/* ✅ SUBTOTAL ROW — PERFECTLY ALIGNED */}
+                  {canSeePrice && (
+                    <tfoot
+                      style={{
+                        borderTop: "1px solid rgba(232, 223, 223, 1)",
+                      }}
                     >
-                      ADD ITEM +
-                    </AddBoqItemButton>
-                  </div>
-                )}
+                      <tr>
+                        <td></td>
+                        <td>
+                          <h3>SUBTOTAL FOR {subCategory}</h3>
+                        </td>
+                        <td colSpan={canSeePrice ? 2 : 1}></td>
+                        <td>
+                          <h3 style={{ textWrap: "nowrap" }}>
+                            AED {subtotal.toLocaleString()}
+                          </h3>
+                        </td>
+                        <td colSpan={canManage ? 2 : 1}></td>
+                      </tr>
+                    </tfoot>
+                  )}
 
-                {/* ✅ Subtotal Row */}
-                {(userInfo?.departmentID === 8 ||
-                  userInfo?.departmentID === 12 ||
-                  userInfo?.departmentID === 10) && (
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "20px",
-                      backgroundColor: "white",
-                      borderTop: "1px solid rgba(232, 223, 223, 1)",
-                    }}
-                  >
-                    <h3 style={{ textTransform: "uppercase" }}>
-                      SUBTOTAL FOR {subCategory}
-                    </h3>
-                    <h3>AED {subtotal.toLocaleString()}</h3>
-                  </div>
-                )}
+                  {(userInfo?.departmentID === 8 ||
+                    userInfo?.departmentID === 16) && (
+                    <tfoot
+                      style={{
+                        borderTop: "1px solid rgba(232, 223, 223, 1)",
+                      }}
+                    >
+                      <tr>
+                        <td colSpan={7}>
+                          <AddBoqItemButton
+                            boqHeaderID={boqHeader.id}
+                            bgColor="rgba(239, 239, 239, 1)"
+                            borderColor="rgba(239, 239, 239, 1)"
+                            textColor="black"
+                            full
+                            autoCategory={activeCategory}
+                            autoSubCategory={subCategory}
+                            style={{ padding: "20px 0px" }}
+                          >
+                            ADD ITEM +
+                          </AddBoqItemButton>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
 
                 <br />
                 <br />

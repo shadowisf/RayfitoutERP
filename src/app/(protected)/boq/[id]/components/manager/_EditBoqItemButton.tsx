@@ -13,22 +13,18 @@ import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 
 type EditBoqItemButtonProps = {
   item: BoqLine;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children?: React.ReactNode;
+  onSuccess?: () => void;
 };
 
 export default function EditBoqItemButton({
   item,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
+  onSuccess,
 }: EditBoqItemButtonProps) {
   const router = useRouter();
+
+  const pencilIcon = "/icons/pencil.svg";
+
   const [isOpen, setIsOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [locationValues, setLocationValues] = useState<[]>([]);
 
@@ -147,8 +143,6 @@ export default function EditBoqItemButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    setIsSubmitting(true);
-
     try {
       // Step 1: Delete marked files from S3
       if (filesToDelete.length > 0) {
@@ -213,6 +207,8 @@ export default function EditBoqItemButton({
 
         setIsOpen(false);
 
+        onSuccess && onSuccess();
+
         // Reset states
         setFilesToDelete([]);
         setNewAttachmentFiles([]);
@@ -230,8 +226,6 @@ export default function EditBoqItemButton({
         "Failed to update bill of quantity item. Something went wrong",
         "error"
       );
-    } finally {
-      setIsSubmitting(false);
     }
   }
 
@@ -239,13 +233,14 @@ export default function EditBoqItemButton({
     <>
       <Button
         componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor={"transparent"}
+        borderColor={"transparent"}
+        textColor={"black"}
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 7px" }}
+        full
+        style={{ justifyContent: "flex-start" }}
       >
-        {children}
+        <img src={pencilIcon} alt="pencil" /> Edit
       </Button>
 
       {isOpen && (

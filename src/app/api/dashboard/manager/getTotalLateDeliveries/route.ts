@@ -7,6 +7,7 @@ export async function GET() {
       SELECT COUNT(*) AS overdue_count
       FROM lpo
       WHERE delivery_date < CURDATE()
+        AND progress_id != 25
     `);
 
     return NextResponse.json(rows[0], { status: 200 });

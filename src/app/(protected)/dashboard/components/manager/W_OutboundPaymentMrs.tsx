@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-export default function OutboundPaymentMrsWidget() {
+type props = {
+  filterDays?: number;
+};
+
+export default function OutboundPaymentMrsWidget({ filterDays = 7 }: props) {
   const outboundPaymentsIcon = "/icons/outbound-payments.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";
@@ -11,10 +15,20 @@ export default function OutboundPaymentMrsWidget() {
   const [lastWeek, setLastWeek] = useState<number>(0);
   const [percentageChange, setPercentageChange] = useState<number>(0);
   const [isIncrease, setIsIncrease] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    setIsLoading(true);
+
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getTotalOutboundPayment`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getTotalOutboundPayment`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ filter: filterDays }),
+      }
     )
       .then((res) => res.json())
       .then((data) => {
@@ -42,15 +56,18 @@ export default function OutboundPaymentMrsWidget() {
       })
       .catch((err) => {
         console.error("Error fetching MR data:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-  }, []);
+  }, [filterDays]);
 
   // Check if there are no outbound payments
   const hasNoOutboundPayments = thisWeek === 0;
 
   // Determine if change is substantial (>=10%) or slight (<10%)
   const isSubstantial = percentageChange >= 10;
-  const changemagnitude = isSubstantial ? "Substantial" : "Slight";
+  const changeMagnitude = isSubstantial ? "Substantial" : "Slight";
 
   // Determine styling based on increase/decrease
   // Increase = bad (red), Decrease = good (green) for outbound payments
@@ -64,11 +81,13 @@ export default function OutboundPaymentMrsWidget() {
 
   const arrow = isIncrease ? upArrow : downArrow;
 
+  // ✅ Updated text to be more generic
+  const periodLabel = filterDays === 7 ? "week" : `${filterDays} days`;
   const changeText = hasNoOutboundPayments
     ? "No outbound payments"
     : isIncrease
-    ? `${changemagnitude} increase this week`
-    : `${changemagnitude} decrease this week`;
+    ? `${changeMagnitude} increase from last ${periodLabel}`
+    : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
     <div className="item">
@@ -79,13 +98,19 @@ export default function OutboundPaymentMrsWidget() {
       <div>
         <div className="bottom">
           <p className="number">
-            AED{" "}
-            {thisWeek.toLocaleString(undefined, {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            })}
+            {isLoading ? (
+              "..."
+            ) : (
+              <>
+                AED{" "}
+                {thisWeek.toLocaleString(undefined, {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
+              </>
+            )}
           </p>
-          {!hasNoOutboundPayments && (
+          {!hasNoOutboundPayments && !isLoading && (
             <div
               className="data-pill"
               style={{ backgroundColor: pillBackgroundColor }}
@@ -99,7 +124,7 @@ export default function OutboundPaymentMrsWidget() {
           )}
         </div>
         <br />
-        <span>{changeText}</span>
+        <span>{isLoading ? "Loading..." : changeText}</span>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ export async function GET() {
         COUNT(*) AS overdue_count
       FROM vw_mr_headers
       WHERE required_date < CURDATE()
+        AND progress_id != 25
     `);
 
     return NextResponse.json(rows[0], { status: 200 });

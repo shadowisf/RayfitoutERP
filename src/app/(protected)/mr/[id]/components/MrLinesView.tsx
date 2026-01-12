@@ -1620,7 +1620,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   <th>#</th>
                                   <th>DESCRIPTION</th>
                                   <th>QTY</th>
-                                  <th>BOF REF.</th>
+                                  <th>BOQ REF.</th>
                                   <th>BRAND & SPECIFICATION</th>
                                   {((mrHeader.progress_id === 5 &&
                                     (userInfo?.departmentID ===

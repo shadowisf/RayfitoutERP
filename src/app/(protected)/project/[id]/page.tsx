@@ -30,7 +30,9 @@ export default async function ProjectWithID({
 
   return (
     <div className="dashboard">
-      <h2>PROJECTS &gt; {project?.name.toUpperCase()}</h2>
+      <h2>
+        <a href="/project">PROJECTS</a> &gt; {project?.name.toUpperCase()}
+      </h2>
 
       <br />
       <br />

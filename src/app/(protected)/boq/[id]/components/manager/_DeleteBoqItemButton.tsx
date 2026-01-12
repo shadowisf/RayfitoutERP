@@ -9,27 +9,21 @@ import { toast } from "@/app/components/Toast";
 
 type DeleteBoqItemButtonProps = {
   item: BoqLine;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children?: React.ReactNode;
+  onSuccess?: () => void;
 };
 
 export default function DeleteBoqItemButton({
   item,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
+  onSuccess,
 }: DeleteBoqItemButtonProps) {
   const router = useRouter();
+
+  const trashIcon = "/icons/trash.svg";
+
   const [isOpen, setIsOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    setIsDeleting(true);
 
     try {
       // Step 1: Parse attachments from item
@@ -95,6 +89,8 @@ export default function DeleteBoqItemButton({
 
         setIsOpen(false);
 
+        onSuccess && onSuccess();
+
         router.refresh();
       } else {
         toast(
@@ -108,8 +104,6 @@ export default function DeleteBoqItemButton({
         "Failed to delete bill of quantity item. Something went wrong",
         "error"
       );
-    } finally {
-      setIsDeleting(false);
     }
   }
 
@@ -117,13 +111,14 @@ export default function DeleteBoqItemButton({
     <>
       <Button
         componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor={"transparent"}
+        borderColor={"transparent"}
+        textColor={"black"}
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 7px" }}
+        full
+        style={{ justifyContent: "flex-start" }}
       >
-        {children}
+        <img src={trashIcon} alt="trash" /> Delete
       </Button>
 
       {isOpen && (
