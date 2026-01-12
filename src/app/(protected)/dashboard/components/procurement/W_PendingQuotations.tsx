@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-export default function PendingQuotationsMrsWidget() {
+type props = {
+  filterDays?: number;
+};
+
+export default function PendingQuotationsMrsWidget({ filterDays = 7 }: props) {
   const fileIcon = "/icons/file.svg";
   const upArrow = "/icons/arrow-up-chart-green-big.svg";
   const downArrow = "/icons/arrow-down-chart-red-big.svg";
@@ -11,10 +15,20 @@ export default function PendingQuotationsMrsWidget() {
   const [lastWeek, setLastWeek] = useState<number>(0);
   const [percentageChange, setPercentageChange] = useState<number>(0);
   const [isIncrease, setIsIncrease] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    setIsLoading(true);
+
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/procurement/getTotalPendingQuotations`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/procurement/getTotalPendingQuotations`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ filter: filterDays }),
+      }
     )
       .then((res) => res.json())
       .then((data) => {
@@ -44,8 +58,11 @@ export default function PendingQuotationsMrsWidget() {
       })
       .catch((err) => {
         console.error("Error fetching MR data:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-  }, []);
+  }, [filterDays]);
 
   // Check if there are no active MRs
   const hasNoPendingQuotations = thisWeek === 0;
@@ -64,11 +81,14 @@ export default function PendingQuotationsMrsWidget() {
     ? "rgba(1, 184, 105, 1)"
     : "rgba(255, 255, 255, 1)";
   const arrow = isIncrease ? upArrow : downArrow;
+
+  // ✅ Dynamic period label
+  const periodLabel = filterDays === 7 ? "week" : `${filterDays} days`;
   const changeText = hasNoPendingQuotations
-    ? "No active MRs"
+    ? "No pending quotations"
     : isIncrease
-    ? `${changeMagnitude} increase from last week`
-    : `${changeMagnitude} decrease from last week`;
+    ? `${changeMagnitude} increase from last ${periodLabel}`
+    : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
     <div className="item" style={{ backgroundColor, color: "white" }}>
@@ -78,8 +98,8 @@ export default function PendingQuotationsMrsWidget() {
       </div>
       <div>
         <div className="bottom">
-          <p className="number">{thisWeek}</p>
-          {!hasNoPendingQuotations && (
+          <p className="number">{isLoading ? "..." : thisWeek}</p>
+          {!hasNoPendingQuotations && !isLoading && (
             <div className="data-pill">
               <span style={{ color: textColor }}>
                 {isIncrease ? "+" : "-"}
@@ -90,7 +110,7 @@ export default function PendingQuotationsMrsWidget() {
           )}
         </div>
         <br />
-        <span>{changeText}</span>
+        <span>{isLoading ? "Loading..." : changeText}</span>
       </div>
     </div>
   );

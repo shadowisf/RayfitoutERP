@@ -18,19 +18,35 @@ export async function POST(request: NextRequest) {
       `
       SELECT
         SUM(
-          date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-        ) AS this_week,
+          CASE 
+            WHEN delivery_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+              AND delivery_date < CURDATE()
+              AND progress_id != 25
+            THEN 1
+            ELSE 0
+          END
+        ) AS this_period,
         SUM(
-          date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-          AND date_requested < DATE_SUB(CURDATE(), INTERVAL ? DAY)
-        ) AS last_week
-      FROM vw_mr_headers
-      WHERE progress_id = 7
+          CASE 
+            WHEN delivery_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+              AND delivery_date < DATE_SUB(CURDATE(), INTERVAL ? DAY)
+              AND progress_id != 25
+            THEN 1
+            ELSE 0
+          END
+        ) AS last_period
+      FROM lpo
     `,
       [filter, filter * 2, filter]
     );
 
-    return NextResponse.json(rows[0], { status: 200 });
+    return NextResponse.json(
+      {
+        this_week: rows[0].this_period || 0,
+        last_week: rows[0].last_period || 0,
+      },
+      { status: 200 }
+    );
   } catch (err: any) {
     console.error(err.sqlMessage || err.message);
     return NextResponse.json(

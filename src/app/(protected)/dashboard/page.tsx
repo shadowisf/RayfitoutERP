@@ -16,6 +16,10 @@ import PendingQuotationsMrsWidget from "./components/procurement/W_PendingQuotat
 import DraftMrsWidget from "./components/department/W_DraftMrs";
 import MrsRejectedCompleted from "./components/department/W_MrsRejectedCompleted";
 import TopProjectsWithMrs from "./components/department/W_TopProjectsWithMrs";
+import BudgetAllocationGraph from "./components/manager/W_ProjectBudget";
+import Button from "@/app/components/Button";
+import PendingIncompleteDeliveriesWidget from "./components/procurement/W_IncompleteDeliveries";
+import TopVendorsBySpendWidget from "./components/procurement/W_TopVendorsBySpend";
 
 export default function Dashboard() {
   const bannerBackground = "/images/welcome-banner.jpg";
@@ -160,15 +164,31 @@ export default function Dashboard() {
           <br />
           <br />
 
-          <div className="widget-grid">
-            <div></div> {/* active project allocated budget  */}
+          <div className="widget-grid">{/* <BudgetAllocationGraph/> */}</div>
+
+          <br />
+          <br />
+          <br />
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <h2>ACTIVE PROJECTS</h2>
+            <Button
+              componentType={"link"}
+              bgColor={"white"}
+              borderColor={"white"}
+              textColor={"black"}
+              style={{ borderRadius: "50px" }}
+              href="/project"
+            >
+              View All Projects &gt;
+            </Button>
           </div>
-
-          <br />
-          <br />
-          <br />
-
-          <h2>ACTIVE PROJECTS</h2>
           <br />
           <div className="widget-grid active-projects">
             {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
@@ -187,14 +207,34 @@ export default function Dashboard() {
       {/* PROCUREMENT */}
       {userInfo?.departmentID === 9 && (
         <>
-          <h2>OVERVIEW</h2>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h2>OVERVIEW</h2>
+            <select
+              onChange={(e) => setOverviewFilter(Number(e.target.value))}
+              value={overviewFilter}
+              style={{
+                width: "150px",
+                backgroundColor: "white",
+                borderRadius: "50px",
+              }}
+            >
+              <option value={7}>Last 7 Days</option>
+              <option value={14}>Last 14 Days</option>
+              <option value={30}>Last month</option>
+            </select>
+          </div>
           <br />
-          <div className="widget-grid overview five-col">
-            <PendingQuotationsMrsWidget />
-            <PendingPaymentMrsWidget />
-            <div></div>
-            <div></div>
-            <PendingDeliveryMrsWidget />
+          <div className="widget-grid overview four-col">
+            <PendingQuotationsMrsWidget filterDays={overviewFilter} />
+            <PendingPaymentMrsWidget filterDays={overviewFilter} />
+            <PendingIncompleteDeliveriesWidget />
+            <PendingDeliveryMrsWidget filterDays={overviewFilter} />
           </div>
 
           <br />
@@ -203,7 +243,7 @@ export default function Dashboard() {
 
           <div className="widget-grid overview two-col">
             <div></div> {/* Top Vendors by QC Performance */}
-            <div></div> {/* Top Vendors by Spend */}
+            {/* <TopVendorsBySpendWidget /> */}
           </div>
 
           <br />
@@ -246,15 +286,36 @@ export default function Dashboard() {
       {/* DEPARTMENT */}
       {DEPARTMENT_IDS.includes(Number(userInfo?.departmentID)) && (
         <>
-          <h2>OVERVIEW</h2>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h2>OVERVIEW</h2>
+            <select
+              onChange={(e) => setOverviewFilter(Number(e.target.value))}
+              value={overviewFilter}
+              style={{
+                width: "150px",
+                backgroundColor: "white",
+                borderRadius: "50px",
+              }}
+            >
+              <option value={7}>Last 7 Days</option>
+              <option value={14}>Last 14 Days</option>
+              <option value={30}>Last month</option>
+            </select>
+          </div>
 
           <br />
 
           <div className="widget-grid overview four-col">
-            <DraftMrsWidget />
-            <PendingPaymentMrsWidget />
-            <PendingApprovalMrsWidget />
-            <PendingDeliveryMrsWidget />
+            <DraftMrsWidget filterDays={overviewFilter} />
+            <PendingPaymentMrsWidget filterDays={overviewFilter} />
+            <PendingApprovalMrsWidget filterDays={overviewFilter} />
+            <PendingDeliveryMrsWidget filterDays={overviewFilter} />
           </div>
 
           <br />
@@ -270,7 +331,25 @@ export default function Dashboard() {
           <br />
           <br />
 
-          <h2>ACTIVE PROJECTS</h2>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <h2>ACTIVE PROJECTS</h2>
+            <Button
+              componentType={"link"}
+              bgColor={"white"}
+              borderColor={"white"}
+              textColor={"black"}
+              style={{ borderRadius: "50px" }}
+              href="/project"
+            >
+              View All Projects &gt;
+            </Button>
+          </div>
 
           <br />
 

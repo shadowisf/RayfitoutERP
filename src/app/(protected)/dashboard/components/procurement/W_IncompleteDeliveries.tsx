@@ -1,18 +1,15 @@
 "use client";
 
-import { useAuth } from "@/app/context/AuthContext";
 import { useEffect, useState } from "react";
 
 type props = {
   filterDays?: number;
 };
 
-export default function DraftMrsWidget({ filterDays = 7 }: props) {
-  const { userInfo } = useAuth();
-
-  const fileIcon = "/icons/file.svg";
-  const upArrow = "/icons/arrow-up-chart-green-big.svg";
-  const downArrow = "/icons/arrow-down-chart-red-big.svg";
+export default function OverdueDeliveriesWidget({ filterDays = 7 }: props) {
+  const deliveriesIcon = "/icons/incomplete-deliveries.svg";
+  const upArrow = "/icons/arrow-up-chart-red-big.svg";
+  const downArrow = "/icons/arrow-down-chart-green-big.svg";
 
   const [thisWeek, setThisWeek] = useState<number>(0);
   const [lastWeek, setLastWeek] = useState<number>(0);
@@ -21,21 +18,16 @@ export default function DraftMrsWidget({ filterDays = 7 }: props) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (!userInfo?.departmentID) return;
-
     setIsLoading(true);
 
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/department/getTotalDraftMrs`,
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/procurement/getTotalIncompleteDeliveries`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          department_id: userInfo?.departmentID,
-          filter: filterDays,
-        }),
+        body: JSON.stringify({ filter: filterDays }),
       }
     )
       .then((res) => res.json())
@@ -48,7 +40,6 @@ export default function DraftMrsWidget({ filterDays = 7 }: props) {
 
         // Calculate percentage change
         if (lastWeekCount === 0) {
-          // If last week was 0, cap at 100% increase
           if (thisWeekCount > 0) {
             setPercentageChange(100);
             setIsIncrease(true);
@@ -59,56 +50,59 @@ export default function DraftMrsWidget({ filterDays = 7 }: props) {
         } else {
           const change =
             ((thisWeekCount - lastWeekCount) / lastWeekCount) * 100;
-          // Cap percentage at 100% to avoid infinity display
           setPercentageChange(Math.min(Math.abs(change), 100));
           setIsIncrease(change >= 0);
         }
       })
       .catch((err) => {
-        console.error("Error fetching MR data:", err);
+        console.error("Error fetching overdue deliveries data:", err);
       })
       .finally(() => {
         setIsLoading(false);
       });
-  }, [userInfo?.departmentID, filterDays]);
+  }, [filterDays]);
 
-  // Check if there are no active MRs
-  const hasNoDraftMrs = thisWeek === 0;
+  // Check if there are no overdue deliveries
+  const hasNoIncompleteDeliveries = thisWeek === 0;
 
   // Determine if change is substantial (>=10%) or slight (<10%)
   const isSubstantial = percentageChange >= 10;
   const changeMagnitude = isSubstantial ? "Substantial" : "Slight";
 
-  // Determine styling based on increase/decrease or no active MRs
-  const backgroundColor = hasNoDraftMrs
+  // Determine styling based on increase/decrease
+  // Increase = bad (red), Decrease = good (green) for overdue deliveries
+  const pillBackgroundColor = hasNoIncompleteDeliveries
     ? "rgba(156, 156, 156, 1)"
     : isIncrease
-    ? "rgba(12, 143, 87, 1)"
-    : "rgba(248, 77, 77, 1)";
-  const textColor = isIncrease
-    ? "rgba(1, 184, 105, 1)"
-    : "rgba(255, 255, 255, 1)";
+    ? "rgba(246, 205, 205, 1)"
+    : "rgba(111, 243, 187, 1)";
+
+  const textColor = isIncrease ? "rgba(248, 77, 77, 1)" : "rgba(2, 122, 70, 1)";
+
   const arrow = isIncrease ? upArrow : downArrow;
 
   // ✅ Dynamic period label
   const periodLabel = filterDays === 7 ? "week" : `${filterDays} days`;
-  const changeText = hasNoDraftMrs
-    ? "No draft MRs"
+  const changeText = hasNoIncompleteDeliveries
+    ? "No incomplete deliveries"
     : isIncrease
     ? `${changeMagnitude} increase from last ${periodLabel}`
     : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
-    <div className="item" style={{ backgroundColor, color: "white" }}>
+    <div className="item">
       <div className="top">
-        <span>MRs in Draft</span>
-        <img src={fileIcon} alt="file icon" />
+        <span>Incomplete Deliveries</span>
+        <img src={deliveriesIcon} alt="deliveries icon" />
       </div>
       <div>
         <div className="bottom">
           <p className="number">{isLoading ? "..." : thisWeek}</p>
-          {!hasNoDraftMrs && !isLoading && (
-            <div className="data-pill">
+          {!hasNoIncompleteDeliveries && !isLoading && (
+            <div
+              className="data-pill"
+              style={{ backgroundColor: pillBackgroundColor }}
+            >
               <span style={{ color: textColor }}>
                 {isIncrease ? "+" : "-"}
                 {percentageChange.toFixed(percentageChange >= 10 ? 0 : 1)}%
