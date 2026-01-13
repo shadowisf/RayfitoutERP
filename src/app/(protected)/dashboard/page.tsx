@@ -167,7 +167,7 @@ export default function Dashboard() {
           <br />
           <br />
           <div className="widget-grid">
-            <BudgetAllocationGraph />
+            {/* <BudgetAllocationGraph /> */}
           </div>
           <br />
           <br />
