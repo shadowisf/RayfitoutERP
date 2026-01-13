@@ -6,10 +6,10 @@ type props = {
   filterDays?: number;
 };
 
-export default function PendingDeliveryMrsWidget({ filterDays }: props) {
-  const deliveriesIcon = "/icons/deliveries.svg";
-  const upArrow = "/icons/arrow-up-chart-red-big.svg";
-  const downArrow = "/icons/arrow-down-chart-green-big.svg";
+export default function TotalSpentWidget({ filterDays }: props) {
+  const totalSpentIcon = "/icons/spent-inverted.svg";
+  const upArrow = "/icons/arrow-up-chart-green-big.svg";
+  const downArrow = "/icons/arrow-down-chart-red-big.svg";
 
   const [thisWeek, setThisWeek] = useState<number>(0);
   const [lastWeek, setLastWeek] = useState<number>(0);
@@ -21,7 +21,7 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
     setIsLoading(true);
 
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getTotalPendingDeliveryMrs`,
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/finance/getTotalSpent`,
       {
         method: "POST",
         headers: {
@@ -40,6 +40,7 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
 
         // Calculate percentage change
         if (lastWeekCount === 0) {
+          // If last week was 0, cap at 100% increase
           if (thisWeekCount > 0) {
             setPercentageChange(100);
             setIsIncrease(true);
@@ -50,6 +51,7 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
         } else {
           const change =
             ((thisWeekCount - lastWeekCount) / lastWeekCount) * 100;
+          // Cap percentage at 100% to avoid infinity display
           setPercentageChange(Math.min(Math.abs(change), 100));
           setIsIncrease(change >= 0);
         }
@@ -62,47 +64,43 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
       });
   }, [filterDays]);
 
-  // Check if there are no pending approvals
-  const hasNoPendingDeliveries = thisWeek === 0;
+  // Check if there are no active MRs
+  const hasNoTotalSpent = thisWeek === 0;
 
   // Determine if change is substantial (>=10%) or slight (<10%)
   const isSubstantial = percentageChange >= 10;
   const changeMagnitude = isSubstantial ? "Substantial" : "Slight";
 
-  // Determine styling based on increase/decrease
-  // Increase = bad (red), Decrease = good (green) for pending approvals
-  const pillBackgroundColor = hasNoPendingDeliveries
+  // Determine styling based on increase/decrease or no active MRs
+  const backgroundColor = hasNoTotalSpent
     ? "rgba(156, 156, 156, 1)"
     : isIncrease
-    ? "rgba(246, 205, 205, 1)"
-    : "rgba(111, 243, 187, 1)";
-
-  const textColor = isIncrease ? "rgba(248, 77, 77, 1)" : "rgba(2, 122, 70, 1)";
-
+    ? "rgba(12, 143, 87, 1)"
+    : "rgba(248, 77, 77, 1)";
+  const textColor = isIncrease
+    ? "rgba(1, 184, 105, 1)"
+    : "rgba(255, 255, 255, 1)";
   const arrow = isIncrease ? upArrow : downArrow;
 
-  // ✅ Updated text to be more generic
+  // ✅ Dynamic period label
   const periodLabel = filterDays === 7 ? "week" : `${filterDays} days`;
-  const changeText = hasNoPendingDeliveries
-    ? "No pending deliveries"
+  const changeText = hasNoTotalSpent
+    ? "Nothing spent yet"
     : isIncrease
     ? `${changeMagnitude} increase from last ${periodLabel}`
     : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
-    <div className="item">
+    <div className="item" style={{ backgroundColor, color: "white" }}>
       <div className="top">
-        <span>Pending Deliveries</span>
-        <img src={deliveriesIcon} alt="deliveries icon" />
+        <span>Spend</span>
+        <img src={totalSpentIcon} alt="spent icon" />
       </div>
       <div>
         <div className="bottom">
           <p className="number">{isLoading ? "..." : thisWeek}</p>
-          {!hasNoPendingDeliveries && !isLoading && (
-            <div
-              className="data-pill"
-              style={{ backgroundColor: pillBackgroundColor }}
-            >
+          {!hasNoTotalSpent && !isLoading && (
+            <div className="data-pill">
               <span style={{ color: textColor }}>
                 {isIncrease ? "+" : "-"}
                 {percentageChange.toFixed(percentageChange >= 10 ? 0 : 1)}%

@@ -6,7 +6,7 @@ type props = {
   filterDays?: number;
 };
 
-export default function PendingPaymentMrsWidget({ filterDays = 7 }: props) {
+export default function PendingPaymentMrsWidget({ filterDays }: props) {
   const paymentsIcon = "/icons/payments.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";

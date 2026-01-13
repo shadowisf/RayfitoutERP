@@ -4,12 +4,20 @@ import { db } from "@/lib/db";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { filter } = body;
+    const { filter, project_id } = body;
 
     // Validate filter (in days)
     const days = filter || 365; // Default to 1 year
 
-    // 1️⃣ Get all projects with their initial allocated budgets and creation dates
+    // Validate project_id
+    if (!project_id) {
+      return NextResponse.json(
+        { error: "project_id is required" },
+        { status: 400 }
+      );
+    }
+
+    // 1️⃣ Get the specific project
     const [projectRows] = await db.query(
       `
       SELECT 
@@ -19,43 +27,60 @@ export async function POST(req: NextRequest) {
         allocated_budget,
         created_at
       FROM projects
-      WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+      WHERE id = ?
       `,
-      [days]
+      [project_id]
     );
 
-    const projects = projectRows as any[];
+    if (!projectRows || (projectRows as any[]).length === 0) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
 
-    // 2️⃣ Get all approved LPOs with their dates across all projects
+    const project = (projectRows as any[])[0];
+
+    // 2️⃣ Get total allocated budget for this project (allocated_budget + approved LPOs)
+    let totalAllocated = Number(project.allocated_budget ?? 0);
+
+    const [lpoSumRows] = await db.query(
+      `
+      SELECT COALESCE(SUM(total), 0) AS lpo_total
+      FROM lpo
+      WHERE project_id = ? AND payment_status = 'Approved'
+      `,
+      [project_id]
+    );
+
+    const totalLpoAmount = Number((lpoSumRows as any[])[0]?.lpo_total ?? 0);
+    totalAllocated += totalLpoAmount;
+
+    // 3️⃣ Get all approved LPOs with their dates for this project in the time period
     const [lpoRows] = await db.query(
       `
       SELECT 
         lpo.total,
-        lpo.project_id,
         DATE(lpo.created_at) as allocation_date,
         lpo.created_at
       FROM lpo 
-      WHERE lpo.payment_status = 'Approved'
+      WHERE lpo.project_id = ?
+        AND lpo.payment_status = 'Approved'
         AND lpo.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
       ORDER BY lpo.created_at ASC
       `,
-      [days]
+      [project_id, days]
     );
 
     const lpos = lpoRows as any[];
 
-    // 3️⃣ Calculate total quoted budget and initial allocated budget
-    const totalQuotedBudget = projects.reduce(
-      (sum, project) => sum + Number(project.quoted_budget ?? 0),
-      0
-    );
+    // 4️⃣ Calculate quoted budget (null if not set)
+    const quotedBudget = project.quoted_budget
+      ? Number(project.quoted_budget)
+      : null;
+    const remainingBudget = quotedBudget ? quotedBudget - totalAllocated : null;
+    const percentageUsed = quotedBudget
+      ? (totalAllocated / quotedBudget) * 100
+      : null;
 
-    const totalInitialAllocatedBudget = projects.reduce(
-      (sum, project) => sum + Number(project.allocated_budget ?? 0),
-      0
-    );
-
-    // 4️⃣ Initialize date range
+    // 5️⃣ Initialize date range
     const dailyData: { [date: string]: number } = {};
 
     const startDate = new Date();
@@ -68,19 +93,17 @@ export async function POST(req: NextRequest) {
       dailyData[dateStr] = 0;
     }
 
-    // 5️⃣ Add project initial allocated budgets to their creation dates
-    projects.forEach((project) => {
-      if (project.created_on && project.allocated_budget > 0) {
-        const dateStr = new Date(project.created_on)
-          .toISOString()
-          .split("T")[0];
-        if (dailyData[dateStr] !== undefined) {
-          dailyData[dateStr] += Number(project.allocated_budget ?? 0);
-        }
-      }
-    });
+    // 6️⃣ Add project initial allocated budget to creation date (if within period)
+    if (project.created_at && project.allocated_budget > 0) {
+      const createdDate = new Date(project.created_at);
+      const dateStr = createdDate.toISOString().split("T")[0];
 
-    // 6️⃣ Add LPO allocations to their respective dates
+      if (dailyData[dateStr] !== undefined) {
+        dailyData[dateStr] += Number(project.allocated_budget ?? 0);
+      }
+    }
+
+    // 7️⃣ Add LPO allocations to their respective dates
     lpos.forEach((lpo) => {
       const dateStr = new Date(lpo.allocation_date).toISOString().split("T")[0];
       if (dailyData[dateStr] !== undefined) {
@@ -88,7 +111,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // 7️⃣ Calculate cumulative totals
+    // 8️⃣ Calculate cumulative totals
     const chartData = [];
     let cumulativeTotal = 0;
 
@@ -103,33 +126,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 8️⃣ Calculate total allocated budget
-    const totalLpoAmount = lpos.reduce(
-      (sum, lpo) => sum + Number(lpo.total ?? 0),
-      0
-    );
-    const totalAllocated = totalInitialAllocatedBudget + totalLpoAmount;
-    const remainingBudget = totalQuotedBudget - totalAllocated;
-    const percentageUsed =
-      totalQuotedBudget > 0 ? (totalAllocated / totalQuotedBudget) * 100 : 0;
-
-    // 9️⃣ Get active projects list
-    const activeProjects = projects.map((project) => ({
-      id: project.id,
-      name: project.name,
-      quoted_budget: Number(project.quoted_budget ?? 0),
-    }));
-
     return NextResponse.json(
       {
-        total_quoted_budget: totalQuotedBudget,
+        project_id: project.id,
+        project_name: project.name,
+        quoted_budget: quotedBudget,
         total_allocated_budget: totalAllocated,
         remaining_budget: remainingBudget,
-        percentage_used: Math.round(percentageUsed * 10) / 10,
-        limit_budget: totalQuotedBudget,
+        percentage_used: percentageUsed
+          ? Math.round(percentageUsed * 10) / 10
+          : null,
+        limit_budget: quotedBudget,
+        has_limit: quotedBudget !== null,
         chartData,
-        active_projects: activeProjects,
-        projects_count: projects.length,
       },
       { status: 200 }
     );

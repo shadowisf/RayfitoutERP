@@ -6,13 +6,15 @@ type props = {
   filterDays?: number;
 };
 
-export default function PendingDeliveryMrsWidget({ filterDays }: props) {
-  const deliveriesIcon = "/icons/deliveries.svg";
+export default function AvgPaymentTimeWidget({ filterDays = 7 }: props) {
+  const clockIcon = "/icons/clock.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";
 
   const [thisWeek, setThisWeek] = useState<number>(0);
   const [lastWeek, setLastWeek] = useState<number>(0);
+  const [thisWeekUnit, setThisWeekUnit] = useState<string>("hrs");
+  const [lastWeekUnit, setLastWeekUnit] = useState<string>("hrs");
   const [percentageChange, setPercentageChange] = useState<number>(0);
   const [isIncrease, setIsIncrease] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -21,7 +23,7 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
     setIsLoading(true);
 
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getTotalPendingDeliveryMrs`,
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/finance/getAvgPaymentTime`,
       {
         method: "POST",
         headers: {
@@ -37,6 +39,8 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
 
         setThisWeek(thisWeekCount);
         setLastWeek(lastWeekCount);
+        setThisWeekUnit(data.this_week_unit || "hrs");
+        setLastWeekUnit(data.last_week_unit || "hrs");
 
         // Calculate percentage change
         if (lastWeekCount === 0) {
@@ -55,7 +59,7 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
         }
       })
       .catch((err) => {
-        console.error("Error fetching MR data:", err);
+        console.error("Error fetching payment time data:", err);
       })
       .finally(() => {
         setIsLoading(false);
@@ -63,15 +67,15 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
   }, [filterDays]);
 
   // Check if there are no pending approvals
-  const hasNoPendingDeliveries = thisWeek === 0;
+  const hasNoPaymentTime = thisWeek === 0;
 
   // Determine if change is substantial (>=10%) or slight (<10%)
   const isSubstantial = percentageChange >= 10;
   const changeMagnitude = isSubstantial ? "Substantial" : "Slight";
 
   // Determine styling based on increase/decrease
-  // Increase = bad (red), Decrease = good (green) for pending approvals
-  const pillBackgroundColor = hasNoPendingDeliveries
+  // Increase = bad (red), Decrease = good (green) for payment time
+  const pillBackgroundColor = hasNoPaymentTime
     ? "rgba(156, 156, 156, 1)"
     : isIncrease
     ? "rgba(246, 205, 205, 1)"
@@ -83,8 +87,8 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
 
   // ✅ Updated text to be more generic
   const periodLabel = filterDays === 7 ? "week" : `${filterDays} days`;
-  const changeText = hasNoPendingDeliveries
-    ? "No pending deliveries"
+  const changeText = hasNoPaymentTime
+    ? "No payments completed yet"
     : isIncrease
     ? `${changeMagnitude} increase from last ${periodLabel}`
     : `${changeMagnitude} decrease from last ${periodLabel}`;
@@ -92,13 +96,15 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
   return (
     <div className="item">
       <div className="top">
-        <span>Pending Deliveries</span>
-        <img src={deliveriesIcon} alt="deliveries icon" />
+        <span>Average Payment Time</span>
+        <img src={clockIcon} alt="clock icon" />
       </div>
       <div>
         <div className="bottom">
-          <p className="number">{isLoading ? "..." : thisWeek}</p>
-          {!hasNoPendingDeliveries && !isLoading && (
+          <p className="number">
+            {isLoading ? "..." : `${thisWeek} ${thisWeekUnit}`}
+          </p>
+          {!hasNoPaymentTime && !isLoading && (
             <div
               className="data-pill"
               style={{ backgroundColor: pillBackgroundColor }}

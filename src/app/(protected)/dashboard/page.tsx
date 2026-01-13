@@ -19,7 +19,13 @@ import TopProjectsWithMrs from "./components/department/W_TopProjectsWithMrs";
 import BudgetAllocationGraph from "./components/manager/W_ProjectBudget";
 import Button from "@/app/components/Button";
 import PendingIncompleteDeliveriesWidget from "./components/procurement/W_IncompleteDeliveries";
-import TopVendorsBySpendWidget from "./components/procurement/W_TopVendorsBySpend";
+import TopVendorsBySpendWidget from "./components/W_TopVendorsBySpend";
+import TopVendorsByVolumeWidget from "./components/procurement/W_TopVendorsByVolume";
+import TotalSpentWidget from "./components/finance/W_TotalSpent";
+import AvgPaymentTimeWidget from "./components/finance/W_AvgPaymentTime";
+import RisksAndExceptionFlagsWidget from "./components/finance/W_RisksAndExceptionFlags";
+import TopMaterialsBySpendingChart from "./components/finance/W_TopMaterialsBySpend";
+import PriceTrendSignalsWidget from "./components/finance/W_PriceTrendSignals";
 
 export default function Dashboard() {
   const bannerBackground = "/images/welcome-banner.jpg";
@@ -149,27 +155,23 @@ export default function Dashboard() {
             <OutboundPaymentMrsWidget filterDays={overviewFilter} />
             <PendingDeliveryMrsWidget filterDays={overviewFilter} />
           </div>
-
           <br />
           <br />
           <br />
-
           <div className="widget-grid overview three-col">
             <AlertsAndRiskMrsWidget />
             <AvgTimeSpentPerStageWidget />
             <MedianMRLifespanWidget />
           </div>
-
           <br />
           <br />
           <br />
-
-          <div className="widget-grid">{/* <BudgetAllocationGraph/> */}</div>
-
+          <div className="widget-grid">
+            <BudgetAllocationGraph />
+          </div>
           <br />
           <br />
           <br />
-
           <div
             style={{
               display: "flex",
@@ -195,11 +197,9 @@ export default function Dashboard() {
               <ProjectBox proj={proj} key={index} />
             ))}
           </div>
-
           <br />
           <br />
           <br />
-
           <ExpectedDeliveriesWidget />
         </>
       )}
@@ -233,32 +233,26 @@ export default function Dashboard() {
           <div className="widget-grid overview four-col">
             <PendingQuotationsMrsWidget filterDays={overviewFilter} />
             <PendingPaymentMrsWidget filterDays={overviewFilter} />
-            <PendingIncompleteDeliveriesWidget />
+            <PendingIncompleteDeliveriesWidget filterDays={overviewFilter} />
             <PendingDeliveryMrsWidget filterDays={overviewFilter} />
           </div>
-
           <br />
           <br />
           <br />
-
           <div className="widget-grid overview two-col">
-            <div></div> {/* Top Vendors by QC Performance */}
-            {/* <TopVendorsBySpendWidget /> */}
+            <TopVendorsByVolumeWidget />
+            <TopVendorsBySpendWidget />
           </div>
-
           <br />
           <br />
           <br />
-
           <div className="widget-grid overview two-col">
             <div></div> {/* Top Vendors by Order Volume */}
             <div></div> {/* Top Vendors with Delivery Rate */}
           </div>
-
           <br />
           <br />
           <br />
-
           <h2>ACTIVE PROJECTS</h2>
           <br />
           <div className="widget-grid active-projects">
@@ -266,20 +260,88 @@ export default function Dashboard() {
               <ProjectBox proj={proj} key={index} />
             ))}
           </div>
-
           <br />
           <br />
           <br />
-
           <div className="widget-grid">
             <div></div> {/* Active project allocated budget */}
           </div>
-
           <br />
           <br />
           <br />
-
           <ExpectedDeliveriesWidget />
+        </>
+      )}
+
+      {/* FINANCE */}
+      {userInfo?.departmentID === 10 && (
+        <>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h2>OVERVIEW</h2>
+            <select
+              onChange={(e) => setOverviewFilter(Number(e.target.value))}
+              value={overviewFilter}
+              style={{
+                width: "150px",
+                backgroundColor: "white",
+                borderRadius: "50px",
+              }}
+            >
+              <option value={7}>Last 7 Days</option>
+              <option value={14}>Last 14 Days</option>
+              <option value={30}>Last month</option>
+            </select>
+          </div>
+          <br />
+          <div className="widget-grid overview four-col">
+            <TotalSpentWidget filterDays={overviewFilter} />
+            <PendingPaymentMrsWidget filterDays={overviewFilter} />
+            <AvgPaymentTimeWidget filterDays={overviewFilter} />
+            <PendingDeliveryMrsWidget filterDays={overviewFilter} />
+          </div>
+          <br />
+          <br />
+          <br />
+          <div className="widget-grid overview two-col">
+            <RisksAndExceptionFlagsWidget />
+            <TopMaterialsBySpendingChart />
+            <TopVendorsBySpendWidget />
+            <PriceTrendSignalsWidget />
+          </div>
+          <br />
+          <br />
+          <br />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <h2>ACTIVE PROJECTS</h2>
+            <Button
+              componentType={"link"}
+              bgColor={"white"}
+              borderColor={"white"}
+              textColor={"black"}
+              style={{ borderRadius: "50px" }}
+              href="/project"
+            >
+              View All Projects &gt;
+            </Button>
+          </div>
+          <br />
+          <div className="widget-grid active-projects">
+            {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
+              <ProjectBox proj={proj} key={index} />
+            ))}
+          </div>
         </>
       )}
 
@@ -308,29 +370,23 @@ export default function Dashboard() {
               <option value={30}>Last month</option>
             </select>
           </div>
-
           <br />
-
           <div className="widget-grid overview four-col">
             <DraftMrsWidget filterDays={overviewFilter} />
             <PendingPaymentMrsWidget filterDays={overviewFilter} />
             <PendingApprovalMrsWidget filterDays={overviewFilter} />
             <PendingDeliveryMrsWidget filterDays={overviewFilter} />
           </div>
-
           <br />
           <br />
           <br />
-
           <div className="widget-grid overview two-col">
             <MrsRejectedCompleted />
             <TopProjectsWithMrs />
           </div>
-
           <br />
           <br />
           <br />
-
           <div
             style={{
               display: "flex",
@@ -350,9 +406,7 @@ export default function Dashboard() {
               View All Projects &gt;
             </Button>
           </div>
-
           <br />
-
           <div className="widget-grid active-projects">
             {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
               <ProjectBox proj={proj} key={index} />

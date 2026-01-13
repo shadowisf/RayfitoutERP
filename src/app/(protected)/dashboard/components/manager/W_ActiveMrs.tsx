@@ -6,7 +6,7 @@ type props = {
   filterDays?: number;
 };
 
-export default function ActiveMrsWidget({ filterDays = 7 }: props) {
+export default function ActiveMrsWidget({ filterDays }: props) {
   const fileIcon = "/icons/file.svg";
   const upArrow = "/icons/arrow-up-chart-green-big.svg";
   const downArrow = "/icons/arrow-down-chart-red-big.svg";

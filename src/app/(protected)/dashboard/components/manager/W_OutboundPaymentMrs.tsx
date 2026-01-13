@@ -6,7 +6,7 @@ type props = {
   filterDays?: number;
 };
 
-export default function OutboundPaymentMrsWidget({ filterDays = 7 }: props) {
+export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   const outboundPaymentsIcon = "/icons/outbound-payments.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";

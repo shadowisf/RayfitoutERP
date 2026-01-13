@@ -263,7 +263,7 @@ export default async function MrWithID({
                 </p>
               </div>
 
-              {mrHeader.progress_id !== 1 && (
+              {mrHeader.progress_id !== 1 && mrHeader.progress_id !== 25 && (
                 <div>
                   <h2
                     className="approval-pill normal-text"

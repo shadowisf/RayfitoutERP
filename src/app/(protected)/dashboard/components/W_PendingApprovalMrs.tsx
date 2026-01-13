@@ -6,7 +6,7 @@ type props = {
   filterDays?: number;
 };
 
-export default function PendingApprovalMrsWidget({ filterDays = 7 }: props) {
+export default function PendingApprovalMrsWidget({ filterDays }: props) {
   const approvalsIcon = "/icons/approvals.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";

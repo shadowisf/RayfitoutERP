@@ -7,7 +7,7 @@ type props = {
   filterDays?: number;
 };
 
-export default function DraftMrsWidget({ filterDays = 7 }: props) {
+export default function DraftMrsWidget({ filterDays }: props) {
   const { userInfo } = useAuth();
 
   const fileIcon = "/icons/file.svg";

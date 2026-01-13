@@ -8,31 +8,29 @@ type ChartDataPoint = {
   dailyAllocation: number;
 };
 
-type Project = {
-  id: number;
-  name: string;
-  quoted_budget: number;
-};
-
 type BudgetData = {
-  total_quoted_budget: number;
+  project_id: number;
+  project_name: string;
+  quoted_budget: number | null;
   total_allocated_budget: number;
-  remaining_budget: number;
-  percentage_used: number;
-  limit_budget: number;
+  remaining_budget: number | null;
+  percentage_used: number | null;
+  limit_budget: number | null;
+  has_limit: boolean;
   chartData: ChartDataPoint[];
-  active_projects: Project[];
-  projects_count: number;
 };
 
-export default function BudgetAllocationGraph() {
+type Props = {
+  projectId: number;
+};
+
+export default function BudgetAllocationGraph({ projectId }: Props) {
   const [data, setData] = useState<BudgetData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [filter, setFilter] = useState(365); // Default to 1 year
   const [hoveredPoint, setHoveredPoint] = useState<ChartDataPoint | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [selectedProject, setSelectedProject] = useState<string>("all");
 
   const downArrowIcon = "/icons/minimal-arrow-down.svg";
 
@@ -45,7 +43,7 @@ export default function BudgetAllocationGraph() {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filter }),
+        body: JSON.stringify({ filter, project_id: projectId }),
       }
     )
       .then((res) => {
@@ -62,7 +60,7 @@ export default function BudgetAllocationGraph() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [filter]);
+  }, [filter, projectId]);
 
   if (error) {
     return (
@@ -94,26 +92,70 @@ export default function BudgetAllocationGraph() {
     );
   }
 
+  // Aggregate data by month for longer periods (>90 days)
+  const aggregateDataByPeriod = () => {
+    if (filter <= 90) {
+      return data.chartData;
+    }
+
+    const monthlyData: { [key: string]: ChartDataPoint } = {};
+
+    data.chartData.forEach((point) => {
+      const date = new Date(point.date);
+      const monthKey = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}-01`;
+
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = {
+          date: monthKey,
+          allocated: point.allocated,
+          dailyAllocation: point.dailyAllocation,
+        };
+      } else {
+        monthlyData[monthKey].allocated = point.allocated;
+        monthlyData[monthKey].dailyAllocation += point.dailyAllocation;
+      }
+    });
+
+    return Object.values(monthlyData).sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
+  };
+
+  const aggregatedData = aggregateDataByPeriod();
+
   const chartHeight = 250;
   const chartWidth = 1000;
   const padding = { top: 20, right: 20, bottom: 40, left: 80 };
   const graphWidth = chartWidth - padding.left - padding.right;
   const graphHeight = chartHeight - padding.top - padding.bottom;
 
-  // Get max value for Y axis
-  const maxValue = Math.max(
-    data.limit_budget,
-    ...data.chartData.map((d) => d.allocated),
-    1
-  );
+  // Get max value for Y axis - dynamic scaling
+  const dataMaxValue = Math.max(...aggregatedData.map((d) => d.allocated), 0);
+
+  // If has limit budget, include it in max calculation
+  let maxValue = dataMaxValue;
+  if (data.has_limit && data.limit_budget) {
+    maxValue = Math.max(maxValue, data.limit_budget);
+  }
+
+  // Add 10% padding to top for better visibility
+  maxValue = maxValue * 1.1;
+
+  // Ensure minimum scale for very low values
+  if (maxValue < 100) {
+    maxValue = 100;
+  }
+
   const minValue = 0;
 
   // Calculate scales
-  const xScale = graphWidth / (data.chartData.length - 1 || 1);
+  const xScale = graphWidth / (aggregatedData.length - 1 || 1);
   const yScale = graphHeight / (maxValue - minValue || 1);
 
   // Generate path for the line
-  const linePath = data.chartData
+  const linePath = aggregatedData
     .map((point, index) => {
       const x = padding.left + index * xScale;
       const y =
@@ -122,7 +164,7 @@ export default function BudgetAllocationGraph() {
     })
     .join(" ");
 
-  // Generate area path (filled area under the line)
+  // Generate area path
   const areaPath = `
     ${linePath}
     L ${padding.left + graphWidth} ${padding.top + graphHeight}
@@ -130,9 +172,11 @@ export default function BudgetAllocationGraph() {
     Z
   `;
 
-  // Calculate limit budget line Y position
+  // Calculate limit budget line Y position (only if has limit)
   const limitY =
-    padding.top + graphHeight - (data.limit_budget - minValue) * yScale;
+    data.has_limit && data.limit_budget
+      ? padding.top + graphHeight - (data.limit_budget - minValue) * yScale
+      : null;
 
   // Format currency
   const formatCurrency = (value: number) => {
@@ -147,138 +191,121 @@ export default function BudgetAllocationGraph() {
   // Format date for X axis
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
+    if (filter > 90) {
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        year: "2-digit",
+      });
+    }
     return date.toLocaleDateString("en-US", { month: "short" });
   };
 
-  // Get unique months for X axis labels
+  // Get X axis labels
   const getXAxisLabels = () => {
     const labels: { date: string; position: number }[] = [];
-    let lastMonth = "";
 
-    data.chartData.forEach((point, index) => {
-      const month = formatDate(point.date);
-      if (month !== lastMonth) {
+    if (filter > 90) {
+      aggregatedData.forEach((point, index) => {
         labels.push({
-          date: month,
+          date: formatDate(point.date),
           position: padding.left + index * xScale,
         });
-        lastMonth = month;
-      }
-    });
+      });
+    } else {
+      let lastMonth = "";
+      aggregatedData.forEach((point, index) => {
+        const month = formatDate(point.date);
+        if (month !== lastMonth) {
+          labels.push({
+            date: month,
+            position: padding.left + index * xScale,
+          });
+          lastMonth = month;
+        }
+      });
+    }
 
     return labels;
   };
 
   const xAxisLabels = getXAxisLabels();
 
-  // Get Y axis labels
-  const yAxisLabels = [
-    { value: 0, label: "AED 0" },
-    { value: maxValue / 2, label: formatCurrency(maxValue / 2) },
-    { value: maxValue, label: formatCurrency(maxValue) },
-  ];
+  // Get Y axis labels - dynamic
+  const getYAxisLabels = () => {
+    const numLabels = 3;
+    const interval = maxValue / (numLabels - 1);
+
+    return Array.from({ length: numLabels }, (_, i) => ({
+      value: i * interval,
+      label: i === 0 ? "AED 0" : formatCurrency(i * interval),
+    }));
+  };
+
+  const yAxisLabels = getYAxisLabels();
 
   return (
-    <div style={{ display: "flex", gap: "20px" }}>
-      {/* Main Chart Container */}
+    <div
+      style={{
+        backgroundColor: "white",
+        padding: "20px",
+        borderRadius: "15px",
+      }}
+    >
+      {/* Header */}
       <div
         style={{
-          backgroundColor: "white",
-          padding: "20px",
-          borderRadius: "15px",
-          flex: 1,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "10px",
         }}
       >
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "10px",
-          }}
-        >
-          {/* Project Selector Dropdown */}
-          <div style={{ position: "relative" }}>
-            <select
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
-              style={{
-                padding: "10px 40px 10px 15px",
-                borderRadius: "8px",
-                border: "none",
-                backgroundColor: "white",
-                cursor: "pointer",
-                fontSize: "16px",
-                fontWeight: "500",
-                appearance: "none",
-                WebkitAppearance: "none",
-                MozAppearance: "none",
-                minWidth: "200px",
-              }}
-            >
-              <option value="all">All Projects</option>
-              {data.active_projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-            <img
-              src={downArrowIcon}
-              alt="dropdown"
-              style={{
-                position: "absolute",
-                right: "15px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                pointerEvents: "none",
-                width: "12px",
-                height: "12px",
-              }}
-            />
-          </div>
+        {/* Project Name */}
+        <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "600" }}>
+          {data.project_name}
+        </h3>
 
-          {/* Time Period Dropdown */}
-          <div style={{ position: "relative" }}>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(Number(e.target.value))}
-              style={{
-                padding: "8px 35px 8px 12px",
-                borderRadius: "50px",
-                border: "1px solid rgba(223, 223, 223, 1)",
-                backgroundColor: "white",
-                cursor: "pointer",
-                fontSize: "13px",
-                appearance: "none",
-                WebkitAppearance: "none",
-                MozAppearance: "none",
-              }}
-            >
-              <option value={365}>1 Year</option>
-              <option value={180}>6 Months</option>
-              <option value={90}>3 Months</option>
-              <option value={30}>1 Month</option>
-            </select>
-            <img
-              src={downArrowIcon}
-              alt="dropdown"
-              style={{
-                position: "absolute",
-                right: "12px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                pointerEvents: "none",
-                width: "10px",
-                height: "10px",
-              }}
-            />
-          </div>
+        {/* Time Period Dropdown */}
+        <div style={{ position: "relative" }}>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(Number(e.target.value))}
+            style={{
+              padding: "8px 35px 8px 12px",
+              borderRadius: "50px",
+              border: "1px solid rgba(223, 223, 223, 1)",
+              backgroundColor: "white",
+              cursor: "pointer",
+              fontSize: "13px",
+              appearance: "none",
+              WebkitAppearance: "none",
+              MozAppearance: "none",
+            }}
+          >
+            <option value={365}>1 Year</option>
+            <option value={180}>6 Months</option>
+            <option value={90}>3 Months</option>
+            <option value={30}>1 Month</option>
+          </select>
+          <img
+            src={downArrowIcon}
+            alt="dropdown"
+            style={{
+              position: "absolute",
+              right: "12px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              pointerEvents: "none",
+              width: "10px",
+              height: "10px",
+            }}
+          />
         </div>
+      </div>
 
-        {/* Budget Info */}
-        <div style={{ marginBottom: "20px" }}>
+      {/* Budget Info */}
+      <div style={{ marginBottom: "20px" }}>
+        {data.has_limit && (
           <div
             style={{
               fontSize: "11px",
@@ -287,54 +314,66 @@ export default function BudgetAllocationGraph() {
               letterSpacing: "0.5px",
             }}
           >
-            LIMIT BUDGET {formatCurrency(data.limit_budget)}
+            LIMIT BUDGET {formatCurrency(data.limit_budget!)}
           </div>
-        </div>
-
-        {/* SVG Chart */}
-        <svg
-          width={chartWidth}
-          height={chartHeight}
-          style={{ overflow: "visible" }}
-          onMouseMove={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            setMousePosition({
-              x: e.clientX - rect.left,
-              y: e.clientY - rect.top,
-            });
+        )}
+        <div
+          style={{
+            fontSize: "11px",
+            color: "#666",
+            marginTop: "4px",
           }}
-          onMouseLeave={() => setHoveredPoint(null)}
         >
-          {/* Y Axis Labels */}
-          {yAxisLabels.map((label, index) => {
-            const y =
-              padding.top + graphHeight - (label.value - minValue) * yScale;
-            return (
-              <g key={index}>
-                <text
-                  x={padding.left - 10}
-                  y={y}
-                  textAnchor="end"
-                  fontSize="11"
-                  fill="#999"
-                  dominantBaseline="middle"
-                >
-                  {label.label}
-                </text>
-                <line
-                  x1={padding.left}
-                  y1={y}
-                  x2={padding.left + graphWidth}
-                  y2={y}
-                  stroke="#f0f0f0"
-                  strokeWidth="1"
-                  strokeDasharray="4 4"
-                />
-              </g>
-            );
-          })}
+          Allocated: {formatCurrency(data.total_allocated_budget)}
+          {data.percentage_used !== null && ` (${data.percentage_used}%)`}
+        </div>
+      </div>
 
-          {/* Limit Budget Line */}
+      {/* SVG Chart */}
+      <svg
+        width={chartWidth}
+        height={chartHeight}
+        style={{ overflow: "visible" }}
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setMousePosition({
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+          });
+        }}
+        onMouseLeave={() => setHoveredPoint(null)}
+      >
+        {/* Y Axis Labels */}
+        {yAxisLabels.map((label, index) => {
+          const y =
+            padding.top + graphHeight - (label.value - minValue) * yScale;
+          return (
+            <g key={index}>
+              <text
+                x={padding.left - 10}
+                y={y}
+                textAnchor="end"
+                fontSize="11"
+                fill="#999"
+                dominantBaseline="middle"
+              >
+                {label.label}
+              </text>
+              <line
+                x1={padding.left}
+                y1={y}
+                x2={padding.left + graphWidth}
+                y2={y}
+                stroke="#f0f0f0"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+              />
+            </g>
+          );
+        })}
+
+        {/* Limit Budget Line (only if has limit) */}
+        {limitY !== null && (
           <line
             x1={padding.left}
             y1={limitY}
@@ -344,163 +383,96 @@ export default function BudgetAllocationGraph() {
             strokeWidth="2"
             strokeDasharray="8 4"
           />
+        )}
 
-          {/* Area under the line */}
-          <path d={areaPath} fill="rgba(139, 195, 74, 0.15)" />
+        {/* Area under the line */}
+        <path d={areaPath} fill="rgba(139, 195, 74, 0.15)" />
 
-          {/* Line */}
-          <path d={linePath} fill="none" stroke="#8BC34A" strokeWidth="3" />
+        {/* Line */}
+        <path d={linePath} fill="none" stroke="#8BC34A" strokeWidth="3" />
 
-          {/* Data points */}
-          {data.chartData.map((point, index) => {
-            const x = padding.left + index * xScale;
-            const y =
-              padding.top + graphHeight - (point.allocated - minValue) * yScale;
-            const isHovered = hoveredPoint?.date === point.date;
+        {/* Data points */}
+        {aggregatedData.map((point, index) => {
+          const x = padding.left + index * xScale;
+          const y =
+            padding.top + graphHeight - (point.allocated - minValue) * yScale;
+          const isHovered = hoveredPoint?.date === point.date;
 
-            return (
-              <circle
-                key={index}
-                cx={x}
-                cy={y}
-                r={isHovered ? 7 : 5}
-                fill={isHovered ? "#8BC34A" : "white"}
-                stroke="#8BC34A"
-                strokeWidth="2"
-                style={{ cursor: "pointer" }}
-                onMouseEnter={() => setHoveredPoint(point)}
-              />
-            );
-          })}
-
-          {/* X Axis Labels */}
-          {xAxisLabels.map((label, index) => (
-            <text
+          return (
+            <circle
               key={index}
-              x={label.position}
-              y={padding.top + graphHeight + 25}
+              cx={x}
+              cy={y}
+              r={isHovered ? 7 : 5}
+              fill={isHovered ? "#8BC34A" : "white"}
+              stroke="#8BC34A"
+              strokeWidth="2"
+              style={{ cursor: "pointer" }}
+              onMouseEnter={() => setHoveredPoint(point)}
+            />
+          );
+        })}
+
+        {/* X Axis Labels */}
+        {xAxisLabels.map((label, index) => (
+          <text
+            key={index}
+            x={label.position}
+            y={padding.top + graphHeight + 25}
+            textAnchor="middle"
+            fontSize="12"
+            fill="#999"
+          >
+            {label.date}
+          </text>
+        ))}
+
+        {/* Tooltip */}
+        {hoveredPoint && (
+          <g>
+            <rect
+              x={mousePosition.x - 90}
+              y={mousePosition.y - 55}
+              width="180"
+              height="45"
+              fill="black"
+              rx="8"
+            />
+            <text
+              x={mousePosition.x}
+              y={mousePosition.y - 35}
               textAnchor="middle"
-              fontSize="12"
-              fill="#999"
+              fontSize="11"
+              fill="white"
+              fontWeight="500"
             >
-              {label.date}
+              {new Date(hoveredPoint.date).toLocaleDateString("en-US", {
+                month: "short",
+                day: filter <= 90 ? "numeric" : undefined,
+                year: "numeric",
+              })}
             </text>
-          ))}
-
-          {/* Tooltip */}
-          {hoveredPoint && (
-            <g>
-              <rect
-                x={mousePosition.x - 90}
-                y={mousePosition.y - 55}
-                width="180"
-                height="45"
-                fill="black"
-                rx="8"
-              />
-              <text
-                x={mousePosition.x}
-                y={mousePosition.y - 35}
-                textAnchor="middle"
-                fontSize="11"
-                fill="white"
-                fontWeight="500"
-              >
-                {new Date(hoveredPoint.date).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </text>
-              <text
-                x={mousePosition.x}
-                y={mousePosition.y - 18}
-                textAnchor="middle"
-                fontSize="14"
-                fill="white"
-                fontWeight="bold"
-              >
-                {formatCurrency(hoveredPoint.allocated)}
-              </text>
-              {/* Tooltip Arrow */}
-              <polygon
-                points={`${mousePosition.x},${mousePosition.y - 10} ${
-                  mousePosition.x - 5
-                },${mousePosition.y - 15} ${mousePosition.x + 5},${
-                  mousePosition.y - 15
-                }`}
-                fill="black"
-              />
-            </g>
-          )}
-        </svg>
-      </div>
-
-      {/* Active Projects Sidebar */}
-      <div style={{ width: "280px" }}>
-        <div
-          style={{
-            backgroundColor: "white",
-            padding: "20px",
-            borderRadius: "15px",
-          }}
-        >
-          <h3
-            style={{
-              margin: "0 0 20px 0",
-              fontSize: "16px",
-              fontWeight: "600",
-            }}
-          >
-            Active Projects
-          </h3>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-              maxHeight: "400px",
-              overflowY: "auto",
-            }}
-          >
-            {data.active_projects.map((project) => (
-              <div
-                key={project.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  padding: "12px 0",
-                  borderBottom: "1px solid rgba(240, 240, 240, 1)",
-                }}
-              >
-                <div style={{ flex: 1, paddingRight: "10px" }}>
-                  <div
-                    style={{
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      color: "#333",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    {project.name}
-                  </div>
-                </div>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    color: "#333",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {formatCurrency(project.quoted_budget)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+            <text
+              x={mousePosition.x}
+              y={mousePosition.y - 18}
+              textAnchor="middle"
+              fontSize="14"
+              fill="white"
+              fontWeight="bold"
+            >
+              {formatCurrency(hoveredPoint.allocated)}
+            </text>
+            <polygon
+              points={`${mousePosition.x},${mousePosition.y - 10} ${
+                mousePosition.x - 5
+              },${mousePosition.y - 15} ${mousePosition.x + 5},${
+                mousePosition.y - 15
+              }`}
+              fill="black"
+            />
+          </g>
+        )}
+      </svg>
     </div>
   );
 }

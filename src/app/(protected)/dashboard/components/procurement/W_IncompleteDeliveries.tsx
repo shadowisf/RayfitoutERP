@@ -6,7 +6,7 @@ type props = {
   filterDays?: number;
 };
 
-export default function OverdueDeliveriesWidget({ filterDays = 7 }: props) {
+export default function OverdueDeliveriesWidget({ filterDays }: props) {
   const deliveriesIcon = "/icons/incomplete-deliveries.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";
