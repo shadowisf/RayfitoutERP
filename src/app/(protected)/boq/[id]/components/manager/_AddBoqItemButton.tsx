@@ -8,7 +8,6 @@ import UploadFilesButton from "./_UploadFilesButton";
 import { useRouter } from "next/navigation";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
-import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 
 type AddBoqItemButtonProps = {
@@ -239,6 +238,7 @@ export default function AddBoqItemButton({
                 "Supply",
                 "Supply & installation",
                 "Installation",
+                "Demolition & cart away",
               ]}
               placeholder="SELECT SCOPE OF WORK"
             />

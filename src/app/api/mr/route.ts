@@ -54,31 +54,81 @@ export async function POST(req: Request) {
     }
 
     if (body.action === "createMrLine") {
-      const lineQuery = `
-  INSERT INTO mr_lines 
-  (boq_line_id, mr_header_id, material_category_id, material_subcategory_id, material_description, quantity, unit, notes, specification, brand, delivery_location)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`;
+      const connection = await db.getConnection();
 
-      const lineValues = [
-        Number(body.boq_line_id) || null,
-        Number(body.mr_header_id),
-        Number(body.material_category_id),
-        Number(body.material_subcategory_id),
-        body.material_description,
-        Number(body.quantity),
-        body.unit,
-        body.notes,
-        body.specification,
-        body.brand,
-        body.delivery_location,
-      ];
+      try {
+        await connection.beginTransaction();
 
-      await db.query(lineQuery, lineValues);
+        // Insert the main mr_line - WITHOUT material_subcategory_id column
+        const lineQuery = `
+      INSERT INTO mr_lines 
+      (boq_line_id, mr_header_id, material_category_id, material_description, quantity, unit, notes, specification, brand, delivery_location)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-      return NextResponse.json({
-        success: true,
-      });
+        const lineValues = [
+          body.boq_line_id && !isNaN(Number(body.boq_line_id))
+            ? Number(body.boq_line_id)
+            : null,
+          Number(body.mr_header_id),
+          Number(body.material_category_id),
+          body.material_description || "",
+          body.quantity && !isNaN(Number(body.quantity))
+            ? Number(body.quantity)
+            : 0,
+          body.unit || "",
+          body.notes || null,
+          body.specification || null,
+          body.brand || null,
+          body.delivery_location || null,
+        ];
+
+        const [lineResult] = await connection.query<ResultSetHeader>(
+          lineQuery,
+          lineValues
+        );
+        const mrLineId = lineResult.insertId;
+
+        // Insert subcategories into junction table
+        const subcategoryIds = Array.isArray(body.material_subcategory_ids)
+          ? body.material_subcategory_ids
+          : [body.material_subcategory_ids];
+
+        // Filter out any invalid IDs
+        const validSubcategoryIds = subcategoryIds.filter(
+          (id: any) => id && !isNaN(Number(id))
+        );
+
+        if (validSubcategoryIds.length > 0) {
+          const junctionQuery = `
+        INSERT INTO jt_mr_line_material_subcategory (mr_line_id, material_subcategory_id)
+        VALUES ?
+      `;
+
+          const junctionValues = validSubcategoryIds.map((subcatId: any) => [
+            mrLineId,
+            Number(subcatId),
+          ]);
+
+          await connection.query(junctionQuery, [junctionValues]);
+        }
+
+        await connection.commit();
+
+        return NextResponse.json({
+          success: true,
+          mrLineId: mrLineId,
+        });
+      } catch (error: any) {
+        await connection.rollback();
+        console.error("Create MR Line Error:", error);
+        return NextResponse.json(
+          { error: error.message || "Failed to create MR line" },
+          { status: 500 }
+        );
+      } finally {
+        connection.release();
+      }
     }
   } catch (err: any) {
     console.error(err.sqlMessage);
@@ -319,38 +369,68 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "updateAll") {
-      const query = `
+      try {
+        // Update the main mr_line
+        const query = `
       UPDATE mr_lines 
-SET boq_line_id = ?, 
-    material_category_id = ?, 
-    material_subcategory_id = ?, 
-    material_description = ?, 
-    quantity = ?, 
-    unit = ?, 
-    notes = ?,
-    specification = ?,
-    brand = ?,
-    delivery_location = ?,
-    approval_status = NULL,
-    reject_comment = NULL
-WHERE id = ?
+      SET boq_line_id = ?, 
+          material_category_id = ?, 
+          material_description = ?, 
+          quantity = ?, 
+          unit = ?, 
+          notes = ?,
+          specification = ?,
+          brand = ?,
+          delivery_location = ?,
+          approval_status = NULL,
+          reject_comment = NULL
+      WHERE id = ?
     `;
 
-      const values = [
-        Number(body.boq_line_id) || null,
-        Number(body.material_category_id),
-        Number(body.material_subcategory_id),
-        body.material_description,
-        Number(body.quantity),
-        body.unit,
-        body.notes,
-        body.specification,
-        body.brand,
-        body.delivery_location,
-        Number(body.id),
-      ];
+        const values = [
+          Number(body.boq_line_id) || null,
+          Number(body.material_category_id),
+          body.material_description,
+          Number(body.quantity),
+          body.unit,
+          body.notes,
+          body.specification,
+          body.brand,
+          body.delivery_location,
+          Number(body.id),
+        ];
 
-      await db.query(query, values);
+        await db.query(query, values);
+
+        // Delete existing subcategory associations
+        await db.query(
+          `DELETE FROM jt_mr_line_material_subcategory WHERE mr_line_id = ?`,
+          [Number(body.id)]
+        );
+
+        // Insert new subcategory associations
+        const subcategoryIds = Array.isArray(body.material_subcategory_id)
+          ? body.material_subcategory_id
+          : [body.material_subcategory_id];
+
+        if (subcategoryIds.length > 0) {
+          const junctionQuery = `
+        INSERT INTO jt_mr_line_material_subcategory (mr_line_id, material_subcategory_id)
+        VALUES ?
+      `;
+
+          const junctionValues = subcategoryIds.map((subcatId: number) => [
+            Number(body.id),
+            Number(subcatId),
+          ]);
+
+          await db.query(junctionQuery, [junctionValues]);
+        }
+
+        return NextResponse.json({ success: true });
+      } catch (error) {
+        throw error;
+      }
     }
 
     if (body.action === "updateSubCategory") {

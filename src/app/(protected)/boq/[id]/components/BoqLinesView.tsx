@@ -10,6 +10,8 @@ import { BoqHeader } from "../types/boqHeader";
 import DownloadBoqButton from "./manager/_DownloadBoqButton";
 import ThreeDotsMenuButton from "./_ThreeDotsMenuButton";
 import EditBoqItemLocationButton from "./manager/_EditBoqItemLocationButton";
+import EditBoqCategoryButton from "./manager/_EditBoqCategoryButton";
+import DeleteBoqCategoryButton from "./manager/_DeleteBoqCategoryButton";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -110,7 +112,7 @@ export default function BoqLinesView({
     <>
       <div className="category-grid">
         {/* Category Tabs with Scroll */}
-        <div style={{ position: "relative", flex: 1 }}>
+        <div style={{ position: "relative", flex: 1, maxWidth: "925px" }}>
           {/* Left Fade Gradient */}
           {showLeftArrow && (
             <div
@@ -141,7 +143,7 @@ export default function BoqLinesView({
                 backgroundColor: "black",
                 color: "white",
                 border: "none",
-                borderRadius: "5px",
+                borderRadius: "10px",
                 width: "40px",
                 height: "40px",
                 display: "flex",
@@ -169,17 +171,21 @@ export default function BoqLinesView({
               }
             `}</style>
             <div style={{ display: "flex", gap: "1px" }}>
-              <button
+              <div
                 className={`item ${activeCategory === "ALL" ? "active" : ""}`}
                 onClick={() => setActiveCategory("ALL")}
-                style={{ flexShrink: 0, textTransform: "uppercase" }}
+                style={{
+                  flexShrink: 0,
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                }}
               >
                 ALL
-              </button>
+              </div>
 
               {categories.map(function (category) {
                 return (
-                  <button
+                  <div
                     key={category}
                     className={`item ${
                       activeCategory === category ? "active" : ""
@@ -187,10 +193,32 @@ export default function BoqLinesView({
                     onClick={function () {
                       setActiveCategory(category);
                     }}
-                    style={{ flexShrink: 0 }}
+                    style={{ flexShrink: 0, cursor: "pointer" }}
                   >
-                    {category}
-                  </button>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                      }}
+                    >
+                      {category}
+
+                      {activeCategory === category && (
+                        <div style={{ display: "flex", gap: "5px" }}>
+                          <EditBoqCategoryButton
+                            oldCategory={activeCategory}
+                            boqID={boqHeader.id}
+                            onSuccess={() => setActiveCategory("ALL")}
+                          />
+                          <DeleteBoqCategoryButton
+                            category={activeCategory}
+                            boqID={boqHeader.id}
+                            onSuccess={() => setActiveCategory("ALL")}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -559,18 +587,19 @@ export default function BoqLinesView({
                           <td>
                             <strong>{item.item_name}</strong>
 
+                            <br />
+                            <br />
+
                             {item.item_description && (
                               <>
+                                <p>{item.item_description}</p>
+
                                 <br />
-                                <br />
-                                {item.item_description}
                               </>
                             )}
 
                             {item.location && (
                               <>
-                                <br />
-                                <br />
                                 <div
                                   style={{
                                     display: "flex",
@@ -590,14 +619,13 @@ export default function BoqLinesView({
                                   </span>
                                   <EditBoqItemLocationButton item={item} />
                                 </div>
+
+                                <br />
                               </>
                             )}
 
                             {item.scope_of_work && (
                               <>
-                                <br />
-                                <br />
-
                                 <div
                                   style={{
                                     backgroundColor: "rgba(225, 225, 225, 1)",

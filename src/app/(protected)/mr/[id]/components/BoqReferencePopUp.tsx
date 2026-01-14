@@ -8,6 +8,7 @@ import { MrHeader } from "../types/mrHeader";
 import BudgetTrackerMeter from "./BudgetTrackerMeter";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import { useAuth } from "@/app/context/AuthContext";
+import EditBoqItemLocationButton from "@/app/(protected)/boq/[id]/components/manager/_EditBoqItemLocationButton";
 
 type BoqReferencePopUpProps = {
   mrHeader: MrHeader;
@@ -185,17 +186,19 @@ export default function BoqReferencePopUp({
                 <td>
                   <strong>{item.boq_item_name}</strong>
 
+                  <br />
+                  <br />
+
                   {item.boq_item_description && (
                     <>
+                      <p>{item.boq_item_description}</p>
+
                       <br />
-                      <br />
-                      {item.boq_item_description}
                     </>
                   )}
 
                   {item.boq_location && (
                     <>
-                      <br />
                       <div
                         style={{
                           display: "flex",
@@ -214,13 +217,13 @@ export default function BoqReferencePopUp({
                           {item.boq_location}
                         </span>
                       </div>
+
+                      <br />
                     </>
                   )}
 
                   {item.boq_scope_of_work && (
                     <>
-                      <br />
-
                       <div
                         style={{
                           backgroundColor: "rgba(225, 225, 225, 1)",

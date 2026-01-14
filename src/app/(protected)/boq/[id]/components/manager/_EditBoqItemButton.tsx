@@ -289,6 +289,7 @@ export default function EditBoqItemButton({
                 "Supply",
                 "Supply & installation",
                 "Installation",
+                "Demolition & cart away",
               ]}
               placeholder="SELECT SCOPE OF WORK"
             />

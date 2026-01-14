@@ -178,6 +178,24 @@ export async function PUT(req: Request) {
       }
     }
 
+    if (body.action === "updateCategory") {
+      const query = `
+        UPDATE boq_lines 
+        SET category = ?
+        WHERE category = ? AND boq_id = ?
+      `;
+
+      const values = [
+        body.new_category.toUpperCase(),
+        body.old_category,
+        body.boq_id,
+      ];
+
+      await db.query(query, values);
+
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "updateSubCategory") {
       const query = `
         UPDATE boq_lines 
@@ -244,6 +262,37 @@ export async function PUT(req: Request) {
         );
       }
     }
+
+    if (body.action === "reorderCategories") {
+      const { boqHeaderID, categoryOrder } = body;
+
+      try {
+        // Update the display_order for each category
+        const updatePromises = categoryOrder.map(
+          (category: string, index: number) => {
+            return db.query(
+              `UPDATE boq_lines 
+           SET category_display_order = $1 
+           WHERE category = $2 AND boq_header_id = $3`,
+              [index + 1, category, boqHeaderID]
+            );
+          }
+        );
+
+        await Promise.all(updatePromises);
+
+        return Response.json({
+          success: true,
+          message: "Category order updated successfully",
+        });
+      } catch (error) {
+        console.error("Database error:", error);
+        return Response.json(
+          { success: false, message: "Failed to update category order" },
+          { status: 500 }
+        );
+      }
+    }
   } catch (err: any) {
     console.error("SQL Error:", err.sqlMessage || err.message);
     return NextResponse.json(
@@ -256,6 +305,12 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const body = await req.json();
+
+    if (body.action === "deleteCategory") {
+      const query = "DELETE FROM boq_lines WHERE category = ? AND boq_id = ?";
+      await db.query(query, [body.category, Number(body.boq_id)]);
+      return NextResponse.json({ success: true });
+    }
 
     if (body.action === "deleteSubCategory") {
       const query =

@@ -41,7 +41,9 @@ export default function Navbar() {
         <div className="right">
           <NewMrButton />
 
-          {userInfo?.departmentID === 8 && <NewProjectButton />}
+          {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
+            <NewProjectButton />
+          )}
 
           <button className="notifications">
             <img src={notification_icon} alt="notification icon" />

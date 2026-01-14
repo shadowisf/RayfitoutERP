@@ -5,7 +5,7 @@ export type MrLine = {
   mr_header_id: number;
   material_category_id: number;
   material_category: string;
-  material_subcategory_id: number;
+  material_subcategory_id: string | number | number[];
   material_subcategory: string;
   material_description: string;
   quantity: number;
