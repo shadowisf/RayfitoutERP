@@ -1915,9 +1915,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               autoCategoryID={String(
                                 firstItem.material_category_id
                               )}
-                              autoSubCategoryID={String(
-                                firstItem.material_subcategory_id
-                              )}
+                              autoSubCategoryIDs={
+                                Array.isArray(firstItem.material_subcategory_id)
+                                  ? firstItem.material_subcategory_id
+                                  : [firstItem.material_subcategory_id]
+                              }
                               purposeID={mrHeader.purpose_id}
                               style={{ padding: "20px 0px" }}
                             >
@@ -2261,9 +2263,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           autoCategoryID={String(
                             firstItem.material_category_id
                           )}
-                          autoSubCategoryID={String(
-                            firstItem.material_subcategory_id
-                          )}
+                          autoSubCategoryIDs={
+                            Array.isArray(firstItem.material_subcategory_id)
+                              ? firstItem.material_subcategory_id
+                              : [firstItem.material_subcategory_id]
+                          }
                           purposeID={mrHeader.purpose_id}
                           style={{ padding: "20px 0px" }}
                         >
