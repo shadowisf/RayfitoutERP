@@ -46,10 +46,6 @@ const CustomTooltip = ({ active, payload, totalRequests, unit }: any) => {
           />
           <strong style={{ fontSize: "12px" }}>{percentage}%</strong>
         </div>
-
-        {/* <div style={{ fontSize: "12px", color: "#737373" }}>
-          {data.value} {unit} ({percentage}%)
-        </div> */}
       </div>
     );
   }
@@ -64,30 +60,43 @@ export default function ReservedStocksChart({
 }: ReservedStocksChart) {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Calculate total quantity issued by project (only from stocksTransferIssue)
-  const calculateRequestsByProject = () => {
+  // Calculate reserved quantity by project from stocks table
+  const calculateReservedByProject = () => {
     const projectMap: { [key: string]: number } = {};
 
-    // Process ISSUE transactions from stocksTransferIssue table
-    // Note: Each transaction now has quantity from the junction table
-    stocksTransferIssue.forEach((transaction) => {
-      // Only count issues that have been received (completed)
-      if (
-        transaction.type.toLowerCase().includes("issue") &&
-        transaction.received === 1
-      ) {
-        // Check if project exists, otherwise group as "Others"
-        const project =
-          transaction.project_name && transaction.project_id
-            ? transaction.project_name
-            : "Others";
+    // Process stocks that have project_id (reserved stocks)
+    stocks.forEach((stock) => {
+      // Only count stocks that are reserved to a project
+      if (stock.project_id && stock.project_name) {
+        const project = stock.project_name;
 
         if (!projectMap[project]) {
           projectMap[project] = 0;
         }
 
-        // Use the quantity from junction table
-        projectMap[project] += Math.abs(transaction.quantity || 0);
+        // Get initial quantity from stock
+        let reservedQuantity = Math.abs(stock.quantity || 0);
+
+        // Calculate how much has been issued from this stock
+        const issuedFromStock = stocksTransferIssue
+          .filter(
+            (transaction) =>
+              transaction.stock_id === stock.id &&
+              transaction.type.toLowerCase().includes("issue") &&
+              transaction.received === 1
+          )
+          .reduce(
+            (sum, transaction) => sum + Math.abs(transaction.quantity || 0),
+            0
+          );
+
+        // Subtract issued quantity from reserved quantity
+        const remainingReserved = reservedQuantity - issuedFromStock;
+
+        // Only add if there's still reserved quantity remaining
+        if (remainingReserved > 0) {
+          projectMap[project] += remainingReserved;
+        }
       }
     });
 
@@ -100,10 +109,10 @@ export default function ReservedStocksChart({
     return projectArray;
   };
 
-  const requestsByProject = calculateRequestsByProject();
+  const reservedByProject = calculateReservedByProject();
 
-  // Calculate total requests
-  const totalRequests = requestsByProject.reduce(
+  // Calculate total reserved
+  const totalReserved = reservedByProject.reduce(
     (sum, item) => sum + item.quantity,
     0
   );
@@ -119,7 +128,7 @@ export default function ReservedStocksChart({
   ];
 
   // Transform data for the chart
-  const chartData = requestsByProject.map((item, index) => ({
+  const chartData = reservedByProject.map((item, index) => ({
     name: item.project,
     value: item.quantity,
     color: COLORS[index % COLORS.length],
@@ -127,8 +136,8 @@ export default function ReservedStocksChart({
 
   // Calculate percentage for top project
   const topProjectPercentage =
-    totalRequests > 0 && requestsByProject.length > 0
-      ? Math.round((requestsByProject[0].quantity / totalRequests) * 100)
+    totalReserved > 0 && reservedByProject.length > 0
+      ? Math.round((reservedByProject[0].quantity / totalReserved) * 100)
       : 0;
 
   return (
@@ -144,7 +153,7 @@ export default function ReservedStocksChart({
       <br />
       <br />
 
-      {requestsByProject.length > 0 ? (
+      {reservedByProject.length > 0 ? (
         <>
           <div
             style={{ position: "relative", width: "200px", height: "200px" }}
@@ -168,7 +177,7 @@ export default function ReservedStocksChart({
                 </Pie>
                 <Tooltip
                   content={
-                    <CustomTooltip totalRequests={totalRequests} unit={unit} />
+                    <CustomTooltip totalRequests={totalReserved} unit={unit} />
                   }
                   wrapperStyle={{ zIndex: 100 }}
                 />
@@ -198,53 +207,6 @@ export default function ReservedStocksChart({
                 ALL TIME
               </div>
             </div>
-
-            {/* Percentage Badge - Only show on hover */}
-            {/* {isHovered && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "10px",
-                  left: "10px",
-                  backgroundColor: "white",
-                  padding: "10px",
-                  borderRadius: "5px",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                  border: "1px solid #e0e0e0",
-                  pointerEvents: "none",
-                  zIndex: 50,
-                  opacity: 1,
-                  transition: "opacity 0.15s ease-in",
-                }}
-              >
-                <p style={{ margin: 0, fontWeight: "600", fontSize: "12px" }}>
-                  {chartData[0]?.name}
-                </p>
-                <p
-                  style={{
-                    margin: "4px 0 0 0",
-                    fontSize: "12px",
-                    color: "#737373",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: chartData[0]?.color || "#00804C",
-                      display: "inline-block",
-                    }}
-                  />
-                  {topProjectPercentage}%
-                </p>
-              </div>
-            )} */}
           </div>
 
           {/* Project Legend */}
