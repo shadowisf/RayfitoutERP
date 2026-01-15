@@ -499,7 +499,7 @@ export function BoqPDF({
                 </Text>
                 {showPrices && (
                   <Text style={styles.tableColAmount}>
-                    AED {categoryTotal.toLocaleString()}
+                    {boqHeader.currency} {categoryTotal.toLocaleString()}
                   </Text>
                 )}
               </View>
@@ -512,7 +512,7 @@ export function BoqPDF({
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>GRAND TOTAL</Text>
             <Text style={styles.totalValue}>
-              AED {grandTotal.toLocaleString()}
+              {boqHeader.currency} {grandTotal.toLocaleString()}
             </Text>
           </View>
         )}
@@ -691,7 +691,8 @@ export function BoqPDF({
                           )}
                           {showPrices && (
                             <Text style={styles.detailColTotal}>
-                              AED {item.total_cost?.toLocaleString()}
+                              {boqHeader.currency}{" "}
+                              {item.total_cost?.toLocaleString()}
                             </Text>
                           )}
 
@@ -739,7 +740,8 @@ export function BoqPDF({
                         <Text style={styles.detailColQty}></Text>
                         <Text style={styles.detailColRate}></Text>
                         <Text style={styles.detailColTotal}>
-                          AED {subCategoryTotal.toLocaleString()}
+                          {boqHeader.currency}{" "}
+                          {subCategoryTotal.toLocaleString()}
                         </Text>
                         <Text style={styles.detailColAttachment}></Text>
                       </View>

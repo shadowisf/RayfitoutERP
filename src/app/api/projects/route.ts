@@ -3,7 +3,9 @@ import { db } from "@/lib/db";
 
 export async function GET() {
   try {
-    const [rows] = await db.query("SELECT * FROM vw_projects");
+    const [rows] = await db.query(
+      "SELECT * FROM vw_projects WHERE type = 'Signed'"
+    );
 
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {
@@ -19,8 +21,8 @@ export async function POST(req: Request) {
     if (body.action === "createProject") {
       const query = `
       INSERT INTO projects 
-      (name, property_type_id, id, size, status, type_of_work, quoted_budget, currency, allocated_budget, start_date, end_date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (name, property_type_id, id, size, status, type_of_work, quoted_budget, currency, allocated_budget, start_date, end_date, type)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const values = [
@@ -35,6 +37,7 @@ export async function POST(req: Request) {
         Number(body.allocated_budget) || 0,
         body.start_date || null,
         body.end_date || null,
+        body.type,
       ];
 
       const [result]: any = await db.query(query, values);
@@ -61,11 +64,7 @@ export async function PUT(req: NextRequest) {
 
   try {
     if (body.action === "updateProject") {
-      const connection = await db.getConnection();
-
       try {
-        await connection.beginTransaction();
-
         // Update project details
         const query = `
           UPDATE projects
@@ -79,7 +78,8 @@ export async function PUT(req: NextRequest) {
             currency = ?,
             allocated_budget = ?,
             start_date = ?,
-            end_date = ?
+            end_date = ?,
+            type = ?
           WHERE id = ?;
         `;
 
@@ -94,15 +94,16 @@ export async function PUT(req: NextRequest) {
           Number(body.allocated_budget) || 0,
           body.start_date || null,
           body.end_date || null,
+          body.type,
           Number(body.id),
         ];
 
-        await connection.query(query, values);
+        await db.query(query, values);
 
         // Update scopes if provided
         if (body.scope_ids !== undefined) {
           // Delete existing scopes
-          await connection.query(
+          await db.query(
             "DELETE FROM jt_projects_scopes WHERE project_id = ?",
             [Number(body.id)]
           );
@@ -110,7 +111,7 @@ export async function PUT(req: NextRequest) {
           // Insert new scopes
           if (body.scope_ids && body.scope_ids.length > 0) {
             for (const scopeId of body.scope_ids) {
-              await connection.query(
+              await db.query(
                 "INSERT INTO jt_projects_scopes (project_id, scope_id) VALUES (?, ?)",
                 [Number(body.id), Number(scopeId)]
               );
@@ -118,13 +119,8 @@ export async function PUT(req: NextRequest) {
           }
         }
 
-        await connection.commit();
-        connection.release();
-
         return NextResponse.json({ success: true });
       } catch (err) {
-        await connection.rollback();
-        connection.release();
         throw err;
       }
     }

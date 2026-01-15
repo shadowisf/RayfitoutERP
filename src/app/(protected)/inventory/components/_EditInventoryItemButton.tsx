@@ -8,6 +8,7 @@ import { toast } from "@/app/components/Toast";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { useRouter } from "next/navigation";
 import { InventoryItem } from "../types/inventoryItem";
+import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 
 type EditInventoryItemButtonProps = {
   inventoryItem: InventoryItem;
@@ -18,7 +19,6 @@ export default function EditInventoryItemButton({
 }: EditInventoryItemButtonProps) {
   const router = useRouter();
 
-  const uploadIcon = "/icons/upload.svg";
   const pencilIcon = "/icons/pencil.svg";
 
   const [isOpen, setIsOpen] = useState(false);
@@ -48,8 +48,6 @@ export default function EditInventoryItemButton({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch material categories
   useEffect(() => {
@@ -188,74 +186,6 @@ export default function EditInventoryItemButton({
     } catch (error) {
       console.error("Error deleting image from S3:", error);
     }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast("Please select an image file", "error");
-      return;
-    }
-
-    // Mark existing image for deletion if replacing
-    if (existingImageUrl) {
-      setImageToDelete(existingImageUrl);
-    }
-
-    setImage(file);
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeImage = () => {
-    // Mark existing image for deletion
-    if (existingImageUrl) {
-      setImageToDelete(existingImageUrl);
-    }
-
-    setImage(null);
-    setImagePreview(null);
-    setExistingImageUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast("Please select an image file", "error");
-      return;
-    }
-
-    // Mark existing image for deletion if replacing
-    if (existingImageUrl) {
-      setImageToDelete(existingImageUrl);
-    }
-
-    setImage(file);
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -499,11 +429,27 @@ export default function EditInventoryItemButton({
                 type={"text"}
                 placeholder={"ENTER MINIMUM QUANTITY TO STOCK"}
                 required
-                onChange={(e) => setMinimumStockQuantity(e.target.value)}
+                onChange={(e) => {
+                  let val = e.target.value;
+                  val = val.replace(/,/g, "");
+
+                  // Allow empty (for clearing input)
+                  if (val === "") {
+                    setMinimumStockQuantity("");
+                    return;
+                  }
+
+                  // ❌ Block anything that's not digits
+                  if (!/^\d+$/.test(val)) {
+                    return;
+                  }
+
+                  setMinimumStockQuantity(val);
+                }}
               />
 
               <InputItem
-                label={"BRAND (OPTIONAL)"}
+                label={"BRAND"}
                 value={brand}
                 type={"text"}
                 placeholder={""}
@@ -511,7 +457,7 @@ export default function EditInventoryItemButton({
                 onChange={(e) => setBrand(e.target.value)}
               />
               <InputItem
-                label={"COUNTRY OF ORIGIN (OPTIONAL)"}
+                label={"COUNTRY OF ORIGIN"}
                 value={countryOfOrigin}
                 type={"select"}
                 placeholder={"SELECT COUNTRY OF ORIGIN"}
@@ -716,7 +662,7 @@ export default function EditInventoryItemButton({
 
             <div className="input-row full">
               <InputItem
-                label={"SPECIFICATION (OPTIONAL)"}
+                label={"SPECIFICATION"}
                 value={specification}
                 type={"textarea"}
                 placeholder={"ENTER SPECIFICATION"}
@@ -727,8 +673,8 @@ export default function EditInventoryItemButton({
 
             {/* Image Upload Section */}
             <div className="input-row full">
-              <div className="input-item">
-                <label>REFERENCE IMAGE (OPTIONAL)</label>
+              {/* <div className="input-item">
+                <label>REFERENCE IMAGE</label>
 
                 <div
                   onDragOver={handleDragOver}
@@ -802,7 +748,16 @@ export default function EditInventoryItemButton({
                     </>
                   )}
                 </div>
-              </div>
+              </div> */}
+
+              <SingleUploadFileBox
+                fileState={image}
+                setFileState={setImage}
+                label={"REFERENCE IMAGE"}
+                acceptedFileTypes={".jpg,.jpeg,.png,.webp"}
+                buttonLabel="SELECT OR DROP IMAGE"
+                placeholder=""
+              />
             </div>
           </>
         </FormPopUp>

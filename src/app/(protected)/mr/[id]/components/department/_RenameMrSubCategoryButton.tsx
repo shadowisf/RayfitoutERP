@@ -5,13 +5,13 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { MrLine } from "../../types/mrLine";
-import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
+import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import { toast } from "@/app/components/Toast";
 
 type RenameMrSubCategoryButtonProps = {
   items: MrLine[];
   categoryID: string;
-  subCategoryID: string;
+  subCategoryID: string | number | (string | number)[];
 };
 
 export default function RenameMrSubCategoryButton({
@@ -26,12 +26,32 @@ export default function RenameMrSubCategoryButton({
   const [isOpen, setIsOpen] = useState(false);
 
   const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
-    []
+    any[]
   >([]);
 
-  const [newSubCategory, setNewSubCategory] = useState<string | number>(
-    subCategoryID
-  );
+  // Parse the existing subcategory IDs
+  const [materialSubCategoryIDs, setMaterialSubCategoryIDs] = useState<
+    (string | number)[]
+  >(() => {
+    if (subCategoryID) {
+      if (typeof subCategoryID === "string") {
+        const ids = subCategoryID
+          .split(",")
+          .map((id) => id.trim())
+          .filter((id) => id && id !== "")
+          .map((id) => Number(id))
+          .filter((id) => !isNaN(id));
+        return ids;
+      }
+      if (Array.isArray(subCategoryID)) {
+        return subCategoryID.map((id) => Number(id)).filter((id) => !isNaN(id));
+      }
+      if (typeof subCategoryID === "number") {
+        return [subCategoryID];
+      }
+    }
+    return [];
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -52,15 +72,34 @@ export default function RenameMrSubCategoryButton({
     }
   }, [categoryID, isOpen]);
 
+  const handleSubCategoryChange = (selectedIds: (string | number)[]) => {
+    setMaterialSubCategoryIDs(selectedIds);
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (materialSubCategoryIDs.length === 0) {
+      toast("Please select at least one subcategory", "error");
+      return;
+    }
+
+    // Clean the subcategory IDs
+    const cleanedSubcategoryIds = materialSubCategoryIDs
+      .filter((id) => id && !isNaN(Number(id)))
+      .map((id) => Number(id));
+
+    if (cleanedSubcategoryIds.length === 0) {
+      toast("Invalid subcategory selection", "error");
+      return;
+    }
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "updateSubCategory",
-        new_material_subcategory_id: newSubCategory,
+        new_material_subcategory_ids: cleanedSubcategoryIds, // Array of IDs
         old_material_subcategory_id: subCategoryID,
         item_ids: items.map((item) => item.id),
       }),
@@ -68,14 +107,15 @@ export default function RenameMrSubCategoryButton({
 
     if (res.ok) {
       toast("Material request subcategory updated", "success");
-
-      setNewSubCategory("");
-
+      setMaterialSubCategoryIDs([]);
       setIsOpen(false);
-
       router.refresh();
     } else {
-      toast("Failed to update material request subcategory", "error");
+      const errorData = await res.json();
+      toast(
+        errorData.error || "Failed to update material request subcategory",
+        "error"
+      );
     }
   }
 
@@ -100,12 +140,12 @@ export default function RenameMrSubCategoryButton({
           addButtonLabel={"CONFIRM"}
         >
           <div className="input-row full">
-            <SingleSelectDropdown
-              label={"SUBCATEGORY"}
+            <MultiSelectDropdown
+              label={"SUBCATEGORIES"}
               dbData={materialSubCategoryValues}
-              selectedValue={newSubCategory}
-              onChange={setNewSubCategory}
-              placeholder="SELECT SUB CATEGORY"
+              selectedValues={materialSubCategoryIDs}
+              onChange={handleSubCategoryChange}
+              placeholder="SELECT SUBCATEGORIES"
               required
             />
           </div>

@@ -1,50 +1,53 @@
-"use client";
-
 import Button from "@/app/components/Button";
+import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
-import { toast } from "@/app/components/Toast";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BoqHeader } from "../../types/boqHeader";
+import { useRouter } from "next/navigation";
+import { toast } from "@/app/components/Toast";
 
-export default function CreateBoqHeaderClient({
-  projectID,
-}: {
-  projectID: string;
-}) {
+type props = {
+  boqHeader: BoqHeader;
+};
+
+export default function EditBoqHeaderButton({ boqHeader }: props) {
   const router = useRouter();
 
-  const [companyName, setCompanyName] = useState("RAYFITOUT CONTRACTING LLC");
-  const [clientName, setClientName] = useState("");
+  const pencilIcon = "/icons/pencil.svg";
+
+  const [isOpen, setIsOpen] = useState(false);
+
+  const [companyName, setCompanyName] = useState(boqHeader.company_name || "");
+  const [clientName, setClientName] = useState(boqHeader.client_name || "");
   const [boqRefNumber, setBoqRefNumber] = useState<number | string>(
-    projectID.padStart(5, "0")
+    String(boqHeader.project_id).padStart(5, "0") || ""
   );
-  const [location, setLocation] = useState("");
-  const [date, setDate] = useState("");
-  const [paymentTerms, setPaymentTerms] = useState("");
-  const [validityTerms, setValidityTerms] = useState("");
-  const [termsAndConditions, setTermsAndConditions] =
-    useState(`i. Unconditional round the clock site access shall be ensured by the client.
-ii. Final billing will be based on the actual quantities.
-iii. Any deviation from the agreed scope shall be subjected to variation on time and cost.
-iv. Progress of work will be according to the timely payment of the client.
-v. Any delay in taking decisions/ approval from the clients side will not be our responsibility.
-vi. Payments for the variations shall be issued on prorate basis as per the main payment terms.
-vii. Contractor reserve the right to request for an extension of time for reasons beyond its control.`);
+  const [location, setLocation] = useState(boqHeader.location || "");
+  const [date, setDate] = useState(boqHeader.boq_date || "");
+  const [paymentTerms, setPaymentTerms] = useState(
+    boqHeader.payment_terms || ""
+  );
+  const [validityTerms, setValidityTerms] = useState(
+    boqHeader.validity_terms || ""
+  );
+  const [termsAndConditions, setTermsAndConditions] = useState(
+    boqHeader.terms_and_conditions || ""
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     const res = await fetch("/api/boq", {
-      method: "POST",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "createBoqHeader",
-        project_id: projectID,
+        action: "updateBoqHeader",
+        id: boqHeader.id,
+        project_id: boqRefNumber,
         company_name: companyName,
         client_name: clientName,
-        id: boqRefNumber,
         location,
-        date: date || null,
+        date,
         payment_terms: paymentTerms,
         validity_terms: validityTerms,
         terms_and_conditions: termsAndConditions,
@@ -52,41 +55,43 @@ vii. Contractor reserve the right to request for an extension of time for reason
     });
 
     if (res.ok) {
-      toast("Bill of quantity header created", "success");
+      setIsOpen(false);
 
-      setCompanyName("RAYFITOUT CONTRACTING LLC");
-      setClientName("");
-      setLocation("");
-      setDate("");
-      setPaymentTerms("");
-      setValidityTerms("");
-      setTermsAndConditions("");
+      toast("Bill of quantity updated", "success");
 
       router.refresh();
     } else {
-      toast("Failed to create bill of quantity header", "error");
+      toast("Failed to update bill of quantity. Something went wrong", "error");
     }
   }
 
   return (
     <>
-      <h2>CREATE BILL OF QUANTITY</h2>
+      <Button
+        componentType={"button"}
+        bgColor={"transparent"}
+        borderColor={"black"}
+        textColor={"black"}
+        onClick={() => setIsOpen(true)}
+      >
+        EDIT BOQ
+        <img src={pencilIcon} alt="pencil" />
+      </Button>
 
-      <br />
-
-      <div className="form-inner-container">
-        <form onSubmit={handleSubmit}>
+      {isOpen && (
+        <FormPopUp
+          header={"UPDATE BILL OF QUANTITY"}
+          setIsOpen={setIsOpen}
+          handleSubmit={(e) => handleSubmit(e)}
+          addButtonLabel="CONFIRM"
+        >
           <div className="input-row half">
             <InputItem
               label={"COMPANY NAME"}
               value={companyName}
               type={"text"}
-              placeholder={"ENTER COMPANY NAME"}
-              required
               onChange={(e) => setCompanyName(e.target.value)}
-              disabled
             />
-
             <div className="input-item">
               <label>ID</label>
               <div className="input-prefix left">
@@ -181,20 +186,8 @@ vii. Contractor reserve the right to request for an extension of time for reason
               }}
             />
           </div>
-
-          <div className="button-container">
-            <Button
-              componentType={"button"}
-              bgColor={"black"}
-              borderColor={"black"}
-              textColor={"white"}
-              type="submit"
-            >
-              CONFIRM
-            </Button>
-          </div>
-        </form>
-      </div>
+        </FormPopUp>
+      )}
     </>
   );
 }

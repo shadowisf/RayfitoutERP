@@ -28,7 +28,6 @@ export async function POST(req: Request) {
           FROM boq_lines bl
           JOIN boq_headers bh ON bl.boq_id = bh.id
           WHERE bh.project_id = ?
-          ORDER BY bl.category, bl.sub_category, bl.id
           `,
           [projectId]
         );

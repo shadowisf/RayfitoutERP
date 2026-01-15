@@ -5,9 +5,12 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
+import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { BoqLine } from "@/app/(protected)/boq/[id]/types/boqLine";
+import { useAuth } from "@/app/context/AuthContext";
 
 type AddMrItemButtonProps = {
   mrHeaderID: number;
@@ -21,6 +24,12 @@ type AddMrItemButtonProps = {
   full?: boolean;
   purposeID: number;
   style?: React.CSSProperties;
+};
+
+type GroupedBoqLines = {
+  [category: string]: {
+    [subCategory: string]: BoqLine[];
+  };
 };
 
 export default function AddMrItemButton({
@@ -38,7 +47,15 @@ export default function AddMrItemButton({
 }: AddMrItemButtonProps) {
   const router = useRouter();
 
+  const locationIcon = "/icons/location-boq.svg";
+  const externalLinkIcon = "/icons/external-link.svg";
+  const arrowRight = "/icons/arrow-right.svg";
+
+  const { userInfo } = useAuth();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const [isOpen, setIsOpen] = useState(false);
+  const [isBoqSelectFormOpen, setIsBoqSelectFormOpen] = useState(false);
 
   const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
     []
@@ -47,7 +64,8 @@ export default function AddMrItemButton({
     any[]
   >([]);
   const [locationValues, setLocationValues] = useState<any[]>([]);
-  const [boqLineValues, setBoqLineValues] = useState<any[]>([]);
+  const [boqLineValues, setBoqLineValues] = useState<BoqLine[]>([]);
+  const [groupedBoqLines, setGroupedBoqLines] = useState<GroupedBoqLines>({});
 
   const [materialCategoryID, setMaterialCategoryID] = useState<string | number>(
     ""
@@ -63,26 +81,53 @@ export default function AddMrItemButton({
   const [brand, setBrand] = useState("");
   const [specification, setSpecification] = useState("");
   const [deliveryLocation, setDeliveryLocation] = useState("");
-  const [selectedBoqLineId, setSelectedBoqLineId] = useState<
-    number | undefined
-  >();
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [tempSelectedBoqID, setTempSelectedBoqID] = useState<string | number>(
+    ""
+  );
+  const [selectedBoqInfo, setSelectedBoqInfo] = useState("");
 
-  function handleBoqSelect(selectedId: number) {
-    setSelectedBoqLineId(selectedId);
-    console.log("Selected BOQ ID:", selectedId);
-  }
+  // BOQ Category states
+  const [activeBoqCategory, setActiveBoqCategory] = useState<string>("ALL");
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
 
-  // Set auto-populated values when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      if (autoCategoryID) {
-        setMaterialCategoryID(autoCategoryID);
-      }
-      if (autoSubCategoryIDs && autoSubCategoryIDs.length > 0) {
-        setMaterialSubCategoryIDs(autoSubCategoryIDs);
-      }
+  const boqCategories = Object.keys(groupedBoqLines);
+  const boqSubCategories =
+    activeBoqCategory === "ALL"
+      ? groupedBoqLines[boqCategories[0]] || {}
+      : groupedBoqLines[activeBoqCategory] || {};
+
+  const canSeePrice =
+    userInfo?.departmentID === 8 ||
+    userInfo?.departmentID === 12 ||
+    userInfo?.departmentID === 10;
+
+  // Check scroll position for arrows
+  const checkScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } =
+        scrollContainerRef.current;
+      setShowLeftArrow(scrollLeft > 0);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 1);
     }
-  }, [isOpen, autoCategoryID, autoSubCategoryIDs]);
+  };
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 300;
+      scrollContainerRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener("resize", checkScroll);
+    return () => window.removeEventListener("resize", checkScroll);
+  }, [boqCategories]);
 
   // Fetch initial data
   useEffect(() => {
@@ -129,21 +174,83 @@ export default function AddMrItemButton({
       })
         .then((res) => res.json())
         .then(function (data) {
-          // Transform data to include category and sub_category for categorized dropdown
-          const transformedData = data.map(function (boqLine: any) {
-            return {
-              id: boqLine.id,
-              value: `${boqLine.item_number} ${boqLine.item_name}`,
-              category: boqLine.category,
-              sub_category: boqLine.sub_category,
-              raw: boqLine,
-            };
+          setBoqLineValues(data);
+
+          // Group BOQ lines by category and subcategory
+          const grouped: GroupedBoqLines = {};
+          data.forEach((boqLine: BoqLine) => {
+            const category = boqLine.category || "Uncategorized";
+            const subCategory = boqLine.sub_category || "General";
+
+            if (!grouped[category]) {
+              grouped[category] = {};
+            }
+            if (!grouped[category][subCategory]) {
+              grouped[category][subCategory] = [];
+            }
+            grouped[category][subCategory].push(boqLine);
           });
 
-          setBoqLineValues(transformedData);
+          setGroupedBoqLines(grouped);
         });
     }
   }, [projectID]);
+
+  // Set auto-populated values when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (autoCategoryID) {
+      // First fetch the subcategories for this category
+      fetch("/api/mr/getMaterialSubCategoryValuesByCategoryID", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category_id: autoCategoryID,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setMaterialSubCategoryValues(data);
+
+          // Set the category
+          setMaterialCategoryID(autoCategoryID);
+
+          // Now set the subcategories - this needs to happen AFTER we have the data
+          if (autoSubCategoryIDs && autoSubCategoryIDs.length > 0) {
+            const idsArray = Array.isArray(autoSubCategoryIDs)
+              ? autoSubCategoryIDs
+              : [autoSubCategoryIDs];
+
+            const normalizedIds = idsArray.map((id) =>
+              typeof id === "string" ? parseInt(id) : id
+            );
+
+            console.log("Setting subcategory IDs:", normalizedIds);
+            console.log("Available subcategories:", data);
+
+            // IMPORTANT: Set this in the next tick to ensure state is ready
+            setTimeout(() => {
+              setMaterialSubCategoryIDs(normalizedIds);
+            }, 0);
+          }
+        });
+    } else if (autoSubCategoryIDs && autoSubCategoryIDs.length > 0) {
+      // If only subcategories are provided without category
+      const idsArray = Array.isArray(autoSubCategoryIDs)
+        ? autoSubCategoryIDs
+        : [autoSubCategoryIDs];
+
+      const normalizedIds = idsArray.map((id) =>
+        typeof id === "string" ? parseInt(id) : id
+      );
+
+      console.log("Setting subcategory IDs (no category):", normalizedIds);
+      setTimeout(() => {
+        setMaterialSubCategoryIDs(normalizedIds);
+      }, 0);
+    }
+  }, [isOpen, autoCategoryID, autoSubCategoryIDs]);
 
   // Filter subcategories based on selected category
   useEffect(() => {
@@ -160,9 +267,12 @@ export default function AddMrItemButton({
           setMaterialSubCategoryValues(data);
 
           // Filter out any selected subcategories that don't belong to the new category
-          setMaterialSubCategoryIDs((prev) =>
-            prev.filter((id) => data.some((item: any) => item.id === id))
-          );
+          // But preserve auto-populated subcategories if this is the initial load
+          if (!autoCategoryID || materialCategoryID !== autoCategoryID) {
+            setMaterialSubCategoryIDs((prev) =>
+              prev.filter((id) => data.some((item: any) => item.id === id))
+            );
+          }
         })
         .catch((err) => {
           console.error(err);
@@ -194,6 +304,22 @@ export default function AddMrItemButton({
         setMaterialCategoryID(firstSelectedSubCategory.category_id);
       }
     }
+  };
+
+  const parseAttachments = (attachments: any): string[] => {
+    if (!attachments) return [];
+    if (Array.isArray(attachments)) return attachments;
+    if (typeof attachments === "string") {
+      try {
+        if (attachments.trim() === "") return [];
+        const parsed = JSON.parse(attachments);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        console.error("Failed to parse attachments:", error);
+        return [];
+      }
+    }
+    return [];
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -236,6 +362,29 @@ export default function AddMrItemButton({
     }
 
     try {
+      let attachmentUrl = null;
+
+      if (attachment) {
+        const formData = new FormData();
+        formData.append("files", attachment);
+        formData.append("folder", "mr-attachments");
+
+        const uploadRes = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (!uploadRes.ok) {
+          throw new Error("Failed to upload file");
+        }
+
+        const uploadResult = await uploadRes.json();
+        attachmentUrl = uploadResult.urls[0];
+      }
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -252,6 +401,7 @@ export default function AddMrItemButton({
           specification,
           delivery_location: deliveryLocation,
           boq_line_id: boqLineID || null,
+          attachment: JSON.stringify(attachmentUrl),
         }),
       });
 
@@ -270,6 +420,7 @@ export default function AddMrItemButton({
         setBrand("");
         setSpecification("");
         setDeliveryLocation("");
+        setAttachment(null);
 
         router.refresh();
       } else {
@@ -304,7 +455,7 @@ export default function AddMrItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"ADD MATERIAL REQUEST ITEM"}
+          header={"CREATE MATERIAL REQUEST ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
@@ -341,25 +492,47 @@ export default function AddMrItemButton({
               onChange={(e) => setMaterialDescription(e.target.value)}
             />
 
-            <SingleSelectDropdown
-              label={"BILL OF QUANTITY"}
-              dbData={boqLineValues}
-              selectedValue={boqLineID}
-              onChange={setBoqLineID}
-              placeholder="SELECT BILL OF QUANTITY"
-              required={purposeID === 1}
-              disabled={!projectID}
-              categorized={true}
-              categoryField="category"
-              subCategoryField="sub_category"
-              style={{ width: "350px" }}
-            />
+            <div className="input-item">
+              <label className="custom">
+                <span>BILL OF QUANTITY</span>
+              </label>
 
-            {/*  <SelectBoqButton
-              projectID={projectID}
-              selectedBoqLine={selectedBoqLineId}
-              onBoqSelect={handleBoqSelect}
-            /> */}
+              <Button
+                componentType={"button"}
+                bgColor={"black"}
+                borderColor={"black"}
+                textColor={"white"}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsBoqSelectFormOpen(true);
+                }}
+                full
+                style={boqLineID ? { justifyContent: "flex-start" } : {}}
+              >
+                {boqLineID ? (
+                  <span
+                    style={{
+                      maxWidth: "250px",
+                      display: "inline-block",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {selectedBoqInfo}
+                  </span>
+                ) : (
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    SELECT BILL OF QUANTITY ITEM
+                    <img
+                      src={externalLinkIcon}
+                      alt="external link"
+                      style={{ filter: "invert(1)" }}
+                    />
+                  </div>
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Quantity and Unit Row */}
@@ -416,7 +589,6 @@ export default function AddMrItemButton({
               label={"BRAND"}
               value={brand}
               type={"text"}
-              placeholder={"ENTER BRAND (OPTIONAL)"}
               onChange={(e) => setBrand(e.target.value)}
             />
           </div>
@@ -427,7 +599,6 @@ export default function AddMrItemButton({
               label={"SPECIFICATION"}
               value={specification}
               type={"textarea"}
-              placeholder={"ENTER SPECIFICATION (OPTIONAL)"}
               onChange={(e) => setSpecification(e.target.value)}
             />
           </div>
@@ -447,6 +618,476 @@ export default function AddMrItemButton({
               ]}
               required
             />
+            <SingleUploadFileBox
+              fileState={attachment}
+              setFileState={setAttachment}
+              label={"ATTACHMENT"}
+              acceptedFileTypes={".pdf,.png,.jpg,.jpeg"}
+            />
+          </div>
+        </FormPopUp>
+      )}
+
+      {isBoqSelectFormOpen && (
+        <FormPopUp
+          header={"SELECT BILL OF QUANTITY ITEM"}
+          setIsOpen={setIsBoqSelectFormOpen}
+          handleSubmit={(e) => {
+            e.preventDefault();
+
+            if (!tempSelectedBoqID) {
+              toast("Please select a bill of quantity item", "error");
+              return;
+            }
+
+            setBoqLineID(tempSelectedBoqID);
+            setIsBoqSelectFormOpen(false);
+          }}
+          addButtonLabel={"CONFIRM"}
+          style={{ minWidth: "1200px" }}
+        >
+          {/* Category Grid */}
+          <div className="category-grid" style={{ marginBottom: "20px" }}>
+            <div style={{ position: "relative", flex: 1, maxWidth: "925px" }}>
+              {/* Left Fade Gradient */}
+              {showLeftArrow && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "300px",
+                    background:
+                      "linear-gradient(to right, white 0%, rgba(255, 255, 255, 0) 100%)",
+                    pointerEvents: "none",
+                    zIndex: 5,
+                  }}
+                />
+              )}
+
+              {/* Left Arrow Button */}
+              {showLeftArrow && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scroll("left");
+                  }}
+                  style={{
+                    position: "absolute",
+                    left: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    backgroundColor: "black",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "10px",
+                    width: "40px",
+                    height: "40px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img
+                    src={arrowRight}
+                    style={{ transform: "rotate(-180deg)" }}
+                  />
+                </button>
+              )}
+
+              <div
+                ref={scrollContainerRef}
+                onScroll={checkScroll}
+                style={{
+                  overflowX: "auto",
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                }}
+              >
+                <style jsx>{`
+                  div::-webkit-scrollbar {
+                    display: "none";
+                  }
+                `}</style>
+                <div style={{ display: "flex", gap: "1px" }}>
+                  <div
+                    className={`item ${
+                      activeBoqCategory === "ALL" ? "active" : ""
+                    }`}
+                    onClick={() => setActiveBoqCategory("ALL")}
+                    style={{
+                      flexShrink: 0,
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ALL
+                  </div>
+
+                  {boqCategories.map(function (category) {
+                    return (
+                      <div
+                        key={category}
+                        className={`item ${
+                          activeBoqCategory === category ? "active" : ""
+                        }`}
+                        onClick={function () {
+                          setActiveBoqCategory(category);
+                        }}
+                        style={{ flexShrink: 0, cursor: "pointer" }}
+                      >
+                        {category}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Fade Gradient */}
+              {showRightArrow && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "300px",
+                    background:
+                      "linear-gradient(to left, white 0%, rgba(255, 255, 255, 0) 100%)",
+                    pointerEvents: "none",
+                    zIndex: 5,
+                  }}
+                />
+              )}
+
+              {/* Right Arrow Button */}
+              {showRightArrow && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scroll("right");
+                  }}
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    backgroundColor: "black",
+                    borderRadius: "10px",
+                    color: "white",
+                    border: "none",
+                    width: "40px",
+                    height: "40px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img src={arrowRight} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* BOQ Items Table */}
+          <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+            {activeBoqCategory === "ALL"
+              ? Object.entries(groupedBoqLines).map(
+                  ([category, subCategoriesData], categoryIndex) =>
+                    Object.entries(subCategoriesData).map(
+                      ([subCategory, items], subCategoryIndex) => (
+                        <div
+                          key={`${category}-${subCategory}`}
+                          style={{ marginBottom: "30px" }}
+                        >
+                          <h3
+                            style={{
+                              marginBottom: "10px",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {categoryIndex + 1}.{subCategoryIndex + 1}{" "}
+                            {category} / {subCategory}
+                          </h3>
+
+                          <table className="items-table two-toned">
+                            <thead>
+                              <tr>
+                                <th></th>
+                                <th>#</th>
+                                <th>ITEM</th>
+                                <th>QUANTITY</th>
+                                {canSeePrice && (
+                                  <>
+                                    <th>RATE</th>
+                                    <th>TOTAL PRICE</th>
+                                  </>
+                                )}
+                                <th>ATTACHMENTS</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {items.map((boq, itemIndex) => {
+                                const attachmentUrls = parseAttachments(
+                                  boq.attachments
+                                );
+
+                                return (
+                                  <tr key={boq.id}>
+                                    <td onClick={(e) => e.stopPropagation()}>
+                                      <input
+                                        type="radio"
+                                        name="boq-select"
+                                        value={boq.id}
+                                        checked={tempSelectedBoqID === boq.id}
+                                        onChange={() => {
+                                          setTempSelectedBoqID(boq.id);
+                                          setSelectedBoqInfo(
+                                            boq.item_number +
+                                              " " +
+                                              boq.item_name
+                                          );
+                                        }}
+                                        style={{
+                                          width: "18px",
+                                          height: "18px",
+                                          cursor: "pointer",
+                                        }}
+                                      />
+                                    </td>
+                                    <td style={{ whiteSpace: "nowrap" }}>
+                                      {categoryIndex + 1}.{subCategoryIndex + 1}
+                                      .{itemIndex + 1}
+                                    </td>
+                                    <td>
+                                      <strong>{boq.item_name}</strong>
+
+                                      {boq.item_description && (
+                                        <>
+                                          <br />
+                                          <br />
+                                          <p>{boq.item_description}</p>
+                                          <br />
+                                        </>
+                                      )}
+
+                                      {boq.location && (
+                                        <>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "10px",
+                                              alignItems: "center",
+                                            }}
+                                          >
+                                            <img src={locationIcon} />
+                                            <span
+                                              style={{
+                                                fontWeight: 600,
+                                                marginTop: "4px",
+                                                color: "rgba(105, 105, 105, 1)",
+                                              }}
+                                            >
+                                              {boq.location}
+                                            </span>
+                                          </div>
+                                          <br />
+                                        </>
+                                      )}
+
+                                      {boq.scope_of_work && (
+                                        <>
+                                          <div
+                                            style={{
+                                              backgroundColor:
+                                                "rgba(225, 225, 225, 1)",
+                                              borderRadius: "50px",
+                                              padding: "4px 10px",
+                                              width: "fit-content",
+                                            }}
+                                          >
+                                            <strong>{boq.scope_of_work}</strong>
+                                          </div>
+                                        </>
+                                      )}
+                                    </td>
+                                    <td>
+                                      {boq.quantity} {boq.unit}
+                                    </td>
+
+                                    {canSeePrice && (
+                                      <>
+                                        <td>
+                                          {boq.rate_per_quantity?.toLocaleString()}
+                                        </td>
+                                        <td>
+                                          AED {boq.total_cost?.toLocaleString()}
+                                        </td>
+                                      </>
+                                    )}
+
+                                    <td className="attachments">
+                                      <div className="attachments-grid">
+                                        {attachmentUrls.map((url, i) => (
+                                          <img
+                                            key={i}
+                                            src={url}
+                                            alt="attachment"
+                                          />
+                                        ))}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )
+                    )
+                )
+              : Object.entries(boqSubCategories).map(
+                  ([subCategory, items], index) => (
+                    <div key={subCategory} style={{ marginBottom: "30px" }}>
+                      <h3 style={{ marginBottom: "10px" }}>
+                        {boqCategories.indexOf(activeBoqCategory) + 1}.
+                        {index + 1} {subCategory}
+                      </h3>
+
+                      <table className="items-table two-toned">
+                        <thead>
+                          <tr>
+                            <th></th>
+                            <th>#</th>
+                            <th>ITEM</th>
+                            <th>QUANTITY</th>
+                            {canSeePrice && (
+                              <>
+                                <th>RATE</th>
+                                <th>TOTAL PRICE</th>
+                              </>
+                            )}
+                            <th>ATTACHMENTS</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map((boq, itemIndex) => {
+                            const attachmentUrls = parseAttachments(
+                              boq.attachments
+                            );
+
+                            return (
+                              <tr key={boq.id}>
+                                <td onClick={(e) => e.stopPropagation()}>
+                                  <input
+                                    type="radio"
+                                    name="boq-select"
+                                    value={boq.id}
+                                    checked={tempSelectedBoqID === boq.id}
+                                    onChange={() => {
+                                      setTempSelectedBoqID(boq.id);
+                                      setSelectedBoqInfo(
+                                        boq.item_number + " " + boq.item_name
+                                      );
+                                    }}
+                                    style={{
+                                      width: "18px",
+                                      height: "18px",
+                                      cursor: "pointer",
+                                    }}
+                                  />
+                                </td>
+                                <td style={{ whiteSpace: "nowrap" }}>
+                                  {boqCategories.indexOf(activeBoqCategory) + 1}
+                                  .{index + 1}.{itemIndex + 1}
+                                </td>
+                                <td>
+                                  <strong>{boq.item_name}</strong>
+
+                                  {boq.item_description && (
+                                    <>
+                                      <br />
+                                      <br />
+                                      <p>{boq.item_description}</p>
+                                      <br />
+                                    </>
+                                  )}
+
+                                  {boq.location && (
+                                    <>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          gap: "10px",
+                                          alignItems: "center",
+                                        }}
+                                      >
+                                        <img src={locationIcon} />
+                                        <span
+                                          style={{
+                                            fontWeight: 600,
+                                            marginTop: "4px",
+                                            color: "rgba(105, 105, 105, 1)",
+                                          }}
+                                        >
+                                          {boq.location}
+                                        </span>
+                                      </div>
+                                      <br />
+                                    </>
+                                  )}
+
+                                  {boq.scope_of_work && (
+                                    <>
+                                      <div
+                                        style={{
+                                          backgroundColor:
+                                            "rgba(225, 225, 225, 1)",
+                                          borderRadius: "50px",
+                                          padding: "4px 10px",
+                                          width: "fit-content",
+                                        }}
+                                      >
+                                        <strong>{boq.scope_of_work}</strong>
+                                      </div>
+                                    </>
+                                  )}
+                                </td>
+                                <td>
+                                  {boq.quantity} {boq.unit}
+                                </td>
+
+                                {canSeePrice && (
+                                  <>
+                                    <td>
+                                      {boq.rate_per_quantity?.toLocaleString()}
+                                    </td>
+                                    <td>
+                                      AED {boq.total_cost?.toLocaleString()}
+                                    </td>
+                                  </>
+                                )}
+
+                                <td className="attachments">
+                                  <div className="attachments-grid">
+                                    {attachmentUrls.map((url, i) => (
+                                      <img key={i} src={url} alt="attachment" />
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                )}
           </div>
         </FormPopUp>
       )}

@@ -356,10 +356,21 @@ export default function CreateInventoryItemButton({
               placeholder={"ENTER MINIMUM QUANTITY TO STOCK"}
               required
               onChange={(e) => {
-                const val = e.target.value;
-                if (val === "" || /^\d+$/.test(val)) {
-                  setMinimumStockQuantity(val === "" ? "" : Number(val));
+                let val = e.target.value;
+                val = val.replace(/,/g, "");
+
+                // Allow empty (for clearing input)
+                if (val === "") {
+                  setMinimumStockQuantity("");
+                  return;
                 }
+
+                // ❌ Block anything that's not digits
+                if (!/^\d+$/.test(val)) {
+                  return;
+                }
+
+                setMinimumStockQuantity(val);
               }}
             />
 

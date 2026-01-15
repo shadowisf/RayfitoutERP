@@ -12,6 +12,7 @@ import ThreeDotsMenuButton from "./_ThreeDotsMenuButton";
 import EditBoqItemLocationButton from "./manager/_EditBoqItemLocationButton";
 import EditBoqCategoryButton from "./manager/_EditBoqCategoryButton";
 import DeleteBoqCategoryButton from "./manager/_DeleteBoqCategoryButton";
+import EditBoqHeaderButton from "./manager/_EditBoqHeaderButton";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -283,6 +284,8 @@ export default function BoqLinesView({
           )}
 
           <DownloadBoqButton boqHeader={boqHeader} boqLines={boqLines} />
+
+          <EditBoqHeaderButton boqHeader={boqHeader} />
         </div>
       </div>
 
@@ -369,11 +372,11 @@ export default function BoqLinesView({
                               <td>
                                 <strong>{item.item_name}</strong>
 
-                                <br />
-                                <br />
-
                                 {item.item_description && (
                                   <>
+                                    <br />
+                                    <br />
+
                                     <p>{item.item_description}</p>
 
                                     <br />
@@ -433,7 +436,8 @@ export default function BoqLinesView({
                                     {item.rate_per_quantity?.toLocaleString()}
                                   </td>
                                   <td>
-                                    AED {item.total_cost?.toLocaleString()}
+                                    {boqHeader.currency}{" "}
+                                    {item.total_cost?.toLocaleString()}
                                   </td>
                                 </>
                               )}
@@ -471,7 +475,7 @@ export default function BoqLinesView({
                             <td colSpan={canSeePrice ? 2 : 1}></td>
                             <td>
                               <h3 style={{ textWrap: "nowrap" }}>
-                                AED {subtotal.toLocaleString()}
+                                {boqHeader.currency} {subtotal.toLocaleString()}
                               </h3>
                             </td>
                             <td colSpan={canManage ? 2 : 1}></td>
@@ -587,11 +591,11 @@ export default function BoqLinesView({
                           <td>
                             <strong>{item.item_name}</strong>
 
-                            <br />
-                            <br />
-
                             {item.item_description && (
                               <>
+                                <br />
+                                <br />
+
                                 <p>{item.item_description}</p>
 
                                 <br />
@@ -649,7 +653,10 @@ export default function BoqLinesView({
                               <td>
                                 {item.rate_per_quantity?.toLocaleString()}
                               </td>
-                              <td>AED {item.total_cost?.toLocaleString()}</td>
+                              <td>
+                                {boqHeader.currency}{" "}
+                                {item.total_cost?.toLocaleString()}
+                              </td>
                             </>
                           )}
 
@@ -686,7 +693,7 @@ export default function BoqLinesView({
                         <td colSpan={canSeePrice ? 2 : 1}></td>
                         <td>
                           <h3 style={{ textWrap: "nowrap" }}>
-                            AED {subtotal.toLocaleString()}
+                            {boqHeader.currency} {subtotal.toLocaleString()}
                           </h3>
                         </td>
                         <td colSpan={canManage ? 2 : 1}></td>

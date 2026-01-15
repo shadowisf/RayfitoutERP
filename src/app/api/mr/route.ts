@@ -54,16 +54,12 @@ export async function POST(req: Request) {
     }
 
     if (body.action === "createMrLine") {
-      const connection = await db.getConnection();
-
       try {
-        await connection.beginTransaction();
-
         // Insert the main mr_line - WITHOUT material_subcategory_id column
         const lineQuery = `
       INSERT INTO mr_lines 
-      (boq_line_id, mr_header_id, material_category_id, material_description, quantity, unit, notes, specification, brand, delivery_location)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (boq_line_id, mr_header_id, material_category_id, material_description, quantity, unit, notes, specification, brand, delivery_location, attachment)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
         const lineValues = [
@@ -81,9 +77,10 @@ export async function POST(req: Request) {
           body.specification || null,
           body.brand || null,
           body.delivery_location || null,
+          body.attachment || null,
         ];
 
-        const [lineResult] = await connection.query<ResultSetHeader>(
+        const [lineResult] = await db.query<ResultSetHeader>(
           lineQuery,
           lineValues
         );
@@ -110,24 +107,19 @@ export async function POST(req: Request) {
             Number(subcatId),
           ]);
 
-          await connection.query(junctionQuery, [junctionValues]);
+          await db.query(junctionQuery, [junctionValues]);
         }
-
-        await connection.commit();
 
         return NextResponse.json({
           success: true,
           mrLineId: mrLineId,
         });
       } catch (error: any) {
-        await connection.rollback();
         console.error("Create MR Line Error:", error);
         return NextResponse.json(
           { error: error.message || "Failed to create MR line" },
           { status: 500 }
         );
-      } finally {
-        connection.release();
       }
     }
   } catch (err: any) {
@@ -443,9 +435,9 @@ export async function PUT(req: Request) {
       const values = [Number(body.new_material_subcategory_id), body.item_ids];
 
       await db.query(query, values);
-    }
 
-    return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true });
+    }
   } catch (err: any) {
     console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });

@@ -17,4 +17,5 @@ export type BoqHeader = {
   project_start_date: string;
   project_end_date: string;
   project_created_at: string;
+  project_currency: string;
 };

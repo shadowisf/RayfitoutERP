@@ -5,9 +5,12 @@ import FormPopUp from "@/app/components/FormPopup";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "@/app/components/Toast";
+import { useAuth } from "@/app/context/AuthContext";
 
 export function DeleteProjectButton({ project }: { project: any }) {
   const router = useRouter();
+
+  const { userInfo } = useAuth();
 
   const trashIcon = "/icons/trash.svg";
 
@@ -37,6 +40,10 @@ export function DeleteProjectButton({ project }: { project: any }) {
       setIsOpen(false);
     }
   };
+
+  if (userInfo?.departmentID !== 8) {
+    return null;
+  }
 
   return (
     <>

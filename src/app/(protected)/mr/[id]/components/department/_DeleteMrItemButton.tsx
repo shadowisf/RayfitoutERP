@@ -29,22 +29,54 @@ export default function DeleteMrItemButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "deleteItem",
-        id: item.id,
-      }),
-    });
+    try {
+      // First, delete the S3 file if it exists
+      if (item.attachment) {
+        try {
+          const deleteS3Response = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "delete",
+                url: item.attachment,
+              }),
+            }
+          );
 
-    if (res.ok) {
-      toast(`${item.material_description} deleted`, "success");
+          if (!deleteS3Response.ok) {
+            console.error(
+              "Failed to delete S3 file, but continuing with item deletion"
+            );
+          } else {
+            console.log("S3 file deleted successfully");
+          }
+        } catch (s3Error) {
+          console.error("Error deleting S3 file:", s3Error);
+          // Continue with item deletion even if S3 deletion fails
+        }
+      }
 
-      setIsOpen(false);
+      // Then delete the MR item from database
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "deleteItem",
+          id: item.id,
+        }),
+      });
 
-      router.refresh();
-    } else {
+      if (res.ok) {
+        toast(`${item.material_description} deleted`, "success");
+        setIsOpen(false);
+        router.refresh();
+      } else {
+        toast("Failed to delete material request item", "error");
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
       toast("Failed to delete material request item", "error");
     }
   }

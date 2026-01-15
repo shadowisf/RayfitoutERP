@@ -7,9 +7,12 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
+import { useAuth } from "@/app/context/AuthContext";
 
 export function EditProjectButton({ project }: { project: any }) {
   const router = useRouter();
+
+  const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -39,6 +42,7 @@ export function EditProjectButton({ project }: { project: any }) {
   );
   const [startDate, setStartDate] = useState<string>(project?.start_date ?? "");
   const [endDate, setEndDate] = useState<string>(project?.end_date ?? "");
+  const [type, setType] = useState(project?.type ?? "");
 
   useEffect(() => {
     fetch(
@@ -89,6 +93,10 @@ export function EditProjectButton({ project }: { project: any }) {
     }
   };
 
+  if (userInfo?.departmentID !== 8) {
+    return null;
+  }
+
   return (
     <>
       <Button
@@ -104,13 +112,13 @@ export function EditProjectButton({ project }: { project: any }) {
 
       {isOpen && (
         <FormPopUp
-          header={"EDIT PROJECT"}
+          header={"UPDATE PROJECT"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
           {/* 1st row */}
-          <div className="input-row">
+          <div className="input-row three-col">
             <InputItem
               label={"NAME"}
               value={name}
@@ -118,6 +126,16 @@ export function EditProjectButton({ project }: { project: any }) {
               placeholder={"ENTER NAME"}
               onChange={(e) => setName(e.target.value)}
               required
+            />
+
+            <InputItem
+              label={"TYPE"}
+              value={type}
+              type={"select"}
+              placeholder={"SELECT TYPE"}
+              onChange={(e) => setType(e.target.value)}
+              required
+              selectOptions={["Quotation", "Signed"]}
             />
 
             <InputItem
@@ -148,11 +166,11 @@ export function EditProjectButton({ project }: { project: any }) {
                   onChange={(e) => {
                     const val = e.target.value;
 
-                    if (val === "" || (/^\d+$/.test(val) && val.length <= 3)) {
+                    if (val === "" || (/^\d+$/.test(val) && val.length <= 5)) {
                       setID(val === "" ? "" : Number(val));
                     }
                   }}
-                  placeholder="000"
+                  placeholder="00000"
                   required
                   disabled
                 />
@@ -376,7 +394,7 @@ export function EditProjectButton({ project }: { project: any }) {
           </div>
 
           {/* 6th row */}
-          <div className="input-row three-col" style={{ marginBottom: "40px" }}>
+          <div className="input-row three-col">
             <InputItem
               label={"START DATE"}
               value={startDate}

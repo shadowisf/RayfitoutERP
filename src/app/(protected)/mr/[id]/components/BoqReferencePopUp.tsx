@@ -186,11 +186,11 @@ export default function BoqReferencePopUp({
                 <td>
                   <strong>{item.boq_item_name}</strong>
 
-                  <br />
-                  <br />
-
                   {item.boq_item_description && (
                     <>
+                      <br />
+                      <br />
+
                       <p>{item.boq_item_description}</p>
 
                       <br />

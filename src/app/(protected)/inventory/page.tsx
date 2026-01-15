@@ -7,12 +7,15 @@ import Button from "@/app/components/Button";
 import EditInventoryItemButton from "./components/_EditInventoryItemButton";
 import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStocksButton";
 import TransactionDetailsPopUpButton from "./[id]/components/_IssueDetailsPopUpButton";
+import FilterButton from "./[id]/components/_FilterButton";
 
 export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
   const searchIcon = "/icons/search.svg";
   const warningIcon = "/icons/warning.svg";
   const noImageIcon = "/icons/no-image.jpg";
+  const arrowRight = "/icons/arrow-right.svg";
+  const closeIcon = "/icons/close.svg";
 
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [availableQuantities, setAvailableQuantities] = useState<{
@@ -27,13 +30,25 @@ export default function Inventory() {
   );
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [sortOrder, setSortOrder] = useState<"none" | "high-low" | "low-high">(
-    "none"
-  );
+  const [sortOrder, setSortOrder] = useState<
+    "none" | "high-low" | "low-high" | "newest-oldest" | "oldest-newest"
+  >("none");
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const [filters, setFilters] = useState<{
+    selectedCategories: string[];
+    selectedLocations: string[];
+    stockAddedIn: string;
+  }>({
+    selectedCategories: [],
+    selectedLocations: [],
+    stockAddedIn: "all",
+  });
+  const [stocksByInventoryItem, setStocksByInventoryItem] = useState<{
+    [itemId: number]: any[];
+  }>({});
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -123,6 +138,44 @@ export default function Inventory() {
     fetchAllQuantities();
   }, [inventory]);
 
+  // Fetch all stocks for filtering
+  useEffect(() => {
+    async function fetchAllStocks() {
+      if (!inventory || inventory.length === 0) return;
+
+      const stocksMap: { [itemId: number]: any[] } = {};
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAllStocks`,
+          {
+            method: "GET",
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.success && data.data) {
+            // Group stocks by inventory_item_id
+            data.data.forEach((stock: any) => {
+              if (!stocksMap[stock.inventory_item_id]) {
+                stocksMap[stock.inventory_item_id] = [];
+              }
+              stocksMap[stock.inventory_item_id].push(stock);
+            });
+          }
+        }
+
+        setStocksByInventoryItem(stocksMap);
+      } catch (error) {
+        console.error("Error fetching stocks:", error);
+      }
+    }
+
+    fetchAllStocks();
+  }, [inventory]);
+
   async function fetchAllTransactions() {
     if (activeTab !== "transfer-log") {
       return;
@@ -207,7 +260,51 @@ export default function Inventory() {
   const getProcessedInventory = () => {
     let processed = inventory;
 
-    // Filter by category
+    // Filter by selected categories from filter
+    if (filters.selectedCategories.length > 0) {
+      processed = processed.filter((item) =>
+        filters.selectedCategories.includes(item.category_name)
+      );
+    }
+
+    // Filter by selected locations from filter (check stocks table)
+    if (filters.selectedLocations.length > 0) {
+      processed = processed.filter((item) => {
+        const itemStocks = stocksByInventoryItem[item.id] || [];
+        return itemStocks.some((stock) =>
+          filters.selectedLocations.includes(stock.location)
+        );
+      });
+    }
+
+    // Filter by stock added in timeframe (check stocks table created_at)
+    if (filters.stockAddedIn !== "all") {
+      const now = new Date();
+      const timeframes: { [key: string]: number } = {
+        "24h": 1,
+        "3d": 3,
+        "7d": 7,
+        "14d": 14,
+        "30d": 30,
+      };
+
+      const daysAgo = timeframes[filters.stockAddedIn];
+      if (daysAgo) {
+        const cutoffDate = new Date(
+          now.getTime() - daysAgo * 24 * 60 * 60 * 1000
+        );
+
+        processed = processed.filter((item) => {
+          const itemStocks = stocksByInventoryItem[item.id] || [];
+          return itemStocks.some((stock) => {
+            const createdDate = new Date(stock.created_at);
+            return createdDate >= cutoffDate;
+          });
+        });
+      }
+    }
+
+    // Filter by active category tab
     if (activeCategory !== "ALL") {
       processed = processed.filter(
         (item) => item.category_name === activeCategory
@@ -222,17 +319,32 @@ export default function Inventory() {
       );
     }
 
-    // Sort by stock quantity
+    // Sort
     if (sortOrder !== "none") {
       processed = [...processed].sort((a, b) => {
-        const qtyA = availableQuantities[a.id]?.available_quantity ?? 0;
-        const qtyB = availableQuantities[b.id]?.available_quantity ?? 0;
+        if (sortOrder === "high-low" || sortOrder === "low-high") {
+          const qtyA = availableQuantities[a.id]?.available_quantity ?? 0;
+          const qtyB = availableQuantities[b.id]?.available_quantity ?? 0;
 
-        if (sortOrder === "high-low") {
-          return qtyB - qtyA;
-        } else {
-          return qtyA - qtyB;
+          if (sortOrder === "high-low") {
+            return qtyB - qtyA;
+          } else {
+            return qtyA - qtyB;
+          }
+        } else if (
+          sortOrder === "newest-oldest" ||
+          sortOrder === "oldest-newest"
+        ) {
+          const dateA = new Date(a.created_at).getTime();
+          const dateB = new Date(b.created_at).getTime();
+
+          if (sortOrder === "newest-oldest") {
+            return dateB - dateA;
+          } else {
+            return dateA - dateB;
+          }
         }
+        return 0;
       });
     }
 
@@ -354,6 +466,59 @@ export default function Inventory() {
 
   const filteredTransactions = getFilteredTransactions();
 
+  // Helper function to get stock added label
+  const getStockAddedLabel = (value: string) => {
+    const labels: { [key: string]: string } = {
+      all: "All Times",
+      "24h": "Last 24 hours",
+      "3d": "Last 3 days",
+      "7d": "Last 7 days",
+      "14d": "Last 14 days",
+      "30d": "Last 30 days",
+    };
+    return labels[value] || value;
+  };
+
+  // Remove individual filter
+  const removeFilter = (
+    type: "category" | "location" | "time",
+    value?: string
+  ) => {
+    if (type === "category" && value) {
+      setFilters({
+        ...filters,
+        selectedCategories: filters.selectedCategories.filter(
+          (c) => c !== value
+        ),
+      });
+    } else if (type === "location" && value) {
+      setFilters({
+        ...filters,
+        selectedLocations: filters.selectedLocations.filter((l) => l !== value),
+      });
+    } else if (type === "time") {
+      setFilters({
+        ...filters,
+        stockAddedIn: "all",
+      });
+    }
+  };
+
+  // Reset all filters
+  const resetAllFilters = () => {
+    setFilters({
+      selectedCategories: [],
+      selectedLocations: [],
+      stockAddedIn: "all",
+    });
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters =
+    filters.selectedCategories.length > 0 ||
+    filters.selectedLocations.length > 0 ||
+    filters.stockAddedIn !== "all";
+
   return (
     <div className="dashboard">
       <div
@@ -397,26 +562,6 @@ export default function Inventory() {
 
         <div style={{ display: "flex", gap: "10px" }}>
           {activeTab === "inventory" && (
-            <select
-              value={sortOrder}
-              onChange={(e) =>
-                setSortOrder(e.target.value as "none" | "high-low" | "low-high")
-              }
-              style={{
-                padding: "10px 15px",
-                borderRadius: "8px",
-                border: "1px solid rgba(223, 223, 223, 1)",
-                backgroundColor: "white",
-                cursor: "pointer",
-                width: "250px",
-              }}
-            >
-              <option value="none">SORT BY STOCK</option>
-              <option value="high-low">HIGHEST TO LOWEST STOCK</option>
-              <option value="low-high">LOWEST TO HIGHEST STOCK</option>
-            </select>
-          )}
-          {activeTab === "inventory" && (
             <div
               style={{
                 position: "relative",
@@ -457,41 +602,61 @@ export default function Inventory() {
       </div>
 
       <br />
-      <br />
 
       {activeTab === "inventory" && (
         <>
           {/* Category Tabs with Scroll */}
-          <div style={{ position: "relative" }}>
+          <div className="category-grid" style={{ position: "relative" }}>
+            {/* Left Fade Gradient */}
+            {showLeftArrow && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: "300px",
+                  background:
+                    "linear-gradient(to right, #f8f9fb 0%, rgba(255, 255, 255, 0) 100%)",
+                  pointerEvents: "none",
+                  zIndex: 5,
+                }}
+              />
+            )}
+
+            {/* Left Arrow Button */}
             {showLeftArrow && (
               <button
                 onClick={() => scroll("left")}
                 style={{
                   position: "absolute",
-                  left: 0,
+                  left: "10px",
                   top: "50%",
                   transform: "translateY(-50%)",
                   zIndex: 10,
-                  backgroundColor: "white",
-                  border: "1px solid rgba(223, 223, 223, 1)",
-                  borderRadius: "50%",
+                  backgroundColor: "black",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "10px",
                   width: "40px",
                   height: "40px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                 }}
               >
-                ←
+                <img
+                  src={arrowRight}
+                  style={{ transform: "rotate(-180deg)" }}
+                  alt="scroll left"
+                />
               </button>
             )}
 
             <div
               ref={scrollContainerRef}
               onScroll={checkScroll}
-              className="category-grid"
               style={{
                 overflowX: "auto",
                 scrollbarWidth: "none",
@@ -499,15 +664,15 @@ export default function Inventory() {
               }}
             >
               <style jsx>{`
-                .category-grid::-webkit-scrollbar {
+                div::-webkit-scrollbar {
                   display: none;
                 }
               `}</style>
-              <div style={{ display: "flex", gap: "10px" }}>
+              <div style={{ display: "flex", gap: "1px" }}>
                 <button
                   className={`item ${activeCategory === "ALL" ? "active" : ""}`}
                   onClick={() => setActiveCategory("ALL")}
-                  style={{ flexShrink: 0 }}
+                  style={{ flexShrink: 0, textTransform: "uppercase" }}
                 >
                   <div
                     style={{
@@ -540,7 +705,7 @@ export default function Inventory() {
                       activeCategory === category ? "active" : ""
                     }`}
                     onClick={() => setActiveCategory(category)}
-                    style={{ flexShrink: 0 }}
+                    style={{ flexShrink: 0, textTransform: "uppercase" }}
                   >
                     <div
                       style={{
@@ -549,7 +714,7 @@ export default function Inventory() {
                         gap: "10px",
                       }}
                     >
-                      <span>{category.toUpperCase()} </span>
+                      <span>{category.toUpperCase()}</span>
                       <span
                         style={{
                           backgroundColor:
@@ -569,31 +734,186 @@ export default function Inventory() {
               </div>
             </div>
 
+            {/* Right Fade Gradient */}
+            {showRightArrow && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: "300px",
+                  background:
+                    "linear-gradient(to left, #f8f9fb 0%, rgba(255, 255, 255, 0) 100%)",
+                  pointerEvents: "none",
+                  zIndex: 5,
+                }}
+              />
+            )}
+
+            {/* Right Arrow Button */}
             {showRightArrow && (
               <button
                 onClick={() => scroll("right")}
                 style={{
                   position: "absolute",
-                  right: 0,
+                  right: "10px",
                   top: "50%",
                   transform: "translateY(-50%)",
                   zIndex: 10,
-                  backgroundColor: "white",
-                  border: "1px solid rgba(223, 223, 223, 1)",
-                  borderRadius: "50%",
+                  backgroundColor: "black",
+                  borderRadius: "10px",
+                  color: "white",
+                  border: "none",
                   width: "40px",
                   height: "40px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                 }}
               >
-                →
+                <img src={arrowRight} alt="scroll right" />
               </button>
             )}
           </div>
+
+          <br />
+
+          {activeTab === "inventory" && (
+            <div style={{ display: "flex", gap: "10px" }}>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <select
+                  value={sortOrder}
+                  onChange={(e) =>
+                    setSortOrder(
+                      e.target.value as
+                        | "none"
+                        | "high-low"
+                        | "low-high"
+                        | "newest-oldest"
+                        | "oldest-newest"
+                    )
+                  }
+                  style={{
+                    padding: "10px 15px",
+                    borderRadius: "50px",
+                    border: "1px solid rgba(223, 223, 223, 1)",
+                    backgroundColor: "white",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="none">Sort by stock</option>
+                  <option value="high-low">Highest - Lowest</option>
+                  <option value="low-high">Lowest - Highest</option>
+                  <option value="newest-oldest">Newest - Oldest</option>
+                  <option value="oldest-newest">Oldest - Newest</option>
+                </select>
+
+                <FilterButton
+                  categories={categories}
+                  onApplyFilters={setFilters}
+                  currentFilters={filters}
+                />
+              </div>
+
+              {hasActiveFilters && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "10px",
+                    alignItems: "center",
+                  }}
+                >
+                  {/* Subcategory Filters */}
+                  {filters.selectedCategories.length > 0 && (
+                    <Button
+                      style={{
+                        borderRadius: "50px",
+                        fontWeight: 600,
+                      }}
+                      componentType={"none"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"transparent"}
+                      textColor={"black"}
+                    >
+                      SUBCATEGORY:{" "}
+                      <span
+                        style={{
+                          color: "rgba(16, 185, 129, 1)",
+                        }}
+                      >
+                        {filters.selectedCategories[0].toUpperCase()}
+                        {filters.selectedCategories.length > 1 &&
+                          `, +${filters.selectedCategories.length - 1} MORE`}
+                      </span>
+                    </Button>
+                  )}
+
+                  {/* Stock Added Filter */}
+                  {filters.stockAddedIn !== "all" && (
+                    <Button
+                      style={{
+                        borderRadius: "50px",
+                        fontWeight: "600",
+                      }}
+                      componentType={"none"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"transparent"}
+                      textColor={"black"}
+                    >
+                      STOCK ADDED IN:{" "}
+                      <span
+                        style={{
+                          color: "rgba(16, 185, 129, 1)",
+                        }}
+                      >
+                        {getStockAddedLabel(filters.stockAddedIn).toUpperCase()}
+                      </span>
+                    </Button>
+                  )}
+
+                  {/* Location Filters */}
+                  {filters.selectedLocations.length > 0 && (
+                    <Button
+                      style={{
+                        borderRadius: "50px",
+                        fontWeight: "600",
+                      }}
+                      componentType={"none"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"transparent"}
+                      textColor={"black"}
+                    >
+                      LOCATION:
+                      <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                        {filters.selectedLocations[0].toUpperCase()}
+                        {filters.selectedLocations.length > 1 &&
+                          `, +${filters.selectedLocations.length - 1} MORE`}
+                      </span>
+                    </Button>
+                  )}
+
+                  {/* Reset Filter Button */}
+                  <Button
+                    onClick={resetAllFilters}
+                    componentType={"button"}
+                    bgColor={"transparent"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                    style={{ padding: "0px" }}
+                  >
+                    RESET FILTER
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <br />
+
+          {/* Filter Display Bubbles */}
 
           <br />
           <br />
@@ -704,8 +1024,11 @@ export default function Inventory() {
               <div
                 style={{ textAlign: "center", padding: "40px", color: "#888" }}
               >
-                {searchQuery.trim() !== ""
-                  ? "No items found matching your search"
+                {searchQuery.trim() !== "" ||
+                filters.selectedCategories.length > 0 ||
+                filters.selectedLocations.length > 0 ||
+                filters.stockAddedIn !== "all"
+                  ? "No items found matching your filters"
                   : "No items found in this category"}
               </div>
             )}

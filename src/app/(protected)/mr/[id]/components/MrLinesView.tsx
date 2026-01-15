@@ -16,7 +16,6 @@ import SubmitForResubmissionButton from "./manager/_SubmitForInitialResubmission
 import SubmitForQuotationsButton from "./manager/_SubmitForQuotationsButton";
 import SupplierAndQuotationButton from "./procurement/_SupplierAndQuotationButton";
 import SubmitForPricingApprovalButton from "./procurement/_SubmitForPriceApprovalButton";
-import NotesPopUp from "./NotesPopUp";
 import PriceApprovalButton from "./manager/_PriceApprovalButton";
 import SubmitForPricingResubmissionButton from "./manager/_SubmitForPriceResubmissionButton";
 import SubmitForLPO from "./manager/_SubmitForLPOButton";
@@ -27,7 +26,6 @@ import SubmitForPaymentButton from "./procurement/_SubmitForPaymentButton";
 import PaymentButtons from "./finance/_PaymentButtons";
 import SubmitForDeliveryButton from "./finance/_SubmitForDeliveryButton";
 import CreateGRNButton from "./storekeeper/_CreateGRNButton";
-import SubmitForQC from "./storekeeper/_SubmitForQCButton";
 import QCCheckListButton from "./qualityControl/_QCCheckListButton";
 import SubmitForStockEntryButton from "./qualityControl/_SubmitForStockEntry";
 import AddToInventoryButton from "./storekeeper/_AddStockButton";
@@ -35,7 +33,6 @@ import CompleteMaterialRequestButton from "./storekeeper/_CompleteMaterialReques
 import SubmitForProcurementResolutionButton from "./qualityControl/_SubmitForProcurementResolution";
 import QCRecheckButton from "./procurement/_QCRecheckButton";
 import ResolutionButton from "./procurement/_AddResolutionButton";
-import CancelMaterialRequestButton from "./_CancelMaterialRequest";
 import SubmitForLPOResubmissionButton from "./finance/_SubmitForLPOResubmission";
 import SubmitForLPOResubmissionGRNFailButton from "./storekeeper/_SubmitForLPOResubmissionGRNFail";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
@@ -1542,6 +1539,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 userInfo?.departmentID === mrHeader.department_id &&
                 showByItem && (
                   <>
+                    {/* CATEGORY + SUBCATEGORY + ITEM */}
                     <AddMrItemButton
                       mrHeaderID={mrHeader.id}
                       projectID={mrHeader.project_id}
@@ -1622,6 +1620,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   <th>QTY</th>
                                   <th>BOQ REF.</th>
                                   <th>BRAND & SPECIFICATION</th>
+                                  <th>ATTACHMENT</th>
                                   {((mrHeader.progress_id === 5 &&
                                     (userInfo?.departmentID ===
                                       mrHeader.department_id ||
@@ -1708,6 +1707,28 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                               }
                                               header="BRAND & SPECIFICATION"
                                             />
+                                          ) : (
+                                            "-"
+                                          )}
+                                        </td>
+                                        <td>
+                                          {item.attachment ? (
+                                            <Button
+                                              componentType={"link"}
+                                              bgColor={"rgba(239, 239, 239, 1)"}
+                                              borderColor={
+                                                "rgba(223, 223, 223, 1)"
+                                              }
+                                              textColor={"black"}
+                                              style={{ padding: "7px 7px" }}
+                                              href={item.attachment}
+                                              target="_blank"
+                                            >
+                                              <img
+                                                src={externalLinkIcon}
+                                                alt="external link"
+                                              />
+                                            </Button>
                                           ) : (
                                             "-"
                                           )}
@@ -1905,6 +1926,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                         userInfo?.departmentID === mrHeader.department_id &&
                         firstItem && (
                           <>
+                            {/* ALL CATEGORY */}
                             <AddMrItemButton
                               projectID={mrHeader.project_id}
                               mrHeaderID={mrHeader.id}
@@ -1915,11 +1937,34 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               autoCategoryID={String(
                                 firstItem.material_category_id
                               )}
-                              autoSubCategoryIDs={
-                                Array.isArray(firstItem.material_subcategory_id)
-                                  ? firstItem.material_subcategory_id
-                                  : [firstItem.material_subcategory_id]
-                              }
+                              autoSubCategoryIDs={(() => {
+                                const subcatId =
+                                  firstItem.material_subcategory_id;
+
+                                // If it's already an array, return it
+                                if (Array.isArray(subcatId)) {
+                                  return subcatId.map((id) =>
+                                    typeof id === "string" ? parseInt(id) : id
+                                  );
+                                }
+
+                                // If it's a string like "7, 8, 9", split it
+                                if (typeof subcatId === "string") {
+                                  return subcatId
+                                    .split(",")
+                                    .map((id) => id.trim())
+                                    .filter((id) => id && id !== "")
+                                    .map((id) => parseInt(id))
+                                    .filter((id) => !isNaN(id));
+                                }
+
+                                // If it's a single number
+                                if (typeof subcatId === "number") {
+                                  return [subcatId];
+                                }
+
+                                return [];
+                              })()}
                               purposeID={mrHeader.purpose_id}
                               style={{ padding: "20px 0px" }}
                             >
@@ -1988,6 +2033,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               <th>QTY</th>
                               <th>BOQ REF.</th>
                               <th>BRAND & SPECIFICATION</th>
+                              <th>ATTACHMENT</th>
                               {((mrHeader.progress_id === 5 &&
                                 (userInfo?.departmentID ===
                                   mrHeader.department_id ||
@@ -2095,6 +2141,27 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         </div>
                                       </td>
                                     )}
+
+                                    <td>
+                                      {item.attachment ? (
+                                        <Button
+                                          componentType={"link"}
+                                          bgColor={"rgba(239, 239, 239, 1)"}
+                                          borderColor={"rgba(223, 223, 223, 1)"}
+                                          textColor={"black"}
+                                          style={{ padding: "7px 7px" }}
+                                          href={item.attachment}
+                                          target="_blank"
+                                        >
+                                          <img
+                                            src={externalLinkIcon}
+                                            alt="external link"
+                                          />
+                                        </Button>
+                                      ) : (
+                                        "-"
+                                      )}
+                                    </td>
 
                                     {(mrHeader.progress_id === 1 ||
                                       mrHeader.progress_id === 5) &&
@@ -2253,6 +2320,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     userInfo?.departmentID === mrHeader.department_id &&
                     firstItem && (
                       <>
+                        {/* SPECIFIC CATEGORY */}
                         <AddMrItemButton
                           projectID={mrHeader.project_id}
                           mrHeaderID={mrHeader.id}
@@ -2263,11 +2331,33 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           autoCategoryID={String(
                             firstItem.material_category_id
                           )}
-                          autoSubCategoryIDs={
-                            Array.isArray(firstItem.material_subcategory_id)
-                              ? firstItem.material_subcategory_id
-                              : [firstItem.material_subcategory_id]
-                          }
+                          autoSubCategoryIDs={(() => {
+                            const subcatId = firstItem.material_subcategory_id;
+
+                            // If it's already an array, return it
+                            if (Array.isArray(subcatId)) {
+                              return subcatId.map((id) =>
+                                typeof id === "string" ? parseInt(id) : id
+                              );
+                            }
+
+                            // If it's a string like "7, 8, 9", split it
+                            if (typeof subcatId === "string") {
+                              return subcatId
+                                .split(",")
+                                .map((id) => id.trim())
+                                .filter((id) => id && id !== "")
+                                .map((id) => parseInt(id))
+                                .filter((id) => !isNaN(id));
+                            }
+
+                            // If it's a single number
+                            if (typeof subcatId === "number") {
+                              return [subcatId];
+                            }
+
+                            return [];
+                          })()}
                           purposeID={mrHeader.purpose_id}
                           style={{ padding: "20px 0px" }}
                         >
@@ -2526,6 +2616,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             <br />
             <br />
 
+            {/* SUBCATEGORY + ITEM */}
             <AddMrItemButton
               projectID={mrHeader.project_id}
               mrHeaderID={mrHeader.id}

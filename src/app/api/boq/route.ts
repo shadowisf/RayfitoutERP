@@ -120,6 +120,30 @@ export async function PUT(req: Request) {
   try {
     const body = await req.json();
 
+    if (body.action === "updateBoqHeader") {
+      const query = `
+        UPDATE boq_headers 
+        SET project_id = ?, company_name = ?, client_name = ?, location = ?, date = ?, payment_terms = ?, validity_terms = ?, terms_and_conditions = ?
+        WHERE id = ?
+      `;
+
+      const values = [
+        Number(body.project_id),
+        body.company_name,
+        body.client_name,
+        body.location,
+        body.date || null,
+        body.payment_terms,
+        body.validity_terms,
+        body.terms_and_conditions,
+        Number(body.id),
+      ];
+
+      await db.query(query, values);
+
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "updateAll") {
       try {
         // Update BOQ line without location_id (deprecated field)
@@ -258,37 +282,6 @@ export async function PUT(req: Request) {
         console.error("updateLocation failed:", error);
         return NextResponse.json(
           { success: false, error: "Failed to update location" },
-          { status: 500 }
-        );
-      }
-    }
-
-    if (body.action === "reorderCategories") {
-      const { boqHeaderID, categoryOrder } = body;
-
-      try {
-        // Update the display_order for each category
-        const updatePromises = categoryOrder.map(
-          (category: string, index: number) => {
-            return db.query(
-              `UPDATE boq_lines 
-           SET category_display_order = $1 
-           WHERE category = $2 AND boq_header_id = $3`,
-              [index + 1, category, boqHeaderID]
-            );
-          }
-        );
-
-        await Promise.all(updatePromises);
-
-        return Response.json({
-          success: true,
-          message: "Category order updated successfully",
-        });
-      } catch (error) {
-        console.error("Database error:", error);
-        return Response.json(
-          { success: false, message: "Failed to update category order" },
           { status: 500 }
         );
       }

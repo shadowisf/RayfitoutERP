@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/app/context/AuthContext";
 import ProjectBox from "@/app/(protected)/project/components/ProjectBox";
+import { useAuth } from "@/app/context/AuthContext";
 
 export default function Project() {
+  const { userInfo } = useAuth();
+
   const [projectsWithBOQ, setProjectsWithBOQ] = useState<any[]>([]);
+  const [quotationProjects, setQuotationProjects] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchProjects() {
@@ -36,6 +39,15 @@ export default function Project() {
           })
         );
 
+        const quotationProjects = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getAllQuotationProjects`,
+          { cache: "no-store" }
+        )
+          .then((res) => res.json())
+          .catch(() => []);
+
+        setQuotationProjects(quotationProjects);
+
         setProjectsWithBOQ(projectsWithBOQData);
       } catch (error) {
         console.error("Error fetching projects:", error);
@@ -53,11 +65,29 @@ export default function Project() {
       <br />
       <br />
 
+      <h3>SIGNED</h3>
+      <br />
       <div className="widget-grid active-projects">
         {projectsWithBOQ.map((proj: any, index) => (
           <ProjectBox proj={proj} key={index} />
         ))}
       </div>
+
+      {(userInfo?.departmentID === 8 || userInfo?.departmentID === 15) && (
+        <>
+          <br />
+          <br />
+          <br />
+
+          <h3>QUOTATION</h3>
+          <br />
+          <div className="widget-grid active-projects">
+            {quotationProjects.map((proj: any, index) => (
+              <ProjectBox proj={proj} key={index} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

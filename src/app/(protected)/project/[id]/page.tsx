@@ -2,6 +2,8 @@ import Button from "@/app/components/Button";
 import { EditProjectButton } from "./components/_EditProjectButton";
 import { Project } from "./types/project";
 import { DeleteProjectButton } from "./components/_DeleteProjectButton";
+import { userInfo } from "os";
+import { useAuth } from "@/app/context/AuthContext";
 
 export default async function ProjectWithID({
   params,
@@ -59,6 +61,10 @@ export default async function ProjectWithID({
               <small>NAME</small>
               <h2>{project.name}</h2>
             </div>
+            <div>
+              <small>TYPE</small>
+              <h2>{project.type}</h2>
+            </div>
 
             <Button
               componentType={"link"}
@@ -82,8 +88,7 @@ export default async function ProjectWithID({
 
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(8, 1fr)",
+            display: "flex",
             gap: "25px",
             textTransform: "uppercase",
           }}
@@ -95,7 +100,7 @@ export default async function ProjectWithID({
 
           <div>
             <small>SIZE</small>
-            <h2>{project.size.toLocaleString("en-US")} SQFT</h2>
+            <h2>{project?.size.toLocaleString("en-US")} SQFT</h2>
           </div>
 
           <div>

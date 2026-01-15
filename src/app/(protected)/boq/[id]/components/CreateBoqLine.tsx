@@ -3,6 +3,7 @@
 import { useAuth } from "@/app/context/AuthContext";
 import AddBoqItemButton from "./manager/_AddBoqItemButton";
 import { BoqHeader } from "../types/boqHeader";
+import EditBoqHeaderButton from "./manager/_EditBoqHeaderButton";
 
 export default function CreateBoqLineClient({
   boqHeader,
@@ -14,35 +15,44 @@ export default function CreateBoqLineClient({
   const no_item_img = "/images/no-items.svg";
 
   return (
-    <div className="no-items-container">
-      <img src={no_item_img} alt="no items image" />
-
-      <br />
-      <br />
-      <br />
-
-      <h2>NO ITEMS ADDED</h2>
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div></div>
+        <EditBoqHeaderButton boqHeader={boqHeader} />
+      </div>
 
       <br />
 
-      <span>
-        Begin by adding items or subcategories to start structuring your bill of
-        quantity
-      </span>
+      <div className="no-items-container">
+        <img src={no_item_img} alt="no items image" />
 
-      <br />
-      <br />
-      <br />
+        <br />
+        <br />
+        <br />
 
-      {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
-        <AddBoqItemButton
-          full
-          boqHeaderID={boqHeader.id}
-          style={{ padding: "20px 0px" }}
-        >
-          ADD ITEM +
-        </AddBoqItemButton>
-      )}
-    </div>
+        <h2>NO ITEMS ADDED</h2>
+
+        <br />
+
+        <span>
+          Begin by adding items or subcategories to start structuring your bill
+          of quantity
+        </span>
+
+        <br />
+        <br />
+        <br />
+
+        {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
+          <AddBoqItemButton
+            full
+            boqHeaderID={boqHeader.id}
+            style={{ padding: "20px 0px" }}
+          >
+            ADD ITEM +
+          </AddBoqItemButton>
+        )}
+      </div>
+    </>
   );
 }

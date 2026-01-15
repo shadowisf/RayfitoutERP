@@ -28,6 +28,7 @@ export default function NewProjectButton() {
   const [allocatedBudget, setAllocatedBudget] = useState<number | string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [type, setType] = useState("");
 
   useEffect(() => {
     fetch(
@@ -66,6 +67,7 @@ export default function NewProjectButton() {
             Number(String(allocatedBudget).replace(/,/g, "")) | 0,
           start_date: startDate || null,
           end_date: endDate || null,
+          type,
         }),
       }
     );
@@ -87,6 +89,7 @@ export default function NewProjectButton() {
       setStartDate("");
       setEndDate("");
       setIsOpen(false);
+      setType("");
 
       router.refresh();
 
@@ -110,13 +113,13 @@ export default function NewProjectButton() {
 
       {isOpen && (
         <FormPopUp
-          header={"ADD PROJECT"}
+          header={"CREATE PROJECT"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
           {/* 1st row */}
-          <div className="input-row">
+          <div className="input-row three-col">
             <InputItem
               label={"NAME"}
               value={name}
@@ -124,6 +127,16 @@ export default function NewProjectButton() {
               placeholder={"ENTER NAME"}
               onChange={(e) => setName(e.target.value)}
               required
+            />
+
+            <InputItem
+              label={"TYPE"}
+              value={type}
+              type={"select"}
+              placeholder={"SELECT TYPE"}
+              onChange={(e) => setType(e.target.value)}
+              required
+              selectOptions={["Quotation", "Signed"]}
             />
 
             <InputItem
@@ -158,11 +171,11 @@ export default function NewProjectButton() {
                   onChange={(e) => {
                     const val = e.target.value;
 
-                    if (val === "" || (/^\d+$/.test(val) && val.length <= 3)) {
+                    if (val === "" || (/^\d+$/.test(val) && val.length <= 5)) {
                       setID(val === "" ? "" : Number(val));
                     }
                   }}
-                  placeholder="000"
+                  placeholder="00000"
                   required
                 />
               </div>
@@ -386,7 +399,7 @@ export default function NewProjectButton() {
           </div>
 
           {/* 6th row */}
-          <div className="input-row three-col" style={{ marginBottom: "40px" }}>
+          <div className="input-row three-col">
             <InputItem
               label={"START DATE"}
               value={startDate}
@@ -404,6 +417,51 @@ export default function NewProjectButton() {
               onChange={(e) => setEndDate(e.target.value)}
               required={false}
             />
+
+            {/* <div className="input-item">
+              <label>SIGNED</label>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  height: "100%",
+                }}
+              >
+                <div
+                  onClick={() => setSigned(!signed)}
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "5px",
+                    border: signed ? "none" : "2px solid #d1d5db",
+                    backgroundColor: signed ? "#10b981" : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  {signed && (
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M16.6667 5L7.50004 14.1667L3.33337 10"
+                        stroke="white"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </div>
+              </div>
+            </div> */}
           </div>
         </FormPopUp>
       )}

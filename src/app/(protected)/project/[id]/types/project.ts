@@ -12,4 +12,5 @@ export type Project = {
   allocated_budget: number;
   start_date: string;
   end_date: string;
+  type: string;
 };

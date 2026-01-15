@@ -179,7 +179,7 @@ export default async function InventoryItemWithID({
                 }}
               >
                 <div>
-                  <small>INVENTORY ITEM ID</small>
+                  <small>ID</small>
                   <h2>INV-{inventoryItem?.id.toString().padStart(5, "0")}</h2>
                 </div>
                 <div>
@@ -194,6 +194,7 @@ export default async function InventoryItemWithID({
                     {stockStatus.label}
                   </span>
                 </div>
+                <div></div>
                 <div>
                   <small>NAME</small>
                   <h2 style={{ maxWidth: "300px" }}>
@@ -205,8 +206,12 @@ export default async function InventoryItemWithID({
                   <h2>{inventoryItem?.category_name}</h2>
                 </div>
                 <div>
-                  <small>BRAND</small>
-                  <h2>{inventoryItem?.brand || "-"}</h2>
+                  <small>SUBCATEGORY</small>
+                  <h2>{inventoryItem?.subcategory_name}</h2>
+                </div>
+                <div>
+                  <small>TYPE</small>
+                  <h2>{inventoryItem?.type}</h2>
                 </div>
                 <div>
                   <small>SPECIFICATION</small>
@@ -222,13 +227,10 @@ export default async function InventoryItemWithID({
                   )}
                 </div>
                 <div>
-                  <small>SUBCATEGORY</small>
-                  <h2>{inventoryItem?.subcategory_name}</h2>
+                  <small>BRAND</small>
+                  <h2>{inventoryItem?.brand || "-"}</h2>
                 </div>
-                <div>
-                  <small>TYPE</small>
-                  <h2>{inventoryItem?.type}</h2>
-                </div>
+
                 <div>
                   <small>ORIGIN</small>
                   <h2>{inventoryItem?.country_of_origin || "-"}</h2>

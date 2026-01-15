@@ -489,7 +489,7 @@ export default function TransferIssueMultipleStocks({
         textColor={"white"}
         onClick={() => setIsOpen(true)}
       >
-        ISSUE/TRANSFER MULTIPLE STOCK
+        ISSUE/TRANSFER MULTIPLE STOCK -
       </Button>
 
       {isOpen && (
