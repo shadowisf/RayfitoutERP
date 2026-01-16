@@ -73,7 +73,7 @@ export default function Project() {
         ))}
       </div>
 
-      {(userInfo?.departmentID === 8 || userInfo?.departmentID === 15) && (
+      {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
         <>
           <br />
           <br />

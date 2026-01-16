@@ -113,7 +113,7 @@ export default function BoqLinesView({
     <>
       <div className="category-grid">
         {/* Category Tabs with Scroll */}
-        <div style={{ position: "relative", flex: 1, maxWidth: "925px" }}>
+        <div style={{ position: "relative", flex: 1, maxWidth: "775px" }}>
           {/* Left Fade Gradient */}
           {showLeftArrow && (
             <div

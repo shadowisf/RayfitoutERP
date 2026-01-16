@@ -150,22 +150,24 @@ export default function EditBoqHeaderButton({ boqHeader }: props) {
             />
           </div>
 
-          <div className="input-row half">
+          <div className="input-row full">
             <InputItem
               label={"PAYMENT TERMS"}
               value={paymentTerms}
-              type={"text"}
+              type={"textarea"}
               placeholder={"ENTER PAYMENT TERMS"}
               required
               onChange={(e) => {
                 setPaymentTerms(e.target.value);
               }}
             />
+          </div>
 
+          <div className="input-row full">
             <InputItem
               label={"VALIDITY TERMS"}
               value={validityTerms}
-              type={"text"}
+              type={"textarea"}
               placeholder={"ENTER VALIDITY TERMS"}
               required
               onChange={(e) => {
