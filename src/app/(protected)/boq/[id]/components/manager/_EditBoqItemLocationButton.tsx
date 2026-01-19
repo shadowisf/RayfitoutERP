@@ -29,19 +29,45 @@ export default function EditBoqItemLocationButton({
     Array.isArray(item.location_ids)
       ? item.location_ids
       : typeof item.location_ids === "string"
-      ? item.location_ids
-          .split(",")
-          .map((id) => Number(id.trim()))
-          .filter((id) => !isNaN(id))
-      : []
+        ? item.location_ids
+            .split(",")
+            .map((id) => Number(id.trim()))
+            .filter((id) => !isNaN(id))
+        : [],
   );
 
+  // EditBoqItemLocationButton.tsx
   useEffect(() => {
-    fetch("/api/boq/getLocationValues")
-      .then((res) => res.json())
-      .then((data) => setLocationValues(data))
-      .catch((err) => console.error(err));
-  }, []);
+    if (!isOpen) return; // Don't fetch unless modal is open
+
+    let isMounted = true;
+
+    const fetchLocationValues = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
+        );
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        if (isMounted) {
+          setLocationValues(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch location values:", err);
+      }
+    };
+
+    fetchLocationValues();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]); // Only fetch when modal opens
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -68,14 +94,14 @@ export default function EditBoqItemLocationButton({
       } else {
         toast(
           "Failed to update bill of quantity item. Something went wrong",
-          "error"
+          "error",
         );
       }
     } catch (error: any) {
       console.error("Delete error:", error);
       toast(
         "Failed to update bill of quantity item. Something went wrong",
-        "error"
+        "error",
       );
     }
   }

@@ -32,24 +32,24 @@ export default function EditBoqItemButton({
   const [category, setCategory] = useState(item.category);
   const [subCategory, setSubCategory] = useState(item.sub_category);
   const [scopeOfWork, setScopeOfWork] = useState<string | number>(
-    item.scope_of_work
+    item.scope_of_work,
   );
   const [locationID, setLocationID] = useState<(string | number)[]>(
     Array.isArray(item.location_ids)
       ? item.location_ids
       : typeof item.location_ids === "string"
-      ? item.location_ids
-          .split(",")
-          .map((id) => Number(id.trim()))
-          .filter((id) => !isNaN(id))
-      : []
+        ? item.location_ids
+            .split(",")
+            .map((id) => Number(id.trim()))
+            .filter((id) => !isNaN(id))
+        : [],
   );
   const [quantity, setQuantity] = useState<string | number>(
-    String(item.quantity)
+    String(item.quantity),
   );
   const [unit, setUnit] = useState(item.unit);
   const [ratePerQuantity, setRatePerQuantity] = useState<string | number>(
-    String(item.rate_per_quantity)
+    String(item.rate_per_quantity),
   );
   const [totalCost, setTotalCost] = useState<string | number>(item.total_cost);
   const [itemDescription, setItemDescription] = useState(item.item_description);
@@ -61,12 +61,38 @@ export default function EditBoqItemButton({
   // Files marked for deletion
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
 
+  // EditBoqItemLocationButton.tsx
   useEffect(() => {
-    fetch("/api/boq/getLocationValues")
-      .then((res) => res.json())
-      .then((data) => setLocationValues(data))
-      .catch((err) => console.error(err));
-  }, []);
+    if (!isOpen) return; // Don't fetch unless modal is open
+
+    let isMounted = true;
+
+    const fetchLocationValues = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
+        );
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        if (isMounted) {
+          setLocationValues(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch location values:", err);
+      }
+    };
+
+    fetchLocationValues();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]); // Only fetch when modal opens
 
   useEffect(() => {
     if (isOpen) {
@@ -217,14 +243,14 @@ export default function EditBoqItemButton({
       } else {
         toast(
           "Failed to update bill of quantity item. Something went wrong",
-          "error"
+          "error",
         );
       }
     } catch (error: any) {
       console.error("Update error:", error);
       toast(
         "Failed to update bill of quantity item. Something went wrong",
-        "error"
+        "error",
       );
     }
   }
@@ -268,6 +294,7 @@ export default function EditBoqItemButton({
               placeholder={"ENTER SUB CATEGORY"}
               onChange={(e) => setSubCategory(e.target.value)}
               required
+              disabled
             />
             <InputItem
               label={"NAME"}

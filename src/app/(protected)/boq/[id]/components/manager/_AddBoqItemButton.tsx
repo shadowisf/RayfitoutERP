@@ -51,16 +51,38 @@ export default function AddBoqItemButton({
   const [itemDescription, setItemDescription] = useState("");
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
+  // EditBoqItemLocationButton.tsx
   useEffect(() => {
-    fetch("/api/boq/getLocationValues")
-      .then((res) => res.json())
-      .then((data) => {
-        setLocationValues(data);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-  }, []);
+    if (!isOpen) return; // Don't fetch unless modal is open
+
+    let isMounted = true;
+
+    const fetchLocationValues = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
+        );
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        if (isMounted) {
+          setLocationValues(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch location values:", err);
+      }
+    };
+
+    fetchLocationValues();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]); // Only fetch when modal opens
 
   useEffect(
     function () {
@@ -70,7 +92,7 @@ export default function AddBoqItemButton({
         setTotalCost("");
       }
     },
-    [ratePerQuantity, quantity]
+    [ratePerQuantity, quantity],
   );
 
   useEffect(
@@ -82,7 +104,7 @@ export default function AddBoqItemButton({
         setSubCategory(autoSubCategory);
       }
     },
-    [isOpen, autoCategory, autoSubCategory]
+    [isOpen, autoCategory, autoSubCategory],
   );
 
   async function handleSubmit(e: React.FormEvent) {
@@ -139,6 +161,8 @@ export default function AddBoqItemButton({
       });
 
       if (res.ok) {
+        router.refresh();
+
         toast("Bill of quantity item created", "success");
 
         setItemName("");
@@ -154,19 +178,17 @@ export default function AddBoqItemButton({
         setAttachmentFiles([]);
 
         setIsOpen(false);
-
-        router.refresh();
       } else {
         toast(
           "Failed to create bill of quantity item. Something went wrong",
-          "error"
+          "error",
         );
       }
     } catch (error: any) {
       console.error("Create error:", error);
       toast(
         "Failed to create bill of quantity item. Something went wrong",
-        "error"
+        "error",
       );
     }
   }

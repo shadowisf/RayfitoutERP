@@ -7,8 +7,11 @@ export async function POST(req: Request) {
     const boqId = body.boq_id;
 
     const [rows]: any = await db.query(
-      "SELECT * FROM vw_boq_lines WHERE boq_id = ?",
-      [boqId]
+      `SELECT * FROM vw_boq_lines WHERE boq_id = ? ORDER BY 
+    category_order ASC, 
+    subcategory_order ASC, 
+    item_order ASC`,
+      [boqId],
     );
 
     const grouped: any = {};

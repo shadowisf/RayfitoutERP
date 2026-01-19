@@ -3,7 +3,12 @@ import { db } from "@/lib/db";
 
 export async function GET() {
   try {
-    const [rows]: any = await db.query(`SELECT * FROM vw_boq_lines`);
+    const [rows]: any = await db.query(
+      `SELECT * FROM vw_boq_lines ORDER BY 
+    category_order ASC, 
+    subcategory_order ASC, 
+    item_order ASC`,
+    );
 
     // Track numbering per project
     const projectCategories = new Map();
@@ -41,7 +46,7 @@ export async function GET() {
       const subCategoryKey = `${category}-${subCategory}`;
       if (!subCategoryMap.has(subCategoryKey)) {
         const subCategoriesInCategory = Array.from(
-          subCategoryMap.keys()
+          subCategoryMap.keys(),
         ).filter((key: any) => key.startsWith(`${category}-`)).length;
         subCategoryMap.set(subCategoryKey, subCategoriesInCategory + 1);
       }
@@ -85,7 +90,7 @@ export async function GET() {
     console.error("SQL Error:", err.sqlMessage || err.message);
     return NextResponse.json(
       { error: err.sqlMessage || err.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -96,7 +101,7 @@ export async function POST(req: Request) {
 
     const [rows]: any = await db.query(
       `SELECT * FROM vw_boq_lines WHERE project_id = ?`,
-      [body.project_id]
+      [body.project_id],
     );
 
     // Track numbering per project
@@ -135,7 +140,7 @@ export async function POST(req: Request) {
       const subCategoryKey = `${category}-${subCategory}`;
       if (!subCategoryMap.has(subCategoryKey)) {
         const subCategoriesInCategory = Array.from(
-          subCategoryMap.keys()
+          subCategoryMap.keys(),
         ).filter((key: any) => key.startsWith(`${category}-`)).length;
         subCategoryMap.set(subCategoryKey, subCategoriesInCategory + 1);
       }
@@ -179,7 +184,7 @@ export async function POST(req: Request) {
     console.error("SQL Error:", err.sqlMessage || err.message);
     return NextResponse.json(
       { error: err.sqlMessage || err.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

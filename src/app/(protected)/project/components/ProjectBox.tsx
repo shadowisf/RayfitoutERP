@@ -25,7 +25,7 @@ export default function ProjectBox({ project }: ProjectBoxProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_id: project.id }),
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -40,7 +40,7 @@ export default function ProjectBox({ project }: ProjectBoxProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_id: project.id }),
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -102,7 +102,7 @@ export default function ProjectBox({ project }: ProjectBoxProps) {
 
         <small>BUDGET</small>
         <h2>
-          AED{" "}
+          {project.currency}{" "}
           {quotedBudget.toLocaleString("en-US", {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,

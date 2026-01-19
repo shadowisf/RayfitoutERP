@@ -1,6 +1,26 @@
+// app/(protected)/boq/[id]/components/BoqLinesView.tsx
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  horizontalListSortingStrategy,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { DraggableBoqItem } from "./DraggableItem";
 import AddBoqItemButton from "./manager/_AddBoqItemButton";
 import { BoqLine } from "../types/boqLine";
 import DeleteBoqSubCategoryButton from "./manager/_DeleteBoqSubCategoryButton";
@@ -9,11 +29,13 @@ import { useAuth } from "@/app/context/AuthContext";
 import { BoqHeader } from "../types/boqHeader";
 import DownloadBoqButton from "./manager/_DownloadBoqButton";
 import ThreeDotsMenuButton from "./_ThreeDotsMenuButton";
-import EditBoqItemLocationButton from "./manager/_EditBoqItemLocationButton";
 import EditBoqCategoryButton from "./manager/_EditBoqCategoryButton";
 import DeleteBoqCategoryButton from "./manager/_DeleteBoqCategoryButton";
 import { DeleteBoqHeaderButton } from "@/app/(protected)/boq/[id]/components/manager/_DeleteBoqHeaderButton";
 import EditBoqHeaderButton from "./manager/_EditBoqHeaderButton";
+import { DraggableCategory } from "./DraggableCategory";
+import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+import EditBoqItemLocationButton from "./manager/_EditBoqItemLocationButton";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -27,7 +49,7 @@ type BoqLinesViewProps = {
 };
 
 export default function BoqLinesView({
-  boqLines,
+  boqLines: initialBoqLines,
   boqHeader,
 }: BoqLinesViewProps) {
   const { userInfo } = useAuth();
@@ -38,6 +60,7 @@ export default function BoqLinesView({
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
+  const [boqLines, setBoqLines] = useState<GroupedBoqLines>(initialBoqLines);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +69,309 @@ export default function BoqLinesView({
     activeCategory === "ALL"
       ? boqLines[categories[0]] || {}
       : boqLines[activeCategory] || {};
+
+  // Sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  // Handle drag end for categories
+  const handleCategoryDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = categories.indexOf(active.id as string);
+    const newIndex = categories.indexOf(over.id as string);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reorderedCategories = arrayMove(categories, oldIndex, newIndex);
+
+    // Rebuild boqLines with new category order
+    const newBoqLines: GroupedBoqLines = {};
+    reorderedCategories.forEach((cat) => {
+      newBoqLines[cat] = boqLines[cat];
+    });
+
+    setBoqLines(newBoqLines);
+
+    // Save to backend
+    await saveCategoryOrder(reorderedCategories);
+  };
+
+  // Handle drag end for subcategories - works for ALL categories
+  const handleAllSubcategoryDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    // Parse the combined IDs
+    const [activeCategory, activeSubCat] = (active.id as string).split("___");
+    const [overCategory, overSubCat] = (over.id as string).split("___");
+
+    // Check if trying to drop between different categories
+    if (activeCategory !== overCategory) {
+      alert(
+        "You cannot place this subcategory in the middle of a different category.",
+      );
+      return; // Cancel the drag operation
+    }
+
+    const subCategoryKeys = Object.keys(boqLines[activeCategory]);
+    const oldIndex = subCategoryKeys.indexOf(activeSubCat);
+    const newIndex = subCategoryKeys.indexOf(overSubCat);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reorderedSubcategories = arrayMove(
+      subCategoryKeys,
+      oldIndex,
+      newIndex,
+    );
+
+    // Rebuild the category with new subcategory order
+    const newSubcategories: { [subCategory: string]: BoqLine[] } = {};
+    reorderedSubcategories.forEach((subCat) => {
+      newSubcategories[subCat] = boqLines[activeCategory][subCat];
+    });
+
+    setBoqLines({
+      ...boqLines,
+      [activeCategory]: newSubcategories,
+    });
+
+    // Save to backend
+    await saveSubcategoryOrder(activeCategory, reorderedSubcategories);
+  };
+
+  // Handle drag end for subcategories within a category
+  const handleSubcategoryDragEnd = async (
+    event: DragEndEvent,
+    category: string,
+  ) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const subCategoryKeys = Object.keys(boqLines[category]);
+    const oldIndex = subCategoryKeys.indexOf(active.id as string);
+    const newIndex = subCategoryKeys.indexOf(over.id as string);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reorderedSubcategories = arrayMove(
+      subCategoryKeys,
+      oldIndex,
+      newIndex,
+    );
+
+    // Rebuild the category with new subcategory order
+    const newSubcategories: { [subCategory: string]: BoqLine[] } = {};
+    reorderedSubcategories.forEach((subCat) => {
+      newSubcategories[subCat] = boqLines[category][subCat];
+    });
+
+    setBoqLines({
+      ...boqLines,
+      [category]: newSubcategories,
+    });
+
+    // Save to backend
+    await saveSubcategoryOrder(category, reorderedSubcategories);
+  };
+
+  // Handle drag end for items within a subcategory
+  const handleItemDragEnd = async (
+    event: DragEndEvent,
+    category: string,
+    subCategory: string,
+  ) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const items = boqLines[category][subCategory];
+    const oldIndex = items.findIndex((item) => String(item.id) === active.id);
+    const newIndex = items.findIndex((item) => String(item.id) === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reorderedItems = arrayMove(items, oldIndex, newIndex);
+
+    // Update local state
+    const updatedBoqLines = {
+      ...boqLines,
+      [category]: {
+        ...boqLines[category],
+        [subCategory]: reorderedItems,
+      },
+    };
+
+    setBoqLines(updatedBoqLines);
+
+    // Save to backend with the reordered items
+    await saveItemOrder(reorderedItems);
+  };
+
+  const saveCategoryOrder = async (categories: string[]) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/reorderBoq`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "category",
+            items: categories.map((category, index) => ({
+              category,
+              order: index,
+              boqId: boqHeader.id,
+            })),
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to save category order");
+      }
+
+      console.log("Category order saved successfully");
+    } catch (error) {
+      console.error("Failed to save category order:", error);
+      alert("Failed to save new category order. Please try again.");
+    }
+  };
+
+  const saveAllSubcategoryOrder = async (
+    orderedSubcategories: Array<{
+      category: string;
+      subCategory: string;
+      items: BoqLine[];
+    }>,
+  ) => {
+    try {
+      // Group by category for the API call
+      const updates: Array<{
+        category: string;
+        subCategory: string;
+        order: number;
+        boqId: number;
+      }> = [];
+
+      // Create a map to track the order within each category
+      const categoryOrderMap: { [category: string]: number } = {};
+
+      orderedSubcategories.forEach((item) => {
+        if (!categoryOrderMap[item.category]) {
+          categoryOrderMap[item.category] = 0;
+        }
+
+        updates.push({
+          category: item.category,
+          subCategory: item.subCategory,
+          order: categoryOrderMap[item.category],
+          boqId: boqHeader.id,
+        });
+
+        categoryOrderMap[item.category]++;
+      });
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/reorderBoq`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "subcategory",
+            items: updates,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to save subcategory order");
+      }
+
+      console.log("Subcategory order saved successfully");
+    } catch (error) {
+      console.error("Failed to save subcategory order:", error);
+      alert("Failed to save new subcategory order. Please try again.");
+    }
+  };
+
+  const saveSubcategoryOrder = async (
+    category: string,
+    subcategories: string[],
+  ) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/reorderBoq`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "subcategory",
+            items: subcategories.map((subCategory, index) => ({
+              category,
+              subCategory,
+              order: index,
+              boqId: boqHeader.id,
+            })),
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to save subcategory order");
+      }
+
+      console.log("Subcategory order saved successfully");
+    } catch (error) {
+      console.error("Failed to save subcategory order:", error);
+      alert("Failed to save new subcategory order. Please try again.");
+    }
+  };
+
+  const saveItemOrder = async (items: BoqLine[]) => {
+    try {
+      console.log(
+        "Saving item order:",
+        items.map((item, idx) => ({ id: item.id, order: idx })),
+      );
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/reorderBoq`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "item",
+            items: items.map((item, index) => ({
+              id: item.id,
+              item_order: index,
+            })),
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to save item order");
+      }
+
+      console.log("Item order saved successfully");
+    } catch (error) {
+      console.error("Failed to save item order:", error);
+      alert("Failed to save new item order. Please try again.");
+    }
+  };
 
   // Check scroll position to show/hide arrows
   const checkScroll = () => {
@@ -73,24 +399,19 @@ export default function BoqLinesView({
     return () => window.removeEventListener("resize", checkScroll);
   }, [categories]);
 
-  // ✅ Calculate subtotal for a subcategory
+  // Calculate subtotal for a subcategory
   const calculateSubtotal = (items: BoqLine[]) => {
     return items.reduce((sum, item) => sum + (item.total_cost || 0), 0);
   };
 
-  // ✅ Parse attachments helper function
+  // Parse attachments helper function
   const parseAttachments = (attachments: any): string[] => {
     if (!attachments) return [];
-
-    // If it's already an array, return it
     if (Array.isArray(attachments)) return attachments;
 
-    // If it's a string, try to parse it
     if (typeof attachments === "string") {
       try {
-        // Remove any whitespace and check if it's empty
         if (attachments.trim() === "") return [];
-
         const parsed = JSON.parse(attachments);
         return Array.isArray(parsed) ? parsed : [];
       } catch (error) {
@@ -109,6 +430,337 @@ export default function BoqLinesView({
 
   const canManage =
     userInfo?.departmentID === 8 || userInfo?.departmentID === 16;
+
+  // Get all subcategories for ALL view (for drag and drop context)
+  const getAllSubcategoryKeys = () => {
+    const allKeys: string[] = [];
+    Object.entries(boqLines).forEach(([category, subCats]) => {
+      Object.keys(subCats).forEach((subCat) => {
+        allKeys.push(`${category}___${subCat}`); // Use unique ID
+      });
+    });
+    return allKeys;
+  };
+
+  // Subcategory Section Component
+  const SubcategorySection = ({
+    category,
+    subCategory,
+    items,
+    categoryIndex,
+    subCategoryIndex,
+    subtotal,
+    itemIds,
+    isDragEnabled,
+    canManage,
+    canSeePrice,
+    boqHeader,
+    locationIcon,
+    sensors,
+    activeCategory,
+    handleItemDragEnd,
+    parseAttachments,
+  }: any) => {
+    // Use combined ID for ALL view, regular ID for category view
+    const sortableId =
+      activeCategory === "ALL" ? `${category}___${subCategory}` : subCategory;
+
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({
+      id: sortableId,
+      disabled: !isDragEnabled,
+    });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.7 : 1,
+      marginBottom: isDragging ? "20px" : "0",
+    };
+
+    return (
+      <div ref={setNodeRef} style={style}>
+        <div className="subcategory-section">
+          <div className="subcategory-header">
+            <h2
+              style={{
+                textTransform: activeCategory === "ALL" ? "uppercase" : "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+              }}
+            >
+              {/* Show drag handle for canManage users when subcategory dragging is enabled */}
+              {canManage && isDragEnabled && (
+                <span
+                  {...attributes}
+                  {...listeners}
+                  style={{
+                    cursor: "grab",
+                    color: "#999",
+                    userSelect: "none",
+                    fontSize: "20px",
+                  }}
+                  title="Drag to reorder subcategory"
+                >
+                  ⋮⋮
+                </span>
+              )}
+              <span style={{ marginRight: "15px" }}>
+                {categoryIndex + 1}.{subCategoryIndex + 1}
+              </span>
+              {activeCategory === "ALL"
+                ? `${category} / ${subCategory}`
+                : subCategory}
+            </h2>
+
+            {canManage && (
+              <div className="right">
+                <RenameBoqSubCategoryButton
+                  item={items[0]}
+                  category={category}
+                  subCategory={subCategory}
+                />
+
+                <DeleteBoqSubCategoryButton
+                  item={items[0]}
+                  category={category}
+                  subCategory={subCategory}
+                />
+              </div>
+            )}
+          </div>
+
+          <br />
+          <br />
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event: DragEndEvent) =>
+              handleItemDragEnd(event, category, subCategory)
+            }
+          >
+            <table className="items-table two-toned">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th style={{ minWidth: "600px" }}>ITEM</th>
+                  <th>QUANTITY</th>
+
+                  {canSeePrice && (
+                    <>
+                      <th>RATE</th>
+                      <th>TOTAL PRICE</th>
+                    </>
+                  )}
+
+                  <th>ATTACHMENTS</th>
+                  {canManage && <th></th>}
+                </tr>
+              </thead>
+
+              <SortableContext
+                items={itemIds}
+                strategy={verticalListSortingStrategy}
+              >
+                <tbody>
+                  {items.map((item: BoqLine, itemIndex: number) => {
+                    const attachmentUrls = parseAttachments(item.attachments);
+
+                    return (
+                      <DraggableBoqItem
+                        key={item.id}
+                        id={String(item.id)}
+                        isDragEnabled={canManage}
+                        categoryIndex={categoryIndex}
+                        subCategoryIndex={subCategoryIndex}
+                        itemIndex={itemIndex}
+                      >
+                        <td>
+                          <strong>{item.item_name}</strong>
+
+                          {item.item_description && (
+                            <>
+                              <br />
+                              <br />
+                              <p>{item.item_description}</p>
+                              <br />
+                            </>
+                          )}
+
+                          {item.location && (
+                            <>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "10px",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <img src={locationIcon} />
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    marginTop: "4px",
+                                    color: "rgba(105, 105, 105, 1)",
+                                  }}
+                                >
+                                  {item.location}
+                                </span>
+                                <EditBoqItemLocationButton item={item} />
+                              </div>
+                              <br />
+                            </>
+                          )}
+
+                          {item.scope_of_work && (
+                            <>
+                              <div
+                                style={{
+                                  backgroundColor: "rgba(225, 225, 225, 1)",
+                                  borderRadius: "50px",
+                                  padding: "4px 10px",
+                                  width: "fit-content",
+                                }}
+                              >
+                                <strong>{item.scope_of_work}</strong>
+                              </div>
+                            </>
+                          )}
+                        </td>
+
+                        <td>
+                          {item.quantity} {item.unit}
+                        </td>
+
+                        {canSeePrice && (
+                          <>
+                            <td>{item.rate_per_quantity?.toLocaleString()}</td>
+                            <td>
+                              {boqHeader.currency}{" "}
+                              {item.total_cost?.toLocaleString()}
+                            </td>
+                          </>
+                        )}
+
+                        <td className="attachments">
+                          <div className="attachments-grid">
+                            {attachmentUrls.map((url: string, i: number) => (
+                              <img key={i} src={url} alt="attachment" />
+                            ))}
+                          </div>
+                        </td>
+
+                        {canManage && (
+                          <td>
+                            <ThreeDotsMenuButton item={item} />
+                          </td>
+                        )}
+                      </DraggableBoqItem>
+                    );
+                  })}
+                </tbody>
+              </SortableContext>
+
+              {canSeePrice && (
+                <tfoot
+                  style={{
+                    borderTop: "1px solid rgba(232, 223, 223, 1)",
+                  }}
+                >
+                  <tr>
+                    <td></td>
+                    <td>
+                      <h3>SUBTOTAL FOR {subCategory}</h3>
+                    </td>
+                    <td colSpan={canSeePrice ? 2 : 1}></td>
+                    <td>
+                      <h3 style={{ textWrap: "nowrap" }}>
+                        {boqHeader.currency} {subtotal.toLocaleString()}
+                      </h3>
+                    </td>
+                    <td colSpan={canManage ? 2 : 1}></td>
+                  </tr>
+                </tfoot>
+              )}
+
+              {canManage && (
+                <tfoot
+                  style={{
+                    borderTop: "1px solid rgba(232, 223, 223, 1)",
+                  }}
+                >
+                  <tr>
+                    <td colSpan={7}>
+                      <AddBoqItemButton
+                        boqHeaderID={boqHeader.id}
+                        bgColor="rgba(239, 239, 239, 1)"
+                        borderColor="rgba(239, 239, 239, 1)"
+                        textColor="black"
+                        full
+                        autoCategory={category}
+                        autoSubCategory={subCategory}
+                        style={{ padding: "20px 0px" }}
+                      >
+                        ADD ITEM +
+                      </AddBoqItemButton>
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </DndContext>
+
+          <br />
+          <br />
+          <br />
+          <br />
+          <br />
+        </div>
+      </div>
+    );
+  };
+
+  // Render subcategory section
+  const renderSubcategorySection = (
+    category: string,
+    subCategory: string,
+    items: BoqLine[],
+    categoryIndex: number,
+    subCategoryIndex: number,
+  ) => {
+    const subtotal = calculateSubtotal(items);
+    const itemIds = items.map((item) => String(item.id));
+
+    return (
+      <SubcategorySection
+        key={`${category}-${subCategory}`}
+        category={category}
+        subCategory={subCategory}
+        items={items}
+        categoryIndex={categoryIndex}
+        subCategoryIndex={subCategoryIndex}
+        subtotal={subtotal}
+        itemIds={itemIds}
+        isDragEnabled={canManage}
+        canManage={canManage}
+        canSeePrice={canSeePrice}
+        boqHeader={boqHeader}
+        locationIcon={locationIcon}
+        sensors={sensors}
+        activeCategory={activeCategory}
+        handleItemDragEnd={handleItemDragEnd}
+        parseAttachments={parseAttachments}
+      />
+    );
+  };
 
   return (
     <>
@@ -141,9 +793,8 @@ export default function BoqLinesView({
       <br />
 
       <div className="category-grid">
-        {/* Category Tabs with Scroll */}
-        <div style={{ position: "relative", flex: 1, maxWidth: "775px" }}>
-          {/* Left Fade Gradient */}
+        {/* Category Tabs with Scroll and Drag & Drop */}
+        <div style={{ position: "relative", flex: 1, maxWidth: "925px" }}>
           {showLeftArrow && (
             <div
               style={{
@@ -160,7 +811,6 @@ export default function BoqLinesView({
             />
           )}
 
-          {/* Left Arrow Button */}
           {showLeftArrow && (
             <button
               onClick={() => scroll("left")}
@@ -200,61 +850,67 @@ export default function BoqLinesView({
                 display: none;
               }
             `}</style>
-            <div style={{ display: "flex", gap: "1px" }}>
-              <div
-                className={`item ${activeCategory === "ALL" ? "active" : ""}`}
-                onClick={() => setActiveCategory("ALL")}
-                style={{
-                  flexShrink: 0,
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                }}
+
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleCategoryDragEnd}
+              modifiers={[restrictToHorizontalAxis]}
+            >
+              <SortableContext
+                items={categories}
+                strategy={horizontalListSortingStrategy}
               >
-                ALL
-              </div>
-
-              {categories.map(function (category) {
-                return (
+                <div style={{ display: "flex", gap: "1px" }}>
                   <div
-                    key={category}
-                    className={`item ${
-                      activeCategory === category ? "active" : ""
-                    }`}
-                    onClick={function () {
-                      setActiveCategory(category);
+                    className={`item ${activeCategory === "ALL" ? "active" : ""}`}
+                    onClick={() => setActiveCategory("ALL")}
+                    style={{
+                      flexShrink: 0,
+                      textTransform: "uppercase",
+                      cursor: "pointer",
                     }}
-                    style={{ flexShrink: 0, cursor: "pointer" }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "10px",
-                      }}
-                    >
-                      {category}
-
-                      {activeCategory === category && (
-                        <div style={{ display: "flex", gap: "5px" }}>
-                          <EditBoqCategoryButton
-                            oldCategory={activeCategory}
-                            boqID={boqHeader.id}
-                            onSuccess={() => setActiveCategory("ALL")}
-                          />
-                          <DeleteBoqCategoryButton
-                            category={activeCategory}
-                            boqID={boqHeader.id}
-                            onSuccess={() => setActiveCategory("ALL")}
-                          />
-                        </div>
-                      )}
-                    </div>
+                    ALL
                   </div>
-                );
-              })}
-            </div>
+
+                  {categories.map((category) => (
+                    <DraggableCategory
+                      key={category}
+                      id={category}
+                      isDragEnabled={canManage}
+                      isActive={activeCategory === category}
+                      onClick={() => setActiveCategory(category)}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "10px",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span>{category}</span>
+
+                        {activeCategory === category && (
+                          <div style={{ display: "flex", gap: "5px" }}>
+                            <EditBoqCategoryButton
+                              oldCategory={activeCategory}
+                              boqID={boqHeader.id}
+                            />
+                            <DeleteBoqCategoryButton
+                              category={activeCategory}
+                              boqID={boqHeader.id}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </DraggableCategory>
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           </div>
 
-          {/* Right Fade Gradient */}
           {showRightArrow && (
             <div
               style={{
@@ -271,7 +927,6 @@ export default function BoqLinesView({
             />
           )}
 
-          {/* Right Arrow Button */}
           {showRightArrow && (
             <button
               onClick={() => scroll("right")}
@@ -299,487 +954,88 @@ export default function BoqLinesView({
         </div>
 
         <div style={{ display: "flex", gap: "10px" }}>
-          {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
-            <>
-              <AddBoqItemButton
-                boqHeaderID={boqHeader.id}
-                bgColor="black"
-                borderColor="black"
-                textColor="white"
-              >
-                ADD CATEGORY & ITEM +
-              </AddBoqItemButton>
-            </>
+          {canManage && (
+            <AddBoqItemButton
+              boqHeaderID={boqHeader.id}
+              bgColor="black"
+              borderColor="black"
+              textColor="white"
+            >
+              ADD CATEGORY & ITEM +
+            </AddBoqItemButton>
           )}
 
           <DownloadBoqButton boqHeader={boqHeader} boqLines={boqLines} />
-
-          {/*           <EditBoqHeaderButton boqHeader={boqHeader} /> */}
         </div>
       </div>
 
       <br />
       <br />
 
-      {activeCategory === "ALL"
-        ? Object.entries(boqLines).map(
-            ([category, subCategoriesData], categoryIndex) =>
-              Object.entries(subCategoriesData).map(function (
-                [subCategory, items],
-                subCategoryIndex,
-              ) {
-                // ✅ Calculate subtotal
-                const subtotal = calculateSubtotal(items);
-
-                return (
-                  <div
-                    key={`${category}-${subCategory}`}
-                    className="subcategory-section"
-                  >
-                    <div className="subcategory-header">
-                      <h2 style={{ textTransform: "uppercase" }}>
-                        <span style={{ marginRight: "25px" }}>
-                          {categoryIndex + 1}.{subCategoryIndex + 1}
-                        </span>
-                        {category} / {subCategory}
-                      </h2>
-
-                      {(userInfo?.departmentID === 8 ||
-                        userInfo?.departmentID === 16) && (
-                        <div className="right">
-                          <RenameBoqSubCategoryButton
-                            item={items[0]}
-                            category={category}
-                            subCategory={subCategory}
-                          />
-
-                          <DeleteBoqSubCategoryButton
-                            item={items[0]}
-                            category={category}
-                            subCategory={subCategory}
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <br />
-                    <br />
-
-                    <table className="items-table two-toned">
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th style={{ minWidth: "600px" }}>ITEM</th>
-                          <th>QUANTITY</th>
-
-                          {canSeePrice && (
-                            <>
-                              <th>RATE</th>
-                              <th>TOTAL PRICE</th>
-                            </>
-                          )}
-
-                          <th>ATTACHMENTS</th>
-                          {canManage && <th></th>}
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {items.map((item, itemIndex) => {
-                          // ✅ Parse attachments for each item
-                          const attachmentUrls = parseAttachments(
-                            item.attachments,
-                          );
-
-                          return (
-                            <tr key={item.id}>
-                              <td>
-                                {categoryIndex + 1}.{subCategoryIndex + 1}.
-                                {itemIndex + 1}
-                              </td>
-
-                              <td>
-                                <strong>{item.item_name}</strong>
-
-                                {item.item_description && (
-                                  <>
-                                    <br />
-                                    <br />
-
-                                    <p>{item.item_description}</p>
-
-                                    <br />
-                                  </>
-                                )}
-
-                                {item.location && (
-                                  <>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        gap: "10px",
-                                        alignItems: "center",
-                                      }}
-                                    >
-                                      <img src={locationIcon} />
-                                      <span
-                                        style={{
-                                          fontWeight: 600,
-                                          marginTop: "4px",
-                                          color: "rgba(105, 105, 105, 1)",
-                                        }}
-                                      >
-                                        {item.location}
-                                      </span>
-                                      <EditBoqItemLocationButton item={item} />
-                                    </div>
-
-                                    <br />
-                                  </>
-                                )}
-
-                                {item.scope_of_work && (
-                                  <>
-                                    <div
-                                      style={{
-                                        backgroundColor:
-                                          "rgba(225, 225, 225, 1)",
-                                        borderRadius: "50px",
-                                        padding: "4px 10px",
-                                        width: "fit-content",
-                                      }}
-                                    >
-                                      <strong>{item.scope_of_work}</strong>
-                                    </div>
-                                  </>
-                                )}
-                              </td>
-
-                              <td>
-                                {item.quantity} {item.unit}
-                              </td>
-
-                              {canSeePrice && (
-                                <>
-                                  <td>
-                                    {item.rate_per_quantity?.toLocaleString()}
-                                  </td>
-                                  <td>
-                                    {boqHeader.currency}{" "}
-                                    {item.total_cost?.toLocaleString()}
-                                  </td>
-                                </>
-                              )}
-
-                              <td className="attachments">
-                                <div className="attachments-grid">
-                                  {attachmentUrls.map((url, i) => (
-                                    <img key={i} src={url} alt="attachment" />
-                                  ))}
-                                </div>
-                              </td>
-
-                              {canManage && (
-                                <td>
-                                  <ThreeDotsMenuButton item={item} />
-                                </td>
-                              )}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-
-                      {/* ✅ SUBTOTAL ROW — PERFECTLY ALIGNED */}
-                      {canSeePrice && (
-                        <tfoot
-                          style={{
-                            borderTop: "1px solid rgba(232, 223, 223, 1)",
-                          }}
-                        >
-                          <tr>
-                            <td></td>
-                            <td>
-                              <h3>SUBTOTAL FOR {subCategory}</h3>
-                            </td>
-                            <td colSpan={canSeePrice ? 2 : 1}></td>
-                            <td>
-                              <h3 style={{ textWrap: "nowrap" }}>
-                                {boqHeader.currency} {subtotal.toLocaleString()}
-                              </h3>
-                            </td>
-                            <td colSpan={canManage ? 2 : 1}></td>
-                          </tr>
-                        </tfoot>
-                      )}
-
-                      {(userInfo?.departmentID === 8 ||
-                        userInfo?.departmentID === 16) && (
-                        <tfoot
-                          style={{
-                            borderTop: "1px solid rgba(232, 223, 223, 1)",
-                          }}
-                        >
-                          <tr>
-                            <td colSpan={7}>
-                              <AddBoqItemButton
-                                boqHeaderID={boqHeader.id}
-                                bgColor="rgba(239, 239, 239, 1)"
-                                borderColor="rgba(239, 239, 239, 1)"
-                                textColor="black"
-                                full
-                                autoCategory={category}
-                                autoSubCategory={subCategory}
-                                style={{ padding: "20px 0px" }}
-                              >
-                                ADD ITEM +
-                              </AddBoqItemButton>
-                            </td>
-                          </tr>
-                        </tfoot>
-                      )}
-                    </table>
-
-                    <br />
-                    <br />
-                    <br />
-                    <br />
-                    <br />
-                  </div>
-                );
-              }),
-          )
-        : Object.entries(subCategories).map(function (
-            [subCategory, items],
-            index,
-          ) {
-            // ✅ Calculate subtotal
-            const subtotal = calculateSubtotal(items);
-
-            return (
-              <div key={subCategory} className="subcategory-section">
-                <div className="subcategory-header">
-                  <h2>
-                    <span style={{ marginRight: "25px" }}>
-                      {categories.indexOf(activeCategory) + 1}.{index + 1}{" "}
-                    </span>
-                    {subCategory}
-                  </h2>
-
-                  {(userInfo?.departmentID === 8 ||
-                    userInfo?.departmentID === 16) && (
-                    <div className="right">
-                      <RenameBoqSubCategoryButton
-                        item={items[0]}
-                        category={activeCategory}
-                        subCategory={subCategory}
-                      />
-
-                      <DeleteBoqSubCategoryButton
-                        item={items[0]}
-                        category={activeCategory}
-                        subCategory={subCategory}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <br />
-                <br />
-
-                <table className="items-table two-toned">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th style={{ minWidth: "600px" }}>ITEM</th>
-                      <th>QUANTITY</th>
-
-                      {canSeePrice && (
-                        <>
-                          <th>RATE</th>
-                          <th>TOTAL PRICE</th>
-                        </>
-                      )}
-
-                      <th>ATTACHMENTS</th>
-                      {canManage && <th></th>}
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {items.map((item, itemIndex) => {
-                      // ✅ Parse attachments for each item
-                      const attachmentUrls = parseAttachments(item.attachments);
-
-                      return (
-                        <tr key={item.id}>
-                          <td>
-                            {categories.indexOf(activeCategory) + 1}.{index + 1}
-                            .{itemIndex + 1}
-                          </td>
-
-                          <td>
-                            <strong>{item.item_name}</strong>
-
-                            {item.item_description && (
-                              <>
-                                <br />
-                                <br />
-
-                                <p>{item.item_description}</p>
-
-                                <br />
-                              </>
-                            )}
-
-                            {item.location && (
-                              <>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    gap: "10px",
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  <img src={locationIcon} />
-                                  <span
-                                    style={{
-                                      fontWeight: 600,
-                                      marginTop: "4px",
-                                      color: "rgba(105, 105, 105, 1)",
-                                    }}
-                                  >
-                                    {item.location}
-                                  </span>
-                                  <EditBoqItemLocationButton item={item} />
-                                </div>
-
-                                <br />
-                              </>
-                            )}
-
-                            {item.scope_of_work && (
-                              <>
-                                <div
-                                  style={{
-                                    backgroundColor: "rgba(225, 225, 225, 1)",
-                                    borderRadius: "50px",
-                                    padding: "4px 10px",
-                                    width: "fit-content",
-                                  }}
-                                >
-                                  <strong>{item.scope_of_work}</strong>
-                                </div>
-                              </>
-                            )}
-                          </td>
-
-                          <td>
-                            {item.quantity} {item.unit}
-                          </td>
-
-                          {canSeePrice && (
-                            <>
-                              <td>
-                                {item.rate_per_quantity?.toLocaleString()}
-                              </td>
-                              <td>
-                                {boqHeader.currency}{" "}
-                                {item.total_cost?.toLocaleString()}
-                              </td>
-                            </>
-                          )}
-
-                          <td className="attachments">
-                            <div className="attachments-grid">
-                              {attachmentUrls.map((url, i) => (
-                                <img key={i} src={url} alt="attachment" />
-                              ))}
-                            </div>
-                          </td>
-
-                          {canManage && (
-                            <td>
-                              <ThreeDotsMenuButton item={item} />
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-
-                  {/* ✅ SUBTOTAL ROW — PERFECTLY ALIGNED */}
-                  {canSeePrice && (
-                    <tfoot
-                      style={{
-                        borderTop: "1px solid rgba(232, 223, 223, 1)",
-                      }}
-                    >
-                      <tr>
-                        <td></td>
-                        <td>
-                          <h3>SUBTOTAL FOR {subCategory}</h3>
-                        </td>
-                        <td colSpan={canSeePrice ? 2 : 1}></td>
-                        <td>
-                          <h3 style={{ textWrap: "nowrap" }}>
-                            {boqHeader.currency} {subtotal.toLocaleString()}
-                          </h3>
-                        </td>
-                        <td colSpan={canManage ? 2 : 1}></td>
-                      </tr>
-                    </tfoot>
-                  )}
-
-                  {(userInfo?.departmentID === 8 ||
-                    userInfo?.departmentID === 16) && (
-                    <tfoot
-                      style={{
-                        borderTop: "1px solid rgba(232, 223, 223, 1)",
-                      }}
-                    >
-                      <tr>
-                        <td colSpan={7}>
-                          <AddBoqItemButton
-                            boqHeaderID={boqHeader.id}
-                            bgColor="rgba(239, 239, 239, 1)"
-                            borderColor="rgba(239, 239, 239, 1)"
-                            textColor="black"
-                            full
-                            autoCategory={activeCategory}
-                            autoSubCategory={subCategory}
-                            style={{ padding: "20px 0px" }}
-                          >
-                            ADD ITEM +
-                          </AddBoqItemButton>
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-
-                <br />
-                <br />
-                <br />
-                <br />
-                <br />
-              </div>
-            );
-          })}
-
-      {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) &&
-        activeCategory !== "ALL" && (
-          <AddBoqItemButton
-            boqHeaderID={boqHeader.id}
-            bgColor="rgba(239, 239, 239, 1)"
-            borderColor="transparent"
-            textColor="black"
-            full
-            autoCategory={activeCategory}
-            style={{ padding: "40px 0px", backgroundColor: "white" }}
+      {/* Render sections based on active category */}
+      {activeCategory === "ALL" ? (
+        // Show all categories and subcategories WITH SINGLE drag context
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleAllSubcategoryDragEnd}
+        >
+          <SortableContext
+            items={getAllSubcategoryKeys()}
+            strategy={verticalListSortingStrategy}
           >
-            ADD SUBCATEGORY & ITEM +
-          </AddBoqItemButton>
-        )}
+            {Object.entries(boqLines).map(
+              ([category, subCategoriesData], categoryIndex) =>
+                Object.entries(subCategoriesData).map(
+                  ([subCategory, items], subCategoryIndex) =>
+                    renderSubcategorySection(
+                      category,
+                      subCategory,
+                      items,
+                      categoryIndex,
+                      subCategoryIndex,
+                    ),
+                ),
+            )}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        // Show only subcategories for selected category (with subcategory drag and drop)
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event) => handleSubcategoryDragEnd(event, activeCategory)}
+        >
+          <SortableContext
+            items={Object.keys(subCategories)}
+            strategy={verticalListSortingStrategy}
+          >
+            {Object.entries(subCategories).map(([subCategory, items], index) =>
+              renderSubcategorySection(
+                activeCategory,
+                subCategory,
+                items,
+                categories.indexOf(activeCategory),
+                index,
+              ),
+            )}
+          </SortableContext>
+        </DndContext>
+      )}
+
+      {canManage && activeCategory !== "ALL" && (
+        <AddBoqItemButton
+          boqHeaderID={boqHeader.id}
+          bgColor="rgba(239, 239, 239, 1)"
+          borderColor="transparent"
+          textColor="black"
+          full
+          autoCategory={activeCategory}
+          style={{ padding: "40px 0px", backgroundColor: "white" }}
+        >
+          ADD SUBCATEGORY & ITEM +
+        </AddBoqItemButton>
+      )}
     </>
   );
 }
