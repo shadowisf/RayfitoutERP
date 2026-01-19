@@ -48,7 +48,7 @@ export default function BoqReferencePopUp({
         body: JSON.stringify({
           mr_header_id: mrHeader.id,
         }),
-      }
+      },
     )
       .then((res) => {
         if (!res.ok) {
@@ -80,7 +80,7 @@ export default function BoqReferencePopUp({
         body: JSON.stringify({
           boq_line_id: item.boq_line_id,
         }),
-      }
+      },
     )
       .then((res) => {
         if (!res.ok) {
@@ -106,7 +106,7 @@ export default function BoqReferencePopUp({
         body: JSON.stringify({
           boq_line_id: item.boq_line_id,
         }),
-      }
+      },
     )
       .then((res) => {
         if (!res.ok) {
@@ -184,21 +184,20 @@ export default function BoqReferencePopUp({
               <tr key={item.id}>
                 <td>{item.boq_item_number}</td>
                 <td>
-                  <strong>{item.boq_item_name}</strong>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
+                  >
+                    <strong>{item.boq_item_name}</strong>
 
-                  {item.boq_item_description && (
-                    <>
-                      <br />
-                      <br />
-
+                    {item.boq_item_description && (
                       <p>{item.boq_item_description}</p>
+                    )}
 
-                      <br />
-                    </>
-                  )}
-
-                  {item.boq_location && (
-                    <>
+                    {item.boq_location && (
                       <div
                         style={{
                           display: "flex",
@@ -217,13 +216,9 @@ export default function BoqReferencePopUp({
                           {item.boq_location}
                         </span>
                       </div>
+                    )}
 
-                      <br />
-                    </>
-                  )}
-
-                  {item.boq_scope_of_work && (
-                    <>
+                    {item.boq_scope_of_work && (
                       <div
                         style={{
                           backgroundColor: "rgba(225, 225, 225, 1)",
@@ -234,8 +229,8 @@ export default function BoqReferencePopUp({
                       >
                         <strong>{item.boq_scope_of_work}</strong>
                       </div>
-                    </>
-                  )}
+                    )}
+                  </div>
                 </td>
 
                 {/* <td>
@@ -272,7 +267,7 @@ export default function BoqReferencePopUp({
                         if (Array.isArray(item.boq_attachments)) {
                           return item.boq_attachments.map(function (
                             url: string,
-                            i: number
+                            i: number,
                           ) {
                             return (
                               <a
@@ -301,7 +296,7 @@ export default function BoqReferencePopUp({
 
                         return attachments.map(function (
                           url: string,
-                          i: number
+                          i: number,
                         ) {
                           return (
                             <a
@@ -318,7 +313,7 @@ export default function BoqReferencePopUp({
                         console.error(
                           "Failed to parse attachments:",
                           error,
-                          item.boq_attachments
+                          item.boq_attachments,
                         );
                         return null;
                       }
@@ -375,7 +370,7 @@ export default function BoqReferencePopUp({
                         <td>{history.spent_amount.toLocaleString()} AED</td>
                         <td>
                           {new Date(history.lpo_date).toLocaleDateString(
-                            "en-US"
+                            "en-US",
                           )}
                         </td>
                       </tr>

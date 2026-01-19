@@ -15,7 +15,8 @@ export default async function BOQ({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: id }),
-    }
+      cache: "no-store",
+    },
   )
     .then((res) => res.json())
     .then((data) => {
@@ -31,7 +32,8 @@ export default async function BOQ({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ boq_id: id }),
-    }
+      cache: "no-store",
+    },
   )
     .then((res) => res.json())
     .then((data) => {

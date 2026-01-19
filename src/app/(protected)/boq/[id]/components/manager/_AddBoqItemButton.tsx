@@ -51,7 +51,6 @@ export default function AddBoqItemButton({
   const [itemDescription, setItemDescription] = useState("");
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
-  // EditBoqItemLocationButton.tsx
   useEffect(() => {
     if (!isOpen) return; // Don't fetch unless modal is open
 
@@ -161,8 +160,6 @@ export default function AddBoqItemButton({
       });
 
       if (res.ok) {
-        router.refresh();
-
         toast("Bill of quantity item created", "success");
 
         setItemName("");
@@ -178,6 +175,10 @@ export default function AddBoqItemButton({
         setAttachmentFiles([]);
 
         setIsOpen(false);
+
+        setTimeout(() => {
+          router.refresh();
+        }, 1000);
       } else {
         toast(
           "Failed to create bill of quantity item. Something went wrong",

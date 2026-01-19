@@ -62,6 +62,10 @@ export default function BoqLinesView({
   const [showRightArrow, setShowRightArrow] = useState(false);
   const [boqLines, setBoqLines] = useState<GroupedBoqLines>(initialBoqLines);
 
+  useEffect(() => {
+    setBoqLines(initialBoqLines);
+  }, [initialBoqLines]);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const categories = Object.keys(boqLines);
@@ -247,63 +251,6 @@ export default function BoqLinesView({
     } catch (error) {
       console.error("Failed to save category order:", error);
       alert("Failed to save new category order. Please try again.");
-    }
-  };
-
-  const saveAllSubcategoryOrder = async (
-    orderedSubcategories: Array<{
-      category: string;
-      subCategory: string;
-      items: BoqLine[];
-    }>,
-  ) => {
-    try {
-      // Group by category for the API call
-      const updates: Array<{
-        category: string;
-        subCategory: string;
-        order: number;
-        boqId: number;
-      }> = [];
-
-      // Create a map to track the order within each category
-      const categoryOrderMap: { [category: string]: number } = {};
-
-      orderedSubcategories.forEach((item) => {
-        if (!categoryOrderMap[item.category]) {
-          categoryOrderMap[item.category] = 0;
-        }
-
-        updates.push({
-          category: item.category,
-          subCategory: item.subCategory,
-          order: categoryOrderMap[item.category],
-          boqId: boqHeader.id,
-        });
-
-        categoryOrderMap[item.category]++;
-      });
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/reorderBoq`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "subcategory",
-            items: updates,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to save subcategory order");
-      }
-
-      console.log("Subcategory order saved successfully");
-    } catch (error) {
-      console.error("Failed to save subcategory order:", error);
-      alert("Failed to save new subcategory order. Please try again.");
     }
   };
 
@@ -584,19 +531,20 @@ export default function BoqLinesView({
                         itemIndex={itemIndex}
                       >
                         <td>
-                          <strong>{item.item_name}</strong>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "10px",
+                            }}
+                          >
+                            <strong>{item.item_name}</strong>
 
-                          {item.item_description && (
-                            <>
-                              <br />
-                              <br />
+                            {item.item_description && (
                               <p>{item.item_description}</p>
-                              <br />
-                            </>
-                          )}
+                            )}
 
-                          {item.location && (
-                            <>
+                            {item.location && (
                               <div
                                 style={{
                                   display: "flex",
@@ -616,12 +564,9 @@ export default function BoqLinesView({
                                 </span>
                                 <EditBoqItemLocationButton item={item} />
                               </div>
-                              <br />
-                            </>
-                          )}
+                            )}
 
-                          {item.scope_of_work && (
-                            <>
+                            {item.scope_of_work && (
                               <div
                                 style={{
                                   backgroundColor: "rgba(225, 225, 225, 1)",
@@ -632,8 +577,8 @@ export default function BoqLinesView({
                               >
                                 <strong>{item.scope_of_work}</strong>
                               </div>
-                            </>
-                          )}
+                            )}
+                          </div>
                         </td>
 
                         <td>
