@@ -12,6 +12,7 @@ import ThreeDotsMenuButton from "./_ThreeDotsMenuButton";
 import EditBoqItemLocationButton from "./manager/_EditBoqItemLocationButton";
 import EditBoqCategoryButton from "./manager/_EditBoqCategoryButton";
 import DeleteBoqCategoryButton from "./manager/_DeleteBoqCategoryButton";
+import { DeleteBoqHeaderButton } from "@/app/(protected)/boq/[id]/components/manager/_DeleteBoqHeaderButton";
 import EditBoqHeaderButton from "./manager/_EditBoqHeaderButton";
 
 type GroupedBoqLines = {
@@ -111,6 +112,34 @@ export default function BoqLinesView({
 
   return (
     <>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h2>
+          <a href="/project">PROJECTS</a> &gt;{" "}
+          <a href={`/project/${boqHeader?.project_id}`}>
+            {boqHeader?.project_name.toUpperCase()}
+          </a>{" "}
+          &gt; BOQ-
+          {String(boqHeader?.id).padStart(5, "0")}
+        </h2>
+        <div style={{ display: "flex", gap: "5px" }}>
+          {userInfo?.departmentID === 8 && (
+            <>
+              <EditBoqHeaderButton boqHeader={boqHeader} />
+              <DeleteBoqHeaderButton boqHeader={boqHeader} />
+            </>
+          )}
+        </div>
+      </div>
+
+      <br />
+      <br />
+
       <div className="category-grid">
         {/* Category Tabs with Scroll */}
         <div style={{ position: "relative", flex: 1, maxWidth: "775px" }}>
@@ -285,7 +314,7 @@ export default function BoqLinesView({
 
           <DownloadBoqButton boqHeader={boqHeader} boqLines={boqLines} />
 
-          <EditBoqHeaderButton boqHeader={boqHeader} />
+          {/*           <EditBoqHeaderButton boqHeader={boqHeader} /> */}
         </div>
       </div>
 
@@ -297,7 +326,7 @@ export default function BoqLinesView({
             ([category, subCategoriesData], categoryIndex) =>
               Object.entries(subCategoriesData).map(function (
                 [subCategory, items],
-                subCategoryIndex
+                subCategoryIndex,
               ) {
                 // ✅ Calculate subtotal
                 const subtotal = calculateSubtotal(items);
@@ -359,7 +388,7 @@ export default function BoqLinesView({
                         {items.map((item, itemIndex) => {
                           // ✅ Parse attachments for each item
                           const attachmentUrls = parseAttachments(
-                            item.attachments
+                            item.attachments,
                           );
 
                           return (
@@ -517,11 +546,11 @@ export default function BoqLinesView({
                     <br />
                   </div>
                 );
-              })
+              }),
           )
         : Object.entries(subCategories).map(function (
             [subCategory, items],
-            index
+            index,
           ) {
             // ✅ Calculate subtotal
             const subtotal = calculateSubtotal(items);

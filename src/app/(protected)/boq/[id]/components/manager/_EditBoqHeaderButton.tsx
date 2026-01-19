@@ -2,36 +2,44 @@ import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { useState } from "react";
-import { BoqHeader } from "../../types/boqHeader";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { BoqHeader } from "../../types/boqHeader";
 
 type props = {
-  boqHeader: BoqHeader;
+  boqHeader: BoqHeader | null;
+  onSuccess?: () => void;
 };
 
-export default function EditBoqHeaderButton({ boqHeader }: props) {
+export default function EditBoqHeaderButton({ boqHeader, onSuccess }: props) {
   const router = useRouter();
 
   const pencilIcon = "/icons/pencil.svg";
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const [companyName, setCompanyName] = useState(boqHeader.company_name || "");
-  const [clientName, setClientName] = useState(boqHeader.client_name || "");
-  const [boqRefNumber, setBoqRefNumber] = useState<number | string>(
-    String(boqHeader.project_id).padStart(5, "0") || ""
-  );
-  const [location, setLocation] = useState(boqHeader.location || "");
-  const [date, setDate] = useState(boqHeader.boq_date || "");
+  // Helper function to format date for input field
+  const formatDateForInput = (dateString: string | null | undefined) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const [companyName, setCompanyName] = useState(boqHeader?.company_name || "");
+  const [clientName, setClientName] = useState(boqHeader?.client_name || "");
+  const [location, setLocation] = useState(boqHeader?.location || "");
+  const [date, setDate] = useState(formatDateForInput(boqHeader?.boq_date));
   const [paymentTerms, setPaymentTerms] = useState(
-    boqHeader.payment_terms || ""
+    boqHeader?.payment_terms || ""
   );
   const [validityTerms, setValidityTerms] = useState(
-    boqHeader.validity_terms || ""
+    boqHeader?.validity_terms || ""
   );
   const [termsAndConditions, setTermsAndConditions] = useState(
-    boqHeader.terms_and_conditions || ""
+    boqHeader?.terms_and_conditions || ""
   );
 
   async function handleSubmit(e: React.FormEvent) {
@@ -42,8 +50,8 @@ export default function EditBoqHeaderButton({ boqHeader }: props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "updateBoqHeader",
-        id: boqHeader.id,
-        project_id: boqRefNumber,
+        id: boqHeader?.id,
+        project_id: boqHeader?.project_id,
         company_name: companyName,
         client_name: clientName,
         location,
@@ -60,6 +68,8 @@ export default function EditBoqHeaderButton({ boqHeader }: props) {
       toast("Bill of quantity updated", "success");
 
       router.refresh();
+
+      onSuccess && onSuccess();
     } else {
       toast("Failed to update bill of quantity. Something went wrong", "error");
     }
@@ -69,12 +79,12 @@ export default function EditBoqHeaderButton({ boqHeader }: props) {
     <>
       <Button
         componentType={"button"}
-        bgColor={"transparent"}
-        borderColor={"black"}
+        bgColor={"rgba(239, 239, 239, 1)"}
+        borderColor={"rgba(223, 223, 223, 1)"}
         textColor={"black"}
         onClick={() => setIsOpen(true)}
+        style={{ padding: "7px 7px" }}
       >
-        EDIT BOQ
         <img src={pencilIcon} alt="pencil" />
       </Button>
 
@@ -91,31 +101,9 @@ export default function EditBoqHeaderButton({ boqHeader }: props) {
               value={companyName}
               type={"text"}
               onChange={(e) => setCompanyName(e.target.value)}
+              disabled
+              required
             />
-            <div className="input-item">
-              <label>ID</label>
-              <div className="input-prefix left">
-                <span>BOQ-</span>
-                <input
-                  style={{ paddingLeft: "47px" }}
-                  type="text"
-                  value={boqRefNumber}
-                  onChange={(e) => {
-                    const val = e.target.value;
-
-                    if (val === "" || (/^\d+$/.test(val) && val.length <= 3)) {
-                      setBoqRefNumber(val === "" ? "" : Number(val));
-                    }
-                  }}
-                  placeholder="000"
-                  required
-                  disabled
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="input-row three-col">
             <InputItem
               label={"CLIENT NAME"}
               value={clientName}
@@ -126,7 +114,9 @@ export default function EditBoqHeaderButton({ boqHeader }: props) {
                 setClientName(e.target.value);
               }}
             />
+          </div>
 
+          <div className="input-row half">
             <InputItem
               label={"LOCATION"}
               value={location}

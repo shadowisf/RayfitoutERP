@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
 
   // Summary Section Title
   summaryTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontFamily: "Mont-SemiBold",
     marginBottom: 10,
     marginTop: 10,
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
 
   // Detail Page Styles - Subcategory Title
   subCategoryTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontFamily: "Mont-SemiBold",
     marginBottom: 10,
     marginTop: 30,

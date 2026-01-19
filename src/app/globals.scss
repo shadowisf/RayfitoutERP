@@ -838,11 +838,11 @@ label {
 .subcategory-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 25px;
 
   .right {
     display: flex;
-    gap: 15px;
+    gap: 5px;
   }
 }
 

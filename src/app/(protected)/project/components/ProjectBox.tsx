@@ -3,19 +3,20 @@
 import { useState, useEffect } from "react";
 import Button from "../../../components/Button";
 import { useAuth } from "@/app/context/AuthContext";
+import CreateBoqHeaderButton from "../[id]/components/_CreateBoqHeaderButton";
+import { Project } from "../[id]/types/project";
 
 type ProjectBoxProps = {
-  proj: any;
+  project: Project;
 };
 
-export default function ProjectBox({ proj }: ProjectBoxProps) {
-  const externalLinkIcon = "/icons/external-link.svg";
-
+export default function ProjectBox({ project }: ProjectBoxProps) {
   const { userInfo } = useAuth();
 
   const [quotedBudget, setQuotedBudget] = useState(0);
   const [allocatedBudget, setAllocatedBudget] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
+  const [boqs, setBoqs] = useState([]);
 
   useEffect(() => {
     fetch(
@@ -23,7 +24,7 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: proj.id }),
+        body: JSON.stringify({ project_id: project.id }),
       }
     )
       .then((res) => res.json())
@@ -32,7 +33,23 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
         setAllocatedBudget(Number(data.allocated_budget) || 0);
       })
       .catch((err) => console.error("Error fetching budget details:", err));
-  }, [proj.id]);
+
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getAllBoqsByProjectID`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: project.id }),
+      }
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        setBoqs(data.data);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }, [project.id]);
 
   // Calculate progress percentage (spent / budget)
   const progressPercentage =
@@ -53,12 +70,17 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
 
   const progressColor = getProgressColor();
 
+  // Check if progress should be shown
+  const shouldShowProgress =
+    project.type === "Signed" &&
+    (userInfo?.departmentID === 8 || userInfo?.departmentID === 16);
+
   return (
-    <div className="item" key={proj.id}>
+    <div className="item" key={project.id}>
       <span
         className="status"
         style={
-          proj.status === "Completed"
+          project.status === "Completed"
             ? {
                 backgroundColor: "rgba(134,241,181,1)",
                 color: "rgba(52,100,73,1)",
@@ -69,12 +91,12 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
               }
         }
       >
-        {proj.status}
+        {project.status}
       </span>
 
       <div>
         <small>NAME</small>
-        <h2>{proj.name}</h2>
+        <h2>{project.name}</h2>
 
         <br />
 
@@ -89,7 +111,7 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
 
         <br />
 
-        {(userInfo?.departmentID === 8 || userInfo?.departmentID === 10) && (
+        {shouldShowProgress && (
           <>
             <small>PROGRESS</small>
 
@@ -113,7 +135,6 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
                     backgroundColor: progressColor,
                     borderRadius: "25px",
                     position: "relative",
-                    transition: "background-color 0.3s ease, width 0.3s ease",
                   }}
                 >
                   {progressPercentage > 10 && (
@@ -208,7 +229,6 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
                       height: "12px",
                       backgroundColor: progressColor,
                       borderRadius: "50%",
-                      transition: "background-color 0.3s ease",
                     }}
                   />
                   <small style={{ color: "black" }}>SPENT</small>
@@ -236,32 +256,14 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
 
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: "5px" }}>
-          <Button
-            componentType={"link"}
-            bgColor={"transparent"}
-            borderColor={"rgba(223, 223, 223, 1)"}
-            textColor={"black"}
-            href={`boq/${proj.id}`}
-            style={{ borderRadius: "50px" }}
-          >
-            <>
-              {proj.hasBOQ ? "BOQ" : "Create BOQ"}
-              <img src={externalLinkIcon} alt="external link icon" />
-            </>
-          </Button>
-          <Button
-            componentType={"link"}
-            bgColor={"transparent"}
-            borderColor={"rgba(223, 223, 223, 1)"}
-            textColor={"black"}
-            href={`#`}
-            style={{ borderRadius: "50px" }}
-          >
-            <>
-              MRs
-              <img src={externalLinkIcon} alt="external link icon" />
-            </>
-          </Button>
+          {boqs.length === 0 && (
+            <CreateBoqHeaderButton
+              project={project}
+              bgColor="transparent"
+              textColor="black"
+              borderColor="rgba(223, 223, 223, 1)"
+            />
+          )}
         </div>
 
         <Button
@@ -269,7 +271,7 @@ export default function ProjectBox({ proj }: ProjectBoxProps) {
           bgColor={"black"}
           borderColor={"black"}
           textColor={"white"}
-          href={`project/${proj.id}`}
+          href={`project/${project.id}`}
           style={{
             width: "125px",
             display: "flex",

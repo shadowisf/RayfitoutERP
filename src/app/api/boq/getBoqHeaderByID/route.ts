@@ -5,10 +5,9 @@ export async function POST(req: NextRequest) {
   try {
     const { id } = await req.json();
 
-    const [rows] = await db.query(
-      "SELECT * FROM vw_boq_headers WHERE project_id = ?",
-      [id]
-    );
+    const [rows] = await db.query("SELECT * FROM vw_boq_headers WHERE id = ?", [
+      id,
+    ]);
 
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {

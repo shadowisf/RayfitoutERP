@@ -21,7 +21,6 @@ export default function MR() {
   }, [userInfo]);
 
   // Fetch durations for all MRs
-  // Fetch durations for all MRs
   useEffect(() => {
     if (mrHeaders.length === 0) return;
 
@@ -148,6 +147,86 @@ export default function MR() {
     23: "Failed QC",
     24: "Awaiting stock entry",
     25: "Completed",
+  };
+
+  // Map progress status to responsible department
+  const getResponsibleDepartment = (status: string) => {
+    const departmentMap: { [key: string]: { name: string; id: number } } = {
+      Draft: { name: "", id: 0 }, // Empty like completed
+      "Awaiting initial approval": { name: "Directors/Management", id: 8 },
+      "Initial approval rejected": { name: "Department", id: 0 }, // Will use MR's department
+      "Awaiting quotations": { name: "Procurement", id: 9 },
+      "Awaiting price approval": { name: "Manager", id: 8 },
+      "Price approval rejected": { name: "Procurement", id: 9 },
+      "Awaiting LPO & invoice": { name: "Procurement", id: 9 },
+      "Pending payment": { name: "Finance", id: 10 },
+      "Payment rejected": { name: "Finance", id: 10 },
+      "GRN failed": { name: "Procurement", id: 9 },
+      "Pending delivery": { name: "Storekeeper", id: 11 },
+      "Awaiting QC check": { name: "Quality Control", id: 12 },
+      "Failed QC": { name: "Quality Control", id: 12 },
+      "Awaiting stock entry": { name: "Storekeeper", id: 11 },
+      Completed: { name: "", id: 0 },
+    };
+
+    return departmentMap[status] || { name: "", id: 0 };
+  };
+
+  // Get department style based on department ID
+  const getDepartmentStyle = (departmentId: number) => {
+    const styles: {
+      [key: number]: { backgroundColor: string; color: string };
+    } = {
+      8: {
+        backgroundColor: "rgba(205, 222, 255, 1)",
+        color: "rgba(23, 92, 220, 1)",
+      },
+      9: {
+        backgroundColor: "rgba(254, 215, 170, 1)",
+        color: "rgba(185, 104, 10, 1)",
+      },
+      10: {
+        backgroundColor: "rgba(187, 247, 208, 1)",
+        color: "rgba(3, 130, 46, 1)",
+      },
+      11: {
+        backgroundColor: "rgba(143, 236, 255, 1)",
+        color: "rgba(21, 104, 120, 1)",
+      },
+      12: {
+        backgroundColor: "rgba(233, 213, 255, 1)",
+        color: "rgba(129, 68, 196, 1)",
+      },
+    };
+
+    // Default style for all other departments
+    return (
+      styles[departmentId] || {
+        backgroundColor: "rgba(186, 230, 253, 1)",
+        color: "rgba(0, 112, 170, 1)",
+      }
+    );
+  };
+
+  // Get dot color based on status and count
+  const getDotColor = (status: string, count: number) => {
+    // No MRs - gray
+    if (count === 0) {
+      return "rgba(207, 207, 207, 1)";
+    }
+
+    // Completed - green
+    if (status === "Completed") {
+      return "rgba(46, 188, 127, 1)";
+    }
+
+    // Rejected or failed statuses - red
+    if (isRejectedStatus(status)) {
+      return "rgba(248, 77, 77, 1)";
+    }
+
+    // All other statuses with items - yellow
+    return "rgba(235, 223, 90, 1)";
   };
 
   // Progress IDs that are accessible to everyone IF department matches
@@ -289,42 +368,6 @@ export default function MR() {
     return status === "Completed";
   };
 
-  // Add this function at the top of the component, before the return statement
-  const getDepartmentStyle = (departmentId: number) => {
-    const styles: {
-      [key: number]: { backgroundColor: string; color: string };
-    } = {
-      8: {
-        backgroundColor: "rgba(205, 222, 255, 1)",
-        color: "rgba(23, 92, 220, 1)",
-      },
-      9: {
-        backgroundColor: "rgba(254, 215, 170, 1)",
-        color: "rgba(185, 104, 10, 1)",
-      },
-      10: {
-        backgroundColor: "rgba(187, 247, 208, 1)",
-        color: "rgba(3, 130, 46, 1)",
-      },
-      11: {
-        backgroundColor: "rgba(143, 236, 255, 1)",
-        color: "rgba(21, 104, 120, 1)",
-      },
-      12: {
-        backgroundColor: "rgba(233, 213, 255, 1)",
-        color: "rgba(129, 68, 196, 1)",
-      },
-    };
-
-    // Default style for all other departments
-    return (
-      styles[departmentId] || {
-        backgroundColor: "rgba(186, 230, 253, 1)",
-        color: "rgba(0, 112, 170, 1)",
-      }
-    );
-  };
-
   const allStatuses = [
     "Draft",
     "Initial approval rejected",
@@ -452,6 +495,26 @@ export default function MR() {
           const isCompleted = isCompletedStatus(status);
           const hasItems = mrs.length > 0;
 
+          // Get responsible department for this status
+          const responsibleDept = getResponsibleDepartment(status);
+
+          // For "Initial approval rejected", use the first MR's department
+          let departmentToShow = responsibleDept.name;
+          let departmentIdToUse = responsibleDept.id;
+
+          if (
+            responsibleDept.id === 0 &&
+            mrs.length > 0 &&
+            status === "Initial approval rejected"
+          ) {
+            // Use the department from the first MR in this status
+            departmentToShow = mrs[0].department_name;
+            departmentIdToUse = mrs[0].department_id;
+          }
+
+          const headerDepartmentStyle = getDepartmentStyle(departmentIdToUse);
+          const dotColor = getDotColor(status, mrs.length);
+
           return (
             <div
               key={status}
@@ -460,42 +523,75 @@ export default function MR() {
                 flexShrink: 0,
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "20px",
-                  padding: "15px 20px",
-                  borderRadius: "50px",
-                  backgroundColor: isRejected
-                    ? "rgba(255, 216, 216, 1)"
-                    : isCompleted && hasItems
-                    ? "rgba(87, 244, 176, 1)"
-                    : hasItems
-                    ? "rgba(255, 251, 208, 1)"
-                    : "rgba(231, 231, 231, 1)",
-                  color: isRejected
-                    ? "rgba(248, 77, 77, 1)"
-                    : isCompleted && hasItems
-                    ? "rgba(31, 101, 71, 1)"
-                    : hasItems
-                    ? "rgba(134, 83, 47, 1)"
-                    : "rgba(100, 100, 100, 1)",
-                }}
-              >
-                <h3 style={{ margin: 0 }}>{status.toUpperCase()}</h3>
-                <span
+              <div>
+                <div
                   style={{
-                    padding: "7px 12px",
-                    borderRadius: "50px",
-                    fontSize: "12px",
-                    fontWeight: "600",
+                    minHeight: "90px",
+                    marginBottom: "20px",
+                    padding: "15px 15px",
+                    borderRadius: "15px",
                     backgroundColor: "white",
+                    border: "1px solid rgba(231, 231, 231, 1)",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
                   }}
                 >
-                  {mrs.length}
-                </span>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "12px",
+                          height: "12px",
+                          borderRadius: "50%",
+                          backgroundColor: dotColor,
+                          marginBottom: "3px",
+                        }}
+                      />
+                      <h3 style={{ margin: 0 }}>{status.toUpperCase()}</h3>
+                    </div>
+                    <h3>{mrs.length}</h3>
+                  </div>
+
+                  {/* Show responsible department if not completed or draft */}
+                  {departmentToShow && (
+                    <>
+                      <br />
+
+                      <div>
+                        <small
+                          className="approval-pill normal-text centered"
+                          style={{
+                            backgroundColor:
+                              headerDepartmentStyle.backgroundColor,
+                            color: headerDepartmentStyle.color,
+                            textTransform: "uppercase",
+                            padding: "7px 10px",
+                            borderRadius: "50px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <span style={{ scale: 2.5 }}>•</span>{" "}
+                          {departmentToShow}
+                        </small>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div
@@ -527,8 +623,6 @@ export default function MR() {
                     },
                   };
 
-                  const departmentStyle = getDepartmentStyle(mr.department_id);
-
                   return (
                     <div
                       key={mr.id}
@@ -539,71 +633,61 @@ export default function MR() {
                         borderRadius: "15px",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <small
-                          className="approval-pill normal-text centered"
-                          style={{
-                            backgroundColor: departmentStyle.backgroundColor, // ✅ Use dynamic background
-                            color: departmentStyle.color, // ✅ Use dynamic color
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          <span style={{ scale: 2.5 }}>•</span>{" "}
-                          {mr.department_name}
-                        </small>
-
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          {mr.progress_id !== 1 && mr.progress_id !== 25 && (
-                            <small
-                              className="status"
+                      {mr.progress_id !== 1 && mr.progress_id !== 25 && (
+                        <>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <div
                               style={{
-                                ...durationData.style,
                                 display: "flex",
                                 alignItems: "center",
-                                gap: "10px",
-                                borderRadius: "5px",
+                                justifyContent: "center",
                               }}
                             >
-                              <svg
-                                width="11"
-                                height="11"
-                                viewBox="0 0 11 11"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                style={{ color: durationData.style.color }}
+                              <small
+                                className="status"
+                                style={{
+                                  ...durationData.style,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "10px",
+                                  borderRadius: "5px",
+                                }}
                               >
-                                <path
-                                  d="M5.5 2.5V5.5H8.5"
-                                  stroke="currentColor"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                                <path
-                                  d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                                  stroke="currentColor"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                              {durationData.duration}
-                            </small>
-                          )}
-                        </div>
-                      </div>
+                                <svg
+                                  width="11"
+                                  height="11"
+                                  viewBox="0 0 11 11"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  style={{ color: durationData.style.color }}
+                                >
+                                  <path
+                                    d="M5.5 2.5V5.5H8.5"
+                                    stroke="currentColor"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                  <path
+                                    d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                    stroke="currentColor"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                                {durationData.duration}
+                              </small>
+                            </div>
+                          </div>
 
-                      <br />
+                          <br />
+                        </>
+                      )}
 
                       <div>
                         <small>MR NUMBER</small>
@@ -614,6 +698,11 @@ export default function MR() {
 
                       <small>REQUESTER</small>
                       <h3>{mr.requested_by || "-"}</h3>
+
+                      <br />
+
+                      <small>DEPARTMENT</small>
+                      <h3>{mr.department_name || "-"}</h3>
 
                       <br />
 

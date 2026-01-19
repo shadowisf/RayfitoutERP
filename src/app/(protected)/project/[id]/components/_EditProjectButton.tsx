@@ -7,42 +7,61 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
-import { useAuth } from "@/app/context/AuthContext";
+import { Project } from "../types/project";
 
-export function EditProjectButton({ project }: { project: any }) {
+type props = {
+  project: Project | null;
+  onSuccess?: () => void;
+};
+
+export function EditProjectButton({ project, onSuccess }: props) {
   const router = useRouter();
-
-  const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
 
   const [isOpen, setIsOpen] = useState(false);
+
   const [propertyTypes, setPropertyTypes] = useState<[]>([]);
   const [scopeTypes, setScopeTypes] = useState<[]>([]);
 
-  const [name, setName] = useState(project?.name ?? "");
-  const [propertyTypeID, setPropertyTypeID] = useState<number | string>(
-    project?.property_type_id ?? 0
-  );
-  const [id, setID] = useState<number | string>(project?.id ?? "");
-  const [size, setSize] = useState<number | string>(project?.size ?? "");
-  const [status, setStatus] = useState(project?.status ?? "");
-  const [scopeIDs, setScopeIDs] = useState<(string | number)[]>(
-    project?.scope_ids
-      ? project.scope_ids.split(",").map((id: any) => Number(id.trim()))
-      : []
-  );
-  const [typeOfWork, setTypeOfWork] = useState(project?.type_of_work ?? "");
-  const [quotedBudget, setQuotedBudget] = useState<number | string>(
-    project?.quoted_budget ?? ""
-  );
-  const [currency, setCurrency] = useState(project?.currency ?? "");
-  const [allocatedBudget, setAllocatedBudget] = useState<number | string>(
-    project?.allocated_budget ?? ""
-  );
-  const [startDate, setStartDate] = useState<string>(project?.start_date ?? "");
-  const [endDate, setEndDate] = useState<string>(project?.end_date ?? "");
-  const [type, setType] = useState(project?.type ?? "");
+  const [name, setName] = useState("");
+  const [propertyTypeID, setPropertyTypeID] = useState<number | string>(0);
+  const [id, setID] = useState<number | string>("");
+  const [size, setSize] = useState<number | string>("");
+  const [status, setStatus] = useState("");
+  const [scopeIDs, setScopeIDs] = useState<(string | number)[]>([]);
+  const [typeOfWork, setTypeOfWork] = useState("");
+  const [quotedBudget, setQuotedBudget] = useState<number | string>("");
+  const [currency, setCurrency] = useState("");
+  const [allocatedBudget, setAllocatedBudget] = useState<number | string>("");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [type, setType] = useState("");
+
+  // Add this useEffect to populate form when project data is available
+  useEffect(() => {
+    if (project) {
+      setName(project.name || "");
+      setPropertyTypeID(project.property_type_id || 0);
+      setID(project.id || "");
+      setSize(project.size || "");
+      setStatus(project.status || "");
+      setScopeIDs(
+        project.scope_ids
+          ? String(project.scope_ids)
+              .split(",")
+              .map((id: any) => Number(id.trim()))
+          : []
+      );
+      setTypeOfWork(project.type_of_work || "");
+      setQuotedBudget(project.quoted_budget || "");
+      setCurrency(project.currency || "");
+      setAllocatedBudget(project.allocated_budget || "");
+      setStartDate(project.start_date || "");
+      setEndDate(project.end_date || "");
+      setType(project.type || "");
+    }
+  }, [project]);
 
   useEffect(() => {
     fetch(
@@ -71,12 +90,13 @@ export function EditProjectButton({ project }: { project: any }) {
           id,
           name,
           property_type_id: propertyTypeID,
-          size,
+          size: Number(String(size).replace(/,/g, "")),
           status,
           scope_ids: scopeIDs,
           type_of_work: typeOfWork,
           quoted_budget: Number(String(quotedBudget).replace(/,/g, "")),
           currency,
+          type,
           allocated_budget: Number(String(allocatedBudget).replace(/,/g, "")),
           start_date: startDate,
           end_date: endDate,
@@ -89,13 +109,11 @@ export function EditProjectButton({ project }: { project: any }) {
 
       router.refresh();
 
+      onSuccess && onSuccess();
+
       setIsOpen(false);
     }
   };
-
-  if (userInfo?.departmentID !== 8) {
-    return null;
-  }
 
   return (
     <>

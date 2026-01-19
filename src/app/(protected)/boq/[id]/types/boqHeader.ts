@@ -8,6 +8,7 @@ export type BoqHeader = {
   payment_terms: string;
   validity_terms: string;
   terms_and_conditions: string;
+  created_on: string;
   project_name: string;
   project_size: string;
   type_of_work: string;

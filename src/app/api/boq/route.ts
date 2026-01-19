@@ -9,15 +9,14 @@ export async function POST(req: Request) {
     if (body.action === "createBoqHeader") {
       const query = `
       INSERT INTO boq_headers 
-      (project_id, company_name, client_name, id, location, date, payment_terms, validity_terms, terms_and_conditions)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (project_id, company_name, client_name, location, date, payment_terms, validity_terms, terms_and_conditions)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const values = [
         Number(body.project_id),
         body.company_name,
         body.client_name,
-        Number(body.id),
         body.location,
         body.date || null,
         body.payment_terms,
@@ -298,6 +297,12 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const body = await req.json();
+
+    if (body.action === "deleteBoqHeader") {
+      const query = "DELETE FROM boq_headers WHERE id = ?";
+      await db.query(query, [Number(body.id)]);
+      return NextResponse.json({ success: true });
+    }
 
     if (body.action === "deleteCategory") {
       const query = "DELETE FROM boq_lines WHERE category = ? AND boq_id = ?";

@@ -1,5 +1,4 @@
 import BoqLinesView from "./components/BoqLinesView";
-import CreateBoqHeaderClient from "./components/CreateBoqHeader";
 import CreateBoqLineClient from "./components/CreateBoqLine";
 import { BoqHeader } from "./types/boqHeader";
 
@@ -11,7 +10,7 @@ export default async function BOQ({
   const { id } = await params;
 
   const boqHeader: BoqHeader = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getBoqHeaderByProjectID`,
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getBoqHeaderByID`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -42,14 +41,10 @@ export default async function BOQ({
 
   return (
     <div>
-      {boqHeader ? (
-        boqLines && Object.keys(boqLines).length > 0 ? (
-          <BoqLinesView boqLines={boqLines} boqHeader={boqHeader} />
-        ) : (
-          <CreateBoqLineClient boqHeader={boqHeader} />
-        )
+      {boqLines && Object.keys(boqLines).length > 0 ? (
+        <BoqLinesView boqLines={boqLines} boqHeader={boqHeader} />
       ) : (
-        <CreateBoqHeaderClient projectID={id} />
+        <CreateBoqLineClient boqHeader={boqHeader} />
       )}
     </div>
   );

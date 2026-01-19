@@ -93,7 +93,7 @@ export default function NewProjectButton() {
 
       router.refresh();
 
-      router.push(`/boq/${data.id}`);
+      router.push(`/project/${data.id}`);
     } else {
       toast("Failed to create project. Something went wrong", "error");
     }

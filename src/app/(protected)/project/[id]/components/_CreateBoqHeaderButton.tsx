@@ -1,23 +1,36 @@
 "use client";
 
 import Button from "@/app/components/Button";
+import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Project } from "../types/project";
 
-export default function CreateBoqHeaderClient({
-  projectID,
-}: {
-  projectID: string;
-}) {
+type props = {
+  bgColor?: string;
+  borderColor?: string;
+  textColor?: string;
+  style?: React.CSSProperties;
+  project: Project | null;
+  onSuccess?: () => void;
+};
+
+export default function CreateBoqHeaderButton({
+  style = { borderRadius: "50px" },
+  bgColor = "black",
+  borderColor = "black",
+  textColor = "white",
+  project,
+  onSuccess,
+}: props) {
   const router = useRouter();
+
+  const [isOpen, setIsOpen] = useState(false);
 
   const [companyName, setCompanyName] = useState("RAYFITOUT CONTRACTING LLC");
   const [clientName, setClientName] = useState("");
-  const [boqRefNumber, setBoqRefNumber] = useState<number | string>(
-    projectID.padStart(5, "0")
-  );
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
@@ -39,10 +52,9 @@ vii. Contractor reserve the right to request for an extension of time for reason
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "createBoqHeader",
-        project_id: projectID,
+        project_id: project?.id,
         company_name: companyName,
         client_name: clientName,
-        id: boqRefNumber,
         location,
         date: date || null,
         payment_terms: paymentTerms,
@@ -52,7 +64,13 @@ vii. Contractor reserve the right to request for an extension of time for reason
     });
 
     if (res.ok) {
-      toast("Bill of quantity header created", "success");
+      router.refresh();
+
+      onSuccess && onSuccess();
+
+      setIsOpen(false);
+
+      toast("Bill of quantity created", "success");
 
       setCompanyName("RAYFITOUT CONTRACTING LLC");
       setClientName("");
@@ -61,21 +79,31 @@ vii. Contractor reserve the right to request for an extension of time for reason
       setPaymentTerms("");
       setValidityTerms("");
       setTermsAndConditions("");
-
-      router.refresh();
     } else {
-      toast("Failed to create bill of quantity header", "error");
+      toast("Failed to create bill of quantity", "error");
     }
   }
 
   return (
     <>
-      <h2>CREATE BILL OF QUANTITY</h2>
+      <Button
+        componentType={"button"}
+        bgColor={bgColor}
+        borderColor={borderColor}
+        textColor={textColor}
+        style={style}
+        onClick={() => setIsOpen(true)}
+      >
+        CREATE BOQ +
+      </Button>
 
-      <br />
-
-      <div className="form-inner-container">
-        <form onSubmit={handleSubmit}>
+      {isOpen && (
+        <FormPopUp
+          header={"CREATE BILL OF QUANTITY"}
+          setIsOpen={setIsOpen}
+          addButtonLabel="CONFIRM"
+          handleSubmit={handleSubmit}
+        >
           <div className="input-row half">
             <InputItem
               label={"COMPANY NAME"}
@@ -86,31 +114,6 @@ vii. Contractor reserve the right to request for an extension of time for reason
               onChange={(e) => setCompanyName(e.target.value)}
               disabled
             />
-
-            <div className="input-item">
-              <label>ID</label>
-              <div className="input-prefix left">
-                <span>BOQ-</span>
-                <input
-                  style={{ paddingLeft: "47px" }}
-                  type="text"
-                  value={boqRefNumber}
-                  onChange={(e) => {
-                    const val = e.target.value;
-
-                    if (val === "" || (/^\d+$/.test(val) && val.length <= 3)) {
-                      setBoqRefNumber(val === "" ? "" : Number(val));
-                    }
-                  }}
-                  placeholder="000"
-                  required
-                  disabled
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="input-row three-col">
             <InputItem
               label={"CLIENT NAME"}
               value={clientName}
@@ -121,7 +124,9 @@ vii. Contractor reserve the right to request for an extension of time for reason
                 setClientName(e.target.value);
               }}
             />
+          </div>
 
+          <div className="input-row half">
             <InputItem
               label={"LOCATION"}
               value={location}
@@ -183,20 +188,8 @@ vii. Contractor reserve the right to request for an extension of time for reason
               }}
             />
           </div>
-
-          <div className="button-container">
-            <Button
-              componentType={"button"}
-              bgColor={"black"}
-              borderColor={"black"}
-              textColor={"white"}
-              type="submit"
-            >
-              CONFIRM
-            </Button>
-          </div>
-        </form>
-      </div>
+        </FormPopUp>
+      )}
     </>
   );
 }

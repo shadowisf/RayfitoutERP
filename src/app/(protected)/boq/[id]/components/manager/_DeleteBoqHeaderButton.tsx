@@ -5,10 +5,14 @@ import FormPopUp from "@/app/components/FormPopup";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "@/app/components/Toast";
-import { useAuth } from "@/app/context/AuthContext";
-import { Project } from "../types/project";
+import { BoqHeader } from "@/app/(protected)/boq/[id]/types/boqHeader";
 
-export function DeleteProjectButton({ project }: { project: Project | null }) {
+type props = {
+  boqHeader: BoqHeader | null;
+  onSuccess?: () => void;
+};
+
+export function DeleteBoqHeaderButton({ boqHeader, onSuccess }: props) {
   const router = useRouter();
 
   const trashIcon = "/icons/trash.svg";
@@ -18,23 +22,22 @@ export function DeleteProjectButton({ project }: { project: Project | null }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "deleteProject",
-          id: project?.id,
-        }),
-      }
-    );
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "deleteBoqHeader",
+        id: boqHeader?.id,
+      }),
+    });
 
     if (res.ok) {
-      toast("Project deleted", "success");
+      toast("Bill of quantity deleted", "success");
 
       router.refresh();
-      router.replace("/project");
+      router.replace(`/project/${boqHeader?.project_id}`);
+
+      onSuccess && onSuccess();
 
       setIsOpen(false);
     } else {
@@ -57,12 +60,12 @@ export function DeleteProjectButton({ project }: { project: Project | null }) {
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE PROJECT"}
+          header={"DELETE BILL OF QUANTITY"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          Are you sure you want to delete this project?
+          Are you sure you want to delete this bill of quantity?
         </FormPopUp>
       )}
     </>

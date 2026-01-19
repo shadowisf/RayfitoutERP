@@ -166,9 +166,7 @@ export default function Dashboard() {
           <br />
           <br />
           <br />
-          <div className="widget-grid">
-            {/* <BudgetAllocationGraph /> */}
-          </div>
+          <div className="widget-grid">{/* <BudgetAllocationGraph /> */}</div>
           <br />
           <br />
           <br />
@@ -194,7 +192,7 @@ export default function Dashboard() {
           <br />
           <div className="widget-grid active-projects">
             {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
-              <ProjectBox proj={proj} key={index} />
+              <ProjectBox project={proj} key={index} />
             ))}
           </div>
           <br />
@@ -257,7 +255,7 @@ export default function Dashboard() {
           <br />
           <div className="widget-grid active-projects">
             {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
-              <ProjectBox proj={proj} key={index} />
+              <ProjectBox project={proj} key={index} />
             ))}
           </div>
           <br />
@@ -339,7 +337,7 @@ export default function Dashboard() {
           <br />
           <div className="widget-grid active-projects">
             {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
-              <ProjectBox proj={proj} key={index} />
+              <ProjectBox project={proj} key={index} />
             ))}
           </div>
         </>
@@ -409,7 +407,7 @@ export default function Dashboard() {
           <br />
           <div className="widget-grid active-projects">
             {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
-              <ProjectBox proj={proj} key={index} />
+              <ProjectBox project={proj} key={index} />
             ))}
           </div>
         </>

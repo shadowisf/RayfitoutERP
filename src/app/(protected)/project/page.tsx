@@ -69,7 +69,7 @@ export default function Project() {
       <br />
       <div className="widget-grid active-projects">
         {projectsWithBOQ.map((proj: any, index) => (
-          <ProjectBox proj={proj} key={index} />
+          <ProjectBox project={proj} key={index} />
         ))}
       </div>
 
@@ -83,7 +83,7 @@ export default function Project() {
           <br />
           <div className="widget-grid active-projects">
             {quotationProjects.map((proj: any, index) => (
-              <ProjectBox proj={proj} key={index} />
+              <ProjectBox project={proj} key={index} />
             ))}
           </div>
         </>
