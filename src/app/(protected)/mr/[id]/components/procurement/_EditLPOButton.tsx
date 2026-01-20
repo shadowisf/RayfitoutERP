@@ -42,7 +42,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
   // Calculate totals
   const subtotal = Object.values(totalPrices).reduce(
     (sum, price) => sum + parseFloat(price || "0"),
-    0
+    0,
   );
   const discountAmount = parseFloat(discount || "0");
   const amountAfterDiscount = subtotal - discountAmount;
@@ -65,7 +65,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lpo_id: lpoId }),
-        }
+        },
       );
       const data = await res.json();
 
@@ -245,7 +245,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
       }));
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`, {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "updateLPO",

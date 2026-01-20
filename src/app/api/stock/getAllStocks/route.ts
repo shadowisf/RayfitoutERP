@@ -8,6 +8,7 @@ export async function GET() {
         id,
         inventory_item_id,
         location,
+        project_id,
         quantity,
         created_at
       FROM stocks

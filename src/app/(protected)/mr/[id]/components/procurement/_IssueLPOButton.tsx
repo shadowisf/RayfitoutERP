@@ -451,7 +451,8 @@ export default function IssueLPOButton({
               <img src={warningIcon} />
               <p style={{ color: "red" }}>
                 Selected delivery date is beyond the material request's required
-                date: {mrHeader.required_date}
+                date:{" "}
+                {new Date(mrHeader.required_date).toLocaleDateString("en-GB")}
               </p>
             </div>
           )}

@@ -5,11 +5,11 @@ import FormPopUp from "@/app/components/FormPopup";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SupplierQuotation } from "../../types/supplierQuotation";
-import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
 import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
 import RejectCommentPopUp from "./RejectCommentPopUp";
 import { MrLine } from "../../types/mrLine";
+import SupplierDetailsPopUp from "../SupplierDetailsPopUp";
 
 type PriceApprovalButtonProps = {
   progressID: number;
@@ -63,7 +63,7 @@ export default function PriceApprovalButton({
         setSupplierQuotations(data);
 
         const approved = data.find(
-          (q: SupplierQuotation) => q.approval_status === "Approved"
+          (q: SupplierQuotation) => q.approval_status === "Approved",
         );
         if (approved) {
           setApprovedQuotation(approved);
@@ -73,7 +73,7 @@ export default function PriceApprovalButton({
 
         // Check if all are rejected
         const allRejected = data.every(
-          (q: SupplierQuotation) => q.approval_status === "Rejected"
+          (q: SupplierQuotation) => q.approval_status === "Rejected",
         );
         if (allRejected && data.length > 0) {
           setIsRejected(true);
@@ -103,13 +103,13 @@ export default function PriceApprovalButton({
           mr_line_id: mrLine.id,
           supplier_id: selectedSupplierID,
         }),
-      }
+      },
     );
 
     if (res.ok) {
       toast(
         `Vendor and quotation approved for ${mrLine.material_description}`,
-        "success"
+        "success",
       );
       setIsOpen(false);
 
@@ -136,7 +136,7 @@ export default function PriceApprovalButton({
           reject_comment: rejectText,
           mr_line_id: mrLine.id,
         }),
-      }
+      },
     );
 
     if (res.ok) {
@@ -165,7 +165,7 @@ export default function PriceApprovalButton({
           action: "resetSupplierAndQuotation",
           mr_line_id: mrLine.id,
         }),
-      }
+      },
     );
 
     if (res.ok) {
@@ -192,7 +192,7 @@ export default function PriceApprovalButton({
         return Number(current.total_price) < Number(prev.total_price)
           ? current
           : prev;
-      }
+      },
     );
 
     const res = await fetch(
@@ -205,13 +205,13 @@ export default function PriceApprovalButton({
           mr_line_id: mrLine.id,
           supplier_id: lowestPriceSupplier.supplier_id,
         }),
-      }
+      },
     );
 
     if (res.ok) {
       toast(
         `Smart Select: ${lowestPriceSupplier.supplier_name} approved with lowest price (AED ${lowestPriceSupplier.total_price})`,
-        "success"
+        "success",
       );
 
       fetchQuotations();
@@ -403,7 +403,7 @@ export default function PriceApprovalButton({
                       <td>{quotation.unit_price} AED</td>
                       <td>{quotation.total_price} AED</td>
                     </tr>
-                  )
+                  ),
                 )}
               </tbody>
             </table>

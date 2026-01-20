@@ -3,9 +3,16 @@ import { db } from "@/lib/db";
 
 export async function GET() {
   try {
-    const [rows] = await db.query(
-      "SELECT * FROM vw_projects WHERE type = 'Signed'"
-    );
+    const [rows] = await db.query(`
+      SELECT 
+        vw.*,
+        COUNT(mr.id) as mr_count
+      FROM vw_projects vw
+      LEFT JOIN mr_headers mr ON vw.id = mr.project_id
+      WHERE vw.type = 'Signed'
+      GROUP BY vw.id
+      ORDER BY mr_count DESC
+    `);
 
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {
@@ -46,7 +53,7 @@ export async function POST(req: Request) {
         for (const scopeId of body.scope_ids) {
           await db.query(
             "INSERT INTO jt_projects_scopes (project_id, scope_id) VALUES (?, ?)",
-            [Number(result.insertId), Number(scopeId)]
+            [Number(result.insertId), Number(scopeId)],
           );
         }
       }
@@ -105,7 +112,7 @@ export async function PUT(req: NextRequest) {
           // Delete existing scopes
           await db.query(
             "DELETE FROM jt_projects_scopes WHERE project_id = ?",
-            [Number(body.id)]
+            [Number(body.id)],
           );
 
           // Insert new scopes
@@ -113,7 +120,7 @@ export async function PUT(req: NextRequest) {
             for (const scopeId of body.scope_ids) {
               await db.query(
                 "INSERT INTO jt_projects_scopes (project_id, scope_id) VALUES (?, ?)",
-                [Number(body.id), Number(scopeId)]
+                [Number(body.id), Number(scopeId)],
               );
             }
           }

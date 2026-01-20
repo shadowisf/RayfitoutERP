@@ -45,6 +45,9 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
   const [trn3, setTrn3] = useState("");
   const [currency, setCurrency] = useState("");
   const [status, setStatus] = useState("");
+  const [creditLimit, setCreditLimit] = useState<number | string>("");
+  const [paymentTerms, setPaymentTerms] = useState("");
+  const [openingBalance, setOpeningBalance] = useState<number | string>("");
   const [contactPersonName, setContactPersonName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -66,6 +69,9 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
     setTrn3("");
     setCurrency("");
     setStatus("");
+    setCreditLimit("");
+    setPaymentTerms("");
+    setOpeningBalance("");
     setContactPersonName("");
     setPhone("");
     setEmail("");
@@ -144,11 +150,13 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    e.stopPropagation();
 
     const trn_number = `${trn1}${trn2}${trn3}`;
 
     try {
       let trnCertificateUrl = null;
+
       if (trnCertificateFile) {
         const trnFormData = new FormData();
         trnFormData.append("files", trnCertificateFile);
@@ -204,6 +212,9 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
             supplier_rating: null,
             currency,
             status,
+            credit_limit: creditLimit,
+            payment_terms: paymentTerms,
+            opening_balance: openingBalance,
             contact_person_name: contactPersonName,
             phone,
             email,
@@ -271,7 +282,7 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
           addButtonLabel="CONFIRM"
         >
           <FormContextHeader>VENDOR INFORMATION</FormContextHeader>
-          <div className="input-row full">
+          <div className="input-row half">
             <InputItem
               label="VENDOR TYPE"
               type="select"
@@ -427,6 +438,12 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                 />
               </div>
 
+              {type.toLowerCase().includes("credit") && (
+                <>
+                  <br />
+                  <FormContextHeader>CREDIT INFORMATION</FormContextHeader>
+                </>
+              )}
               <div className="input-row half">
                 <InputItem
                   label={"CURRENCY"}
@@ -465,6 +482,78 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                 />
               </div>
 
+              {type.toLowerCase().includes("credit") && (
+                <>
+                  <div className="input-row half">
+                    <InputItem
+                      label={"CREDIT LIMIT"}
+                      value={creditLimit}
+                      type={"text postfix"}
+                      onChange={(e) => {
+                        let val = e.target.value;
+
+                        // Remove any commas
+                        val = val.replace(/,/g, "");
+
+                        // Clear input if empty
+                        if (val === "") {
+                          setCreditLimit("");
+                          return;
+                        }
+
+                        // Allow only numbers and a single decimal point
+                        if (!/^\d*\.?\d*$/.test(val)) {
+                          return;
+                        }
+
+                        // Set the value as-is (with decimal if present)
+                        setCreditLimit(val);
+                      }}
+                      postfixText={currency}
+                      required={type.toLowerCase().includes("credit")}
+                    />
+                    <InputItem
+                      label={"PAYMENT TERMS"}
+                      value={paymentTerms}
+                      type={"select"}
+                      onChange={(e) => setPaymentTerms(e.target.value)}
+                      required={type.toLowerCase().includes("credit")}
+                      selectOptions={["30 days", "60 days", "90 days"]}
+                    />
+                  </div>
+
+                  <div className="input-row half">
+                    <InputItem
+                      label={"OPENING BALANCE"}
+                      value={openingBalance}
+                      type={"text postfix"}
+                      onChange={(e) => {
+                        let val = e.target.value;
+
+                        // Remove any commas
+                        val = val.replace(/,/g, "");
+
+                        // Clear input if empty
+                        if (val === "") {
+                          setOpeningBalance("");
+                          return;
+                        }
+
+                        // Allow only numbers and a single decimal point
+                        if (!/^\d*\.?\d*$/.test(val)) {
+                          return;
+                        }
+
+                        // Set the value as-is (with decimal if present)
+                        setOpeningBalance(val);
+                      }}
+                      postfixText={currency}
+                      selectOptions={["30 days", "60 days", "90 days"]}
+                    />
+                  </div>
+                </>
+              )}
+
               <br />
 
               <FormContextHeader>CONTACT INFORMATION</FormContextHeader>
@@ -474,10 +563,6 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                   value={contactPersonName}
                   type={"text"}
                   placeholder={"ENTER CONTACT PERSON NAME"}
-                  required={
-                    type.toLowerCase().includes("cash") ||
-                    type.toLowerCase().includes("credit")
-                  }
                   onChange={(e) => {
                     setContactPersonName(e.target.value);
                   }}
@@ -493,10 +578,6 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                   onChange={(e) => {
                     setPhone(e.target.value);
                   }}
-                  required={
-                    type.toLowerCase().includes("cash") ||
-                    type.toLowerCase().includes("credit")
-                  }
                 />
 
                 <InputItem
@@ -507,10 +588,6 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                   onChange={(e) => {
                     setEmail(e.target.value);
                   }}
-                  required={
-                    type.toLowerCase().includes("cash") ||
-                    type.toLowerCase().includes("credit")
-                  }
                 />
 
                 <InputItem
@@ -521,10 +598,6 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                   onChange={(e) => {
                     setAddress(e.target.value);
                   }}
-                  required={
-                    type.toLowerCase().includes("cash") ||
-                    type.toLowerCase().includes("credit")
-                  }
                 />
               </div>
 
@@ -533,20 +606,18 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                   label={"WEBSITE"}
                   value={website}
                   type={"text"}
-                  required={
-                    type.toLowerCase().includes("cash") ||
-                    type.toLowerCase().includes("credit")
-                  }
                   onChange={(e) => setWebsite(e.target.value)}
                 />
               </div>
 
+              <br />
+
+              <FormContextHeader>ADDITIONAL INFORMATION</FormContextHeader>
               <div className="input-row full">
                 <InputItem
                   label={"NOTES"}
                   value={notes}
                   type={"textarea"}
-                  required={false}
                   onChange={(e) => {
                     setNotes(e.target.value);
                   }}

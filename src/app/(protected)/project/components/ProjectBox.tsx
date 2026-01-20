@@ -256,14 +256,15 @@ export default function ProjectBox({ project }: ProjectBoxProps) {
 
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: "5px" }}>
-          {boqs.length === 0 && (
-            <CreateBoqHeaderButton
-              project={project}
-              bgColor="transparent"
-              textColor="black"
-              borderColor="rgba(223, 223, 223, 1)"
-            />
-          )}
+          {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) &&
+            boqs.length === 0 && (
+              <CreateBoqHeaderButton
+                project={project}
+                bgColor="transparent"
+                textColor="black"
+                borderColor="rgba(223, 223, 223, 1)"
+              />
+            )}
         </div>
 
         <Button

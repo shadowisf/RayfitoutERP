@@ -33,7 +33,6 @@ export default function Dashboard() {
   const { userInfo } = useAuth();
 
   const [projects, setProjects] = useState<any[]>([]);
-  const [projectsWithBOQ, setProjectsWithBOQ] = useState<any[]>([]);
 
   const [overviewFilter, setOverviewFilter] = useState(7);
 
@@ -56,38 +55,6 @@ export default function Dashboard() {
 
     loadProjects();
   }, []);
-
-  // Fetch BOQ for each project
-  useEffect(() => {
-    const loadBOQStatus = async () => {
-      if (projects.length === 0) return;
-
-      const enriched = await Promise.all(
-        projects.map(async (proj) => {
-          const boq = await fetch(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getBoqHeaderByProjectID`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: proj.id }),
-              cache: "no-store",
-            },
-          )
-            .then((res) => res.json())
-            .catch(() => []);
-
-          return {
-            ...proj,
-            hasBOQ: boq && boq.length > 0,
-          };
-        }),
-      );
-
-      setProjectsWithBOQ(enriched);
-    };
-
-    loadBOQStatus();
-  }, [projects]);
 
   return (
     <div className="dashboard">
@@ -191,7 +158,7 @@ export default function Dashboard() {
           </div>
           <br />
           <div className="widget-grid active-projects">
-            {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
+            {projects.slice(0, 3).map((proj: any, index) => (
               <ProjectBox project={proj} key={index} />
             ))}
           </div>
@@ -254,7 +221,7 @@ export default function Dashboard() {
           <h2>ACTIVE PROJECTS</h2>
           <br />
           <div className="widget-grid active-projects">
-            {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
+            {projects.slice(0, 3).map((proj: any, index) => (
               <ProjectBox project={proj} key={index} />
             ))}
           </div>
@@ -336,7 +303,7 @@ export default function Dashboard() {
           </div>
           <br />
           <div className="widget-grid active-projects">
-            {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
+            {projects.slice(0, 3).map((proj: any, index) => (
               <ProjectBox project={proj} key={index} />
             ))}
           </div>
@@ -406,7 +373,7 @@ export default function Dashboard() {
           </div>
           <br />
           <div className="widget-grid active-projects">
-            {projectsWithBOQ.slice(0, 3).map((proj: any, index) => (
+            {projects.slice(0, 3).map((proj: any, index) => (
               <ProjectBox project={proj} key={index} />
             ))}
           </div>

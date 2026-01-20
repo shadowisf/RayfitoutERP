@@ -72,15 +72,22 @@ export default function SupplierAndQuotationButton({
 
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
 
-  useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
+  async function fetchSuppliers() {
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     })
       .then((res) => res.json())
       .then((data) => setSuppliers(data))
       .catch((err) => console.error(err));
+  }
 
+  useEffect(() => {
+    fetchSuppliers();
+    checkExistingQuotations();
+  }, []);
+
+  useEffect(() => {
     checkExistingQuotations();
   }, [mrLine.id]);
 
@@ -640,7 +647,12 @@ export default function SupplierAndQuotationButton({
                           labelField="name"
                           noLabel
                           required
-                          bottomButtonComponent={<CreateSupplierButton />}
+                          bottomButtonComponent={
+                            <CreateSupplierButton
+                              full
+                              onSuccess={() => fetchSuppliers()}
+                            />
+                          }
                         />
                       </td>
                       <td>

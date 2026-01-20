@@ -12,7 +12,7 @@ type InputItemProps = {
     e:
       | React.ChangeEvent<HTMLInputElement>
       | React.ChangeEvent<HTMLSelectElement>
-      | React.ChangeEvent<HTMLTextAreaElement>
+      | React.ChangeEvent<HTMLTextAreaElement>,
   ) => void;
   selectOptions?: string[];
   dbMap?: React.ReactNode;
@@ -21,6 +21,7 @@ type InputItemProps = {
   style?: React.CSSProperties;
   onClick?: () => void;
   noOptionalLabel?: boolean;
+  postfixText?: string;
 };
 
 export default function InputItem({
@@ -37,6 +38,7 @@ export default function InputItem({
   style,
   onClick,
   noOptionalLabel,
+  postfixText,
 }: InputItemProps) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -99,6 +101,46 @@ export default function InputItem({
             disabled={disabled}
             onClick={onClick}
           />
+        </div>
+      );
+
+    case "text postfix":
+      return (
+        <div
+          className="input-item"
+          style={{
+            ...(style || {}),
+            ...(sideLabel
+              ? {
+                  display: "grid",
+                  gridTemplateColumns: "0.5fr 1fr",
+                  alignItems: "center",
+                }
+              : {}),
+          }}
+        >
+          <label className="custom">
+            <span>{label}</span>{" "}
+            {!required && !noOptionalLabel && (
+              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                (OPTIONAL)
+              </small>
+            )}
+          </label>
+
+          <div className="input-prefix right">
+            <span>{postfixText}</span>
+            <input
+              style={{ paddingRight: "50px" }}
+              type="text"
+              value={value || ""}
+              onChange={onChange}
+              placeholder={placeholder || `ENTER ${label}`}
+              required={required}
+              disabled={disabled}
+              onClick={onClick}
+            />
+          </div>
         </div>
       );
 

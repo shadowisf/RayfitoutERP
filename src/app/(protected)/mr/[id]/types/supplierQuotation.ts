@@ -9,6 +9,7 @@ export type SupplierQuotation = {
   approval_status: string;
   reject_comment: string;
   supplier_name: string;
+  supplier_type: string;
   supplier_trn_number: string;
   supplier_avg_lead_time: string;
   supplier_rating: number;

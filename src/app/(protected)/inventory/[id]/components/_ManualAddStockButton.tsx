@@ -11,7 +11,8 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { InventoryItem } from "../../types/inventoryItem";
 import FormContextHeader from "@/app/components/FormContextHeader";
-import CreateVendorButton from "../../components/_CreateVendorButton";
+import CreateSupplierButton from "@/app/(protected)/mr/[id]/components/procurement/_CreateSupplierButton";
+import SelectBoqItemButton from "@/app/components/_SelectBoqItemButton";
 
 type ManualAddToStockButtonProps = {
   inventoryItem: InventoryItem;
@@ -24,7 +25,6 @@ export default function ManualAddToStockButton({
 
   const router = useRouter();
 
-  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
   const [location, setLocation] = useState("");
@@ -74,14 +74,18 @@ export default function ManualAddToStockButton({
       });
   }, [projectID]);
 
-  useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
+  async function fetchSuppliers() {
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
       method: "GET",
     })
       .then((res) => res.json())
       .then((data) => {
         setSupplierValues(data);
       });
+  }
+
+  useEffect(() => {
+    fetchSuppliers();
 
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
       method: "GET",
@@ -275,7 +279,7 @@ export default function ManualAddToStockButton({
           <FormContextHeader>STOCK CONTEXT</FormContextHeader>
           <div className="input-row half">
             <InputItem
-              label={"RECEIVED BY"}
+              label={"ADDED BY"}
               value={userInfo?.name || ""}
               type={"text"}
               placeholder={"ENTER NAME"}
@@ -317,17 +321,9 @@ export default function ManualAddToStockButton({
               labelField="name"
               required={false}
               bottomButtonComponent={
-                <CreateVendorButton
+                <CreateSupplierButton
                   full={true}
-                  onSuccess={() => {
-                    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
-                      method: "GET",
-                    })
-                      .then((res) => res.json())
-                      .then((data) => {
-                        setSupplierValues(data);
-                      });
-                  }}
+                  onSuccess={() => fetchSuppliers()}
                 />
               }
             />
@@ -354,7 +350,7 @@ export default function ManualAddToStockButton({
               labelField="name"
               required={false}
             />
-            <SingleSelectDropdown
+            {/* <SingleSelectDropdown
               label={"BILL OF QUANTITY CODE"}
               dbData={boqLineValues}
               selectedValue={boqLineID}
@@ -362,7 +358,21 @@ export default function ManualAddToStockButton({
               placeholder="SELECT BILL OF QUANTITY"
               required={false}
               disabled={projectID === ""}
-            />
+            /> */}
+            <div className="input-item">
+              <label className="custom">
+                <span>BILL OF QUANTITY</span>
+                <small>(OPTIONAL)</small>
+              </label>
+
+              <SelectBoqItemButton
+                projectID={Number(projectID)}
+                onSelectBoq={setBoqLineID}
+                currentBoqLineID={boqLineID}
+                disabled={projectID === ""}
+                style={{ height: "30.5px" }}
+              />
+            </div>
           </div>
 
           <br />

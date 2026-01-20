@@ -9,11 +9,13 @@ type FilterButtonProps = {
   onApplyFilters: (filters: {
     selectedCategories: string[];
     selectedLocations: string[];
+    selectedProjects: number[]; // Change from string[] to number[]
     stockAddedIn: string;
   }) => void;
   currentFilters: {
     selectedCategories: string[];
     selectedLocations: string[];
+    selectedProjects: number[]; // Change from string[] to number[]
     stockAddedIn: string;
   };
 };
@@ -23,24 +25,30 @@ export default function FilterButton({
   onApplyFilters,
   currentFilters,
 }: FilterButtonProps) {
-  const arrowDown = "/icons/minimal-arrow-down.svg";
-  const arrowUp = "/icons/minimal-arrow-up.svg";
   const searchIcon = "/icons/search.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    currentFilters.selectedCategories
+    currentFilters.selectedCategories,
   );
   const [selectedLocations, setSelectedLocations] = useState<string[]>(
-    currentFilters.selectedLocations
+    currentFilters.selectedLocations,
+  );
+  const [selectedProjects, setSelectedProjects] = useState<number[]>(
+    currentFilters.selectedProjects,
   );
   const [stockAddedIn, setStockAddedIn] = useState<string>(
-    currentFilters.stockAddedIn
+    currentFilters.stockAddedIn,
   );
   const [categorySearchQuery, setCategorySearchQuery] = useState("");
   const [locationSearchQuery, setLocationSearchQuery] = useState("");
+  const [projectSearchQuery, setProjectSearchQuery] = useState("");
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
+  const [availableProjects, setAvailableProjects] = useState<
+    { id: number; name: string }[]
+  >([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 
   // Fetch locations from stocks when modal opens
   useEffect(() => {
@@ -53,15 +61,14 @@ export default function FilterButton({
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAvailableLocations`,
           {
             method: "GET",
-          }
+          },
         );
 
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.locations) {
-            // Get unique locations and sort them
             const uniqueLocations = Array.from(
-              new Set(data.locations.filter((loc: string) => loc))
+              new Set(data.locations.filter((loc: string) => loc)),
             ).sort();
             setAvailableLocations(uniqueLocations as string[]);
           }
@@ -76,9 +83,40 @@ export default function FilterButton({
     fetchStockLocations();
   }, [isOpen]);
 
+  // Fetch projects from stocks when modal opens
+  useEffect(() => {
+    async function fetchStockProjects() {
+      if (!isOpen) return;
+
+      setIsLoadingProjects(true);
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAvailableProjects`,
+          {
+            method: "GET",
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.projects) {
+            setAvailableProjects(data.projects);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching stock projects:", error);
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    }
+
+    fetchStockProjects();
+  }, [isOpen]);
+
   const handleOpen = () => {
     setSelectedCategories(currentFilters.selectedCategories);
     setSelectedLocations(currentFilters.selectedLocations);
+    setSelectedProjects(currentFilters.selectedProjects);
     setStockAddedIn(currentFilters.stockAddedIn);
     setIsOpen(true);
   };
@@ -87,6 +125,7 @@ export default function FilterButton({
     onApplyFilters({
       selectedCategories,
       selectedLocations,
+      selectedProjects,
       stockAddedIn,
     });
     setIsOpen(false);
@@ -95,9 +134,11 @@ export default function FilterButton({
   const handleReset = () => {
     setSelectedCategories([]);
     setSelectedLocations([]);
+    setSelectedProjects([]);
     setStockAddedIn("all");
     setCategorySearchQuery("");
     setLocationSearchQuery("");
+    setProjectSearchQuery("");
   };
 
   // Category handlers
@@ -134,26 +175,44 @@ export default function FilterButton({
     }
   };
 
+  // Project handlers
+  const handleSelectAllProjects = (checked: boolean) => {
+    if (checked) {
+      setSelectedProjects(availableProjects.map((p) => p.id));
+    } else {
+      setSelectedProjects([]);
+    }
+  };
+
+  // Change projectId from string to number
+  const handleProjectChange = (projectId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedProjects([...selectedProjects, projectId]);
+    } else {
+      setSelectedProjects(selectedProjects.filter((p) => p !== projectId));
+    }
+  };
+
   // Check if all items are selected
   const isAllCategoriesSelected =
     selectedCategories.length === categories.length;
   const isAllLocationsSelected =
     selectedLocations.length === availableLocations.length;
+  const isAllProjectsSelected =
+    selectedProjects.length === availableProjects.length;
 
-  // Filter categories and locations based on search
+  // Filter categories, locations, and projects based on search
   const filteredCategories = categories.filter((category) =>
-    category.toLowerCase().includes(categorySearchQuery.toLowerCase())
+    category.toLowerCase().includes(categorySearchQuery.toLowerCase()),
   );
 
   const filteredLocations = availableLocations.filter((location) =>
-    location.toLowerCase().includes(locationSearchQuery.toLowerCase())
+    location.toLowerCase().includes(locationSearchQuery.toLowerCase()),
   );
 
-  // Count active filters
-  const activeFilterCount =
-    selectedCategories.length +
-    selectedLocations.length +
-    (stockAddedIn !== "all" ? 1 : 0);
+  const filteredProjects = availableProjects.filter((project) =>
+    project?.name?.toLowerCase().includes(projectSearchQuery.toLowerCase()),
+  );
 
   return (
     <>
@@ -206,7 +265,6 @@ export default function FilterButton({
                 padding: "20px",
               }}
             >
-              {/* Search Box */}
               <div style={{ position: "relative", marginBottom: "15px" }}>
                 <input
                   type="text"
@@ -237,7 +295,6 @@ export default function FilterButton({
                 />
               </div>
 
-              {/* Select All */}
               <div style={{ marginBottom: "10px" }}>
                 <label
                   style={{
@@ -264,13 +321,7 @@ export default function FilterButton({
                 </label>
               </div>
 
-              {/* Categories List */}
-              <div
-                style={{
-                  maxHeight: "250px",
-                  overflowY: "auto",
-                }}
-              >
+              <div style={{ maxHeight: "250px", overflowY: "auto" }}>
                 {filteredCategories.map((category) => (
                   <div key={category} style={{ marginBottom: "10px" }}>
                     <label
@@ -313,13 +364,7 @@ export default function FilterButton({
             >
               STOCK ADDED IN
             </h3>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "20px",
-              }}
-            >
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
               {[
                 { value: "all", label: "All Times" },
                 { value: "24h", label: "Last 24 hours" },
@@ -355,6 +400,136 @@ export default function FilterButton({
             </div>
           </div>
 
+          {/* Projects Section */}
+          <div style={{ marginBottom: "30px" }}>
+            <h3
+              style={{
+                marginBottom: "15px",
+                fontSize: "14px",
+                fontWeight: "600",
+              }}
+            >
+              PROJECTS
+            </h3>
+
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: "8px",
+                padding: "20px",
+              }}
+            >
+              <div style={{ position: "relative", marginBottom: "15px" }}>
+                <input
+                  type="text"
+                  placeholder="SEARCH"
+                  value={projectSearchQuery}
+                  onChange={(e) => setProjectSearchQuery(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 40px 10px 15px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(223, 223, 223, 1)",
+                    fontSize: "14px",
+                    backgroundColor: "rgba(245, 245, 245, 1)",
+                  }}
+                />
+                <img
+                  src={searchIcon}
+                  alt="search"
+                  style={{
+                    position: "absolute",
+                    right: "15px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: "16px",
+                    height: "16px",
+                    opacity: 0.5,
+                  }}
+                />
+              </div>
+
+              {isLoadingProjects ? (
+                <div style={{ textAlign: "center", padding: "20px" }}>
+                  Loading projects...
+                </div>
+              ) : (
+                <>
+                  <div style={{ marginBottom: "10px" }}>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isAllProjectsSelected}
+                        onChange={(e) =>
+                          handleSelectAllProjects(e.target.checked)
+                        }
+                        style={{
+                          width: "18px",
+                          height: "18px",
+                          cursor: "pointer",
+                          accentColor: "#10b981",
+                        }}
+                      />
+                      <h4>Select All</h4>
+                    </label>
+                  </div>
+
+                  <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                    {filteredProjects.length > 0 ? (
+                      filteredProjects.map((project) => (
+                        <div key={project.id} style={{ marginBottom: "10px" }}>
+                          <label
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedProjects.includes(project.id)}
+                              onChange={(e) =>
+                                handleProjectChange(
+                                  project.id,
+                                  e.target.checked,
+                                )
+                              }
+                              style={{
+                                width: "18px",
+                                height: "18px",
+                                cursor: "pointer",
+                                accentColor: "#10b981",
+                              }}
+                            />
+                            <h4>{project.name}</h4>
+                          </label>
+                        </div>
+                      ))
+                    ) : (
+                      <div
+                        style={{
+                          textAlign: "center",
+                          padding: "20px",
+                          color: "#888",
+                        }}
+                      >
+                        No projects found
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
           {/* Location Section */}
           <div style={{ marginBottom: "30px" }}>
             <h3
@@ -374,7 +549,6 @@ export default function FilterButton({
                 padding: "20px",
               }}
             >
-              {/* Search Box */}
               <div style={{ position: "relative", marginBottom: "15px" }}>
                 <input
                   type="text"
@@ -411,7 +585,6 @@ export default function FilterButton({
                 </div>
               ) : (
                 <>
-                  {/* Select All */}
                   <div style={{ marginBottom: "10px" }}>
                     <label
                       style={{
@@ -438,13 +611,7 @@ export default function FilterButton({
                     </label>
                   </div>
 
-                  {/* Locations List */}
-                  <div
-                    style={{
-                      maxHeight: "250px",
-                      overflowY: "auto",
-                    }}
-                  >
+                  <div style={{ maxHeight: "250px", overflowY: "auto" }}>
                     {filteredLocations.length > 0 ? (
                       filteredLocations.map((location) => (
                         <div key={location} style={{ marginBottom: "10px" }}>

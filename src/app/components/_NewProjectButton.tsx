@@ -32,7 +32,7 @@ export default function NewProjectButton() {
 
   useEffect(() => {
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getPropertyTypeValues`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getPropertyTypeValues`,
     )
       .then((res) => res.json())
       .then((data: []) => setPropertyTypes(data))
@@ -69,7 +69,7 @@ export default function NewProjectButton() {
           end_date: endDate || null,
           type,
         }),
-      }
+      },
     );
 
     const data = await res.json();
@@ -279,7 +279,34 @@ export default function NewProjectButton() {
 
           {/* 4th row */}
           <div className="input-row">
-            <div className="input-item">
+            <InputItem
+              label={"QUOTED PRICE"}
+              value={quotedBudget}
+              type={"text postfix"}
+              onChange={(e) => {
+                let val = e.target.value;
+
+                // Remove any commas
+                val = val.replace(/,/g, "");
+
+                // Clear input if empty
+                if (val === "") {
+                  setQuotedBudget("");
+                  return;
+                }
+
+                // Allow only numbers and a single decimal point
+                if (!/^\d*\.?\d*$/.test(val)) {
+                  return;
+                }
+
+                // Set the value as-is (with decimal if present)
+                setQuotedBudget(val);
+              }}
+              postfixText={currency}
+            />
+
+            {/* <div className="input-item">
               <label className="custom">
                 <span>QUOTED PRICE</span>
                 <small style={{ fontStyle: "italic", fontWeight: "100" }}>
@@ -323,7 +350,7 @@ export default function NewProjectButton() {
                   placeholder="ENTER QUOTED BUDGET"
                 />
               </div>
-            </div>
+            </div> */}
 
             <InputItem
               label={"CURRENCY"}
@@ -352,7 +379,7 @@ export default function NewProjectButton() {
 
           {/* 5th row */}
           <div className="input-row full">
-            <div className="input-item">
+            {/* <div className="input-item">
               <label className="custom">
                 <span>ALLOCATED BUDGET</span>
                 <small style={{ fontStyle: "italic", fontWeight: "100" }}>
@@ -395,7 +422,34 @@ export default function NewProjectButton() {
                   placeholder="ENTER ALLOCATED BUDGET"
                 />
               </div>
-            </div>
+            </div> */}
+
+            <InputItem
+              label={"ALLOCATED BUDGET"}
+              value={allocatedBudget}
+              type={"text postfix"}
+              onChange={(e) => {
+                let val = e.target.value;
+
+                // Remove any commas
+                val = val.replace(/,/g, "");
+
+                // Clear input if empty
+                if (val === "") {
+                  setAllocatedBudget("");
+                  return;
+                }
+
+                // Allow only numbers and a single decimal point
+                if (!/^\d*\.?\d*$/.test(val)) {
+                  return;
+                }
+
+                // Set the value as-is (with decimal if present)
+                setAllocatedBudget(val);
+              }}
+              postfixText={currency}
+            />
           </div>
 
           {/* 6th row */}

@@ -423,16 +423,20 @@ export default function ProjectWithID() {
                       gap: "5px",
                     }}
                   >
-                    <Button
-                      componentType={"link"}
-                      bgColor={"rgba(239, 239, 239, 1)"}
-                      borderColor={"rgba(223, 223, 223, 1)"}
-                      textColor={"black"}
-                      style={{ padding: "7px 7px" }}
-                      href={`/mr/${item.id}`}
-                    >
-                      <img src={externalLinkIcon} alt="external link" />
-                    </Button>
+                    {userInfo?.departmentID === item.department_id ? (
+                      <Button
+                        componentType={"link"}
+                        bgColor={"rgba(239, 239, 239, 1)"}
+                        borderColor={"rgba(223, 223, 223, 1)"}
+                        textColor={"black"}
+                        style={{ padding: "7px 7px" }}
+                        href={`/mr/${item.id}`}
+                      >
+                        <img src={externalLinkIcon} alt="external link" />
+                      </Button>
+                    ) : (
+                      "-"
+                    )}
                   </div>
                 </td>
               </tr>

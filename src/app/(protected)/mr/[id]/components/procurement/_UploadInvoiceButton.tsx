@@ -42,12 +42,6 @@ export default function UploadInvoiceButton({
     }
   }
 
-  function getFileName(url: string): string {
-    const urlParts = url.split("/");
-    const fileName = urlParts[urlParts.length - 1];
-    return decodeURIComponent(fileName) || "View File";
-  }
-
   async function handleDownload(url: string, event: React.MouseEvent) {
     event.stopPropagation();
 
@@ -89,7 +83,7 @@ export default function UploadInvoiceButton({
         {
           method: "POST",
           body: formData,
-        }
+        },
       );
 
       if (!response.ok) {
@@ -105,7 +99,7 @@ export default function UploadInvoiceButton({
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
         {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "updateLPOInvoice",
@@ -113,7 +107,7 @@ export default function UploadInvoiceButton({
             supplier_id: supplierId,
             invoice_file: JSON.stringify(updatedInvoiceFiles),
           }),
-        }
+        },
       );
 
       if (!updateRes.ok) {
@@ -135,7 +129,7 @@ export default function UploadInvoiceButton({
   }
 
   async function handleFileSelection(
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -198,7 +192,7 @@ export default function UploadInvoiceButton({
             action: "delete",
             url: url,
           }),
-        }
+        },
       );
 
       if (!deleteRes.ok) {
@@ -211,7 +205,7 @@ export default function UploadInvoiceButton({
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
         {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "updateLPOInvoice",
@@ -219,7 +213,7 @@ export default function UploadInvoiceButton({
             supplier_id: supplierId,
             invoice_file: JSON.stringify(updatedInvoiceFiles),
           }),
-        }
+        },
       );
 
       if (!updateRes.ok) {

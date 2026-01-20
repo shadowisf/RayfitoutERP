@@ -116,6 +116,11 @@ button {
       width: 12px;
     }
   }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .button-like {
@@ -530,7 +535,7 @@ label {
       flex-direction: column;
       margin-bottom: 15px;
       position: relative; /* Important for dropdown positioning */
-      z-index: 1; /* Base z-index */
+      /* z-index: 1; */ /* Base z-index */
     }
   }
 

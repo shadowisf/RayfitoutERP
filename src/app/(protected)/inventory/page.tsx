@@ -39,15 +39,20 @@ export default function Inventory() {
   const [filters, setFilters] = useState<{
     selectedCategories: string[];
     selectedLocations: string[];
+    selectedProjects: number[]; // Change from string[] to number[]
     stockAddedIn: string;
   }>({
     selectedCategories: [],
     selectedLocations: [],
+    selectedProjects: [],
     stockAddedIn: "all",
   });
   const [stocksByInventoryItem, setStocksByInventoryItem] = useState<{
     [itemId: number]: any[];
   }>({});
+  const [availableProjects, setAvailableProjects] = useState<
+    { id: number; name: string }[] // Change from string to number
+  >([]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -175,6 +180,31 @@ export default function Inventory() {
     fetchAllStocks();
   }, [inventory]);
 
+  // Fetch projects for display
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAvailableProjects`,
+          {
+            method: "GET",
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.projects) {
+            setAvailableProjects(data.projects);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      }
+    }
+
+    fetchProjects();
+  }, []);
+
   async function fetchAllTransactions() {
     if (activeTab !== "transfer-log") {
       return;
@@ -272,6 +302,16 @@ export default function Inventory() {
         const itemStocks = stocksByInventoryItem[item.id] || [];
         return itemStocks.some((stock) =>
           filters.selectedLocations.includes(stock.location),
+        );
+      });
+    }
+
+    // Filter by selected projects from filter (check stocks table)
+    if (filters.selectedProjects.length > 0) {
+      processed = processed.filter((item) => {
+        const itemStocks = stocksByInventoryItem[item.id] || [];
+        return itemStocks.some(
+          (stock) => filters.selectedProjects.includes(stock.project_id), // No need to convert to string
         );
       });
     }
@@ -478,36 +518,12 @@ export default function Inventory() {
     return labels[value] || value;
   };
 
-  // Remove individual filter
-  const removeFilter = (
-    type: "category" | "location" | "time",
-    value?: string,
-  ) => {
-    if (type === "category" && value) {
-      setFilters({
-        ...filters,
-        selectedCategories: filters.selectedCategories.filter(
-          (c) => c !== value,
-        ),
-      });
-    } else if (type === "location" && value) {
-      setFilters({
-        ...filters,
-        selectedLocations: filters.selectedLocations.filter((l) => l !== value),
-      });
-    } else if (type === "time") {
-      setFilters({
-        ...filters,
-        stockAddedIn: "all",
-      });
-    }
-  };
-
   // Reset all filters
   const resetAllFilters = () => {
     setFilters({
       selectedCategories: [],
       selectedLocations: [],
+      selectedProjects: [],
       stockAddedIn: "all",
     });
   };
@@ -516,6 +532,7 @@ export default function Inventory() {
   const hasActiveFilters =
     filters.selectedCategories.length > 0 ||
     filters.selectedLocations.length > 0 ||
+    filters.selectedProjects.length > 0 ||
     filters.stockAddedIn !== "all";
 
   return (
@@ -873,6 +890,34 @@ export default function Inventory() {
                     </Button>
                   )}
 
+                  {/* Project Filters */}
+                  {filters.selectedProjects.length > 0 && (
+                    <Button
+                      style={{
+                        borderRadius: "50px",
+                        fontWeight: "600",
+                      }}
+                      componentType={"none"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"transparent"}
+                      textColor={"black"}
+                    >
+                      PROJECT:{" "}
+                      <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                        {(() => {
+                          const firstProject = availableProjects.find(
+                            (p) => p.id === filters.selectedProjects[0],
+                          );
+                          return firstProject
+                            ? firstProject.name.toUpperCase()
+                            : "UNKNOWN";
+                        })()}
+                        {filters.selectedProjects.length > 1 &&
+                          `, +${filters.selectedProjects.length - 1} MORE`}
+                      </span>
+                    </Button>
+                  )}
+
                   {/* Location Filters */}
                   {filters.selectedLocations.length > 0 && (
                     <Button
@@ -885,7 +930,7 @@ export default function Inventory() {
                       borderColor={"transparent"}
                       textColor={"black"}
                     >
-                      LOCATION:
+                      LOCATION:{" "}
                       <span style={{ color: "rgba(16, 185, 129, 1)" }}>
                         {filters.selectedLocations[0].toUpperCase()}
                         {filters.selectedLocations.length > 1 &&
@@ -909,10 +954,6 @@ export default function Inventory() {
               )}
             </div>
           )}
-
-          <br />
-
-          {/* Filter Display Bubbles */}
 
           <br />
           <br />
@@ -1026,6 +1067,7 @@ export default function Inventory() {
                 {searchQuery.trim() !== "" ||
                 filters.selectedCategories.length > 0 ||
                 filters.selectedLocations.length > 0 ||
+                filters.selectedProjects.length > 0 ||
                 filters.stockAddedIn !== "all"
                   ? "No items found matching your filters"
                   : "No items found in this category"}

@@ -158,7 +158,7 @@ export default function BatchDetailsPopUpButton({
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`,
         {
           method: "GET",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -169,7 +169,7 @@ export default function BatchDetailsPopUpButton({
 
       // Filter stocks for this specific inventory item
       const filteredStocks = data.filter(
-        (stock: any) => stock.inventory_item_id === inventoryItem.id
+        (stock: any) => stock.inventory_item_id === inventoryItem.id,
       );
 
       setAllStocks(filteredStocks);
@@ -191,7 +191,7 @@ export default function BatchDetailsPopUpButton({
             inventoryItemId: inventoryItem.id,
             batchId: batchID,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -223,7 +223,7 @@ export default function BatchDetailsPopUpButton({
           body: JSON.stringify({
             project_id: projectId,
           }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -242,14 +242,14 @@ export default function BatchDetailsPopUpButton({
   useEffect(() => {
     if (batchDetails && allStocks && allStocks.length > 0) {
       const stocksWithPrice = allStocks.filter(
-        (stock) => stock.unit_price !== null && stock.unit_price !== undefined
+        (stock) => stock.unit_price !== null && stock.unit_price !== undefined,
       );
 
       if (stocksWithPrice.length > 0) {
         // Calculate average
         const totalPrice = stocksWithPrice.reduce(
           (sum, stock) => sum + parseFloat(stock.unit_price),
-          0
+          0,
         );
         const avg = totalPrice / stocksWithPrice.length;
 
@@ -340,8 +340,8 @@ export default function BatchDetailsPopUpButton({
           backgroundColor: isIncrease
             ? "rgba(244, 197, 197, 1)"
             : isDecrease
-            ? "rgba(218, 255, 218, 1)"
-            : "rgba(239, 239, 239, 1)",
+              ? "rgba(218, 255, 218, 1)"
+              : "rgba(239, 239, 239, 1)",
         }}
       >
         <span
@@ -349,8 +349,8 @@ export default function BatchDetailsPopUpButton({
             color: isIncrease
               ? "rgba(159, 71, 71, 1)"
               : isDecrease
-              ? "rgba(0, 108, 60, 1)"
-              : "#737373",
+                ? "rgba(0, 108, 60, 1)"
+                : "#737373",
           }}
         >
           {isIncrease ? "+" : ""}
@@ -495,7 +495,15 @@ export default function BatchDetailsPopUpButton({
           </div>
           <div>
             <small>PROJECT</small>
-            <h3>{details.project_name || "-"}</h3>
+            <h3>
+              {details.project_name ? (
+                <a href={`/project/${details.project_id}`}>
+                  {details.project_name}
+                </a>
+              ) : (
+                "-"
+              )}
+            </h3>
           </div>
           <div>
             <small>BILL OF QUANTITY ITEM</small>
@@ -850,15 +858,9 @@ export default function BatchDetailsPopUpButton({
               <small>PROJECT</small>
               <h3>
                 {details.project_name ? (
-                  <Button
-                    componentType={"link"}
-                    bgColor={"transparent"}
-                    borderColor={"transparent"}
-                    textColor={"black"}
-                    style={{ padding: "0px", textDecoration: "underline" }}
-                  >
+                  <a href={`/project/${details.project_id}`}>
                     {details.project_name}
-                  </Button>
+                  </a>
                 ) : (
                   "-"
                 )}
@@ -917,7 +919,9 @@ export default function BatchDetailsPopUpButton({
                 <small>TOTAL PRICE</small>
                 <h3>
                   {details.unit_price * details.stock_quantity
-                    ? `AED ${details.unit_price * details.stock_quantity}`
+                    ? `${formatCurrency(
+                        details.unit_price * details.stock_quantity,
+                      )}`
                     : "-"}
                 </h3>
               </div>
@@ -944,7 +948,7 @@ export default function BatchDetailsPopUpButton({
               <div>
                 <small>DATE</small>
                 <h3>
-                  {new Date(details.entry_date).toLocaleDateString("en-US", {
+                  {new Date(details.entry_date).toLocaleDateString("en-GB", {
                     day: "2-digit",
                     month: "2-digit",
                     year: "numeric",
@@ -1083,7 +1087,7 @@ export default function BatchDetailsPopUpButton({
                         onClick={() =>
                           handleDownload(
                             url,
-                            `GRN-${String(details.stock_id).padStart(5, "0")}`
+                            `GRN-${String(details.stock_id).padStart(5, "0")}`,
                           )
                         }
                       />
@@ -1110,8 +1114,8 @@ export default function BatchDetailsPopUpButton({
                             url,
                             `QC-Report-${String(details.stock_id).padStart(
                               5,
-                              "0"
-                            )}`
+                              "0",
+                            )}`,
                           )
                         }
                       />
@@ -1136,7 +1140,7 @@ export default function BatchDetailsPopUpButton({
                         onClick={() =>
                           handleDownload(
                             url,
-                            `LPO-${String(details.stock_id).padStart(5, "0")}`
+                            `LPO-${String(details.stock_id).padStart(5, "0")}`,
                           )
                         }
                       />
@@ -1161,7 +1165,7 @@ export default function BatchDetailsPopUpButton({
                         onClick={() =>
                           handleDownload(
                             url,
-                            `DN-${String(details.stock_id).padStart(5, "0")}`
+                            `DN-${String(details.stock_id).padStart(5, "0")}`,
                           )
                         }
                       />
@@ -1238,8 +1242,8 @@ export default function BatchDetailsPopUpButton({
             {batchDetails?.type === "mr"
               ? renderMRBatchDetails(batchDetails)
               : batchDetails?.type === "manual"
-              ? renderManualStockDetails(batchDetails)
-              : null}
+                ? renderManualStockDetails(batchDetails)
+                : null}
           </>
         </FormPopUp>
       )}

@@ -63,7 +63,7 @@ export default function SingleSelectDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredOption, setHoveredOption] = useState<string | number | null>(
-    null
+    null,
   );
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [dropdownPosition, setDropdownPosition] = useState({
@@ -76,7 +76,7 @@ export default function SingleSelectDropdown({
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dropdownId = useRef(
-    `dropdown-${Math.random().toString(36).substr(2, 9)}`
+    `dropdown-${Math.random().toString(36).substr(2, 9)}`,
   );
 
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function SingleSelectDropdown({
   const options = getOptions();
 
   const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(searchQuery.toLowerCase())
+    option.label.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   // Group options by category and subcategory if categorized
@@ -163,7 +163,7 @@ export default function SingleSelectDropdown({
 
       const clickedElement = target as HTMLElement;
       const isOnAnotherDropdown = clickedElement.closest(
-        ".select-dropdown-portal"
+        ".select-dropdown-portal",
       );
       const isOnModal =
         clickedElement.closest(".form-popup-overlay") ||
@@ -249,7 +249,7 @@ export default function SingleSelectDropdown({
 
   function handleMouseEnter(
     optionId: string | number,
-    event: React.MouseEvent<HTMLDivElement>
+    event: React.MouseEvent<HTMLDivElement>,
   ) {
     setHoveredOption(optionId);
     const rect = event.currentTarget.getBoundingClientRect();
@@ -269,7 +269,7 @@ export default function SingleSelectDropdown({
     }
 
     const selectedOption = options.find(
-      (option) => String(option.id) === String(selectedValue)
+      (option) => String(option.id) === String(selectedValue),
     );
 
     return selectedOption ? selectedOption.label : placeholder;
@@ -278,7 +278,7 @@ export default function SingleSelectDropdown({
   const displayText = getDisplayText();
   const isPlaceholder = !selectedValue && selectedValue !== 0;
   const hoveredOptionData = options.find(
-    (option) => option.id === hoveredOption
+    (option) => option.id === hoveredOption,
   );
 
   const dropdownContent = isOpen && (
@@ -419,7 +419,7 @@ export default function SingleSelectDropdown({
                         );
                       })}
                     </div>
-                  )
+                  ),
                 )}
               </div>
             ))

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (!filter || typeof filter !== "number" || filter <= 0) {
       return NextResponse.json(
         { error: "Invalid 'filter' parameter. Must be a positive number." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         ) AS last_period
       FROM lpo
     `,
-      [filter, filter * 2, filter]
+      [filter, filter * 2, filter],
     );
 
     return NextResponse.json(
@@ -45,13 +45,13 @@ export async function POST(request: NextRequest) {
         this_week: rows[0].this_period || 0,
         last_week: rows[0].last_period || 0,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (err: any) {
     console.error(err.sqlMessage || err.message);
     return NextResponse.json(
       { error: err.sqlMessage || err.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

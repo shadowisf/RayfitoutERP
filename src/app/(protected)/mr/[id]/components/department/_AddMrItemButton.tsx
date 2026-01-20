@@ -8,9 +8,8 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
-import { BoqLine } from "@/app/(protected)/boq/[id]/types/boqLine";
-import { useAuth } from "@/app/context/AuthContext";
+import { useState, useEffect } from "react";
+import SelectBoqItemButton from "@/app/components/_SelectBoqItemButton";
 
 type AddMrItemButtonProps = {
   mrHeaderID: number;
@@ -24,12 +23,6 @@ type AddMrItemButtonProps = {
   full?: boolean;
   purposeID: number;
   style?: React.CSSProperties;
-};
-
-type GroupedBoqLines = {
-  [category: string]: {
-    [subCategory: string]: BoqLine[];
-  };
 };
 
 export default function AddMrItemButton({
@@ -47,15 +40,12 @@ export default function AddMrItemButton({
 }: AddMrItemButtonProps) {
   const router = useRouter();
 
-  const locationIcon = "/icons/location-boq.svg";
-  const externalLinkIcon = "/icons/external-link.svg";
-  const arrowRight = "/icons/arrow-right.svg";
-
-  const { userInfo } = useAuth();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
   const [isOpen, setIsOpen] = useState(false);
-  const [isBoqSelectFormOpen, setIsBoqSelectFormOpen] = useState(false);
+
+  const [categoriesManuallySelected, setCategoriesManuallySelected] =
+    useState(false);
+  const [userInitiatedCategorySelection, setUserInitiatedCategorySelection] =
+    useState(false);
 
   const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
     [],
@@ -64,8 +54,6 @@ export default function AddMrItemButton({
     any[]
   >([]);
   const [locationValues, setLocationValues] = useState<any[]>([]);
-  const [boqLineValues, setBoqLineValues] = useState<BoqLine[]>([]);
-  const [groupedBoqLines, setGroupedBoqLines] = useState<GroupedBoqLines>({});
 
   const [materialCategoryID, setMaterialCategoryID] = useState<string | number>(
     "",
@@ -82,57 +70,13 @@ export default function AddMrItemButton({
   const [specification, setSpecification] = useState("");
   const [deliveryLocation, setDeliveryLocation] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [tempSelectedBoqID, setTempSelectedBoqID] = useState<string | number>(
-    "",
-  );
-  const [selectedBoqInfo, setSelectedBoqInfo] = useState("");
-
-  // BOQ Category states
-  const [activeBoqCategory, setActiveBoqCategory] = useState<string>("ALL");
-  const [showLeftArrow, setShowLeftArrow] = useState(false);
-  const [showRightArrow, setShowRightArrow] = useState(false);
-
-  const boqCategories = Object.keys(groupedBoqLines);
-  const boqSubCategories =
-    activeBoqCategory === "ALL"
-      ? groupedBoqLines[boqCategories[0]] || {}
-      : groupedBoqLines[activeBoqCategory] || {};
-
-  const canSeePrice =
-    userInfo?.departmentID === 8 ||
-    userInfo?.departmentID === 12 ||
-    userInfo?.departmentID === 10;
-
-  // Check scroll position for arrows
-  const checkScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } =
-        scrollContainerRef.current;
-      setShowLeftArrow(scrollLeft > 0);
-      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 1);
-    }
-  };
-
-  const scroll = (direction: "left" | "right") => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = 300;
-      scrollContainerRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
-    }
-  };
-
-  useEffect(() => {
-    checkScroll();
-    window.addEventListener("resize", checkScroll);
-    return () => window.removeEventListener("resize", checkScroll);
-  }, [boqCategories]);
 
   // Fetch initial data
   useEffect(() => {
     // Fetch material categories
-    fetch("/api/mr/getMaterialCategoryValues")
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
+    )
       .then((res) => res.json())
       .then((data) => {
         setMaterialCategoryValues(data);
@@ -142,10 +86,13 @@ export default function AddMrItemButton({
       });
 
     // Fetch all subcategories initially
-    fetch("/api/mr/getMaterialSubCategoryValues", {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    })
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      },
+    )
       .then((res) => res.json())
       .then((data) => {
         setMaterialSubCategoryValues(data);
@@ -162,59 +109,30 @@ export default function AddMrItemButton({
       });
   }, []);
 
-  // Fetch BOQ lines when projectID is available
-  useEffect(() => {
-    if (projectID) {
-      fetch("/api/boq/getAllBoqLinesWithNumberRef", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project_id: projectID,
-        }),
-      })
-        .then((res) => res.json())
-        .then(function (data) {
-          setBoqLineValues(data);
-
-          // Group BOQ lines by category and subcategory
-          const grouped: GroupedBoqLines = {};
-          data.forEach((boqLine: BoqLine) => {
-            const category = boqLine.category || "Uncategorized";
-            const subCategory = boqLine.sub_category || "General";
-
-            if (!grouped[category]) {
-              grouped[category] = {};
-            }
-            if (!grouped[category][subCategory]) {
-              grouped[category][subCategory] = [];
-            }
-            grouped[category][subCategory].push(boqLine);
-          });
-
-          setGroupedBoqLines(grouped);
-        });
-    }
-  }, [projectID]);
-
   // Set auto-populated values when modal opens
   useEffect(() => {
     if (!isOpen) return;
 
     if (autoCategoryID) {
       // First fetch the subcategories for this category
-      fetch("/api/mr/getMaterialSubCategoryValuesByCategoryID", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category_id: autoCategoryID,
-        }),
-      })
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category_id: autoCategoryID,
+          }),
+        },
+      )
         .then((res) => res.json())
         .then((data) => {
           setMaterialSubCategoryValues(data);
 
           // Set the category
           setMaterialCategoryID(autoCategoryID);
+          setCategoriesManuallySelected(true);
+          setUserInitiatedCategorySelection(true);
 
           // Now set the subcategories - this needs to happen AFTER we have the data
           if (autoSubCategoryIDs && autoSubCategoryIDs.length > 0) {
@@ -225,9 +143,6 @@ export default function AddMrItemButton({
             const normalizedIds = idsArray.map((id) =>
               typeof id === "string" ? parseInt(id) : id,
             );
-
-            console.log("Setting subcategory IDs:", normalizedIds);
-            console.log("Available subcategories:", data);
 
             // IMPORTANT: Set this in the next tick to ensure state is ready
             setTimeout(() => {
@@ -245,34 +160,28 @@ export default function AddMrItemButton({
         typeof id === "string" ? parseInt(id) : id,
       );
 
-      console.log("Setting subcategory IDs (no category):", normalizedIds);
       setTimeout(() => {
         setMaterialSubCategoryIDs(normalizedIds);
       }, 0);
     }
   }, [isOpen, autoCategoryID, autoSubCategoryIDs]);
 
-  // Filter subcategories based on selected category
+  // Filter subcategories based on selected category - only if category was selected by user
   useEffect(() => {
-    if (materialCategoryID) {
-      fetch("/api/mr/getMaterialSubCategoryValuesByCategoryID", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category_id: materialCategoryID,
-        }),
-      })
+    if (materialCategoryID && userInitiatedCategorySelection) {
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category_id: materialCategoryID,
+          }),
+        },
+      )
         .then((res) => res.json())
         .then((data) => {
           setMaterialSubCategoryValues(data);
-
-          // Filter out any selected subcategories that don't belong to the new category
-          // But preserve auto-populated subcategories if this is the initial load
-          if (!autoCategoryID || materialCategoryID !== autoCategoryID) {
-            setMaterialSubCategoryIDs((prev) =>
-              prev.filter((id) => data.some((item: any) => item.id === id)),
-            );
-          }
         })
         .catch((err) => {
           console.error(err);
@@ -288,38 +197,50 @@ export default function AddMrItemButton({
           setMaterialSubCategoryValues(data);
         });
     }
-  }, [materialCategoryID]);
+  }, [materialCategoryID, userInitiatedCategorySelection]);
 
   // Handle subcategory change - auto-select category if needed
   const handleSubCategoryChange = (selectedIds: (string | number)[]) => {
     setMaterialSubCategoryIDs(selectedIds);
 
-    // If a subcategory is selected and no category is set, auto-select the category
-    if (selectedIds.length > 0 && !materialCategoryID) {
-      const firstSelectedSubCategory = materialSubCategoryValues.find(
-        (sc: any) => sc.id === selectedIds[0],
-      ) as any;
+    // If subcategories are cleared
+    if (selectedIds.length === 0) {
+      if (!categoriesManuallySelected) {
+        setMaterialCategoryID("");
+      }
+      // Reset to all subcategories
+      fetch("/api/mr/getMaterialSubCategoryValues", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setMaterialSubCategoryValues(data);
+        });
+      return;
+    }
 
-      if (firstSelectedSubCategory?.category_id) {
+    // Get category from first selected subcategory
+    const firstSelectedSubCategory = materialSubCategoryValues.find(
+      (sc: any) => sc.id === selectedIds[0],
+    ) as any;
+
+    if (firstSelectedSubCategory?.category_id) {
+      // If category was manually selected, keep it and merge
+      if (categoriesManuallySelected && materialCategoryID) {
+        // Don't override the manually selected category
+      } else {
+        // Auto-select the category based on subcategory
         setMaterialCategoryID(firstSelectedSubCategory.category_id);
       }
     }
   };
 
-  const parseAttachments = (attachments: any): string[] => {
-    if (!attachments) return [];
-    if (Array.isArray(attachments)) return attachments;
-    if (typeof attachments === "string") {
-      try {
-        if (attachments.trim() === "") return [];
-        const parsed = JSON.parse(attachments);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (error) {
-        console.error("Failed to parse attachments:", error);
-        return [];
-      }
-    }
-    return [];
+  // Handle category change
+  const handleCategoryChange = (categoryId: string | number) => {
+    setCategoriesManuallySelected(true);
+    setUserInitiatedCategorySelection(true);
+    setMaterialCategoryID(categoryId);
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -338,26 +259,6 @@ export default function AddMrItemButton({
 
     if (!boqLineID && purposeID === 1) {
       toast("Please select a bill of quantity line", "error");
-      return;
-    }
-
-    if (!materialDescription.trim()) {
-      toast("Please enter a material description", "error");
-      return;
-    }
-
-    if (!quantity) {
-      toast("Please enter quantity", "error");
-      return;
-    }
-
-    if (!unit) {
-      toast("Please select unit", "error");
-      return;
-    }
-
-    if (!deliveryLocation) {
-      toast("Please select delivery location", "error");
       return;
     }
 
@@ -421,6 +322,8 @@ export default function AddMrItemButton({
         setSpecification("");
         setDeliveryLocation("");
         setAttachment(null);
+        setCategoriesManuallySelected(false);
+        setUserInitiatedCategorySelection(false);
 
         router.refresh();
       } else {
@@ -466,7 +369,7 @@ export default function AddMrItemButton({
               label={"CATEGORY"}
               dbData={materialCategoryValues}
               selectedValue={materialCategoryID}
-              onChange={setMaterialCategoryID}
+              onChange={handleCategoryChange}
               placeholder="SELECT CATEGORY"
               required
             />
@@ -497,41 +400,11 @@ export default function AddMrItemButton({
                 <span>BILL OF QUANTITY</span>
               </label>
 
-              <Button
-                componentType={"button"}
-                bgColor={"black"}
-                borderColor={"black"}
-                textColor={"white"}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setIsBoqSelectFormOpen(true);
-                }}
-                full
-                style={boqLineID ? { justifyContent: "flex-start" } : {}}
-              >
-                {boqLineID ? (
-                  <span
-                    style={{
-                      maxWidth: "250px",
-                      display: "inline-block",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {selectedBoqInfo}
-                  </span>
-                ) : (
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    SELECT BILL OF QUANTITY ITEM
-                    <img
-                      src={externalLinkIcon}
-                      alt="external link"
-                      style={{ filter: "invert(1)" }}
-                    />
-                  </div>
-                )}
-              </Button>
+              <SelectBoqItemButton
+                projectID={projectID}
+                onSelectBoq={setBoqLineID}
+                currentBoqLineID={boqLineID}
+              />
             </div>
           </div>
 
@@ -624,475 +497,6 @@ export default function AddMrItemButton({
               label={"ATTACHMENT"}
               acceptedFileTypes={".pdf,.png,.jpg,.jpeg"}
             />
-          </div>
-        </FormPopUp>
-      )}
-
-      {isBoqSelectFormOpen && (
-        <FormPopUp
-          header={"SELECT BILL OF QUANTITY ITEM"}
-          setIsOpen={setIsBoqSelectFormOpen}
-          handleSubmit={(e) => {
-            e.preventDefault();
-
-            if (!tempSelectedBoqID) {
-              toast("Please select a bill of quantity item", "error");
-              return;
-            }
-
-            setBoqLineID(tempSelectedBoqID);
-            setIsBoqSelectFormOpen(false);
-          }}
-          addButtonLabel={"CONFIRM"}
-          style={{ minWidth: "1200px" }}
-        >
-          {/* Category Grid */}
-          <div className="category-grid" style={{ marginBottom: "20px" }}>
-            <div style={{ position: "relative", flex: 1, maxWidth: "70dvw" }}>
-              {/* Left Fade Gradient */}
-              {showLeftArrow && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: "300px",
-                    background:
-                      "linear-gradient(to right, white 0%, rgba(255, 255, 255, 0) 100%)",
-                    pointerEvents: "none",
-                    zIndex: 5,
-                  }}
-                />
-              )}
-
-              {/* Left Arrow Button */}
-              {showLeftArrow && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    scroll("left");
-                  }}
-                  style={{
-                    position: "absolute",
-                    left: "10px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    zIndex: 10,
-                    backgroundColor: "black",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "10px",
-                    width: "40px",
-                    height: "40px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <img
-                    src={arrowRight}
-                    style={{ transform: "rotate(-180deg)", width: "12px" }}
-                  />
-                </button>
-              )}
-
-              <div
-                ref={scrollContainerRef}
-                onScroll={checkScroll}
-                style={{
-                  overflowX: "auto",
-                  scrollbarWidth: "none",
-                  msOverflowStyle: "none",
-                }}
-              >
-                <style jsx>{`
-                  div::-webkit-scrollbar {
-                    display: "none";
-                  }
-                `}</style>
-                <div style={{ display: "flex", gap: "1px" }}>
-                  <div
-                    className={`item ${
-                      activeBoqCategory === "ALL" ? "active" : ""
-                    }`}
-                    onClick={() => setActiveBoqCategory("ALL")}
-                    style={{
-                      flexShrink: 0,
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                    }}
-                  >
-                    ALL
-                  </div>
-
-                  {boqCategories.map(function (category) {
-                    return (
-                      <div
-                        key={category}
-                        className={`item ${
-                          activeBoqCategory === category ? "active" : ""
-                        }`}
-                        onClick={function () {
-                          setActiveBoqCategory(category);
-                        }}
-                        style={{ flexShrink: 0, cursor: "pointer" }}
-                      >
-                        {category}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right Fade Gradient */}
-              {showRightArrow && (
-                <div
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: "300px",
-                    background:
-                      "linear-gradient(to left, white 0%, rgba(255, 255, 255, 0) 100%)",
-                    pointerEvents: "none",
-                    zIndex: 5,
-                  }}
-                />
-              )}
-
-              {/* Right Arrow Button */}
-              {showRightArrow && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    scroll("right");
-                  }}
-                  style={{
-                    position: "absolute",
-                    right: "10px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    zIndex: 10,
-                    backgroundColor: "black",
-                    borderRadius: "10px",
-                    color: "white",
-                    border: "none",
-                    width: "40px",
-                    height: "40px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <img src={arrowRight} style={{ width: "12px" }} />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* BOQ Items Table */}
-          <div style={{ maxHeight: "500px", overflowY: "auto" }}>
-            {activeBoqCategory === "ALL"
-              ? Object.entries(groupedBoqLines).map(
-                  ([category, subCategoriesData], categoryIndex) =>
-                    Object.entries(subCategoriesData).map(
-                      ([subCategory, items], subCategoryIndex) => (
-                        <div
-                          key={`${category}-${subCategory}`}
-                          style={{ marginBottom: "30px" }}
-                        >
-                          <h2
-                            style={{
-                              marginBottom: "10px",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            {categoryIndex + 1}.{subCategoryIndex + 1}{" "}
-                            {category} / {subCategory}
-                          </h2>
-
-                          <table className="items-table two-toned">
-                            <thead>
-                              <tr>
-                                <th></th>
-                                <th>#</th>
-                                <th>ITEM</th>
-                                <th>QUANTITY</th>
-                                {canSeePrice && (
-                                  <>
-                                    <th>RATE</th>
-                                    <th>TOTAL PRICE</th>
-                                  </>
-                                )}
-                                <th>ATTACHMENTS</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {items.map((boq, itemIndex) => {
-                                const attachmentUrls = parseAttachments(
-                                  boq.attachments,
-                                );
-
-                                return (
-                                  <tr key={boq.id}>
-                                    <td onClick={(e) => e.stopPropagation()}>
-                                      <input
-                                        type="radio"
-                                        name="boq-select"
-                                        value={boq.id}
-                                        checked={tempSelectedBoqID === boq.id}
-                                        onChange={() => {
-                                          setTempSelectedBoqID(boq.id);
-                                          setSelectedBoqInfo(
-                                            boq.item_number +
-                                              " " +
-                                              boq.item_name,
-                                          );
-                                        }}
-                                        style={{
-                                          width: "18px",
-                                          height: "18px",
-                                          cursor: "pointer",
-                                        }}
-                                      />
-                                    </td>
-                                    <td style={{ whiteSpace: "nowrap" }}>
-                                      {boq.item_number}
-                                    </td>
-                                    <td>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          gap: "10px",
-                                        }}
-                                      >
-                                        <strong>{boq.item_name}</strong>
-
-                                        {boq.item_description && (
-                                          <p style={{ whiteSpace: "pre-wrap" }}>
-                                            {boq.item_description}
-                                          </p>
-                                        )}
-
-                                        {boq.location && (
-                                          <div
-                                            style={{
-                                              display: "flex",
-                                              gap: "10px",
-                                              alignItems: "center",
-                                            }}
-                                          >
-                                            <img
-                                              src={locationIcon}
-                                              style={{ width: "16px" }}
-                                            />
-                                            <span
-                                              style={{
-                                                fontWeight: 600,
-                                                marginTop: "4px",
-                                                color: "rgba(105, 105, 105, 1)",
-                                              }}
-                                            >
-                                              {boq.location}
-                                            </span>
-                                          </div>
-                                        )}
-
-                                        {boq.scope_of_work && (
-                                          <div
-                                            style={{
-                                              backgroundColor:
-                                                "rgba(225, 225, 225, 1)",
-                                              borderRadius: "50px",
-                                              padding: "4px 10px",
-                                              width: "fit-content",
-                                            }}
-                                          >
-                                            <strong>{boq.scope_of_work}</strong>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td>
-                                      {boq.quantity} {boq.unit}
-                                    </td>
-
-                                    {canSeePrice && (
-                                      <>
-                                        <td>
-                                          {boq.rate_per_quantity?.toLocaleString()}
-                                        </td>
-                                        <td>
-                                          AED {boq.total_cost?.toLocaleString()}
-                                        </td>
-                                      </>
-                                    )}
-
-                                    <td className="attachments">
-                                      <div className="attachments-grid">
-                                        {attachmentUrls.map((url, i) => (
-                                          <img
-                                            key={i}
-                                            src={url}
-                                            alt="attachment"
-                                          />
-                                        ))}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      ),
-                    ),
-                )
-              : Object.entries(boqSubCategories).map(
-                  ([subCategory, items], index) => (
-                    <div key={subCategory} style={{ marginBottom: "30px" }}>
-                      <h2 style={{ marginBottom: "10px" }}>
-                        {boqCategories.indexOf(activeBoqCategory) + 1}.
-                        {index + 1} {subCategory}
-                      </h2>
-
-                      <table className="items-table two-toned">
-                        <thead>
-                          <tr>
-                            <th></th>
-                            <th>#</th>
-                            <th>ITEM</th>
-                            <th>QUANTITY</th>
-                            {canSeePrice && (
-                              <>
-                                <th>RATE</th>
-                                <th>TOTAL PRICE</th>
-                              </>
-                            )}
-                            <th>ATTACHMENTS</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {items.map((boq, itemIndex) => {
-                            const attachmentUrls = parseAttachments(
-                              boq.attachments,
-                            );
-
-                            return (
-                              <tr key={boq.id}>
-                                <td onClick={(e) => e.stopPropagation()}>
-                                  <input
-                                    type="radio"
-                                    name="boq-select"
-                                    value={boq.id}
-                                    checked={tempSelectedBoqID === boq.id}
-                                    onChange={() => {
-                                      setTempSelectedBoqID(boq.id);
-                                      setSelectedBoqInfo(
-                                        boq.item_number + " " + boq.item_name,
-                                      );
-                                    }}
-                                    style={{
-                                      width: "18px",
-                                      height: "18px",
-                                      cursor: "pointer",
-                                    }}
-                                  />
-                                </td>
-                                <td style={{ whiteSpace: "nowrap" }}>
-                                  {boqCategories.indexOf(activeBoqCategory) + 1}
-                                  .{index + 1}.{itemIndex + 1}
-                                </td>
-                                <td>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: "10px",
-                                    }}
-                                  >
-                                    <strong>{boq.item_name}</strong>
-
-                                    {boq.item_description && (
-                                      <p>{boq.item_description}</p>
-                                    )}
-
-                                    {boq.location && (
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          gap: "10px",
-                                          alignItems: "center",
-                                        }}
-                                      >
-                                        <img
-                                          src={locationIcon}
-                                          style={{ width: "16px" }}
-                                        />
-                                        <span
-                                          style={{
-                                            fontWeight: 600,
-                                            marginTop: "4px",
-                                            color: "rgba(105, 105, 105, 1)",
-                                          }}
-                                        >
-                                          {boq.location}
-                                        </span>
-                                      </div>
-                                    )}
-
-                                    {boq.scope_of_work && (
-                                      <div
-                                        style={{
-                                          backgroundColor:
-                                            "rgba(225, 225, 225, 1)",
-                                          borderRadius: "50px",
-                                          padding: "4px 10px",
-                                          width: "fit-content",
-                                        }}
-                                      >
-                                        <strong>{boq.scope_of_work}</strong>
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td>
-                                  {boq.quantity} {boq.unit}
-                                </td>
-
-                                {canSeePrice && (
-                                  <>
-                                    <td>
-                                      {boq.rate_per_quantity?.toLocaleString()}
-                                    </td>
-                                    <td>
-                                      AED {boq.total_cost?.toLocaleString()}
-                                    </td>
-                                  </>
-                                )}
-
-                                <td className="attachments">
-                                  <div className="attachments-grid">
-                                    {attachmentUrls.map((url, i) => (
-                                      <img key={i} src={url} alt="attachment" />
-                                    ))}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ),
-                )}
           </div>
         </FormPopUp>
       )}

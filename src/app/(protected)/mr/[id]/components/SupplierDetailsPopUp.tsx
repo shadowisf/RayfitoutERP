@@ -4,9 +4,10 @@ import FormPopUp from "@/app/components/FormPopup";
 import { useState } from "react";
 import Button from "@/app/components/Button";
 import { MrLine } from "../types/mrLine";
+import { SupplierQuotation } from "../types/supplierQuotation";
 
-type SupplierDetailsPopUp = {
-  item: MrLine;
+type SupplierDetailsPopUpProps = {
+  item: MrLine | SupplierQuotation;
   children: React.ReactNode;
   style?: React.CSSProperties;
 };
@@ -15,8 +16,49 @@ export default function SupplierDetailsPopUp({
   item,
   children,
   style,
-}: SupplierDetailsPopUp) {
+}: SupplierDetailsPopUpProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Helper function to check if item is MrLine type
+  const isMrLine = (item: MrLine | SupplierQuotation): item is MrLine => {
+    return "approved_supplier_name" in item;
+  };
+
+  // Get the supplier data based on the item type
+  const supplierData = isMrLine(item)
+    ? {
+        name: item.approved_supplier_name,
+        type: item.approved_supplier_type,
+        id: item.id,
+        materialCategories: item.approved_supplier_material_categories,
+        materialSubcategories: item.approved_supplier_material_subcategories,
+        avgLeadTime: item.approved_supplier_avg_lead_time,
+        rating: item.approved_supplier_rating,
+        trnNumber: item.approved_supplier_trn_number,
+        contactPerson: item.approved_supplier_contact_person,
+        phone: item.approved_supplier_phone,
+        email: item.approved_supplier_email,
+        address: item.approved_supplier_address,
+      }
+    : {
+        name: item.supplier_name,
+        type: item.supplier_type,
+        id: item.id,
+        materialCategories: item.supplier_material_categories,
+        materialSubcategories: item.supplier_material_subcategories,
+        avgLeadTime: item.supplier_avg_lead_time,
+        rating: item.supplier_rating,
+        trnNumber: item.supplier_trn_number,
+        contactPerson: item.supplier_contact_person,
+        phone: item.supplier_phone,
+        email: item.supplier_email,
+        address: item.supplier_address,
+      };
+
+  // Format ID with padding only for MrLine
+  const formattedId = isMrLine(item)
+    ? `SUPP-${String(supplierData.id).padStart(5, "0")}`
+    : `SUPP-${supplierData.id}`;
 
   return (
     <>
@@ -42,6 +84,7 @@ export default function SupplierDetailsPopUp({
             whiteSpace: "pre-wrap",
             color: "black",
             textTransform: "uppercase",
+            minWidth: "1250px",
           }}
         >
           <div
@@ -52,32 +95,16 @@ export default function SupplierDetailsPopUp({
             }}
           >
             <div>
-              <span>NAME</span>
-              <h2>{item.approved_supplier_name}</h2>
+              <small>NAME</small>
+              <h2>{supplierData.name}</h2>
             </div>
             <div>
-              <span>ID</span>
-              <h2>SUPP-{String(item.id).padStart(5, "0")}</h2>
-            </div>
-          </div>
-
-          <br />
-          <br />
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: "75px",
-            }}
-          >
-            <div>
-              <span>MATERIAL CATEGORIES</span>
-              <h2>{item.approved_supplier_material_categories || "-"}</h2>
+              <small>TYPE</small>
+              <h2>{supplierData.type}</h2>
             </div>
             <div>
-              <span>MATERIAL SUBCATEGORIES</span>
-              <h2>{item.approved_supplier_material_subcategories || "-"}</h2>
+              <small>ID</small>
+              <h2>{formattedId}</h2>
             </div>
           </div>
 
@@ -92,16 +119,12 @@ export default function SupplierDetailsPopUp({
             }}
           >
             <div>
-              <span>AVERAGE LEAD TIME</span>
-              <h2>{item.approved_supplier_avg_lead_time || "-"}</h2>
+              <small>MATERIAL CATEGORIES</small>
+              <h2>{supplierData.materialCategories || "-"}</h2>
             </div>
             <div>
-              <span>RATING</span>
-              <h2>{item.approved_supplier_rating || "-"}</h2>
-            </div>
-            <div>
-              <span>TAX REGISTRATION NUMBER</span>
-              <h2>{item.approved_supplier_trn_number || "-"}</h2>
+              <small>MATERIAL SUBCATEGORIES</small>
+              <h2>{supplierData.materialSubcategories || "-"}</h2>
             </div>
           </div>
 
@@ -116,8 +139,16 @@ export default function SupplierDetailsPopUp({
             }}
           >
             <div>
-              <span>CONTACT PERSON NAME</span>
-              <h2>{item.approved_supplier_contact_person || "-"}</h2>
+              <small>AVERAGE LEAD TIME</small>
+              <h2>{supplierData.avgLeadTime || "-"}</h2>
+            </div>
+            <div>
+              <small>RATING</small>
+              <h2>{supplierData.rating || "-"}</h2>
+            </div>
+            <div>
+              <small>TAX REGISTRATION NUMBER</small>
+              <h2>{supplierData.trnNumber || "-"}</h2>
             </div>
           </div>
 
@@ -132,16 +163,32 @@ export default function SupplierDetailsPopUp({
             }}
           >
             <div>
-              <span>PHONE</span>
-              <h2>{item.approved_supplier_phone || "-"}</h2>
+              <small>CONTACT PERSON NAME</small>
+              <h2>{supplierData.contactPerson || "-"}</h2>
+            </div>
+          </div>
+
+          <br />
+          <br />
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr",
+              gap: "75px",
+            }}
+          >
+            <div>
+              <small>PHONE</small>
+              <h2>{supplierData.phone || "-"}</h2>
             </div>
             <div>
-              <span>EMAIL</span>
-              <h2>{item.approved_supplier_email || "-"}</h2>
+              <small>EMAIL</small>
+              <h2>{supplierData.email || "-"}</h2>
             </div>
             <div>
-              <span>ADDRESS</span>
-              <h2>{item.approved_supplier_address || "-"}</h2>
+              <small>ADDRESS</small>
+              <h2>{supplierData.address || "-"}</h2>
             </div>
           </div>
         </FormPopUp>

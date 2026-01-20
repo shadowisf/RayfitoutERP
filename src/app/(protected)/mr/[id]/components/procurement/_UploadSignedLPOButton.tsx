@@ -44,12 +44,6 @@ export default function UploadSignedLPOButton({
     }
   }
 
-  function getFileName(url: string): string {
-    const urlParts = url.split("/");
-    const fileName = urlParts[urlParts.length - 1];
-    return decodeURIComponent(fileName) || "View File";
-  }
-
   async function handleDownload(url: string, event: React.MouseEvent) {
     event.stopPropagation();
 
@@ -91,7 +85,7 @@ export default function UploadSignedLPOButton({
         {
           method: "POST",
           body: formData,
-        }
+        },
       );
 
       if (!response.ok) {
@@ -107,7 +101,7 @@ export default function UploadSignedLPOButton({
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
         {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "updateLPOSignedLpo",
@@ -115,7 +109,7 @@ export default function UploadSignedLPOButton({
             supplier_id: supplierId,
             signed_lpo_file: JSON.stringify(updatedSignedLpoFiles),
           }),
-        }
+        },
       );
 
       if (!updateRes.ok) {
@@ -124,7 +118,7 @@ export default function UploadSignedLPOButton({
 
       toast(
         `Signed local purchase order uploaded for ${mrLine.approved_supplier_name}`,
-        "success"
+        "success",
       );
 
       // Update parent state
@@ -140,7 +134,7 @@ export default function UploadSignedLPOButton({
   }
 
   async function handleFileSelection(
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -203,7 +197,7 @@ export default function UploadSignedLPOButton({
             action: "delete",
             url: url,
           }),
-        }
+        },
       );
 
       if (!deleteRes.ok) {
@@ -212,13 +206,13 @@ export default function UploadSignedLPOButton({
 
       // Update database
       const updatedSignedLpoFiles = signedLpoFiles.filter(
-        (file) => file !== url
+        (file) => file !== url,
       );
 
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
         {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "updateLPOSignedLpo",
@@ -226,7 +220,7 @@ export default function UploadSignedLPOButton({
             supplier_id: supplierId,
             signed_file: JSON.stringify(updatedSignedLpoFiles),
           }),
-        }
+        },
       );
 
       if (!updateRes.ok) {
@@ -235,7 +229,7 @@ export default function UploadSignedLPOButton({
 
       toast(
         `Signed local purchase order deleted for ${mrLine.approved_supplier_name}`,
-        "success"
+        "success",
       );
 
       // Update parent state

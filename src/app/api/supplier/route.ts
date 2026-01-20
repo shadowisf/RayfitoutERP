@@ -46,15 +46,15 @@ export async function POST(req: Request) {
 
       return NextResponse.json(
         { message: "Quotations added successfully", ids: insertedIds },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
     if (body.action === "createSupplier") {
       const query = `
         INSERT INTO suppliers 
-        (type, name, trn_number, trn_certificate, trade_license, avg_lead_time, supplier_rating, currency, status, contact_person_name, phone, email, website, address, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (type, name, trn_number, trn_certificate, trade_license, avg_lead_time, supplier_rating, currency, status, credit_limit, payment_terms, opening_balance, contact_person_name, phone, email, website, address, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
@@ -67,6 +67,9 @@ export async function POST(req: Request) {
         body.supplier_rating || null,
         body.currency,
         body.status,
+        body.credit_limit || null,
+        body.payment_terms || null,
+        body.opening_balance || null,
         body.contact_person_name,
         body.phone || null,
         body.email || null,
@@ -80,12 +83,12 @@ export async function POST(req: Request) {
 
       if (body.material_categories && body.material_categories.length > 0) {
         const categoryValues = body.material_categories.map(
-          (categoryId: number) => [supplierId, categoryId]
+          (categoryId: number) => [supplierId, categoryId],
         );
 
         await db.query(
           `INSERT INTO jt_supplier_material_category (supplier_id, material_category_id) VALUES ?`,
-          [categoryValues]
+          [categoryValues],
         );
       }
 
@@ -98,7 +101,7 @@ export async function POST(req: Request) {
             try {
               const [subcat]: any = await db.query(
                 `SELECT * FROM lut_material_subcategories WHERE id = ?`,
-                [subcategoryId]
+                [subcategoryId],
               );
 
               if (subcat.length > 0) {
@@ -116,11 +119,11 @@ export async function POST(req: Request) {
             } catch (err) {
               console.error(
                 `Error fetching subcategory ${subcategoryId}:`,
-                err
+                err,
               );
               return null;
             }
-          }
+          },
         );
 
         const subcategoryValues = (
@@ -130,7 +133,7 @@ export async function POST(req: Request) {
         if (subcategoryValues.length > 0) {
           await db.query(
             `INSERT INTO jt_supplier_material_subcategory (supplier_id, material_category_id, material_subcategory_id) VALUES ?`,
-            [subcategoryValues]
+            [subcategoryValues],
           );
         }
       }
@@ -177,21 +180,21 @@ export async function PUT(req: Request) {
       if (!quotations || quotations.length === 0) {
         return NextResponse.json(
           { error: "No quotations provided" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       if (!mr_line_id) {
         return NextResponse.json(
           { error: "mr_line_id is required" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       // Get existing quotation IDs for this MR line
       const [existingRows] = await db.query<RowDataPacket[]>(
         "SELECT id FROM mr_line_supplier_quotation WHERE mr_line_id = ?",
-        [mr_line_id]
+        [mr_line_id],
       );
 
       const existingIds = existingRows.map((row) => row.id);
@@ -218,7 +221,7 @@ export async function PUT(req: Request) {
               quotation.unit_price,
               quotation.total_price,
               quotation.id,
-            ]
+            ],
           );
           updatedIds.push(quotation.id);
         } else {
@@ -234,7 +237,7 @@ export async function PUT(req: Request) {
               quotation.rating,
               quotation.unit_price,
               quotation.total_price,
-            ]
+            ],
           );
           updatedIds.push(result.insertId);
         }
@@ -246,12 +249,12 @@ export async function PUT(req: Request) {
       if (idsToDelete.length > 0) {
         const [quotationsToDelete] = await db.query<RowDataPacket[]>(
           "SELECT quotation_file FROM mr_line_supplier_quotation WHERE id IN (?)",
-          [idsToDelete]
+          [idsToDelete],
         );
 
         await db.query(
           "DELETE FROM mr_line_supplier_quotation WHERE id IN (?)",
-          [idsToDelete]
+          [idsToDelete],
         );
 
         console.log("Deleted quotation IDs:", idsToDelete);
@@ -262,7 +265,7 @@ export async function PUT(req: Request) {
           updated: updatedIds.length,
           deleted: idsToDelete.length,
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
   } catch (err: any) {
@@ -288,7 +291,7 @@ export async function DELETE(req: Request) {
           `SELECT id, quotation_file 
              FROM mr_line_supplier_quotation 
              WHERE mr_line_id = ? AND id != ?`,
-          [mr_line_id, quotation_id]
+          [mr_line_id, quotation_id],
         );
 
         const quotationsToDelete: any[] = Array.isArray(quotationsResult[0])
@@ -314,13 +317,13 @@ export async function DELETE(req: Request) {
               }
 
               const validUrls = fileUrls.filter(
-                (url) => url && typeof url === "string" && url.trim() !== ""
+                (url) => url && typeof url === "string" && url.trim() !== "",
               );
               filesToDelete.push(...validUrls);
             } catch (error) {
               console.error(
                 `Error parsing quotation_file for quotation ${quotation.id}:`,
-                error
+                error,
               );
             }
           }
@@ -338,14 +341,14 @@ export async function DELETE(req: Request) {
                     action: "delete",
                     url: fileUrl,
                   }),
-                }
+                },
               );
 
               if (!deleteResponse.ok) {
                 const errorText = await deleteResponse.text();
                 console.error(
                   `Failed to delete file from S3: ${fileUrl}`,
-                  errorText
+                  errorText,
                 );
                 totalFilesFailed++;
               } else {
@@ -362,7 +365,7 @@ export async function DELETE(req: Request) {
         await db.query(
           `DELETE FROM mr_line_supplier_quotation 
              WHERE mr_line_id = ? AND id != ?`,
-          [mr_line_id, quotation_id]
+          [mr_line_id, quotation_id],
         );
       }
 
@@ -372,7 +375,7 @@ export async function DELETE(req: Request) {
           totalFilesDeleted,
           totalFilesFailed,
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
   } catch (err: any) {
