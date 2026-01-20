@@ -33,13 +33,15 @@ export default function EditBoqHeaderButton({ boqHeader, onSuccess }: props) {
   const [location, setLocation] = useState(boqHeader?.location || "");
   const [date, setDate] = useState(formatDateForInput(boqHeader?.boq_date));
   const [paymentTerms, setPaymentTerms] = useState(
-    boqHeader?.payment_terms || ""
+    boqHeader?.payment_terms || "",
   );
   const [validityTerms, setValidityTerms] = useState(
-    boqHeader?.validity_terms || ""
+    boqHeader?.validity_terms || "",
   );
+  const [completion, setCompletion] = useState(boqHeader?.completion || "");
+  const [exclusion, setExclusion] = useState(boqHeader?.exclusion || "");
   const [termsAndConditions, setTermsAndConditions] = useState(
-    boqHeader?.terms_and_conditions || ""
+    boqHeader?.terms_and_conditions || "",
   );
 
   async function handleSubmit(e: React.FormEvent) {
@@ -58,6 +60,8 @@ export default function EditBoqHeaderButton({ boqHeader, onSuccess }: props) {
         date,
         payment_terms: paymentTerms,
         validity_terms: validityTerms,
+        completion,
+        exclusion,
         terms_and_conditions: termsAndConditions,
       }),
     });
@@ -162,6 +166,30 @@ export default function EditBoqHeaderButton({ boqHeader, onSuccess }: props) {
               required
               onChange={(e) => {
                 setValidityTerms(e.target.value);
+              }}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"COMPLETION"}
+              value={completion}
+              type={"textarea"}
+              required
+              onChange={(e) => {
+                setCompletion(e.target.value);
+              }}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"EXCLUSIONS"}
+              value={exclusion}
+              type={"textarea"}
+              required
+              onChange={(e) => {
+                setExclusion(e.target.value);
               }}
             />
           </div>

@@ -391,7 +391,7 @@ export function BoqPDF({
     Object.entries(subCategories).forEach(([subCategory, items]) => {
       const subTotal = items.reduce(
         (sum, item) => sum + (item.total_cost || 0),
-        0
+        0,
       );
       categoryTotals[category][subCategory] = subTotal;
       grandTotal += subTotal;
@@ -424,8 +424,8 @@ export function BoqPDF({
             <Text style={styles.infoLabel}>DATE</Text>
             <Text style={styles.infoValue}>
               {boqHeader.boq_date
-                ? new Date(boqHeader.boq_date).toLocaleDateString()
-                : new Date().toLocaleDateString()}
+                ? new Date(boqHeader.boq_date).toLocaleDateString("en-GB")
+                : new Date().toLocaleDateString("en-GB")}
             </Text>
           </View>
           <View style={styles.infoItem}>
@@ -469,7 +469,7 @@ export function BoqPDF({
 
           {categories.map((category, categoryIndex) => {
             const categoryTotal = Object.values(
-              categoryTotals[category]
+              categoryTotals[category],
             ).reduce((sum, val) => sum + val, 0);
 
             const rowStyle =
@@ -538,14 +538,22 @@ export function BoqPDF({
           {/* Completion */}
           <View style={styles.termsSection}>
             <Text style={styles.termsTitle}>COMPLETION</Text>
-            <Text style={styles.termsText}>TBD</Text>
+            <Text style={styles.termsText}>{boqHeader.completion}</Text>
+          </View>
+
+          {/* Exclusion */}
+          <View style={styles.termsSection}>
+            <Text style={styles.termsTitle}>EXCLUSIONS</Text>
+            <Text style={styles.termsText}>{boqHeader.exclusion}</Text>
           </View>
 
           {/* Terms and Conditions */}
-          <Text style={styles.conditionsTitle}>TERMS & CONDITIONS</Text>
-          <Text style={styles.conditionItem}>
-            {boqHeader.terms_and_conditions || "N/A"}
-          </Text>
+          <View style={styles.termsSection}>
+            <Text style={styles.termsTitle}>TERMS & CONDITIONS</Text>
+            <Text style={styles.termsText}>
+              {boqHeader.terms_and_conditions || "N/A"}
+            </Text>
+          </View>
         </View>
 
         <Text
@@ -566,7 +574,7 @@ export function BoqPDF({
                 // Calculate subcategory total
                 const subCategoryTotal = items.reduce(
                   (sum, item) => sum + (item.total_cost || 0),
-                  0
+                  0,
                 );
 
                 return (
@@ -717,7 +725,7 @@ export function BoqPDF({
                                           />
                                         </View>
                                       );
-                                    }
+                                    },
                                   )}
                                 </View>
                               )}

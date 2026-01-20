@@ -41,7 +41,7 @@ export default function MR() {
                   mr_header_id: mr.id,
                   progress_id: mr.progress_id,
                 }),
-              }
+              },
             );
             const data = await res.json();
 
@@ -63,7 +63,7 @@ export default function MR() {
 
             // Format as HHH:MMM
             const durationString = `${String(hours).padStart(2, "0")}H:${String(
-              minutes
+              minutes,
             ).padStart(2, "0")}M`;
 
             let durationStyle = {
@@ -103,7 +103,7 @@ export default function MR() {
               },
             };
           }
-        })
+        }),
       );
 
       setMrDurations(durationsMap);
@@ -152,11 +152,11 @@ export default function MR() {
   // Map progress status to responsible department
   const getResponsibleDepartment = (status: string) => {
     const departmentMap: { [key: string]: { name: string; id: number } } = {
-      Draft: { name: "", id: 0 }, // Empty like completed
+      Draft: { name: "", id: 0 },
       "Awaiting initial approval": { name: "Directors/Management", id: 8 },
-      "Initial approval rejected": { name: "Department", id: 0 }, // Will use MR's department
+      "Initial approval rejected": { name: "", id: 0 },
       "Awaiting quotations": { name: "Procurement", id: 9 },
-      "Awaiting price approval": { name: "Manager", id: 8 },
+      "Awaiting price approval": { name: "Directors/Management", id: 8 },
       "Price approval rejected": { name: "Procurement", id: 9 },
       "Awaiting LPO & invoice": { name: "Procurement", id: 9 },
       "Pending payment": { name: "Finance", id: 10 },
@@ -250,7 +250,7 @@ export default function MR() {
     required.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
     const diffDays = Math.ceil(
-      (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     if (diffDays < 0) {
@@ -286,7 +286,7 @@ export default function MR() {
     required.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
     const diffDays = Math.ceil(
-      (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     if (diffDays > 0) {
@@ -306,7 +306,7 @@ export default function MR() {
     required.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
     const diffDays = Math.ceil(
-      (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     if (diffDays < 0) {
@@ -497,20 +497,8 @@ export default function MR() {
 
           // Get responsible department for this status
           const responsibleDept = getResponsibleDepartment(status);
-
-          // For "Initial approval rejected", use the first MR's department
-          let departmentToShow = responsibleDept.name;
-          let departmentIdToUse = responsibleDept.id;
-
-          if (
-            responsibleDept.id === 0 &&
-            mrs.length > 0 &&
-            status === "Initial approval rejected"
-          ) {
-            // Use the department from the first MR in this status
-            departmentToShow = mrs[0].department_name;
-            departmentIdToUse = mrs[0].department_id;
-          }
+          const departmentToShow = responsibleDept.name;
+          const departmentIdToUse = responsibleDept.id;
 
           const headerDepartmentStyle = getDepartmentStyle(departmentIdToUse);
           const dotColor = getDotColor(status, mrs.length);
@@ -604,10 +592,10 @@ export default function MR() {
                 {mrs.map((mr: MrHeader) => {
                   const priority = getPriority(mr.required_date);
                   const RequireDateDaysLeftStyle = getDaysLeftStyle(
-                    mr.required_date
+                    mr.required_date,
                   );
                   const DeliveryDateDaysLeftStyle = getDaysLeftStyle(
-                    mr.delivery_date
+                    mr.delivery_date,
                   );
                   const isCompleted =
                     mr.progress_name === "Completed" || mr.progress_id === 25;
@@ -724,7 +712,7 @@ export default function MR() {
                               <small>DELIVERY DATE/S</small>
                               <h3>
                                 {new Date(mr.delivery_date).toLocaleDateString(
-                                  "en-US"
+                                  "en-US",
                                 )}
                               </h3>
                             </div>

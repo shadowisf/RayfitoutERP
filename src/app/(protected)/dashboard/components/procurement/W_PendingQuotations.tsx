@@ -28,7 +28,7 @@ export default function PendingQuotationsMrsWidget({ filterDays }: props) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ filter: filterDays }),
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -75,8 +75,8 @@ export default function PendingQuotationsMrsWidget({ filterDays }: props) {
   const backgroundColor = hasNoPendingQuotations
     ? "rgba(156, 156, 156, 1)"
     : isIncrease
-    ? "rgba(12, 143, 87, 1)"
-    : "rgba(248, 77, 77, 1)";
+      ? "rgba(12, 143, 87, 1)"
+      : "rgba(248, 77, 77, 1)";
   const textColor = isIncrease
     ? "rgba(1, 184, 105, 1)"
     : "rgba(255, 255, 255, 1)";
@@ -87,8 +87,8 @@ export default function PendingQuotationsMrsWidget({ filterDays }: props) {
   const changeText = hasNoPendingQuotations
     ? "No pending quotations"
     : isIncrease
-    ? `${changeMagnitude} increase from last ${periodLabel}`
-    : `${changeMagnitude} decrease from last ${periodLabel}`;
+      ? `${changeMagnitude} increase from last ${periodLabel}`
+      : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
     <div className="item" style={{ backgroundColor, color: "white" }}>

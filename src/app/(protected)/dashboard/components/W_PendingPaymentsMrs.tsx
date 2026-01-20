@@ -28,7 +28,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ filter: filterDays }),
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -75,8 +75,8 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
   const pillBackgroundColor = hasNoPendingPayments
     ? "rgba(156, 156, 156, 1)"
     : isIncrease
-    ? "rgba(246, 205, 205, 1)"
-    : "rgba(111, 243, 187, 1)";
+      ? "rgba(246, 205, 205, 1)"
+      : "rgba(111, 243, 187, 1)";
 
   const textColor = isIncrease ? "rgba(248, 77, 77, 1)" : "rgba(2, 122, 70, 1)";
 
@@ -87,8 +87,8 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
   const changeText = hasNoPendingPayments
     ? "No pending payments"
     : isIncrease
-    ? `${changeMagnitude} increase from last ${periodLabel}`
-    : `${changeMagnitude} decrease from last ${periodLabel}`;
+      ? `${changeMagnitude} increase from last ${periodLabel}`
+      : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
     <div className="item">

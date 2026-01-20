@@ -33,7 +33,7 @@ export default function TopVendorsByVolumeWidget({ filterDays }: Props) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ filter }),
-          }
+          },
         );
 
         if (!response.ok) {

@@ -26,14 +26,14 @@ export default function CreateInventoryItemButton({
   const [isOpen, setIsOpen] = useState(false);
 
   const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
-    []
+    [],
   );
   const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
     any[]
   >([]);
 
   const [materialCategoryID, setMaterialCategoryID] = useState<string | number>(
-    ""
+    "",
   );
   const [materialSubCategoryID, setMaterialSubCategoryID] = useState<
     string | number | ""
@@ -66,7 +66,7 @@ export default function CreateInventoryItemButton({
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -85,7 +85,7 @@ export default function CreateInventoryItemButton({
           body: JSON.stringify({
             category_id: materialCategoryID,
           }),
-        }
+        },
       )
         .then((res) => res.json())
         .then((data) => {
@@ -101,7 +101,7 @@ export default function CreateInventoryItemButton({
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
-        }
+        },
       )
         .then((res) => res.json())
         .then((data) => {
@@ -161,7 +161,7 @@ export default function CreateInventoryItemButton({
           image: imageUrl,
           created_by: userInfo?.name,
         }),
-      }
+      },
     );
 
     if (res.ok) {
@@ -229,7 +229,7 @@ export default function CreateInventoryItemButton({
                 setMaterialSubCategoryID(subCategoryId);
 
                 const selectedSubCategory = materialSubCategoryValues.find(
-                  (sc: any) => sc.id === subCategoryId
+                  (sc: any) => sc.id === subCategoryId,
                 ) as any;
 
                 if (selectedSubCategory?.category_id) {

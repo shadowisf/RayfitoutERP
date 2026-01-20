@@ -36,12 +36,12 @@ export default function DeleteMrHeaderButton({
     });
 
     if (res.ok) {
-      toast("Material request header deleted", "success");
+      toast("Material request deleted", "success");
       setIsOpen(false);
       router.refresh();
       router.push("/mr");
     } else {
-      toast("Failed to delete material request header", "error");
+      toast("Failed to delete material request", "error");
     }
   }
 

@@ -35,6 +35,8 @@ export default function CreateBoqHeaderButton({
   const [date, setDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [validityTerms, setValidityTerms] = useState("");
+  const [completion, setCompletion] = useState("");
+  const [exclusion, setExclusion] = useState("");
   const [termsAndConditions, setTermsAndConditions] =
     useState(`i. Unconditional round the clock site access shall be ensured by the client.
 ii. Final billing will be based on the actual quantities.
@@ -59,6 +61,8 @@ vii. Contractor reserve the right to request for an extension of time for reason
         date: date || null,
         payment_terms: paymentTerms,
         validity_terms: validityTerms,
+        completion,
+        exclusion,
         terms_and_conditions: termsAndConditions,
       }),
     });
@@ -78,6 +82,8 @@ vii. Contractor reserve the right to request for an extension of time for reason
       setDate("");
       setPaymentTerms("");
       setValidityTerms("");
+      setCompletion("");
+      setExclusion("");
       setTermsAndConditions("");
     } else {
       toast("Failed to create bill of quantity", "error");
@@ -172,6 +178,30 @@ vii. Contractor reserve the right to request for an extension of time for reason
               required
               onChange={(e) => {
                 setValidityTerms(e.target.value);
+              }}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"COMPLETION"}
+              value={completion}
+              type={"textarea"}
+              required
+              onChange={(e) => {
+                setCompletion(e.target.value);
+              }}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"EXCLUSIONS"}
+              value={exclusion}
+              type={"textarea"}
+              required
+              onChange={(e) => {
+                setExclusion(e.target.value);
               }}
             />
           </div>

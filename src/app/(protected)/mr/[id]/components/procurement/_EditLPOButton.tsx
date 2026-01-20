@@ -318,7 +318,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                 />
                 <InputItem
                   label={"SUPPLIER ADDRESS"}
-                  value={lpoData.supplier_address}
+                  value={lpoData.supplier_address || "-"}
                   type={"text"}
                   placeholder={"SUPPLIER ADDRESS"}
                   required
@@ -455,7 +455,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                       value={discount}
                       type={"text"}
                       placeholder={"ENTER DISCOUNT"}
-                      required={false}
+                      required
                       onChange={(e) => handleDiscountChange(e.target.value)}
                       sideLabel={true}
                     />
@@ -466,7 +466,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                       value={shippingHandling}
                       type={"text"}
                       placeholder={"ENTER S&H"}
-                      required={false}
+                      required
                       onChange={(e) => handleShippingChange(e.target.value)}
                       sideLabel={true}
                     />
@@ -477,7 +477,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                       value={vatRate}
                       type={"text"}
                       placeholder={"ENTER VAT RATE"}
-                      required={true}
+                      required
                       onChange={(e) => handleVatRateChange(e.target.value)}
                       sideLabel={true}
                     />
@@ -488,7 +488,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                       value={formatNumber(vatAmount)}
                       type={"text"}
                       placeholder={""}
-                      required={false}
+                      required
                       onChange={() => {}}
                       sideLabel={true}
                       disabled={true}

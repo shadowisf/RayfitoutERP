@@ -40,14 +40,14 @@ export default function IssueLPOButton({
 
   const [quotation, setQuotation] = useState("");
   const [supplierContactPersonName, setSupplierContactPersonName] = useState(
-    mrLines[0].approved_supplier_contact_person
+    mrLines[0].approved_supplier_contact_person,
   );
   const [supplierEmail, setSupplierEmail] = useState(
-    mrLines[0].approved_supplier_email
+    mrLines[0].approved_supplier_email,
   );
   const [deliveryDate, setDeliveryDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState(
-    "Net 30 Days via Bank Transfer / Cheque"
+    "Net 30 Days via Bank Transfer / Cheque",
   );
   const [deliveryTerms, setDeliveryTerms] =
     useState(`• Delivery will be made to Street 34, Al Qusais 5, Dubai, UAE
@@ -66,7 +66,7 @@ export default function IssueLPOButton({
 
   const subtotal = Object.values(totalPrices).reduce(
     (sum, price) => sum + parseFloat(price || "0"),
-    0
+    0,
   );
   const discountAmount = parseFloat(discount || "0");
   const amountAfterDiscount = subtotal - discountAmount;
@@ -90,7 +90,7 @@ export default function IssueLPOButton({
 
       const quantity = mrLine.quantity;
       const unitPrice = parseFloat(
-        mrLine.approved_unit_price?.toString() || "0"
+        mrLine.approved_unit_price?.toString() || "0",
       );
       const total = quantity * unitPrice;
 
@@ -128,7 +128,7 @@ export default function IssueLPOButton({
             mr_header_id: mrHeader.id,
             supplier_id: supplierId,
           }),
-        }
+        },
       );
       const data = await res.json();
 
@@ -312,7 +312,7 @@ export default function IssueLPOButton({
     if (res.ok) {
       toast(
         `Local purchase order created for ${mrLines[0].approved_supplier_name}`,
-        "success"
+        "success",
       );
       setIsOpen(false);
       await checkExistingLpo();
@@ -546,7 +546,7 @@ export default function IssueLPOButton({
                   value={discount}
                   type={"text"}
                   placeholder={"ENTER DISCOUNT"}
-                  required={false}
+                  required
                   onChange={(e) => handleDiscountChange(e.target.value)}
                   sideLabel={true}
                 />
@@ -557,7 +557,7 @@ export default function IssueLPOButton({
                   value={shippingHandling}
                   type={"text"}
                   placeholder={"ENTER S&H"}
-                  required={false}
+                  required
                   onChange={(e) => handleShippingChange(e.target.value)}
                   sideLabel={true}
                 />
@@ -568,7 +568,7 @@ export default function IssueLPOButton({
                   value={vatRate}
                   type={"text"}
                   placeholder={"ENTER VAT RATE"}
-                  required={true}
+                  required
                   onChange={(e) => handleVatRateChange(e.target.value)}
                   sideLabel={true}
                 />
@@ -579,7 +579,7 @@ export default function IssueLPOButton({
                   value={formatNumber(vatAmount)}
                   type={"text"}
                   placeholder={""}
-                  required={false}
+                  required
                   onChange={() => {}}
                   sideLabel={true}
                   disabled={true}

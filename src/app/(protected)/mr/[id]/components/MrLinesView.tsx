@@ -65,17 +65,17 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [expandedDescriptions, setExpandedDescriptions] = useState<number[]>(
-    []
+    [],
   );
 
   const [showBySupplier, setShowBySupplier] = useState<boolean>(
-    mrHeader.progress_id >= 12
+    mrHeader.progress_id >= 12,
   );
   const [showByItem, setShowByItem] = useState<boolean>(
-    mrHeader.progress_id < 12
+    mrHeader.progress_id < 12,
   );
   const [itemsWithQuotations, setItemsWithQuotations] = useState<Set<number>>(
-    new Set()
+    new Set(),
   );
   const [isCheckingQuotations, setIsCheckingQuotations] =
     useState<boolean>(true);
@@ -209,7 +209,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     mr_header_id: mrHeader.id,
                     supplier_id: supplierId,
                   }),
-                }
+                },
               );
 
               if (lpoResponse.ok) {
@@ -229,7 +229,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ lpo_id: lpo.id }),
-                    }
+                    },
                   );
 
                   if (grnResponse.ok) {
@@ -243,7 +243,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ lpo_id: lpo.id }),
-                        }
+                        },
                       );
 
                       if (lpoDetailsResponse.ok) {
@@ -260,7 +260,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             !Array.isArray(grnData.data.grn_lines)
                           ) {
                             console.log(
-                              `No GRN lines found for supplier ${supplierId}`
+                              `No GRN lines found for supplier ${supplierId}`,
                             );
                             mismatchMap[supplierId] = false;
                             return;
@@ -273,41 +273,41 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               const lpoMrLine =
                                 lpoDetailsData.data.lpo_mr_lines.find(
                                   (line: any) =>
-                                    line.id === grnLine.lpo_mr_line_id
+                                    line.id === grnLine.lpo_mr_line_id,
                                 );
 
                               if (lpoMrLine) {
                                 // Find the corresponding mr_line from supplierItems
                                 const correspondingMrLine = supplierItems.find(
-                                  (item) => item.id === lpoMrLine.mr_line_id
+                                  (item) => item.id === lpoMrLine.mr_line_id,
                                 );
 
                                 if (correspondingMrLine) {
                                   const orderedQty =
                                     parseFloat(
-                                      String(correspondingMrLine.quantity)
+                                      String(correspondingMrLine.quantity),
                                     ) || 0;
                                   const receivedQty =
                                     parseFloat(
-                                      String(grnLine.received_quantity)
+                                      String(grnLine.received_quantity),
                                     ) || 0;
 
                                   const isMismatch = orderedQty !== receivedQty;
 
                                   console.log(
-                                    `Supplier ${supplierId}, Item ${correspondingMrLine.id}: Ordered=${orderedQty}, Received=${receivedQty}, Mismatch=${isMismatch}`
+                                    `Supplier ${supplierId}, Item ${correspondingMrLine.id}: Ordered=${orderedQty}, Received=${receivedQty}, Mismatch=${isMismatch}`,
                                   );
 
                                   return isMismatch;
                                 }
                               }
                               return false;
-                            }
+                            },
                           );
 
                           mismatchMap[supplierId] = hasMismatch;
                           console.log(
-                            `Supplier ${supplierId} final mismatch: ${hasMismatch}`
+                            `Supplier ${supplierId} final mismatch: ${hasMismatch}`,
                           );
                         } else {
                           mismatchMap[supplierId] = false;
@@ -330,11 +330,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             } catch (error) {
               console.error(
                 `Error checking GRN quantity for supplier ${supplierId}:`,
-                error
+                error,
               );
               mismatchMap[supplierId] = false;
             }
-          }
+          },
         );
 
         await Promise.all(checkPromises);
@@ -357,7 +357,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     if (isCheckingGrnQuantity) return false;
 
     return Object.values(grnQuantityMismatch).some(
-      (hasMismatch) => hasMismatch
+      (hasMismatch) => hasMismatch,
     );
   }
 
@@ -429,7 +429,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id: itemId }),
-              }
+              },
             );
 
             if (response.ok) {
@@ -442,7 +442,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           } catch (error) {
             console.error(
               `Error checking quotations for item ${itemId}:`,
-              error
+              error,
             );
           }
         });
@@ -490,7 +490,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id: itemId }),
-              }
+              },
             );
 
             if (response.ok) {
@@ -498,11 +498,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
               if (data && Array.isArray(data) && data.length > 0) {
                 const hasApproved = data.some(
-                  (q: any) => q.approval_status === "Approved"
+                  (q: any) => q.approval_status === "Approved",
                 );
 
                 const allRejected = data.every(
-                  (q: any) => q.approval_status === "Rejected"
+                  (q: any) => q.approval_status === "Rejected",
                 );
 
                 if (hasApproved) {
@@ -519,7 +519,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           } catch (error) {
             console.error(
               `Error checking supplier approvals for item ${itemId}:`,
-              error
+              error,
             );
             statusMap[itemId] = "pending";
           }
@@ -595,7 +595,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     mr_header_id: mrHeader.id,
                     supplier_id: supplierId,
                   }),
-                }
+                },
               );
 
               if (response.ok) {
@@ -659,7 +659,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             } catch (error) {
               console.error(
                 `Error checking LPO for supplier ${supplierId}:`,
-                error
+                error,
               );
               statusMap[supplierId] = {
                 hasLpo: false,
@@ -668,7 +668,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 supplierType: supplierInfo.type, // ✅ Add supplier type
               };
             }
-          }
+          },
         );
 
         await Promise.all(checkPromises);
@@ -724,7 +724,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     mr_header_id: mrHeader.id,
                     supplier_id: supplierId,
                   }),
-                }
+                },
               );
 
               if (response.ok) {
@@ -752,11 +752,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             } catch (error) {
               console.error(
                 `Error checking payment status for supplier ${supplierId}:`,
-                error
+                error,
               );
               statusMap[supplierId] = "pending";
             }
-          }
+          },
         );
 
         await Promise.all(checkPromises);
@@ -810,7 +810,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     mr_header_id: mrHeader.id,
                     supplier_id: supplierId,
                   }),
-                }
+                },
               );
 
               if (lpoResponse.ok) {
@@ -829,7 +829,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ lpo_id: lpo.id }),
-                    }
+                    },
                   );
 
                   if (grnResponse.ok) {
@@ -851,11 +851,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             } catch (error) {
               console.error(
                 `Error checking GRN for supplier ${supplierId}:`,
-                error
+                error,
               );
               statusMap[supplierId] = false;
             }
-          }
+          },
         );
 
         await Promise.all(checkPromises);
@@ -905,7 +905,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   mr_header_id: mrHeader.id,
                   supplier_id: item.approved_supplier_id,
                 }),
-              }
+              },
             );
 
             if (lpoResponse.ok) {
@@ -920,7 +920,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ lpo_id: lpo.id }),
-                  }
+                  },
                 );
 
                 if (lpoDetailsResponse.ok) {
@@ -932,7 +932,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     lpoDetailsData.data.lpo_mr_lines
                   ) {
                     const lpoLine = lpoDetailsData.data.lpo_mr_lines.find(
-                      (line: any) => line.mr_line_id === item.id
+                      (line: any) => line.mr_line_id === item.id,
                     );
 
                     if (lpoLine) {
@@ -944,7 +944,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           body: JSON.stringify({
                             lpo_mr_line_id: lpoLine.id,
                           }),
-                        }
+                        },
                       );
 
                       if (qcResponse.ok) {
@@ -1022,7 +1022,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 body: JSON.stringify({
                   mr_line_id: item.id,
                 }),
-              }
+              },
             );
 
             const data = await response.json();
@@ -1071,7 +1071,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       const firstCategory = Object.keys(regroupedMrLines)[0];
       if (firstCategory) {
         const firstSubCategory = Object.values(
-          regroupedMrLines[firstCategory]
+          regroupedMrLines[firstCategory],
         )[0];
         if (firstSubCategory) {
           const firstSupplier = Object.values(firstSubCategory)[0];
@@ -1566,7 +1566,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               ([category, subCategoriesData], categoryIndex) =>
                 Object.entries(subCategoriesData).map(function (
                   [subCategory, suppliers],
-                  subCategoryIndex
+                  subCategoryIndex,
                 ) {
                   const allItems = getAllItemsInSubCategory(suppliers);
                   const firstItem = allItems[0];
@@ -1591,10 +1591,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               <RenameMrSubCategoryButton
                                 items={allItems}
                                 categoryID={String(
-                                  firstItem.material_category_id
+                                  firstItem.material_category_id,
                                 )}
                                 subCategoryID={String(
-                                  firstItem.material_subcategory_id
+                                  firstItem.material_subcategory_id,
                                 )}
                               ></RenameMrSubCategoryButton>
 
@@ -1833,7 +1833,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           )}
 
                                         {[10, 11].includes(
-                                          mrHeader.progress_id
+                                          mrHeader.progress_id,
                                         ) &&
                                           userInfo?.departmentID === 8 && (
                                             <td>
@@ -1918,7 +1918,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
                             <br />
                           </div>
-                        )
+                        ),
                       )}
 
                       {(mrHeader.progress_id === 1 ||
@@ -1935,7 +1935,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               textColor="black"
                               full
                               autoCategoryID={String(
-                                firstItem.material_category_id
+                                firstItem.material_category_id,
                               )}
                               autoSubCategoryIDs={(() => {
                                 const subcatId =
@@ -1944,7 +1944,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 // If it's already an array, return it
                                 if (Array.isArray(subcatId)) {
                                   return subcatId.map((id) =>
-                                    typeof id === "string" ? parseInt(id) : id
+                                    typeof id === "string" ? parseInt(id) : id,
                                   );
                                 }
 
@@ -1980,11 +1980,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                         )}
                     </div>
                   );
-                })
+                }),
             )
           : Object.entries(subCategories).map(function (
               [subCategory, suppliers],
-              index
+              index,
             ) {
               const allItems = getAllItemsInSubCategory(suppliers);
               const firstItem = allItems[0];
@@ -2007,7 +2007,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             items={allItems}
                             categoryID={String(firstItem.material_category_id)}
                             subCategoryID={String(
-                              firstItem.material_subcategory_id
+                              firstItem.material_subcategory_id,
                             )}
                           />
 
@@ -2120,6 +2120,27 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       )}
                                     </td>
 
+                                    <td>
+                                      {item.attachment ? (
+                                        <Button
+                                          componentType={"link"}
+                                          bgColor={"rgba(239, 239, 239, 1)"}
+                                          borderColor={"rgba(223, 223, 223, 1)"}
+                                          textColor={"black"}
+                                          style={{ padding: "7px 7px" }}
+                                          href={item.attachment}
+                                          target="_blank"
+                                        >
+                                          <img
+                                            src={externalLinkIcon}
+                                            alt="external link"
+                                          />
+                                        </Button>
+                                      ) : (
+                                        "-"
+                                      )}
+                                    </td>
+
                                     {(((mrHeader.progress_id === 5 ||
                                       mrHeader.progress_id === 3) &&
                                       userInfo?.departmentID ===
@@ -2141,27 +2162,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         </div>
                                       </td>
                                     )}
-
-                                    <td>
-                                      {item.attachment ? (
-                                        <Button
-                                          componentType={"link"}
-                                          bgColor={"rgba(239, 239, 239, 1)"}
-                                          borderColor={"rgba(223, 223, 223, 1)"}
-                                          textColor={"black"}
-                                          style={{ padding: "7px 7px" }}
-                                          href={item.attachment}
-                                          target="_blank"
-                                        >
-                                          <img
-                                            src={externalLinkIcon}
-                                            alt="external link"
-                                          />
-                                        </Button>
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </td>
 
                                     {(mrHeader.progress_id === 1 ||
                                       mrHeader.progress_id === 5) &&
@@ -2313,7 +2313,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
                         <br />
                       </div>
-                    )
+                    ),
                   )}
 
                   {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
@@ -2329,7 +2329,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           textColor="black"
                           full
                           autoCategoryID={String(
-                            firstItem.material_category_id
+                            firstItem.material_category_id,
                           )}
                           autoSubCategoryIDs={(() => {
                             const subcatId = firstItem.material_subcategory_id;
@@ -2337,7 +2337,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             // If it's already an array, return it
                             if (Array.isArray(subcatId)) {
                               return subcatId.map((id) =>
-                                typeof id === "string" ? parseInt(id) : id
+                                typeof id === "string" ? parseInt(id) : id,
                               );
                             }
 
@@ -2407,7 +2407,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 </SupplierDetailsPopUp>
               </div>
 
-              <div className="right" style={{ display: "flex", gap: "20px" }}>
+              <div className="right">
                 {mrHeader.progress_id === 23 &&
                   userInfo?.departmentID === 9 && (
                     <QCRecheckButton mrHeader={mrHeader} />
@@ -2426,7 +2426,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       mrLine={items[0]}
                       supplierId={items[0].approved_supplier_id}
                       portalTarget={document.getElementById(
-                        `total-invoice-${items[0].approved_supplier_id}`
+                        `total-invoice-${items[0].approved_supplier_id}`,
                       )}
                     />
                   )}
@@ -2626,7 +2626,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               full
               autoCategoryID={getActiveCategoryID()}
               purposeID={mrHeader.purpose_id}
-              style={{ padding: "20px 0px", backgroundColor: "white" }}
+              style={{ padding: "40px 0px", backgroundColor: "white" }}
             >
               ADD SUBCATEGORY & ITEM +
             </AddMrItemButton>
@@ -2802,12 +2802,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           {(() => {
             // Check if any LPO has rejected payment status
             const hasRejectedPayment = Object.values(lpoPaymentStatus).some(
-              (status) => status === "rejected"
+              (status) => status === "rejected",
             );
 
             // Check if all LPOs have approved payment status
             const allPaymentsApproved = Object.values(lpoPaymentStatus).every(
-              (status) => status === "approved"
+              (status) => status === "approved",
             );
 
             // If any payment is rejected, show LPO resubmission button

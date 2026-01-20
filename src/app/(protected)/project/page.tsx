@@ -15,7 +15,7 @@ export default function Project() {
       try {
         const projects = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`,
-          { cache: "no-store" }
+          { cache: "no-store" },
         ).then((res) => res.json());
 
         const projectsWithBOQData = await Promise.all(
@@ -27,7 +27,7 @@ export default function Project() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id: proj.id }),
                 cache: "no-store",
-              }
+              },
             )
               .then((res) => res.json())
               .catch(() => []);
@@ -36,12 +36,12 @@ export default function Project() {
               ...proj,
               hasBOQ: boq && boq.length > 0,
             };
-          })
+          }),
         );
 
         const quotationProjects = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getAllQuotationProjects`,
-          { cache: "no-store" }
+          { cache: "no-store" },
         )
           .then((res) => res.json())
           .catch(() => []);

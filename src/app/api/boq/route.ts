@@ -9,8 +9,8 @@ export async function POST(req: Request) {
     if (body.action === "createBoqHeader") {
       const query = `
       INSERT INTO boq_headers 
-      (project_id, company_name, client_name, location, date, payment_terms, validity_terms, terms_and_conditions)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (project_id, company_name, client_name, location, date, payment_terms, validity_terms, completion, exclusion, terms_and_conditions)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const values = [
@@ -21,6 +21,8 @@ export async function POST(req: Request) {
         body.date || null,
         body.payment_terms,
         body.validity_terms,
+        body.completion,
+        body.exclusion,
         body.terms_and_conditions,
       ];
 
@@ -76,7 +78,7 @@ export async function POST(req: Request) {
 
           await connection.query(
             `INSERT INTO jt_boq_line_location (boq_line_id, location_id) VALUES ?`,
-            [locationValues]
+            [locationValues],
           );
         }
 
@@ -110,7 +112,7 @@ export async function POST(req: Request) {
     console.error("SQL Error:", err.sqlMessage || err.message);
     return NextResponse.json(
       { error: err.sqlMessage || err.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -122,7 +124,7 @@ export async function PUT(req: Request) {
     if (body.action === "updateBoqHeader") {
       const query = `
         UPDATE boq_headers 
-        SET project_id = ?, company_name = ?, client_name = ?, location = ?, date = ?, payment_terms = ?, validity_terms = ?, terms_and_conditions = ?
+        SET project_id = ?, company_name = ?, client_name = ?, location = ?, date = ?, payment_terms = ?, validity_terms = ?, completion = ?, exclusion = ?, terms_and_conditions = ?
         WHERE id = ?
       `;
 
@@ -134,6 +136,8 @@ export async function PUT(req: Request) {
         body.date || null,
         body.payment_terms,
         body.validity_terms,
+        body.completion,
+        body.exclusion,
         body.terms_and_conditions,
         Number(body.id),
       ];
@@ -174,7 +178,7 @@ export async function PUT(req: Request) {
         // First, delete existing associations
         await db.query(
           `DELETE FROM jt_boq_line_location WHERE boq_line_id = ?`,
-          [Number(body.id)]
+          [Number(body.id)],
         );
 
         // Then, insert new associations
@@ -191,7 +195,7 @@ export async function PUT(req: Request) {
 
           await db.query(
             `INSERT INTO jt_boq_line_location (boq_line_id, location_id) VALUES ?`,
-            [locationValues]
+            [locationValues],
           );
         }
 
@@ -245,14 +249,14 @@ export async function PUT(req: Request) {
         if (Number.isNaN(boqLineId)) {
           return NextResponse.json(
             { success: false, error: "Invalid BOQ line ID" },
-            { status: 400 }
+            { status: 400 },
           );
         }
 
         // 1️⃣ Remove existing locations
         await db.query(
           `DELETE FROM jt_boq_line_location WHERE boq_line_id = ?`,
-          [boqLineId]
+          [boqLineId],
         );
 
         // 2️⃣ Insert new locations (if any)
@@ -271,7 +275,7 @@ export async function PUT(req: Request) {
           if (locationValues.length > 0) {
             await db.query(
               `INSERT INTO jt_boq_line_location (boq_line_id, location_id) VALUES ?`,
-              [locationValues]
+              [locationValues],
             );
           }
         }
@@ -281,7 +285,7 @@ export async function PUT(req: Request) {
         console.error("updateLocation failed:", error);
         return NextResponse.json(
           { success: false, error: "Failed to update location" },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -289,7 +293,7 @@ export async function PUT(req: Request) {
     console.error("SQL Error:", err.sqlMessage || err.message);
     return NextResponse.json(
       { error: err.sqlMessage || err.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -328,7 +332,7 @@ export async function DELETE(req: Request) {
     console.error("SQL Error:", err.sqlMessage || err.message);
     return NextResponse.json(
       { error: err.sqlMessage || err.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -52,7 +52,7 @@ export default function EditMrItemButton({
   const [isBoqSelectFormOpen, setIsBoqSelectFormOpen] = useState(false);
 
   const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
-    []
+    [],
   );
   const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
     any[]
@@ -62,7 +62,7 @@ export default function EditMrItemButton({
   const [groupedBoqLines, setGroupedBoqLines] = useState<GroupedBoqLines>({});
 
   const [materialCategoryID, setMaterialCategoryID] = useState<string | number>(
-    item.material_category_id
+    item.material_category_id,
   );
 
   // Parse material_subcategory_id from the view (comma-separated string to array)
@@ -92,10 +92,10 @@ export default function EditMrItemButton({
   });
 
   const [boqLineID, setBoqLineID] = useState<string | number>(
-    item.boq_line_id || ""
+    item.boq_line_id || "",
   );
   const [materialDescription, setMaterialDescription] = useState(
-    item.material_description
+    item.material_description,
   );
   const [quantity, setQuantity] = useState<string | number>(item.quantity);
   const [unit, setUnit] = useState(item.unit);
@@ -103,10 +103,10 @@ export default function EditMrItemButton({
   const [specification, setSpecification] = useState(item.specification ?? "");
   const [brand, setBrand] = useState(item.brand ?? "");
   const [deliveryLocation, setDeliveryLocation] = useState(
-    item.delivery_location ?? ""
+    item.delivery_location ?? "",
   );
   const [tempSelectedBoqID, setTempSelectedBoqID] = useState<string | number>(
-    item.boq_line_id || "" // ✅ Initialize with current BOQ line ID
+    item.boq_line_id || "", // ✅ Initialize with current BOQ line ID
   );
   const [selectedBoqInfo, setSelectedBoqInfo] = useState(() => {
     // Initialize with current BOQ info if it exists
@@ -247,8 +247,8 @@ export default function EditMrItemButton({
 
           setMaterialSubCategoryIDs((prev) =>
             prev.filter((id) =>
-              data.some((item: any) => item.id === Number(id))
-            )
+              data.some((item: any) => item.id === Number(id)),
+            ),
           );
         })
         .catch((err) => {
@@ -281,7 +281,7 @@ export default function EditMrItemButton({
 
     if (selectedIds.length > 0 && !materialCategoryID) {
       const firstSelectedSubCategory = materialSubCategoryValues.find(
-        (sc: any) => sc.id === selectedIds[0]
+        (sc: any) => sc.id === selectedIds[0],
       ) as any;
 
       if (firstSelectedSubCategory?.category_id) {
@@ -376,14 +376,14 @@ export default function EditMrItemButton({
         const errorData = await res.json();
         toast(
           errorData.error || "Failed to update material request item",
-          "error"
+          "error",
         );
       }
     } catch (error) {
       console.error("Update error:", error);
       toast(
         "Failed to update material request item. Something went wrong",
-        "error"
+        "error",
       );
     }
   }
@@ -534,7 +534,7 @@ export default function EditMrItemButton({
               label={"BRAND"}
               value={brand}
               type={"text"}
-              placeholder={"ENTER BRAND (OPTIONAL)"}
+              placeholder={"ENTER BRAND"}
               onChange={(e) => setBrand(e.target.value)}
             />
           </div>
@@ -544,7 +544,7 @@ export default function EditMrItemButton({
               label={"SPECIFICATION"}
               value={specification}
               type={"textarea"}
-              placeholder={"ENTER SPECIFICATION (OPTIONAL)"}
+              placeholder={"ENTER SPECIFICATION"}
               onChange={(e) => setSpecification(e.target.value)}
             />
           </div>
@@ -587,7 +587,7 @@ export default function EditMrItemButton({
         >
           {/* Category Grid */}
           <div className="category-grid" style={{ marginBottom: "20px" }}>
-            <div style={{ position: "relative", flex: 1, maxWidth: "925px" }}>
+            <div style={{ position: "relative", flex: 1, maxWidth: "70dvw" }}>
               {showLeftArrow && (
                 <div
                   style={{
@@ -606,6 +606,7 @@ export default function EditMrItemButton({
 
               {showLeftArrow && (
                 <button
+                  type="button"
                   onClick={() => scroll("left")}
                   style={{
                     position: "absolute",
@@ -627,7 +628,7 @@ export default function EditMrItemButton({
                 >
                   <img
                     src={arrowRight}
-                    style={{ transform: "rotate(-180deg)" }}
+                    style={{ transform: "rotate(-180deg)", width: "12px" }}
                   />
                 </button>
               )}
@@ -698,6 +699,7 @@ export default function EditMrItemButton({
 
               {showRightArrow && (
                 <button
+                  type="button"
                   onClick={() => scroll("right")}
                   style={{
                     position: "absolute",
@@ -717,7 +719,7 @@ export default function EditMrItemButton({
                     cursor: "pointer",
                   }}
                 >
-                  <img src={arrowRight} />
+                  <img src={arrowRight} style={{ width: "12px" }} />
                 </button>
               )}
             </div>
@@ -734,7 +736,7 @@ export default function EditMrItemButton({
                           key={`${category}-${subCategory}`}
                           style={{ marginBottom: "30px" }}
                         >
-                          <h3
+                          <h2
                             style={{
                               marginBottom: "10px",
                               textTransform: "uppercase",
@@ -742,7 +744,7 @@ export default function EditMrItemButton({
                           >
                             {categoryIndex + 1}.{subCategoryIndex + 1}{" "}
                             {category} / {subCategory}
-                          </h3>
+                          </h2>
 
                           <table className="items-table two-toned">
                             <thead>
@@ -763,7 +765,7 @@ export default function EditMrItemButton({
                             <tbody>
                               {items.map((boq, itemIndex) => {
                                 const attachmentUrls = parseAttachments(
-                                  boq.attachments
+                                  boq.attachments,
                                 );
 
                                 return (
@@ -779,7 +781,7 @@ export default function EditMrItemButton({
                                           setSelectedBoqInfo(
                                             boq.item_number +
                                               " " +
-                                              boq.item_name
+                                              boq.item_name,
                                           );
                                         }}
                                         style={{
@@ -793,19 +795,20 @@ export default function EditMrItemButton({
                                       {boq.item_number}
                                     </td>
                                     <td>
-                                      <strong>{boq.item_name}</strong>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "10px",
+                                        }}
+                                      >
+                                        <strong>{boq.item_name}</strong>
 
-                                      {boq.item_description && (
-                                        <>
-                                          <br />
-                                          <br />
+                                        {boq.item_description && (
                                           <p>{boq.item_description}</p>
-                                          <br />
-                                        </>
-                                      )}
+                                        )}
 
-                                      {boq.location && (
-                                        <>
+                                        {boq.location && (
                                           <div
                                             style={{
                                               display: "flex",
@@ -813,7 +816,10 @@ export default function EditMrItemButton({
                                               alignItems: "center",
                                             }}
                                           >
-                                            <img src={locationIcon} />
+                                            <img
+                                              src={locationIcon}
+                                              style={{ width: "16px" }}
+                                            />
                                             <span
                                               style={{
                                                 fontWeight: 600,
@@ -824,12 +830,9 @@ export default function EditMrItemButton({
                                               {boq.location}
                                             </span>
                                           </div>
-                                          <br />
-                                        </>
-                                      )}
+                                        )}
 
-                                      {boq.scope_of_work && (
-                                        <>
+                                        {boq.scope_of_work && (
                                           <div
                                             style={{
                                               backgroundColor:
@@ -841,8 +844,8 @@ export default function EditMrItemButton({
                                           >
                                             <strong>{boq.scope_of_work}</strong>
                                           </div>
-                                        </>
-                                      )}
+                                        )}
+                                      </div>
                                     </td>
                                     <td>
                                       {boq.quantity} {boq.unit}
@@ -876,16 +879,16 @@ export default function EditMrItemButton({
                             </tbody>
                           </table>
                         </div>
-                      )
-                    )
+                      ),
+                    ),
                 )
               : Object.entries(boqSubCategories).map(
                   ([subCategory, items], index) => (
                     <div key={subCategory} style={{ marginBottom: "30px" }}>
-                      <h3 style={{ marginBottom: "10px" }}>
+                      <h2 style={{ marginBottom: "10px" }}>
                         {boqCategories.indexOf(activeBoqCategory) + 1}.
                         {index + 1} {subCategory}
-                      </h3>
+                      </h2>
 
                       <table className="items-table two-toned">
                         <thead>
@@ -906,7 +909,7 @@ export default function EditMrItemButton({
                         <tbody>
                           {items.map((boq, itemIndex) => {
                             const attachmentUrls = parseAttachments(
-                              boq.attachments
+                              boq.attachments,
                             );
 
                             return (
@@ -920,7 +923,7 @@ export default function EditMrItemButton({
                                     onChange={() => {
                                       setTempSelectedBoqID(boq.id);
                                       setSelectedBoqInfo(
-                                        boq.item_number + " " + boq.item_name
+                                        boq.item_number + " " + boq.item_name,
                                       );
                                     }}
                                     style={{
@@ -934,19 +937,20 @@ export default function EditMrItemButton({
                                   {boq.item_number}
                                 </td>
                                 <td>
-                                  <strong>{boq.item_name}</strong>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "10px",
+                                    }}
+                                  >
+                                    <strong>{boq.item_name}</strong>
 
-                                  {boq.item_description && (
-                                    <>
-                                      <br />
-                                      <br />
+                                    {boq.item_description && (
                                       <p>{boq.item_description}</p>
-                                      <br />
-                                    </>
-                                  )}
+                                    )}
 
-                                  {boq.location && (
-                                    <>
+                                    {boq.location && (
                                       <div
                                         style={{
                                           display: "flex",
@@ -954,7 +958,10 @@ export default function EditMrItemButton({
                                           alignItems: "center",
                                         }}
                                       >
-                                        <img src={locationIcon} />
+                                        <img
+                                          src={locationIcon}
+                                          style={{ width: "16px" }}
+                                        />
                                         <span
                                           style={{
                                             fontWeight: 600,
@@ -965,12 +972,9 @@ export default function EditMrItemButton({
                                           {boq.location}
                                         </span>
                                       </div>
-                                      <br />
-                                    </>
-                                  )}
+                                    )}
 
-                                  {boq.scope_of_work && (
-                                    <>
+                                    {boq.scope_of_work && (
                                       <div
                                         style={{
                                           backgroundColor:
@@ -982,8 +986,8 @@ export default function EditMrItemButton({
                                       >
                                         <strong>{boq.scope_of_work}</strong>
                                       </div>
-                                    </>
-                                  )}
+                                    )}
+                                  </div>
                                 </td>
                                 <td>
                                   {boq.quantity} {boq.unit}
@@ -1013,7 +1017,7 @@ export default function EditMrItemButton({
                         </tbody>
                       </table>
                     </div>
-                  )
+                  ),
                 )}
           </div>
         </FormPopUp>

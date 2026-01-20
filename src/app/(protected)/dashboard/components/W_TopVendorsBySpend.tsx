@@ -19,7 +19,7 @@ export default function TopVendorsBySpendWidget() {
       setLoading(true);
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/procurement/getTopVendorsBySpend`
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/procurement/getTopVendorsBySpend`,
         );
         const data = await response.json();
         setVendors(data);

@@ -45,7 +45,7 @@ export default function Dashboard() {
       try {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`,
-          { cache: "no-store" }
+          { cache: "no-store" },
         );
         const data = await res.json();
         setProjects(data);
@@ -71,7 +71,7 @@ export default function Dashboard() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id: proj.id }),
               cache: "no-store",
-            }
+            },
           )
             .then((res) => res.json())
             .catch(() => []);
@@ -80,7 +80,7 @@ export default function Dashboard() {
             ...proj,
             hasBOQ: boq && boq.length > 0,
           };
-        })
+        }),
       );
 
       setProjectsWithBOQ(enriched);
@@ -238,7 +238,7 @@ export default function Dashboard() {
           <br />
           <br />
           <div className="widget-grid overview two-col">
-            <TopVendorsByVolumeWidget />
+            <TopVendorsByVolumeWidget filterDays={overviewFilter} />
             <TopVendorsBySpendWidget />
           </div>
           <br />

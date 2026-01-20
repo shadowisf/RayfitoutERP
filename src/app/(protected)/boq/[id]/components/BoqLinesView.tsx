@@ -373,7 +373,8 @@ export default function BoqLinesView({
   const canSeePrice =
     userInfo?.departmentID === 8 ||
     userInfo?.departmentID === 12 ||
-    userInfo?.departmentID === 10;
+    userInfo?.departmentID === 10 ||
+    userInfo?.departmentID === 16;
 
   const canManage =
     userInfo?.departmentID === 8 || userInfo?.departmentID === 16;
@@ -434,7 +435,10 @@ export default function BoqLinesView({
     return (
       <div ref={setNodeRef} style={style}>
         <div className="subcategory-section">
-          <div className="subcategory-header">
+          <div
+            className="subcategory-header"
+            style={{ justifyContent: "flex-start" }}
+          >
             <h2
               style={{
                 textTransform: activeCategory === "ALL" ? "uppercase" : "none",
@@ -725,7 +729,7 @@ export default function BoqLinesView({
           {String(boqHeader?.id).padStart(5, "0")}
         </h2>
         <div style={{ display: "flex", gap: "5px" }}>
-          {userInfo?.departmentID === 8 && (
+          {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
             <>
               <EditBoqHeaderButton boqHeader={boqHeader} />
               <DeleteBoqHeaderButton boqHeader={boqHeader} />

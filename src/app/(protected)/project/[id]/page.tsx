@@ -29,7 +29,7 @@ export default function ProjectWithID() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: id }),
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -47,7 +47,7 @@ export default function ProjectWithID() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_id: id }),
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -65,7 +65,7 @@ export default function ProjectWithID() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_id: id }),
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -128,7 +128,8 @@ export default function ProjectWithID() {
             </Button> */}
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
-            {userInfo?.departmentID === 8 && (
+            {(userInfo?.departmentID === 8 ||
+              userInfo?.departmentID === 16) && (
               <>
                 <EditProjectButton
                   project={project}
@@ -189,7 +190,7 @@ export default function ProjectWithID() {
             <h2>
               {project?.quoted_budget
                 ? `${project.currency} ${Number(
-                    project.quoted_budget
+                    project.quoted_budget,
                   ).toLocaleString("en-US")}`
                 : "-"}
             </h2>
@@ -200,7 +201,7 @@ export default function ProjectWithID() {
             <h2>
               {project?.allocated_budget
                 ? `${project.currency} ${Number(
-                    project?.allocated_budget
+                    project?.allocated_budget,
                   ).toLocaleString("en-US")}`
                 : "-"}
             </h2>
@@ -295,6 +296,8 @@ export default function ProjectWithID() {
               <th>LOCATION</th>
               <th>PAYMENT TERMS</th>
               <th>VALIDITY TERMS</th>
+              <th>COMPLETION</th>
+              <th>EXCLUSION</th>
               <th>TERMS & CONDITIONS</th>
               <th>ACTION</th>
             </tr>
@@ -320,6 +323,26 @@ export default function ProjectWithID() {
                     <InfoPopUpButton
                       text={item.validity_terms}
                       header={"VALIDITY TERMS"}
+                    />
+                  ) : (
+                    "-"
+                  )}
+                </td>
+                <td>
+                  {item.completion ? (
+                    <InfoPopUpButton
+                      text={item.completion}
+                      header={"COMPLETION"}
+                    />
+                  ) : (
+                    "-"
+                  )}
+                </td>
+                <td>
+                  {item.exclusion ? (
+                    <InfoPopUpButton
+                      text={item.exclusion}
+                      header={"EXCLUSION"}
                     />
                   ) : (
                     "-"

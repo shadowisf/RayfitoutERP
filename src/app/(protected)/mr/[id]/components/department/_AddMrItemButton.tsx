@@ -58,7 +58,7 @@ export default function AddMrItemButton({
   const [isBoqSelectFormOpen, setIsBoqSelectFormOpen] = useState(false);
 
   const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
-    []
+    [],
   );
   const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
     any[]
@@ -68,7 +68,7 @@ export default function AddMrItemButton({
   const [groupedBoqLines, setGroupedBoqLines] = useState<GroupedBoqLines>({});
 
   const [materialCategoryID, setMaterialCategoryID] = useState<string | number>(
-    ""
+    "",
   );
   const [materialSubCategoryIDs, setMaterialSubCategoryIDs] = useState<
     (string | number)[]
@@ -83,7 +83,7 @@ export default function AddMrItemButton({
   const [deliveryLocation, setDeliveryLocation] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [tempSelectedBoqID, setTempSelectedBoqID] = useState<string | number>(
-    ""
+    "",
   );
   const [selectedBoqInfo, setSelectedBoqInfo] = useState("");
 
@@ -223,7 +223,7 @@ export default function AddMrItemButton({
               : [autoSubCategoryIDs];
 
             const normalizedIds = idsArray.map((id) =>
-              typeof id === "string" ? parseInt(id) : id
+              typeof id === "string" ? parseInt(id) : id,
             );
 
             console.log("Setting subcategory IDs:", normalizedIds);
@@ -242,7 +242,7 @@ export default function AddMrItemButton({
         : [autoSubCategoryIDs];
 
       const normalizedIds = idsArray.map((id) =>
-        typeof id === "string" ? parseInt(id) : id
+        typeof id === "string" ? parseInt(id) : id,
       );
 
       console.log("Setting subcategory IDs (no category):", normalizedIds);
@@ -270,7 +270,7 @@ export default function AddMrItemButton({
           // But preserve auto-populated subcategories if this is the initial load
           if (!autoCategoryID || materialCategoryID !== autoCategoryID) {
             setMaterialSubCategoryIDs((prev) =>
-              prev.filter((id) => data.some((item: any) => item.id === id))
+              prev.filter((id) => data.some((item: any) => item.id === id)),
             );
           }
         })
@@ -297,7 +297,7 @@ export default function AddMrItemButton({
     // If a subcategory is selected and no category is set, auto-select the category
     if (selectedIds.length > 0 && !materialCategoryID) {
       const firstSelectedSubCategory = materialSubCategoryValues.find(
-        (sc: any) => sc.id === selectedIds[0]
+        (sc: any) => sc.id === selectedIds[0],
       ) as any;
 
       if (firstSelectedSubCategory?.category_id) {
@@ -374,7 +374,7 @@ export default function AddMrItemButton({
           {
             method: "POST",
             body: formData,
-          }
+          },
         );
 
         if (!uploadRes.ok) {
@@ -427,14 +427,14 @@ export default function AddMrItemButton({
         const errorData = await res.json();
         toast(
           errorData.error || "Failed to add material request item",
-          "error"
+          "error",
         );
       }
     } catch (error) {
       console.error("Submit error:", error);
       toast(
         "Failed to add material request item. Something went wrong",
-        "error"
+        "error",
       );
     }
   }
@@ -648,7 +648,7 @@ export default function AddMrItemButton({
         >
           {/* Category Grid */}
           <div className="category-grid" style={{ marginBottom: "20px" }}>
-            <div style={{ position: "relative", flex: 1, maxWidth: "925px" }}>
+            <div style={{ position: "relative", flex: 1, maxWidth: "70dvw" }}>
               {/* Left Fade Gradient */}
               {showLeftArrow && (
                 <div
@@ -669,6 +669,7 @@ export default function AddMrItemButton({
               {/* Left Arrow Button */}
               {showLeftArrow && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.preventDefault();
                     scroll("left");
@@ -693,7 +694,7 @@ export default function AddMrItemButton({
                 >
                   <img
                     src={arrowRight}
-                    style={{ transform: "rotate(-180deg)" }}
+                    style={{ transform: "rotate(-180deg)", width: "12px" }}
                   />
                 </button>
               )}
@@ -766,6 +767,7 @@ export default function AddMrItemButton({
               {/* Right Arrow Button */}
               {showRightArrow && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.preventDefault();
                     scroll("right");
@@ -788,7 +790,7 @@ export default function AddMrItemButton({
                     cursor: "pointer",
                   }}
                 >
-                  <img src={arrowRight} />
+                  <img src={arrowRight} style={{ width: "12px" }} />
                 </button>
               )}
             </div>
@@ -805,7 +807,7 @@ export default function AddMrItemButton({
                           key={`${category}-${subCategory}`}
                           style={{ marginBottom: "30px" }}
                         >
-                          <h3
+                          <h2
                             style={{
                               marginBottom: "10px",
                               textTransform: "uppercase",
@@ -813,7 +815,7 @@ export default function AddMrItemButton({
                           >
                             {categoryIndex + 1}.{subCategoryIndex + 1}{" "}
                             {category} / {subCategory}
-                          </h3>
+                          </h2>
 
                           <table className="items-table two-toned">
                             <thead>
@@ -834,7 +836,7 @@ export default function AddMrItemButton({
                             <tbody>
                               {items.map((boq, itemIndex) => {
                                 const attachmentUrls = parseAttachments(
-                                  boq.attachments
+                                  boq.attachments,
                                 );
 
                                 return (
@@ -850,7 +852,7 @@ export default function AddMrItemButton({
                                           setSelectedBoqInfo(
                                             boq.item_number +
                                               " " +
-                                              boq.item_name
+                                              boq.item_name,
                                           );
                                         }}
                                         style={{
@@ -861,23 +863,23 @@ export default function AddMrItemButton({
                                       />
                                     </td>
                                     <td style={{ whiteSpace: "nowrap" }}>
-                                      {categoryIndex + 1}.{subCategoryIndex + 1}
-                                      .{itemIndex + 1}
+                                      {boq.item_number}
                                     </td>
                                     <td>
-                                      <strong>{boq.item_name}</strong>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "10px",
+                                        }}
+                                      >
+                                        <strong>{boq.item_name}</strong>
 
-                                      {boq.item_description && (
-                                        <>
-                                          <br />
-                                          <br />
+                                        {boq.item_description && (
                                           <p>{boq.item_description}</p>
-                                          <br />
-                                        </>
-                                      )}
+                                        )}
 
-                                      {boq.location && (
-                                        <>
+                                        {boq.location && (
                                           <div
                                             style={{
                                               display: "flex",
@@ -885,7 +887,10 @@ export default function AddMrItemButton({
                                               alignItems: "center",
                                             }}
                                           >
-                                            <img src={locationIcon} />
+                                            <img
+                                              src={locationIcon}
+                                              style={{ width: "16px" }}
+                                            />
                                             <span
                                               style={{
                                                 fontWeight: 600,
@@ -896,12 +901,9 @@ export default function AddMrItemButton({
                                               {boq.location}
                                             </span>
                                           </div>
-                                          <br />
-                                        </>
-                                      )}
+                                        )}
 
-                                      {boq.scope_of_work && (
-                                        <>
+                                        {boq.scope_of_work && (
                                           <div
                                             style={{
                                               backgroundColor:
@@ -913,8 +915,8 @@ export default function AddMrItemButton({
                                           >
                                             <strong>{boq.scope_of_work}</strong>
                                           </div>
-                                        </>
-                                      )}
+                                        )}
+                                      </div>
                                     </td>
                                     <td>
                                       {boq.quantity} {boq.unit}
@@ -948,16 +950,16 @@ export default function AddMrItemButton({
                             </tbody>
                           </table>
                         </div>
-                      )
-                    )
+                      ),
+                    ),
                 )
               : Object.entries(boqSubCategories).map(
                   ([subCategory, items], index) => (
                     <div key={subCategory} style={{ marginBottom: "30px" }}>
-                      <h3 style={{ marginBottom: "10px" }}>
+                      <h2 style={{ marginBottom: "10px" }}>
                         {boqCategories.indexOf(activeBoqCategory) + 1}.
                         {index + 1} {subCategory}
-                      </h3>
+                      </h2>
 
                       <table className="items-table two-toned">
                         <thead>
@@ -978,7 +980,7 @@ export default function AddMrItemButton({
                         <tbody>
                           {items.map((boq, itemIndex) => {
                             const attachmentUrls = parseAttachments(
-                              boq.attachments
+                              boq.attachments,
                             );
 
                             return (
@@ -992,7 +994,7 @@ export default function AddMrItemButton({
                                     onChange={() => {
                                       setTempSelectedBoqID(boq.id);
                                       setSelectedBoqInfo(
-                                        boq.item_number + " " + boq.item_name
+                                        boq.item_number + " " + boq.item_name,
                                       );
                                     }}
                                     style={{
@@ -1007,19 +1009,20 @@ export default function AddMrItemButton({
                                   .{index + 1}.{itemIndex + 1}
                                 </td>
                                 <td>
-                                  <strong>{boq.item_name}</strong>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "10px",
+                                    }}
+                                  >
+                                    <strong>{boq.item_name}</strong>
 
-                                  {boq.item_description && (
-                                    <>
-                                      <br />
-                                      <br />
+                                    {boq.item_description && (
                                       <p>{boq.item_description}</p>
-                                      <br />
-                                    </>
-                                  )}
+                                    )}
 
-                                  {boq.location && (
-                                    <>
+                                    {boq.location && (
                                       <div
                                         style={{
                                           display: "flex",
@@ -1027,7 +1030,10 @@ export default function AddMrItemButton({
                                           alignItems: "center",
                                         }}
                                       >
-                                        <img src={locationIcon} />
+                                        <img
+                                          src={locationIcon}
+                                          style={{ width: "16px" }}
+                                        />
                                         <span
                                           style={{
                                             fontWeight: 600,
@@ -1038,12 +1044,9 @@ export default function AddMrItemButton({
                                           {boq.location}
                                         </span>
                                       </div>
-                                      <br />
-                                    </>
-                                  )}
+                                    )}
 
-                                  {boq.scope_of_work && (
-                                    <>
+                                    {boq.scope_of_work && (
                                       <div
                                         style={{
                                           backgroundColor:
@@ -1055,8 +1058,8 @@ export default function AddMrItemButton({
                                       >
                                         <strong>{boq.scope_of_work}</strong>
                                       </div>
-                                    </>
-                                  )}
+                                    )}
+                                  </div>
                                 </td>
                                 <td>
                                   {boq.quantity} {boq.unit}
@@ -1086,7 +1089,7 @@ export default function AddMrItemButton({
                         </tbody>
                       </table>
                     </div>
-                  )
+                  ),
                 )}
           </div>
         </FormPopUp>

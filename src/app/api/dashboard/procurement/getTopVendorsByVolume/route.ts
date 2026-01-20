@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (!filter || typeof filter !== "number" || filter <= 0) {
       return NextResponse.json(
         { error: "Invalid 'filter' parameter. Must be a positive number." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     console.error(err.sqlMessage || err.message);
     return NextResponse.json(
       { error: err.sqlMessage || err.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

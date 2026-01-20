@@ -7,7 +7,7 @@ export default function ExpectedDeliveriesWidget() {
 
   useEffect(() => {
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getExpectedDeliveries`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getExpectedDeliveries`,
     )
       .then((res) => res.json())
       .then((data) => {

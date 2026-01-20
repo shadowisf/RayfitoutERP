@@ -37,7 +37,7 @@ export default function CreateBoqLineClient({ boqHeader }: props) {
           {String(boqHeader?.id).padStart(5, "0")}
         </h2>
         <div style={{ display: "flex", gap: "5px" }}>
-          {userInfo?.departmentID === 8 && (
+          {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
             <>
               <EditBoqHeaderButton boqHeader={boqHeader} />
               <DeleteBoqHeaderButton boqHeader={boqHeader} />

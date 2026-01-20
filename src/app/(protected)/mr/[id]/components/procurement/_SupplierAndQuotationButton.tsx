@@ -14,6 +14,7 @@ import RejectCommentPopUp from "../manager/RejectCommentPopUp";
 import { MrHeader } from "../../types/mrHeader";
 import { MrLine } from "../../types/mrLine";
 import UploadFileBox from "@/app/components/SingleUploadFileBox";
+import FormContextHeader from "@/app/components/FormContextHeader";
 
 type SupplierQuotation = {
   id?: number;
@@ -80,11 +81,13 @@ export default function SupplierAndQuotationButton({
 
   const [categoriesManuallySelected, setCategoriesManuallySelected] =
     useState(false);
+  const [userInitiatedCategorySelection, setUserInitiatedCategorySelection] =
+    useState(false);
 
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
 
   const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
-    []
+    [],
   );
 
   const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
@@ -113,7 +116,7 @@ export default function SupplierAndQuotationButton({
 
   // File states for TRN Certificate
   const [trnCertificateFile, setTrnCertificateFile] = useState<File | null>(
-    null
+    null,
   );
   const [tradeLicenseFile, setTradeLicenseFile] = useState<File | null>(null);
 
@@ -148,7 +151,7 @@ export default function SupplierAndQuotationButton({
       .catch((err) => console.error(err));
 
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
     )
       .then((res) => res.json())
       .then((data) => setMaterialCategoryValues(data))
@@ -159,7 +162,7 @@ export default function SupplierAndQuotationButton({
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => setMaterialSubCategoryValues(data))
@@ -176,7 +179,7 @@ export default function SupplierAndQuotationButton({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: mrLine.id }),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -189,37 +192,37 @@ export default function SupplierAndQuotationButton({
         setMode("edit");
 
         const allRejected = data.every(
-          (q: SupplierQuotation) => q.approval_status === "Rejected"
+          (q: SupplierQuotation) => q.approval_status === "Rejected",
         );
         setAllSuppliersRejected(allRejected);
 
         const allPending = data.every(
           (q: SupplierQuotation) =>
-            !q.approval_status || q.approval_status === null
+            !q.approval_status || q.approval_status === null,
         );
         setAllSuppliersPending(allPending);
 
         const hasApproved = data.some(
-          (q: SupplierQuotation) => q.approval_status === "Approved"
+          (q: SupplierQuotation) => q.approval_status === "Approved",
         );
         setHasApprovedSupplier(hasApproved);
 
         if (hasApproved) {
           const approvedQuotation = data.find(
-            (q: SupplierQuotation) => q.approval_status === "Approved"
+            (q: SupplierQuotation) => q.approval_status === "Approved",
           );
           setApprovedSupplierName(
-            approvedQuotation?.supplier_name || "Approved"
+            approvedQuotation?.supplier_name || "Approved",
           );
         }
 
         if (allRejected) {
           const firstRejected = data.find(
-            (q: SupplierQuotation) => q.reject_comment
+            (q: SupplierQuotation) => q.reject_comment,
           );
 
           setRejectComments(
-            firstRejected?.reject_comment || "No comment provided"
+            firstRejected?.reject_comment || "No comment provided",
           );
         }
       } else {
@@ -250,16 +253,16 @@ export default function SupplierAndQuotationButton({
               body: JSON.stringify({
                 category_id: categoryId,
               }),
-            }
-          ).then((res) => res.json())
-        )
+            },
+          ).then((res) => res.json()),
+        ),
       )
         .then((results) => {
           const allSubCategories = results.flat();
           const uniqueSubCategories = Array.from(
             new Map(
-              allSubCategories.map((item: any) => [item.id, item])
-            ).values()
+              allSubCategories.map((item: any) => [item.id, item]),
+            ).values(),
           );
           setMaterialSubCategoryValues(uniqueSubCategories);
         })
@@ -273,7 +276,7 @@ export default function SupplierAndQuotationButton({
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
-        }
+        },
       )
         .then((res) => res.json())
         .then((data) => setMaterialSubCategoryValues(data))
@@ -291,7 +294,7 @@ export default function SupplierAndQuotationButton({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: mrLine.id }),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -370,7 +373,7 @@ export default function SupplierAndQuotationButton({
     }
 
     const newQuotations = supplierQuotations.filter(
-      (_: SupplierQuotation, i: number) => i !== index
+      (_: SupplierQuotation, i: number) => i !== index,
     );
     setSupplierQuotations(newQuotations);
   }
@@ -378,7 +381,7 @@ export default function SupplierAndQuotationButton({
   function updateQuotation(
     index: number,
     field: keyof SupplierQuotation,
-    value: string | number | File | null
+    value: string | number | File | null,
   ) {
     const newQuotations = [...supplierQuotations];
     newQuotations[index] = {
@@ -490,7 +493,7 @@ export default function SupplierAndQuotationButton({
             address,
             notes,
           }),
-        }
+        },
       );
 
       if (res.ok) {
@@ -549,7 +552,7 @@ export default function SupplierAndQuotationButton({
         formData.append(
           "files",
           quotation.quotation_file,
-          quotation.quotation_file.name
+          quotation.quotation_file.name,
         );
         formData.append("folder", "mr-quotations");
 
@@ -577,7 +580,7 @@ export default function SupplierAndQuotationButton({
       } catch (error: any) {
         console.error("Upload error:", error);
         throw new Error(
-          `Failed to upload ${quotation.quotation_file.name}: ${error.message}`
+          `Failed to upload ${quotation.quotation_file.name}: ${error.message}`,
         );
       }
     }
@@ -621,7 +624,7 @@ export default function SupplierAndQuotationButton({
     e.preventDefault();
 
     const validQuotations = supplierQuotations.filter(
-      (q: SupplierQuotation) => q.supplier_id !== ""
+      (q: SupplierQuotation) => q.supplier_id !== "",
     );
 
     // Check if any quotation has total price >= 900
@@ -629,14 +632,14 @@ export default function SupplierAndQuotationButton({
       (q: { total_price: string }) => {
         const totalPrice = parseFloat(q.total_price);
         return !isNaN(totalPrice) && totalPrice >= 900;
-      }
+      },
     );
 
     // If any quotation is >= 900 AED, require minimum 3 vendors
     if (hasHighValueQuotation && validQuotations.length < 3) {
       toast(
         "Minimum 3 vendors required for quotations with total price greater than or equal to 900 AED",
-        "error"
+        "error",
       );
       return;
     }
@@ -707,7 +710,7 @@ export default function SupplierAndQuotationButton({
           method: mode === "edit" ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(apiPayload),
-        }
+        },
       );
 
       if (res.ok) {
@@ -715,7 +718,7 @@ export default function SupplierAndQuotationButton({
           mode === "edit"
             ? `Vendors and quotations updated for ${mrLine.material_description}`
             : `Vendors and quotations added for ${mrLine.material_description}`,
-          "success"
+          "success",
         );
         setIsOpen(false);
 
@@ -738,7 +741,7 @@ export default function SupplierAndQuotationButton({
         const errorData = await res.json();
         throw new Error(
           errorData.error ||
-            `Failed to ${mode === "edit" ? "update" : "add"} quotations`
+            `Failed to ${mode === "edit" ? "update" : "add"} quotations`,
         );
       }
     } catch (error: any) {
@@ -746,7 +749,7 @@ export default function SupplierAndQuotationButton({
       toast(
         error.message ||
           `Failed to ${mode === "edit" ? "update" : "submit"} quotations`,
-        "error"
+        "error",
       );
     } finally {
       setIsUploading(false);
@@ -947,7 +950,7 @@ export default function SupplierAndQuotationButton({
                                 updateQuotation(
                                   index,
                                   "unit_price",
-                                  e.target.value
+                                  e.target.value,
                                 );
                               }
                             }}
@@ -992,7 +995,7 @@ export default function SupplierAndQuotationButton({
                         <td></td>
                       )}
                     </tr>
-                  )
+                  ),
                 )}
               </tbody>
             </table>
@@ -1019,14 +1022,14 @@ export default function SupplierAndQuotationButton({
             {/* Visual indicator for minimum vendor requirement */}
             {(() => {
               const validQuotations = supplierQuotations.filter(
-                (q: SupplierQuotation) => q.supplier_id !== ""
+                (q: SupplierQuotation) => q.supplier_id !== "",
               );
 
               const hasHighValueQuotation = validQuotations.some(
                 (q: { total_price: string }) => {
                   const totalPrice = parseFloat(q.total_price);
                   return !isNaN(totalPrice) && totalPrice >= 900;
-                }
+                },
               );
 
               if (hasHighValueQuotation && validQuotations.length < 3) {
@@ -1058,6 +1061,7 @@ export default function SupplierAndQuotationButton({
             handleSubmit={handleSupplierSubmit}
             addButtonLabel="CONFIRM"
           >
+            <FormContextHeader>VENDOR INFORMATION</FormContextHeader>
             <div className="input-row full">
               <InputItem
                 label="VENDOR TYPE"
@@ -1067,7 +1071,7 @@ export default function SupplierAndQuotationButton({
                 onChange={(e) => {
                   setType(e.target.value);
                 }}
-                selectOptions={["Local vendor", "Marketplace/online"]}
+                selectOptions={["Cash", "Credit", "Marketplace/online"]}
               />
             </div>
 
@@ -1085,30 +1089,37 @@ export default function SupplierAndQuotationButton({
                   />
                 </div>
 
-                {type === "Local vendor" && (
+                {(type.toLowerCase().includes("cash") ||
+                  type.toLowerCase().includes("credit")) && (
                   <div className="input-row half">
                     <MultiSelectDropdown
                       dbData={materialCategoryValues}
                       selectedValues={materialCategoryID}
                       onChange={(categoryIds) => {
                         setCategoriesManuallySelected(true);
+                        setUserInitiatedCategorySelection(true); // Mark as user-initiated
                         setMaterialCategoryID(categoryIds);
                       }}
                       label="MATERIAL CATEGORIES"
                       style={{ width: "410px" }}
-                      required={type === "Local vendor"}
+                      required={
+                        type.toLowerCase().includes("cash") ||
+                        type.toLowerCase().includes("credit")
+                      }
                     />
 
                     <MultiSelectDropdown
                       dbData={materialSubCategoryValues}
                       selectedValues={materialSubCategoryID}
                       onChange={(subCategoryIds) => {
-                        setCategoriesManuallySelected(false);
                         setMaterialSubCategoryID(subCategoryIds);
 
-                        // If all subcategories are deselected, clear categories
+                        // If all subcategories are deselected
                         if (subCategoryIds.length === 0) {
-                          setMaterialCategoryID([]);
+                          // Only clear categories if they weren't manually selected
+                          if (!categoriesManuallySelected) {
+                            setMaterialCategoryID([]);
+                          }
                           return;
                         }
 
@@ -1116,28 +1127,43 @@ export default function SupplierAndQuotationButton({
                         const categoryIdsFromSubcategories = subCategoryIds
                           .map((subCatId: any) => {
                             const subCategory = materialSubCategoryValues.find(
-                              (sc: any) => sc.id === subCatId
+                              (sc: any) => sc.id === subCatId,
                             );
                             return subCategory?.category_id;
                           })
                           .filter((catId: any) => catId !== undefined);
 
-                        // Use only the category IDs from the selected subcategories
                         const uniqueCategoryIds = Array.from(
-                          new Set(categoryIdsFromSubcategories)
+                          new Set(categoryIdsFromSubcategories),
                         );
 
-                        // Update category selection with only the categories from selected subcategories
-                        setMaterialCategoryID(uniqueCategoryIds);
+                        // If categories were manually selected, merge with auto-detected ones
+                        if (categoriesManuallySelected) {
+                          // Keep manually selected categories that are still valid
+                          const mergedCategories = Array.from(
+                            new Set([
+                              ...materialCategoryID,
+                              ...uniqueCategoryIds,
+                            ]),
+                          );
+                          setMaterialCategoryID(mergedCategories);
+                        } else {
+                          // Auto-populate categories from subcategories (NOT user-initiated)
+                          setMaterialCategoryID(uniqueCategoryIds);
+                        }
                       }}
                       label="MATERIAL SUBCATEGORIES"
                       style={{ width: "410px" }}
-                      required={type === "Local vendor"}
+                      required={
+                        type.toLowerCase().includes("cash") ||
+                        type.toLowerCase().includes("credit")
+                      }
                     />
                   </div>
                 )}
 
-                {type === "Local vendor" && (
+                {(type.toLowerCase().includes("cash") ||
+                  type.toLowerCase().includes("credit")) && (
                   <div className="input-row">
                     <div className="input-item">
                       <label>TRN / TAX REGISTRATION NUMBER</label>
@@ -1172,13 +1198,17 @@ export default function SupplierAndQuotationButton({
                 )}
 
                 <div className="input-row half">
-                  {type === "Local vendor" && (
+                  {(type.toLowerCase().includes("cash") ||
+                    type.toLowerCase().includes("credit")) && (
                     <UploadFileBox
                       fileState={trnCertificateFile}
                       setFileState={setTrnCertificateFile}
                       label={"TRN CERTIFICATE"}
                       acceptedFileTypes={".pdf"}
-                      required={type === "Local vendor"}
+                      required={
+                        type.toLowerCase().includes("cash") ||
+                        type.toLowerCase().includes("credit")
+                      }
                     />
                   )}
 
@@ -1187,7 +1217,10 @@ export default function SupplierAndQuotationButton({
                     setFileState={setTradeLicenseFile}
                     label={"TRADE LICENSE"}
                     acceptedFileTypes={".pdf"}
-                    required={type === "Local vendor"}
+                    required={
+                      type.toLowerCase().includes("cash") ||
+                      type.toLowerCase().includes("credit")
+                    }
                   />
                 </div>
 
@@ -1229,13 +1262,19 @@ export default function SupplierAndQuotationButton({
                   />
                 </div>
 
+                <br />
+
+                <FormContextHeader>CONTACT INFORMATION</FormContextHeader>
                 <div className="input-row full">
                   <InputItem
                     label={"CONTACT PERSON NAME"}
                     value={contactPersonName}
                     type={"text"}
                     placeholder={"ENTER CONTACT PERSON NAME"}
-                    required={type === "Local vendor"}
+                    required={
+                      type.toLowerCase().includes("cash") ||
+                      type.toLowerCase().includes("credit")
+                    }
                     onChange={(e) => {
                       setContactPersonName(e.target.value);
                     }}
@@ -1251,7 +1290,10 @@ export default function SupplierAndQuotationButton({
                     onChange={(e) => {
                       setPhone(e.target.value);
                     }}
-                    required={type === "Local vendor"}
+                    required={
+                      type.toLowerCase().includes("cash") ||
+                      type.toLowerCase().includes("credit")
+                    }
                   />
 
                   <InputItem
@@ -1262,7 +1304,10 @@ export default function SupplierAndQuotationButton({
                     onChange={(e) => {
                       setEmail(e.target.value);
                     }}
-                    required={type === "Local vendor"}
+                    required={
+                      type.toLowerCase().includes("cash") ||
+                      type.toLowerCase().includes("credit")
+                    }
                   />
 
                   <InputItem
@@ -1273,7 +1318,10 @@ export default function SupplierAndQuotationButton({
                     onChange={(e) => {
                       setAddress(e.target.value);
                     }}
-                    required={type === "Local vendor"}
+                    required={
+                      type.toLowerCase().includes("cash") ||
+                      type.toLowerCase().includes("credit")
+                    }
                   />
                 </div>
 
@@ -1282,8 +1330,10 @@ export default function SupplierAndQuotationButton({
                     label={"WEBSITE"}
                     value={website}
                     type={"text"}
-                    placeholder={"ENTER DESCRIPTION"}
-                    required={type === "Local vendor"}
+                    required={
+                      type.toLowerCase().includes("cash") ||
+                      type.toLowerCase().includes("credit")
+                    }
                     onChange={(e) => setWebsite(e.target.value)}
                   />
                 </div>
@@ -1302,7 +1352,7 @@ export default function SupplierAndQuotationButton({
               </>
             )}
           </FormPopUp>,
-          document.body
+          document.body,
         )}
     </>
   );
