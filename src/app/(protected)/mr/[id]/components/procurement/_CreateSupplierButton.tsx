@@ -12,9 +12,10 @@ import Button from "@/app/components/Button";
 
 type props = {
   onSuccess?: () => void;
+  full?: boolean;
 };
 
-export default function CreateSupplierButton({ onSuccess }: props) {
+export default function CreateSupplierButton({ onSuccess, full }: props) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -249,8 +250,6 @@ export default function CreateSupplierButton({ onSuccess }: props) {
     }
   }
 
-  if (!isOpen) return null;
-
   return (
     <>
       <Button
@@ -258,6 +257,8 @@ export default function CreateSupplierButton({ onSuccess }: props) {
         bgColor={"black"}
         borderColor={"black"}
         textColor={"white"}
+        onClick={() => setIsOpen(true)}
+        full={full}
       >
         NEW VENDOR +
       </Button>

@@ -277,10 +277,13 @@ export default function ProjectWithID() {
         }}
       >
         <h3>BILL OF QUANTITIES</h3>
-        <CreateBoqHeaderButton
-          project={project}
-          onSuccess={() => fetchAllBoqsByProjectID()}
-        />
+        {userInfo?.departmentID === 8 ||
+          (userInfo?.departmentID === 16 && (
+            <CreateBoqHeaderButton
+              project={project}
+              onSuccess={() => fetchAllBoqsByProjectID()}
+            />
+          ))}
       </div>
 
       <br />
@@ -383,9 +386,7 @@ export default function ProjectWithID() {
       <br />
 
       <h3>MATERIAL REQUESTS</h3>
-
       <br />
-
       {mrs?.length === 0 ? (
         <div>No material requests created</div>
       ) : (
@@ -394,6 +395,7 @@ export default function ProjectWithID() {
             <tr>
               <th>ID</th>
               <th>REQUESTED BY</th>
+              <th>DEPARTMENT</th>
               <th>REQUIRED DATE</th>
               <th>PURPOSE</th>
               <th>STATUS</th>
@@ -405,6 +407,7 @@ export default function ProjectWithID() {
               <tr key={index}>
                 <td>MR-{String(item.id).padStart(5, "0")}</td>
                 <td>{item.requested_by ? item.requested_by : "-"}</td>
+                <td>{item.department_name ? item.department_name : "-"}</td>
                 <td>
                   {item.required_date
                     ? new Date(item.required_date).toLocaleDateString("en-US")

@@ -110,7 +110,6 @@ const styles = StyleSheet.create({
     padding: "8 12",
     fontSize: 8,
     color: "#333333",
-    minHeight: 40,
     alignItems: "flex-start",
     backgroundColor: "#f5f5f5",
     border: "1px solid #f5f5f5",
@@ -120,7 +119,6 @@ const styles = StyleSheet.create({
     padding: "8 12",
     fontSize: 8,
     color: "#333333",
-    minHeight: 40,
     alignItems: "flex-start",
     backgroundColor: "#ffffff",
     border: "1px solid #f5f5f5",
@@ -273,14 +271,12 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   detailColCategory: {
-    width: "45%",
+    width: "60%",
     paddingRight: 4,
-    fontSize: 7,
   },
   detailColCategoryUnpriced: {
     width: "60%",
     paddingRight: 4,
-    fontSize: 7,
   },
   detailColQty: {
     width: "10%",
@@ -293,7 +289,6 @@ const styles = StyleSheet.create({
   detailColTotal: {
     width: "15%",
     paddingRight: 4,
-    fontSize: 7,
   },
   detailColAttachment: {
     width: "17%",
@@ -538,13 +533,15 @@ export function BoqPDF({
           {/* Completion */}
           <View style={styles.termsSection}>
             <Text style={styles.termsTitle}>COMPLETION</Text>
-            <Text style={styles.termsText}>{boqHeader.completion}</Text>
+            <Text style={styles.termsText}>
+              {boqHeader.completion || "N/A"}
+            </Text>
           </View>
 
           {/* Exclusion */}
           <View style={styles.termsSection}>
             <Text style={styles.termsTitle}>EXCLUSIONS</Text>
-            <Text style={styles.termsText}>{boqHeader.exclusion}</Text>
+            <Text style={styles.termsText}>{boqHeader.exclusion || "N/A"}</Text>
           </View>
 
           {/* Terms and Conditions */}
@@ -603,11 +600,14 @@ export function BoqPDF({
                         </Text>
                         <Text style={styles.detailColQty}>QTY</Text>
                         {showPrices && (
-                          <Text style={styles.detailColRate}>RATE</Text>
+                          <>
+                            <Text style={styles.detailColRate}>RATE</Text>
+                            <Text style={styles.detailColTotal}>
+                              TOTAL PRICE
+                            </Text>
+                          </>
                         )}
-                        {showPrices && (
-                          <Text style={styles.detailColTotal}>TOTAL PRICE</Text>
-                        )}
+
                         <Text style={styles.detailColAttachment}>
                           ATTACHMENT(S)
                         </Text>

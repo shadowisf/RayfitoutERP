@@ -194,7 +194,9 @@ export default function BoqReferencePopUp({
                     <strong>{item.boq_item_name}</strong>
 
                     {item.boq_item_description && (
-                      <p>{item.boq_item_description}</p>
+                      <p style={{ whiteSpace: "pre-wrap" }}>
+                        {item.boq_item_description}
+                      </p>
                     )}
 
                     {item.boq_location && (

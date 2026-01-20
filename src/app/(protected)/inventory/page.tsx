@@ -15,7 +15,6 @@ export default function Inventory() {
   const warningIcon = "/icons/warning.svg";
   const noImageIcon = "/icons/no-image.jpg";
   const arrowRight = "/icons/arrow-right.svg";
-  const closeIcon = "/icons/close.svg";
 
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [availableQuantities, setAvailableQuantities] = useState<{
@@ -26,7 +25,7 @@ export default function Inventory() {
     };
   }>({});
   const [activeTab, setActiveTab] = useState<"inventory" | "transfer-log">(
-    "inventory"
+    "inventory",
   );
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -58,7 +57,7 @@ export default function Inventory() {
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`,
         {
           method: "GET",
-        }
+        },
       );
       const data = await response.json();
       setInventory(data.data);
@@ -97,7 +96,7 @@ export default function Inventory() {
                 body: JSON.stringify({
                   inventory_item_id: item.id,
                 }),
-              }
+              },
             );
 
             const data = await response.json();
@@ -118,7 +117,7 @@ export default function Inventory() {
           } catch (error) {
             console.error(
               `Error fetching quantity for item ${item.id}:`,
-              error
+              error,
             );
             quantities[item.id] = {
               available_quantity: 0,
@@ -150,7 +149,7 @@ export default function Inventory() {
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAllStocks`,
           {
             method: "GET",
-          }
+          },
         );
 
         if (response.ok) {
@@ -189,7 +188,7 @@ export default function Inventory() {
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAllTransferIssueTransactions`,
         {
           method: "GET",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -242,7 +241,7 @@ export default function Inventory() {
 
   // Get unique categories
   const categories = Array.from(
-    new Set(inventory.map((item) => item.category_name))
+    new Set(inventory.map((item) => item.category_name)),
   ).sort();
 
   useEffect(() => {
@@ -263,7 +262,7 @@ export default function Inventory() {
     // Filter by selected categories from filter
     if (filters.selectedCategories.length > 0) {
       processed = processed.filter((item) =>
-        filters.selectedCategories.includes(item.category_name)
+        filters.selectedCategories.includes(item.category_name),
       );
     }
 
@@ -272,7 +271,7 @@ export default function Inventory() {
       processed = processed.filter((item) => {
         const itemStocks = stocksByInventoryItem[item.id] || [];
         return itemStocks.some((stock) =>
-          filters.selectedLocations.includes(stock.location)
+          filters.selectedLocations.includes(stock.location),
         );
       });
     }
@@ -291,7 +290,7 @@ export default function Inventory() {
       const daysAgo = timeframes[filters.stockAddedIn];
       if (daysAgo) {
         const cutoffDate = new Date(
-          now.getTime() - daysAgo * 24 * 60 * 60 * 1000
+          now.getTime() - daysAgo * 24 * 60 * 60 * 1000,
         );
 
         processed = processed.filter((item) => {
@@ -307,7 +306,7 @@ export default function Inventory() {
     // Filter by active category tab
     if (activeCategory !== "ALL") {
       processed = processed.filter(
-        (item) => item.category_name === activeCategory
+        (item) => item.category_name === activeCategory,
       );
     }
 
@@ -315,7 +314,7 @@ export default function Inventory() {
     if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
       processed = processed.filter((item) =>
-        item.description.toLowerCase().includes(query)
+        item.description.toLowerCase().includes(query),
       );
     }
 
@@ -452,7 +451,7 @@ export default function Inventory() {
     return allTransactions.filter((transaction) => {
       // Search in materials
       const materialMatch = transaction.items?.some((item: any) =>
-        item.description?.toLowerCase().includes(query)
+        item.description?.toLowerCase().includes(query),
       );
 
       // Search in locations
@@ -482,13 +481,13 @@ export default function Inventory() {
   // Remove individual filter
   const removeFilter = (
     type: "category" | "location" | "time",
-    value?: string
+    value?: string,
   ) => {
     if (type === "category" && value) {
       setFilters({
         ...filters,
         selectedCategories: filters.selectedCategories.filter(
-          (c) => c !== value
+          (c) => c !== value,
         ),
       });
     } else if (type === "location" && value) {
@@ -792,7 +791,7 @@ export default function Inventory() {
                         | "high-low"
                         | "low-high"
                         | "newest-oldest"
-                        | "oldest-newest"
+                        | "oldest-newest",
                     )
                   }
                   style={{
@@ -938,7 +937,7 @@ export default function Inventory() {
                     const availableQty = quantityData?.available_quantity ?? 0;
                     const stockStatus = getStockStatus(
                       availableQty,
-                      item.minimum_stock_quantity
+                      item.minimum_stock_quantity,
                     );
 
                     return (
@@ -1123,7 +1122,7 @@ export default function Inventory() {
                                 >
                                   {item.description}
                                 </div>
-                              )
+                              ),
                             )}
                           </div>
                         ) : (

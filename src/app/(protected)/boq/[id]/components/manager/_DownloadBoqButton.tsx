@@ -8,6 +8,7 @@ import { BoqLine } from "../../types/boqLine";
 import { useAuth } from "@/app/context/AuthContext";
 import { pdf } from "@react-pdf/renderer";
 import { BoqPDF } from "../BoqPDF";
+import { toast } from "@/app/components/Toast";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -24,11 +25,20 @@ export default function DownloadBoqButton({
   boqHeader,
   boqLines,
 }: DownloadBoqButtonProps) {
+  const { userInfo } = useAuth();
+
+  const canSeePrice =
+    userInfo?.departmentID === 8 ||
+    userInfo?.departmentID === 12 ||
+    userInfo?.departmentID === 10 ||
+    userInfo?.departmentID === 16;
+
   const downloadIcon = "/icons/download.svg";
   const arrowDown = "/icons/minimal-arrow-down.svg";
   const arrowUp = "/icons/minimal-arrow-up.svg";
 
   const [isOpen, setIsOpen] = useState(false);
+
   const [selectedCategories, setSelectedCategories] = useState<{
     [category: string]: boolean;
   }>({});
@@ -38,8 +48,8 @@ export default function DownloadBoqButton({
   const [expandedCategories, setExpandedCategories] = useState<{
     [category: string]: boolean;
   }>({});
-  const [priceConfig, setPriceConfig] = useState<"priced" | "unpriced">(
-    "priced"
+  const [priceConfig, setPriceConfig] = useState<"priced" | "unpriced" | "">(
+    "",
   );
 
   // Initialize selections when opening the modal
@@ -100,14 +110,14 @@ export default function DownloadBoqButton({
   const handleSubCategoryChange = (
     category: string,
     subCategory: string,
-    checked: boolean
+    checked: boolean,
   ) => {
     const updatedSubCategories = { ...selectedSubCategories };
     updatedSubCategories[`${category}-${subCategory}`] = checked;
 
     // Check if all subcategories are selected to update parent category
     const allSubCategoriesSelected = Object.keys(boqLines[category]).every(
-      (sub) => updatedSubCategories[`${category}-${sub}`]
+      (sub) => updatedSubCategories[`${category}-${sub}`],
     );
 
     const updatedCategories = { ...selectedCategories };
@@ -160,7 +170,7 @@ export default function DownloadBoqButton({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ url }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -187,7 +197,16 @@ export default function DownloadBoqButton({
       !filteredBoqLines ||
       Object.keys(filteredBoqLines).length === 0
     ) {
-      alert("Please select at least one category or subcategory to export.");
+      toast(
+        "Please select at least one category or subcategory to export",
+        "error",
+      );
+
+      return;
+    }
+
+    if (priceConfig === "") {
+      toast("Please select a price configuration", "error");
       return;
     }
 
@@ -220,19 +239,19 @@ export default function DownloadBoqButton({
                 if (!Array.isArray(urls) || urls.length === 0) return item;
 
                 console.log(
-                  `Processing ${urls.length} images for item: ${item.item_name}`
+                  `Processing ${urls.length} images for item: ${item.item_name}`,
                 );
 
                 // Convert all images to base64
                 const base64Images = await Promise.all(
-                  urls.map((url) => urlToBase64(url))
+                  urls.map((url) => urlToBase64(url)),
                 );
 
                 // Filter out failed conversions
                 const validImages = base64Images.filter((img) => img !== "");
 
                 console.log(
-                  `Successfully converted ${validImages.length} images`
+                  `Successfully converted ${validImages.length} images`,
                 );
 
                 return {
@@ -243,7 +262,7 @@ export default function DownloadBoqButton({
                 console.error("Error processing item attachments:", error);
                 return item;
               }
-            })
+            }),
           );
         }
       }
@@ -255,7 +274,7 @@ export default function DownloadBoqButton({
           boqHeader={boqHeader}
           boqLines={processedLines}
           showPrices={showPrices}
-        />
+        />,
       ).toBlob();
 
       console.log("PDF generated successfully");
@@ -267,7 +286,7 @@ export default function DownloadBoqButton({
       const priceType = showPrices ? "PRICED" : "UNPRICED";
       link.download = `BOQ-${priceType}-${String(boqHeader.id).padStart(
         5,
-        "0"
+        "0",
       )}.pdf`;
 
       // Trigger download
@@ -300,7 +319,7 @@ export default function DownloadBoqButton({
 
       {isOpen && (
         <FormPopUp
-          header={"EXPORT BOQ"}
+          header={"EXPORT BILL OF QUANTITY"}
           setIsOpen={setIsOpen}
           addButtonLabel="EXPORT BOQ"
           handleSubmit={handleDownload}
@@ -435,7 +454,7 @@ export default function DownloadBoqButton({
                                 handleSubCategoryChange(
                                   category,
                                   subCategory,
-                                  e.target.checked
+                                  e.target.checked,
                                 )
                               }
                               style={{
@@ -466,26 +485,29 @@ export default function DownloadBoqButton({
               PRICE CONFIGURATION
             </h3>
             <div style={{ display: "flex", gap: "30px" }}>
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  cursor: "pointer",
-                }}
-              >
-                <input
-                  type="radio"
-                  name="priceConfig"
-                  value="priced"
-                  checked={priceConfig === "priced"}
-                  onChange={(e) =>
-                    setPriceConfig(e.target.value as "priced" | "unpriced")
-                  }
-                  style={{ width: "18px", height: "18px", cursor: "pointer" }}
-                />
-                <h4>Priced</h4>
-              </label>
+              {canSeePrice && (
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="priceConfig"
+                    value="priced"
+                    checked={priceConfig === "priced"}
+                    onChange={(e) =>
+                      setPriceConfig(e.target.value as "priced" | "unpriced")
+                    }
+                    style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                  />
+                  <h4>Priced</h4>
+                </label>
+              )}
+
               <label
                 style={{
                   display: "flex",

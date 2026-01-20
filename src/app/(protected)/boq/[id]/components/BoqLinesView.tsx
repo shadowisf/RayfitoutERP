@@ -545,7 +545,9 @@ export default function BoqLinesView({
                             <strong>{item.item_name}</strong>
 
                             {item.item_description && (
-                              <p>{item.item_description}</p>
+                              <p style={{ whiteSpace: "pre-wrap" }}>
+                                {item.item_description}
+                              </p>
                             )}
 
                             {item.location && (
@@ -840,7 +842,7 @@ export default function BoqLinesView({
                       >
                         <span>{category}</span>
 
-                        {activeCategory === category && (
+                        {activeCategory === category && canManage && (
                           <div style={{ display: "flex", gap: "5px" }}>
                             <EditBoqCategoryButton
                               oldCategory={activeCategory}

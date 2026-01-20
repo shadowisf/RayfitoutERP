@@ -805,7 +805,9 @@ export default function EditMrItemButton({
                                         <strong>{boq.item_name}</strong>
 
                                         {boq.item_description && (
-                                          <p>{boq.item_description}</p>
+                                          <p style={{ whiteSpace: "pre-wrap" }}>
+                                            {boq.item_description}
+                                          </p>
                                         )}
 
                                         {boq.location && (
