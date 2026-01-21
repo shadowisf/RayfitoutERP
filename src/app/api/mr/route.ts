@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     if (body.action === "getMrHeaders") {
       const [rows]: any = await db.query(
         `SELECT * FROM vw_mr_headers WHERE department_id = ?`,
-        [body.department_id]
+        [body.department_id],
       );
 
       return NextResponse.json(rows, { status: 200 });
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
       const [headerResult] = await db.query<ResultSetHeader>(
         headerQuery,
-        headerValues
+        headerValues,
       );
       const mrHeaderId = headerResult.insertId;
 
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
         const [lineResult] = await db.query<ResultSetHeader>(
           lineQuery,
-          lineValues
+          lineValues,
         );
         const mrLineId = lineResult.insertId;
 
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
 
         // Filter out any invalid IDs
         const validSubcategoryIds = subcategoryIds.filter(
-          (id: any) => id && !isNaN(Number(id))
+          (id: any) => id && !isNaN(Number(id)),
         );
 
         if (validSubcategoryIds.length > 0) {
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
         console.error("Create MR Line Error:", error);
         return NextResponse.json(
           { error: error.message || "Failed to create MR line" },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -147,7 +147,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 12, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -160,7 +160,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 11, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -173,7 +173,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 21, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -186,7 +186,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 24, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -199,7 +199,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 3, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -208,7 +208,7 @@ export async function PUT(req: Request) {
     if (body.action === "approveItem") {
       await db.query(
         `UPDATE mr_lines SET approval_status = 'Approved' WHERE id = ?`,
-        [body.id]
+        [body.id],
       );
 
       return NextResponse.json({ status: 200 });
@@ -217,7 +217,7 @@ export async function PUT(req: Request) {
     if (body.action === "rejectItem") {
       await db.query(
         `UPDATE mr_lines SET approval_status = 'Rejected', reject_comment = ? WHERE id = ?`,
-        [body.comment, body.id]
+        [body.comment, body.id],
       );
 
       return NextResponse.json({ status: 200 });
@@ -226,7 +226,7 @@ export async function PUT(req: Request) {
     if (body.action === "resetItem") {
       await db.query(
         `UPDATE mr_lines SET approval_status = null, reject_comment = null WHERE id = ?`,
-        [body.id]
+        [body.id],
       );
 
       return NextResponse.json({ status: 200 });
@@ -239,7 +239,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 5, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -252,7 +252,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 7, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -265,7 +265,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 10, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -278,7 +278,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 14, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -291,7 +291,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 17, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -304,7 +304,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 13, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -317,7 +317,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 16, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -330,7 +330,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 23, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });
@@ -343,8 +343,10 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 25, ?)`,
-        [body.id, body.changed_by]
+        [body.id, body.changed_by],
       );
+
+      return NextResponse.json({ status: 200 });
     }
 
     if (body.action === "updateMrHeader") {
@@ -354,7 +356,7 @@ export async function PUT(req: Request) {
          required_date = ?, 
          purpose_id = ? 
      WHERE id = ?`,
-        [body.project_id || null, body.required_date, body.purpose_id, body.id]
+        [body.project_id || null, body.required_date, body.purpose_id, body.id],
       );
 
       return NextResponse.json({ status: 200 });
@@ -397,7 +399,7 @@ export async function PUT(req: Request) {
         // Delete existing subcategory associations
         await db.query(
           `DELETE FROM jt_mr_line_material_subcategory WHERE mr_line_id = ?`,
-          [Number(body.id)]
+          [Number(body.id)],
         );
 
         // Insert new subcategory associations

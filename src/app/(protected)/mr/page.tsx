@@ -697,6 +697,8 @@ export default function MR() {
                       <small>PROJECT</small>
                       <h3>{mr.project_name || "-"}</h3>
 
+                      <br />
+
                       {/* {mr.progress_id === 17 && (
                         <>
                           <br />
