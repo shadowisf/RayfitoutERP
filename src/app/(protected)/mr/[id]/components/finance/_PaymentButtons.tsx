@@ -63,7 +63,7 @@ export default function PaymentButtons({
               mr_header_id: mrHeader.id,
               supplier_id: supplierId,
             }),
-          }
+          },
         );
 
         if (res.ok) {
@@ -112,7 +112,7 @@ export default function PaymentButtons({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lpo_id: lpoId }),
-          }
+          },
         );
         const data = await response.json();
         if (data.success && data.data) {
@@ -169,14 +169,14 @@ export default function PaymentButtons({
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
         {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "approvePayment",
             lpo_id: lpoId,
             payment_file: JSON.stringify(uploadedUrl),
           }),
-        }
+        },
       );
 
       if (!updateRes.ok) {
@@ -209,7 +209,7 @@ export default function PaymentButtons({
     setRejectComment(rejectText);
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`, {
-      method: "POST",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "rejectPayment",
@@ -252,7 +252,7 @@ export default function PaymentButtons({
               action: "delete",
               url: paymentFileUrl,
             }),
-          }
+          },
         );
 
         if (!deleteRes.ok) {
@@ -262,7 +262,7 @@ export default function PaymentButtons({
 
       // Reset payment status in database
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`, {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "resetPayment",
