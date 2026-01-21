@@ -697,7 +697,7 @@ export default function MR() {
                       <small>PROJECT</small>
                       <h3>{mr.project_name || "-"}</h3>
 
-                      {mr.progress_id === 17 && (
+                      {/* {mr.progress_id === 17 && (
                         <>
                           <br />
 
@@ -733,7 +733,7 @@ export default function MR() {
                         </>
                       )}
 
-                      <br />
+                      <br /> */}
 
                       {!isCompleted ? (
                         <div
