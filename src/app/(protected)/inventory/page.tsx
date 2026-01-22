@@ -8,6 +8,7 @@ import EditInventoryItemButton from "./components/_EditInventoryItemButton";
 import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStocksButton";
 import TransactionDetailsPopUpButton from "./[id]/components/_IssueDetailsPopUpButton";
 import FilterButton from "./[id]/components/_FilterButton";
+import DeleteTransferButton from "./components/_DeleteTransferButton";
 
 export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
@@ -1095,6 +1096,7 @@ export default function Inventory() {
                   <th style={{ minWidth: "500px" }}>MATERIAL</th>
                   <th>TRANSFER TYPE</th>
                   <th>STATUS</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -1193,6 +1195,12 @@ export default function Inventory() {
                             {status.label}
                           </div>
                         </div>
+                      </td>
+                      <td>
+                        <DeleteTransferButton
+                          transaction={transaction}
+                          onSuccess={() => fetchAllTransactions()}
+                        />
                       </td>
                     </tr>
                   );

@@ -11,6 +11,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { useAuth } from "@/app/context/AuthContext";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import FormContextHeader from "@/app/components/FormContextHeader";
+import SelectBoqItemButton from "@/app/components/_SelectBoqItemButton";
 
 type TransferIssueStockButtonProps = {
   inventoryItem: InventoryItem;
@@ -38,7 +39,7 @@ export default function TransferIssueStocksButton({
   const [boqLineID, setBoqLineID] = useState<string | number>("");
 
   const [availableQuantity, setAvailableQuantity] = useState<number | string>(
-    ""
+    "",
   );
   const [fromValues, setFromValues] = useState<any>([]);
   const [toValues, setToValues] = useState<any>([]);
@@ -92,7 +93,7 @@ export default function TransferIssueStocksButton({
         body: JSON.stringify({
           inventoryItemId: inventoryItem.id,
         }),
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -101,7 +102,7 @@ export default function TransferIssueStocksButton({
 
         // Get locations from stocks table
         const stockLocations = data.stocks.map(
-          (item: { location: string }) => item.location
+          (item: { location: string }) => item.location,
         );
 
         // Get to_location from received transfers (stocks_transfer_issue)
@@ -244,9 +245,9 @@ export default function TransferIssueStocksButton({
         type.toLowerCase().includes("transfer")
           ? "Stock transferred"
           : type.toLowerCase().includes("issue")
-          ? "Stock issued"
-          : "Stock sent",
-        "success"
+            ? "Stock issued"
+            : "Stock sent",
+        "success",
       );
 
       // Reset form fields
@@ -311,8 +312,8 @@ export default function TransferIssueStocksButton({
                   type.toLowerCase().includes("transfer")
                     ? "PURPOSE OF TRANSFER"
                     : type.toLowerCase().includes("issue")
-                    ? "PURPOSE OF ISSUE"
-                    : "PURPOSE OF SENDING"
+                      ? "PURPOSE OF ISSUE"
+                      : "PURPOSE OF SENDING"
                 }
                 value={purpose}
                 type={"select"}
@@ -327,19 +328,19 @@ export default function TransferIssueStocksButton({
                         "Space optimization",
                       ]
                     : type.toLowerCase().includes("issue")
-                    ? [
-                        "Project execution",
-                        "Equipment/laptop/tools",
-                        "Administrative/non-project work",
-                      ]
-                    : [
-                        "Veneer pressing",
-                        "Painting/coating",
-                        "Polishing/finishing",
-                        "CNC cutting/trimming",
-                        "Repair/rectification",
-                        "Testing/certification",
-                      ]
+                      ? [
+                          "Project execution",
+                          "Equipment/laptop/tools",
+                          "Administrative/non-project work",
+                        ]
+                      : [
+                          "Veneer pressing",
+                          "Painting/coating",
+                          "Polishing/finishing",
+                          "CNC cutting/trimming",
+                          "Repair/rectification",
+                          "Testing/certification",
+                        ]
                 }
               />
             )}
@@ -357,7 +358,7 @@ export default function TransferIssueStocksButton({
                 labelField="name"
                 required={false}
               />
-              <SingleSelectDropdown
+              {/* <SingleSelectDropdown
                 label={"BILL OF QUANTITY REFERENCE"}
                 dbData={boqLineValues}
                 selectedValue={boqLineID}
@@ -368,7 +369,23 @@ export default function TransferIssueStocksButton({
                 categorized={true}
                 categoryField="category"
                 subCategoryField="sub_category"
-              />
+              /> */}
+              <div className="input-item">
+                <label className="custom">
+                  <span>BILL OF QUANTITY REFERENCE</span>
+                  <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                    (OPTIONAL)
+                  </small>
+                </label>
+
+                <SelectBoqItemButton
+                  projectID={Number(projectID)}
+                  onSelectBoq={setBoqLineID}
+                  disabled={projectID === ""}
+                  currentBoqLineID={boqLineID}
+                  style={{ height: "30.5px" }}
+                />
+              </div>
             </div>
           )}
 
@@ -383,8 +400,8 @@ export default function TransferIssueStocksButton({
                     type.toLowerCase().includes("transfer")
                       ? "TRANSFER FROM"
                       : type.toLowerCase().includes("issue")
-                      ? "ISSUE FROM"
-                      : "SEND FROM"
+                        ? "ISSUE FROM"
+                        : "SEND FROM"
                   }
                   value={from}
                   type={"select"}
@@ -503,8 +520,8 @@ export default function TransferIssueStocksButton({
                     type.toLowerCase().includes("transfer")
                       ? "QUANTITY TO TRANSFER"
                       : type.toLowerCase().includes("issue")
-                      ? "QUANTITY TO ISSUE"
-                      : "QUANTITY TO SEND"
+                        ? "QUANTITY TO ISSUE"
+                        : "QUANTITY TO SEND"
                   }
                   value={quantity}
                   type={"text"}

@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   try {
     const [rows] = await db.query(
       "SELECT * FROM vw_mr_line_supplier_and_quotation WHERE mr_line_id = ?",
-      [Number(body.id)]
+      [Number(body.id)],
     );
 
     return NextResponse.json(rows, { status: 200 });

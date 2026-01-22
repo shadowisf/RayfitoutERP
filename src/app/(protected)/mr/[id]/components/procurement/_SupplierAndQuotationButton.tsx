@@ -10,7 +10,7 @@ import AttachQuotationButton from "./_AttachQuotationButton";
 import RejectCommentPopUp from "../manager/RejectCommentPopUp";
 import { MrHeader } from "../../types/mrHeader";
 import { MrLine } from "../../types/mrLine";
-import CreateSupplierButton from "./_CreateSupplierButton";
+import CreateSupplierButton from "../../../../vendor/components/_CreateSupplierButton";
 
 type SupplierQuotation = {
   id?: number;
@@ -23,6 +23,8 @@ type SupplierQuotation = {
   approval_status?: string;
   reject_comment?: string;
   supplier_name?: string;
+  qs_approval_status?: string;
+  qs_reject_comment?: string;
 };
 
 type SupplierAndQuotationButtonProps = {
@@ -53,8 +55,18 @@ export default function SupplierAndQuotationButton({
     useState<boolean>(false);
   const [approvedSupplierName, setApprovedSupplierName] = useState<string>("");
 
-  const [rejectComments, setRejectComments] = useState<string>("");
+  // QS approval states
+  const [allSuppliersQSRejected, setAllSuppliersQSRejected] =
+    useState<boolean>(false);
+  const [allSuppliersQSPending, setAllSuppliersQSPending] =
+    useState<boolean>(false);
+  const [hasQSApprovedSupplier, setHasQSApprovedSupplier] =
+    useState<boolean>(false);
+  const [qsApprovedSupplierName, setQSApprovedSupplierName] =
+    useState<string>("");
 
+  const [rejectComments, setRejectComments] = useState<string>("");
+  const [qsRejectComments, setQSRejectComments] = useState<string>("");
   const [suppliers, setSuppliers] = useState<any[]>([]);
 
   const [supplierQuotations, setSupplierQuotations] = useState<
@@ -111,6 +123,7 @@ export default function SupplierAndQuotationButton({
       if (data && data.length > 0) {
         setMode("edit");
 
+        // Manager approval status
         const allRejected = data.every(
           (q: SupplierQuotation) => q.approval_status === "Rejected",
         );
@@ -140,15 +153,52 @@ export default function SupplierAndQuotationButton({
           const firstRejected = data.find(
             (q: SupplierQuotation) => q.reject_comment,
           );
-
           setRejectComments(
             firstRejected?.reject_comment || "No comment provided",
+          );
+        }
+
+        // QS approval status
+        const allQSRejected = data.every(
+          (q: SupplierQuotation) => q.qs_approval_status === "Rejected",
+        );
+        setAllSuppliersQSRejected(allQSRejected);
+
+        const allQSPending = data.every(
+          (q: SupplierQuotation) =>
+            !q.qs_approval_status || q.qs_approval_status === null,
+        );
+        setAllSuppliersQSPending(allQSPending);
+
+        const hasQSApproved = data.some(
+          (q: SupplierQuotation) => q.qs_approval_status === "Approved",
+        );
+        setHasQSApprovedSupplier(hasQSApproved);
+
+        if (hasQSApproved) {
+          const qsApprovedQuotation = data.find(
+            (q: SupplierQuotation) => q.qs_approval_status === "Approved",
+          );
+          setQSApprovedSupplierName(
+            qsApprovedQuotation?.supplier_name || "Approved",
+          );
+        }
+
+        if (allQSRejected) {
+          const firstQSRejected = data.find(
+            (q: SupplierQuotation) => q.qs_reject_comment,
+          );
+          setQSRejectComments(
+            firstQSRejected?.qs_reject_comment || "No comment provided",
           );
         }
       } else {
         setAllSuppliersRejected(false);
         setAllSuppliersPending(false);
         setHasApprovedSupplier(false);
+        setAllSuppliersQSRejected(false);
+        setAllSuppliersQSPending(false);
+        setHasQSApprovedSupplier(false);
         setMode("add");
       }
     } catch (error) {
@@ -156,6 +206,9 @@ export default function SupplierAndQuotationButton({
       setAllSuppliersRejected(false);
       setAllSuppliersPending(false);
       setHasApprovedSupplier(false);
+      setAllSuppliersQSRejected(false);
+      setAllSuppliersQSPending(false);
+      setHasQSApprovedSupplier(false);
       setMode("add");
     }
   }
@@ -193,6 +246,8 @@ export default function SupplierAndQuotationButton({
           approval_status: item.approval_status,
           reject_comment: item.reject_comment,
           supplier_name: item.supplier_name,
+          qs_approval_status: item.qs_approval_status,
+          qs_reject_comment: item.qs_reject_comment,
         }));
 
         setSupplierQuotations(formattedQuotations);
@@ -517,29 +572,56 @@ export default function SupplierAndQuotationButton({
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        {mrHeader.progress_id === 11 && allSuppliersRejected && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "15px",
-              padding: "5px 10px 5px 15px",
-              backgroundColor: "rgba(185, 28, 28, 1)",
-              color: "white",
-              borderRadius: "25px",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <span>All Suppliers Rejected</span>
-            <RejectCommentPopUp text={rejectComments} />
-          </div>
-        )}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          gap: "10px",
+        }}
+      >
+        {/* Manager Approval Status Row */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {mrHeader.progress_id === 11 && allSuppliersRejected && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "15px",
+                padding: "5px 10px 5px 15px",
+                backgroundColor: "rgba(185, 28, 28, 1)",
+                color: "white",
+                borderRadius: "25px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span>All Vendors Rejected</span>
+              <RejectCommentPopUp text={rejectComments} />
+            </div>
+          )}
 
-        {(mrHeader.progress_id === 11 || mrHeader.progress_id === 10) &&
-          allSuppliersPending &&
-          !allSuppliersRejected && (
+          {(mrHeader.progress_id === 11 || mrHeader.progress_id === 10) &&
+            allSuppliersPending &&
+            !allSuppliersRejected && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                  padding: "5px 15px",
+                  backgroundColor: "rgba(128, 128, 128, 1)",
+                  color: "white",
+                  borderRadius: "25px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span>Manager Pending Approval</span>
+              </div>
+            )}
+
+          {[10, 11].includes(mrHeader.progress_id) && hasApprovedSupplier && (
             <div
               style={{
                 display: "flex",
@@ -547,62 +629,105 @@ export default function SupplierAndQuotationButton({
                 justifyContent: "center",
                 gap: "10px",
                 padding: "5px 15px",
-                backgroundColor: "rgba(128, 128, 128, 1)",
+                backgroundColor: "rgba(34, 150, 100, 1)",
                 color: "white",
                 borderRadius: "25px",
                 whiteSpace: "nowrap",
               }}
             >
-              <span>Pending Approval</span>
+              <span>{approvedSupplierName}</span>
             </div>
           )}
 
-        {[10, 11].includes(mrHeader.progress_id) && hasApprovedSupplier && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "10px",
-              padding: "5px 15px",
-              backgroundColor: "rgba(34, 150, 100, 1)",
-              color: "white",
-              borderRadius: "25px",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <span>{approvedSupplierName}</span>
-          </div>
-        )}
+          {(mrHeader.progress_id === 11 || mrHeader.progress_id === 7) &&
+            (mode === "edit" ? (
+              <Button
+                componentType="button"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="rgba(223, 223, 223, 1)"
+                textColor="black"
+                onClick={() => setIsOpen(true)}
+                style={{
+                  padding: "7px 7px",
+                }}
+              >
+                <img src={pencilIcon} alt="pencil" />
+              </Button>
+            ) : (
+              <Button
+                componentType="button"
+                bgColor="rgba(239, 239, 239, 1)"
+                textColor="white"
+                borderColor="rgba(223, 223, 223, 1)"
+                onClick={() => setIsOpen(true)}
+                style={{
+                  padding: "7px 7px",
+                }}
+              >
+                <img src={plusIcon} alt="plus" />
+              </Button>
+            ))}
+        </div>
 
-        {(mrHeader.progress_id === 11 || mrHeader.progress_id === 7) &&
-          (mode === "edit" ? (
-            <Button
-              componentType="button"
-              bgColor="rgba(239, 239, 239, 1)"
-              borderColor="rgba(223, 223, 223, 1)"
-              textColor="black"
-              onClick={() => setIsOpen(true)}
+        {/* QS Approval Status Row */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {mrHeader.progress_id === 11 && allSuppliersQSRejected && (
+            <div
               style={{
-                padding: "7px 7px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "15px",
+                padding: "5px 10px 5px 15px",
+                backgroundColor: "rgba(185, 28, 28, 1)",
+                color: "white",
+                borderRadius: "25px",
+                whiteSpace: "nowrap",
               }}
             >
-              <img src={pencilIcon} alt="pencil" />
-            </Button>
-          ) : (
-            <Button
-              componentType="button"
-              bgColor="rgba(239, 239, 239, 1)"
-              textColor="white"
-              borderColor="rgba(223, 223, 223, 1)"
-              onClick={() => setIsOpen(true)}
+              <span>Rejected by QS</span>
+              <RejectCommentPopUp text={qsRejectComments} />
+            </div>
+          )}
+
+          {(mrHeader.progress_id === 9 || mrHeader.progress_id === 11) &&
+            allSuppliersQSPending &&
+            !allSuppliersQSRejected && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                  padding: "5px 15px",
+                  backgroundColor: "rgba(128, 128, 128, 1)",
+                  color: "white",
+                  borderRadius: "25px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span>QS Approval Pending</span>
+              </div>
+            )}
+
+          {mrHeader.progress_id === 9 && hasQSApprovedSupplier && (
+            <div
               style={{
-                padding: "7px 7px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                padding: "5px 15px",
+                backgroundColor: "rgba(34, 150, 100, 1)",
+                color: "white",
+                borderRadius: "25px",
+                whiteSpace: "nowrap",
               }}
             >
-              <img src={plusIcon} alt="plus" />
-            </Button>
-          ))}
+              <span>Approved by QS</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {isOpen && (
@@ -622,7 +747,7 @@ export default function SupplierAndQuotationButton({
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>SUPPLIER</th>
+                  <th>VENDOR</th>
                   <th>QUOTATION</th>
                   <th>UNIT PRICE</th>
                   <th>TOTAL PRICE</th>
@@ -636,12 +761,12 @@ export default function SupplierAndQuotationButton({
                       <td>{index + 1}</td>
                       <td style={{ minWidth: "400px" }}>
                         <SingleSelectDropdown
-                          label={"SUPPLIER"}
+                          label={"VENDOR"}
                           selectedValue={quotation.supplier_id}
                           onChange={(value) =>
                             updateQuotation(index, "supplier_id", value)
                           }
-                          placeholder={"SELECT SUPPLIER"}
+                          placeholder={"SELECT VENDOR"}
                           dbData={suppliers}
                           idField="id"
                           labelField="name"

@@ -13,6 +13,18 @@ export default function StockLocationChart({
   stocksTransferIssue,
   unit,
 }: StockLocationChartProps) {
+  // Helper function to format numbers
+  const formatNumber = (value: number): string | number => {
+    // Check if the number has decimal places
+    if (value % 1 === 0) {
+      // No decimal places, return as integer
+      return Math.round(value);
+    } else {
+      // Has decimal places, format to remove trailing zeros
+      return parseFloat(value.toFixed(3));
+    }
+  };
+
   // Calculate stock by location
   const calculateStockByLocation = () => {
     const locationMap: { [key: string]: number } = {};
@@ -23,7 +35,7 @@ export default function StockLocationChart({
       if (!locationMap[location]) {
         locationMap[location] = 0;
       }
-      locationMap[location] += stock.quantity;
+      locationMap[location] += Number(stock.quantity);
     });
 
     // Subtract issued stocks and adjust for transfers
@@ -36,14 +48,14 @@ export default function StockLocationChart({
         if (!locationMap[fromLocation]) {
           locationMap[fromLocation] = 0;
         }
-        locationMap[fromLocation] -= transaction.quantity;
+        locationMap[fromLocation] -= Number(transaction.quantity);
       } else if (transactionType.includes("send")) {
         // Send for processing: Deduct from from_location
         const fromLocation = transaction.from_location || "Unknown";
         if (!locationMap[fromLocation]) {
           locationMap[fromLocation] = 0;
         }
-        locationMap[fromLocation] -= transaction.quantity;
+        locationMap[fromLocation] -= Number(transaction.quantity);
       } else if (transactionType.includes("transfer")) {
         // Transfer: Move stock from one location to another
         // Deduct from from_location
@@ -51,14 +63,14 @@ export default function StockLocationChart({
         if (!locationMap[fromLocation]) {
           locationMap[fromLocation] = 0;
         }
-        locationMap[fromLocation] -= transaction.quantity;
+        locationMap[fromLocation] -= Number(transaction.quantity);
 
         // Add to to_location
         const toLocation = transaction.to_location || "Unknown";
         if (!locationMap[toLocation]) {
           locationMap[toLocation] = 0;
         }
-        locationMap[toLocation] += transaction.quantity;
+        locationMap[toLocation] += Number(transaction.quantity);
       }
     });
 
@@ -75,7 +87,7 @@ export default function StockLocationChart({
   // Calculate total stock
   const totalStock = stockByLocation.reduce(
     (sum, item) => sum + item.quantity,
-    0
+    0,
   );
 
   // Define colors for different locations
@@ -139,7 +151,7 @@ export default function StockLocationChart({
             >
               TOTAL
             </div>
-            <div style={{ fontSize: "36px" }}>{totalStock}</div>
+            <div style={{ fontSize: "36px" }}>{formatNumber(totalStock)}</div>
             <div
               style={{
                 color: "#737373",
@@ -194,7 +206,7 @@ export default function StockLocationChart({
                   <span>{location.name}</span>
                 </div>
                 <span>
-                  {location.value} {unit}
+                  {formatNumber(location.value)} {unit}
                 </span>
               </div>
             ))}

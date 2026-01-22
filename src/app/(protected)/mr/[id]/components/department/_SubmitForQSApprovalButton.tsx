@@ -5,23 +5,22 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { useAuth } from "@/app/context/AuthContext";
 
-type CancelMaterialRequestButtonProps = {
+type props = {
   mrHeaderID: number;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  children?: React.ReactNode;
+  disabled?: boolean;
+  style?: React.CSSProperties;
 };
 
-export default function CancelMaterialRequestButton({
+export default function SubmitForQSApprovalButton({
   mrHeaderID,
-  bgColor = "rgba(239, 239, 239, 1)",
-  textColor = "black",
-  borderColor = "rgba(239, 239, 239, 1)",
-  children,
-}: CancelMaterialRequestButtonProps) {
+  disabled,
+  style,
+}: props) {
   const router = useRouter();
+
+  const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -32,19 +31,21 @@ export default function CancelMaterialRequestButton({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "cancelMaterialRequest",
+        action: "submitForQSInitialApproval",
         id: mrHeaderID,
+        changed_by: userInfo?.name,
       }),
     });
 
     if (res.ok) {
-      toast("Material request rolled back", "success");
+      toast("Material request submitted", "success");
 
       setIsOpen(false);
 
       router.refresh();
+      router.replace(`/mr/`);
     } else {
-      toast("Failed to roll back material request", "error");
+      toast("Failed to submit material request", "error");
     }
   }
 
@@ -52,23 +53,24 @@ export default function CancelMaterialRequestButton({
     <>
       <Button
         componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor="white"
+        borderColor="white"
+        textColor="black"
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 20px" }}
+        style={{ padding: "7px 20px", ...style }}
+        disabled={disabled}
       >
-        {children}
+        SUBMIT FOR QS INITIAL APPROVAL
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"ROLL BACK MATERIAL REQUEST"}
+          header={"SUBMIT MATERIAL REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to roll back this material request?</p>
+          <p>Are you sure you want to submit this material request?</p>
         </FormPopUp>
       )}
     </>

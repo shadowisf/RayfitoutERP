@@ -5,23 +5,39 @@ import { useState } from "react";
 import Button from "@/app/components/Button";
 import { MrLine } from "../types/mrLine";
 import { SupplierQuotation } from "../types/supplierQuotation";
+import { Supplier } from "@/app/(protected)/vendor/types/supplier";
 
 type SupplierDetailsPopUpProps = {
-  item: MrLine | SupplierQuotation;
+  item: MrLine | SupplierQuotation | Supplier;
   children: React.ReactNode;
   style?: React.CSSProperties;
+  bgColor?: string;
+  textColor?: string;
+  borderColor?: string;
 };
 
 export default function SupplierDetailsPopUp({
   item,
   children,
   style,
+  bgColor = "white",
+  borderColor = "rgba(207, 207, 207, 1)",
+  textColor = "black",
 }: SupplierDetailsPopUpProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Helper function to check if item is MrLine type
-  const isMrLine = (item: MrLine | SupplierQuotation): item is MrLine => {
+  const isMrLine = (
+    item: MrLine | SupplierQuotation | Supplier,
+  ): item is MrLine => {
     return "approved_supplier_name" in item;
+  };
+
+  // Helper function to check if item is Supplier type
+  const isSupplier = (
+    item: MrLine | SupplierQuotation | Supplier,
+  ): item is Supplier => {
+    return "trade_license" in item;
   };
 
   // Get the supplier data based on the item type
@@ -40,33 +56,46 @@ export default function SupplierDetailsPopUp({
         email: item.approved_supplier_email,
         address: item.approved_supplier_address,
       }
-    : {
-        name: item.supplier_name,
-        type: item.supplier_type,
-        id: item.id,
-        materialCategories: item.supplier_material_categories,
-        materialSubcategories: item.supplier_material_subcategories,
-        avgLeadTime: item.supplier_avg_lead_time,
-        rating: item.supplier_rating,
-        trnNumber: item.supplier_trn_number,
-        contactPerson: item.supplier_contact_person,
-        phone: item.supplier_phone,
-        email: item.supplier_email,
-        address: item.supplier_address,
-      };
+    : isSupplier(item)
+      ? {
+          name: item.name,
+          type: item.type,
+          id: item.id,
+          materialCategories: item.material_categories,
+          materialSubcategories: item.material_subcategories,
+          avgLeadTime: item.avg_lead_time,
+          rating: item.supplier_rating,
+          trnNumber: item.trn_number,
+          contactPerson: item.contact_person_name,
+          phone: item.phone,
+          email: item.email,
+          address: item.address,
+        }
+      : {
+          name: item.supplier_name,
+          type: item.supplier_type,
+          id: item.id,
+          materialCategories: item.supplier_material_categories,
+          materialSubcategories: item.supplier_material_subcategories,
+          avgLeadTime: item.supplier_avg_lead_time,
+          rating: item.supplier_rating,
+          trnNumber: item.supplier_trn_number,
+          contactPerson: item.supplier_contact_person,
+          phone: item.supplier_phone,
+          email: item.supplier_email,
+          address: item.supplier_address,
+        };
 
-  // Format ID with padding only for MrLine
-  const formattedId = isMrLine(item)
-    ? `SUPP-${String(supplierData.id).padStart(5, "0")}`
-    : `SUPP-${supplierData.id}`;
+  // Format ID with padding
+  const formattedId = `VEN-${String(supplierData.id).padStart(5, "0")}`;
 
   return (
     <>
       <Button
         componentType={"button"}
-        bgColor={"white"}
-        borderColor={"rgba(207, 207, 207, 1)"}
-        textColor={"black"}
+        bgColor={bgColor}
+        borderColor={borderColor}
+        textColor={textColor}
         onClick={(e) => {
           e.preventDefault();
           setIsOpen(true);
@@ -78,7 +107,7 @@ export default function SupplierDetailsPopUp({
 
       {isOpen && (
         <FormPopUp
-          header={"SUPPLIER DETAILS"}
+          header={"VENDOR DETAILS"}
           setIsOpen={setIsOpen}
           style={{
             whiteSpace: "pre-wrap",
@@ -99,15 +128,35 @@ export default function SupplierDetailsPopUp({
               <h2>{supplierData.name}</h2>
             </div>
             <div>
-              <small>TYPE</small>
-              <h2>{supplierData.type}</h2>
-            </div>
-            <div>
               <small>ID</small>
               <h2>{formattedId}</h2>
             </div>
+            <div>
+              <small>TYPE</small>
+              <h2>{supplierData.type}</h2>
+            </div>
           </div>
 
+          <br />
+          <br />
+          <br />
+          <br />
+
+          <div>
+            <small>MATERIAL CATEGORIES</small>
+            <h2>{supplierData.materialCategories || "-"}</h2>
+          </div>
+
+          <br />
+          <br />
+
+          <div>
+            <small>MATERIAL SUBCATEGORIES</small>
+            <h2>{supplierData.materialSubcategories || "-"}</h2>
+          </div>
+
+          <br />
+          <br />
           <br />
           <br />
 
@@ -119,25 +168,9 @@ export default function SupplierDetailsPopUp({
             }}
           >
             <div>
-              <small>MATERIAL CATEGORIES</small>
-              <h2>{supplierData.materialCategories || "-"}</h2>
+              <small>TAX REGISTRATION NUMBER</small>
+              <h2>{supplierData.trnNumber || "-"}</h2>
             </div>
-            <div>
-              <small>MATERIAL SUBCATEGORIES</small>
-              <h2>{supplierData.materialSubcategories || "-"}</h2>
-            </div>
-          </div>
-
-          <br />
-          <br />
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: "75px",
-            }}
-          >
             <div>
               <small>AVERAGE LEAD TIME</small>
               <h2>{supplierData.avgLeadTime || "-"}</h2>
@@ -145,10 +178,6 @@ export default function SupplierDetailsPopUp({
             <div>
               <small>RATING</small>
               <h2>{supplierData.rating || "-"}</h2>
-            </div>
-            <div>
-              <small>TAX REGISTRATION NUMBER</small>
-              <h2>{supplierData.trnNumber || "-"}</h2>
             </div>
           </div>
 

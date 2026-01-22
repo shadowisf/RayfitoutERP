@@ -16,7 +16,7 @@ const styles = StyleSheet.create({
   qrcodeContainer: {
     display: "flex",
     flexDirection: "row",
-    gap: "25px",
+    gap: "15px",
     justifyContent: "space-between",
     alignItems: "flex-end",
   },
@@ -24,7 +24,6 @@ const styles = StyleSheet.create({
   //   height: 100,
   // },
   qrcode: {
-    marginTop: 50,
     width: 100,
     height: 100,
   },

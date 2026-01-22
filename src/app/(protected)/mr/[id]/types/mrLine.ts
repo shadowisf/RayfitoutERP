@@ -31,6 +31,8 @@ export type MrLine = {
   boq_attachments: string[];
   approval_status: string;
   reject_comment: string;
+  qs_approval_status: string;
+  qs_reject_comment: string;
   approved_supplier_id: number;
   approved_supplier_type: string;
   approved_supplier_name: string;

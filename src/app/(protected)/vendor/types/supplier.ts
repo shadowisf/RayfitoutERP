@@ -1,16 +1,25 @@
 export type Supplier = {
   id: number;
   name: string;
+  type: string;
   trn_number: string;
   avg_lead_time: string;
   supplier_rating: string;
+  trade_license: string;
+  trn_certificate: string;
+  credit_limit: number;
+  payment_terms: string;
+  opening_balance: number;
   currency: string;
   status: string;
   contact_person_name: string;
   phone: string;
   email: string;
   address: string;
+  website: string;
   notes: string;
   material_categories: string;
   material_subcategories: string;
+  material_category_ids: string;
+  material_subcategory_ids: string;
 };

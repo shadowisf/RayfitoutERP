@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Button from "./Button";
 import { toast } from "./Toast";
 
@@ -12,6 +12,7 @@ type MultipleUploadFileBoxProps = {
   placeholder?: string;
   acceptedFileTypes: string;
   buttonLabel?: string;
+  existingFileUrls?: string[] | null; // New prop for existing file URLs
 };
 
 export default function MultipleUploadFileBox({
@@ -22,6 +23,7 @@ export default function MultipleUploadFileBox({
   placeholder = "UPLOAD OR DRAG ATTACHMENTS",
   acceptedFileTypes,
   buttonLabel = "UPLOAD FILES",
+  existingFileUrls,
 }: MultipleUploadFileBoxProps) {
   const pdfIcon = "/icons/pdf.svg";
   const uploadIcon = "/icons/upload.svg";
@@ -29,8 +31,16 @@ export default function MultipleUploadFileBox({
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [showExisting, setShowExisting] = useState<boolean[]>([]);
 
   const InputRef = useRef<HTMLInputElement | null>(null);
+
+  // Initialize showExisting state based on existingFileUrls
+  useEffect(() => {
+    if (existingFileUrls && existingFileUrls.length > 0) {
+      setShowExisting(existingFileUrls.map(() => true));
+    }
+  }, [existingFileUrls]);
 
   const handleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -46,6 +56,7 @@ export default function MultipleUploadFileBox({
     }
 
     setFileState(filesArray);
+    setShowExisting(existingFileUrls?.map(() => false) || []);
     generatePreviews(filesArray);
   };
 
@@ -84,6 +95,12 @@ export default function MultipleUploadFileBox({
     }
   };
 
+  const removeExistingFile = (index: number) => {
+    const newShowExisting = [...showExisting];
+    newShowExisting[index] = false;
+    setShowExisting(newShowExisting);
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -119,6 +136,7 @@ export default function MultipleUploadFileBox({
     }
 
     setFileState(droppedFiles);
+    setShowExisting(existingFileUrls?.map(() => false) || []);
     generatePreviews(droppedFiles);
   };
 
@@ -136,8 +154,19 @@ export default function MultipleUploadFileBox({
     });
   };
 
+  const getFileNameFromUrl = (url: string) => {
+    const parts = url.split("/");
+    return parts[parts.length - 1] || "Existing File";
+  };
+
+  const isImageUrl = (url: string) => {
+    return url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+  };
+
   const files = fileState || [];
-  const hasFiles = files.length > 0;
+  const existingFiles =
+    existingFileUrls?.filter((_, index) => showExisting[index]) || [];
+  const hasContent = files.length > 0 || existingFiles.length > 0;
 
   return (
     <div className="input-item">
@@ -167,7 +196,7 @@ export default function MultipleUploadFileBox({
           minHeight: "200px",
         }}
       >
-        {hasFiles ? (
+        {hasContent ? (
           <div
             style={{
               width: "100%",
@@ -176,121 +205,278 @@ export default function MultipleUploadFileBox({
               gap: "10px",
             }}
           >
-            {/* Separate images and non-images */}
-            {(() => {
-              const imageFiles = files.filter((f) =>
-                f.type.startsWith("image/")
-              );
-              const nonImageFiles = files.filter(
-                (f) => !f.type.startsWith("image/")
-              );
+            {/* New uploaded files */}
+            {files.length > 0 &&
+              (() => {
+                const imageFiles = files.filter((f) =>
+                  f.type.startsWith("image/"),
+                );
+                const nonImageFiles = files.filter(
+                  (f) => !f.type.startsWith("image/"),
+                );
 
-              return (
-                <>
-                  {/* Image files in 3-column grid */}
-                  {imageFiles.length > 0 && (
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        gap: "25px",
-                      }}
-                    >
-                      {imageFiles.map((file, imgIndex) => {
-                        const fileIndex = files.indexOf(file);
-                        const preview = previews[imgIndex];
+                return (
+                  <>
+                    {/* Image files in grid */}
+                    {imageFiles.length > 0 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          gap: "25px",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        {imageFiles.map((file, imgIndex) => {
+                          const fileIndex = files.indexOf(file);
+                          const preview = previews[imgIndex];
 
-                        return (
+                          return (
+                            <div
+                              key={fileIndex}
+                              style={{
+                                position: "relative",
+                                display: "inline-block",
+                              }}
+                            >
+                              <img
+                                src={preview}
+                                alt={`Preview ${fileIndex + 1}`}
+                                style={{
+                                  maxHeight: "150px",
+                                  maxWidth: "100%",
+                                  borderRadius: "5px",
+                                  objectFit: "contain",
+                                }}
+                              />
+                              <Button
+                                componentType={"button"}
+                                bgColor={"rgba(239, 239, 239, 1)"}
+                                borderColor={"rgba(223, 223, 223, 1)"}
+                                textColor={"black"}
+                                style={{
+                                  position: "absolute",
+                                  top: "5px",
+                                  right: "5px",
+                                  padding: "7px 7px",
+                                }}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  removeFile(fileIndex);
+                                }}
+                              >
+                                <img src={trashIcon} alt="trash" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Non-image files stacked vertically */}
+                    {nonImageFiles.map((file) => {
+                      const fileIndex = files.indexOf(file);
+
+                      return (
+                        <div
+                          key={fileIndex}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "16px",
+                            backgroundColor: "white",
+                            borderRadius: "8px",
+                            border: "1px solid #e5e7eb",
+                            gap: "25px",
+                          }}
+                        >
                           <div
-                            key={fileIndex}
                             style={{
-                              position: "relative",
-                              display: "inline-block",
+                              display: "flex",
+                              gap: "10px",
+                              alignItems: "center",
+                              overflow: "hidden",
+                              minWidth: 0,
                             }}
                           >
                             <img
-                              src={preview}
-                              alt={`Preview ${fileIndex + 1}`}
-                              style={{
-                                maxHeight: "150px",
-                                maxWidth: "100%",
-                                borderRadius: "5px",
-                                objectFit: "contain",
-                              }}
+                              src={pdfIcon}
+                              alt="file"
+                              style={{ flexShrink: 0 }}
                             />
-                            <Button
-                              componentType={"button"}
-                              bgColor={"rgba(239, 239, 239, 1)"}
-                              borderColor={"rgba(223, 223, 223, 1)"}
-                              textColor={"black"}
-                              style={{
-                                position: "absolute",
-                                top: "5px",
-                                right: "5px",
-                                padding: "7px 7px",
-                              }}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                removeFile(fileIndex);
-                              }}
-                            >
-                              <img src={trashIcon} alt="trash" />
-                            </Button>
+                            <div style={{ minWidth: 0, overflow: "hidden" }}>
+                              <div
+                                style={{
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  maxWidth: "300px",
+                                }}
+                              >
+                                {file.name}
+                              </div>
+                              <small>{(file.size / 1024).toFixed(2)} KB</small>
+                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          <Button
+                            componentType={"button"}
+                            bgColor={"rgba(239, 239, 239, 1)"}
+                            borderColor={"rgba(223, 223, 223, 1)"}
+                            textColor={"black"}
+                            style={{ padding: "7px 7px", flexShrink: 0 }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              removeFile(fileIndex);
+                            }}
+                          >
+                            <img src={trashIcon} alt="trash" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </>
+                );
+              })()}
 
-                  {/* Non-image files stacked vertically */}
-                  {nonImageFiles.map((file) => {
-                    const fileIndex = files.indexOf(file);
+            {/* Existing files */}
+            {existingFiles.length > 0 &&
+              (() => {
+                const imageUrls = existingFiles.filter(isImageUrl);
+                const nonImageUrls = existingFiles.filter(
+                  (url) => !isImageUrl(url),
+                );
 
-                    return (
+                return (
+                  <>
+                    {/* Existing image files in grid */}
+                    {imageUrls.length > 0 && (
                       <div
-                        key={fileIndex}
                         style={{
                           display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "16px",
-                          backgroundColor: "white",
-                          borderRadius: "8px",
-                          border: "1px solid #e5e7eb",
+                          justifyContent: "center",
+                          gap: "25px",
+                          flexWrap: "wrap",
                         }}
                       >
+                        {imageUrls.map((url) => {
+                          const originalIndex =
+                            existingFileUrls?.indexOf(url) || 0;
+
+                          return (
+                            <div
+                              key={originalIndex}
+                              style={{
+                                position: "relative",
+                                display: "inline-block",
+                              }}
+                            >
+                              <img
+                                src={url}
+                                alt="Existing file"
+                                style={{
+                                  maxHeight: "150px",
+                                  maxWidth: "100%",
+                                  borderRadius: "5px",
+                                  objectFit: "contain",
+                                }}
+                              />
+                              <Button
+                                componentType={"button"}
+                                bgColor={"rgba(239, 239, 239, 1)"}
+                                borderColor={"rgba(223, 223, 223, 1)"}
+                                textColor={"black"}
+                                style={{
+                                  position: "absolute",
+                                  top: "5px",
+                                  right: "5px",
+                                  padding: "7px 7px",
+                                }}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  removeExistingFile(originalIndex);
+                                }}
+                              >
+                                <img src={trashIcon} alt="trash" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Existing non-image files stacked vertically */}
+                    {nonImageUrls.map((url) => {
+                      const originalIndex = existingFileUrls?.indexOf(url) || 0;
+
+                      return (
                         <div
+                          key={originalIndex}
                           style={{
                             display: "flex",
-                            gap: "10px",
                             alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "16px",
+                            backgroundColor: "white",
+                            borderRadius: "8px",
+                            border: "1px solid #e5e7eb",
+                            gap: "25px",
                           }}
                         >
-                          <img src={pdfIcon} alt="file" />
-                          <div>
-                            {file.name} <br />
-                            <small>{(file.size / 1024).toFixed(2)} KB</small>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "10px",
+                              alignItems: "center",
+                              overflow: "hidden",
+                              minWidth: 0,
+                            }}
+                          >
+                            <img
+                              src={pdfIcon}
+                              alt="file"
+                              style={{ flexShrink: 0 }}
+                            />
+                            <div style={{ minWidth: 0, overflow: "hidden" }}>
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: "rgba(23, 92, 220, 1)",
+                                  textDecoration: "underline",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  display: "block",
+                                  maxWidth: "300px",
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {getFileNameFromUrl(url)}
+                              </a>
+                              <small>Existing file</small>
+                            </div>
                           </div>
+                          <Button
+                            componentType={"button"}
+                            bgColor={"rgba(239, 239, 239, 1)"}
+                            borderColor={"rgba(223, 223, 223, 1)"}
+                            textColor={"black"}
+                            style={{ padding: "7px 7px", flexShrink: 0 }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              removeExistingFile(originalIndex);
+                            }}
+                          >
+                            <img src={trashIcon} alt="trash" />
+                          </Button>
                         </div>
-                        <Button
-                          componentType={"button"}
-                          bgColor={"rgba(239, 239, 239, 1)"}
-                          borderColor={"rgba(223, 223, 223, 1)"}
-                          textColor={"black"}
-                          style={{ padding: "7px 7px" }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            removeFile(fileIndex);
-                          }}
-                        >
-                          <img src={trashIcon} alt="trash" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </>
-              );
-            })()}
+                      );
+                    })}
+                  </>
+                );
+              })()}
           </div>
         ) : isDragOver ? (
           <div style={{ color: "rgba(34, 150, 100, 1)" }}>DROP HERE</div>

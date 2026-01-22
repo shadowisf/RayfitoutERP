@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 25,
+    marginBottom: 15,
   },
   logo: {
     width: 120,
@@ -41,9 +41,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#000000",
     textTransform: "uppercase",
+    marginBottom: 15,
   },
   titleBold: {
     fontFamily: "Mont-SemiBold",
+  },
+  inventoryImage: {
+    marginTop: 15,
+    width: 100,
+    objectFit: "contain",
   },
   small: {
     textTransform: "uppercase",
@@ -53,14 +59,14 @@ const styles = StyleSheet.create({
 
 type CodePDFProps = {
   inventoryItem: InventoryItem;
-  // barcodeDataUrl: string;
   qrcodeDataUrl: string;
+  inventoryImageDataUrl: string | null;
 };
 
 export function QrCodePDF({
-  // barcodeDataUrl,
   qrcodeDataUrl,
   inventoryItem,
+  inventoryImageDataUrl,
 }: CodePDFProps) {
   const logo = "/icons/logo.jpg";
 
@@ -77,8 +83,14 @@ export function QrCodePDF({
           </Text>
         </View>
 
+        {/* Inventory Item Image */}
+        {inventoryImageDataUrl && (
+          <View style={{ alignItems: "flex-start" }}>
+            <Image src={inventoryImageDataUrl} style={styles.inventoryImage} />
+          </View>
+        )}
+
         <QrCodeSectionPDF
-          // barcodeDataUrl={barcodeDataUrl}
           qrcodeDataUrl={qrcodeDataUrl}
           inventoryItem={inventoryItem}
         />

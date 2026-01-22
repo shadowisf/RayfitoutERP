@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
         Number(body.supplier_id) || null,
         body.received_by,
         body.reason_for_entry,
-        Number(body.quantity),
-        Number(body.unit_price) || null,
+        parseFloat(body.quantity),
+        parseFloat(body.unit_price) || null,
         body.location,
         body.notes,
         Number(body.project_id) || null,
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
           const [existingTransfers] = await db.query<RowDataPacket[]>(
             checkReverseTransferQuery,
-            [body.inventory_item_id, body.from, body.to]
+            [body.inventory_item_id, body.from, body.to],
           );
 
           // If we found a matching reverse transfer
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
               // Check if the transfer has any other items
               const [remainingItems] = await db.query<RowDataPacket[]>(
                 `SELECT COUNT(*) as count FROM jt_stocks_transfer_issue_inventory_item WHERE stocks_transfer_issue_id = ?`,
-                [existingTransfer.id]
+                [existingTransfer.id],
               );
 
               // If no other items, delete the transfer header
@@ -247,7 +247,7 @@ export async function POST(request: NextRequest) {
     console.error(error.sqlMessage);
     return NextResponse.json(
       { error: error.sqlMessage, success: false },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -263,7 +263,7 @@ export async function PUT(request: NextRequest) {
       if (!id) {
         return NextResponse.json(
           { error: "Missing stock ID", success: false },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -366,7 +366,22 @@ export async function PUT(request: NextRequest) {
     console.error("Error updating stock:", error);
     return NextResponse.json(
       { error: error.sqlMessage || error.message, success: false },
-      { status: 500 }
+      { status: 500 },
     );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    if (body.action === "deleteTransfer") {
+      const query = "DELETE FROM stocks_transfer_issue WHERE id = ?";
+      await db.query(query, [Number(body.id)]);
+      return NextResponse.json({ success: true });
+    }
+  } catch (err: any) {
+    console.error("SQL Error:", err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
   }
 }

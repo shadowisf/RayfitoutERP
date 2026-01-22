@@ -277,13 +277,12 @@ export default function ProjectWithID() {
         }}
       >
         <h3>BILL OF QUANTITIES</h3>
-        {userInfo?.departmentID === 8 ||
-          (userInfo?.departmentID === 16 && (
-            <CreateBoqHeaderButton
-              project={project}
-              onSuccess={() => fetchAllBoqsByProjectID()}
-            />
-          ))}
+        {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
+          <CreateBoqHeaderButton
+            project={project}
+            onSuccess={() => fetchAllBoqsByProjectID()}
+          />
+        )}
       </div>
 
       <br />
@@ -295,8 +294,9 @@ export default function ProjectWithID() {
           <thead>
             <tr>
               <th>ID</th>
+              <th>PROJECT</th>
+              {/* <th>LOCATION</th> */}
               <th>CLIENT NAME</th>
-              <th>LOCATION</th>
               <th>PAYMENT TERMS</th>
               <th>VALIDITY TERMS</th>
               <th>COMPLETION</th>
@@ -309,8 +309,10 @@ export default function ProjectWithID() {
             {boqs?.map((item: BoqHeader, index: number) => (
               <tr key={index}>
                 <td>BOQ-{String(item.id).padStart(5, "0")}</td>
-                <td>{item.client_name ? item.client_name : "-"}</td>
-                <td>{item.location ? item.location : "-"}</td>
+                <td>{item.project_name || "-"}</td>
+                {/* <td>{item.location || "-"}</td> */}
+                <td>{item.client_name || "-"}</td>
+
                 <td>
                   {item.payment_terms ? (
                     <InfoPopUpButton

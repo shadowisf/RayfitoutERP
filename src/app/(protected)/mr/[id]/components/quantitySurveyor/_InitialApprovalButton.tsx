@@ -5,22 +5,19 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useState, useEffect } from "react";
-import RejectCommentPopUp from "./RejectCommentPopUp";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
+import RejectCommentPopUp from "./RejectPopUp";
 
-type InitialApprovalButtonsProps = {
+type props = {
   item: MrLine;
   progressID: number;
 };
 
 type StatusType = "pending" | "approved" | "rejected";
 
-export default function InitialApprovalButtons({
-  item,
-  progressID,
-}: InitialApprovalButtonsProps) {
+export default function QSInitialApprovalButtons({ item, progressID }: props) {
   const router = useRouter();
 
   const { userInfo } = useAuth();
@@ -36,12 +33,12 @@ export default function InitialApprovalButtons({
 
   useEffect(() => {
     setStatus(getInitialStatus());
-  }, [item.approval_status]);
+  }, [item.qs_approval_status]);
 
   function getInitialStatus(): StatusType {
-    if (!item.approval_status) return "pending";
+    if (!item.qs_approval_status) return "pending";
 
-    const status = item.approval_status.toLowerCase();
+    const status = item.qs_approval_status.toLowerCase();
     if (status === "approved") return "approved";
     if (status === "rejected") return "rejected";
     return "pending";
@@ -54,7 +51,7 @@ export default function InitialApprovalButtons({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "approveItem",
+        action: "approveItemQS",
         id: item.id,
       }),
     });
@@ -76,7 +73,7 @@ export default function InitialApprovalButtons({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "rejectItem",
+        action: "rejectItemQS",
         id: item.id,
         comment: rejectText,
       }),
@@ -103,7 +100,7 @@ export default function InitialApprovalButtons({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "resetItem",
+        action: "resetItemQS",
         id: item.id,
       }),
     });
@@ -120,15 +117,15 @@ export default function InitialApprovalButtons({
 
   if (
     status !== "rejected" &&
-    ((status === "pending" && userInfo?.departmentID !== 8) ||
-      (progressID === 5 && userInfo?.departmentID === 8))
+    ((status === "pending" && userInfo?.departmentID !== 16) ||
+      (progressID === 5 && userInfo?.departmentID === 16))
   ) {
     return (
       <div
         className="approval-pill"
         style={{ backgroundColor: "gray", color: "white" }}
       >
-        <span style={{ textWrap: "nowrap" }}>Pending Manager Approval</span>
+        <span style={{ textWrap: "nowrap" }}>Pending QS Approval</span>
         <div
           style={{ display: "flex", gap: "12px", alignItems: "center" }}
         ></div>
@@ -145,9 +142,9 @@ export default function InitialApprovalButtons({
           color: "white",
         }}
       >
-        <span>Manager Approved</span>
+        <span>QS Approved</span>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          {userInfo?.departmentID === 8 && progressID === 3 && (
+          {userInfo?.departmentID === 16 && progressID === 2 && (
             <img
               src={crossIcon}
               alt="close"
@@ -173,10 +170,10 @@ export default function InitialApprovalButtons({
           color: "white",
         }}
       >
-        <span>Manager Rejected</span>
+        <span>QS Rejected</span>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <RejectCommentPopUp text={item.reject_comment} />
-          {userInfo?.departmentID === 8 && progressID === 3 && (
+          <RejectCommentPopUp text={item.qs_reject_comment} />
+          {userInfo?.departmentID === 16 && progressID === 2 && (
             <img
               src={crossIcon}
               alt="close"

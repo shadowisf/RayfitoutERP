@@ -20,6 +20,8 @@ export default function SideBar() {
       ? [{ label: "Projects", path: "/project", icon: "/icons/projects.svg" }]
       : []),
 
+    { label: "Vendors", path: "/vendor", icon: "/icons/vendors.svg" },
+
     ...(INVENTORY_DEPARTMENT_IDS.includes(userInfo?.departmentID ?? 0)
       ? [
           {

@@ -18,7 +18,7 @@ export default function QrCodePrintButton({ item }: QrCodePrintButtonProps) {
   const svgToPngDataUrl = async (
     svg: SVGElement,
     width: number,
-    height: number
+    height: number,
   ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const canvas = document.createElement("canvas");
@@ -54,6 +54,47 @@ export default function QrCodePrintButton({ item }: QrCodePrintButtonProps) {
     });
   };
 
+  // URL to Base64 converter using API route
+  async function urlToBase64(url: string): Promise<string> {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3/getImage`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success || !data.dataUrl) {
+        throw new Error("Invalid response from proxy");
+      }
+
+      return data.dataUrl;
+    } catch (error) {
+      console.error("Failed to convert image:", url, error);
+      return "";
+    }
+  }
+
+  const getImageUrl = (image: string | null | undefined) => {
+    if (!image) return null;
+    try {
+      const parsed = JSON.parse(image);
+      return parsed;
+    } catch (e) {
+      return image;
+    }
+  };
+
   async function handlePrint() {
     if (!item.id) {
       console.log("No itemID");
@@ -70,12 +111,40 @@ export default function QrCodePrintButton({ item }: QrCodePrintButtonProps) {
         return;
       }
 
-      // Convert to PNG data URL
+      console.log("Converting QR code to PNG...");
+      // Convert QR code to PNG data URL
       const qrcodeDataUrl = await svgToPngDataUrl(qrcodeSvg, 300, 300);
 
+      // Convert inventory image to base64 if exists
+      let inventoryImageDataUrl: string | null = null;
+      const imageUrl = getImageUrl(item.image);
+
+      if (imageUrl) {
+        try {
+          console.log("Converting inventory image to base64...");
+          inventoryImageDataUrl = await urlToBase64(imageUrl);
+
+          if (inventoryImageDataUrl === "") {
+            console.warn(
+              "Failed to convert inventory image, continuing without it",
+            );
+          } else {
+            console.log("Successfully converted inventory image");
+          }
+        } catch (error) {
+          console.error("Error converting inventory image:", error);
+          // Continue without the image
+        }
+      }
+
+      console.log("Generating PDF...");
       // Generate PDF blob
       const blob = await pdf(
-        <QrCodePDF inventoryItem={item} qrcodeDataUrl={qrcodeDataUrl} />
+        <QrCodePDF
+          inventoryItem={item}
+          qrcodeDataUrl={qrcodeDataUrl}
+          inventoryImageDataUrl={inventoryImageDataUrl}
+        />,
       ).toBlob();
 
       console.log("PDF blob size:", blob.size);

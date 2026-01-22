@@ -10,6 +10,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { useAuth } from "@/app/context/AuthContext";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import FormContextHeader from "@/app/components/FormContextHeader";
+import SelectBoqItemButton from "@/app/components/_SelectBoqItemButton";
 
 type SelectedItem = {
   inventory_item_id: number;
@@ -96,7 +97,7 @@ export default function TransferIssueMultipleStocks({
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAvailableLocations`,
         {
           method: "GET",
-        }
+        },
       )
         .then((res) => res.json())
         .then((data) => {
@@ -172,11 +173,11 @@ export default function TransferIssueMultipleStocks({
             } catch (error) {
               console.error(
                 `Error fetching quantity for item ${item.id}:`,
-                error
+                error,
               );
               quantities[item.id] = 0;
             }
-          })
+          }),
         );
 
         setMaterialQuantities(quantities);
@@ -201,7 +202,7 @@ export default function TransferIssueMultipleStocks({
   // Fetch available quantity for a specific item from a location
   async function fetchAvailableQuantity(
     inventoryItemId: number,
-    location: string
+    location: string,
   ): Promise<number> {
     try {
       const res = await fetch(
@@ -212,7 +213,7 @@ export default function TransferIssueMultipleStocks({
           body: JSON.stringify({
             inventoryItemId,
           }),
-        }
+        },
       );
 
       const data = await res.json();
@@ -295,34 +296,36 @@ export default function TransferIssueMultipleStocks({
       selectedItems.map((item) =>
         item.inventory_item_id === inventoryItemId
           ? { ...item, quantity }
-          : item
-      )
+          : item,
+      ),
     );
   }
 
   function handleSerialNumberChange(
     inventoryItemId: number,
-    serialNumber: string
+    serialNumber: string,
   ) {
     setSelectedItems(
       selectedItems.map((item) =>
         item.inventory_item_id === inventoryItemId
           ? { ...item, serial_number: serialNumber }
-          : item
-      )
+          : item,
+      ),
     );
   }
 
   function handleRemoveItem(inventoryItemId: number) {
     setSelectedItems(
-      selectedItems.filter((item) => item.inventory_item_id !== inventoryItemId)
+      selectedItems.filter(
+        (item) => item.inventory_item_id !== inventoryItemId,
+      ),
     );
   }
 
   function handleOpenAttachmentModal(inventoryItemId: number) {
     setCurrentItemForAttachment(inventoryItemId);
     const item = selectedItems.find(
-      (i) => i.inventory_item_id === inventoryItemId
+      (i) => i.inventory_item_id === inventoryItemId,
     );
     setTempAttachment(item?.attachment || null);
     setIsAttachmentModalOpen(true);
@@ -336,8 +339,8 @@ export default function TransferIssueMultipleStocks({
         selectedItems.map((item) =>
           item.inventory_item_id === currentItemForAttachment
             ? { ...item, attachment: tempAttachment }
-            : item
-        )
+            : item,
+        ),
       );
     }
 
@@ -363,7 +366,7 @@ export default function TransferIssueMultipleStocks({
       if (item.quantity > item.available_qty) {
         toast(
           `Quantity for ${item.description} exceeds available quantity`,
-          "error"
+          "error",
         );
         return;
       }
@@ -396,7 +399,7 @@ export default function TransferIssueMultipleStocks({
 
               if (!uploadResponse.ok) {
                 throw new Error(
-                  `Failed to upload file for ${item.description}`
+                  `Failed to upload file for ${item.description}`,
                 );
               }
 
@@ -405,7 +408,7 @@ export default function TransferIssueMultipleStocks({
             } catch (error) {
               console.error(
                 `Error uploading file for ${item.description}:`,
-                error
+                error,
               );
               toast(`Failed to upload file for ${item.description}`, "error");
               throw error;
@@ -419,7 +422,7 @@ export default function TransferIssueMultipleStocks({
             serial_number: item.serial_number || null,
             attachment: attachmentUrl, // ✅ Each item has its own attachment
           };
-        })
+        }),
       );
 
       // ✅ Submit to backend with items containing their individual attachments
@@ -447,9 +450,9 @@ export default function TransferIssueMultipleStocks({
           type.toLowerCase().includes("transfer")
             ? "Stock transferred"
             : type.toLowerCase().includes("issue")
-            ? "Stock issued"
-            : "Stock sent",
-          "success"
+              ? "Stock issued"
+              : "Stock sent",
+          "success",
         );
 
         {
@@ -520,8 +523,8 @@ export default function TransferIssueMultipleStocks({
                   type.toLowerCase().includes("transfer")
                     ? "PURPOSE OF TRANSFER"
                     : type.toLowerCase().includes("issue")
-                    ? "PURPOSE OF ISSUE"
-                    : "PURPOSE OF SENDING"
+                      ? "PURPOSE OF ISSUE"
+                      : "PURPOSE OF SENDING"
                 }
                 value={purpose}
                 type={"select"}
@@ -536,19 +539,19 @@ export default function TransferIssueMultipleStocks({
                         "Space optimization",
                       ]
                     : type.toLowerCase().includes("issue")
-                    ? [
-                        "Project execution",
-                        "Equipment/laptop/tools",
-                        "Administrative/non-project work",
-                      ]
-                    : [
-                        "Veneer pressing",
-                        "Painting/coating",
-                        "Polishing/finishing",
-                        "CNC cutting/trimming",
-                        "Repair/rectification",
-                        "Testing/certification",
-                      ]
+                      ? [
+                          "Project execution",
+                          "Equipment/laptop/tools",
+                          "Administrative/non-project work",
+                        ]
+                      : [
+                          "Veneer pressing",
+                          "Painting/coating",
+                          "Polishing/finishing",
+                          "CNC cutting/trimming",
+                          "Repair/rectification",
+                          "Testing/certification",
+                        ]
                 }
               />
             )}
@@ -566,7 +569,7 @@ export default function TransferIssueMultipleStocks({
                 labelField="name"
                 required={false}
               />
-              <SingleSelectDropdown
+              {/* <SingleSelectDropdown
                 label={"BILL OF QUANTITY REFERENCE"}
                 dbData={boqLineValues}
                 selectedValue={boqLineID}
@@ -577,7 +580,23 @@ export default function TransferIssueMultipleStocks({
                 categorized={true}
                 categoryField="category"
                 subCategoryField="sub_category"
-              />
+              /> */}
+              <div className="input-item">
+                <label className="custom">
+                  <span>BILL OF QUANTITY REFERENCE</span>
+                  <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                    (OPTIONAL)
+                  </small>
+                </label>
+
+                <SelectBoqItemButton
+                  projectID={Number(projectID)}
+                  onSelectBoq={setBoqLineID}
+                  disabled={projectID === ""}
+                  currentBoqLineID={boqLineID}
+                  style={{ height: "30.5px" }}
+                />
+              </div>
             </div>
           )}
 
@@ -592,8 +611,8 @@ export default function TransferIssueMultipleStocks({
                     type.toLowerCase().includes("transfer")
                       ? "TRANSFER FROM"
                       : type.toLowerCase().includes("issue")
-                      ? "ISSUE FROM"
-                      : "SEND FROM"
+                        ? "ISSUE FROM"
+                        : "SEND FROM"
                   }
                   value={from}
                   type={"select"}
@@ -618,7 +637,7 @@ export default function TransferIssueMultipleStocks({
                     required
                     onChange={(e) => setTo(e.target.value)}
                     selectOptions={toValues.filter(
-                      (val: string) => val !== from
+                      (val: string) => val !== from,
                     )}
                   />
                 ) : (
@@ -847,11 +866,11 @@ export default function TransferIssueMultipleStocks({
                                 onChange={(e) => {
                                   const value = e.target.value.replace(
                                     /[^0-9]/g,
-                                    ""
+                                    "",
                                   );
                                   handleQuantityChange(
                                     item.inventory_item_id,
-                                    Number(value)
+                                    Number(value),
                                   );
                                 }}
                                 required
@@ -867,7 +886,7 @@ export default function TransferIssueMultipleStocks({
                                 onChange={(e) => {
                                   handleSerialNumberChange(
                                     item.inventory_item_id,
-                                    e.target.value
+                                    e.target.value,
                                   );
                                 }}
                               />
@@ -904,8 +923,8 @@ export default function TransferIssueMultipleStocks({
                                           i.inventory_item_id ===
                                           item.inventory_item_id
                                             ? { ...i, attachment: null }
-                                            : i
-                                        )
+                                            : i,
+                                        ),
                                       );
                                     }}
                                     style={{ padding: "7px 7px" }}
@@ -922,7 +941,7 @@ export default function TransferIssueMultipleStocks({
                                   onClick={(e) => {
                                     e.preventDefault();
                                     handleOpenAttachmentModal(
-                                      item.inventory_item_id
+                                      item.inventory_item_id,
                                     );
                                   }}
                                   style={{ padding: "7px 7px" }}
@@ -1003,10 +1022,10 @@ export default function TransferIssueMultipleStocks({
           handleSubmit={(e) => {
             e.preventDefault();
             const checkboxes = document.querySelectorAll<HTMLInputElement>(
-              'input[name="material-select"]:checked'
+              'input[name="material-select"]:checked',
             );
             const selectedIds = Array.from(checkboxes).map((cb) =>
-              Number(cb.value)
+              Number(cb.value),
             );
             handleAddMaterial(selectedIds);
           }}
@@ -1034,7 +1053,7 @@ export default function TransferIssueMultipleStocks({
                   })
                   .map((item, index) => {
                     const isAlreadyAdded = selectedItems.some(
-                      (selected) => selected.inventory_item_id === item.id
+                      (selected) => selected.inventory_item_id === item.id,
                     );
 
                     // Get available quantity from state
@@ -1049,16 +1068,16 @@ export default function TransferIssueMultipleStocks({
                             textColor: "rgba(248, 77, 77, 1)",
                           }
                         : availableQty <= (item.minimum_stock_quantity || 0)
-                        ? {
-                            label: "LOW STOCK",
-                            bgColor: "rgba(255, 250, 189, 1)",
-                            textColor: "rgba(134, 83, 47, 1)",
-                          }
-                        : {
-                            label: "IN STOCK",
-                            bgColor: "rgba(149, 222, 189, 1)",
-                            textColor: "rgba(0, 108, 60, 1)",
-                          };
+                          ? {
+                              label: "LOW STOCK",
+                              bgColor: "rgba(255, 250, 189, 1)",
+                              textColor: "rgba(134, 83, 47, 1)",
+                            }
+                          : {
+                              label: "IN STOCK",
+                              bgColor: "rgba(149, 222, 189, 1)",
+                              textColor: "rgba(0, 108, 60, 1)",
+                            };
 
                     return (
                       <tr key={item.id}>

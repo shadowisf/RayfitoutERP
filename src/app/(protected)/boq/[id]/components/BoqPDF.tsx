@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
 
   // Table
   table: {
-    marginBottom: 30,
+    marginBottom: 15,
   },
   tableHeader: {
     flexDirection: "row",

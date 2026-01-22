@@ -8,6 +8,8 @@ export type SupplierQuotation = {
   total_price: number;
   approval_status: string;
   reject_comment: string;
+  qs_approval_status: string;
+  qs_reject_comment: string;
   supplier_name: string;
   supplier_type: string;
   supplier_trn_number: string;

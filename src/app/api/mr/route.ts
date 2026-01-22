@@ -140,6 +140,32 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "submitForQSPricingApproval") {
+      await db.query(`UPDATE mr_headers SET progress_id = 9 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 9, ?)`,
+        [body.id, body.changed_by],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForQSInitialApproval") {
+      await db.query(`UPDATE mr_headers SET progress_id = 2 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 2, ?)`,
+        [body.id, body.changed_by],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action == "submitForLPO") {
       await db.query(`UPDATE mr_headers SET progress_id = 12 WHERE id = ?`, [
         body.id,
@@ -205,6 +231,15 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "approveItemQS") {
+      await db.query(
+        `UPDATE mr_lines SET qs_approval_status = 'Approved' WHERE id = ?`,
+        [body.id],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action === "approveItem") {
       await db.query(
         `UPDATE mr_lines SET approval_status = 'Approved' WHERE id = ?`,
@@ -214,10 +249,28 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "rejectItemQS") {
+      await db.query(
+        `UPDATE mr_lines SET qs_approval_status = 'Rejected', qs_reject_comment = ? WHERE id = ?`,
+        [body.comment, body.id],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action === "rejectItem") {
       await db.query(
         `UPDATE mr_lines SET approval_status = 'Rejected', reject_comment = ? WHERE id = ?`,
         [body.comment, body.id],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "resetItemQS") {
+      await db.query(
+        `UPDATE mr_lines SET qs_approval_status = null, qs_reject_comment = null WHERE id = ?`,
+        [body.id],
       );
 
       return NextResponse.json({ status: 200 });
@@ -377,7 +430,9 @@ export async function PUT(req: Request) {
           brand = ?,
           delivery_location = ?,
           approval_status = NULL,
-          reject_comment = NULL
+          reject_comment = NULL,
+          qs_approval_status = NULL,
+          qs_reject_comment = NULL
       WHERE id = ?
     `;
 

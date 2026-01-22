@@ -11,7 +11,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { InventoryItem } from "../../types/inventoryItem";
 import FormContextHeader from "@/app/components/FormContextHeader";
-import CreateSupplierButton from "@/app/(protected)/mr/[id]/components/procurement/_CreateSupplierButton";
+import CreateSupplierButton from "@/app/(protected)/vendor/components/_CreateSupplierButton";
 import SelectBoqItemButton from "@/app/components/_SelectBoqItemButton";
 
 type ManualAddToStockButtonProps = {
@@ -44,35 +44,6 @@ export default function ManualAddToStockButton({
   const [supplierValues, setSupplierValues] = useState<any>([]);
   const [stockLocationValues, setStockLocationValues] = useState<any>([]);
   const [projectValues, setProjectValues] = useState<any>([]);
-  const [boqLineValues, setBoqLineValues] = useState<any>([]);
-
-  useEffect(() => {
-    fetch("/api/boq/getAllBoqLinesWithNumberRef", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        project_id: projectID,
-      }),
-    })
-      .then((res) => res.json())
-      .then(function (data) {
-        setBoqLineValues(data);
-
-        const map = data.reduce(function (acc: any, boqL: any) {
-          acc[boqL.id] = `${boqL.item_name} (${boqL.item_number})`;
-          return acc;
-        }, {});
-
-        const array = Object.entries(map).map(function ([id, label]) {
-          return {
-            id: Number(id),
-            value: label,
-          };
-        });
-
-        setBoqLineValues(array);
-      });
-  }, [projectID]);
 
   async function fetchSuppliers() {
     await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
@@ -333,8 +304,24 @@ export default function ManualAddToStockButton({
               type={"text"}
               placeholder={"ENTER UNIT PRICE"}
               onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "");
-                setUnitPrice(value);
+                let val = e.target.value;
+
+                // Remove any commas
+                val = val.replace(/,/g, "");
+
+                // Clear input if empty
+                if (val === "") {
+                  setUnitPrice("");
+                  return;
+                }
+
+                // Allow only numbers and a single decimal point
+                if (!/^\d*\.?\d*$/.test(val)) {
+                  return;
+                }
+
+                // Set the value as-is (with decimal if present)
+                setUnitPrice(val);
               }}
             />
           </div>
@@ -385,14 +372,28 @@ export default function ManualAddToStockButton({
                 <span>{inventoryItem?.unit}</span>
                 <input
                   type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
                   placeholder="ENTER QUANTITY"
                   required
                   value={quantity}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, "");
-                    setQuantity(value);
+                    let val = e.target.value;
+
+                    // Remove any commas
+                    val = val.replace(/,/g, "");
+
+                    // Clear input if empty
+                    if (val === "") {
+                      setQuantity("");
+                      return;
+                    }
+
+                    // Allow only numbers and a single decimal point
+                    if (!/^\d*\.?\d*$/.test(val)) {
+                      return;
+                    }
+
+                    // Set the value as-is (with decimal if present)
+                    setQuantity(val);
                   }}
                 />
               </div>

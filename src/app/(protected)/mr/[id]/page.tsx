@@ -4,6 +4,7 @@ import DeleteMrHeaderButton from "./components/department/_DeleteMrHeaderButton"
 import EditMrHeaderButton from "./components/department/_EditMrHeaderButton";
 import MrLinesView from "./components/MrLinesView";
 import { MrHeader } from "./types/mrHeader";
+import CancelMaterialRequestButton from "./components/_CancelMaterialRequest";
 
 export default async function MrWithID({
   params,
@@ -20,7 +21,7 @@ export default async function MrWithID({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: id }),
-    }
+    },
   )
     .then((res) => res.json())
     .then((data) => {
@@ -36,7 +37,7 @@ export default async function MrWithID({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: id }),
-    }
+    },
   )
     .then((res) => res.json())
     .then((data) => {
@@ -55,7 +56,7 @@ export default async function MrWithID({
         mr_header_id: id,
         progress_id: mrHeader.progress_id,
       }),
-    }
+    },
   )
     .then((res) => res.json())
     .then((data) => {
@@ -77,7 +78,7 @@ export default async function MrWithID({
 
       // Format as HHH:MMM
       const durationString = `${String(hours).padStart(2, "0")}H:${String(
-        minutes
+        minutes,
       ).padStart(2, "0")}M`;
 
       // Set style based on thresholds (using total hours)
@@ -128,14 +129,14 @@ export default async function MrWithID({
   required.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
   const diffDays = Math.ceil(
-    (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
 
   // ✅ Calculate days left for DELIVERY DATE
   const delivery = new Date(mrHeader.delivery_date);
   delivery.setHours(0, 0, 0, 0);
   const deliveryDiffDays = Math.ceil(
-    (delivery.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    (delivery.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
 
   // Days left text for REQUIRED DATE
@@ -221,7 +222,7 @@ export default async function MrWithID({
   }
 
   const isRejected = ["reject", "fail"].some((word) =>
-    mrHeader.progress_name?.toLowerCase().includes(word)
+    mrHeader.progress_name?.toLowerCase().includes(word),
   );
 
   // Progress style based on status
@@ -231,14 +232,14 @@ export default async function MrWithID({
         color: "rgba(248, 77, 77, 1)",
       }
     : isCompleted
-    ? {
-        backgroundColor: "rgba(87, 244, 176, 1)",
-        color: "rgba(31, 101, 71, 1)",
-      }
-    : {
-        backgroundColor: "rgba(255, 250, 189, 1)",
-        color: "rgba(134, 83, 47, 1)",
-      };
+      ? {
+          backgroundColor: "rgba(87, 244, 176, 1)",
+          color: "rgba(31, 101, 71, 1)",
+        }
+      : {
+          backgroundColor: "rgba(255, 250, 189, 1)",
+          color: "rgba(134, 83, 47, 1)",
+        };
 
   return (
     <div className="dashboard">
@@ -305,7 +306,20 @@ export default async function MrWithID({
               )}
             </div>
 
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              {mrHeader.progress_id !== 1 &&
+                mrHeader.progress_id !== 25 &&
+                mrHeader.progress_id >= 12 && (
+                  <CancelMaterialRequestButton
+                    mrHeaderID={Number(id)}
+                    bgColor="black"
+                    borderColor="black"
+                    textColor="white"
+                  >
+                    ROLL BACK MATERIAL REQUEST
+                  </CancelMaterialRequestButton>
+                )}
+
               <EditMrHeaderButton mrHeader={mrHeader} />
               <DeleteMrHeaderButton mrHeader={mrHeader} />
             </div>

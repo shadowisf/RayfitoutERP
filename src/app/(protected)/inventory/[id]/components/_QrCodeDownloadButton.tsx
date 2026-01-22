@@ -4,7 +4,6 @@ import { useRef } from "react";
 import Button from "@/app/components/Button";
 import { pdf } from "@react-pdf/renderer";
 import { QrCodePDF } from "./QrCodePDF";
-// import Barcode from "react-barcode";
 import { QRCodeSVG } from "qrcode.react";
 import { InventoryItem } from "../../types/inventoryItem";
 
@@ -16,13 +15,12 @@ export default function QrCodeDownloadButton({
   item,
 }: QrCodeDownloadButtonProps) {
   const downloadIcon = "/icons/download.svg";
-  // const barcodeRef = useRef<HTMLDivElement>(null);
   const qrcodeRef = useRef<HTMLDivElement>(null);
 
   const svgToPngDataUrl = async (
     svg: SVGElement,
     width: number,
-    height: number
+    height: number,
   ): Promise<string> => {
     return new Promise((resolve, reject) => {
       // Create a canvas
@@ -61,6 +59,47 @@ export default function QrCodeDownloadButton({
     });
   };
 
+  // URL to Base64 converter using API route
+  async function urlToBase64(url: string): Promise<string> {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3/getImage`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success || !data.dataUrl) {
+        throw new Error("Invalid response from proxy");
+      }
+
+      return data.dataUrl;
+    } catch (error) {
+      console.error("Failed to convert image:", url, error);
+      return "";
+    }
+  }
+
+  const getImageUrl = (image: string | null | undefined) => {
+    if (!image) return null;
+    try {
+      const parsed = JSON.parse(image);
+      return parsed;
+    } catch (e) {
+      return image;
+    }
+  };
+
   async function handleDownload() {
     if (!item.id) {
       console.log("No itemID");
@@ -69,7 +108,6 @@ export default function QrCodeDownloadButton({
 
     try {
       // Get SVG elements
-      // const barcodeSvg = barcodeRef.current?.querySelector("svg");
       const qrcodeSvg = qrcodeRef.current?.querySelector("svg");
 
       if (!qrcodeSvg) {
@@ -78,16 +116,39 @@ export default function QrCodeDownloadButton({
         return;
       }
 
-      // Convert to PNG data URLs
-      // const barcodeDataUrl = await svgToPngDataUrl(barcodeSvg, 400, 150);
+      console.log("Converting QR code to PNG...");
+      // Convert QR code to PNG data URL
       const qrcodeDataUrl = await svgToPngDataUrl(qrcodeSvg, 300, 300);
 
+      // Convert inventory image to base64 if exists
+      let inventoryImageDataUrl: string | null = null;
+      const imageUrl = getImageUrl(item.image);
+
+      if (imageUrl) {
+        try {
+          console.log("Converting inventory image to base64...");
+          inventoryImageDataUrl = await urlToBase64(imageUrl);
+
+          if (inventoryImageDataUrl === "") {
+            console.warn(
+              "Failed to convert inventory image, continuing without it",
+            );
+          } else {
+            console.log("Successfully converted inventory image");
+          }
+        } catch (error) {
+          console.error("Error converting inventory image:", error);
+          // Continue without the image
+        }
+      }
+
+      console.log("Generating PDF...");
       const blob = await pdf(
         <QrCodePDF
           inventoryItem={item}
-          // barcodeDataUrl={barcodeDataUrl}
           qrcodeDataUrl={qrcodeDataUrl}
-        />
+          inventoryImageDataUrl={inventoryImageDataUrl}
+        />,
       ).toBlob();
 
       console.log("PDF blob size:", blob.size);
@@ -115,7 +176,7 @@ export default function QrCodeDownloadButton({
 
   return (
     <>
-      {/* Hidden elements to render barcode and QR code */}
+      {/* Hidden elements to render QR code */}
       <div
         style={{
           position: "absolute",
@@ -124,15 +185,6 @@ export default function QrCodeDownloadButton({
           visibility: "hidden",
         }}
       >
-        {/* <div ref={barcodeRef} id="barcode-container">
-          <Barcode
-            value={`MRT-${item.id.toString().padStart(5, "0")}`}
-            format="CODE128"
-            width={2}
-            height={75}
-            displayValue={true}
-          />
-        </div> */}
         <div ref={qrcodeRef} id="qrcode-container">
           <QRCodeSVG value={`/inventory/${item.id}`} size={150} />
         </div>

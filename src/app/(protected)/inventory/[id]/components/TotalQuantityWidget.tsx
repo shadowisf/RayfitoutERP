@@ -15,10 +15,22 @@ export default function TotalQuantityWidget({
 }: Props) {
   const [totalQty, setTotalQty] = useState<number | null>(null);
 
+  // Helper function to format numbers
+  const formatNumber = (value: number): string | number => {
+    // Check if the number has decimal places
+    if (value % 1 === 0) {
+      // No decimal places, return as integer
+      return Math.round(value);
+    } else {
+      // Has decimal places, format to remove trailing zeros
+      return parseFloat(value.toFixed(3));
+    }
+  };
+
   // Function to calculate total stock including issues and transfers
   const calculateTotalStock = (
     stocks: any[],
-    stocksTransferIssue: any[]
+    stocksTransferIssue: any[],
   ): number => {
     const locationMap: { [key: string]: number } = {};
 
@@ -26,7 +38,7 @@ export default function TotalQuantityWidget({
     stocks.forEach((stock) => {
       const location = stock.location || "Unknown";
       if (!locationMap[location]) locationMap[location] = 0;
-      locationMap[location] += stock.quantity;
+      locationMap[location] += Number(stock.quantity);
     });
 
     // 2️⃣ Adjust for issued, sent, and transferred quantities
@@ -34,7 +46,7 @@ export default function TotalQuantityWidget({
       const type = tx.type.toLowerCase();
       const from = tx.from_location || "Unknown";
       const to = tx.to_location || "Unknown";
-      const qty = tx.quantity || 0;
+      const qty = Number(tx.quantity) || 0;
 
       if (type.includes("issue") || type.includes("send")) {
         if (!locationMap[from]) locationMap[from] = 0;
@@ -50,7 +62,7 @@ export default function TotalQuantityWidget({
     // 3️⃣ Sum all positive quantities
     const total = Object.values(locationMap).reduce(
       (sum, qty) => sum + (qty > 0 ? qty : 0),
-      0
+      0,
     );
 
     return total;
@@ -81,7 +93,7 @@ export default function TotalQuantityWidget({
       <h3 style={{ color: "rgba(89, 89, 89, 1)" }}>TOTAL QTY.</h3>
       <div>
         <h2 style={{ fontSize: "48px" }}>
-          {totalQty !== null ? totalQty : "N/A"}
+          {totalQty !== null ? formatNumber(totalQty) : "N/A"}
         </h2>
         <h3>{unit || "-"}</h3>
       </div>

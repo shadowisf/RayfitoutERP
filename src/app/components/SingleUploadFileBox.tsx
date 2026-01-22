@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Button from "./Button";
 import { toast } from "./Toast";
 
@@ -12,6 +12,7 @@ type SingleUploadFileBoxProps = {
   placeholder?: string;
   acceptedFileTypes: string;
   buttonLabel?: string;
+  existingFileUrl?: string | null; // New prop for existing file URL
 };
 
 export default function SingleUploadFileBox({
@@ -22,6 +23,7 @@ export default function SingleUploadFileBox({
   placeholder = "UPLOAD/DRAG ATTACHMENT",
   acceptedFileTypes,
   buttonLabel = "UPLOAD FILE",
+  existingFileUrl,
 }: SingleUploadFileBoxProps) {
   const pdfIcon = "/icons/pdf.svg";
   const uploadIcon = "/icons/upload.svg";
@@ -29,8 +31,19 @@ export default function SingleUploadFileBox({
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [showExisting, setShowExisting] = useState(true);
 
   const InputRef = useRef<HTMLInputElement | null>(null);
+
+  // Set preview if existingFileUrl is an image
+  useEffect(() => {
+    if (existingFileUrl && !fileState) {
+      const isImage = existingFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+      if (isImage) {
+        setPreview(existingFileUrl);
+      }
+    }
+  }, [existingFileUrl, fileState]);
 
   const handleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -42,6 +55,7 @@ export default function SingleUploadFileBox({
     }
 
     setFileState(selectedFile);
+    setShowExisting(false);
 
     if (selectedFile.type.startsWith("image/")) {
       const reader = new FileReader();
@@ -57,6 +71,7 @@ export default function SingleUploadFileBox({
   const removeFile = () => {
     setFileState(null);
     setPreview(null);
+    setShowExisting(true);
     if (InputRef.current) {
       InputRef.current.value = "";
     }
@@ -93,6 +108,7 @@ export default function SingleUploadFileBox({
     }
 
     setFileState(droppedFile);
+    setShowExisting(false);
 
     if (droppedFile.type.startsWith("image/")) {
       const reader = new FileReader();
@@ -118,6 +134,13 @@ export default function SingleUploadFileBox({
       return file.type === type;
     });
   };
+
+  const getFileNameFromUrl = (url: string) => {
+    const parts = url.split("/");
+    return parts[parts.length - 1] || "Existing File";
+  };
+
+  const hasContent = fileState || (showExisting && existingFileUrl);
 
   return (
     <div className="input-item">
@@ -149,78 +172,208 @@ export default function SingleUploadFileBox({
           height: "200px",
         }}
       >
-        {fileState || preview ? (
+        {hasContent ? (
           <div
             style={{ width: "100%", display: "flex", justifyContent: "center" }}
           >
-            {fileState?.type.startsWith("image/") && preview ? (
-              <div
-                style={{
-                  position: "relative",
-                  display: "inline-block",
-                }}
-              >
-                <img
-                  src={preview}
-                  alt="Preview"
-                  style={{
-                    maxHeight: "150px",
-                    maxWidth: "100%",
-                    borderRadius: "5px",
-                    objectFit: "contain",
-                  }}
-                />
-                <Button
-                  componentType={"button"}
-                  bgColor={"rgba(239, 239, 239, 1)"}
-                  borderColor={"rgba(223, 223, 223, 1)"}
-                  textColor={"black"}
-                  style={{
-                    position: "absolute",
-                    top: "5px",
-                    right: "5px",
-                    padding: "7px 7px",
-                  }}
-                  onClick={removeFile}
-                >
-                  <img src={trashIcon} alt="trash" />
-                </Button>
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "16px",
-                  backgroundColor: "white",
-                  borderRadius: "8px",
-                  border: "1px solid #e5e7eb",
-                  gap: "25px",
-                }}
-              >
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <img src={pdfIcon} alt="pdf" />
-                  <div>
-                    {fileState?.name} <br />
-                    {fileState?.size && (
-                      <small style={{ marginLeft: "-10px" }}>
-                        {(fileState.size / 1024).toFixed(2)} KB
-                      </small>
-                    )}
+            {/* Show new file if uploaded */}
+            {fileState ? (
+              <>
+                {fileState.type.startsWith("image/") && preview ? (
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                    }}
+                  >
+                    <img
+                      src={preview}
+                      alt="Preview"
+                      style={{
+                        maxHeight: "150px",
+                        maxWidth: "100%",
+                        borderRadius: "5px",
+                        objectFit: "contain",
+                      }}
+                    />
+                    <Button
+                      componentType={"button"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"rgba(223, 223, 223, 1)"}
+                      textColor={"black"}
+                      style={{
+                        position: "absolute",
+                        top: "5px",
+                        right: "5px",
+                        padding: "7px 7px",
+                      }}
+                      onClick={removeFile}
+                    >
+                      <img src={trashIcon} alt="trash" />
+                    </Button>
                   </div>
-                </div>
-                <Button
-                  componentType={"button"}
-                  bgColor={"rgba(239, 239, 239, 1)"}
-                  borderColor={"rgba(223, 223, 223, 1)"}
-                  textColor={"black"}
-                  style={{ padding: "7px 7px" }}
-                  onClick={removeFile}
-                >
-                  <img src={trashIcon} alt="trash" />
-                </Button>
-              </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "16px",
+                      backgroundColor: "white",
+                      borderRadius: "8px",
+                      border: "1px solid #e5e7eb",
+                      gap: "25px",
+                      width: "100%",
+                      maxWidth: "350px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        overflow: "hidden",
+                        minWidth: 0,
+                      }}
+                    >
+                      <img src={pdfIcon} alt="pdf" style={{ flexShrink: 0 }} />
+                      <div style={{ minWidth: 0, overflow: "hidden" }}>
+                        <div
+                          style={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            maxWidth: "200px",
+                          }}
+                        >
+                          {fileState.name}
+                        </div>
+                        {fileState.size && (
+                          <small>{(fileState.size / 1024).toFixed(2)} KB</small>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      componentType={"button"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"rgba(223, 223, 223, 1)"}
+                      textColor={"black"}
+                      style={{ padding: "7px 7px", flexShrink: 0 }}
+                      onClick={removeFile}
+                    >
+                      <img src={trashIcon} alt="trash" />
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Show existing file */
+              showExisting &&
+              existingFileUrl && (
+                <>
+                  {preview ? (
+                    <div
+                      style={{
+                        position: "relative",
+                        display: "inline-block",
+                      }}
+                    >
+                      <img
+                        src={preview}
+                        alt="Existing file"
+                        style={{
+                          maxHeight: "150px",
+                          maxWidth: "100%",
+                          borderRadius: "5px",
+                          objectFit: "contain",
+                        }}
+                      />
+                      <Button
+                        componentType={"button"}
+                        bgColor={"rgba(239, 239, 239, 1)"}
+                        borderColor={"rgba(223, 223, 223, 1)"}
+                        textColor={"black"}
+                        style={{
+                          position: "absolute",
+                          top: "5px",
+                          right: "5px",
+                          padding: "7px 7px",
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setShowExisting(false);
+                          setPreview(null);
+                        }}
+                      >
+                        <img src={trashIcon} alt="trash" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "16px",
+                        backgroundColor: "white",
+                        borderRadius: "8px",
+                        border: "1px solid #e5e7eb",
+                        gap: "25px",
+                        width: "100%",
+                        maxWidth: "350px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "10px",
+                          overflow: "hidden",
+                          minWidth: 0,
+                        }}
+                      >
+                        <img
+                          src={pdfIcon}
+                          alt="pdf"
+                          style={{ flexShrink: 0 }}
+                        />
+                        <div style={{ minWidth: 0, overflow: "hidden" }}>
+                          <a
+                            href={existingFileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              color: "rgba(23, 92, 220, 1)",
+                              textDecoration: "underline",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              display: "block",
+                              maxWidth: "200px",
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {getFileNameFromUrl(existingFileUrl)}
+                          </a>
+                          <small>Existing file</small>
+                        </div>
+                      </div>
+                      <Button
+                        componentType={"button"}
+                        bgColor={"rgba(239, 239, 239, 1)"}
+                        borderColor={"rgba(223, 223, 223, 1)"}
+                        textColor={"black"}
+                        style={{ padding: "7px 7px", flexShrink: 0 }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setShowExisting(false);
+                          setPreview(null);
+                        }}
+                      >
+                        <img src={trashIcon} alt="trash" />
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )
             )}
           </div>
         ) : isDragOver ? (

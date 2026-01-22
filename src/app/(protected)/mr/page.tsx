@@ -113,50 +113,40 @@ export default function MR() {
   }, [mrHeaders]);
 
   const departmentViewPermissions: { [key: number]: number[] } = {
-    /* JOINERY */ 1: [1, 5, 25],
-    /* MARKETING */ 2: [1, 5, 25],
-    /* ALUMINUM & GLASS */ 3: [1, 5, 25],
-    /* MEP */ 4: [1, 5, 25],
-    /* CIVIL */ 5: [1, 5, 25],
-    /* PAINT */ 6: [1, 5, 25],
-    /* DESIGN */ 7: [1, 5, 25],
-    /* DIRECTORS/MANAGEMENT */ 8: [1, 3, 5, 10, 11, 25],
-    /* PROCUREMENT */ 9: [1, 5, 7, 11, 12, 13, 16, 25],
-    /* FINANCE */ 10: [1, 5, 14, 25],
-    /* STOREKEEPER */ 11: [1, 5, 17, 24, 25],
-    /* QUALITY CONTORL */ 12: [1, 5, 21, 23, 25],
-    /* PROJECTS */ 13: [1, 5, 25],
-    /* AUTOMATION */ 14: [1, 5, 25],
-    /* ADMIN */ 15: [1, 3, 5, 7, 10, 11, 12, 14, 17, 21, 23, 24, 25],
-  };
-
-  // Map progress IDs to status names
-  const progressIdToStatusName: { [key: number]: string } = {
-    1: "Draft",
-    5: "Initial approval rejected",
-    3: "Awaiting initial approval",
-    11: "Price approval rejected",
-    7: "Awaiting quotations",
-    10: "Awaiting price approval",
-    12: "Awaiting LPO & invoice",
-    13: "Payment rejected",
-    14: "Pending payment",
-    16: "GRN failed",
-    17: "Pending delivery",
-    21: "Awaiting QC check",
-    23: "Failed QC",
-    24: "Awaiting stock entry",
-    25: "Completed",
+    /* JOINERY */ 1: [1, 2, 5, 25],
+    /* MARKETING */ 2: [1, 2, 5, 25],
+    /* ALUMINUM & GLASS */ 3: [1, 2, 5, 25],
+    /* MEP */ 4: [1, 2, 5, 25],
+    /* CIVIL */ 5: [1, 2, 5, 25],
+    /* PAINT */ 6: [1, 2, 5, 25],
+    /* DESIGN */ 7: [1, 2, 5, 25],
+    /* DIRECTORS/MANAGEMENT */ 8: [1, 2, 3, 5, 9, 10, 11, 25],
+    /* PROCUREMENT */ 9: [1, 2, 5, 7, 9, 11, 12, 13, 16, 25],
+    /* FINANCE */ 10: [1, 2, 5, 14, 25],
+    /* STOREKEEPER */ 11: [1, 2, 5, 17, 24, 25],
+    /* QUALITY CONTORL */ 12: [1, 2, 5, 21, 23, 25],
+    /* PROJECTS */ 13: [1, 2, 5, 25],
+    /* AUTOMATION */ 14: [1, 2, 5, 25],
+    /* ADMIN */ 15: [1, 2, 3, 5, 7, 9, 10, 11, 12, 14, 17, 21, 23, 24, 25],
+    /* QS (QUANTITY SURVEYOR) */ 16: [1, 2, 5, 9, 25],
   };
 
   // Map progress status to responsible department
   const getResponsibleDepartment = (status: string) => {
     const departmentMap: { [key: string]: { name: string; id: number } } = {
       Draft: { name: "", id: 0 },
-      "Awaiting initial approval": { name: "Directors/Management", id: 8 },
+      "Awaiting QS initial approval": { name: "Quantity Surveyor", id: 16 },
+      "Awaiting manager initial approval": {
+        name: "Directors/Management",
+        id: 8,
+      },
       "Initial approval rejected": { name: "", id: 0 },
       "Awaiting quotations": { name: "Procurement", id: 9 },
-      "Awaiting price approval": { name: "Directors/Management", id: 8 },
+      "Awaiting QS price approval": { name: "Quantity Surveyor", id: 16 },
+      "Awaiting manager price approval": {
+        name: "Directors/Management",
+        id: 8,
+      },
       "Price approval rejected": { name: "Procurement", id: 9 },
       "Awaiting LPO & invoice": { name: "Procurement", id: 9 },
       "Pending payment": { name: "Finance", id: 10 },
@@ -197,9 +187,12 @@ export default function MR() {
         backgroundColor: "rgba(233, 213, 255, 1)",
         color: "rgba(129, 68, 196, 1)",
       },
+      16: {
+        backgroundColor: "rgba(255, 237, 213, 1)",
+        color: "rgba(156, 87, 0, 1)",
+      },
     };
 
-    // Default style for all other departments
     return (
       styles[departmentId] || {
         backgroundColor: "rgba(186, 230, 253, 1)",
@@ -210,37 +203,37 @@ export default function MR() {
 
   // Get dot color based on status and count
   const getDotColor = (status: string, count: number) => {
-    // No MRs - gray
     if (count === 0) {
       return "rgba(207, 207, 207, 1)";
     }
 
-    // Completed - green
     if (status === "Completed") {
       return "rgba(46, 188, 127, 1)";
     }
 
-    // Rejected or failed statuses - red
     if (isRejectedStatus(status)) {
       return "rgba(248, 77, 77, 1)";
     }
 
-    // All other statuses with items - yellow
     return "rgba(235, 223, 90, 1)";
   };
 
-  // Progress IDs that are accessible to everyone IF department matches
-  const universalProgressIds = [1, 5];
+  const universalProgressIds = [1, 2, 5];
 
   const canViewMR = (mr: any) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
+
+    // Managers (department ID 8) can view all MRs
+    if (userDeptId === 8) return true;
+
+    // Users can always view their own department's MRs
     if (userDeptId === mr.department_id) return true;
-    if (universalProgressIds.includes(mr.progress_id)) {
-      return userDeptId === mr.department_id;
-    }
+
+    // Check if user's department has permission to view this progress stage
     const allowedProgressIds = departmentViewPermissions[userDeptId];
     if (!allowedProgressIds) return false;
+
     return allowedProgressIds.includes(mr.progress_id);
   };
 
@@ -370,11 +363,13 @@ export default function MR() {
 
   const allStatuses = [
     "Draft",
+    "Awaiting QS initial approval",
     "Initial approval rejected",
-    "Awaiting initial approval",
+    "Awaiting manager initial approval",
     "Awaiting quotations",
     "Price approval rejected",
-    "Awaiting price approval",
+    "Awaiting QS price approval",
+    "Awaiting manager price approval",
     "Awaiting LPO & invoice",
     "Payment rejected",
     "Pending payment",
@@ -407,12 +402,10 @@ export default function MR() {
     : allStatuses.filter((status) => {
         const mrs = groupedMRs[status] || [];
 
-        // Hide rejected statuses with 0 count
         if (isRejectedStatus(status) && mrs.length === 0) {
           return false;
         }
 
-        // Hide Draft if there are no draft MRs
         if (status === "Draft" && mrs.length === 0) {
           return false;
         }
@@ -495,7 +488,6 @@ export default function MR() {
           const isCompleted = isCompletedStatus(status);
           const hasItems = mrs.length > 0;
 
-          // Get responsible department for this status
           const responsibleDept = getResponsibleDepartment(status);
           const departmentToShow = responsibleDept.name;
           const departmentIdToUse = responsibleDept.id;
@@ -553,7 +545,6 @@ export default function MR() {
                     <h3>{mrs.length}</h3>
                   </div>
 
-                  {/* Show responsible department if not completed or draft */}
                   {departmentToShow && (
                     <>
                       <br />
@@ -601,7 +592,6 @@ export default function MR() {
                     mr.progress_name === "Completed" || mr.progress_id === 25;
                   const hasViewPermission = canViewMR(mr);
 
-                  // Get duration data from state
                   const durationKey = `${mr.id}-${mr.progress_id}`;
                   const durationData = mrDurations[durationKey] || {
                     duration: "00H:00M",
@@ -698,44 +688,6 @@ export default function MR() {
                       <h3>{mr.project_name || "-"}</h3>
 
                       <br />
-
-                      {/* {mr.progress_id === 17 && (
-                        <>
-                          <br />
-
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "25px",
-                            }}
-                          >
-                            <div>
-                              <small>DELIVERY DATE/S</small>
-                              <h3>
-                                {new Date(mr.delivery_date).toLocaleDateString(
-                                  "en-US",
-                                )}
-                              </h3>
-                            </div>
-
-                            <h3
-                              style={{
-                                padding: "5px 15px",
-                                backgroundColor:
-                                  DeliveryDateDaysLeftStyle.backgroundColor,
-                                color: DeliveryDateDaysLeftStyle.color,
-                                textTransform: "uppercase",
-                                borderRadius: "5px",
-                              }}
-                            >
-                              {getDaysLeftText(mr.delivery_date)}
-                            </h3>
-                          </div>
-                        </>
-                      )}
-
-                      <br /> */}
 
                       {!isCompleted ? (
                         <div

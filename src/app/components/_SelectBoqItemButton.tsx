@@ -31,6 +31,7 @@ export default function SelectBoqItemButton({
 }: props) {
   const locationIcon = "/icons/location-boq.svg";
   const arrowRight = "/icons/arrow-right.svg";
+  const searchIcon = "/icons/search.svg";
 
   const { userInfo } = useAuth();
 
@@ -40,26 +41,60 @@ export default function SelectBoqItemButton({
 
   const [boqLineValues, setBoqLineValues] = useState<BoqLine[]>([]);
   const [groupedBoqLines, setGroupedBoqLines] = useState<GroupedBoqLines>({});
+  const [filteredGroupedBoqLines, setFilteredGroupedBoqLines] =
+    useState<GroupedBoqLines>({});
   const [tempSelectedBoqID, setTempSelectedBoqID] = useState<string | number>(
     currentBoqLineID || "",
   );
   const [selectedBoqInfo, setSelectedBoqInfo] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // BOQ Category states
   const [activeBoqCategory, setActiveBoqCategory] = useState<string>("ALL");
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
 
-  const boqCategories = Object.keys(groupedBoqLines);
+  const boqCategories = Object.keys(filteredGroupedBoqLines);
   const boqSubCategories =
     activeBoqCategory === "ALL"
-      ? groupedBoqLines[boqCategories[0]] || {}
-      : groupedBoqLines[activeBoqCategory] || {};
+      ? filteredGroupedBoqLines[boqCategories[0]] || {}
+      : filteredGroupedBoqLines[activeBoqCategory] || {};
 
   const canSeePrice =
     userInfo?.departmentID === 8 ||
     userInfo?.departmentID === 12 ||
     userInfo?.departmentID === 10;
+
+  // Filter BOQ lines based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredGroupedBoqLines(groupedBoqLines);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered: GroupedBoqLines = {};
+
+    Object.entries(groupedBoqLines).forEach(([category, subCategories]) => {
+      Object.entries(subCategories).forEach(([subCategory, items]) => {
+        const filteredItems = items.filter((boq) => {
+          return (
+            boq.item_number?.toLowerCase().includes(query) ||
+            boq.item_name?.toLowerCase().includes(query)
+          );
+        });
+
+        if (filteredItems.length > 0) {
+          if (!filtered[category]) {
+            filtered[category] = {};
+          }
+          filtered[category][subCategory] = filteredItems;
+        }
+      });
+    });
+
+    setFilteredGroupedBoqLines(filtered);
+  }, [searchQuery, groupedBoqLines]);
 
   // Check scroll position for arrows
   const checkScroll = () => {
@@ -117,6 +152,7 @@ export default function SelectBoqItemButton({
           });
 
           setGroupedBoqLines(grouped);
+          setFilteredGroupedBoqLines(grouped);
         })
         .catch((err) => {
           console.error("Error fetching BOQ lines:", err);
@@ -138,10 +174,11 @@ export default function SelectBoqItemButton({
     }
   }, [currentBoqLineID, boqLineValues]);
 
-  // Reset temp selection when form opens
+  // Reset temp selection and search when form opens
   useEffect(() => {
     if (isOpen) {
       setTempSelectedBoqID(currentBoqLineID || "");
+      setSearchQuery("");
     }
   }, [isOpen, currentBoqLineID]);
 
@@ -181,8 +218,48 @@ export default function SelectBoqItemButton({
       setIsOpen={setIsOpen}
       handleSubmit={handleSubmit}
       addButtonLabel={"CONFIRM"}
-      style={{ minWidth: "1200px" }}
+      style={{ minWidth: "1300px", minHeight: "80dvh" }}
     >
+      {/* Search Bar */}
+      <div
+        style={{
+          position: "relative",
+          flex: 1,
+          maxWidth: "400px",
+          backgroundColor: "white",
+        }}
+      >
+        <input
+          type="text"
+          placeholder="SEARCH"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            width: "400px",
+            padding: "10px 40px 10px 15px",
+            borderRadius: "8px",
+            border: "1px solid rgba(223, 223, 223, 1)",
+            fontSize: "14px",
+          }}
+        />
+        <img
+          src={searchIcon}
+          alt="search"
+          style={{
+            position: "absolute",
+            right: "15px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: "16px",
+            height: "16px",
+            opacity: 0.5,
+          }}
+        />
+      </div>
+
+      <br />
+      <br />
+
       {/* Category Grid */}
       <div className="category-grid" style={{ marginBottom: "20px" }}>
         <div style={{ position: "relative", flex: 1, maxWidth: "70dvw" }}>
@@ -338,10 +415,23 @@ export default function SelectBoqItemButton({
         </div>
       </div>
 
+      {/* No Results Message */}
+      {searchQuery.trim() && boqCategories.length === 0 && (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "40px",
+            color: "rgba(128, 128, 128, 1)",
+          }}
+        >
+          <p>No results found for "{searchQuery}"</p>
+        </div>
+      )}
+
       {/* BOQ Items Table */}
       <div style={{ maxHeight: "500px", overflowY: "auto" }}>
         {activeBoqCategory === "ALL"
-          ? Object.entries(groupedBoqLines).map(
+          ? Object.entries(filteredGroupedBoqLines).map(
               ([category, subCategoriesData], categoryIndex) =>
                 Object.entries(subCategoriesData).map(
                   ([subCategory, items], subCategoryIndex) => (

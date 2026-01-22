@@ -55,7 +55,7 @@ export default function SubmitForPricingResubmissionButton({
         onClick={() => setIsOpen(true)}
         style={{ padding: "7px 20px" }}
       >
-        RETURN FOR PRICING CORRECTIONS
+        RETURN FOR REVISION
       </Button>
 
       {isOpen && (

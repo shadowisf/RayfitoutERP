@@ -1,4 +1,3 @@
-// app/(protected)/boq/[id]/components/BoqLinesView.tsx
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -70,7 +69,7 @@ export default function BoqLinesView({
 
   const categories = Object.keys(boqLines);
   const subCategories =
-    activeCategory === "ALL"
+    activeCategory === "ALL" || activeCategory === "SUMMARY"
       ? boqLines[categories[0]] || {}
       : boqLines[activeCategory] || {};
 
@@ -349,6 +348,16 @@ export default function BoqLinesView({
   // Calculate subtotal for a subcategory
   const calculateSubtotal = (items: BoqLine[]) => {
     return items.reduce((sum, item) => sum + (item.total_cost || 0), 0);
+  };
+
+  // Calculate subtotal for a category
+  const calculateCategorySubtotal = (category: string) => {
+    const subCategories = boqLines[category];
+    let total = 0;
+    Object.values(subCategories).forEach((items) => {
+      total += calculateSubtotal(items);
+    });
+    return total;
   };
 
   // Parse attachments helper function
@@ -825,6 +834,20 @@ export default function BoqLinesView({
                     ALL
                   </div>
 
+                  {canSeePrice && (
+                    <div
+                      className={`item ${activeCategory === "SUMMARY" ? "active" : ""}`}
+                      onClick={() => setActiveCategory("SUMMARY")}
+                      style={{
+                        flexShrink: 0,
+                        textTransform: "uppercase",
+                        cursor: "pointer",
+                      }}
+                    >
+                      SUMMARY
+                    </div>
+                  )}
+
                   {categories.map((category) => (
                     <DraggableCategory
                       key={category}
@@ -924,7 +947,52 @@ export default function BoqLinesView({
       <br />
 
       {/* Render sections based on active category */}
-      {activeCategory === "ALL" ? (
+      {activeCategory === "SUMMARY" ? (
+        // Show summary table
+        <table className="items-table two-toned">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>CATEGORY</th>
+              <th>SUBTOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {categories.map((category, index) => {
+              const categorySubtotal = calculateCategorySubtotal(category);
+              return (
+                <tr key={category}>
+                  <td>{index + 1}</td>
+                  <td>{category}</td>
+                  <td>
+                    {boqHeader.currency} {categorySubtotal.toLocaleString()}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot style={{ borderTop: "1px solid rgba(232, 223, 223, 1)" }}>
+            <tr>
+              <td></td>
+              <td>
+                <h3>GRAND TOTAL</h3>
+              </td>
+              <td>
+                <h3>
+                  {boqHeader.currency}{" "}
+                  {categories
+                    .reduce(
+                      (total, category) =>
+                        total + calculateCategorySubtotal(category),
+                      0,
+                    )
+                    .toLocaleString()}
+                </h3>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      ) : activeCategory === "ALL" ? (
         // Show all categories and subcategories WITH SINGLE drag context
         <DndContext
           sensors={sensors}
@@ -974,19 +1042,21 @@ export default function BoqLinesView({
         </DndContext>
       )}
 
-      {canManage && activeCategory !== "ALL" && (
-        <AddBoqItemButton
-          boqHeaderID={boqHeader.id}
-          bgColor="rgba(239, 239, 239, 1)"
-          borderColor="transparent"
-          textColor="black"
-          full
-          autoCategory={activeCategory}
-          style={{ padding: "40px 0px", backgroundColor: "white" }}
-        >
-          ADD SUBCATEGORY & ITEM +
-        </AddBoqItemButton>
-      )}
+      {canManage &&
+        activeCategory !== "ALL" &&
+        activeCategory !== "SUMMARY" && (
+          <AddBoqItemButton
+            boqHeaderID={boqHeader.id}
+            bgColor="rgba(239, 239, 239, 1)"
+            borderColor="transparent"
+            textColor="black"
+            full
+            autoCategory={activeCategory}
+            style={{ padding: "40px 0px", backgroundColor: "white" }}
+          >
+            ADD SUBCATEGORY & ITEM +
+          </AddBoqItemButton>
+        )}
     </>
   );
 }

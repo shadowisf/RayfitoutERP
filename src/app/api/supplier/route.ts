@@ -150,6 +150,83 @@ export async function PUT(req: Request) {
   try {
     const body = await req.json();
 
+    if (body.action === "updateSupplier") {
+      try {
+        const {
+          id,
+          type,
+          name,
+          trn_number,
+          trn_certificate,
+          trade_license,
+          avg_lead_time,
+          supplier_rating,
+          currency,
+          status,
+          credit_limit,
+          payment_terms,
+          opening_balance,
+          contact_person_name,
+          phone,
+          email,
+          website,
+          address,
+          notes,
+        } = body;
+
+        const query = `
+          UPDATE suppliers
+          SET
+            type = ?,
+            name = ?,
+            trn_number = ?,
+            trn_certificate = ?,
+            trade_license = ?,
+            avg_lead_time = ?,
+            supplier_rating = ?,
+            currency = ?,
+            status = ?,
+            credit_limit = ?,
+            payment_terms = ?,
+            opening_balance = ?,
+            contact_person_name = ?,
+            phone = ?,
+            email = ?,
+            website = ?,
+            address = ?,
+            notes = ?
+          WHERE id = ?
+        `;
+
+        await db.query(query, [
+          type,
+          name,
+          trn_number,
+          trn_certificate,
+          trade_license,
+          avg_lead_time,
+          supplier_rating,
+          currency,
+          status,
+          credit_limit || 0,
+          payment_terms,
+          opening_balance || 0,
+          contact_person_name,
+          phone,
+          email,
+          website,
+          address,
+          notes,
+          id,
+        ]);
+
+        return NextResponse.json({ success: true });
+      } catch (err: any) {
+        console.error(err.sqlMessage);
+        return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+      }
+    }
+
     if (body.action === "resetSupplierAndQuotation") {
       const query = `UPDATE mr_line_supplier_quotation SET approval_status = NULL WHERE mr_line_id = ?`;
 
@@ -158,8 +235,24 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (body.action === "resetSupplierAndQuotationQS") {
+      const query = `UPDATE mr_line_supplier_quotation SET qs_approval_status = NULL WHERE mr_line_id = ?`;
+
+      await db.query(query, [body.mr_line_id]);
+
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "rejectAllSupplierAndQuotation") {
       const query = `UPDATE mr_line_supplier_quotation SET approval_status = 'Rejected', reject_comment = ? WHERE mr_line_id = ?`;
+
+      await db.query(query, [body.reject_comment, body.mr_line_id]);
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "rejectAllSupplierAndQuotationQS") {
+      const query = `UPDATE mr_line_supplier_quotation SET qs_approval_status = 'Rejected', qs_reject_comment = ? WHERE mr_line_id = ?`;
 
       await db.query(query, [body.reject_comment, body.mr_line_id]);
 
@@ -212,7 +305,9 @@ export async function PUT(req: Request) {
               unit_price = ?, 
               total_price = ?,
               approval_status = NULL,
-              reject_comment = NULL
+              reject_comment = NULL,
+              qs_approval_status = NULL,
+              qs_reject_comment = NULL
           WHERE id = ?`,
             [
               quotation.supplier_id,
@@ -268,6 +363,14 @@ export async function PUT(req: Request) {
         { status: 200 },
       );
     }
+
+    if (body.action === "approveAllSupplierAndQuotationQS") {
+      const query = `UPDATE mr_line_supplier_quotation SET qs_approval_status = 'Approved' WHERE mr_line_id = ?`;
+
+      await db.query(query, [body.mr_line_id]);
+
+      return NextResponse.json({ success: true });
+    }
   } catch (err: any) {
     console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
@@ -277,6 +380,12 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const body = await req.json();
+
+    if (body.action === "deleteSupplier") {
+      const query = "DELETE FROM suppliers WHERE id = ?";
+      await db.query(query, [Number(body.id)]);
+      return NextResponse.json({ success: true });
+    }
 
     if (body.action === "deleteNonApprovedQuotationFiles") {
       const { approved_suppliers } = body;
