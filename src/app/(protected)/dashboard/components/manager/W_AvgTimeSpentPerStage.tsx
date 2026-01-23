@@ -199,7 +199,7 @@ export default function AvgTimeSpentPerStageWidget() {
                 key={index}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
+                  gridTemplateColumns: "1.5fr 1fr",
                   gap: "10px",
                 }}
               >

@@ -21,7 +21,7 @@ export default function SideBar() {
       : []),
 
     { label: "Vendors", path: "/vendor", icon: "/icons/vendors.svg" },
-    { label: "Inventory", path: "/inventory", icon: "/icons/vendors.svg" },
+    { label: "Inventory", path: "/inventory", icon: "/icons/inventory.svg" },
 
     /* ...(INVENTORY_DEPARTMENT_IDS.includes(userInfo?.departmentID ?? 0)
       ? [
