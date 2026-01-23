@@ -32,18 +32,47 @@ export async function POST(req: Request) {
     }
 
     if (body.action === "createBoqLine") {
-      // Start a transaction to ensure data consistency
-      const connection = await db.getConnection();
-
       try {
-        await connection.beginTransaction();
+        // Get the maximum orders for this category/subcategory/item
+        const [maxCategoryOrder]: any = await db.query(
+          `SELECT COALESCE(MAX(category_order), -1) as max_order 
+       FROM boq_lines 
+       WHERE boq_id = ? AND category = ?`,
+          [Number(body.boq_id), body.category.toUpperCase()],
+        );
 
-        // Insert BOQ line without location_id (deprecated field)
+        const [maxSubcategoryOrder]: any = await db.query(
+          `SELECT COALESCE(MAX(subcategory_order), -1) as max_order 
+       FROM boq_lines 
+       WHERE boq_id = ? AND category = ? AND sub_category = ?`,
+          [
+            Number(body.boq_id),
+            body.category.toUpperCase(),
+            body.sub_category.toUpperCase(),
+          ],
+        );
+
+        const [maxItemOrder]: any = await db.query(
+          `SELECT COALESCE(MAX(item_order), -1) as max_order 
+       FROM boq_lines 
+       WHERE boq_id = ? AND category = ? AND sub_category = ?`,
+          [
+            Number(body.boq_id),
+            body.category.toUpperCase(),
+            body.sub_category.toUpperCase(),
+          ],
+        );
+
+        const nextCategoryOrder = maxCategoryOrder[0].max_order + 1;
+        const nextSubcategoryOrder = maxSubcategoryOrder[0].max_order + 1;
+        const nextItemOrder = maxItemOrder[0].max_order + 1;
+
+        // Insert BOQ line WITH order values
         const query = `
-          INSERT INTO boq_lines 
-          (boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+      INSERT INTO boq_lines 
+      (boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments, category_order, subcategory_order, item_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
         const values = [
           Number(body.boq_id),
@@ -59,13 +88,15 @@ export async function POST(req: Request) {
           body.attachments && body.attachments.length > 0
             ? JSON.stringify(body.attachments)
             : null,
+          nextCategoryOrder,
+          nextSubcategoryOrder,
+          nextItemOrder,
         ];
 
-        const [result] = await connection.query<ResultSetHeader>(query, values);
+        const [result] = await db.query<ResultSetHeader>(query, values);
         const boqLineId = result.insertId;
 
         // Insert location associations into junction table
-        // body.location_ids should be an array of location IDs: [1, 2, 3]
         if (
           body.location_ids &&
           Array.isArray(body.location_ids) &&
@@ -76,37 +107,90 @@ export async function POST(req: Request) {
             Number(locationId),
           ]);
 
-          await connection.query(
+          await db.query(
             `INSERT INTO jt_boq_line_location (boq_line_id, location_id) VALUES ?`,
             [locationValues],
           );
         }
 
-        await connection.commit();
-        connection.release();
-
         return NextResponse.json({ success: true, id: boqLineId });
       } catch (error) {
-        await connection.rollback();
-        connection.release();
         throw error;
       }
     }
 
     if (body.action === "duplicateBoqLine") {
-      const query = `
-        INSERT INTO boq_lines 
-        (boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments)
-        SELECT boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments
-        FROM boq_lines
-        WHERE id = ?
-      `;
+      try {
+        // Get the original item's category and subcategory
+        const [originalItem]: any = await db.query(
+          `SELECT boq_id, category, sub_category FROM boq_lines WHERE id = ?`,
+          [Number(body.id)],
+        );
 
-      const values = [Number(body.id)];
+        if (!originalItem || originalItem.length === 0) {
+          throw new Error("Original BOQ line not found");
+        }
 
-      await db.query<ResultSetHeader>(query, values);
+        const { boq_id, category, sub_category } = originalItem[0];
 
-      return NextResponse.json({ success: true });
+        // Get the maximum orders for this category/subcategory
+        const [maxCategoryOrder]: any = await db.query(
+          `SELECT COALESCE(MAX(category_order), -1) as max_order 
+       FROM boq_lines 
+       WHERE boq_id = ? AND category = ?`,
+          [boq_id, category],
+        );
+
+        const [maxSubcategoryOrder]: any = await db.query(
+          `SELECT COALESCE(MAX(subcategory_order), -1) as max_order 
+       FROM boq_lines 
+       WHERE boq_id = ? AND category = ? AND sub_category = ?`,
+          [boq_id, category, sub_category],
+        );
+
+        const [maxItemOrder]: any = await db.query(
+          `SELECT COALESCE(MAX(item_order), -1) as max_order 
+       FROM boq_lines 
+       WHERE boq_id = ? AND category = ? AND sub_category = ?`,
+          [boq_id, category, sub_category],
+        );
+
+        const nextCategoryOrder = maxCategoryOrder[0].max_order + 1;
+        const nextSubcategoryOrder = maxSubcategoryOrder[0].max_order + 1;
+        const nextItemOrder = maxItemOrder[0].max_order + 1;
+
+        // Duplicate the item with new order values
+        const query = `
+      INSERT INTO boq_lines 
+      (boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments, category_order, subcategory_order, item_order)
+      SELECT boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments, ?, ?, ?
+      FROM boq_lines
+      WHERE id = ?
+    `;
+
+        const values = [
+          nextCategoryOrder,
+          nextSubcategoryOrder,
+          nextItemOrder,
+          Number(body.id),
+        ];
+
+        const [result] = await db.query<ResultSetHeader>(query, values);
+        const newBoqLineId = result.insertId;
+
+        // Also duplicate location associations if they exist
+        await db.query(
+          `INSERT INTO jt_boq_line_location (boq_line_id, location_id)
+       SELECT ?, location_id
+       FROM jt_boq_line_location
+       WHERE boq_line_id = ?`,
+          [newBoqLineId, Number(body.id)],
+        );
+
+        return NextResponse.json({ success: true, id: newBoqLineId });
+      } catch (error) {
+        throw error;
+      }
     }
   } catch (err: any) {
     console.error("SQL Error:", err.sqlMessage || err.message);

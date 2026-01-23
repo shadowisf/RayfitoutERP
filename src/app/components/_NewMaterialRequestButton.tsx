@@ -22,7 +22,9 @@ export default function NewMrButton() {
   const [purposeReasonID, setPurposeReasonID] = useState<string | number>("");
   /* const [boqLineID, setBoqLineID] = useState<(string | number)[]>([]); */
   const [projectID, setProjectID] = useState<string | number>("");
-  const [requestedBy, setRequestedBy] = useState(userInfo?.name);
+  const [requestedBy, setRequestedBy] = useState<string | number>(
+    String(userInfo?.name),
+  );
   const [neededBy, setNeededBy] = useState("");
 
   useEffect(function () {
@@ -180,7 +182,7 @@ export default function NewMrButton() {
           <div className="input-row half">
             <InputItem
               label={"REQUESTED BY"}
-              value={requestedBy || ""}
+              value={requestedBy}
               type={"text"}
               placeholder={"ENTER NAME"}
               onChange={(e) => setRequestedBy(e.target.value)}
