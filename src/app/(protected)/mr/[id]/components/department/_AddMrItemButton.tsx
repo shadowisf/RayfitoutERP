@@ -257,10 +257,10 @@ export default function AddMrItemButton({
       return;
     }
 
-    if (!boqLineID && purposeID === 1) {
+    /* if (!boqLineID && purposeID === 1) {
       toast("Please select a bill of quantity line", "error");
       return;
-    }
+    } */
 
     try {
       let attachmentUrl = null;
@@ -398,6 +398,7 @@ export default function AddMrItemButton({
             <div className="input-item">
               <label className="custom">
                 <span>BILL OF QUANTITY</span>
+                <small>(OPTIONAL)</small>
               </label>
 
               <SelectBoqItemButton

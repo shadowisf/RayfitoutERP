@@ -224,8 +224,11 @@ export default function MR() {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
-    // Managers (department ID 8) can view all MRs
+    // Managers (department ID 8 and 16) can view all MRs
     if (userDeptId === 8) return true;
+
+    // Completed MRs (progress_id 25) are accessible to everyone
+    if (mr.progress_id === 25) return true;
 
     // Users can always view their own department's MRs
     if (userDeptId === mr.department_id) return true;

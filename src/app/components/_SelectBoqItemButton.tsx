@@ -32,6 +32,7 @@ export default function SelectBoqItemButton({
   const locationIcon = "/icons/location-boq.svg";
   const arrowRight = "/icons/arrow-right.svg";
   const searchIcon = "/icons/search.svg";
+  const crossIcon = "/icons/cross-small.svg";
 
   const { userInfo } = useAuth();
 
@@ -722,7 +723,14 @@ export default function SelectBoqItemButton({
     </FormPopUp>
   );
 
-  // Return just a fragment - the portal will handle rendering the modal
+  const handleReset = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // prevent opening modal
+    setTempSelectedBoqID("");
+    setSelectedBoqInfo("");
+    onSelectBoq("", ""); // notify parent that BOQ is cleared
+  };
+
   return (
     <>
       <Button
@@ -738,19 +746,29 @@ export default function SelectBoqItemButton({
         disabled={disabled}
         style={style}
       >
-        <span
-          style={{
-            maxWidth: "300px", // adjust as needed
-            display: "inline-block",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {currentBoqLineID && selectedBoqInfo
-            ? selectedBoqInfo
-            : "SELECT BOQ ITEM"}
-        </span>
+        {currentBoqLineID && selectedBoqInfo ? (
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <span
+              style={{
+                maxWidth: "300px", // adjust as needed
+                display: "inline-block",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {selectedBoqInfo}
+            </span>
+            <img
+              src={crossIcon}
+              alt="cross"
+              style={{ filter: "invert(1)" }}
+              onClick={handleReset}
+            />
+          </div>
+        ) : (
+          "SELECT BOQ ITEM"
+        )}
       </Button>
 
       {typeof window !== "undefined" &&

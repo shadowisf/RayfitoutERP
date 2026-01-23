@@ -22,10 +22,14 @@ export default function NewMrButton() {
   const [purposeReasonID, setPurposeReasonID] = useState<string | number>("");
   /* const [boqLineID, setBoqLineID] = useState<(string | number)[]>([]); */
   const [projectID, setProjectID] = useState<string | number>("");
-  const [requestedBy, setRequestedBy] = useState<string | number>(
-    String(userInfo?.name),
-  );
+  const [requestedBy, setRequestedBy] = useState<string | number>("");
   const [neededBy, setNeededBy] = useState("");
+
+  useEffect(() => {
+    if (isOpen && userInfo?.name) {
+      setRequestedBy(userInfo.name);
+    }
+  }, [isOpen, userInfo]);
 
   useEffect(function () {
     fetch("/api/mr/getPurposeReasonValues")
@@ -74,12 +78,11 @@ export default function NewMrButton() {
 
       setPurposeReasonID("");
       setProjectID("");
-      setRequestedBy("");
       setNeededBy("");
 
       router.refresh();
 
-      router.push(`/mr/${data.mrHeaderId}`);
+      router.replace(`/mr/${data.mrHeaderId}`);
     } else {
       toast("Failed to create material request", "error");
     }

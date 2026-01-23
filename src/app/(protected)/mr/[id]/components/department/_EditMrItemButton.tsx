@@ -235,10 +235,10 @@ export default function EditMrItemButton({
       return;
     }
 
-    if (!boqLineID && purposeID === 1) {
+    /* if (!boqLineID && purposeID === 1) {
       toast("Please select a bill of quantity line", "error");
       return;
-    }
+    } */
 
     const cleanedSubcategoryIds = materialSubCategoryIDs
       .filter((id) => id && !isNaN(Number(id)))
@@ -371,6 +371,7 @@ export default function EditMrItemButton({
             <div className="input-item">
               <label className="custom">
                 <span>BILL OF QUANTITY</span>
+                <small>(OPTIONAL)</small>
               </label>
 
               <SelectBoqItemButton
