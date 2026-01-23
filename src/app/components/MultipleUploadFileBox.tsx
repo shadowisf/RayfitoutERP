@@ -13,6 +13,7 @@ type MultipleUploadFileBoxProps = {
   acceptedFileTypes: string;
   buttonLabel?: string;
   existingFileUrls?: string[] | null; // New prop for existing file URLs
+  onExistingFilesChange?: (files: string[]) => void;
 };
 
 export default function MultipleUploadFileBox({
@@ -24,6 +25,7 @@ export default function MultipleUploadFileBox({
   acceptedFileTypes,
   buttonLabel = "UPLOAD FILES",
   existingFileUrls,
+  onExistingFilesChange,
 }: MultipleUploadFileBoxProps) {
   const pdfIcon = "/icons/pdf.svg";
   const uploadIcon = "/icons/upload.svg";
@@ -95,10 +97,23 @@ export default function MultipleUploadFileBox({
     }
   };
 
+  /* const removeExistingFile = (index: number) => {
+    const newShowExisting = [...showExisting];
+    newShowExisting[index] = false;
+    setShowExisting(newShowExisting);
+  }; */
   const removeExistingFile = (index: number) => {
     const newShowExisting = [...showExisting];
     newShowExisting[index] = false;
     setShowExisting(newShowExisting);
+
+    // Update parent component with new list of visible files
+    if (onExistingFilesChange && existingFileUrls) {
+      const newExistingFiles = existingFileUrls.filter((_, i) =>
+        i === index ? false : showExisting[i],
+      );
+      onExistingFilesChange(newExistingFiles);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {

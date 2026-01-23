@@ -21,8 +21,9 @@ export default function SideBar() {
       : []),
 
     { label: "Vendors", path: "/vendor", icon: "/icons/vendors.svg" },
+    { label: "Inventory", path: "/inventory", icon: "/icons/vendors.svg" },
 
-    ...(INVENTORY_DEPARTMENT_IDS.includes(userInfo?.departmentID ?? 0)
+    /* ...(INVENTORY_DEPARTMENT_IDS.includes(userInfo?.departmentID ?? 0)
       ? [
           {
             label: "Inventory",
@@ -30,7 +31,7 @@ export default function SideBar() {
             icon: "/icons/inventory.svg",
           },
         ]
-      : []),
+      : []), */
   ];
 
   const isActive = (path: string) => {

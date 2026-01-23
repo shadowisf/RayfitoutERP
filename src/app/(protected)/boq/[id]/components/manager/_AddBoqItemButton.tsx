@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, SetStateAction } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import Button from "@/app/components/Button";
@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
+import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 
 type AddBoqItemButtonProps = {
   boqHeaderID: number;
@@ -49,7 +50,7 @@ export default function AddBoqItemButton({
   const [ratePerQuantity, setRatePerQuantity] = useState<string | number>("");
   const [totalCost, setTotalCost] = useState<string | number>("");
   const [itemDescription, setItemDescription] = useState("");
-  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[] | null>(null);
 
   useEffect(() => {
     if (!isOpen) return; // Don't fetch unless modal is open
@@ -113,7 +114,7 @@ export default function AddBoqItemButton({
       // Step 1: Upload files to S3 if there are any
       let attachmentUrls: string[] = [];
 
-      if (attachmentFiles.length > 0) {
+      if (attachmentFiles && attachmentFiles.length > 0) {
         const formData = new FormData();
         attachmentFiles.forEach((file) => {
           formData.append("files", file);
@@ -376,14 +377,21 @@ export default function AddBoqItemButton({
 
           {/* 6th row */}
           <div className="input-row full">
-            <div className="input-item">
+            {/* <div className="input-item">
               <label>ATTACHMENTS</label>
 
               <UploadFilesButton
                 onFilesChange={setAttachmentFiles}
                 stageDeletion={true}
               />
-            </div>
+            </div> */}
+
+            <MultipleUploadFileBox
+              fileState={attachmentFiles}
+              setFileState={setAttachmentFiles}
+              label={"ATTACHMENTS"}
+              acceptedFileTypes={".jpeg,.jpg,.png,.webp"}
+            />
           </div>
         </FormPopUp>
       )}

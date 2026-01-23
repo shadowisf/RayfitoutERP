@@ -4,17 +4,20 @@ import Button from "@/app/components/Button";
 import { useState, useEffect } from "react";
 import { MrHeader } from "../types/mrHeader";
 
-type BudgetTrackerMeterProps = {
-  mrHeader: MrHeader;
+type props = {
+  /* mrHeader: MrHeader; */
+  quotedBudget: number;
+  allocatedBudget: number;
 };
 
 export default function BudgetTrackerMeter({
-  mrHeader,
-}: BudgetTrackerMeterProps) {
-  const [quotedBudget, setQuotedBudget] = useState(0);
-  const [allocatedBudget, setAllocatedBudget] = useState(0);
+  quotedBudget,
+  allocatedBudget,
+}: props) {
+  /* const [quotedBudget, setQuotedBudget] = useState(0);
+  const [allocatedBudget, setAllocatedBudget] = useState(0); */
 
-  useEffect(() => {
+  /* useEffect(() => {
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getBudgetTrackingDetailsByMrHeaderID`,
       {
@@ -25,7 +28,7 @@ export default function BudgetTrackerMeter({
         body: JSON.stringify({
           mr_header_id: mrHeader.id,
         }),
-      }
+      },
     )
       .then((res) => {
         if (!res.ok) {
@@ -40,7 +43,7 @@ export default function BudgetTrackerMeter({
       .catch((err) => {
         console.error("Error fetching budget details:", err);
       });
-  }, [mrHeader.id]);
+  }, [mrHeader.id]); */
 
   const percentageUsed =
     quotedBudget > 0
@@ -80,7 +83,7 @@ export default function BudgetTrackerMeter({
     >
       {/* Left side - Budget Info */}
       <div>
-        <small>TOTAL ALLOCATED BUDGET</small>
+        <small>TOTAL SPENT</small>
 
         <div
           style={{
@@ -99,7 +102,7 @@ export default function BudgetTrackerMeter({
           </h2>
         </div>
 
-        <br />
+        {/* <br />
         <br />
         <br />
         <br />
@@ -113,7 +116,7 @@ export default function BudgetTrackerMeter({
           style={{ borderRadius: "15px" }}
         >
           <span>Details</span> &gt;
-        </Button>
+        </Button> */}
       </div>
 
       {/* Right side - Gauge Meter */}

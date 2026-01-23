@@ -23,10 +23,12 @@ export default function AvgTimeSpentPerStageWidget() {
   const stageOrder = [
     "Draft",
     "Initial approval rejected",
-    "Awaiting initial approval",
+    "Awaiting QS initial approval",
+    "Awaiting mgr initial approval",
     "Awaiting quotations",
     "Price approval rejected",
-    "Awaiting price approval",
+    "Awaiting QS price approval",
+    "Awaiting mgr price approval",
     "Awaiting LPO & invoice",
     "Payment rejected",
     "Pending payment",
@@ -47,7 +49,7 @@ export default function AvgTimeSpentPerStageWidget() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filter }),
-      }
+      },
     )
       .then((res) => {
         if (!res.ok) {
@@ -63,16 +65,17 @@ export default function AvgTimeSpentPerStageWidget() {
         // ❌ Remove Completed stage and filter out < 1 minute or 0
         const filtered = responseData.filter(
           (item) =>
-            item.stage.toLowerCase() !== "completed" && item.averageMinutes >= 1
+            item.stage.toLowerCase() !== "completed" &&
+            item.averageMinutes >= 1,
         );
 
         // ✅ Sort by defined stage order
         const sorted = filtered.sort((a, b) => {
           const indexA = stageOrder.findIndex(
-            (stage) => stage.toLowerCase() === a.stage.toLowerCase()
+            (stage) => stage.toLowerCase() === a.stage.toLowerCase(),
           );
           const indexB = stageOrder.findIndex(
-            (stage) => stage.toLowerCase() === b.stage.toLowerCase()
+            (stage) => stage.toLowerCase() === b.stage.toLowerCase(),
           );
 
           return (
@@ -190,7 +193,7 @@ export default function AvgTimeSpentPerStageWidget() {
             return (
               <div
                 key={index}
-                style={{ display: "flex", alignItems: "center" }}
+                style={{ display: "flex", alignItems: "center", gap: "10px" }}
               >
                 {/* Stage name */}
                 <div style={{ minWidth: "200px", fontSize: "14px" }}>

@@ -6,9 +6,7 @@ import { MrLine } from "../types/mrLine";
 import Button from "@/app/components/Button";
 import { MrHeader } from "../types/mrHeader";
 import BudgetTrackerMeter from "./BudgetTrackerMeter";
-import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import { useAuth } from "@/app/context/AuthContext";
-import EditBoqItemLocationButton from "@/app/(protected)/boq/[id]/components/manager/_EditBoqItemLocationButton";
 
 type BoqReferencePopUpProps = {
   mrHeader: MrHeader;
@@ -156,7 +154,10 @@ export default function BoqReferencePopUp({
           style={{ whiteSpace: "pre-wrap" }}
         >
           {/* Budget Tracking Section */}
-          <BudgetTrackerMeter mrHeader={mrHeader} />
+          <BudgetTrackerMeter
+            /* mrHeader={mrHeader} */ quotedBudget={item.boq_total_cost}
+            allocatedBudget={totalSpend}
+          />
 
           <br />
           <br />
@@ -173,8 +174,8 @@ export default function BoqReferencePopUp({
                   userInfo?.departmentID === 12 ||
                   userInfo?.departmentID === 10) && (
                   <>
-                    <th>TOTAL PRICE</th>
                     <th>TOTAL SPEND</th>
+                    <th>TOTAL PRICE</th>
                   </>
                 )}
                 <th>ATTACHMENT(S)</th>
@@ -253,8 +254,8 @@ export default function BoqReferencePopUp({
                   userInfo?.departmentID === 12 ||
                   userInfo?.departmentID === 10) && (
                   <>
-                    <td>AED {item.boq_total_cost?.toLocaleString()}</td>
                     <td>AED {totalSpend.toLocaleString()}</td>
+                    <td>AED {item.boq_total_cost?.toLocaleString()}</td>
                   </>
                 )}
 

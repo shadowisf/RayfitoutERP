@@ -296,18 +296,17 @@ const styles = StyleSheet.create({
 
   // Attachment Image
   attachmentImage: {
-    width: 30,
-    height: 30,
+    /* width: 35, */
+    height: 40,
     objectFit: "contain",
   },
   attachmentContainer: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 3,
   },
   attachmentWrapper: {
-    width: 30,
-    height: 30,
+    /* width: 35, */
+    height: 40,
   },
 
   // Location and Scope styles

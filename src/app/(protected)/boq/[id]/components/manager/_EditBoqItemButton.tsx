@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, SetStateAction } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import Button from "@/app/components/Button";
@@ -10,6 +10,7 @@ import { BoqLine } from "../../types/boqLine";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
+import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 
 type EditBoqItemButtonProps = {
   item: BoqLine;
@@ -54,11 +55,11 @@ export default function EditBoqItemButton({
   const [totalCost, setTotalCost] = useState<string | number>(item.total_cost);
   const [itemDescription, setItemDescription] = useState(item.item_description);
 
-  // Existing attachments (S3 URLs)
+  const [originalAttachments, setOriginalAttachments] = useState<string[]>([]);
   const [existingAttachments, setExistingAttachments] = useState<string[]>([]);
-  // New files to upload
-  const [newAttachmentFiles, setNewAttachmentFiles] = useState<File[]>([]);
-  // Files marked for deletion
+  const [newAttachmentFiles, setNewAttachmentFiles] = useState<File[] | null>(
+    null,
+  );
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
 
   // EditBoqItemLocationButton.tsx
@@ -99,27 +100,44 @@ export default function EditBoqItemButton({
       // Parse existing attachments when modal opens
       try {
         if (item.attachments) {
+          let parsed: string[] = [];
+
           if (Array.isArray(item.attachments)) {
-            setExistingAttachments(item.attachments);
+            parsed = item.attachments;
           } else if (
             typeof item.attachments === "string" &&
             item.attachments.trim() !== ""
           ) {
-            const parsed = JSON.parse(item.attachments);
-            if (Array.isArray(parsed)) {
-              setExistingAttachments(parsed);
+            const parsedJson = JSON.parse(item.attachments);
+            if (Array.isArray(parsedJson)) {
+              parsed = parsedJson;
             }
           }
+
+          setOriginalAttachments(parsed);
+          setExistingAttachments(parsed);
         }
       } catch (error) {
         console.error("Failed to parse existing attachments:", error);
+        setOriginalAttachments([]);
         setExistingAttachments([]);
       }
     } else {
-      // Reset filesToDelete when modal closes
+      // Reset all states when modal closes
       setFilesToDelete([]);
+      setNewAttachmentFiles(null);
     }
   }, [isOpen, item.attachments]);
+
+  // Track which existing files were removed
+  useEffect(() => {
+    if (isOpen && originalAttachments.length > 0) {
+      const removed = originalAttachments.filter(
+        (url) => !existingAttachments.includes(url),
+      );
+      setFilesToDelete(removed);
+    }
+  }, [existingAttachments, originalAttachments, isOpen]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -179,7 +197,7 @@ export default function EditBoqItemButton({
       // Step 2: Upload new files to S3 if there are any
       let newAttachmentUrls: string[] = [];
 
-      if (newAttachmentFiles.length > 0) {
+      if (newAttachmentFiles && newAttachmentFiles.length > 0) {
         const formData = new FormData();
         newAttachmentFiles.forEach((file) => {
           formData.append("files", file);
@@ -204,7 +222,7 @@ export default function EditBoqItemButton({
         }
       }
 
-      // Step 3: Combine existing and new attachments
+      // Step 3: Combine existing (not deleted) and new attachments
       const allAttachments = [...existingAttachments, ...newAttachmentUrls];
 
       // Step 4: Update BOQ item
@@ -237,7 +255,7 @@ export default function EditBoqItemButton({
 
         // Reset states
         setFilesToDelete([]);
-        setNewAttachmentFiles([]);
+        setNewAttachmentFiles(null);
 
         router.refresh();
       } else {
@@ -320,13 +338,6 @@ export default function EditBoqItemButton({
               ]}
               placeholder="SELECT SCOPE OF WORK"
             />
-            {/* <SingleSelectDropdown
-              label={"LOCATION"}
-              selectedValue={locationID}
-              onChange={setLocationID}
-              placeholder={"SELECT LOCATION"}
-              dbData={locationValues}
-            /> */}
             <MultiSelectDropdown
               label={"LOCATION"}
               selectedValues={locationID}
@@ -427,17 +438,15 @@ export default function EditBoqItemButton({
           </div>
 
           {/* 6th row - Attachments */}
-          <div className="input-row">
-            <div className="input-item">
-              <label>ATTACHMENTS</label>
-              <UploadFilesButton
-                onFilesChange={setNewAttachmentFiles}
-                onExistingFilesChange={setExistingAttachments}
-                onFilesToDeleteChange={setFilesToDelete}
-                existingFiles={existingAttachments}
-                stageDeletion={true}
-              />
-            </div>
+          <div className="input-row full">
+            <MultipleUploadFileBox
+              fileState={newAttachmentFiles}
+              setFileState={setNewAttachmentFiles}
+              label={"ATTACHMENTS"}
+              acceptedFileTypes={".jpeg,.jpg,.png,.webp"}
+              existingFileUrls={existingAttachments}
+              onExistingFilesChange={setExistingAttachments}
+            />
           </div>
         </FormPopUp>
       )}

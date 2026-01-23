@@ -638,7 +638,7 @@ export default function BoqLinesView({
                   <tr>
                     <td></td>
                     <td>
-                      <h3>SUBTOTAL FOR {subCategory}</h3>
+                      <h3>SUBTOTAL {/* FOR {subCategory} */}</h3>
                     </td>
                     <td colSpan={canSeePrice ? 2 : 1}></td>
                     <td>
