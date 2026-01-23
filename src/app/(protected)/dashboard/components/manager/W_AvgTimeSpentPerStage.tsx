@@ -24,11 +24,11 @@ export default function AvgTimeSpentPerStageWidget() {
     "Draft",
     "Initial approval rejected",
     "Awaiting QS initial approval",
-    "Awaiting mgr initial approval",
+    "Awaiting manager initial approval",
     "Awaiting quotations",
     "Price approval rejected",
     "Awaiting QS price approval",
-    "Awaiting mgr price approval",
+    "Awaiting manager price approval",
     "Awaiting LPO & invoice",
     "Payment rejected",
     "Pending payment",
@@ -193,7 +193,11 @@ export default function AvgTimeSpentPerStageWidget() {
             return (
               <div
                 key={index}
-                style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                style={{
+                  display: "flex",
+                  alignItems: "space-between",
+                  gap: "10px",
+                }}
               >
                 {/* Stage name */}
                 <div style={{ minWidth: "200px", fontSize: "14px" }}>
