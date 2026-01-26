@@ -324,11 +324,16 @@ export default function SupplierAndQuotationButton({
     if (field === "unit_price") {
       const unitPrice = parseFloat(value as string);
       const quantity = parseFloat(mrLine.quantity as any) || 0;
-      const totalPrice = Math.round(unitPrice * quantity);
 
-      newQuotations[index].total_price = isNaN(totalPrice)
-        ? ""
-        : totalPrice.toString();
+      const total = unitPrice * quantity;
+
+      if (isNaN(total)) {
+        newQuotations[index].total_price = "";
+      } else {
+        newQuotations[index].total_price = Number.isInteger(total)
+          ? total.toString() // whole number
+          : total.toFixed(3).replace(/\.?0+$/, ""); // decimal only if needed
+      }
     }
 
     setSupplierQuotations(newQuotations);
@@ -829,7 +834,7 @@ export default function SupplierAndQuotationButton({
                             type="text"
                             placeholder="ENTER UNIT PRICE"
                             value={quotation.unit_price}
-                            onChange={(e) => {
+                            /* onChange={(e) => {
                               const val = e.target.value;
 
                               if (val === "" || /^\d+$/.test(val)) {
@@ -839,6 +844,30 @@ export default function SupplierAndQuotationButton({
                                   e.target.value,
                                 );
                               }
+                            }} */
+                            onChange={(e) => {
+                              let val = e.target.value;
+
+                              // Remove any commas
+                              val = val.replace(/,/g, "");
+
+                              // Clear input if empty
+                              if (val === "") {
+                                updateQuotation(index, "unit_price", "");
+                                return;
+                              }
+
+                              // Allow only numbers and a single decimal point
+                              if (!/^\d*\.?\d*$/.test(val)) {
+                                return;
+                              }
+
+                              // Set the value as-is (with decimal if present)
+                              updateQuotation(
+                                index,
+                                "unit_price",
+                                e.target.value,
+                              );
                             }}
                             required
                           />
