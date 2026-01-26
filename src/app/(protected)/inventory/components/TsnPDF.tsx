@@ -383,6 +383,7 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
           <View style={styles.tableHeader}>
             <Text style={styles.tableColIndex}>#</Text>
             <Text style={styles.tableColDescription}>ITEM</Text>
+            <Text style={styles.tableColDescription}>SPECIFICATION</Text>
             <Text style={styles.tableColQuantity}>QUANTITY</Text>
             {transaction.type.toLowerCase().includes("issue") && (
               <Text style={styles.tableColSerial}>MODEL / SERIAL NUMBER</Text>
@@ -400,6 +401,9 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
                   hyphenationCallback={(word) => [word]}
                 >
                   {item.description}
+                </Text>
+                <Text style={styles.tableColDescription}>
+                  {item.specification}
                 </Text>
                 <Text style={styles.tableColQuantity}>
                   {item.quantity} {item.unit}

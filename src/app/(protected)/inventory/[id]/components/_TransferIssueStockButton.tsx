@@ -97,6 +97,7 @@ export default function TransferIssueStocksButton({
     )
       .then((res) => res.json())
       .then((data) => {
+        console.log(data);
         // Store the full data for later quantity calculation
         setStocksData(data);
 
@@ -137,11 +138,12 @@ export default function TransferIssueStocksButton({
 
     // Calculate quantity for the selected location
     let locationQuantity = 0;
+    const round = (n: number) => Math.round(n * 1000) / 1000;
 
     // Add quantity from stocks table for this location
     stocksData.stocks.forEach((stock: any) => {
       if (stock.location === from) {
-        locationQuantity += stock.quantity;
+        locationQuantity = round(locationQuantity + Number(stock.quantity));
       }
     });
 
@@ -150,21 +152,27 @@ export default function TransferIssueStocksButton({
       if (transaction.type.includes("Issue")) {
         // Subtract issues from the location if received
         if (transaction.received && transaction.from_location === from) {
-          locationQuantity -= transaction.quantity;
+          locationQuantity = round(
+            locationQuantity - Number(transaction.quantity),
+          );
         }
       } else if (transaction.type.toLowerCase().includes("transfer")) {
         // Subtract from from_location
         if (transaction.from_location === from) {
-          locationQuantity -= transaction.quantity;
+          locationQuantity = round(
+            locationQuantity - Number(transaction.quantity),
+          );
         }
         // Add to to_location
         if (transaction.to_location === from) {
-          locationQuantity += transaction.quantity;
+          locationQuantity = round(
+            locationQuantity + Number(stocksData.quantity),
+          );
         }
       }
     });
 
-    setAvailableQuantity(locationQuantity > 0 ? locationQuantity : 0);
+    setAvailableQuantity(locationQuantity > 0 ? round(locationQuantity) : 0);
   }, [from, stocksData]);
 
   useEffect(() => {
@@ -186,8 +194,16 @@ export default function TransferIssueStocksButton({
       return;
     }
 
-    if (Number(quantity) > Number(availableQuantity)) {
-      toast(`Quantity cannot exceed available quantity`, "error");
+    const qty = Number(quantity);
+    const available = Number(availableQuantity);
+
+    if (isNaN(qty) || qty <= 0) {
+      toast("Please enter a valid quantity", "error");
+      return;
+    }
+
+    if (qty > available) {
+      toast("Quantity cannot exceed available quantity", "error");
       return;
     }
 
@@ -508,7 +524,15 @@ export default function TransferIssueStocksButton({
               <div className="input-row three-col">
                 <InputItem
                   label={"AVAILABLE QUANTITY"}
-                  value={availableQuantity === "" ? "" : `${availableQuantity}`}
+                  value={
+                    availableQuantity === ""
+                      ? ""
+                      : Number.isInteger(Number(availableQuantity))
+                        ? String(availableQuantity)
+                        : Number(availableQuantity)
+                            .toFixed(3)
+                            .replace(/\.?0+$/, "")
+                  }
                   type={"text"}
                   placeholder={""}
                   required
@@ -531,10 +555,18 @@ export default function TransferIssueStocksButton({
                       : "ENTER QUANTITY TO ISSUE"
                   }
                   required
-                  onChange={(e) => {
+                  /* onChange={(e) => {
                     const val = e.target.value;
                     if (val === "" || /^\d+$/.test(val)) {
                       setQuantity(val === "" ? "" : Number(val));
+                    }
+                  }} */
+                  onChange={(e) => {
+                    let val = e.target.value;
+
+                    // Allow up to 3 decimal places
+                    if (val === "" || /^\d*\.?\d{0,3}$/.test(val)) {
+                      setQuantity(val);
                     }
                   }}
                   disabled={from === ""}

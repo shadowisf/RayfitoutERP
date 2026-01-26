@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import ViewTSNPDFButton from "./_ViewTsnPDFButton";
 import UploadSignedTSCButton from "./_UploadSignedTSCButton";
+import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 
 type TransactionDetailsPopUpButtonProps = {
   transferID: number;
@@ -31,7 +32,7 @@ export default function TransactionDetailsPopUpButton({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: transferID }),
-          }
+          },
         );
         const data = await response.json();
 
@@ -208,6 +209,7 @@ export default function TransactionDetailsPopUpButton({
                 <tr>
                   <th>#</th>
                   <th>ITEM</th>
+                  <th>SPECIFICATION</th>
                   <th>QUANTITY</th>
                   <th>ATTACHMENT</th>
                 </tr>
@@ -251,6 +253,21 @@ export default function TransactionDetailsPopUpButton({
                         </div>
                         {item.description}
                       </div>
+                    </td>
+                    <td>
+                      {/* <Button
+                        componentType={"button"}
+                        bgColor={"rgba(239, 239, 239, 1)"}
+                        borderColor={"rgba(223, 223, 223, 1)"}
+                        textColor={"black"}
+                        style={{ padding: "7px 7px" }}
+                      >
+                        <img src={externalLinkIcon} alt="external link" />
+                      </Button> */}
+                      <InfoPopUpButton
+                        header={"SPECIFICATION"}
+                        text={item.specification}
+                      />
                     </td>
                     <td>{item.quantity}</td>
                     <td>
