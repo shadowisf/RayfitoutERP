@@ -10,6 +10,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
+import CreateLocationButton from "./_AddLocationButton";
 
 type AddBoqItemButtonProps = {
   boqHeaderID: number;
@@ -52,35 +53,17 @@ export default function AddBoqItemButton({
   const [itemDescription, setItemDescription] = useState("");
   const [attachmentFiles, setAttachmentFiles] = useState<File[] | null>(null);
 
+  const [isMounted, setIsMounted] = useState(true);
+
   useEffect(() => {
     if (!isOpen) return; // Don't fetch unless modal is open
 
-    let isMounted = true;
-
-    const fetchLocationValues = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
-        );
-
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-
-        const data = await res.json();
-
-        if (isMounted) {
-          setLocationValues(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch location values:", err);
-      }
-    };
+    setIsMounted(true);
 
     fetchLocationValues();
 
     return () => {
-      isMounted = false;
+      setIsMounted(false);
     };
   }, [isOpen]); // Only fetch when modal opens
 
@@ -106,6 +89,26 @@ export default function AddBoqItemButton({
     },
     [isOpen, autoCategory, autoSubCategory],
   );
+
+  const fetchLocationValues = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
+      );
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      if (isMounted) {
+        setLocationValues(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch location values:", err);
+    }
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -280,6 +283,9 @@ export default function AddBoqItemButton({
               onChange={setLocationID}
               placeholder="SELECT LOCATION"
               dbData={locationValues}
+              bottomButtonComponent={
+                <CreateLocationButton onSuccess={() => fetchLocationValues()} />
+              }
             />
           </div>
 

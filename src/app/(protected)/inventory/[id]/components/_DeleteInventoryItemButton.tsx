@@ -60,7 +60,7 @@ export default function DeleteInventoryItemButton({
         body: JSON.stringify({
           id: inventoryItem.id,
         }),
-      }
+      },
     );
 
     if (res.ok) {

@@ -192,6 +192,17 @@ export async function POST(req: Request) {
         throw error;
       }
     }
+
+    if (body.action === "addLocation") {
+      await db.query(
+        `
+        INSERT INTO lut_boq_headers_location (value) VALUES (?)
+      `,
+        [body.value],
+      );
+
+      return NextResponse.json({ success: true });
+    }
   } catch (err: any) {
     console.error("SQL Error:", err.sqlMessage || err.message);
     return NextResponse.json(

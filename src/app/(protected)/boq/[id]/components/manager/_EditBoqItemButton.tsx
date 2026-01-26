@@ -11,6 +11,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
+import CreateLocationButton from "./_AddLocationButton";
 
 type EditBoqItemButtonProps = {
   item: BoqLine;
@@ -62,36 +63,18 @@ export default function EditBoqItemButton({
   );
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
 
+  const [isMounted, setIsMounted] = useState(true);
+
   // EditBoqItemLocationButton.tsx
   useEffect(() => {
     if (!isOpen) return; // Don't fetch unless modal is open
 
-    let isMounted = true;
-
-    const fetchLocationValues = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
-        );
-
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-
-        const data = await res.json();
-
-        if (isMounted) {
-          setLocationValues(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch location values:", err);
-      }
-    };
+    setIsMounted(true);
 
     fetchLocationValues();
 
     return () => {
-      isMounted = false;
+      setIsMounted(false);
     };
   }, [isOpen]); // Only fetch when modal opens
 
@@ -151,6 +134,26 @@ export default function EditBoqItemButton({
 
     return () => clearTimeout(timer);
   }, [ratePerQuantity, quantity]);
+
+  const fetchLocationValues = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
+      );
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      if (isMounted) {
+        setLocationValues(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch location values:", err);
+    }
+  };
 
   async function deleteFilesFromS3(urls: string[]) {
     const deletePromises = urls.map(async (url) => {
@@ -345,6 +348,9 @@ export default function EditBoqItemButton({
               placeholder="SELECT LOCATION"
               dbData={locationValues}
               style={{ width: "400px" }}
+              bottomButtonComponent={
+                <CreateLocationButton onSuccess={() => fetchLocationValues()} />
+              }
             />
           </div>
 

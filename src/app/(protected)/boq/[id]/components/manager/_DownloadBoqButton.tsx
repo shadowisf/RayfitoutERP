@@ -374,7 +374,7 @@ export default function DownloadBoqButton({
               </div>
 
               {/* Categories and Subcategories */}
-              {Object.keys(boqLines).map((category) => (
+              {Object.keys(boqLines).map((category, index) => (
                 <div key={category} style={{ marginBottom: "10px" }}>
                   {/* Category */}
                   <div
@@ -408,7 +408,9 @@ export default function DownloadBoqButton({
                         cursor: "pointer",
                       }}
                     >
-                      <h4>{category}</h4>
+                      <h4>
+                        {index + 1}.0 {category}
+                      </h4>
                       <h4>
                         {expandedCategories[category] ? (
                           <img
@@ -430,44 +432,48 @@ export default function DownloadBoqButton({
                   {/* Subcategories */}
                   {expandedCategories[category] && (
                     <div style={{ marginLeft: "35px" }}>
-                      {Object.keys(boqLines[category]).map((subCategory) => (
-                        <div
-                          key={`${category}-${subCategory}`}
-                          style={{ marginBottom: "10px" }}
-                        >
-                          <label
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "10px",
-                              cursor: "pointer",
-                            }}
+                      {Object.keys(boqLines[category]).map(
+                        (subCategory, subIndex) => (
+                          <div
+                            key={`${category}-${subCategory}`}
+                            style={{ marginBottom: "10px" }}
                           >
-                            <input
-                              type="checkbox"
-                              checked={
-                                selectedSubCategories[
-                                  `${category}-${subCategory}`
-                                ] || false
-                              }
-                              onChange={(e) =>
-                                handleSubCategoryChange(
-                                  category,
-                                  subCategory,
-                                  e.target.checked,
-                                )
-                              }
+                            <label
                               style={{
-                                width: "18px",
-                                height: "18px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "10px",
                                 cursor: "pointer",
-                                accentColor: "#10b981",
                               }}
-                            />
-                            <h4>{subCategory}</h4>
-                          </label>
-                        </div>
-                      ))}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={
+                                  selectedSubCategories[
+                                    `${category}-${subCategory}`
+                                  ] || false
+                                }
+                                onChange={(e) =>
+                                  handleSubCategoryChange(
+                                    category,
+                                    subCategory,
+                                    e.target.checked,
+                                  )
+                                }
+                                style={{
+                                  width: "18px",
+                                  height: "18px",
+                                  cursor: "pointer",
+                                  accentColor: "#10b981",
+                                }}
+                              />
+                              <h4>
+                                {index + 1}.{subIndex + 1} {subCategory}
+                              </h4>
+                            </label>
+                          </div>
+                        ),
+                      )}
                     </div>
                   )}
                 </div>

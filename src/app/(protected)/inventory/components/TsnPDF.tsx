@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     gap: 25,
   },
   infoItem: {
-    flex: 1,
+    /* flex: 1, */
   },
   infoLabel: {
     fontSize: 8,
@@ -262,6 +262,12 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
         {/* Document Info */}
         <View style={styles.infoRow}>
           <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>DATE</Text>
+            <Text style={styles.infoValue}>
+              {new Date(transaction?.created_on).toLocaleDateString("en-GB")}
+            </Text>
+          </View>
+          <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>TRANSFER ID</Text>
             <Text style={styles.infoValue}>
               TR-{String(transaction?.id).padStart(5, "0")}
@@ -444,7 +450,7 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
           {/* Driver/Transport Custody Section */}
           {(transaction.type.toLowerCase().includes("transfer") ||
             transaction.type.toLowerCase().includes("send")) && (
-            <View style={styles.signatureRow}>
+            <View style={styles.signatureRow} wrap={false}>
               {/* Left: Checkbox and Text */}
               <View style={styles.confirmationSection}>
                 <View style={styles.confirmationRow}>
@@ -487,7 +493,7 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
           )}
 
           {/* Site Recipient Section */}
-          <View style={styles.signatureRow}>
+          <View style={styles.signatureRow} wrap={false}>
             {/* Left: Checkbox and Text */}
             <View style={styles.confirmationSection}>
               <View style={styles.confirmationRow}>

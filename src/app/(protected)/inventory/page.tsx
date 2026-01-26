@@ -9,6 +9,7 @@ import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStoc
 import TransactionDetailsPopUpButton from "./[id]/components/_IssueDetailsPopUpButton";
 import FilterButton from "./[id]/components/_FilterButton";
 import DeleteTransferButton from "./components/_DeleteTransferButton";
+import DeleteInventoryItemButton from "./[id]/components/_DeleteInventoryItemButton";
 
 export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
@@ -1040,6 +1041,10 @@ export default function Inventory() {
                         <td>
                           <div style={{ display: "flex", gap: "10px" }}>
                             <EditInventoryItemButton inventoryItem={item} />
+
+                            {availableQty === 0 && (
+                              <DeleteInventoryItemButton inventoryItem={item} />
+                            )}
 
                             <Button
                               componentType={"link"}

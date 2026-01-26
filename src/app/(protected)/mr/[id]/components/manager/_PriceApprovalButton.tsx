@@ -47,9 +47,17 @@ export default function PriceApprovalButton({
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [rejectText, setRejectText] = useState("");
 
+  // Manager Approval states
   const [approvedQuotation, setApprovedQuotation] =
     useState<SupplierQuotation | null>(null);
-  const [isRejected, setIsRejected] = useState(false);
+  const [allRejected, setAllRejected] = useState(false);
+  const [allPending, setAllPending] = useState(false);
+
+  // QS Approval states
+  const [qsApprovedQuotation, setQsApprovedQuotation] =
+    useState<SupplierQuotation | null>(null);
+  const [allQsRejected, setAllQsRejected] = useState(false);
+  const [allQsPending, setAllQsPending] = useState(false);
 
   const fetchQuotations = () => {
     fetch("/api/supplier/getAllSupplierAndQuotationByMrLineID", {
@@ -62,24 +70,39 @@ export default function PriceApprovalButton({
         console.log(data);
         setSupplierQuotations(data);
 
+        // Manager Approval Status
         const approved = data.find(
           (q: SupplierQuotation) => q.approval_status === "Approved",
         );
-        if (approved) {
-          setApprovedQuotation(approved);
-        } else {
-          setApprovedQuotation(null);
-        }
+        setApprovedQuotation(approved || null);
 
-        // Check if all are rejected
-        const allRejected = data.every(
+        const rejected = data.every(
           (q: SupplierQuotation) => q.approval_status === "Rejected",
         );
-        if (allRejected && data.length > 0) {
-          setIsRejected(true);
-        } else {
-          setIsRejected(false);
-        }
+        setAllRejected(rejected && data.length > 0);
+
+        const pending = data.every(
+          (q: SupplierQuotation) =>
+            !q.approval_status || q.approval_status === null,
+        );
+        setAllPending(pending && data.length > 0);
+
+        // QS Approval Status
+        const qsApproved = data.find(
+          (q: SupplierQuotation) => q.qs_approval_status === "Approved",
+        );
+        setQsApprovedQuotation(qsApproved || null);
+
+        const qsRejected = data.every(
+          (q: SupplierQuotation) => q.qs_approval_status === "Rejected",
+        );
+        setAllQsRejected(qsRejected && data.length > 0);
+
+        const qsPending = data.every(
+          (q: SupplierQuotation) =>
+            !q.qs_approval_status || q.qs_approval_status === null,
+        );
+        setAllQsPending(qsPending && data.length > 0);
       })
       .catch((err) => {
         console.error(err);
@@ -112,11 +135,8 @@ export default function PriceApprovalButton({
         "success",
       );
       setIsOpen(false);
-
       setRejectText("");
-
       fetchQuotations();
-
       router.refresh();
     } else {
       toast("Failed to approve vendor and quotation", "error");
@@ -141,14 +161,10 @@ export default function PriceApprovalButton({
 
     if (res.ok) {
       toast("Vendor and quotation rejected", "success");
-
       setRejectText("");
-
       setIsRejectOpen(false);
       setIsOpen(false);
-
       fetchQuotations();
-
       router.refresh();
     } else {
       toast("Failed to reject vendor and quotation", "error");
@@ -170,9 +186,7 @@ export default function PriceApprovalButton({
 
     if (res.ok) {
       setRejectText("");
-
       fetchQuotations();
-
       router.refresh();
     } else {
       toast("Failed to reset vendor selection", "error");
@@ -186,7 +200,6 @@ export default function PriceApprovalButton({
       return;
     }
 
-    // Find the supplier with the lowest total price
     const lowestPriceSupplier = supplierQuotations.reduce(
       (prev: any, current: any) => {
         return Number(current.total_price) < Number(prev.total_price)
@@ -213,7 +226,6 @@ export default function PriceApprovalButton({
         `Smart Select: ${lowestPriceSupplier.supplier_name} approved with lowest price (AED ${lowestPriceSupplier.total_price})`,
         "success",
       );
-
       fetchQuotations();
       router.refresh();
     } else {
@@ -221,216 +233,368 @@ export default function PriceApprovalButton({
     }
   }
 
-  if (approvedQuotation) {
+  // RENDER STATUS PILLS (for progressID === 11 or 9)
+  if (progressID === 11 || progressID === 9) {
     return (
       <div
-        className="approval-pill"
         style={{
-          backgroundColor: "rgba(34, 150, 100, 1)",
-          color: "white",
-          minWidth: "250px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          gap: "10px",
         }}
       >
-        <span>{approvedQuotation.supplier_name}</span>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <SupplierDetailsPopUp
-            item={approvedQuotation}
-            style={{
-              padding: "0px",
-              backgroundColor: "transparent",
-              borderColor: "transparent",
-              filter: "invert(1)",
-            }}
-          >
-            <img src={externalLinkIcon} alt="external link icon" />
-          </SupplierDetailsPopUp>
-          {progressID === 10 && (
-            <img
-              src={crossIcon}
-              alt="reset"
+        {/* Manager Approval Status Row */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {/* Show approved pill */}
+          {approvedQuotation && (
+            <div
+              className="approval-pill"
               style={{
-                filter: "invert(1)",
-                cursor: "pointer",
-              }}
-              onClick={handleReset}
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (isRejected) {
-    return (
-      <div
-        className="approval-pill"
-        style={{
-          backgroundColor: "rgba(185, 28, 28, 1)",
-          color: "white",
-          width: "250px",
-        }}
-      >
-        <span style={{ textWrap: "nowrap" }}>All Vendors Rejected</span>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <RejectCommentPopUp text={supplierQuotations[0].reject_comment} />
-          {progressID === 10 && (
-            <img
-              src={crossIcon}
-              alt="reset"
-              style={{
-                filter: "invert(1)",
-                cursor: "pointer",
-              }}
-              onClick={handleReset}
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div style={{ display: "flex", gap: "10px" }}>
-        <Button
-          componentType={"button"}
-          bgColor={bgColor}
-          borderColor={borderColor}
-          textColor={textColor}
-          onClick={() => setIsOpen(true)}
-          style={style}
-        >
-          Manually Select{" "}
-          <img src={externalLinkIcon} alt="external link icon" />
-        </Button>
-        <Button
-          componentType={"button"}
-          bgColor={bgColor}
-          borderColor={borderColor}
-          textColor={textColor}
-          onClick={handleSmartSelect}
-          style={style}
-        >
-          Smart Select <img src={diamondIcon} alt="diamond icon" />
-        </Button>
-      </div>
-
-      {isOpen && (
-        <FormPopUp
-          header={"CHOOSE VENDOR AND QUOTATION"}
-          setIsOpen={setIsOpen}
-          handleSubmit={(e) => handleApproveSupplierAndQuotation(e)}
-          addButtonLabel={"CONFIRM"}
-          secondButton={
-            <Button
-              componentType={"button"}
-              bgColor={"white"}
-              borderColor={"black"}
-              textColor={"black"}
-              onClick={(e) => {
-                e.preventDefault();
-                setIsRejectOpen(true);
+                backgroundColor: "rgba(34, 150, 100, 1)",
+                color: "white",
+                minWidth: "250px",
               }}
             >
-              REJECT ALL VENDORS
-            </Button>
-          }
-        >
-          <>
-            <table className="items-table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>VENDOR</th>
-                  <th>QUOTATION</th>
-                  {/* <th>RATING</th> */}
-                  <th>UNIT PRICE</th>
-                  <th>TOTAL PRICE</th>
-                </tr>
-              </thead>
-              <tbody>
-                {supplierQuotations.map(
-                  (quotation: SupplierQuotation, index: number) => (
-                    <tr key={index}>
-                      <td>
-                        <input
-                          type="radio"
-                          name="supplier"
-                          value={quotation.supplier_id}
-                          onChange={(e) =>
-                            setSelectedSupplierID(e.target.value)
-                          }
-                          required
-                        />
-                      </td>
-                      <td>
-                        <SupplierDetailsPopUp
-                          item={quotation}
-                          style={{
-                            padding: "7px 20px",
-                            textWrap: "nowrap",
-                            minWidth: "300px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            borderRadius: "25px",
-                          }}
-                        >
-                          {quotation.supplier_name}
-                          <img
-                            src="/icons/external-link.svg"
-                            alt="external link icon"
-                          />
-                        </SupplierDetailsPopUp>
-                      </td>
-                      <td>
-                        <Button
-                          componentType={"link"}
-                          bgColor={"white"}
-                          borderColor={"rgba(207, 207, 207, 1)"}
-                          textColor={"black"}
-                          href={quotation.quotation_file[0]}
-                          target="_blank"
-                          style={{ padding: "7px 20px", borderRadius: "25px" }}
-                        >
-                          Quotation
-                          <img
-                            src="/icons/external-link.svg"
-                            alt="external link icon"
-                          />
-                        </Button>
-                      </td>
-                      {/* <td>{quotation.supplier_rating}</td> */}
-                      <td>{quotation.unit_price} AED</td>
-                      <td>{quotation.total_price} AED</td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          </>
-        </FormPopUp>
-      )}
+              <span>{approvedQuotation.supplier_name}</span>
+              <SupplierDetailsPopUp
+                item={approvedQuotation}
+                style={{
+                  padding: "0px",
+                  backgroundColor: "transparent",
+                  borderColor: "transparent",
+                  filter: "invert(1)",
+                }}
+              >
+                <img src={externalLinkIcon} alt="external link icon" />
+              </SupplierDetailsPopUp>
+            </div>
+          )}
 
-      {isRejectOpen && (
-        <FormPopUp
-          header={"REJECT ALL VENDOR AND QUOTATION"}
-          setIsOpen={setIsRejectOpen}
-          handleSubmit={(e) => handleRejectAll(e)}
-          style={{ whiteSpace: "pre-wrap" }}
-          addButtonLabel="CONFIRM"
+          {/* Show rejected pill */}
+          {allRejected && !approvedQuotation && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "15px",
+                padding: "5px 10px 5px 15px",
+                backgroundColor: "rgba(185, 28, 28, 1)",
+                color: "white",
+                borderRadius: "25px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span>All Vendors Rejected</span>
+              <RejectCommentPopUp
+                text={supplierQuotations[0]?.reject_comment}
+              />
+            </div>
+          )}
+
+          {/* Show pending pill */}
+          {allPending && !approvedQuotation && !allRejected && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                padding: "5px 15px",
+                backgroundColor: "rgba(128, 128, 128, 1)",
+                color: "white",
+                borderRadius: "25px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span>Manager Pending Approval</span>
+            </div>
+          )}
+        </div>
+
+        {/* QS Approval Status Row */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {/* Show QS rejected pill */}
+          {allQsRejected && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "15px",
+                padding: "5px 10px 5px 15px",
+                backgroundColor: "rgba(185, 28, 28, 1)",
+                color: "white",
+                borderRadius: "25px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span>Rejected by QS</span>
+              <RejectCommentPopUp
+                text={supplierQuotations[0]?.qs_reject_comment}
+              />
+            </div>
+          )}
+
+          {/* Show QS pending pill */}
+          {allQsPending && !allQsRejected && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                padding: "5px 15px",
+                backgroundColor: "rgba(128, 128, 128, 1)",
+                color: "white",
+                borderRadius: "25px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span>QS Approval Pending</span>
+            </div>
+          )}
+
+          {/* Show QS approved pill */}
+          {qsApprovedQuotation && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                padding: "5px 15px",
+                backgroundColor: "rgba(34, 150, 100, 1)",
+                color: "white",
+                borderRadius: "25px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span>Approved by QS</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // RENDER ACTION BUTTONS (for progressID === 10)
+  if (progressID === 10) {
+    // If approved, show approved pill with reset option
+    if (approvedQuotation) {
+      return (
+        <div
+          className="approval-pill"
+          style={{
+            backgroundColor: "rgba(34, 150, 100, 1)",
+            color: "white",
+            minWidth: "250px",
+          }}
         >
-          <div className="input-row full">
-            <InputItem
-              label={"COMMENTS"}
-              value={rejectText}
-              type={"textarea"}
-              placeholder={"ENTER COMMENTS"}
-              required
-              onChange={(e) => setRejectText(e.target.value)}
+          <span>{approvedQuotation.supplier_name}</span>
+          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <SupplierDetailsPopUp
+              item={approvedQuotation}
+              style={{
+                padding: "0px",
+                backgroundColor: "transparent",
+                borderColor: "transparent",
+                filter: "invert(1)",
+              }}
+            >
+              <img src={externalLinkIcon} alt="external link icon" />
+            </SupplierDetailsPopUp>
+            <img
+              src={crossIcon}
+              alt="reset"
+              style={{
+                filter: "invert(1)",
+                cursor: "pointer",
+              }}
+              onClick={handleReset}
             />
           </div>
-        </FormPopUp>
-      )}
-    </>
-  );
+        </div>
+      );
+    }
+
+    // If all rejected, show rejected pill with reset option
+    if (allRejected) {
+      return (
+        <div
+          className="approval-pill"
+          style={{
+            backgroundColor: "rgba(185, 28, 28, 1)",
+            color: "white",
+            width: "250px",
+          }}
+        >
+          <span style={{ textWrap: "nowrap" }}>All Vendors Rejected</span>
+          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <RejectCommentPopUp text={supplierQuotations[0]?.reject_comment} />
+            <img
+              src={crossIcon}
+              alt="reset"
+              style={{
+                filter: "invert(1)",
+                cursor: "pointer",
+              }}
+              onClick={handleReset}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // Otherwise show selection buttons
+    return (
+      <>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <Button
+            componentType={"button"}
+            bgColor={bgColor}
+            borderColor={borderColor}
+            textColor={textColor}
+            onClick={() => setIsOpen(true)}
+            style={style}
+          >
+            Manually Select{" "}
+            <img src={externalLinkIcon} alt="external link icon" />
+          </Button>
+          <Button
+            componentType={"button"}
+            bgColor={bgColor}
+            borderColor={borderColor}
+            textColor={textColor}
+            onClick={handleSmartSelect}
+            style={style}
+          >
+            Smart Select <img src={diamondIcon} alt="diamond icon" />
+          </Button>
+        </div>
+
+        {isOpen && (
+          <FormPopUp
+            header={"CHOOSE VENDOR AND QUOTATION"}
+            setIsOpen={setIsOpen}
+            handleSubmit={(e) => handleApproveSupplierAndQuotation(e)}
+            addButtonLabel={"CONFIRM"}
+            secondButton={
+              <Button
+                componentType={"button"}
+                bgColor={"white"}
+                borderColor={"black"}
+                textColor={"black"}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsRejectOpen(true);
+                }}
+              >
+                REJECT ALL VENDORS
+              </Button>
+            }
+          >
+            <>
+              <table className="items-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>VENDOR</th>
+                    <th>QUOTATION</th>
+                    <th>UNIT PRICE</th>
+                    <th>TOTAL PRICE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {supplierQuotations.map(
+                    (quotation: SupplierQuotation, index: number) => (
+                      <tr key={index}>
+                        <td>
+                          <input
+                            type="radio"
+                            name="supplier"
+                            value={quotation.supplier_id}
+                            onChange={(e) =>
+                              setSelectedSupplierID(e.target.value)
+                            }
+                            required
+                          />
+                        </td>
+                        <td>
+                          <SupplierDetailsPopUp
+                            item={quotation}
+                            style={{
+                              padding: "7px 20px",
+                              textWrap: "nowrap",
+                              minWidth: "300px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              borderRadius: "25px",
+                            }}
+                          >
+                            {quotation.supplier_name}
+                            <img
+                              src="/icons/external-link.svg"
+                              alt="external link icon"
+                            />
+                          </SupplierDetailsPopUp>
+                        </td>
+                        <td>
+                          <Button
+                            componentType={"link"}
+                            bgColor={"white"}
+                            borderColor={"rgba(207, 207, 207, 1)"}
+                            textColor={"black"}
+                            href={quotation.quotation_file[0]}
+                            target="_blank"
+                            style={{
+                              padding: "7px 20px",
+                              borderRadius: "25px",
+                            }}
+                          >
+                            Quotation
+                            <img
+                              src="/icons/external-link.svg"
+                              alt="external link icon"
+                            />
+                          </Button>
+                        </td>
+                        <td>{quotation.unit_price} AED</td>
+                        <td>{quotation.total_price} AED</td>
+                      </tr>
+                    ),
+                  )}
+                </tbody>
+              </table>
+            </>
+          </FormPopUp>
+        )}
+
+        {isRejectOpen && (
+          <FormPopUp
+            header={"REJECT ALL VENDOR AND QUOTATION"}
+            setIsOpen={setIsRejectOpen}
+            handleSubmit={(e) => handleRejectAll(e)}
+            style={{ whiteSpace: "pre-wrap" }}
+            addButtonLabel="CONFIRM"
+          >
+            <div className="input-row full">
+              <InputItem
+                label={"COMMENTS"}
+                value={rejectText}
+                type={"textarea"}
+                placeholder={"ENTER COMMENTS"}
+                required
+                onChange={(e) => setRejectText(e.target.value)}
+              />
+            </div>
+          </FormPopUp>
+        )}
+      </>
+    );
+  }
+
+  // Default: return null for other progressIDs
+  return null;
 }

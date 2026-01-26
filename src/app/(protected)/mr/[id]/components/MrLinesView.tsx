@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import AddMrItemButton from "./department/_AddMrItemButton";
 import { MrLine } from "../types/mrLine";
 import EditMrItemButton from "./department/_EditMrItemButton";
@@ -2127,7 +2127,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             </td>
                                           )}
 
-                                        {[10].includes(mrHeader.progress_id) &&
+                                        {[10, 11].includes(
+                                          mrHeader.progress_id,
+                                        ) &&
                                           userInfo?.departmentID === 8 && (
                                             <td>
                                               <PriceApprovalButton
@@ -2579,7 +2581,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         </td>
                                       )}
 
-                                    {[10].includes(mrHeader.progress_id) &&
+                                    {[10, 11].includes(mrHeader.progress_id) &&
                                       userInfo?.departmentID === 8 && (
                                         <td>
                                           <PriceApprovalButton
@@ -3088,33 +3090,32 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       {userInfo?.departmentID === 9 &&
         (mrHeader.progress_id === 7 || mrHeader.progress_id === 11) && (
           <div className="bottom-nav">
-            {/* <CancelMaterialRequestButton
-        mrHeaderID={mrHeader.id}
-        bgColor="black"
-        borderColor="white"
-        textColor="white"
-      >
-        CANCEL MATERIAL REQUEST
-      </CancelMaterialRequestButton> */}
-
             <div></div>
 
             <SubmitForQSPricingApprovalButton
               mrHeaderID={mrHeader.id}
               disabled={
-                !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                !allItemsHaveSupplierQuotations() ||
+                hasAnyRejectedSuppliers() ||
+                hasAnyQSRejectedSuppliers() // Added this condition
               }
               style={{
                 opacity:
-                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                  !allItemsHaveSupplierQuotations() ||
+                  hasAnyRejectedSuppliers() ||
+                  hasAnyQSRejectedSuppliers() // Added this condition
                     ? "0.5"
                     : "1",
                 cursor:
-                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                  !allItemsHaveSupplierQuotations() ||
+                  hasAnyRejectedSuppliers() ||
+                  hasAnyQSRejectedSuppliers() // Added this condition
                     ? "not-allowed"
                     : "pointer",
                 pointerEvents:
-                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                  !allItemsHaveSupplierQuotations() ||
+                  hasAnyRejectedSuppliers() ||
+                  hasAnyQSRejectedSuppliers() // Added this condition
                     ? "none"
                     : "auto",
               }}

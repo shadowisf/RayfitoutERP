@@ -121,7 +121,7 @@ export default function MR() {
     /* PAINT */ 6: [1, 2, 5, 25],
     /* DESIGN */ 7: [1, 2, 5, 25],
     /* DIRECTORS/MANAGEMENT */ 8: [1, 2, 3, 5, 9, 10, 11, 25],
-    /* PROCUREMENT */ 9: [1, 2, 5, 7, 9, 11, 12, 13, 16, 25],
+    /* PROCUREMENT */ 9: [1, 2, 5, 7, 11, 12, 13, 16, 25],
     /* FINANCE */ 10: [1, 2, 5, 14, 25],
     /* STOREKEEPER */ 11: [1, 2, 5, 17, 24, 25],
     /* QUALITY CONTORL */ 12: [1, 2, 5, 21, 23, 25],
@@ -476,287 +476,303 @@ export default function MR() {
       <br />
       <br />
 
+      {/* Kanban Container with fixed height and visible scrollbar */}
       <div
         style={{
-          display: "flex",
-          gap: "30px",
+          height: "calc(100vh - 230px)", // Adjust based on your header/other content height
           overflowX: "auto",
-          paddingBottom: "20px",
-          minHeight: "80dvh",
+          overflowY: "auto",
         }}
       >
-        {visibleStatuses.map((status) => {
-          const mrs = groupedMRs[status] || [];
-          const isRejected = isRejectedStatus(status);
-          const isCompleted = isCompletedStatus(status);
-          const hasItems = mrs.length > 0;
+        <div
+          style={{
+            display: "flex",
+            gap: "30px",
+            paddingBottom: "20px",
+            minHeight: "100%",
+          }}
+        >
+          {visibleStatuses.map((status) => {
+            const mrs = groupedMRs[status] || [];
+            const isRejected = isRejectedStatus(status);
+            const isCompleted = isCompletedStatus(status);
+            const hasItems = mrs.length > 0;
 
-          const responsibleDept = getResponsibleDepartment(status);
-          const departmentToShow = responsibleDept.name;
-          const departmentIdToUse = responsibleDept.id;
+            const responsibleDept = getResponsibleDepartment(status);
+            const departmentToShow = responsibleDept.name;
+            const departmentIdToUse = responsibleDept.id;
 
-          const headerDepartmentStyle = getDepartmentStyle(departmentIdToUse);
-          const dotColor = getDotColor(status, mrs.length);
+            const headerDepartmentStyle = getDepartmentStyle(departmentIdToUse);
+            const dotColor = getDotColor(status, mrs.length);
 
-          return (
-            <div
-              key={status}
-              style={{
-                minWidth: "350px",
-                flexShrink: 0,
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    minHeight: "90px",
-                    marginBottom: "20px",
-                    padding: "15px 15px",
-                    borderRadius: "15px",
-                    backgroundColor: "white",
-                    border: "1px solid rgba(231, 231, 231, 1)",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                  }}
-                >
+            return (
+              <div
+                key={status}
+                style={{
+                  minWidth: "350px",
+                  flexShrink: 0,
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <div>
                   <div
                     style={{
+                      minHeight: "90px",
+                      marginBottom: "20px",
+                      padding: "15px 15px",
+                      borderRadius: "15px",
+                      backgroundColor: "white",
+                      border: "1px solid rgba(231, 231, 231, 1)",
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
+                      flexDirection: "column",
+                      justifyContent: "center",
                     }}
                   >
                     <div
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "10px",
+                        justifyContent: "space-between",
                       }}
                     >
                       <div
                         style={{
-                          width: "12px",
-                          height: "12px",
-                          borderRadius: "50%",
-                          backgroundColor: dotColor,
-                          marginBottom: "3px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
                         }}
-                      />
-                      <h3 style={{ margin: 0 }}>{status.toUpperCase()}</h3>
-                    </div>
-                    <h3>{mrs.length}</h3>
-                  </div>
-
-                  {departmentToShow && (
-                    <>
-                      <br />
-
-                      <div>
-                        <small
-                          className="approval-pill normal-text centered"
+                      >
+                        <div
                           style={{
-                            backgroundColor:
-                              headerDepartmentStyle.backgroundColor,
-                            color: headerDepartmentStyle.color,
-                            textTransform: "uppercase",
-                            padding: "7px 10px",
-                            borderRadius: "50px",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "8px",
+                            width: "12px",
+                            height: "12px",
+                            borderRadius: "50%",
+                            backgroundColor: dotColor,
+                            marginBottom: "3px",
                           }}
-                        >
-                          <span style={{ scale: 2.5 }}>•</span>{" "}
-                          {departmentToShow}
-                        </small>
+                        />
+                        <h3 style={{ margin: 0 }}>{status.toUpperCase()}</h3>
                       </div>
-                    </>
-                  )}
-                </div>
-              </div>
+                      <h3>{mrs.length}</h3>
+                    </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "20px",
-                }}
-              >
-                {mrs.map((mr: MrHeader) => {
-                  const priority = getPriority(mr.required_date);
-                  const RequireDateDaysLeftStyle = getDaysLeftStyle(
-                    mr.required_date,
-                  );
-                  const DeliveryDateDaysLeftStyle = getDaysLeftStyle(
-                    mr.delivery_date,
-                  );
-                  const isCompleted =
-                    mr.progress_name === "Completed" || mr.progress_id === 25;
-                  const hasViewPermission = canViewMR(mr);
+                    {departmentToShow && (
+                      <>
+                        <br />
 
-                  const durationKey = `${mr.id}-${mr.progress_id}`;
-                  const durationData = mrDurations[durationKey] || {
-                    duration: "00H:00M",
-                    style: {
-                      color: "black",
-                      backgroundColor: "rgba(231, 231, 231, 1)",
-                    },
-                  };
-
-                  return (
-                    <div
-                      key={mr.id}
-                      style={{
-                        padding: "15px",
-                        backgroundColor: "white",
-                        width: "350px",
-                        borderRadius: "15px",
-                      }}
-                    >
-                      {mr.progress_id !== 1 && mr.progress_id !== 25 && (
-                        <>
-                          <div
+                        <div>
+                          <small
+                            className="approval-pill normal-text centered"
                             style={{
-                              display: "flex",
+                              backgroundColor:
+                                headerDepartmentStyle.backgroundColor,
+                              color: headerDepartmentStyle.color,
+                              textTransform: "uppercase",
+                              padding: "7px 10px",
+                              borderRadius: "50px",
+                              display: "inline-flex",
                               alignItems: "center",
-                              justifyContent: "space-between",
+                              gap: "8px",
                             }}
                           >
+                            <span style={{ scale: 2.5 }}>•</span>{" "}
+                            {departmentToShow}
+                          </small>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "20px",
+                    overflowY: "auto",
+                    flex: 1,
+                    paddingRight: "5px",
+                  }}
+                >
+                  {mrs.map((mr: MrHeader) => {
+                    const priority = getPriority(mr.required_date);
+                    const RequireDateDaysLeftStyle = getDaysLeftStyle(
+                      mr.required_date,
+                    );
+                    const DeliveryDateDaysLeftStyle = getDaysLeftStyle(
+                      mr.delivery_date,
+                    );
+                    const isCompleted =
+                      mr.progress_name === "Completed" || mr.progress_id === 25;
+                    const hasViewPermission = canViewMR(mr);
+
+                    const durationKey = `${mr.id}-${mr.progress_id}`;
+                    const durationData = mrDurations[durationKey] || {
+                      duration: "00H:00M",
+                      style: {
+                        color: "black",
+                        backgroundColor: "rgba(231, 231, 231, 1)",
+                      },
+                    };
+
+                    return (
+                      <div
+                        key={mr.id}
+                        style={{
+                          padding: "15px",
+                          backgroundColor: "white",
+                          width: "350px",
+                          borderRadius: "15px",
+                        }}
+                      >
+                        {mr.progress_id !== 1 && mr.progress_id !== 25 && (
+                          <>
                             <div
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                justifyContent: "center",
+                                justifyContent: "space-between",
                               }}
                             >
-                              <small
-                                className="status"
+                              <div
                                 style={{
-                                  ...durationData.style,
                                   display: "flex",
                                   alignItems: "center",
-                                  gap: "10px",
-                                  borderRadius: "5px",
+                                  justifyContent: "center",
                                 }}
                               >
-                                <svg
-                                  width="11"
-                                  height="11"
-                                  viewBox="0 0 11 11"
-                                  fill="none"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  style={{ color: durationData.style.color }}
+                                <small
+                                  className="status"
+                                  style={{
+                                    ...durationData.style,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "10px",
+                                    borderRadius: "5px",
+                                  }}
                                 >
-                                  <path
-                                    d="M5.5 2.5V5.5H8.5"
-                                    stroke="currentColor"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                  <path
-                                    d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                                    stroke="currentColor"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                                {durationData.duration}
-                              </small>
+                                  <svg
+                                    width="11"
+                                    height="11"
+                                    viewBox="0 0 11 11"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    style={{ color: durationData.style.color }}
+                                  >
+                                    <path
+                                      d="M5.5 2.5V5.5H8.5"
+                                      stroke="currentColor"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                    <path
+                                      d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                      stroke="currentColor"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                  {durationData.duration}
+                                </small>
+                              </div>
                             </div>
+
+                            <br />
+                          </>
+                        )}
+
+                        <div>
+                          <small>MR NUMBER</small>
+                          <h3>MR-{String(mr.id).padStart(5, "0")}</h3>
+                        </div>
+
+                        <br />
+
+                        <small>REQUESTER</small>
+                        <h3>{mr.requested_by || "-"}</h3>
+
+                        <br />
+
+                        <small>DEPARTMENT</small>
+                        <h3>{mr.department_name || "-"}</h3>
+
+                        <br />
+
+                        <small>PROJECT</small>
+                        <h3>{mr.project_name || "-"}</h3>
+
+                        <br />
+
+                        {!isCompleted ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "25px",
+                            }}
+                          >
+                            <div>
+                              <small>REQUIRED DATE</small>
+                              <h3>
+                                {new Date(
+                                  mr.required_date,
+                                ).toLocaleDateString()}
+                              </h3>
+                            </div>
+
+                            <h3
+                              style={{
+                                padding: "5px 15px",
+                                backgroundColor:
+                                  RequireDateDaysLeftStyle.backgroundColor,
+                                color: RequireDateDaysLeftStyle.color,
+                                textTransform: "uppercase",
+                                borderRadius: "5px",
+                              }}
+                            >
+                              {getDaysLeftText(mr.required_date)}
+                            </h3>
                           </div>
-
-                          <br />
-                        </>
-                      )}
-
-                      <div>
-                        <small>MR NUMBER</small>
-                        <h3>MR-{String(mr.id).padStart(5, "0")}</h3>
-                      </div>
-
-                      <br />
-
-                      <small>REQUESTER</small>
-                      <h3>{mr.requested_by || "-"}</h3>
-
-                      <br />
-
-                      <small>DEPARTMENT</small>
-                      <h3>{mr.department_name || "-"}</h3>
-
-                      <br />
-
-                      <small>PROJECT</small>
-                      <h3>{mr.project_name || "-"}</h3>
-
-                      <br />
-
-                      {!isCompleted ? (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "25px",
-                          }}
-                        >
+                        ) : (
                           <div>
                             <small>REQUIRED DATE</small>
                             <h3>
                               {new Date(mr.required_date).toLocaleDateString()}
                             </h3>
                           </div>
+                        )}
 
-                          <h3
-                            style={{
-                              padding: "5px 15px",
-                              backgroundColor:
-                                RequireDateDaysLeftStyle.backgroundColor,
-                              color: RequireDateDaysLeftStyle.color,
-                              textTransform: "uppercase",
-                              borderRadius: "5px",
-                            }}
-                          >
-                            {getDaysLeftText(mr.required_date)}
-                          </h3>
-                        </div>
-                      ) : (
-                        <div>
-                          <small>REQUIRED DATE</small>
-                          <h3>
-                            {new Date(mr.required_date).toLocaleDateString()}
-                          </h3>
-                        </div>
-                      )}
+                        <br />
 
-                      <br />
-
-                      <Button
-                        componentType={"link"}
-                        bgColor={"black"}
-                        borderColor={"black"}
-                        textColor={"white"}
-                        full
-                        href={`/mr/${mr.id}`}
-                        disabled={!hasViewPermission}
-                        style={{
-                          opacity: !hasViewPermission ? "0.5" : "1",
-                          cursor: !hasViewPermission
-                            ? "not-allowed"
-                            : "pointer",
-                          pointerEvents: !hasViewPermission ? "none" : "auto",
-                          borderRadius: "15px",
-                        }}
-                      >
-                        VIEW
-                      </Button>
-                    </div>
-                  );
-                })}
+                        <Button
+                          componentType={"link"}
+                          bgColor={"black"}
+                          borderColor={"black"}
+                          textColor={"white"}
+                          full
+                          href={`/mr/${mr.id}`}
+                          disabled={!hasViewPermission}
+                          style={{
+                            opacity: !hasViewPermission ? "0.5" : "1",
+                            cursor: !hasViewPermission
+                              ? "not-allowed"
+                              : "pointer",
+                            pointerEvents: !hasViewPermission ? "none" : "auto",
+                            borderRadius: "15px",
+                          }}
+                        >
+                          VIEW
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

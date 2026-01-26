@@ -822,18 +822,6 @@ export default function BoqLinesView({
                 strategy={horizontalListSortingStrategy}
               >
                 <div style={{ display: "flex", gap: "1px" }}>
-                  <div
-                    className={`item ${activeCategory === "ALL" ? "active" : ""}`}
-                    onClick={() => setActiveCategory("ALL")}
-                    style={{
-                      flexShrink: 0,
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                    }}
-                  >
-                    ALL
-                  </div>
-
                   {canSeePrice && (
                     <div
                       className={`item ${activeCategory === "SUMMARY" ? "active" : ""}`}
@@ -847,6 +835,18 @@ export default function BoqLinesView({
                       SUMMARY
                     </div>
                   )}
+
+                  <div
+                    className={`item ${activeCategory === "ALL" ? "active" : ""}`}
+                    onClick={() => setActiveCategory("ALL")}
+                    style={{
+                      flexShrink: 0,
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ALL
+                  </div>
 
                   {categories.map((category) => (
                     <DraggableCategory

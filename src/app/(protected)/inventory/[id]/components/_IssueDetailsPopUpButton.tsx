@@ -89,6 +89,14 @@ export default function TransactionDetailsPopUpButton({
                 }}
               >
                 <div>
+                  <small>DATE</small>
+                  <h3>
+                    {new Date(transaction?.created_on).toLocaleDateString(
+                      "en-GB",
+                    )}
+                  </h3>
+                </div>
+                <div>
                   <small>TRANSFER TYPE</small>
                   <h3>{transaction?.type}</h3>
                 </div>
@@ -131,6 +139,14 @@ export default function TransactionDetailsPopUpButton({
                 }}
               >
                 <div>
+                  <small>DATE</small>
+                  <h3>
+                    {new Date(transaction?.created_on).toLocaleDateString(
+                      "en-GB",
+                    )}
+                  </h3>
+                </div>
+                <div>
                   <small>TRANSFER TYPE</small>
                   <h3>{transaction?.type}</h3>
                 </div>
@@ -166,6 +182,14 @@ export default function TransactionDetailsPopUpButton({
                   width: "fit-content",
                 }}
               >
+                <div>
+                  <small>DATE</small>
+                  <h3>
+                    {new Date(transaction?.created_on).toLocaleDateString(
+                      "en-GB",
+                    )}
+                  </h3>
+                </div>
                 <div>
                   <small>TRANSFER TYPE</small>
                   <h3>{transaction?.type}</h3>
