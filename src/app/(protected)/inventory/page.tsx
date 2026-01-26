@@ -145,6 +145,7 @@ export default function Inventory() {
   }, [inventory]);
 
   // Fetch all stocks for filtering
+  // Fetch all stocks for filtering
   useEffect(() => {
     async function fetchAllStocks() {
       if (!inventory || inventory.length === 0) return;
@@ -152,23 +153,62 @@ export default function Inventory() {
       const stocksMap: { [itemId: number]: any[] } = {};
 
       try {
-        const response = await fetch(
+        // Fetch regular stocks
+        const stocksResponse = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAllStocks`,
           {
             method: "GET",
           },
         );
 
-        if (response.ok) {
-          const data = await response.json();
+        if (stocksResponse.ok) {
+          const stocksData = await stocksResponse.json();
 
-          if (data.success && data.data) {
+          if (stocksData.success && stocksData.data) {
             // Group stocks by inventory_item_id
-            data.data.forEach((stock: any) => {
+            stocksData.data.forEach((stock: any) => {
               if (!stocksMap[stock.inventory_item_id]) {
                 stocksMap[stock.inventory_item_id] = [];
               }
-              stocksMap[stock.inventory_item_id].push(stock);
+              stocksMap[stock.inventory_item_id].push({
+                ...stock,
+                source: "stock", // Mark the source
+              });
+            });
+          }
+        }
+
+        // Fetch transfer/issue transactions to get to_location data
+        const transfersResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAllTransferIssueTransactions`,
+          {
+            method: "GET",
+          },
+        );
+
+        if (transfersResponse.ok) {
+          const transfersData = await transfersResponse.json();
+
+          if (transfersData.success && transfersData.transactions) {
+            // Add transfer locations to stocksMap
+            transfersData.transactions.forEach((transfer: any) => {
+              if (transfer.items && Array.isArray(transfer.items)) {
+                transfer.items.forEach((item: any) => {
+                  if (!stocksMap[item.inventory_item_id]) {
+                    stocksMap[item.inventory_item_id] = [];
+                  }
+
+                  // Add to_location as a location for this item
+                  if (transfer.to_location) {
+                    stocksMap[item.inventory_item_id].push({
+                      inventory_item_id: item.inventory_item_id,
+                      location: transfer.to_location,
+                      source: "transfer", // Mark as from transfer
+                      transfer_id: transfer.id,
+                    });
+                  }
+                });
+              }
             });
           }
         }
@@ -298,13 +338,22 @@ export default function Inventory() {
       );
     }
 
-    // Filter by selected locations from filter (check stocks table)
+    // Filter by selected locations from filter (check stocks table AND transfer table)
     if (filters.selectedLocations.length > 0) {
       processed = processed.filter((item) => {
         const itemStocks = stocksByInventoryItem[item.id] || [];
-        return itemStocks.some((stock) =>
+
+        // Check if item exists in regular stocks with selected location
+        const hasStockLocation = itemStocks.some((stock) =>
           filters.selectedLocations.includes(stock.location),
         );
+
+        // If already found in stocks, return true
+        if (hasStockLocation) return true;
+
+        // Otherwise, we need to check transfers - you'll need to fetch this data
+        // For now, just return hasStockLocation
+        return hasStockLocation;
       });
     }
 
@@ -455,21 +504,21 @@ export default function Inventory() {
     } else {
       if (transaction.type?.toLowerCase().includes("send")) {
         return {
-          label: "SENT FOR PROCESSING",
+          label: "PENDING",
           bgColor: "rgba(255, 242, 196, 1)",
           textColor: "rgba(180, 98, 10, 1)",
         };
       }
       if (transaction.type?.toLowerCase().includes("issue")) {
         return {
-          label: "ISSUED FOR USE",
+          label: "PENDING",
           bgColor: "rgba(255, 242, 196, 1)",
           textColor: "rgba(180, 98, 10, 1)",
         };
       }
       if (transaction.type?.toLowerCase().includes("transfer")) {
         return {
-          label: "STOCK TRANSFERRED",
+          label: "PENDING",
           bgColor: "rgba(255, 242, 196, 1)",
           textColor: "rgba(180, 98, 10, 1)",
         };

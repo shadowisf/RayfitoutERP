@@ -93,7 +93,7 @@ export default function AvgTimeSpentPerStageWidget() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [filter]); // ✅ Added filter to dependency array
+  }, [filter]);
 
   // ✅ Use logarithmic scaling for better visibility of small values
   const maxMinutes =
@@ -130,8 +130,34 @@ export default function AvgTimeSpentPerStageWidget() {
     return "rgba(206, 206, 206, 1)"; // Gray for all others
   };
 
+  // ✅ Updated format function to show days
   const formatDuration = (h: number, m: number) => {
-    if (h === 0 && m === 0) return "0 min";
+    const totalHours = h;
+
+    if (totalHours === 0 && m === 0) return "0 min";
+
+    // If 24 hours or more, show in days
+    if (totalHours >= 24) {
+      const days = Math.floor(totalHours / 24);
+      const remainingHours = totalHours % 24;
+
+      if (remainingHours === 0 && m === 0) {
+        return days === 1 ? "1 day" : `${days} days`;
+      }
+      if (remainingHours > 0 && m === 0) {
+        return days === 1
+          ? `1 day ${remainingHours} hr`
+          : `${days} days ${remainingHours} hr`;
+      }
+      if (remainingHours === 0 && m > 0) {
+        return days === 1 ? `1 day ${m} min` : `${days} days ${m} min`;
+      }
+      return days === 1
+        ? `1 day ${remainingHours} hr ${m} min`
+        : `${days} days ${remainingHours} hr ${m} min`;
+    }
+
+    // Less than 24 hours - show as before
     if (h > 0 && m > 0) return `${h} hr ${m} min`;
     if (h > 0) return `${h} hr`;
     return `${m} min`;

@@ -22,15 +22,21 @@ export async function POST(req: Request) {
 
       const insertQuery = `
         INSERT INTO mr_line_supplier_quotation 
-        (supplier_id, mr_line_id, quotation_file, rating, unit_price, total_price) 
-        VALUES (?, ?, ?, ?, ?, ?)
+        (supplier_id, mr_line_id, quotation_file, rating, unit_price, total_price, created_by) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `;
 
       const insertedIds = [];
 
       for (const quotation of quotations) {
-        const { supplier_id, quotation_file, rating, unit_price, total_price } =
-          quotation;
+        const {
+          supplier_id,
+          quotation_file,
+          rating,
+          unit_price,
+          total_price,
+          created_by,
+        } = quotation;
 
         const [result]: any = await db.query(insertQuery, [
           supplier_id,
@@ -39,6 +45,7 @@ export async function POST(req: Request) {
           rating || null,
           unit_price,
           total_price,
+          created_by,
         ]);
 
         insertedIds.push(result.insertId);
@@ -307,7 +314,8 @@ export async function PUT(req: Request) {
               approval_status = NULL,
               reject_comment = NULL,
               qs_approval_status = NULL,
-              qs_reject_comment = NULL
+              qs_reject_comment = NULL,
+              created_by = ?
           WHERE id = ?`,
             [
               quotation.supplier_id,
@@ -315,6 +323,7 @@ export async function PUT(req: Request) {
               quotation.rating,
               quotation.unit_price,
               quotation.total_price,
+              quotation.created_by,
               quotation.id,
             ],
           );
@@ -323,8 +332,8 @@ export async function PUT(req: Request) {
           // Insert new quotation
           const [result] = await db.query<ResultSetHeader>(
             `INSERT INTO mr_line_supplier_quotation 
-          (supplier_id, mr_line_id, quotation_file, rating, unit_price, total_price) 
-          VALUES (?, ?, ?, ?, ?, ?)`,
+          (supplier_id, mr_line_id, quotation_file, rating, unit_price, total_price, created_by) 
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
               quotation.supplier_id,
               mr_line_id,
@@ -332,6 +341,7 @@ export async function PUT(req: Request) {
               quotation.rating,
               quotation.unit_price,
               quotation.total_price,
+              quotation.created_by,
             ],
           );
           updatedIds.push(result.insertId);
@@ -342,7 +352,7 @@ export async function PUT(req: Request) {
       const idsToDelete = existingIds.filter((id) => !updatedIds.includes(id));
 
       if (idsToDelete.length > 0) {
-        const [quotationsToDelete] = await db.query<RowDataPacket[]>(
+        await db.query<RowDataPacket[]>(
           "SELECT quotation_file FROM mr_line_supplier_quotation WHERE id IN (?)",
           [idsToDelete],
         );

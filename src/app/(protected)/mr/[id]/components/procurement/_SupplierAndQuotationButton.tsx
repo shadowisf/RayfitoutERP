@@ -11,6 +11,7 @@ import RejectCommentPopUp from "../manager/RejectCommentPopUp";
 import { MrHeader } from "../../types/mrHeader";
 import { MrLine } from "../../types/mrLine";
 import CreateSupplierButton from "../../../../vendor/components/_CreateSupplierButton";
+import { useAuth } from "@/app/context/AuthContext";
 
 type SupplierQuotation = {
   id?: number;
@@ -25,6 +26,8 @@ type SupplierQuotation = {
   supplier_name?: string;
   qs_approval_status?: string;
   qs_reject_comment?: string;
+  created_by: string;
+  isModified?: boolean; // ✅ Add this flag
 };
 
 type SupplierAndQuotationButtonProps = {
@@ -37,6 +40,8 @@ export default function SupplierAndQuotationButton({
   mrLine,
 }: SupplierAndQuotationButtonProps) {
   const router = useRouter();
+
+  const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
   const plusIcon = "/icons/plus.svg";
@@ -79,6 +84,8 @@ export default function SupplierAndQuotationButton({
       rating: "",
       unit_price: "",
       total_price: "",
+      created_by: "",
+      isModified: false, // ✅ Initialize flag
     },
   ]);
 
@@ -248,6 +255,8 @@ export default function SupplierAndQuotationButton({
           supplier_name: item.supplier_name,
           qs_approval_status: item.qs_approval_status,
           qs_reject_comment: item.qs_reject_comment,
+          created_by: item.created_by,
+          isModified: false, // ✅ Initialize as not modified
         }));
 
         setSupplierQuotations(formattedQuotations);
@@ -271,11 +280,13 @@ export default function SupplierAndQuotationButton({
             rating: "",
             unit_price: "",
             total_price: "",
+            created_by: userInfo?.name || "",
+            isModified: true, // ✅ New quotations are always modified
           },
         ]);
       }
     }
-  }, [isOpen, mode]);
+  }, [isOpen, mode, userInfo]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -293,6 +304,8 @@ export default function SupplierAndQuotationButton({
         rating: "",
         unit_price: "",
         total_price: "",
+        created_by: userInfo?.name || "",
+        isModified: true, // ✅ New rows are always modified
       },
     ]);
   }
@@ -318,6 +331,7 @@ export default function SupplierAndQuotationButton({
     newQuotations[index] = {
       ...newQuotations[index],
       [field]: value,
+      isModified: true, // ✅ Mark as modified when any field changes
     };
 
     // Automatically calculate total price when unit_price changes (without decimals)
@@ -356,6 +370,7 @@ export default function SupplierAndQuotationButton({
       ...newQuotations[index],
       quotation_file: null,
       quotation_url: "",
+      isModified: true, // ✅ Mark as modified when file is removed
     };
     setSupplierQuotations(newQuotations);
   }
@@ -511,6 +526,8 @@ export default function SupplierAndQuotationButton({
                 rating: q.rating || null,
                 unit_price: q.unit_price,
                 total_price: q.total_price,
+                // ✅ Only update created_by if the quotation was modified
+                created_by: q.isModified ? userInfo?.name || "" : q.created_by,
               })),
             }
           : {
@@ -522,6 +539,7 @@ export default function SupplierAndQuotationButton({
                 rating: q.rating || null,
                 unit_price: q.unit_price,
                 total_price: q.total_price,
+                created_by: userInfo?.name || "",
               })),
             };
 
@@ -551,6 +569,8 @@ export default function SupplierAndQuotationButton({
             rating: "",
             unit_price: "",
             total_price: "",
+            created_by: "",
+            isModified: false,
           },
         ]);
         setFilesToDelete([]);
@@ -577,6 +597,7 @@ export default function SupplierAndQuotationButton({
 
   return (
     <>
+      {/* ... rest of your JSX remains the same ... */}
       <div
         style={{
           display: "flex",
@@ -756,6 +777,7 @@ export default function SupplierAndQuotationButton({
                   <th>QUOTATION</th>
                   <th>UNIT PRICE</th>
                   <th>TOTAL PRICE</th>
+                  <th>QUOTED BY</th>
                   <th>ACTION</th>
                 </tr>
               </thead>
@@ -834,17 +856,6 @@ export default function SupplierAndQuotationButton({
                             type="text"
                             placeholder="ENTER UNIT PRICE"
                             value={quotation.unit_price}
-                            /* onChange={(e) => {
-                              const val = e.target.value;
-
-                              if (val === "" || /^\d+$/.test(val)) {
-                                updateQuotation(
-                                  index,
-                                  "unit_price",
-                                  e.target.value,
-                                );
-                              }
-                            }} */
                             onChange={(e) => {
                               let val = e.target.value;
 
@@ -885,6 +896,8 @@ export default function SupplierAndQuotationButton({
                           />
                         </div>
                       </td>
+
+                      <td>{quotation.created_by || "-"}</td>
 
                       {/* Show remove button only if: more than 1 row AND not the first row */}
                       {supplierQuotations.length > 1 && index > 0 && (

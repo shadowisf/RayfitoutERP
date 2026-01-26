@@ -17,7 +17,7 @@ type SelectedItem = {
   description: string;
   unit: string;
   available_qty: number;
-  quantity: number;
+  quantity: string;
   serial_number?: string;
   attachment?: File | null;
   image: string;
@@ -34,6 +34,7 @@ export default function TransferIssueMultipleStocks({
   const uploadIcon = "/icons/upload.svg";
   const crossIcon = "/icons/cross-small.svg";
   const noImageIcon = "/icons/no-image.jpg";
+  const searchIcon = "/icons/search.svg";
 
   const router = useRouter();
 
@@ -68,6 +69,7 @@ export default function TransferIssueMultipleStocks({
   const [materialQuantities, setMaterialQuantities] = useState<{
     [key: number]: number;
   }>({});
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Fetch available locations dynamically
   useEffect(() => {
@@ -279,7 +281,7 @@ export default function TransferIssueMultipleStocks({
           description: inventoryItem.description,
           unit: inventoryItem.unit,
           available_qty: availableQty,
-          quantity: 0,
+          quantity: "",
           serial_number: "",
           attachment: null,
           image: inventoryItem.image || "",
@@ -291,7 +293,7 @@ export default function TransferIssueMultipleStocks({
     setIsSelectMaterialOpen(false);
   }
 
-  function handleQuantityChange(inventoryItemId: number, quantity: number) {
+  function handleQuantityChange(inventoryItemId: number, quantity: string) {
     setSelectedItems(
       selectedItems.map((item) =>
         item.inventory_item_id === inventoryItemId
@@ -359,11 +361,13 @@ export default function TransferIssueMultipleStocks({
 
     // Validate quantities
     for (const item of selectedItems) {
-      if (item.quantity <= 0) {
+      const qty = parseFloat(item.quantity);
+
+      if (!item.quantity || isNaN(qty) || qty <= 0) {
         toast(`Please enter a valid quantity for ${item.description}`, "error");
         return;
       }
-      if (item.quantity > item.available_qty) {
+      if (qty > item.available_qty) {
         toast(
           `Quantity for ${item.description} exceeds available quantity`,
           "error",
@@ -481,6 +485,15 @@ export default function TransferIssueMultipleStocks({
       console.error("Error submitting transfer:", error);
       toast("Failed to transfer or issue stock", "error");
     }
+  }
+
+  function formatQuantity(qty: number | string | undefined | null) {
+    if (qty == null) return "0"; // handles undefined or null
+    const num = Number(qty);
+    if (isNaN(num)) return "0"; // fallback if it's not a valid number
+    return Number.isInteger(num)
+      ? num.toString()
+      : num.toFixed(3).replace(/\.?0+$/, "");
   }
 
   return (
@@ -854,7 +867,7 @@ export default function TransferIssueMultipleStocks({
                               </div>
                             </td>
                             <td>
-                              {item.available_qty} {item.unit}
+                              {formatQuantity(item.available_qty)} {item.unit}
                             </td>
                             <td>
                               <InputItem
@@ -864,13 +877,29 @@ export default function TransferIssueMultipleStocks({
                                 value={item.quantity || ""}
                                 type={"text"}
                                 onChange={(e) => {
-                                  const value = e.target.value.replace(
-                                    /[^0-9]/g,
-                                    "",
-                                  );
+                                  let val = e.target.value;
+
+                                  // Remove any commas
+                                  val = val.replace(/,/g, "");
+
+                                  // Clear input if empty
+                                  if (val === "") {
+                                    handleQuantityChange(
+                                      item.inventory_item_id,
+                                      "",
+                                    );
+                                    return;
+                                  }
+
+                                  // Allow only numbers and a single decimal point
+                                  if (!/^\d*\.?\d*$/.test(val)) {
+                                    return;
+                                  }
+
+                                  // Set the value as-is (with decimal if present)
                                   handleQuantityChange(
                                     item.inventory_item_id,
-                                    Number(value),
+                                    val,
                                   );
                                 }}
                                 required
@@ -1017,7 +1046,7 @@ export default function TransferIssueMultipleStocks({
       {/* Select Material Modal */}
       {isSelectMaterialOpen && (
         <FormPopUp
-          header={`SELECT MATERIAL`}
+          header={`SELECT MATERIALS`}
           setIsOpen={setIsSelectMaterialOpen}
           handleSubmit={(e) => {
             e.preventDefault();
@@ -1030,8 +1059,46 @@ export default function TransferIssueMultipleStocks({
             handleAddMaterial(selectedIds);
           }}
           addButtonLabel={"CONFIRM"}
-          style={{ minWidth: "1200px" }}
+          style={{ minWidth: "1300px" }}
         >
+          <div
+            style={{
+              position: "relative",
+              flex: 1,
+              maxWidth: "400px",
+              backgroundColor: "white",
+            }}
+          >
+            <input
+              type="text"
+              placeholder="SEARCH"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: "400px",
+                padding: "10px 40px 10px 15px",
+                borderRadius: "8px",
+                border: "1px solid rgba(223, 223, 223, 1)",
+                fontSize: "14px",
+              }}
+            />
+            <img
+              src={searchIcon}
+              alt="search"
+              style={{
+                position: "absolute",
+                right: "15px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "16px",
+                height: "16px",
+                opacity: 0.5,
+              }}
+            />
+          </div>
+
+          <br />
+
           <table className="items-table two-toned">
             <thead>
               <tr>
@@ -1050,6 +1117,19 @@ export default function TransferIssueMultipleStocks({
                     // Only show items with stock at this location
                     const qty = materialQuantities[item.id] ?? 0;
                     return qty > 0;
+                  })
+                  .filter((item) => {
+                    // ✅ Search filter - search by ID or description
+                    if (!searchQuery.trim()) return true;
+
+                    const query = searchQuery.toLowerCase();
+                    const itemId =
+                      `INV-${String(item.id).padStart(5, "0")}`.toLowerCase();
+                    const description = (item.description || "").toLowerCase();
+
+                    return (
+                      itemId.includes(query) || description.includes(query)
+                    );
                   })
                   .map((item, index) => {
                     const isAlreadyAdded = selectedItems.some(
@@ -1137,9 +1217,9 @@ export default function TransferIssueMultipleStocks({
                           </div>
                         </td>
                         <td>
-                          {materialQuantities[item.id] !== undefined
-                            ? `${availableQty} ${item.unit || ""}`
-                            : "Loading..."}
+                          {materialQuantities[item.id] === undefined
+                            ? "Loading..."
+                            : `${formatQuantity(availableQty)} ${item.unit || ""}`}
                         </td>
                         <td>
                           <div

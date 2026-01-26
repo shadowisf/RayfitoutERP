@@ -25,12 +25,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     padding: 20,
     fontFamily: "Mont",
+    position: "relative", // ✅ Added for absolute positioning context
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 10,
   },
   logo: {
     width: 120,
@@ -41,19 +42,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#000000",
     textTransform: "uppercase",
-    marginBottom: 15,
+    marginBottom: 10,
   },
   titleBold: {
     fontFamily: "Mont-SemiBold",
   },
   inventoryImage: {
-    marginTop: 15,
+    marginTop: 10,
     width: 100,
     objectFit: "contain",
   },
   small: {
     textTransform: "uppercase",
-    fontSize: 14,
+    fontSize: 9,
+  },
+  // ✅ New style for QR code section wrapper
+  qrCodeWrapper: {
+    position: "absolute",
+    bottom: 20, // Same as page padding
+    left: 20, // Same as page padding
+    right: 20, // Same as page padding
   },
 });
 
@@ -72,7 +80,7 @@ export function QrCodePDF({
 
   return (
     <Document>
-      <Page size={["425", "300"]} style={styles.page}>
+      <Page size={["425", "350"]} style={styles.page}>
         <View style={styles.header}>
           <Image src={logo} style={styles.logo} />
         </View>
@@ -81,6 +89,8 @@ export function QrCodePDF({
           <Text style={styles.title}>
             <Text style={styles.titleBold}>{inventoryItem.description}</Text>
           </Text>
+
+          <Text style={styles.small}>{inventoryItem.specification}</Text>
         </View>
 
         {/* Inventory Item Image */}
@@ -90,10 +100,13 @@ export function QrCodePDF({
           </View>
         )}
 
-        <QrCodeSectionPDF
-          qrcodeDataUrl={qrcodeDataUrl}
-          inventoryItem={inventoryItem}
-        />
+        {/* ✅ QR Code Section - Always at bottom */}
+        <View style={styles.qrCodeWrapper}>
+          <QrCodeSectionPDF
+            qrcodeDataUrl={qrcodeDataUrl}
+            inventoryItem={inventoryItem}
+          />
+        </View>
       </Page>
     </Document>
   );

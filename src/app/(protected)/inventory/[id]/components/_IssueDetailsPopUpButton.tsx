@@ -23,6 +23,15 @@ export default function TransactionDetailsPopUpButton({
   const externalLinkIcon = "/icons/external-link.svg";
   const noImageIcon = "/icons/no-image.jpg";
 
+  function formatQuantity(qty: number | string | undefined | null) {
+    if (qty == null) return "0"; // handles undefined or null
+    const num = Number(qty);
+    if (isNaN(num)) return "0"; // fallback if it's not a valid number
+    return Number.isInteger(num)
+      ? num.toString()
+      : num.toFixed(3).replace(/\.?0+$/, "");
+  }
+
   useEffect(() => {
     async function fetchTransferDetails() {
       try {
@@ -293,7 +302,9 @@ export default function TransactionDetailsPopUpButton({
                         text={item.specification}
                       />
                     </td>
-                    <td>{item.quantity}</td>
+                    <td>
+                      {formatQuantity(item.quantity)} {item.unit}
+                    </td>
                     <td>
                       {item.attachment && (
                         <a

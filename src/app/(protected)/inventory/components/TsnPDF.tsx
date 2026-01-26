@@ -248,6 +248,15 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
     return Math.max(margin, 20);
   };
 
+  function formatQuantity(qty: number | string | undefined | null) {
+    if (qty == null) return "0"; // handles undefined or null
+    const num = Number(qty);
+    if (isNaN(num)) return "0"; // fallback if it's not a valid number
+    return Number.isInteger(num)
+      ? num.toString()
+      : num.toFixed(3).replace(/\.?0+$/, "");
+  }
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -295,14 +304,6 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
 
         {transaction.type.toLowerCase().includes("issue") && (
           <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}></Text>
-              <Text style={styles.infoValue}></Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}></Text>
-              <Text style={styles.infoValue}></Text>
-            </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>PROJECT</Text>
               <Text style={styles.infoValue}>
@@ -412,7 +413,7 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
                   {item.specification}
                 </Text>
                 <Text style={styles.tableColQuantity}>
-                  {item.quantity} {item.unit}
+                  {formatQuantity(item.quantity)} {item.unit}
                 </Text>
                 {transaction.type.toLowerCase().includes("issue") && (
                   <Text

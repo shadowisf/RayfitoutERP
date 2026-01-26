@@ -138,6 +138,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   }>({});
   const [isCheckingGrnQuantity, setIsCheckingGrnQuantity] =
     useState<boolean>(true);
+  const [totalInvoiceAmount, setTotalInvoiceAmount] = useState(0);
+  const [mrLinePrices, setMrLinePrices] = useState<{ [key: number]: number }>(
+    {},
+  );
 
   // Regroup mrLines based on progress_id
   useEffect(() => {
@@ -370,6 +374,21 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       (hasMismatch) => hasMismatch,
     );
   }
+
+  useEffect(() => {
+    const total = Object.values(mrLinePrices).reduce(
+      (sum, price) => sum + price,
+      0,
+    );
+    setTotalInvoiceAmount(total);
+  }, [mrLinePrices]);
+
+  const handleTotalPriceChange = (mrLineId: number, totalPrice: number) => {
+    setMrLinePrices((prev) => ({
+      ...prev,
+      [mrLineId]: totalPrice,
+    }));
+  };
 
   useEffect(() => {
     const supplierGroups: GroupedMrLinesBySupplier = {};
@@ -2144,6 +2163,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                   borderRadius: "25px",
                                                   padding: "5px 20px",
                                                 }}
+                                                portalTarget={document.getElementById(
+                                                  "total-invoice-portal",
+                                                )}
+                                                onTotalPriceChange={
+                                                  handleTotalPriceChange
+                                                }
                                               />
                                             </td>
                                           )}
@@ -2210,6 +2235,25 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   })}
                               </tbody>
                             </table>
+
+                            {mrHeader.progress_id === 10 &&
+                              userInfo?.departmentID === 8 && (
+                                <div id={`total-invoice-portal`}>
+                                  <br />
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      backgroundColor: "rgba(239, 239, 239, 1)",
+                                      padding: "7px 20px",
+                                      borderRadius: "25px",
+                                    }}
+                                  >
+                                    <h4>TOTAL</h4>
+                                    <h4>{totalInvoiceAmount.toFixed(2)} AED</h4>
+                                  </div>
+                                </div>
+                              )}
 
                             <br />
                           </div>

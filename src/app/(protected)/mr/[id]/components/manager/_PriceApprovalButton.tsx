@@ -10,6 +10,7 @@ import InputItem from "@/app/components/InputItem";
 import RejectCommentPopUp from "./RejectCommentPopUp";
 import { MrLine } from "../../types/mrLine";
 import SupplierDetailsPopUp from "../SupplierDetailsPopUp";
+import { createPortal } from "react-dom";
 
 type PriceApprovalButtonProps = {
   progressID: number;
@@ -19,6 +20,8 @@ type PriceApprovalButtonProps = {
   borderColor?: string;
   full?: boolean;
   style?: React.CSSProperties;
+  portalTarget?: HTMLElement | null;
+  onTotalPriceChange?: (mrLineId: number, totalPrice: number) => void; // ✅ New prop
 };
 
 export default function PriceApprovalButton({
@@ -29,6 +32,8 @@ export default function PriceApprovalButton({
   borderColor = "rgba(239, 239, 239, 1)",
   full,
   style,
+  portalTarget,
+  onTotalPriceChange, // ✅ New prop
 }: PriceApprovalButtonProps) {
   const diamondIcon = "/icons/diamond.svg";
   const externalLinkIcon = "/icons/external-link.svg";
@@ -75,6 +80,13 @@ export default function PriceApprovalButton({
           (q: SupplierQuotation) => q.approval_status === "Approved",
         );
         setApprovedQuotation(approved || null);
+
+        // ✅ Call callback with approved quotation's total price
+        if (approved && onTotalPriceChange) {
+          onTotalPriceChange(mrLine.id, parseFloat(approved.total_price) || 0);
+        } else if (onTotalPriceChange) {
+          onTotalPriceChange(mrLine.id, 0);
+        }
 
         const rejected = data.every(
           (q: SupplierQuotation) => q.approval_status === "Rejected",

@@ -112,6 +112,52 @@ export default function MR() {
     fetchDurations();
   }, [mrHeaders]);
 
+  // ✅ Map progress_id to responsible department ID
+  const progressToResponsibleDepartment: { [key: number]: number } = {
+    2: 16, // Awaiting QS initial approval → QS
+    3: 8, // Awaiting manager initial approval → Management
+    7: 9, // Awaiting quotations → Procurement
+    9: 16, // Awaiting QS price approval → QS
+    10: 8, // Awaiting manager price approval → Management
+    12: 9, // Awaiting LPO & invoice → Procurement
+    16: 9, // GRN failed → Procurement
+    14: 10, // Pending payment → Finance
+    15: 9, // Payment rejected → Procurement
+    17: 11, // Pending delivery → Storekeeper
+    21: 12, // Awaiting QC check → Quality Control
+    23: 12, // Failed QC → Quality Control
+    24: 11, // Awaiting stock entry → Storekeeper
+  };
+
+  // ✅ Updated canViewMR function - only shows MRs that need action from user's department
+  const canViewMR = (mr: any) => {
+    const userDeptId = userInfo?.departmentID;
+    if (!userDeptId) return false;
+
+    // ✅ Draft (progress_id 1): Show only own department's MRs
+    if (mr.progress_id === 1) {
+      return mr.department_id === userDeptId;
+    }
+
+    // Completed MRs (progress_id 25) are accessible to everyone
+    if (mr.progress_id === 25) return true;
+
+    // ✅ Management (department ID 8) can view ALL non-draft MRs (except drafts from other departments)
+    if (userDeptId === 8 && mr.progress_id !== 1) {
+      return true;
+    }
+
+    // ✅ Only show MRs where this department needs to take action
+    // Exclude MRs from the user's own department
+    const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
+
+    if (responsibleDept === userDeptId && mr.department_id !== userDeptId) {
+      return true;
+    }
+
+    return false;
+  };
+
   const departmentViewPermissions: { [key: number]: number[] } = {
     /* JOINERY */ 1: [1, 2, 5, 25],
     /* MARKETING */ 2: [1, 2, 5, 25],
@@ -220,11 +266,12 @@ export default function MR() {
 
   const universalProgressIds = [1, 2, 5];
 
-  const canViewMR = (mr: any) => {
+  // ✅ Updated view permission check - still allows viewing own department's MRs
+  const canUserViewMR = (mr: any) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
-    // Managers (department ID 8 and 16) can view all MRs
+    // Managers (department ID 8) can view all MRs
     if (userDeptId === 8) return true;
 
     // Completed MRs (progress_id 25) are accessible to everyone
@@ -479,7 +526,7 @@ export default function MR() {
       {/* Kanban Container with fixed height and visible scrollbar */}
       <div
         style={{
-          height: "calc(100vh - 230px)", // Adjust based on your header/other content height
+          height: "calc(100vh - 230px)",
           overflowX: "auto",
           overflowY: "auto",
         }}
@@ -606,7 +653,7 @@ export default function MR() {
                     );
                     const isCompleted =
                       mr.progress_name === "Completed" || mr.progress_id === 25;
-                    const hasViewPermission = canViewMR(mr);
+                    const hasViewPermission = canUserViewMR(mr);
 
                     const durationKey = `${mr.id}-${mr.progress_id}`;
                     const durationData = mrDurations[durationKey] || {

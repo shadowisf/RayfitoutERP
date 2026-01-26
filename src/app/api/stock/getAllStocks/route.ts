@@ -26,7 +26,7 @@ export async function GET() {
         success: false,
         error: error.message || "Failed to fetch stocks",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
