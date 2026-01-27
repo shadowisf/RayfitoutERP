@@ -40,9 +40,7 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
   const [materialSubCategoryID, setMaterialSubCategoryID] = useState<
     (string | number)[]
   >([]);
-  const [trn1, setTrn1] = useState("");
-  const [trn2, setTrn2] = useState("");
-  const [trn3, setTrn3] = useState("");
+  const [trn, setTrn] = useState("");
   const [currency, setCurrency] = useState("");
   const [status, setStatus] = useState("");
   const [creditLimit, setCreditLimit] = useState<number | string>("");
@@ -64,9 +62,7 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
     setName("");
     setMaterialCategoryID([]);
     setMaterialSubCategoryID([]);
-    setTrn1("");
-    setTrn2("");
-    setTrn3("");
+    setTrn("");
     setCurrency("");
     setStatus("");
     setCreditLimit("");
@@ -152,8 +148,6 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
     e.preventDefault();
     e.stopPropagation();
 
-    const trn_number = `${trn1}${trn2}${trn3}`;
-
     try {
       let trnCertificateUrl = null;
 
@@ -205,7 +199,7 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
             name,
             material_categories: materialCategoryID,
             material_subcategories: materialSubCategoryID,
-            trn_number,
+            trn_number: trn,
             trn_certificate: JSON.stringify(trnCertificateUrl),
             trade_license: JSON.stringify(tradeLicenseUrl),
             avg_lead_time: null,
@@ -233,9 +227,7 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
         setName("");
         setMaterialCategoryID([]);
         setMaterialSubCategoryID([]);
-        setTrn1("");
-        setTrn2("");
-        setTrn3("");
+        setTrn("");
         setCurrency("");
         setStatus("");
         setContactPersonName("");
@@ -378,8 +370,8 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
 
               {(type.toLowerCase().includes("cash") ||
                 type.toLowerCase().includes("credit")) && (
-                <div className="input-row">
-                  <div className="input-item">
+                <div className="input-row half">
+                  {/* <div className="input-item">
                     <label>TRN / TAX REGISTRATION NUMBER</label>
                     <div style={{ display: "flex", gap: "5px" }}>
                       <input
@@ -407,7 +399,14 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                         onChange={(e) => setTrn3(e.target.value)}
                       />
                     </div>
-                  </div>
+                  </div> */}
+                  <InputItem
+                    label={"TRN / TAX REGISTRATION NUMBER"}
+                    value={trn}
+                    type={"text"}
+                    onChange={(e) => setTrn(e.target.value)}
+                    required
+                  />
                 </div>
               )}
 
@@ -566,6 +565,7 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                   onChange={(e) => {
                     setContactPersonName(e.target.value);
                   }}
+                  required={!type.toLowerCase().includes("marketplace")}
                 />
               </div>
 
@@ -578,6 +578,7 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                   onChange={(e) => {
                     setPhone(e.target.value);
                   }}
+                  required={!type.toLowerCase().includes("marketplace")}
                 />
 
                 <InputItem
@@ -588,6 +589,7 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                   onChange={(e) => {
                     setEmail(e.target.value);
                   }}
+                  required={!type.toLowerCase().includes("marketplace")}
                 />
 
                 <InputItem
@@ -598,6 +600,7 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                   onChange={(e) => {
                     setAddress(e.target.value);
                   }}
+                  required={!type.toLowerCase().includes("marketplace")}
                 />
               </div>
 

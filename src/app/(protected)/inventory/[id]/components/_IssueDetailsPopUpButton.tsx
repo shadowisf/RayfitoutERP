@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
-import ViewTSNPDFButton from "./_ViewTsnPDFButton";
-import UploadSignedTSCButton from "./_UploadSignedTSCButton";
+import DownloadDnPdfButton from "./_DownloadDnPdfButton";
+import UploadSignedDnButton from "./_UploadSignedDnButton";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
+import DownloadPlPdfButton from "./_DownloadPlPdfButton";
 
 type TransactionDetailsPopUpButtonProps = {
   transferID: number;
@@ -133,6 +134,12 @@ export default function TransactionDetailsPopUpButton({
                   <small>3RD PARTY TRANSPORTATION INVOLVED?</small>
                   <h3>
                     {transaction?.third_party_involved === 1 ? "YES" : "NO"}
+                  </h3>
+                </div>
+                <div>
+                  <small>PACKING LIST REQUIRED?</small>
+                  <h3>
+                    {transaction?.packing_list_required === 1 ? "YES" : "NO"}
                   </h3>
                 </div>
               </div>
@@ -297,10 +304,14 @@ export default function TransactionDetailsPopUpButton({
                       >
                         <img src={externalLinkIcon} alt="external link" />
                       </Button> */}
-                      <InfoPopUpButton
-                        header={"SPECIFICATION"}
-                        text={item.specification}
-                      />
+                      {item.specification ? (
+                        <InfoPopUpButton
+                          header={"SPECIFICATION"}
+                          text={item.specification}
+                        />
+                      ) : (
+                        "-"
+                      )}
                     </td>
                     <td>
                       {formatQuantity(item.quantity)} {item.unit}
@@ -347,8 +358,12 @@ export default function TransactionDetailsPopUpButton({
 
             <div style={{ maxWidth: "750px" }}>
               <div style={{ display: "flex", gap: "10px" }}>
-                <ViewTSNPDFButton transactionID={transferID} />
-                <UploadSignedTSCButton
+                {transaction?.packing_list_required === 1 && (
+                  <DownloadPlPdfButton transactionID={transferID} />
+                )}
+
+                <DownloadDnPdfButton transactionID={transferID} />
+                <UploadSignedDnButton
                   transactionID={transferID}
                   onSuccess={onSuccess}
                 />

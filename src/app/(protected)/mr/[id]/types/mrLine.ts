@@ -16,6 +16,7 @@ export type MrLine = {
   attachment: string;
   delivery_location: string;
   boq_header_id: number;
+  boq_line_ids: string;
   boq_line_id: number;
   boq_item_name: string;
   boq_item_number: string;

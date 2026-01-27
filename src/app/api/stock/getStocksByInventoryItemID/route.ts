@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
           success: false,
           message: "Inventory item ID is required",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       `;
       const [transferIssueRows] = await db.execute<RowDataPacket[]>(
         transferIssueQuery,
-        [inventoryItemId]
+        [inventoryItemId],
       );
 
       // Add source identifier and handle null suppliers
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
           message: "Failed to fetch stock data",
           error: error instanceof Error ? error.message : "Unknown error",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   } catch (error) {
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
         message: "Failed to process request",
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

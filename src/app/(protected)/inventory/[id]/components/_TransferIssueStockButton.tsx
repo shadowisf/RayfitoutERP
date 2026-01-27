@@ -11,7 +11,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { useAuth } from "@/app/context/AuthContext";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import FormContextHeader from "@/app/components/FormContextHeader";
-import SelectBoqItemButton from "@/app/components/_SelectBoqItemButton";
+import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
 
 type TransferIssueStockButtonProps = {
   inventoryItem: InventoryItem;
@@ -35,6 +35,7 @@ export default function TransferIssueStocksButton({
   const [serialNumber, setSerialNumber] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [thirdParty, setThirdParty] = useState(false);
+  const [packingList, setPackingList] = useState(false);
   const [projectID, setProjectID] = useState<string | number>("");
   const [boqLineID, setBoqLineID] = useState<string | number>("");
 
@@ -44,7 +45,6 @@ export default function TransferIssueStocksButton({
   const [fromValues, setFromValues] = useState<any>([]);
   const [toValues, setToValues] = useState<any>([]);
   const [projectValues, setProjectValues] = useState<any>([]);
-  const [boqLineValues, setBoqLineValues] = useState<any>([]);
 
   // Store the full stock data for quantity calculation
   const [stocksData, setStocksData] = useState<any>(null);
@@ -58,31 +58,6 @@ export default function TransferIssueStocksButton({
         setProjectValues(data);
       });
   }, []);
-
-  useEffect(() => {
-    fetch("/api/boq/getAllBoqLinesWithNumberRef", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        project_id: projectID,
-      }),
-    })
-      .then((res) => res.json())
-      .then(function (data) {
-        const transformedData = data.map(function (boqLine: any) {
-          return {
-            id: boqLine.id,
-            value: `${boqLine.item_number} ${boqLine.item_name}`,
-            category: boqLine.category,
-            sub_category: boqLine.sub_category,
-            // Keep original data for reference
-            raw: boqLine,
-          };
-        });
-
-        setBoqLineValues(transformedData);
-      });
-  }, [projectID]);
 
   useEffect(() => {
     fetch(
@@ -250,6 +225,7 @@ export default function TransferIssueStocksButton({
         quantity,
         purpose,
         third_party_involved: thirdParty,
+        packing_list_required: packingList,
         receiver_name: receiverName,
         serial_number: serialNumber,
         attachment: JSON.stringify(attachmentUrls),
@@ -394,7 +370,7 @@ export default function TransferIssueStocksButton({
                   </small>
                 </label>
 
-                <SelectBoqItemButton
+                <MultipleSelectBoqItemButton
                   projectID={Number(projectID)}
                   onSelectBoq={setBoqLineID}
                   disabled={projectID === ""}
@@ -461,64 +437,125 @@ export default function TransferIssueStocksButton({
               </div>
 
               {type.toLowerCase().includes("transfer") && (
-                <div className="input-row half">
-                  <div
-                    className="input-item"
-                    style={{ flexDirection: "row", alignItems: "center" }}
-                  >
+                <>
+                  <div className="input-row half">
                     <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        height: "100%",
-                      }}
+                      className="input-item"
+                      style={{ flexDirection: "row", alignItems: "center" }}
                     >
                       <div
-                        onClick={() => setThirdParty(!thirdParty)}
                         style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "5px",
-                          border: thirdParty ? "none" : "2px solid #d1d5db",
-                          backgroundColor: thirdParty
-                            ? "#10b981"
-                            : "transparent",
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
+                          gap: "10px",
+                          height: "100%",
                         }}
                       >
-                        {thirdParty && (
-                          <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M16.6667 5L7.50004 14.1667L3.33337 10"
-                              stroke="white"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        )}
+                        <div
+                          onClick={() => setThirdParty(!thirdParty)}
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "5px",
+                            border: thirdParty ? "none" : "2px solid #d1d5db",
+                            backgroundColor: thirdParty
+                              ? "#10b981"
+                              : "transparent",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {thirdParty && (
+                            <svg
+                              width="24"
+                              height="24"
+                              viewBox="0 0 20 20"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M16.6667 5L7.50004 14.1667L3.33337 10"
+                                stroke="white"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
                       </div>
+                      <label
+                        style={{
+                          maxWidth: "500px",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        3RD PARTY TRANSPORT INVOLVED?
+                      </label>
                     </div>
-                    <label
-                      style={{
-                        maxWidth: "500px",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      3RD PARTY TRANSPORT INVOLVED?
-                    </label>
                   </div>
-                </div>
+
+                  <div className="input-row half">
+                    <div
+                      className="input-item"
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          height: "100%",
+                        }}
+                      >
+                        <div
+                          onClick={() => setPackingList(!packingList)}
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "5px",
+                            border: packingList ? "none" : "2px solid #d1d5db",
+                            backgroundColor: packingList
+                              ? "#10b981"
+                              : "transparent",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {packingList && (
+                            <svg
+                              width="24"
+                              height="24"
+                              viewBox="0 0 20 20"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M16.6667 5L7.50004 14.1667L3.33337 10"
+                                stroke="white"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                      <label
+                        style={{
+                          maxWidth: "500px",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        PACKING LIST REQUIRED?
+                      </label>
+                    </div>
+                  </div>
+                </>
               )}
 
               <div className="input-row three-col">

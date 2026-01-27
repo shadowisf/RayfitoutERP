@@ -14,6 +14,52 @@ export default function MR() {
     [key: string]: { duration: string; style: any };
   }>({});
 
+  const [mrDeliveryDates, setMrDeliveryDates] = useState<{
+    [mrId: number]: Array<{ supplier_name: string; delivery_date: string }>;
+  }>({});
+
+  useEffect(() => {
+    if (mrHeaders.length === 0) return;
+
+    const fetchDeliveryDates = async () => {
+      const deliveryDatesMap: {
+        [mrId: number]: Array<{ supplier_name: string; delivery_date: string }>;
+      } = {};
+
+      await Promise.all(
+        mrHeaders.map(async (mr) => {
+          try {
+            const res = await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getDeliveryDatesByMrHeaderID`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mr_header_id: mr.id }),
+              },
+            );
+            const data = await res.json();
+
+            if (data.success && data.delivery_dates) {
+              deliveryDatesMap[mr.id] = data.delivery_dates;
+            } else {
+              deliveryDatesMap[mr.id] = [];
+            }
+          } catch (err) {
+            console.error(
+              `Error fetching delivery dates for MR ${mr.id}:`,
+              err,
+            );
+            deliveryDatesMap[mr.id] = [];
+          }
+        }),
+      );
+
+      setMrDeliveryDates(deliveryDatesMap);
+    };
+
+    fetchDeliveryDates();
+  }, [mrHeaders]);
+
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "GET",
@@ -753,13 +799,105 @@ export default function MR() {
                         <br />
 
                         {!isCompleted ? (
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "25px",
-                            }}
-                          >
+                          <>
+                            {/* Required Date */}
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "25px",
+                              }}
+                            >
+                              <div>
+                                <small>REQUIRED DATE</small>
+                                <h3>
+                                  {new Date(
+                                    mr.required_date,
+                                  ).toLocaleDateString()}
+                                </h3>
+                              </div>
+
+                              <h3
+                                style={{
+                                  padding: "5px 15px",
+                                  backgroundColor:
+                                    RequireDateDaysLeftStyle.backgroundColor,
+                                  color: RequireDateDaysLeftStyle.color,
+                                  textTransform: "uppercase",
+                                  borderRadius: "5px",
+                                }}
+                              >
+                                {getDaysLeftText(mr.required_date)}
+                              </h3>
+                            </div>
+
+                            <br />
+
+                            {/* Delivery Dates by Vendor */}
+                            {mr.progress_id === 17 &&
+                              mrDeliveryDates[mr.id] &&
+                              mrDeliveryDates[mr.id].length > 0 && (
+                                <>
+                                  {mrDeliveryDates[mr.id].map(
+                                    (delivery, index) => {
+                                      const deliveryDaysLeftStyle =
+                                        getDaysLeftStyle(
+                                          delivery.delivery_date,
+                                        );
+
+                                      return (
+                                        <div key={index}>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: "25px",
+                                            }}
+                                          >
+                                            <div>
+                                              <small>
+                                                {delivery.supplier_name.toUpperCase()}{" "}
+                                                DELIVERY DATE
+                                              </small>
+                                              <h3>
+                                                {new Date(
+                                                  delivery.delivery_date,
+                                                ).toLocaleDateString()}
+                                              </h3>
+                                            </div>
+
+                                            <h3
+                                              style={{
+                                                padding: "5px 15px",
+                                                backgroundColor:
+                                                  deliveryDaysLeftStyle.backgroundColor,
+                                                color:
+                                                  deliveryDaysLeftStyle.color,
+                                                textTransform: "uppercase",
+                                                borderRadius: "5px",
+                                                whiteSpace: "nowrap",
+                                              }}
+                                            >
+                                              {getDaysLeftText(
+                                                delivery.delivery_date,
+                                              )}
+                                            </h3>
+                                          </div>
+
+                                          {index <
+                                            mrDeliveryDates[mr.id].length -
+                                              1 && <br />}
+                                        </div>
+                                      );
+                                    },
+                                  )}
+                                  <br />
+                                </>
+                              )}
+                          </>
+                        ) : (
+                          <>
+                            {/* Completed MR - Show Required Date without days left */}
                             <div>
                               <small>REQUIRED DATE</small>
                               <h3>
@@ -769,29 +907,38 @@ export default function MR() {
                               </h3>
                             </div>
 
-                            <h3
-                              style={{
-                                padding: "5px 15px",
-                                backgroundColor:
-                                  RequireDateDaysLeftStyle.backgroundColor,
-                                color: RequireDateDaysLeftStyle.color,
-                                textTransform: "uppercase",
-                                borderRadius: "5px",
-                              }}
-                            >
-                              {getDaysLeftText(mr.required_date)}
-                            </h3>
-                          </div>
-                        ) : (
-                          <div>
-                            <small>REQUIRED DATE</small>
-                            <h3>
-                              {new Date(mr.required_date).toLocaleDateString()}
-                            </h3>
-                          </div>
-                        )}
+                            <br />
 
-                        <br />
+                            {/* Delivery Dates for Completed MRs */}
+                            {mrDeliveryDates[mr.id] &&
+                              mrDeliveryDates[mr.id].length > 0 && (
+                                <>
+                                  {mrDeliveryDates[mr.id].map(
+                                    (delivery, index) => (
+                                      <div key={index}>
+                                        <div>
+                                          <small>
+                                            {delivery.supplier_name.toUpperCase()}{" "}
+                                            DELIVERY DATE
+                                          </small>
+                                          <h3>
+                                            {new Date(
+                                              delivery.delivery_date,
+                                            ).toLocaleDateString()}
+                                          </h3>
+                                        </div>
+                                        {index <
+                                          mrDeliveryDates[mr.id].length - 1 && (
+                                          <br />
+                                        )}
+                                      </div>
+                                    ),
+                                  )}
+                                  <br />
+                                </>
+                              )}
+                          </>
+                        )}
 
                         <Button
                           componentType={"link"}

@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
         sti.received_on,
         sti.signed_tsc_file,
         sti.third_party_involved,
+        sti.packing_list_required,
         sti.receiver_name,
         
         -- Junction table fields (inventory items)
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
       received_on: rows[0].received_on,
       signed_tsc_file: rows[0].signed_tsc_file,
       third_party_involved: rows[0].third_party_involved,
+      packing_list_required: rows[0].packing_list_required,
       full_name_of_receiver: rows[0].receiver_name,
       project_name: rows[0].project_name,
       boq_category: rows[0].boq_category,

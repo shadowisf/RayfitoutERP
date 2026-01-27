@@ -10,7 +10,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { useAuth } from "@/app/context/AuthContext";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import FormContextHeader from "@/app/components/FormContextHeader";
-import SelectBoqItemButton from "@/app/components/_SelectBoqItemButton";
+import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
 
 type SelectedItem = {
   inventory_item_id: number;
@@ -55,13 +55,13 @@ export default function TransferIssueMultipleStocks({
   const [receiverName, setReceiverName] = useState<string | number>("");
   const [file, setFile] = useState<File | null>(null);
   const [thirdParty, setThirdParty] = useState(false);
+  const [packingList, setPackingList] = useState(false);
   const [projectID, setProjectID] = useState<string | number>("");
   const [boqLineID, setBoqLineID] = useState<string | number>("");
 
   const [fromValues, setFromValues] = useState<any>([]);
   const [toValues, setToValues] = useState<any>([]);
   const [projectValues, setProjectValues] = useState<any>([]);
-  const [boqLineValues, setBoqLineValues] = useState<any>([]);
 
   // Inventory items for selection
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
@@ -134,33 +134,6 @@ export default function TransferIssueMultipleStocks({
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (projectID) {
-      fetch("/api/boq/getAllBoqLinesWithNumberRef", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project_id: projectID,
-        }),
-      })
-        .then((res) => res.json())
-        .then(function (data) {
-          const transformedData = data.map(function (boqLine: any) {
-            return {
-              id: boqLine.id,
-              value: `${boqLine.item_number} ${boqLine.item_name}`,
-              category: boqLine.category,
-              sub_category: boqLine.sub_category,
-              // Keep original data for reference
-              raw: boqLine,
-            };
-          });
-
-          setBoqLineValues(transformedData);
-        });
-    }
-  }, [projectID]);
-
   // Fetch quantities for specific location when opening the select material modal
   useEffect(() => {
     if (isSelectMaterialOpen && inventoryItems.length > 0 && from) {
@@ -222,32 +195,60 @@ export default function TransferIssueMultipleStocks({
 
       let locationQuantity = 0;
 
-      // Add quantity from stocks table for this location
-      data.stocks.forEach((stock: any) => {
-        if (stock.location === location) {
-          locationQuantity += stock.quantity;
-        }
-      });
+      // ✅ Step 1: Add quantity from stocks table for this location
+      if (data.stocks && Array.isArray(data.stocks)) {
+        data.stocks.forEach((stock: any) => {
+          if (stock.location === location) {
+            locationQuantity += parseFloat(stock.quantity) || 0;
+          }
+        });
+      }
 
-      // Process transfers and issues for this location
-      data.stocksTransferIssue.forEach((transaction: any) => {
-        if (transaction.type.toLowerCase().includes("issue")) {
-          if (transaction.received && transaction.from_location === location) {
-            locationQuantity -= transaction.quantity;
+      // ✅ Step 2: Process transfers and issues for this location
+      if (data.stocksTransferIssue && Array.isArray(data.stocksTransferIssue)) {
+        data.stocksTransferIssue.forEach((transaction: any) => {
+          // Find the specific item in the transaction
+          const transactionItem = transaction.items?.find(
+            (item: any) => item.inventory_item_id === inventoryItemId,
+          );
+
+          if (!transactionItem) return; // Skip if this transaction doesn't involve this item
+
+          const transactionQty = parseFloat(transactionItem.quantity) || 0;
+
+          // ✅ Issue for use
+          if (transaction.type?.toLowerCase().includes("issue")) {
+            // Only subtract if received AND from this location
+            if (
+              transaction.received === 1 &&
+              transaction.from_location === location
+            ) {
+              locationQuantity -= transactionQty;
+            }
           }
-        } else if (transaction.type.toLowerCase().includes("transfer")) {
-          if (transaction.from_location === location) {
-            locationQuantity -= transaction.quantity;
+          // ✅ Material transfer
+          else if (transaction.type?.toLowerCase().includes("transfer")) {
+            // Only process if received
+            if (transaction.received === 1) {
+              // Subtract from source location
+              if (transaction.from_location === location) {
+                locationQuantity -= transactionQty;
+              }
+              // Add to destination location
+              if (transaction.to_location === location) {
+                locationQuantity += transactionQty;
+              }
+            }
           }
-          if (transaction.to_location === location) {
-            locationQuantity += transaction.quantity;
+          // ✅ Send for processing
+          else if (transaction.type?.toLowerCase().includes("send")) {
+            // Subtract from source location (sent items leave the location)
+            if (transaction.from_location === location) {
+              locationQuantity -= transactionQty;
+            }
           }
-        } else if (transaction.type.toLowerCase().includes("send")) {
-          if (transaction.from_location === location) {
-            locationQuantity -= transaction.quantity;
-          }
-        }
-      });
+        });
+      }
 
       return locationQuantity > 0 ? locationQuantity : 0;
     } catch (error) {
@@ -444,6 +445,7 @@ export default function TransferIssueMultipleStocks({
           to,
           purpose,
           third_party_involved: thirdParty,
+          packing_list_required: packingList,
           receiver_name: receiverName,
           // ✅ No attachment field here - attachments are per item now
         }),
@@ -602,13 +604,13 @@ export default function TransferIssueMultipleStocks({
                   </small>
                 </label>
 
-                <SelectBoqItemButton
+                {/*  <MultipleSelectBoqItemButton
                   projectID={Number(projectID)}
                   onSelectBoq={setBoqLineID}
                   disabled={projectID === ""}
                   currentBoqLineID={boqLineID}
                   style={{ height: "30.5px" }}
-                />
+                /> */}
               </div>
             </div>
           )}
@@ -686,9 +688,10 @@ export default function TransferIssueMultipleStocks({
 
               <br />
 
-              <div className="input-row half">
-                {type.toLowerCase().includes("transfer") && (
-                  <>
+              {(type.toLowerCase().includes("transfer") ||
+                type.toLowerCase().includes("send")) && (
+                <>
+                  <div className="input-row half">
                     <div
                       className="input-item"
                       style={{ flexDirection: "row", alignItems: "center" }}
@@ -745,10 +748,12 @@ export default function TransferIssueMultipleStocks({
                         3RD PARTY TRANSPORT INVOLVED?
                       </label>
                     </div>
-                  </>
-                )}
+                  </div>
+                </>
+              )}
 
-                {type.toLowerCase().includes("send") && (
+              {type.toLowerCase().includes("transfer") && (
+                <div className="input-row half">
                   <div
                     className="input-item"
                     style={{ flexDirection: "row", alignItems: "center" }}
@@ -762,13 +767,13 @@ export default function TransferIssueMultipleStocks({
                       }}
                     >
                       <div
-                        onClick={() => setThirdParty(!thirdParty)}
+                        onClick={() => setPackingList(!packingList)}
                         style={{
                           width: "32px",
                           height: "32px",
                           borderRadius: "5px",
-                          border: thirdParty ? "none" : "2px solid #d1d5db",
-                          backgroundColor: thirdParty
+                          border: packingList ? "none" : "2px solid #d1d5db",
+                          backgroundColor: packingList
                             ? "#10b981"
                             : "transparent",
                           display: "flex",
@@ -777,7 +782,7 @@ export default function TransferIssueMultipleStocks({
                           cursor: "pointer",
                         }}
                       >
-                        {thirdParty && (
+                        {packingList && (
                           <svg
                             width="24"
                             height="24"
@@ -802,11 +807,11 @@ export default function TransferIssueMultipleStocks({
                         textTransform: "uppercase",
                       }}
                     >
-                      3RD PARTY TRANSPORT INVOLVED?
+                      PACKING LIST REQUIRED?
                     </label>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <br />
 

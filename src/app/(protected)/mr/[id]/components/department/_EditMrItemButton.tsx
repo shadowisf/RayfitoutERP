@@ -10,7 +10,7 @@ import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { MrLine } from "../../types/mrLine";
 import { toast } from "@/app/components/Toast";
-import SelectBoqItemButton from "@/app/components/_SelectBoqItemButton";
+import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
 
 type EditMrItemButtonProps = {
   projectID: number;
@@ -374,7 +374,7 @@ export default function EditMrItemButton({
                 <small>(OPTIONAL)</small>
               </label>
 
-              <SelectBoqItemButton
+              <MultipleSelectBoqItemButton
                 projectID={projectID}
                 onSelectBoq={setBoqLineID}
                 currentBoqLineID={boqLineID}

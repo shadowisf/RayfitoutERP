@@ -3,38 +3,18 @@
 import Button from "@/app/components/Button";
 import { useEffect, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
-import { TsnPDF } from "../../components/TsnPDF";
+import { DnPdf } from "../../components/DnPdf";
+import { PlPdf } from "../../components/PlPdf";
 
-type ViewTSNPDFButtonProps = {
+type props = {
   transactionID: number;
 };
 
-export default function ViewTSNPDFButton({
-  transactionID,
-}: ViewTSNPDFButtonProps) {
+export default function DownloadPlPdfButton({ transactionID }: props) {
   const downloadIcon = "/icons/download.svg";
 
   const [transaction, setTransaction] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  async function urlToBase64(url: string): Promise<string> {
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3/getImage`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
-        }
-      );
-
-      const data = await response.json();
-      return data.success && data.dataUrl ? data.dataUrl : "";
-    } catch (error) {
-      console.error("Failed to convert image:", url, error);
-      return "";
-    }
-  }
 
   useEffect(() => {
     async function fetchTransferDetails() {
@@ -45,7 +25,7 @@ export default function ViewTSNPDFButton({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: transactionID }),
-          }
+          },
         );
 
         const data = await response.json();
@@ -66,36 +46,13 @@ export default function ViewTSNPDFButton({
     setIsProcessing(true);
 
     try {
-      let processedTransaction = { ...transaction };
-
-      // ✅ Process attachments for each item in the items array
-      if (transaction.items && Array.isArray(transaction.items)) {
-        processedTransaction.items = await Promise.all(
-          transaction.items.map(async (item: any) => {
-            let attachmentBase64 = null;
-
-            // If item has an attachment URL, convert it to base64
-            if (item.attachment) {
-              attachmentBase64 = await urlToBase64(item.attachment);
-            }
-
-            return {
-              ...item,
-              attachmentBase64, // ✅ Add base64 version for PDF rendering
-            };
-          })
-        );
-      }
-
-      const blob = await pdf(
-        <TsnPDF transaction={processedTransaction} />
-      ).toBlob();
+      const blob = await pdf(<PlPdf transaction={transaction} />).toBlob();
 
       const url = URL.createObjectURL(blob);
 
       const link = document.createElement("a");
       link.href = url;
-      link.download = `DN-${transactionID.toString().padStart(5, "0")}.pdf`;
+      link.download = `PL-${transactionID.toString().padStart(5, "0")}.pdf`;
 
       document.body.appendChild(link);
       link.click();
@@ -116,10 +73,10 @@ export default function ViewTSNPDFButton({
       borderColor={"rgba(207, 207, 207, 1)"}
       textColor={"black"}
       style={{ padding: "7px 20px", borderRadius: "25px" }}
-      disabled={isProcessing}
       onClick={handleDownload}
+      disabled={isProcessing}
     >
-      DN (UNSIGNED)
+      PACKING LIST
       <img src={downloadIcon} alt="download" />
     </Button>
   );

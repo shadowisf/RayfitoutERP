@@ -47,6 +47,24 @@ export default async function MrWithID({
       console.error(err);
     });
 
+  // ✅ Fetch delivery dates by vendor
+  const deliveryDates = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getDeliveryDatesByMrHeaderID`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mr_header_id: id }),
+    },
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      return data.success ? data.delivery_dates : [];
+    })
+    .catch((err) => {
+      console.error("Error fetching delivery dates:", err);
+      return [];
+    });
+
   const { duration, durationStyle } = await fetch(
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getProgressDuration`,
     {
@@ -132,13 +150,6 @@ export default async function MrWithID({
     (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
 
-  // ✅ Calculate days left for DELIVERY DATE
-  const delivery = new Date(mrHeader.delivery_date);
-  delivery.setHours(0, 0, 0, 0);
-  const deliveryDiffDays = Math.ceil(
-    (delivery.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-  );
-
   // Days left text for REQUIRED DATE
   let daysLeftText = "";
   if (diffDays > 0) {
@@ -148,20 +159,6 @@ export default async function MrWithID({
   } else {
     daysLeftText = `${Math.abs(diffDays)} ${
       Math.abs(diffDays) === 1 ? "DAY" : "DAYS"
-    } OVERDUE`;
-  }
-
-  // ✅ Days left text for DELIVERY DATE
-  let deliveryDaysLeftText = "";
-  if (deliveryDiffDays > 0) {
-    deliveryDaysLeftText = `${deliveryDiffDays} ${
-      deliveryDiffDays === 1 ? "DAY" : "DAYS"
-    } LEFT`;
-  } else if (deliveryDiffDays === 0) {
-    deliveryDaysLeftText = "DUE TODAY";
-  } else {
-    deliveryDaysLeftText = `${Math.abs(deliveryDiffDays)} ${
-      Math.abs(deliveryDiffDays) === 1 ? "DAY" : "DAYS"
     } OVERDUE`;
   }
 
@@ -193,33 +190,54 @@ export default async function MrWithID({
     };
   }
 
-  // ✅ Days left style for DELIVERY DATE
-  let deliveryDaysLeftStyle = {
-    backgroundColor: "",
-    color: "",
-  };
+  // ✅ Helper function to calculate days left for any date
+  const calculateDaysLeft = (dateString: string) => {
+    const targetDate = new Date(dateString);
+    targetDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil(
+      (targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
-  if (deliveryDiffDays < 0) {
-    deliveryDaysLeftStyle = {
-      backgroundColor: "rgba(175, 61, 61, 1)",
-      color: "white",
+    let text = "";
+    if (diffDays > 0) {
+      text = `${diffDays} ${diffDays === 1 ? "DAY" : "DAYS"} LEFT`;
+    } else if (diffDays === 0) {
+      text = "DUE TODAY";
+    } else {
+      text = `${Math.abs(diffDays)} ${
+        Math.abs(diffDays) === 1 ? "DAY" : "DAYS"
+      } OVERDUE`;
+    }
+
+    let style = {
+      backgroundColor: "",
+      color: "",
     };
-  } else if (deliveryDiffDays <= 1) {
-    deliveryDaysLeftStyle = {
-      backgroundColor: "rgba(255, 181, 181, 1)",
-      color: "rgba(248, 77, 77, 1)",
-    };
-  } else if (deliveryDiffDays <= 3) {
-    deliveryDaysLeftStyle = {
-      backgroundColor: "rgba(255, 250, 189, 1)",
-      color: "rgba(134, 83, 47, 1)",
-    };
-  } else {
-    deliveryDaysLeftStyle = {
-      backgroundColor: "rgba(231, 231, 231, 1)",
-      color: "black",
-    };
-  }
+
+    if (diffDays < 0) {
+      style = {
+        backgroundColor: "rgba(175, 61, 61, 1)",
+        color: "white",
+      };
+    } else if (diffDays <= 1) {
+      style = {
+        backgroundColor: "rgba(255, 181, 181, 1)",
+        color: "rgba(248, 77, 77, 1)",
+      };
+    } else if (diffDays <= 3) {
+      style = {
+        backgroundColor: "rgba(255, 250, 189, 1)",
+        color: "rgba(134, 83, 47, 1)",
+      };
+    } else {
+      style = {
+        backgroundColor: "rgba(231, 231, 231, 1)",
+        color: "black",
+      };
+    }
+
+    return { text, style };
+  };
 
   const isRejected = ["reject", "fail"].some((word) =>
     mrHeader.progress_name?.toLowerCase().includes(word),
@@ -307,18 +325,16 @@ export default async function MrWithID({
             </div>
 
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              {mrHeader.progress_id !== 1 &&
-                mrHeader.progress_id !== 25 &&
-                mrHeader.progress_id >= 12 && (
-                  <CancelMaterialRequestButton
-                    mrHeaderID={Number(id)}
-                    bgColor="black"
-                    borderColor="black"
-                    textColor="white"
-                  >
-                    ROLL BACK MATERIAL REQUEST
-                  </CancelMaterialRequestButton>
-                )}
+              {mrHeader?.progress_id >= 2 && mrHeader.progress_id <= 12 && (
+                <CancelMaterialRequestButton
+                  mrHeaderID={Number(id)}
+                  bgColor="black"
+                  borderColor="black"
+                  textColor="white"
+                >
+                  ROLL BACK MATERIAL REQUEST
+                </CancelMaterialRequestButton>
+              )}
 
               <EditMrHeaderButton mrHeader={mrHeader} />
               <DeleteMrHeaderButton mrHeader={mrHeader} />
@@ -389,33 +405,52 @@ export default async function MrWithID({
               </div>
             )}
           </div>
+        </div>
 
-          <div style={{ display: "flex", gap: "10px" }}>
-            {mrHeader.department_id === 17 && (
-              <div>
-                <small style={{ textWrap: "nowrap" }}>DELIVERY DATE/S</small>
-                <h2>
-                  {new Date(mrHeader.delivery_date).toLocaleDateString("en-US")}
-                </h2>
-              </div>
-            )}
-            {mrHeader.department_id === 17 && (
-              <div>
-                <h2
-                  className="approval-pill normal-text"
-                  style={{
-                    backgroundColor: deliveryDaysLeftStyle.backgroundColor,
-                    color: deliveryDaysLeftStyle.color,
-                    borderRadius: "5px",
-                    textWrap: "nowrap",
-                  }}
-                >
-                  {deliveryDaysLeftText}
-                </h2>
-              </div>
+        {mrHeader?.progress_id === 17 && (
+          <div className="bottom">
+            {/* ✅ Delivery Dates by Vendor */}
+            {deliveryDates && deliveryDates.length > 0 && (
+              <>
+                {deliveryDates.map((delivery: any, index: number) => {
+                  const { text, style } = calculateDaysLeft(
+                    delivery.delivery_date,
+                  );
+
+                  return (
+                    <div key={index} style={{ display: "flex", gap: "10px" }}>
+                      <div>
+                        <small style={{ textWrap: "nowrap" }}>
+                          {delivery.supplier_name.toUpperCase()} DELIVERY DATE
+                        </small>
+                        <h2>
+                          {new Date(delivery.delivery_date).toLocaleDateString(
+                            "en-US",
+                          )}
+                        </h2>
+                      </div>
+                      {!isCompleted && (
+                        <div>
+                          <h2
+                            className="approval-pill normal-text"
+                            style={{
+                              backgroundColor: style.backgroundColor,
+                              color: style.color,
+                              borderRadius: "5px",
+                              textWrap: "nowrap",
+                            }}
+                          >
+                            {text}
+                          </h2>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
             )}
           </div>
-        </div>
+        )}
       </div>
 
       <br />

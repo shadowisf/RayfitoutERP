@@ -50,21 +50,7 @@ export default function EditSupplierButton({ supplier, onSuccess }: props) {
     (string | number)[]
   >(parseCategoryIds(supplier?.material_subcategory_ids));
 
-  // Parse TRN number into parts
-  const parseTRN = (trn: string) => {
-    if (!trn) return { part1: "", part2: "", part3: "" };
-    return {
-      part1: trn.slice(0, 3),
-      part2: trn.slice(3, 9),
-      part3: trn.slice(9, 12),
-    };
-  };
-
-  const trnParts = parseTRN(supplier?.trn_number);
-
-  const [trn1, setTrn1] = useState(trnParts.part1);
-  const [trn2, setTrn2] = useState(trnParts.part2);
-  const [trn3, setTrn3] = useState(trnParts.part3);
+  const [trn, setTrn] = useState(supplier?.trn_number);
   const [currency, setCurrency] = useState(supplier?.currency);
   const [status, setStatus] = useState(supplier?.status);
   const [creditLimit, setCreditLimit] = useState<number | string>(
@@ -190,8 +176,6 @@ export default function EditSupplierButton({ supplier, onSuccess }: props) {
     e.preventDefault();
     e.stopPropagation();
 
-    const trn_number = `${trn1}${trn2}${trn3}`;
-
     try {
       let trnCertificateUrl = supplier.trn_certificate;
 
@@ -257,7 +241,7 @@ export default function EditSupplierButton({ supplier, onSuccess }: props) {
             name,
             material_categories: materialCategoryID,
             material_subcategories: materialSubCategoryID,
-            trn_number,
+            trn_number: trn,
             trn_certificate: JSON.stringify(trnCertificateUrl),
             trade_license: JSON.stringify(tradeLicenseUrl),
             avg_lead_time: supplier.avg_lead_time,
@@ -410,8 +394,8 @@ export default function EditSupplierButton({ supplier, onSuccess }: props) {
 
               {(type.toLowerCase().includes("cash") ||
                 type.toLowerCase().includes("credit")) && (
-                <div className="input-row">
-                  <div className="input-item">
+                <div className="input-row half">
+                  {/* <div className="input-item">
                     <label>TRN / TAX REGISTRATION NUMBER</label>
                     <div style={{ display: "flex", gap: "5px" }}>
                       <input
@@ -439,7 +423,14 @@ export default function EditSupplierButton({ supplier, onSuccess }: props) {
                         onChange={(e) => setTrn3(e.target.value)}
                       />
                     </div>
-                  </div>
+                  </div> */}
+                  <InputItem
+                    label={"TRN / TAX REGISTRATION NUMBER"}
+                    value={trn}
+                    type={"text"}
+                    onChange={(e) => setTrn(e.target.value)}
+                    required
+                  />
                 </div>
               )}
 
@@ -597,6 +588,7 @@ export default function EditSupplierButton({ supplier, onSuccess }: props) {
                   onChange={(e) => {
                     setContactPersonName(e.target.value);
                   }}
+                  required={!type.toLowerCase().includes("marketplace")}
                 />
               </div>
 
@@ -609,6 +601,7 @@ export default function EditSupplierButton({ supplier, onSuccess }: props) {
                   onChange={(e) => {
                     setPhone(e.target.value);
                   }}
+                  required={!type.toLowerCase().includes("marketplace")}
                 />
 
                 <InputItem
@@ -619,6 +612,7 @@ export default function EditSupplierButton({ supplier, onSuccess }: props) {
                   onChange={(e) => {
                     setEmail(e.target.value);
                   }}
+                  required={!type.toLowerCase().includes("marketplace")}
                 />
 
                 <InputItem
@@ -629,6 +623,7 @@ export default function EditSupplierButton({ supplier, onSuccess }: props) {
                   onChange={(e) => {
                     setAddress(e.target.value);
                   }}
+                  required={!type.toLowerCase().includes("marketplace")}
                 />
               </div>
 

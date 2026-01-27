@@ -12,7 +12,7 @@ import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { InventoryItem } from "../../types/inventoryItem";
 import FormContextHeader from "@/app/components/FormContextHeader";
 import CreateSupplierButton from "@/app/(protected)/vendor/components/_CreateSupplierButton";
-import SelectBoqItemButton from "@/app/components/_SelectBoqItemButton";
+import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
 
 type ManualAddToStockButtonProps = {
   inventoryItem: InventoryItem;
@@ -352,7 +352,7 @@ export default function ManualAddToStockButton({
                 <small>(OPTIONAL)</small>
               </label>
 
-              <SelectBoqItemButton
+              <MultipleSelectBoqItemButton
                 projectID={Number(projectID)}
                 onSelectBoq={setBoqLineID}
                 currentBoqLineID={boqLineID}

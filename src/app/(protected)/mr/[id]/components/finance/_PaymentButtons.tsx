@@ -18,7 +18,6 @@ type PaymentButtonsProps = {
   mrHeader: MrHeader;
   mrLine: MrLine;
   supplierId: number;
-  portalTarget?: HTMLElement | null;
 };
 
 type StatusType = "pending" | "approved" | "rejected";
@@ -27,7 +26,6 @@ export default function PaymentButtons({
   mrHeader,
   mrLine,
   supplierId,
-  portalTarget,
 }: PaymentButtonsProps) {
   const { userInfo } = useAuth();
 
@@ -288,27 +286,6 @@ export default function PaymentButtons({
     }
   }
 
-  // Render total invoice section in portal
-  const totalInvoiceSection =
-    portalTarget && lpo ? (
-      <>
-        <br />
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            backgroundColor: "black",
-            padding: "7px 20px",
-            borderRadius: "25px",
-            color: "white",
-          }}
-        >
-          <h4>TOTAL INVOICE</h4>
-          <h4>{lpo.total} AED</h4>
-        </div>
-      </>
-    ) : null;
-
   if (status === "approved") {
     return (
       <>
@@ -353,9 +330,6 @@ export default function PaymentButtons({
             )}
           </div>
         </div>
-        {portalTarget &&
-          totalInvoiceSection &&
-          createPortal(totalInvoiceSection, portalTarget)}
       </>
     );
   }
@@ -389,9 +363,6 @@ export default function PaymentButtons({
             )}
           </div>
         </div>
-        {portalTarget &&
-          totalInvoiceSection &&
-          createPortal(totalInvoiceSection, portalTarget)}
       </>
     );
   }
@@ -409,9 +380,6 @@ export default function PaymentButtons({
         >
           <span style={{ fontSize: "14.1px" }}>Payment Pending</span>
         </div>
-        {portalTarget &&
-          totalInvoiceSection &&
-          createPortal(totalInvoiceSection, portalTarget)}
       </>
     );
   }
@@ -451,10 +419,6 @@ export default function PaymentButtons({
           Reject Invoice
         </Button>
       </div>
-
-      {portalTarget &&
-        totalInvoiceSection &&
-        createPortal(totalInvoiceSection, portalTarget)}
 
       {isProceedOpen && (
         <FormPopUp

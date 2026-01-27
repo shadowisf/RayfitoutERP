@@ -7,15 +7,15 @@ import { toast } from "@/app/components/Toast";
 import FormPopUp from "@/app/components/FormPopup";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 
-type UploadSignedTSCButtonProps = {
+type props = {
   transactionID: number;
   onSuccess?: () => void;
 };
 
-export default function UploadSignedTSCButton({
+export default function UploadSignedDnButton({
   transactionID,
   onSuccess,
-}: UploadSignedTSCButtonProps) {
+}: props) {
   const router = useRouter();
 
   const uploadIcon = "/icons/upload.svg";
@@ -39,7 +39,7 @@ export default function UploadSignedTSCButton({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: transactionID }),
-          }
+          },
         );
 
         if (!response.ok) {
@@ -117,7 +117,7 @@ export default function UploadSignedTSCButton({
         {
           method: "POST",
           body: formData,
-        }
+        },
       );
 
       if (!response.ok) {
@@ -140,7 +140,7 @@ export default function UploadSignedTSCButton({
             transaction_id: transactionID,
             signed_tsc_file: JSON.stringify(updatedTscFiles),
           }),
-        }
+        },
       );
 
       if (!updateRes.ok) {
@@ -184,7 +184,7 @@ export default function UploadSignedTSCButton({
             action: "delete",
             url: url,
           }),
-        }
+        },
       );
 
       if (!deleteRes.ok) {
@@ -203,7 +203,7 @@ export default function UploadSignedTSCButton({
             action: "deleteSignedTSC",
             transaction_id: transactionID,
           }),
-        }
+        },
       );
 
       if (!updateRes.ok) {

@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const [rows]: any = await db.query(
       `
       SELECT * FROM vw_mr_lines WHERE mr_header_id = ?`,
-      [Number(body.id)]
+      [Number(body.id)],
     );
 
     let boqNumbering = new Map();
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     if (rows.length > 0) {
       const [mrHeader]: any = await db.query(
         `SELECT project_id FROM mr_headers WHERE id = ?`,
-        [Number(body.id)]
+        [Number(body.id)],
       );
 
       if (mrHeader.length > 0) {
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
           JOIN boq_headers bh ON bl.boq_id = bh.id
           WHERE bh.project_id = ?
           `,
-          [projectId]
+          [projectId],
         );
 
         const projectCategories = new Map();
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
           const subCategoryKey = `${category}-${subCategory}`;
           if (!subCategoryMap.has(subCategoryKey)) {
             const subCategoriesInCategory = Array.from(
-              subCategoryMap.keys()
+              subCategoryMap.keys(),
             ).filter((key: any) => key.startsWith(`${category}-`)).length;
             subCategoryMap.set(subCategoryKey, subCategoriesInCategory + 1);
           }
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
     console.error(err.sqlMessage || err.message);
     return NextResponse.json(
       { error: err.sqlMessage || err.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -57,6 +57,8 @@ export default function Inventory() {
   const [availableProjects, setAvailableProjects] = useState<
     { id: number; name: string }[] // Change from string to number
   >([]);
+  const [transferLogTimeFilter, setTransferLogTimeFilter] =
+    useState<string>("all");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -586,24 +588,52 @@ export default function Inventory() {
 
   // Filter transactions based on search
   const getFilteredTransactions = () => {
-    if (searchQuery.trim() === "") {
-      return allTransactions;
+    let filtered = allTransactions;
+
+    // Apply time filter
+    if (transferLogTimeFilter !== "all") {
+      const now = new Date();
+      const timeframes: { [key: string]: number } = {
+        "24h": 1,
+        "3d": 3,
+        "7d": 7,
+        "14d": 14,
+        "30d": 30,
+        "90d": 90,
+      };
+
+      const daysAgo = timeframes[transferLogTimeFilter];
+      if (daysAgo) {
+        const cutoffDate = new Date(
+          now.getTime() - daysAgo * 24 * 60 * 60 * 1000,
+        );
+
+        filtered = filtered.filter((transaction) => {
+          const transactionDate = new Date(transaction.created_on);
+          return transactionDate >= cutoffDate;
+        });
+      }
     }
 
-    const query = searchQuery.toLowerCase();
-    return allTransactions.filter((transaction) => {
-      // Search in materials
-      const materialMatch = transaction.items?.some((item: any) =>
-        item.description?.toLowerCase().includes(query),
-      );
+    // Apply search filter
+    if (searchQuery.trim() !== "") {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((transaction) => {
+        // Search in materials
+        const materialMatch = transaction.items?.some((item: any) =>
+          item.description?.toLowerCase().includes(query),
+        );
 
-      // Search in locations
-      const locationMatch =
-        transaction.from_location?.toLowerCase().includes(query) ||
-        transaction.to_location?.toLowerCase().includes(query);
+        // Search in locations
+        const locationMatch =
+          transaction.from_location?.toLowerCase().includes(query) ||
+          transaction.to_location?.toLowerCase().includes(query);
 
-      return materialMatch || locationMatch;
-    });
+        return materialMatch || locationMatch;
+      });
+    }
+
+    return filtered;
   };
 
   const filteredTransactions = getFilteredTransactions();
@@ -664,61 +694,94 @@ export default function Inventory() {
       <br />
 
       <div className="category-grid">
-        <div>
-          <button
-            className={`item-alt ${activeTab === "inventory" ? "active" : ""}`}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <Button
+            componentType={"button"}
+            bgColor={activeTab === "inventory" ? "black" : "transparent"}
+            borderColor={"black"}
+            textColor={activeTab === "inventory" ? "white" : "black"}
             onClick={() => setActiveTab("inventory")}
+            style={{
+              padding: "7px 20px",
+              borderRadius: "25px",
+            }}
           >
             INVENTORY
-          </button>
-          <button
-            className={`item-alt ${
-              activeTab === "transfer-log" ? "active" : ""
-            }`}
+          </Button>
+
+          <Button
+            componentType={"button"}
+            bgColor={activeTab === "transfer-log" ? "black" : "transparent"}
+            borderColor={"black"}
+            textColor={activeTab === "transfer-log" ? "white" : "black"}
             onClick={() => setActiveTab("transfer-log")}
+            style={{
+              padding: "7px 20px",
+              borderRadius: "25px",
+            }}
           >
             TRANSFER LOG
-          </button>
+          </Button>
         </div>
 
         <div style={{ display: "flex", gap: "10px" }}>
-          {activeTab === "inventory" && (
-            <div
+          {activeTab === "transfer-log" && (
+            <select
+              value={transferLogTimeFilter}
+              onChange={(e) => setTransferLogTimeFilter(e.target.value)}
               style={{
-                position: "relative",
-                flex: 1,
-                maxWidth: "400px",
+                padding: "10px 15px",
+                borderRadius: "50px",
+                border: "1px solid rgba(223, 223, 223, 1)",
                 backgroundColor: "white",
+                cursor: "pointer",
               }}
             >
-              <input
-                type="text"
-                placeholder="SEARCH"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: "400px",
-                  padding: "10px 40px 10px 15px",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(223, 223, 223, 1)",
-                  fontSize: "14px",
-                }}
-              />
-              <img
-                src={searchIcon}
-                alt="search"
-                style={{
-                  position: "absolute",
-                  right: "15px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: "16px",
-                  height: "16px",
-                  opacity: 0.5,
-                }}
-              />
-            </div>
+              <option value="all">All Time</option>
+              <option value="24h">Last 24 Hours</option>
+              <option value="3d">Last 3 Days</option>
+              <option value="7d">Last 7 Days</option>
+              <option value="14d">Last 14 Days</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="90d">Last 90 Days</option>
+            </select>
           )}
+
+          <div
+            style={{
+              position: "relative",
+              flex: 1,
+              maxWidth: "400px",
+              backgroundColor: "white",
+            }}
+          >
+            <input
+              type="text"
+              placeholder="SEARCH"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: "400px",
+                padding: "10px 40px 10px 15px",
+                borderRadius: "8px",
+                border: "1px solid rgba(223, 223, 223, 1)",
+                fontSize: "14px",
+              }}
+            />
+            <img
+              src={searchIcon}
+              alt="search"
+              style={{
+                position: "absolute",
+                right: "15px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "16px",
+                height: "16px",
+                opacity: 0.5,
+              }}
+            />
+          </div>
         </div>
       </div>
 

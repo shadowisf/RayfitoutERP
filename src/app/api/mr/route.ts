@@ -55,17 +55,14 @@ export async function POST(req: Request) {
 
     if (body.action === "createMrLine") {
       try {
-        // Insert the main mr_line - WITHOUT material_subcategory_id column
+        // ✅ Insert the main mr_line WITHOUT boq_line_id
         const lineQuery = `
       INSERT INTO mr_lines 
-      (boq_line_id, mr_header_id, material_category_id, material_description, quantity, unit, notes, specification, brand, delivery_location, attachment)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (mr_header_id, material_category_id, material_description, quantity, unit, notes, specification, brand, delivery_location, attachment)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
         const lineValues = [
-          body.boq_line_id && !isNaN(Number(body.boq_line_id))
-            ? Number(body.boq_line_id)
-            : null,
           Number(body.mr_header_id),
           Number(body.material_category_id),
           body.material_description || "",
@@ -86,12 +83,11 @@ export async function POST(req: Request) {
         );
         const mrLineId = lineResult.insertId;
 
-        // Insert subcategories into junction table
+        // ✅ Insert subcategories into junction table
         const subcategoryIds = Array.isArray(body.material_subcategory_ids)
           ? body.material_subcategory_ids
           : [body.material_subcategory_ids];
 
-        // Filter out any invalid IDs
         const validSubcategoryIds = subcategoryIds.filter(
           (id: any) => id && !isNaN(Number(id)),
         );
@@ -108,6 +104,31 @@ export async function POST(req: Request) {
           ]);
 
           await db.query(junctionQuery, [junctionValues]);
+        }
+
+        // ✅ Insert BOQ line associations into junction table
+        const boqLineIds = Array.isArray(body.boq_line_ids)
+          ? body.boq_line_ids
+          : body.boq_line_ids
+            ? [body.boq_line_ids]
+            : [];
+
+        const validBoqLineIds = boqLineIds.filter(
+          (id: any) => id && !isNaN(Number(id)),
+        );
+
+        if (validBoqLineIds.length > 0) {
+          const boqJunctionQuery = `
+        INSERT INTO jt_mr_lines_boq_lines (mr_line_id, boq_line_id)
+        VALUES ?
+      `;
+
+          const boqJunctionValues = validBoqLineIds.map((boqId: any) => [
+            mrLineId,
+            Number(boqId),
+          ]);
+
+          await db.query(boqJunctionQuery, [boqJunctionValues]);
         }
 
         return NextResponse.json({
@@ -417,11 +438,10 @@ export async function PUT(req: Request) {
 
     if (body.action === "updateAll") {
       try {
-        // Update the main mr_line
+        // ✅ Update the main mr_line WITHOUT boq_line_id
         const query = `
       UPDATE mr_lines 
-      SET boq_line_id = ?, 
-          material_category_id = ?, 
+      SET material_category_id = ?, 
           material_description = ?, 
           quantity = ?, 
           unit = ?, 
@@ -437,7 +457,6 @@ export async function PUT(req: Request) {
     `;
 
         const values = [
-          Number(body.boq_line_id) || null,
           Number(body.material_category_id),
           body.material_description,
           Number(body.quantity),
@@ -451,29 +470,64 @@ export async function PUT(req: Request) {
 
         await db.query(query, values);
 
-        // Delete existing subcategory associations
+        // ✅ Delete existing subcategory associations
         await db.query(
           `DELETE FROM jt_mr_line_material_subcategory WHERE mr_line_id = ?`,
           [Number(body.id)],
         );
 
-        // Insert new subcategory associations
+        // ✅ Insert new subcategory associations
         const subcategoryIds = Array.isArray(body.material_subcategory_id)
           ? body.material_subcategory_id
           : [body.material_subcategory_id];
 
-        if (subcategoryIds.length > 0) {
+        const validSubcategoryIds = subcategoryIds.filter(
+          (id: any) => id && !isNaN(Number(id)),
+        );
+
+        if (validSubcategoryIds.length > 0) {
           const junctionQuery = `
         INSERT INTO jt_mr_line_material_subcategory (mr_line_id, material_subcategory_id)
         VALUES ?
       `;
 
-          const junctionValues = subcategoryIds.map((subcatId: number) => [
+          const junctionValues = validSubcategoryIds.map((subcatId: number) => [
             Number(body.id),
             Number(subcatId),
           ]);
 
           await db.query(junctionQuery, [junctionValues]);
+        }
+
+        // ✅ Delete existing BOQ line associations
+        await db.query(
+          `DELETE FROM jt_mr_lines_boq_lines WHERE mr_line_id = ?`,
+          [Number(body.id)],
+        );
+
+        // ✅ Insert new BOQ line associations
+        const boqLineIds = Array.isArray(body.boq_line_ids)
+          ? body.boq_line_ids
+          : body.boq_line_ids
+            ? [body.boq_line_ids]
+            : [];
+
+        const validBoqLineIds = boqLineIds.filter(
+          (id: any) => id && !isNaN(Number(id)),
+        );
+
+        if (validBoqLineIds.length > 0) {
+          const boqJunctionQuery = `
+        INSERT INTO jt_mr_lines_boq_lines (mr_line_id, boq_line_id)
+        VALUES ?
+      `;
+
+          const boqJunctionValues = validBoqLineIds.map((boqId: any) => [
+            Number(body.id),
+            Number(boqId),
+          ]);
+
+          await db.query(boqJunctionQuery, [boqJunctionValues]);
         }
 
         return NextResponse.json({ success: true });
@@ -506,12 +560,14 @@ export async function DELETE(req: Request) {
     const body = await req.json();
 
     if (body.action === "deleteItem") {
+      // ✅ Cascading deletes will handle junction table entries automatically
       const query = "DELETE FROM mr_lines WHERE id = ?";
       await db.query(query, [Number(body.id)]);
       return NextResponse.json({ success: true });
     }
 
     if (body.action === "deleteSubCategory") {
+      // ✅ Cascading deletes will handle junction table entries automatically
       const query = `
     DELETE FROM mr_lines 
     WHERE id IN (?)
@@ -525,6 +581,7 @@ export async function DELETE(req: Request) {
     }
 
     if (body.action === "deleteMrHeader") {
+      // ✅ Cascading deletes will handle mr_lines and junction tables automatically
       const query = "DELETE FROM mr_headers WHERE id = ?";
 
       await db.query(query, [Number(body.id)]);

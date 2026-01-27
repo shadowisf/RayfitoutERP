@@ -1,5 +1,6 @@
 "use client";
 
+import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
@@ -9,7 +10,6 @@ import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import SelectBoqItemButton from "@/app/components/_SelectBoqItemButton";
 
 type AddMrItemButtonProps = {
   mrHeaderID: number;
@@ -61,7 +61,9 @@ export default function AddMrItemButton({
   const [materialSubCategoryIDs, setMaterialSubCategoryIDs] = useState<
     (string | number)[]
   >([]);
-  const [boqLineID, setBoqLineID] = useState<string | number>("");
+  // ✅ Changed to array for multiple BOQ items
+  const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
+  const [boqLineInfo, setBoqLineInfo] = useState<string>(""); // ✅ For display text
   const [materialDescription, setMaterialDescription] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
@@ -243,6 +245,12 @@ export default function AddMrItemButton({
     setMaterialCategoryID(categoryId);
   };
 
+  // ✅ Handle BOQ selection
+  const handleBoqSelection = (boqIDs: number[], infoText: string) => {
+    setBoqLineIDs(boqIDs);
+    setBoqLineInfo(infoText);
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -257,8 +265,8 @@ export default function AddMrItemButton({
       return;
     }
 
-    /* if (!boqLineID && purposeID === 1) {
-      toast("Please select a bill of quantity line", "error");
+    /* if (boqLineIDs.length === 0 && purposeID === 1) {
+      toast("Please select at least one bill of quantity line", "error");
       return;
     } */
 
@@ -301,7 +309,7 @@ export default function AddMrItemButton({
           brand,
           specification,
           delivery_location: deliveryLocation,
-          boq_line_id: boqLineID || null,
+          boq_line_ids: boqLineIDs, // ✅ Send as array
           attachment: JSON.stringify(attachmentUrl),
         }),
       });
@@ -317,7 +325,8 @@ export default function AddMrItemButton({
         setQuantity("");
         setUnit("");
         setNotes("");
-        setBoqLineID("");
+        setBoqLineIDs([]); // ✅ Reset array
+        setBoqLineInfo(""); // ✅ Reset info
         setBrand("");
         setSpecification("");
         setDeliveryLocation("");
@@ -401,10 +410,11 @@ export default function AddMrItemButton({
                 <small>(OPTIONAL)</small>
               </label>
 
-              <SelectBoqItemButton
+              {/* ✅ Updated to use checkbox component */}
+              <MultipleSelectBoqItemButton
                 projectID={projectID}
-                onSelectBoq={setBoqLineID}
-                currentBoqLineID={boqLineID}
+                onSelectBoq={handleBoqSelection}
+                currentBoqLineIDs={boqLineIDs}
               />
             </div>
           </div>

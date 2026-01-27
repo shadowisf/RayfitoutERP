@@ -223,11 +223,11 @@ const styles = StyleSheet.create({
   },
 });
 
-type TsnPDFProps = {
+type props = {
   transaction: any;
 };
 
-export function TsnPDF({ transaction }: TsnPDFProps) {
+export function DnPdf({ transaction }: props) {
   const logo = "/icons/logo.jpg";
   const items = transaction?.items || [];
 
@@ -449,8 +449,7 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
         {/* Bottom Section - Two Signatures */}
         <View style={{ marginTop: calculateBottomMargin() }}>
           {/* Driver/Transport Custody Section */}
-          {(transaction.type.toLowerCase().includes("transfer") ||
-            transaction.type.toLowerCase().includes("send")) && (
+          {transaction.type.toLowerCase().includes("transfer") && (
             <View style={styles.signatureRow} wrap={false}>
               {/* Left: Checkbox and Text */}
               <View style={styles.confirmationSection}>
@@ -474,11 +473,11 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
                     their safe handling and delivery to the specified
                     destination. I will ensure that the material(s) are
                     transported securely and protected from loss, damage, or
-                    misuse while under my custody during transit.
-                    {"\n\n"}I understand that any shortages, damages, or losses
-                    occurring during transportation may be subject to
-                    investigation and responsibility in accordance with
-                    applicable company and contractual policies.
+                    misuse while under my custody during transit.{"\n\n"}I
+                    understand that any shortages, damages, or losses occurring
+                    during transportation may be subject to investigation and
+                    responsibility in accordance with applicable company and
+                    contractual policies.
                   </Text>
                 </View>
               </View>
@@ -493,46 +492,197 @@ export function TsnPDF({ transaction }: TsnPDFProps) {
             </View>
           )}
 
-          {/* Site Recipient Section */}
-          <View style={styles.signatureRow} wrap={false}>
-            {/* Left: Checkbox and Text */}
-            <View style={styles.confirmationSection}>
-              <View style={styles.confirmationRow}>
-                <Svg height="16" width="16">
-                  <Rect
-                    x="1"
-                    y="1"
-                    width="14"
-                    height="14"
-                    stroke="rgba(217, 217, 217, 1)"
-                    strokeWidth="1"
-                    rx="3"
-                    ry="3"
-                  />
-                </Svg>
+          {transaction.type.toLowerCase().includes("transfer") && (
+            <View style={styles.signatureRow} wrap={false}>
+              {/* Left: Checkbox and Text */}
+              <View style={styles.confirmationSection}>
+                <View style={styles.confirmationRow}>
+                  <Svg height="16" width="16">
+                    <Rect
+                      x="1"
+                      y="1"
+                      width="14"
+                      height="14"
+                      stroke="rgba(217, 217, 217, 1)"
+                      strokeWidth="1"
+                      rx="3"
+                      ry="3"
+                    />
+                  </Svg>
 
-                <Text style={styles.confirmationText}>
-                  I confirm that I have received the listed material(s) at the
-                  designated site/location for the purpose of storage only. I
-                  acknowledge that these material(s) will remain under my
-                  custody while stored at this location, and I am responsible
-                  for ensuring they are kept safe, secure, and protected against
-                  loss, damage, or misuse.
-                  {"\n\n"}I understand that this acknowledgement does not
-                  authorize usage or consumption of the material(s), and any
-                  issuance or utilization must be carried out through the proper
-                  company procedures.
+                  <Text style={styles.confirmationText}>
+                    I confirm that I have taken custody of the listed
+                    material(s) for transport and accept responsibility for
+                    their safe handling and delivery to the specified
+                    destination. I will ensure that the material(s) are
+                    transported securely and protected from loss, damage, or
+                    misuse while under my custody during transit.{"\n\n"}I
+                    understand that any shortages, damages, or losses occurring
+                    during transportation may be subject to investigation and
+                    responsibility in accordance with applicable company and
+                    contractual policies.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Right: Signature Box */}
+              <View style={styles.signatureBox}>
+                <Text style={styles.signatureLabel}>
+                  SIGNATURE OF SITE RECIPIENT ({transaction.receiver_name})
                 </Text>
+                <Text style={styles.receiverName}></Text>
               </View>
             </View>
+          )}
 
-            {/* Right: Signature Box */}
-            <View style={styles.signatureBox}>
-              <Text style={styles.signatureLabel}>
-                SIGNATURE OF SITE RECIPIENT ({transaction?.receiver_name || ""})
-              </Text>
+          {transaction.type.toLowerCase().includes("issue") && (
+            <View style={styles.signatureRow} wrap={false}>
+              {/* Left: Checkbox and Text */}
+              <View style={styles.confirmationSection}>
+                <View style={styles.confirmationRow}>
+                  <Svg height="16" width="16">
+                    <Rect
+                      x="1"
+                      y="1"
+                      width="14"
+                      height="14"
+                      stroke="rgba(217, 217, 217, 1)"
+                      strokeWidth="1"
+                      rx="3"
+                      ry="3"
+                    />
+                  </Svg>
+
+                  <Text style={styles.confirmationText}>
+                    I hereby confirm that I have received the above-listed
+                    material(s) / tool(s) in good condition. I understand that I
+                    am responsible for using and safeguarding these items while
+                    they are under my custody.
+                  </Text>
+                </View>
+
+                <View>
+                  <Text>{"\n"}</Text>
+                </View>
+
+                <View style={styles.confirmationRow}>
+                  <Svg height="16" width="16">
+                    <Rect
+                      x="1"
+                      y="1"
+                      width="14"
+                      height="14"
+                      stroke="rgba(217, 217, 217, 1)"
+                      strokeWidth="1"
+                      rx="3"
+                      ry="3"
+                    />
+                  </Svg>
+
+                  <Text style={styles.confirmationText}>
+                    I agree to handle them with care and return them upon
+                    request or when work is completed. If the items are lost,
+                    damaged, or misused due to negligence, I acknowledge that
+                    appropriate responsibility or cost recovery may apply as per
+                    company policy.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Right: Signature Box */}
+              <View style={styles.signatureBox}>
+                <Text style={styles.signatureLabel}>
+                  RECEIVED AND ACCEPTED BY {transaction.receiver_name}
+                  {"\n\n"}DESIGNATION:
+                </Text>
+                <Text style={styles.receiverName}>DATE:</Text>
+              </View>
             </View>
-          </View>
+          )}
+
+          {transaction.type.toLowerCase().includes("send") && (
+            <View style={styles.signatureRow} wrap={false}>
+              {/* Left: Checkbox and Text */}
+              <View style={styles.confirmationSection}>
+                <View style={styles.confirmationRow}>
+                  <Svg height="16" width="16">
+                    <Rect
+                      x="1"
+                      y="1"
+                      width="14"
+                      height="14"
+                      stroke="rgba(217, 217, 217, 1)"
+                      strokeWidth="1"
+                      rx="3"
+                      ry="3"
+                    />
+                  </Svg>
+
+                  <Text style={styles.confirmationText}>
+                    I confirm that I have taken custody of the listed
+                    material(s) for transport and accept responsibility for
+                    their safe handling and delivery to the specified
+                    destination. I will ensure that the material(s) are
+                    transported securely and protected from loss, damage, or
+                    misuse while under my custody during transit.{"\n\n"}I
+                    understand that any shortages, damages, or losses occurring
+                    during transportation may be subject to investigation and
+                    responsibility in accordance with applicable company and
+                    contractual policies.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Right: Signature Box */}
+              <View style={styles.signatureBox}>
+                <Text style={styles.signatureLabel}>
+                  SIGNATURE OF DRIVER / TRANSPORT CUSTODY
+                </Text>
+                <Text style={styles.receiverName}></Text>
+              </View>
+            </View>
+          )}
+
+          {transaction.type.toLowerCase().includes("send") && (
+            <View style={styles.signatureRow} wrap={false}>
+              {/* Left: Checkbox and Text */}
+              <View style={styles.confirmationSection}>
+                <View style={styles.confirmationRow}>
+                  <Svg height="16" width="16">
+                    <Rect
+                      x="1"
+                      y="1"
+                      width="14"
+                      height="14"
+                      stroke="rgba(217, 217, 217, 1)"
+                      strokeWidth="1"
+                      rx="3"
+                      ry="3"
+                    />
+                  </Svg>
+
+                  <Text style={styles.confirmationText}>
+                    I hereby confirm that I have received the above-listed
+                    material(s) / tool(s) in good condition. I understand that I
+                    am responsible for using and safeguarding these items while
+                    they are under my custody.{"\n\n"}I agree to handle them
+                    with care and return them upon request or when work is
+                    completed. If the items are lost, damaged, or misused due to
+                    negligence, I acknowledge that appropriate responsibility or
+                    cost recovery may apply.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Right: Signature Box */}
+              <View style={styles.signatureBox}>
+                <Text style={styles.signatureLabel}>
+                  SIGNATURE OF RECIPIENT ({transaction.receiver_name})
+                </Text>
+                <Text style={styles.receiverName}></Text>
+              </View>
+            </View>
+          )}
         </View>
       </Page>
     </Document>

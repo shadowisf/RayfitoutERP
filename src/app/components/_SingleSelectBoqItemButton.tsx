@@ -22,7 +22,7 @@ type GroupedBoqLines = {
   };
 };
 
-export default function SelectBoqItemButton({
+export default function SingleSelectBoqItemButton({
   projectID,
   onSelectBoq,
   currentBoqLineID,
@@ -126,13 +126,16 @@ export default function SelectBoqItemButton({
   // Fetch BOQ lines when projectID is available
   useEffect(() => {
     if (projectID) {
-      fetch("/api/boq/getAllBoqLinesWithNumberRef", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project_id: projectID,
-        }),
-      })
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getAllBoqLinesWithNumberRef`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: projectID,
+          }),
+        },
+      )
         .then((res) => res.json())
         .then(function (data) {
           setBoqLineValues(data);

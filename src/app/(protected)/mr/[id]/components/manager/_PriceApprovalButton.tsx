@@ -10,7 +10,6 @@ import InputItem from "@/app/components/InputItem";
 import RejectCommentPopUp from "./RejectCommentPopUp";
 import { MrLine } from "../../types/mrLine";
 import SupplierDetailsPopUp from "../SupplierDetailsPopUp";
-import { createPortal } from "react-dom";
 
 type PriceApprovalButtonProps = {
   progressID: number;
@@ -20,7 +19,6 @@ type PriceApprovalButtonProps = {
   borderColor?: string;
   full?: boolean;
   style?: React.CSSProperties;
-  portalTarget?: HTMLElement | null;
   onTotalPriceChange?: (mrLineId: number, totalPrice: number) => void; // ✅ New prop
 };
 
@@ -32,7 +30,6 @@ export default function PriceApprovalButton({
   borderColor = "rgba(239, 239, 239, 1)",
   full,
   style,
-  portalTarget,
   onTotalPriceChange, // ✅ New prop
 }: PriceApprovalButtonProps) {
   const diamondIcon = "/icons/diamond.svg";
@@ -396,37 +393,44 @@ export default function PriceApprovalButton({
     // If approved, show approved pill with reset option
     if (approvedQuotation) {
       return (
-        <div
-          className="approval-pill"
-          style={{
-            backgroundColor: "rgba(34, 150, 100, 1)",
-            color: "white",
-            minWidth: "250px",
-          }}
-        >
-          <span>{approvedQuotation.supplier_name}</span>
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <SupplierDetailsPopUp
-              item={approvedQuotation}
-              style={{
-                padding: "0px",
-                backgroundColor: "transparent",
-                borderColor: "transparent",
-                filter: "invert(1)",
-              }}
-            >
-              <img src={externalLinkIcon} alt="external link icon" />
-            </SupplierDetailsPopUp>
-            <img
-              src={crossIcon}
-              alt="reset"
-              style={{
-                filter: "invert(1)",
-                cursor: "pointer",
-              }}
-              onClick={handleReset}
-            />
+        <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
+          <div
+            className="approval-pill"
+            style={{
+              backgroundColor: "rgba(34, 150, 100, 1)",
+              color: "white",
+              minWidth: "250px",
+            }}
+          >
+            <span>{approvedQuotation.supplier_name}</span>
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              <SupplierDetailsPopUp
+                item={approvedQuotation}
+                style={{
+                  padding: "0px",
+                  backgroundColor: "transparent",
+                  borderColor: "transparent",
+                  filter: "invert(1)",
+                }}
+              >
+                <img src={externalLinkIcon} alt="external link icon" />
+              </SupplierDetailsPopUp>
+              <img
+                src={crossIcon}
+                alt="reset"
+                style={{
+                  filter: "invert(1)",
+                  cursor: "pointer",
+                }}
+                onClick={handleReset}
+              />
+            </div>
           </div>
+
+          <span>
+            AED{" "}
+            {Number(approvedQuotation.unit_price * mrLine.quantity).toFixed(2)}
+          </span>
         </div>
       );
     }

@@ -215,7 +215,7 @@ export default function Vendor() {
                 </td>
                 <td>{supplier.material_categories || "-"}</td>
                 <td>{supplier.material_subcategories || "-"}</td>
-                <td>{supplier.trn_number}</td>
+                <td>{supplier.trn_number || "-"}</td>
                 <td>
                   <SupplierDetailsPopUp
                     item={supplier}

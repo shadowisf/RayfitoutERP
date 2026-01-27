@@ -102,11 +102,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
               "..."
             ) : (
               <>
-                AED{" "}
-                {thisWeek.toLocaleString(undefined, {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                })}
+                AED {thisWeek.toLocaleString("en-US")}
               </>
             )}
           </p>
@@ -117,7 +113,10 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
             >
               <span style={{ color: textColor }}>
                 {isIncrease ? "+" : "-"}
-                {percentageChange.toFixed(percentageChange >= 10 ? 0 : 1)}%
+                {percentageChange.toLocaleString("en-US", {
+                  minimumFractionDigits: percentageChange >= 10 ? 0 : 1,
+                  maximumFractionDigits: percentageChange >= 10 ? 0 : 1,
+                })}%
               </span>
               <img src={arrow} alt="trend arrow" />
             </div>

@@ -143,6 +143,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     {},
   );
 
+  const canSeePrice =
+    userInfo?.departmentID === 8 ||
+    userInfo?.departmentID === 12 ||
+    userInfo?.departmentID === 10 ||
+    userInfo?.departmentID === 16;
+
   // Regroup mrLines based on progress_id
   useEffect(() => {
     // For progress_id < 12, regroup mrLines to combine all suppliers under one group
@@ -374,6 +380,187 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       (hasMismatch) => hasMismatch,
     );
   }
+
+  // Update the useEffect that calculates total
+  useEffect(() => {
+    async function calculateTotal() {
+      let total = 0;
+
+      // ✅ For progress_id >= 12, try to fetch LPO totals, fallback to approved prices
+      if (mrHeader.progress_id >= 12) {
+        try {
+          // Get unique supplier IDs
+          const uniqueSupplierIds = new Set<number>();
+
+          if (showBySupplier) {
+            for (const supplier in mrLinesBySupplier) {
+              const items = mrLinesBySupplier[supplier];
+              if (items.length > 0 && items[0].approved_supplier_id) {
+                uniqueSupplierIds.add(items[0].approved_supplier_id);
+              }
+            }
+          } else {
+            for (const category in regroupedMrLines) {
+              for (const subCategory in regroupedMrLines[category]) {
+                for (const supplier in regroupedMrLines[category][
+                  subCategory
+                ]) {
+                  const items =
+                    regroupedMrLines[category][subCategory][supplier];
+                  if (items.length > 0 && items[0].approved_supplier_id) {
+                    uniqueSupplierIds.add(items[0].approved_supplier_id);
+                  }
+                }
+              }
+            }
+          }
+
+          // Fetch LPO total for each supplier
+          const lpoPromises = Array.from(uniqueSupplierIds).map(
+            async (supplierId) => {
+              try {
+                const response = await fetch(
+                  `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      mr_header_id: mrHeader.id,
+                      supplier_id: supplierId,
+                    }),
+                  },
+                );
+
+                if (response.ok) {
+                  const data = await response.json();
+                  if (data.success && data.data && data.data.length > 0) {
+                    const lpo = data.data[0];
+                    return {
+                      hasLpo: true,
+                      total: parseFloat(String(lpo.total)) || 0,
+                      supplierId,
+                    };
+                  }
+                }
+                return { hasLpo: false, total: 0, supplierId };
+              } catch (error) {
+                console.error(
+                  `Error fetching LPO for supplier ${supplierId}:`,
+                  error,
+                );
+                return { hasLpo: false, total: 0, supplierId };
+              }
+            },
+          );
+
+          const lpoResults = await Promise.all(lpoPromises);
+
+          // Check if all suppliers have LPOs
+          const allHaveLpos = lpoResults.every((result) => result.hasLpo);
+
+          if (allHaveLpos && lpoResults.length > 0) {
+            // ✅ Use LPO totals if all suppliers have LPOs
+            total = lpoResults.reduce((sum, result) => sum + result.total, 0);
+          } else {
+            // ✅ Fallback to approved_total_price if any supplier doesn't have LPO
+            if (showByItem) {
+              for (const category in regroupedMrLines) {
+                for (const subCategory in regroupedMrLines[category]) {
+                  for (const supplier in regroupedMrLines[category][
+                    subCategory
+                  ]) {
+                    const items =
+                      regroupedMrLines[category][subCategory][supplier];
+                    items.forEach((item: MrLine) => {
+                      if (item.approved_total_price) {
+                        total +=
+                          parseFloat(String(item.approved_total_price)) || 0;
+                      }
+                    });
+                  }
+                }
+              }
+            } else if (showBySupplier) {
+              for (const supplier in mrLinesBySupplier) {
+                const items = mrLinesBySupplier[supplier];
+                items.forEach((item: MrLine) => {
+                  if (item.approved_total_price) {
+                    total += parseFloat(String(item.approved_total_price)) || 0;
+                  }
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error calculating LPO totals:", error);
+          // ✅ Fallback to approved_total_price on error
+          if (showByItem) {
+            for (const category in regroupedMrLines) {
+              for (const subCategory in regroupedMrLines[category]) {
+                for (const supplier in regroupedMrLines[category][
+                  subCategory
+                ]) {
+                  const items =
+                    regroupedMrLines[category][subCategory][supplier];
+                  items.forEach((item: MrLine) => {
+                    if (item.approved_total_price) {
+                      total +=
+                        parseFloat(String(item.approved_total_price)) || 0;
+                    }
+                  });
+                }
+              }
+            }
+          } else if (showBySupplier) {
+            for (const supplier in mrLinesBySupplier) {
+              const items = mrLinesBySupplier[supplier];
+              items.forEach((item: MrLine) => {
+                if (item.approved_total_price) {
+                  total += parseFloat(String(item.approved_total_price)) || 0;
+                }
+              });
+            }
+          }
+        }
+      } else {
+        // ✅ For progress_id < 12, use approved_total_price
+        if (showByItem) {
+          for (const category in regroupedMrLines) {
+            for (const subCategory in regroupedMrLines[category]) {
+              for (const supplier in regroupedMrLines[category][subCategory]) {
+                const items = regroupedMrLines[category][subCategory][supplier];
+                items.forEach((item: MrLine) => {
+                  if (item.approved_total_price) {
+                    total += parseFloat(String(item.approved_total_price)) || 0;
+                  }
+                });
+              }
+            }
+          }
+        } else if (showBySupplier) {
+          for (const supplier in mrLinesBySupplier) {
+            const items = mrLinesBySupplier[supplier];
+            items.forEach((item: MrLine) => {
+              if (item.approved_total_price) {
+                total += parseFloat(String(item.approved_total_price)) || 0;
+              }
+            });
+          }
+        }
+      }
+
+      setTotalInvoiceAmount(total);
+    }
+
+    calculateTotal();
+  }, [
+    regroupedMrLines,
+    mrLinesBySupplier,
+    showByItem,
+    showBySupplier,
+    mrHeader.progress_id,
+    mrHeader.id,
+  ]);
 
   useEffect(() => {
     const total = Object.values(mrLinePrices).reduce(
@@ -1947,7 +2134,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           {item.quantity} {item.unit}
                                         </td>
                                         <td>
-                                          {item.boq_item_number ? (
+                                          {item.boq_line_ids ? (
                                             <div
                                               style={{
                                                 display: "flex",
@@ -1955,11 +2142,40 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                 gap: "10px",
                                               }}
                                             >
-                                              {item.boq_item_number}
-                                              <BoqReferencePopUp
-                                                item={item}
-                                                mrHeader={mrHeader}
-                                              />
+                                              {/* ✅ Parse the boq_ids string and show count */}
+                                              {(() => {
+                                                const boqIdsArray =
+                                                  item.boq_line_ids
+                                                    .split(",")
+                                                    .map((id: string) =>
+                                                      id.trim(),
+                                                    )
+                                                    .filter(
+                                                      (id: string) => id !== "",
+                                                    );
+
+                                                return boqIdsArray.length ===
+                                                  1 ? (
+                                                  // Single BOQ item - show the ID
+                                                  <>
+                                                    {item.boq_item_number}
+                                                    <BoqReferencePopUp
+                                                      item={item}
+                                                      mrHeader={mrHeader}
+                                                    />
+                                                  </>
+                                                ) : (
+                                                  // Multiple BOQ items - show count
+                                                  <>
+                                                    {boqIdsArray.length} BOQ
+                                                    ITEMS
+                                                    <BoqReferencePopUp
+                                                      item={item}
+                                                      mrHeader={mrHeader}
+                                                    />
+                                                  </>
+                                                );
+                                              })()}
                                             </div>
                                           ) : (
                                             "-"
@@ -1971,12 +2187,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                               text={
                                                 <>
                                                   <small>BRAND</small>
-                                                  <h2>{item.brand}</h2>
+                                                  <h2>{item.brand || "-"}</h2>
 
                                                   <br />
 
                                                   <small>SPECIFICATION</small>
-                                                  <h2>{item.specification}</h2>
+                                                  <h2>
+                                                    {item.specification || "-"}
+                                                  </h2>
                                                 </>
                                               }
                                               header="BRAND & SPECIFICATION"
@@ -2163,9 +2381,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                   borderRadius: "25px",
                                                   padding: "5px 20px",
                                                 }}
-                                                portalTarget={document.getElementById(
-                                                  "total-invoice-portal",
-                                                )}
                                                 onTotalPriceChange={
                                                   handleTotalPriceChange
                                                 }
@@ -2198,6 +2413,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                   alt="external link icon"
                                                 />
                                               </SupplierDetailsPopUp>
+                                              {canSeePrice && (
+                                                <span>
+                                                  {item.approved_total_price}{" "}
+                                                  AED
+                                                </span>
+                                              )}
                                             </div>
                                           </td>
                                         )}
@@ -2236,24 +2457,23 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               </tbody>
                             </table>
 
-                            {mrHeader.progress_id === 10 &&
-                              userInfo?.departmentID === 8 && (
-                                <div id={`total-invoice-portal`}>
-                                  <br />
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      backgroundColor: "rgba(239, 239, 239, 1)",
-                                      padding: "7px 20px",
-                                      borderRadius: "25px",
-                                    }}
-                                  >
-                                    <h4>TOTAL</h4>
-                                    <h4>{totalInvoiceAmount.toFixed(2)} AED</h4>
-                                  </div>
+                            {mrHeader.progress_id >= 10 && canSeePrice && (
+                              <div>
+                                <br />
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    backgroundColor: "rgba(239, 239, 239, 1)",
+                                    padding: "7px 20px",
+                                    borderRadius: "25px",
+                                  }}
+                                >
+                                  <h4>TOTAL</h4>
+                                  <h4>{totalInvoiceAmount.toFixed(2)} AED</h4>
                                 </div>
-                              )}
+                              </div>
+                            )}
 
                             <br />
                           </div>
@@ -2458,12 +2678,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           text={
                                             <>
                                               <small>BRAND</small>
-                                              <h2>{item.brand}</h2>
+                                              <h2>{item.brand || "-"}</h2>
 
                                               <br />
 
                                               <small>SPECIFICATION</small>
-                                              <h2>{item.specification}</h2>
+                                              <h2>
+                                                {item.specification || "-"}
+                                              </h2>
                                             </>
                                           }
                                           header="BRAND & SPECIFICATION"
@@ -2638,6 +2860,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                               borderRadius: "25px",
                                               padding: "5px 20px",
                                             }}
+                                            onTotalPriceChange={
+                                              handleTotalPriceChange
+                                            }
                                           />
                                         </td>
                                       )}
@@ -2667,6 +2892,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                               alt="external link icon"
                                             />
                                           </SupplierDetailsPopUp>
+                                          {canSeePrice && (
+                                            <span>
+                                              {item.approved_total_price} AED
+                                            </span>
+                                          )}
                                         </div>
                                       </td>
                                     )}
@@ -2702,6 +2932,24 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               })}
                           </tbody>
                         </table>
+
+                        {mrHeader.progress_id >= 10 && canSeePrice && (
+                          <div>
+                            <br />
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                backgroundColor: "rgba(239, 239, 239, 1)",
+                                padding: "7px 20px",
+                                borderRadius: "25px",
+                              }}
+                            >
+                              <h4>TOTAL</h4>
+                              <h4>{totalInvoiceAmount.toFixed(2)} AED</h4>
+                            </div>
+                          </div>
+                        )}
 
                         <br />
                       </div>
@@ -2817,9 +3065,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       mrHeader={mrHeader}
                       mrLine={items[0]}
                       supplierId={items[0].approved_supplier_id}
-                      portalTarget={document.getElementById(
-                        `total-invoice-${items[0].approved_supplier_id}`,
-                      )}
                     />
                   )}
 
@@ -2945,6 +3190,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               alt="external link icon"
                             />
                           </SupplierDetailsPopUp>
+                          {canSeePrice && (
+                            <span>{item.approved_total_price} AED</span>
+                          )}
                         </div>
                       </td>
                     )}
@@ -2974,9 +3222,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               </tbody>
             </table>
 
-            {mrHeader.progress_id === 14 && userInfo?.departmentID === 10 && (
-              <div id={`total-invoice-${items[0].approved_supplier_id}`}>
-                {/* <br />
+            {mrHeader.progress_id >= 10 && canSeePrice && (
+              <div>
+                <br />
                 <div
                   style={{
                     display: "flex",
@@ -2986,9 +3234,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     borderRadius: "25px",
                   }}
                 >
-                  <h4>TOTAL INVOICE</h4>
-                  <h4>123 AED</h4>
-                </div> */}
+                  <h4>TOTAL</h4>
+                  <h4>{totalInvoiceAmount.toFixed(2)} AED</h4>
+                </div>
               </div>
             )}
 

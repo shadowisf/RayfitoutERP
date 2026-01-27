@@ -151,8 +151,8 @@ export async function POST(request: NextRequest) {
         // ✅ Removed attachment from header - no longer storing attachments here
         const insertTransferQuery = `
           INSERT INTO stocks_transfer_issue 
-          (project_id, boq_line_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (project_id, boq_line_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved, packing_list_required) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const [transferResult] = await db.query<any>(insertTransferQuery, [
@@ -165,6 +165,7 @@ export async function POST(request: NextRequest) {
           body.purpose,
           body.receiver_name,
           body.third_party_involved,
+          body.packing_list_required,
         ]);
 
         const transferId = transferResult.insertId;
@@ -199,8 +200,8 @@ export async function POST(request: NextRequest) {
         // ✅ Insert the transfer header WITHOUT attachments
         const insertTransferQuery = `
           INSERT INTO stocks_transfer_issue 
-          (project_id, boq_line_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (project_id, boq_line_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved, packing_list_required) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const [transferResult] = await db.query<any>(insertTransferQuery, [
@@ -213,6 +214,7 @@ export async function POST(request: NextRequest) {
           body.purpose,
           body.receiver_name,
           body.third_party_involved,
+          body.packing_list_required,
         ]);
 
         const transferId = transferResult.insertId;
