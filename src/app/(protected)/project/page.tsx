@@ -10,50 +10,50 @@ export default function Project() {
   const [projectsWithBOQ, setProjectsWithBOQ] = useState<any[]>([]);
   const [quotationProjects, setQuotationProjects] = useState<any[]>([]);
 
-  useEffect(() => {
-    async function fetchProjects() {
-      try {
-        const projects = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`,
-          { cache: "no-store" },
-        ).then((res) => res.json());
+  async function fetchProjects() {
+    try {
+      const projects = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`,
+        { cache: "no-store" },
+      ).then((res) => res.json());
 
-        const projectsWithBOQData = await Promise.all(
-          projects.map(async (proj: any) => {
-            const boq = await fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getBoqHeaderByProjectID`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: proj.id }),
-                cache: "no-store",
-              },
-            )
-              .then((res) => res.json())
-              .catch(() => []);
+      const projectsWithBOQData = await Promise.all(
+        projects.map(async (proj: any) => {
+          const boq = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getBoqHeaderByProjectID`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: proj.id }),
+              cache: "no-store",
+            },
+          )
+            .then((res) => res.json())
+            .catch(() => []);
 
-            return {
-              ...proj,
-              hasBOQ: boq && boq.length > 0,
-            };
-          }),
-        );
+          return {
+            ...proj,
+            hasBOQ: boq && boq.length > 0,
+          };
+        }),
+      );
 
-        const quotationProjects = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getAllQuotationProjects`,
-          { cache: "no-store" },
-        )
-          .then((res) => res.json())
-          .catch(() => []);
+      const quotationProjects = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getAllQuotationProjects`,
+        { cache: "no-store" },
+      )
+        .then((res) => res.json())
+        .catch(() => []);
 
-        setQuotationProjects(quotationProjects);
+      setQuotationProjects(quotationProjects);
 
-        setProjectsWithBOQ(projectsWithBOQData);
-      } catch (error) {
-        console.error("Error fetching projects:", error);
-      }
+      setProjectsWithBOQ(projectsWithBOQData);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
     }
+  }
 
+  useEffect(() => {
     fetchProjects();
   }, []);
 
@@ -83,7 +83,11 @@ export default function Project() {
           <br />
           <div className="widget-grid active-projects">
             {quotationProjects.map((proj: any, index) => (
-              <ProjectBox project={proj} key={index} />
+              <ProjectBox
+                project={proj}
+                key={index}
+                onSuccess={() => fetchProjects()}
+              />
             ))}
           </div>
         </>

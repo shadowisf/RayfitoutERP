@@ -43,11 +43,13 @@ export default function Inventory() {
     selectedLocations: string[];
     selectedProjects: number[]; // Change from string[] to number[]
     stockAddedIn: string;
+    selectedStockStatuses: string[]; // ✅ New
   }>({
     selectedCategories: [],
     selectedLocations: [],
     selectedProjects: [],
     stockAddedIn: "all",
+    selectedStockStatuses: [], // ✅ New
   });
   const [stocksByInventoryItem, setStocksByInventoryItem] = useState<{
     [itemId: number]: any[];
@@ -78,73 +80,79 @@ export default function Inventory() {
   }, []);
 
   // Fetch available quantities for all inventory items
+  // Fetch available quantities for all inventory items
   useEffect(() => {
     async function fetchAllQuantities() {
       if (!inventory || inventory.length === 0) {
         return;
       }
 
-      const quantities: {
-        [itemId: number]: {
-          available_quantity: number;
-          total_stock: number;
-          total_issued: number;
-        };
-      } = {};
-
       try {
-        const fetchPromises = inventory.map(async (item) => {
+        // ✅ Determine if we're filtering by project or location
+        const hasProjectFilter = filters.selectedProjects.length === 1;
+        const hasLocationFilter = filters.selectedLocations.length === 1;
+
+        // Batch fetch quantities
+        const inventoryIds = inventory.map((item) => item.id);
+
+        // Split into batches of 50 to avoid URL length issues
+        const batchSize = 50;
+        const batches = [];
+        for (let i = 0; i < inventoryIds.length; i += batchSize) {
+          batches.push(inventoryIds.slice(i, i + batchSize));
+        }
+
+        const allQuantities: {
+          [itemId: number]: {
+            available_quantity: number;
+            total_stock: number;
+            total_issued: number;
+          };
+        } = {};
+
+        // Fetch all batches sequentially to avoid overwhelming the server
+        for (const batch of batches) {
           try {
+            const body: any = { inventory_item_ids: batch };
+
+            // ✅ Add project filter if single project selected
+            if (hasProjectFilter) {
+              body.project_id = filters.selectedProjects[0];
+            }
+
+            // ✅ Add location filter if single location selected
+            if (hasLocationFilter) {
+              body.location = filters.selectedLocations[0];
+            }
+
             const response = await fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getTotalQuantityByInventoryItemID`,
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getBatchedQuantities`,
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  inventory_item_id: item.id,
-                }),
+                body: JSON.stringify(body),
               },
             );
 
             const data = await response.json();
 
             if (data.success && data.data) {
-              quantities[item.id] = {
-                available_quantity: data.data.available_quantity || 0,
-                total_stock: data.data.total_stock || 0,
-                total_issued: data.data.total_issued || 0,
-              };
-            } else {
-              quantities[item.id] = {
-                available_quantity: 0,
-                total_stock: 0,
-                total_issued: 0,
-              };
+              Object.assign(allQuantities, data.data);
             }
           } catch (error) {
-            console.error(
-              `Error fetching quantity for item ${item.id}:`,
-              error,
-            );
-            quantities[item.id] = {
-              available_quantity: 0,
-              total_stock: 0,
-              total_issued: 0,
-            };
+            console.error(`Error fetching batch:`, error);
           }
-        });
+        }
 
-        await Promise.all(fetchPromises);
-        setAvailableQuantities(quantities);
+        setAvailableQuantities(allQuantities);
       } catch (error) {
         console.error("Error fetching available quantities:", error);
       }
     }
 
     fetchAllQuantities();
-  }, [inventory]);
+  }, [inventory, filters.selectedProjects, filters.selectedLocations]); // ✅ Re-fetch when filters change
 
-  // Fetch all stocks for filtering
   // Fetch all stocks for filtering
   useEffect(() => {
     async function fetchAllStocks() {
@@ -153,32 +161,42 @@ export default function Inventory() {
       const stocksMap: { [itemId: number]: any[] } = {};
 
       try {
-        // Fetch regular stocks
-        const stocksResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAllStocks`,
-          {
-            method: "GET",
-          },
-        );
+        // ✅ Batch the stock fetches
+        const inventoryIds = inventory.map((item) => item.id);
+        const batchSize = 100;
 
-        if (stocksResponse.ok) {
-          const stocksData = await stocksResponse.json();
+        for (let i = 0; i < inventoryIds.length; i += batchSize) {
+          const batch = inventoryIds.slice(i, i + batchSize);
 
-          if (stocksData.success && stocksData.data) {
-            // Group stocks by inventory_item_id
-            stocksData.data.forEach((stock: any) => {
-              if (!stocksMap[stock.inventory_item_id]) {
-                stocksMap[stock.inventory_item_id] = [];
-              }
-              stocksMap[stock.inventory_item_id].push({
-                ...stock,
-                source: "stock", // Mark the source
+          // Fetch regular stocks for this batch
+          const stocksResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getStocksByBatch`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ inventory_item_ids: batch }),
+            },
+          );
+
+          if (stocksResponse.ok) {
+            const stocksData = await stocksResponse.json();
+
+            if (stocksData.success && stocksData.data) {
+              // Group stocks by inventory_item_id
+              stocksData.data.forEach((stock: any) => {
+                if (!stocksMap[stock.inventory_item_id]) {
+                  stocksMap[stock.inventory_item_id] = [];
+                }
+                stocksMap[stock.inventory_item_id].push({
+                  ...stock,
+                  source: "stock",
+                });
               });
-            });
+            }
           }
         }
 
-        // Fetch transfer/issue transactions to get to_location data
+        // Fetch transfer/issue transactions (only once)
         const transfersResponse = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAllTransferIssueTransactions`,
           {
@@ -203,7 +221,7 @@ export default function Inventory() {
                     stocksMap[item.inventory_item_id].push({
                       inventory_item_id: item.inventory_item_id,
                       location: transfer.to_location,
-                      source: "transfer", // Mark as from transfer
+                      source: "transfer",
                       transfer_id: transfer.id,
                     });
                   }
@@ -311,6 +329,29 @@ export default function Inventory() {
     }
   };
 
+  // Get stock status based on available quantity
+  const getStockStatus = (availableQty: number, minimumStock: number) => {
+    if (availableQty === 0) {
+      return {
+        label: "OUT OF STOCK",
+        bgColor: "rgba(255, 181, 181, 1)",
+        textColor: "rgba(248, 77, 77, 1)",
+      };
+    } else if (availableQty <= minimumStock) {
+      return {
+        label: "LOW STOCK",
+        bgColor: "rgba(255, 250, 189, 1)",
+        textColor: "rgba(134, 83, 47, 1)",
+      };
+    } else {
+      return {
+        label: "IN STOCK",
+        bgColor: "rgba(149, 222, 189, 1)",
+        textColor: "rgba(0, 108, 60, 1)",
+      };
+    }
+  };
+
   // Get unique categories
   const categories = Array.from(
     new Set(inventory.map((item) => item.category_name)),
@@ -361,8 +402,8 @@ export default function Inventory() {
     if (filters.selectedProjects.length > 0) {
       processed = processed.filter((item) => {
         const itemStocks = stocksByInventoryItem[item.id] || [];
-        return itemStocks.some(
-          (stock) => filters.selectedProjects.includes(stock.project_id), // No need to convert to string
+        return itemStocks.some((stock) =>
+          filters.selectedProjects.includes(stock.project_id),
         );
       });
     }
@@ -394,6 +435,20 @@ export default function Inventory() {
       }
     }
 
+    // ✅ Filter by stock status (BEFORE other filters that depend on order)
+    if (filters.selectedStockStatuses.length > 0) {
+      processed = processed.filter((item) => {
+        const quantityData = availableQuantities[item.id];
+        const availableQty = quantityData?.available_quantity ?? 0;
+        const stockStatus = getStockStatus(
+          availableQty,
+          item.minimum_stock_quantity,
+        );
+
+        return filters.selectedStockStatuses.includes(stockStatus.label);
+      });
+    }
+
     // Filter by active category tab
     if (activeCategory !== "ALL") {
       processed = processed.filter(
@@ -409,7 +464,7 @@ export default function Inventory() {
       );
     }
 
-    // Sort
+    // Sort by user-selected sort order
     if (sortOrder !== "none") {
       processed = [...processed].sort((a, b) => {
         if (sortOrder === "high-low" || sortOrder === "low-high") {
@@ -438,33 +493,30 @@ export default function Inventory() {
       });
     }
 
+    // ✅ Always sort OUT OF STOCK items to the bottom (UNLESS filtering by stock status)
+    // If user is specifically filtering by OUT OF STOCK, don't push them to bottom
+    if (
+      filters.selectedStockStatuses.length === 0 ||
+      filters.selectedStockStatuses.length > 1
+    ) {
+      processed = [...processed].sort((a, b) => {
+        const qtyA = availableQuantities[a.id]?.available_quantity ?? 0;
+        const qtyB = availableQuantities[b.id]?.available_quantity ?? 0;
+
+        // If A is out of stock and B is not, B comes first
+        if (qtyA === 0 && qtyB !== 0) return 1;
+        // If B is out of stock and A is not, A comes first
+        if (qtyB === 0 && qtyA !== 0) return -1;
+
+        // If both have stock or both out of stock, maintain existing sort order
+        return 0;
+      });
+    }
+
     return processed;
   };
 
   const processedInventory = getProcessedInventory();
-
-  // Get stock status based on available quantity
-  const getStockStatus = (availableQty: number, minimumStock: number) => {
-    if (availableQty === 0) {
-      return {
-        label: "OUT OF STOCK",
-        bgColor: "rgba(255, 181, 181, 1)",
-        textColor: "rgba(248, 77, 77, 1)",
-      };
-    } else if (availableQty <= minimumStock) {
-      return {
-        label: "LOW STOCK",
-        bgColor: "rgba(255, 250, 189, 1)",
-        textColor: "rgba(134, 83, 47, 1)",
-      };
-    } else {
-      return {
-        label: "IN STOCK",
-        bgColor: "rgba(149, 222, 189, 1)",
-        textColor: "rgba(0, 108, 60, 1)",
-      };
-    }
-  };
 
   // Get transfer type label
   const getTransferTypeLabel = (transaction: any) => {
@@ -576,6 +628,7 @@ export default function Inventory() {
       selectedLocations: [],
       selectedProjects: [],
       stockAddedIn: "all",
+      selectedStockStatuses: [], // ✅ New
     });
   };
 
@@ -584,7 +637,8 @@ export default function Inventory() {
     filters.selectedCategories.length > 0 ||
     filters.selectedLocations.length > 0 ||
     filters.selectedProjects.length > 0 ||
-    filters.stockAddedIn !== "all";
+    filters.stockAddedIn !== "all" ||
+    filters.selectedStockStatuses.length > 0; // ✅ New
 
   return (
     <div className="dashboard">
@@ -937,6 +991,26 @@ export default function Inventory() {
                         }}
                       >
                         {getStockAddedLabel(filters.stockAddedIn).toUpperCase()}
+                      </span>
+                    </Button>
+                  )}
+
+                  {filters.selectedStockStatuses.length > 0 && (
+                    <Button
+                      style={{
+                        borderRadius: "50px",
+                        fontWeight: "600",
+                      }}
+                      componentType={"none"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"transparent"}
+                      textColor={"black"}
+                    >
+                      STATUS:{" "}
+                      <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                        {filters.selectedStockStatuses[0]}
+                        {filters.selectedStockStatuses.length > 1 &&
+                          `, +${filters.selectedStockStatuses.length - 1} MORE`}
                       </span>
                     </Button>
                   )}

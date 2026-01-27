@@ -78,9 +78,39 @@ export function QrCodePDF({
 }: CodePDFProps) {
   const logo = "/icons/logo.jpg";
 
+  function calculatePageHeight(item: InventoryItem, hasImage: boolean) {
+    const BASE = 120; // header + padding
+    const LINE_HEIGHT = 12;
+    const MAX_CHARS_PER_LINE = 40;
+
+    const titleLines = Math.ceil(
+      (item.description?.length || 0) / MAX_CHARS_PER_LINE,
+    );
+
+    const specLines = Math.ceil(
+      (item.specification?.length || 0) / MAX_CHARS_PER_LINE,
+    );
+
+    const imageHeight = hasImage ? 110 : 0;
+    const qrHeight = 90;
+
+    return (
+      BASE +
+      titleLines * LINE_HEIGHT +
+      specLines * LINE_HEIGHT +
+      imageHeight +
+      qrHeight
+    );
+  }
+
+  const pageHeight = calculatePageHeight(
+    inventoryItem,
+    Boolean(inventoryImageDataUrl),
+  );
+
   return (
     <Document>
-      <Page size={["425", "350"]} style={styles.page}>
+      <Page size={["425", pageHeight]} style={styles.page}>
         <View style={styles.header}>
           <Image src={logo} style={styles.logo} />
         </View>

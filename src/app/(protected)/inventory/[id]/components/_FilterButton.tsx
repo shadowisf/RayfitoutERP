@@ -9,14 +9,16 @@ type FilterButtonProps = {
   onApplyFilters: (filters: {
     selectedCategories: string[];
     selectedLocations: string[];
-    selectedProjects: number[]; // Change from string[] to number[]
+    selectedProjects: number[];
     stockAddedIn: string;
+    selectedStockStatuses: string[]; // ✅ New
   }) => void;
   currentFilters: {
     selectedCategories: string[];
     selectedLocations: string[];
-    selectedProjects: number[]; // Change from string[] to number[]
+    selectedProjects: number[];
     stockAddedIn: string;
+    selectedStockStatuses: string[]; // ✅ New
   };
 };
 
@@ -39,6 +41,9 @@ export default function FilterButton({
   );
   const [stockAddedIn, setStockAddedIn] = useState<string>(
     currentFilters.stockAddedIn,
+  );
+  const [selectedStockStatuses, setSelectedStockStatuses] = useState<string[]>(
+    currentFilters.selectedStockStatuses, // ✅ New
   );
   const [categorySearchQuery, setCategorySearchQuery] = useState("");
   const [locationSearchQuery, setLocationSearchQuery] = useState("");
@@ -118,6 +123,7 @@ export default function FilterButton({
     setSelectedLocations(currentFilters.selectedLocations);
     setSelectedProjects(currentFilters.selectedProjects);
     setStockAddedIn(currentFilters.stockAddedIn);
+    setSelectedStockStatuses(currentFilters.selectedStockStatuses); // ✅ New
     setIsOpen(true);
   };
 
@@ -127,6 +133,7 @@ export default function FilterButton({
       selectedLocations,
       selectedProjects,
       stockAddedIn,
+      selectedStockStatuses, // ✅ New
     });
     setIsOpen(false);
   };
@@ -136,6 +143,7 @@ export default function FilterButton({
     setSelectedLocations([]);
     setSelectedProjects([]);
     setStockAddedIn("all");
+    setSelectedStockStatuses([]); // ✅ New
     setCategorySearchQuery("");
     setLocationSearchQuery("");
     setProjectSearchQuery("");
@@ -184,12 +192,32 @@ export default function FilterButton({
     }
   };
 
-  // Change projectId from string to number
   const handleProjectChange = (projectId: number, checked: boolean) => {
     if (checked) {
       setSelectedProjects([...selectedProjects, projectId]);
     } else {
       setSelectedProjects(selectedProjects.filter((p) => p !== projectId));
+    }
+  };
+
+  // ✅ Stock Status handlers
+  const stockStatusOptions = ["IN STOCK", "LOW STOCK", "OUT OF STOCK"];
+
+  const handleSelectAllStockStatuses = (checked: boolean) => {
+    if (checked) {
+      setSelectedStockStatuses(stockStatusOptions);
+    } else {
+      setSelectedStockStatuses([]);
+    }
+  };
+
+  const handleStockStatusChange = (status: string, checked: boolean) => {
+    if (checked) {
+      setSelectedStockStatuses([...selectedStockStatuses, status]);
+    } else {
+      setSelectedStockStatuses(
+        selectedStockStatuses.filter((s) => s !== status),
+      );
     }
   };
 
@@ -200,6 +228,8 @@ export default function FilterButton({
     selectedLocations.length === availableLocations.length;
   const isAllProjectsSelected =
     selectedProjects.length === availableProjects.length;
+  const isAllStockStatusesSelected =
+    selectedStockStatuses.length === stockStatusOptions.length; // ✅ New
 
   // Filter categories, locations, and projects based on search
   const filteredCategories = categories.filter((category) =>
@@ -395,6 +425,48 @@ export default function FilterButton({
                     }}
                   />
                   <h4>{option.label}</h4>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* ✅ Stock Status Section - New Design */}
+          <div style={{ marginBottom: "30px" }}>
+            <h3
+              style={{
+                marginBottom: "15px",
+                fontSize: "14px",
+                fontWeight: "600",
+              }}
+            >
+              STOCK STATUS
+            </h3>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+              {stockStatusOptions.map((status) => (
+                <label
+                  key={status}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedStockStatuses.includes(status)}
+                    onChange={(e) =>
+                      handleStockStatusChange(status, e.target.checked)
+                    }
+                    style={{
+                      width: "18px",
+                      height: "18px",
+                      cursor: "pointer",
+                      accentColor: "#10b981",
+                    }}
+                  />
+                  <h4>{status}</h4>
                 </label>
               ))}
             </div>

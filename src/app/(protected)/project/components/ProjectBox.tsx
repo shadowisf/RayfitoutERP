@@ -5,12 +5,14 @@ import Button from "../../../components/Button";
 import { useAuth } from "@/app/context/AuthContext";
 import CreateBoqHeaderButton from "../[id]/components/_CreateBoqHeaderButton";
 import { Project } from "../[id]/types/project";
+import { DeleteProjectButton } from "../[id]/components/_DeleteProjectButton";
 
 type ProjectBoxProps = {
   project: Project;
+  onSuccess?: () => void;
 };
 
-export default function ProjectBox({ project }: ProjectBoxProps) {
+export default function ProjectBox({ project, onSuccess }: ProjectBoxProps) {
   const { userInfo } = useAuth();
 
   const [quotedBudget, setQuotedBudget] = useState(0);
@@ -77,7 +79,7 @@ export default function ProjectBox({ project }: ProjectBoxProps) {
 
   return (
     <div className="item" key={project.id}>
-      <span
+      {/* <span
         className="status"
         style={
           project.status === "Completed"
@@ -92,7 +94,34 @@ export default function ProjectBox({ project }: ProjectBoxProps) {
         }
       >
         {project.status}
-      </span>
+      </span> */}
+
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <span></span>
+
+        {project.type.toLowerCase().includes("signed") ? (
+          <span
+            className="approval-pill normal-text"
+            style={
+              project.status.toLowerCase().includes("completed")
+                ? {
+                    backgroundColor: "rgba(134,241,181,1)",
+                    color: "rgba(52,100,73,1)",
+                  }
+                : {
+                    backgroundColor: "rgba(255, 250, 189, 1)",
+                    color: "rgba(134, 83, 47, 1)",
+                  }
+            }
+          >
+            {project.status}
+          </span>
+        ) : (
+          (userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
+            <DeleteProjectButton project={project} onSuccess={onSuccess} />
+          )
+        )}
+      </div>
 
       <div>
         <small>NAME</small>

@@ -5,10 +5,14 @@ import FormPopUp from "@/app/components/FormPopup";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "@/app/components/Toast";
-import { useAuth } from "@/app/context/AuthContext";
 import { Project } from "../types/project";
 
-export function DeleteProjectButton({ project }: { project: Project | null }) {
+type props = {
+  project: Project | null;
+  onSuccess?: () => void;
+};
+
+export function DeleteProjectButton({ project, onSuccess }: props) {
   const router = useRouter();
 
   const trashIcon = "/icons/trash.svg";
@@ -27,7 +31,7 @@ export function DeleteProjectButton({ project }: { project: Project | null }) {
           action: "deleteProject",
           id: project?.id,
         }),
-      }
+      },
     );
 
     if (res.ok) {
@@ -35,6 +39,8 @@ export function DeleteProjectButton({ project }: { project: Project | null }) {
 
       router.refresh();
       router.replace("/project");
+
+      onSuccess && onSuccess();
 
       setIsOpen(false);
     } else {

@@ -60,49 +60,98 @@ export default function ReservedStocksChart({
 }: ReservedStocksChart) {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Calculate reserved quantity by project from stocks table
+  // Calculate reserved quantity by project
   const calculateReservedByProject = () => {
-    const projectMap: { [key: string]: number } = {};
+    // ✅ Step 1: Calculate total stock per inventory item
+    const totalStockPerItem: { [itemId: number]: number } = {};
 
-    // Process stocks that have project_id (reserved stocks)
     stocks.forEach((stock) => {
-      // Only count stocks that are reserved to a project
-      if (stock.project_id && stock.project_name) {
-        const project = stock.project_name;
+      const itemId = stock.inventory_item_id;
+      if (!totalStockPerItem[itemId]) {
+        totalStockPerItem[itemId] = 0;
+      }
+      totalStockPerItem[itemId] += Math.abs(stock.quantity || 0);
+    });
 
-        if (!projectMap[project]) {
-          projectMap[project] = 0;
+    // ✅ Step 2: Calculate total issued per inventory item (NO received check)
+    const totalIssuedPerItem: { [itemId: number]: number } = {};
+
+    stocksTransferIssue.forEach((transaction) => {
+      // Only check if it's an issue type, don't check received status
+      if (transaction.type?.toLowerCase().includes("issue")) {
+        const itemId = transaction.inventory_item_id;
+        if (!totalIssuedPerItem[itemId]) {
+          totalIssuedPerItem[itemId] = 0;
         }
-
-        // Get initial quantity from stock
-        let reservedQuantity = Math.abs(stock.quantity || 0);
-
-        // Calculate how much has been issued from this stock
-        const issuedFromStock = stocksTransferIssue
-          .filter(
-            (transaction) =>
-              transaction.stock_id === stock.id &&
-              transaction.type.toLowerCase().includes("issue") &&
-              transaction.received === 1
-          )
-          .reduce(
-            (sum, transaction) => sum + Math.abs(transaction.quantity || 0),
-            0
-          );
-
-        // Subtract issued quantity from reserved quantity
-        const remainingReserved = reservedQuantity - issuedFromStock;
-
-        // Only add if there's still reserved quantity remaining
-        if (remainingReserved > 0) {
-          projectMap[project] += remainingReserved;
-        }
+        totalIssuedPerItem[itemId] += Math.abs(transaction.quantity || 0);
       }
     });
 
-    // Convert to array and sort by quantity (descending)
+    // ✅ Step 3: Calculate available stock per item
+    const availableStockPerItem: { [itemId: number]: number } = {};
+
+    Object.keys(totalStockPerItem).forEach((itemIdStr) => {
+      const itemId = Number(itemIdStr);
+      const totalStock = totalStockPerItem[itemId] || 0;
+      const totalIssued = totalIssuedPerItem[itemId] || 0;
+      availableStockPerItem[itemId] = Math.max(0, totalStock - totalIssued);
+    });
+
+    // ✅ Step 4: Calculate reserved per project per item
+    const projectMap: {
+      [projectName: string]: {
+        totalReserved: number;
+        itemsReserved: { [itemId: number]: number };
+      };
+    } = {};
+
+    stocks.forEach((stock) => {
+      // Only count stocks reserved to a project
+      if (stock.project_id && stock.project_name) {
+        const project = stock.project_name;
+        const itemId = stock.inventory_item_id;
+
+        if (!projectMap[project]) {
+          projectMap[project] = {
+            totalReserved: 0,
+            itemsReserved: {},
+          };
+        }
+
+        if (!projectMap[project].itemsReserved[itemId]) {
+          projectMap[project].itemsReserved[itemId] = 0;
+        }
+
+        projectMap[project].itemsReserved[itemId] += Math.abs(
+          stock.quantity || 0,
+        );
+      }
+    });
+
+    // ✅ Step 5: Cap reserved to available stock
+    Object.keys(projectMap).forEach((project) => {
+      let projectTotal = 0;
+
+      Object.keys(projectMap[project].itemsReserved).forEach((itemIdStr) => {
+        const itemId = Number(itemIdStr);
+        const reservedQty = projectMap[project].itemsReserved[itemId];
+        const availableQty = availableStockPerItem[itemId] || 0;
+
+        // Cap reserved to available
+        const actualReserved = Math.min(reservedQty, availableQty);
+        projectMap[project].itemsReserved[itemId] = actualReserved;
+        projectTotal += actualReserved;
+      });
+
+      projectMap[project].totalReserved = projectTotal;
+    });
+
+    // ✅ Step 6: Convert to array and filter out zero quantities
     const projectArray = Object.entries(projectMap)
-      .map(([project, quantity]) => ({ project, quantity }))
+      .map(([project, data]) => ({
+        project,
+        quantity: data.totalReserved,
+      }))
       .filter((item) => item.quantity > 0)
       .sort((a, b) => b.quantity - a.quantity);
 
@@ -114,7 +163,7 @@ export default function ReservedStocksChart({
   // Calculate total reserved
   const totalReserved = reservedByProject.reduce(
     (sum, item) => sum + item.quantity,
-    0
+    0,
   );
 
   // Define colors for different projects
@@ -133,12 +182,6 @@ export default function ReservedStocksChart({
     value: item.quantity,
     color: COLORS[index % COLORS.length],
   }));
-
-  // Calculate percentage for top project
-  const topProjectPercentage =
-    totalReserved > 0 && reservedByProject.length > 0
-      ? Math.round((reservedByProject[0].quantity / totalReserved) * 100)
-      : 0;
 
   return (
     <div
