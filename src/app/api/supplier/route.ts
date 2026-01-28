@@ -235,11 +235,19 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "resetSupplierAndQuotation") {
-      const query = `UPDATE mr_line_supplier_quotation SET approval_status = NULL WHERE mr_line_id = ?`;
+      // Only reset the APPROVED quotation for this specific supplier
+      const query = `UPDATE mr_line_supplier_quotation 
+                 SET approval_status = NULL,
+                     reject_comment = NULL
+                 WHERE mr_line_id = ? 
+                 AND supplier_id = ? 
+                 AND approval_status = 'Approved'`;
 
-      await db.query(query, [body.mr_line_id]);
+      await db.query(query, [body.mr_line_id, body.supplier_id]);
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({
+        success: true,
+      });
     }
 
     if (body.action === "resetSupplierAndQuotationQS") {
@@ -267,11 +275,23 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "approveSupplierAndQuotation") {
-      const query = `UPDATE mr_line_supplier_quotation SET approval_status = 'Approved' WHERE mr_line_id = ? AND supplier_id = ?`;
+      await db.query(
+        `UPDATE mr_line_supplier_quotation 
+     SET approval_status = NULL 
+     WHERE mr_line_id = ? AND approval_status = 'Approved'`,
+        [body.mr_line_id],
+      );
 
-      await db.query(query, [body.mr_line_id, body.supplier_id]);
+      const query = `UPDATE mr_line_supplier_quotation 
+                 SET approval_status = 'Approved' 
+                 WHERE id = ?`;
 
-      return NextResponse.json({ success: true });
+      await db.query(query, [body.quotation_id]);
+
+      return NextResponse.json({
+        success: true,
+        quotationId: body.quotation_id,
+      });
     }
 
     if (body.action === "updateSupplierAndQuotation") {

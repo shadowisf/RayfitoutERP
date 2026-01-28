@@ -40,7 +40,6 @@ import SubmitForQSApprovalButton from "./department/_SubmitForQSApprovalButton";
 import QSInitialApprovalButtons from "./quantitySurveyor/_InitialApprovalButton";
 import SubmitForQSPricingApprovalButton from "./procurement/_SubmitForQSPricingApprovalButton";
 import CheckPricesButton from "./quantitySurveyor/_CheckPricesButton";
-import CancelMaterialRequestButton from "./_CancelMaterialRequest";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -2044,7 +2043,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 subCategoryID={String(
                                   firstItem.material_subcategory_id,
                                 )}
-                              ></RenameMrSubCategoryButton>
+                              />
 
                               <DeleteMrSubCategoryButton
                                 items={allItems}
@@ -2109,6 +2108,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     userInfo?.departmentID === 16 && (
                                       <th>VENDOR & QUOTATION</th>
                                     )}
+                                  {mrHeader.progress_id >= 10 &&
+                                    canSeePrice && <th>UNIT PRICE</th>}
+                                  {mrHeader.progress_id >= 10 &&
+                                    canSeePrice && <th>TOTAL PRICE</th>}
                                   {userInfo?.departmentID === 12 &&
                                     mrHeader.progress_id === 21 && (
                                       <th>QUALITY CONTROL</th>
@@ -2413,15 +2416,32 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                   alt="external link icon"
                                                 />
                                               </SupplierDetailsPopUp>
-                                              {canSeePrice && (
+                                              {/* {canSeePrice && (
                                                 <span>
                                                   {item.approved_total_price}{" "}
                                                   AED
                                                 </span>
-                                              )}
+                                              )} */}
                                             </div>
                                           </td>
                                         )}
+
+                                        {mrHeader.progress_id >= 10 &&
+                                          canSeePrice && (
+                                            <td>
+                                              {item.approved_unit_price
+                                                ? `AED ${parseFloat(String(item.approved_unit_price)).toFixed(2)}`
+                                                : "-"}
+                                            </td>
+                                          )}
+                                        {mrHeader.progress_id >= 10 &&
+                                          canSeePrice && (
+                                            <td>
+                                              {item.approved_total_price
+                                                ? `AED ${parseFloat(String(item.approved_total_price)).toFixed(2)}`
+                                                : "-"}
+                                            </td>
+                                          )}
 
                                         {userInfo?.departmentID === 12 &&
                                           mrHeader.progress_id === 21 && (
@@ -2470,7 +2490,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   }}
                                 >
                                   <h4>TOTAL</h4>
-                                  <h4>{totalInvoiceAmount.toFixed(2)} AED</h4>
+                                  <h4>AED {totalInvoiceAmount.toFixed(2)}</h4>
                                 </div>
                               </div>
                             )}
@@ -2631,6 +2651,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 userInfo?.departmentID === 16 && (
                                   <th>VENDOR & QUOTATION</th>
                                 )}
+                              {mrHeader.progress_id >= 10 && canSeePrice && (
+                                <th>UNIT PRICE</th>
+                              )}
+                              {mrHeader.progress_id >= 10 && canSeePrice && (
+                                <th>TOTAL PRICE</th>
+                              )}
                               {userInfo?.departmentID === 12 &&
                                 mrHeader.progress_id === 21 && (
                                   <th>QUALITY CONTROL</th>
@@ -2892,14 +2918,31 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                               alt="external link icon"
                                             />
                                           </SupplierDetailsPopUp>
-                                          {canSeePrice && (
+                                          {/* {canSeePrice && (
                                             <span>
                                               {item.approved_total_price} AED
                                             </span>
-                                          )}
+                                          )} */}
                                         </div>
                                       </td>
                                     )}
+
+                                    {mrHeader.progress_id >= 10 &&
+                                      canSeePrice && (
+                                        <td>
+                                          {item.approved_unit_price
+                                            ? `AED ${parseFloat(String(item.approved_unit_price)).toFixed(2)}`
+                                            : "-"}
+                                        </td>
+                                      )}
+                                    {mrHeader.progress_id >= 10 &&
+                                      canSeePrice && (
+                                        <td>
+                                          {item.approved_total_price
+                                            ? `AED ${parseFloat(String(item.approved_total_price)).toFixed(2)}`
+                                            : "-"}
+                                        </td>
+                                      )}
 
                                     {userInfo?.departmentID === 12 &&
                                       mrHeader.progress_id === 21 && (
@@ -2946,7 +2989,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               }}
                             >
                               <h4>TOTAL</h4>
-                              <h4>{totalInvoiceAmount.toFixed(2)} AED</h4>
+                              <h4>AED {totalInvoiceAmount.toFixed(2)}</h4>
                             </div>
                           </div>
                         )}
@@ -3112,6 +3155,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   <th>BOQ REF.</th>
                   <th>BRAND & SPECIFICATION</th>
                   {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>}
+                  {mrHeader.progress_id >= 10 && canSeePrice && (
+                    <th>UNIT PRICE</th>
+                  )}
+                  {mrHeader.progress_id >= 10 && canSeePrice && (
+                    <th>TOTAL PRICE</th>
+                  )}
                   {userInfo?.departmentID === 12 &&
                     mrHeader.progress_id === 21 && <th>QUALITY CONTROL</th>}
                   {mrHeader.progress_id === 24 &&
@@ -3190,10 +3239,25 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               alt="external link icon"
                             />
                           </SupplierDetailsPopUp>
-                          {canSeePrice && (
+                          {/* {canSeePrice && (
                             <span>{item.approved_total_price} AED</span>
-                          )}
+                          )} */}
                         </div>
+                      </td>
+                    )}
+
+                    {mrHeader.progress_id >= 10 && canSeePrice && (
+                      <td>
+                        {item.approved_unit_price
+                          ? `AED ${parseFloat(String(item.approved_unit_price)).toFixed(2)}`
+                          : "-"}
+                      </td>
+                    )}
+                    {mrHeader.progress_id >= 10 && canSeePrice && (
+                      <td>
+                        {item.approved_total_price
+                          ? `AED ${parseFloat(String(item.approved_total_price)).toFixed(2)}`
+                          : "-"}
                       </td>
                     )}
 
@@ -3235,7 +3299,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   }}
                 >
                   <h4>TOTAL</h4>
-                  <h4>{totalInvoiceAmount.toFixed(2)} AED</h4>
+                  <h4>AED {totalInvoiceAmount.toFixed(2)}</h4>
                 </div>
               </div>
             )}

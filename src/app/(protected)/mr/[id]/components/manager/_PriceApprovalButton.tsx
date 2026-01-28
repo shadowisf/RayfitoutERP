@@ -122,8 +122,25 @@ export default function PriceApprovalButton({
     fetchQuotations();
   }, [mrLine.id]);
 
+  // In PriceApprovalButton.tsx
   async function handleApproveSupplierAndQuotation(e: React.FormEvent) {
     e.preventDefault();
+
+    // ✅ Find the selected quotation object
+    const selectedQuotation = supplierQuotations.find(
+      (q) => q.supplier_id === Number(selectedSupplierID),
+    );
+
+    if (!selectedQuotation) {
+      toast("Please select a vendor", "error");
+      return;
+    }
+
+    console.log("📝 Approving quotation:", {
+      quotation_id: selectedQuotation.id,
+      mr_line_id: mrLine.id,
+      supplier_id: selectedSupplierID,
+    });
 
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
@@ -132,6 +149,7 @@ export default function PriceApprovalButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "approveSupplierAndQuotation",
+          quotation_id: selectedQuotation.id, // ✅ Pass the quotation ID
           mr_line_id: mrLine.id,
           supplier_id: selectedSupplierID,
         }),
@@ -180,7 +198,18 @@ export default function PriceApprovalButton({
     }
   }
 
+  // In PriceApprovalButton.tsx
   async function handleReset() {
+    if (!approvedQuotation) {
+      toast("No approved quotation to reset", "error");
+      return;
+    }
+
+    console.log("Resetting quotation:", {
+      mr_line_id: mrLine.id,
+      supplier_id: approvedQuotation.supplier_id,
+    });
+
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
       {
@@ -189,12 +218,13 @@ export default function PriceApprovalButton({
         body: JSON.stringify({
           action: "resetSupplierAndQuotation",
           mr_line_id: mrLine.id,
+          supplier_id: approvedQuotation.supplier_id,
         }),
       },
     );
 
     if (res.ok) {
-      setRejectText("");
+      toast("Vendor selection reset successfully", "success");
       fetchQuotations();
       router.refresh();
     } else {
@@ -426,11 +456,11 @@ export default function PriceApprovalButton({
               />
             </div>
           </div>
-
+          {/* 
           <span>
             AED{" "}
             {Number(approvedQuotation.unit_price * mrLine.quantity).toFixed(2)}
-          </span>
+          </span> */}
         </div>
       );
     }
@@ -478,7 +508,7 @@ export default function PriceApprovalButton({
             Manually Select{" "}
             <img src={externalLinkIcon} alt="external link icon" />
           </Button>
-          <Button
+          {/* <Button
             componentType={"button"}
             bgColor={bgColor}
             borderColor={borderColor}
@@ -487,7 +517,7 @@ export default function PriceApprovalButton({
             style={style}
           >
             Smart Select <img src={diamondIcon} alt="diamond icon" />
-          </Button>
+          </Button> */}
         </div>
 
         {isOpen && (

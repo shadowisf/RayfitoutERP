@@ -175,7 +175,7 @@ export default function MR() {
     24: 11, // Awaiting stock entry → Storekeeper
   };
 
-  // ✅ Updated canViewMR function - only shows MRs that need action from user's department
+  // ✅ Updated canViewMR for managers - only show progress_id 3 and 10
   const canViewMR = (mr: any) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
@@ -188,9 +188,11 @@ export default function MR() {
     // Completed MRs (progress_id 25) are accessible to everyone
     if (mr.progress_id === 25) return true;
 
-    // ✅ Management (department ID 8) can view ALL non-draft MRs (except drafts from other departments)
-    if (userDeptId === 8 && mr.progress_id !== 1) {
-      return true;
+    // ✅ Management (department ID 8) can ONLY see progress_id 3 and 10 when filtering
+    if (userDeptId === 8) {
+      return (
+        [3, 10].includes(mr.progress_id) && mr.department_id !== userDeptId
+      );
     }
 
     // ✅ Only show MRs where this department needs to take action
@@ -897,7 +899,7 @@ export default function MR() {
                           </>
                         ) : (
                           <>
-                            {/* Completed MR - Show Required Date without days left */}
+                            {/* ✅ Completed MR - Only show Required Date, NO delivery dates */}
                             <div>
                               <small>REQUIRED DATE</small>
                               <h3>
@@ -908,35 +910,6 @@ export default function MR() {
                             </div>
 
                             <br />
-
-                            {/* Delivery Dates for Completed MRs */}
-                            {mrDeliveryDates[mr.id] &&
-                              mrDeliveryDates[mr.id].length > 0 && (
-                                <>
-                                  {mrDeliveryDates[mr.id].map(
-                                    (delivery, index) => (
-                                      <div key={index}>
-                                        <div>
-                                          <small>
-                                            {delivery.supplier_name.toUpperCase()}{" "}
-                                            DELIVERY DATE
-                                          </small>
-                                          <h3>
-                                            {new Date(
-                                              delivery.delivery_date,
-                                            ).toLocaleDateString()}
-                                          </h3>
-                                        </div>
-                                        {index <
-                                          mrDeliveryDates[mr.id].length - 1 && (
-                                          <br />
-                                        )}
-                                      </div>
-                                    ),
-                                  )}
-                                  <br />
-                                </>
-                              )}
                           </>
                         )}
 
