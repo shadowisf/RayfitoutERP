@@ -31,25 +31,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, id: result.insertId });
     }
 
+    // In your POST route (document index 4)
     if (body.action === "createBoqLine") {
       try {
-        // Get the maximum orders for this category/subcategory/item
+        // FIXED: Get the maximum order for the ENTIRE boq_id, not just the category
         const [maxCategoryOrder]: any = await db.query(
           `SELECT COALESCE(MAX(category_order), -1) as max_order 
        FROM boq_lines 
-       WHERE boq_id = ? AND category = ?`,
-          [Number(body.boq_id), body.category.toUpperCase()],
+       WHERE boq_id = ?`, // ← Changed: removed category filter
+          [Number(body.boq_id)],
         );
 
         const [maxSubcategoryOrder]: any = await db.query(
           `SELECT COALESCE(MAX(subcategory_order), -1) as max_order 
        FROM boq_lines 
-       WHERE boq_id = ? AND category = ? AND sub_category = ?`,
-          [
-            Number(body.boq_id),
-            body.category.toUpperCase(),
-            body.sub_category.toUpperCase(),
-          ],
+       WHERE boq_id = ? AND category = ?`, // ← Changed: only filter by category
+          [Number(body.boq_id), body.category.toUpperCase()],
         );
 
         const [maxItemOrder]: any = await db.query(
@@ -67,7 +64,7 @@ export async function POST(req: Request) {
         const nextSubcategoryOrder = maxSubcategoryOrder[0].max_order + 1;
         const nextItemOrder = maxItemOrder[0].max_order + 1;
 
-        // Insert BOQ line WITH order values
+        // Rest of the code remains the same...
         const query = `
       INSERT INTO boq_lines 
       (boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments, category_order, subcategory_order, item_order)
@@ -96,7 +93,6 @@ export async function POST(req: Request) {
         const [result] = await db.query<ResultSetHeader>(query, values);
         const boqLineId = result.insertId;
 
-        // Insert location associations into junction table
         if (
           body.location_ids &&
           Array.isArray(body.location_ids) &&
@@ -133,19 +129,20 @@ export async function POST(req: Request) {
 
         const { boq_id, category, sub_category } = originalItem[0];
 
-        // Get the maximum orders for this category/subcategory
+        // FIXED: Get max order from entire boq_id for category
         const [maxCategoryOrder]: any = await db.query(
           `SELECT COALESCE(MAX(category_order), -1) as max_order 
        FROM boq_lines 
-       WHERE boq_id = ? AND category = ?`,
-          [boq_id, category],
+       WHERE boq_id = ?`, // ← Changed: removed category filter
+          [boq_id],
         );
 
+        // FIXED: Get max order from category for subcategory
         const [maxSubcategoryOrder]: any = await db.query(
           `SELECT COALESCE(MAX(subcategory_order), -1) as max_order 
        FROM boq_lines 
-       WHERE boq_id = ? AND category = ? AND sub_category = ?`,
-          [boq_id, category, sub_category],
+       WHERE boq_id = ? AND category = ?`, // ← Changed: only filter by category
+          [boq_id, category],
         );
 
         const [maxItemOrder]: any = await db.query(
@@ -393,6 +390,7 @@ export async function PUT(req: Request) {
   }
 }
 
+// Replace your entire DELETE function
 export async function DELETE(req: Request) {
   try {
     const body = await req.json();
@@ -404,23 +402,96 @@ export async function DELETE(req: Request) {
     }
 
     if (body.action === "deleteCategory") {
-      const query = "DELETE FROM boq_lines WHERE category = ? AND boq_id = ?";
-      await db.query(query, [body.category, Number(body.boq_id)]);
+      const boqId = Number(body.boq_id);
+      const category = body.category;
+
+      // Delete the category
+      await db.query(
+        "DELETE FROM boq_lines WHERE category = ? AND boq_id = ?",
+        [category, boqId],
+      );
+
+      // Reorder remaining categories
+      await db.query(
+        `
+        UPDATE boq_lines
+        JOIN (
+            SELECT 
+                id,
+                DENSE_RANK() OVER (PARTITION BY boq_id ORDER BY category_order, category) AS new_category_order
+            FROM boq_lines
+            WHERE boq_id = ?
+        ) AS ranked ON boq_lines.id = ranked.id
+        SET boq_lines.category_order = ranked.new_category_order
+      `,
+        [boqId],
+      );
+
       return NextResponse.json({ success: true });
     }
 
     if (body.action === "deleteSubCategory") {
-      const query =
-        "DELETE FROM boq_lines WHERE category = ? AND sub_category = ? AND boq_id = ?";
-      await db.query(query, [body.category, body.sub_category, body.boq_id]);
+      const boqId = Number(body.boq_id);
+      const category = body.category;
+      const subCategory = body.sub_category;
+
+      // Delete the subcategory
+      await db.query(
+        "DELETE FROM boq_lines WHERE category = ? AND sub_category = ? AND boq_id = ?",
+        [category, subCategory, boqId],
+      );
+
+      // Reorder remaining subcategories within this category
+      await db.query(
+        `
+        UPDATE boq_lines
+        JOIN (
+            SELECT 
+                id,
+                DENSE_RANK() OVER (PARTITION BY boq_id, category ORDER BY subcategory_order, sub_category) AS new_subcategory_order
+            FROM boq_lines
+            WHERE boq_id = ? AND category = ?
+        ) AS ranked ON boq_lines.id = ranked.id
+        SET boq_lines.subcategory_order = ranked.new_subcategory_order
+      `,
+        [boqId, category],
+      );
+
       return NextResponse.json({ success: true });
     }
 
     if (body.action === "deleteItem") {
-      // Note: The junction table records will be automatically deleted
-      // due to ON DELETE CASCADE constraint on jt_boq_line_location
-      const query = "DELETE FROM boq_lines WHERE id = ?";
-      await db.query(query, [Number(body.id)]);
+      // Get item info before deletion
+      const [itemInfo]: any = await db.query(
+        "SELECT boq_id, category, sub_category FROM boq_lines WHERE id = ?",
+        [Number(body.id)],
+      );
+
+      if (!itemInfo || itemInfo.length === 0) {
+        return NextResponse.json({ error: "Item not found" }, { status: 404 });
+      }
+
+      const { boq_id, category, sub_category } = itemInfo[0];
+
+      // Delete the item
+      await db.query("DELETE FROM boq_lines WHERE id = ?", [Number(body.id)]);
+
+      // Reorder remaining items within this subcategory
+      await db.query(
+        `
+        UPDATE boq_lines
+        JOIN (
+            SELECT 
+                id,
+                ROW_NUMBER() OVER (PARTITION BY boq_id, category, sub_category ORDER BY item_order, id) AS new_item_order
+            FROM boq_lines
+            WHERE boq_id = ? AND category = ? AND sub_category = ?
+        ) AS ranked ON boq_lines.id = ranked.id
+        SET boq_lines.item_order = ranked.new_item_order
+      `,
+        [boq_id, category, sub_category],
+      );
+
       return NextResponse.json({ success: true });
     }
   } catch (err: any) {

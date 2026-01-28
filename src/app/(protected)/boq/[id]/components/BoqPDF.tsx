@@ -558,214 +558,211 @@ export function BoqPDF({
         />
       </Page>
 
-      {/* Detail Pages - Subcategories as main headers */}
-      <Page size="A4" style={styles.page} wrap>
-        {categories.map((category, categoryIndex) => {
-          const subCategories = Object.entries(boqLines[category]);
+      {/* Detail Pages - Each category on a new page */}
+      {categories.map((category, categoryIndex) => {
+        const subCategories = Object.entries(boqLines[category]);
 
-          return (
-            <View key={categoryIndex}>
-              {/* Loop through subcategories */}
-              {subCategories.map(([subCategory, items], subIndex) => {
-                // Calculate subcategory total
-                const subCategoryTotal = items.reduce(
-                  (sum, item) => sum + (item.total_cost || 0),
-                  0,
-                );
+        return (
+          <Page key={categoryIndex} size="A4" style={styles.page}>
+            {/* Loop through subcategories */}
+            {subCategories.map(([subCategory, items], subIndex) => {
+              // Calculate subcategory total
+              const subCategoryTotal = items.reduce(
+                (sum, item) => sum + (item.total_cost || 0),
+                0,
+              );
 
-                return (
-                  <View key={subIndex}>
-                    {/* Subcategory Title */}
-                    <View wrap={false}>
+              return (
+                <View key={subIndex}>
+                  {/* Subcategory Title */}
+                  <View wrap={false}>
+                    <Text
+                      style={styles.subCategoryTitle}
+                      hyphenationCallback={(word) => [word]}
+                    >
+                      {categoryIndex + 1}.{subIndex + 1}{" "}
+                      {category.toUpperCase()} / {subCategory.toUpperCase()}
+                    </Text>
+
+                    {/* Table Header */}
+                    <View style={styles.detailTableHeader}>
+                      <Text style={styles.detailColItemNo}>#</Text>
                       <Text
-                        style={styles.subCategoryTitle}
-                        hyphenationCallback={(word) => [word]}
+                        style={
+                          showPrices
+                            ? styles.detailColCategory
+                            : styles.detailColCategoryUnpriced
+                        }
                       >
-                        {categoryIndex + 1}.{subIndex + 1}{" "}
-                        {category.toUpperCase()} / {subCategory.toUpperCase()}
+                        ITEM
                       </Text>
+                      <Text style={styles.detailColQty}>QTY</Text>
+                      {showPrices && (
+                        <>
+                          <Text style={styles.detailColRate}>RATE</Text>
+                          <Text style={styles.detailColTotal}>TOTAL PRICE</Text>
+                        </>
+                      )}
 
-                      {/* Table Header */}
-                      <View style={styles.detailTableHeader}>
-                        <Text style={styles.detailColItemNo}>#</Text>
-                        <Text
+                      <Text style={styles.detailColAttachment}>
+                        ATTACHMENT(S)
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* BOQ Line Items - Added wrap={false} to keep entire row together */}
+                  {items.map((item, itemIndex) => {
+                    const rowStyle =
+                      itemIndex % 2 === 0
+                        ? styles.detailTableRowOdd
+                        : styles.detailTableRowEven;
+
+                    return (
+                      <View key={item.id} style={rowStyle} wrap={false}>
+                        <Text style={styles.detailColItemNo}>
+                          {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
+                        </Text>
+
+                        <View
                           style={
                             showPrices
                               ? styles.detailColCategory
                               : styles.detailColCategoryUnpriced
                           }
                         >
-                          ITEM
-                        </Text>
-                        <Text style={styles.detailColQty}>QTY</Text>
-                        {showPrices && (
-                          <>
-                            <Text style={styles.detailColRate}>RATE</Text>
-                            <Text style={styles.detailColTotal}>
-                              TOTAL PRICE
-                            </Text>
-                          </>
-                        )}
-
-                        <Text style={styles.detailColAttachment}>
-                          ATTACHMENT(S)
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* BOQ Line Items */}
-                    {items.map((item, itemIndex) => {
-                      const rowStyle =
-                        itemIndex % 2 === 0
-                          ? styles.detailTableRowOdd
-                          : styles.detailTableRowEven;
-
-                      return (
-                        <View key={item.id} style={rowStyle} wrap={false}>
-                          <Text style={styles.detailColItemNo}>
-                            {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
+                          {/* Item Name */}
+                          <Text
+                            style={{
+                              fontFamily: "Mont-Bold",
+                              marginBottom: 5,
+                            }}
+                            hyphenationCallback={(word) => [word]}
+                          >
+                            {item.item_name}
                           </Text>
 
-                          <View
-                            style={
-                              showPrices
-                                ? styles.detailColCategory
-                                : styles.detailColCategoryUnpriced
-                            }
-                          >
-                            {/* Item Name */}
+                          {/* Item Description */}
+                          {item.item_description && (
                             <Text
-                              style={{
-                                fontFamily: "Mont-Bold",
-                                marginBottom: 5,
-                              }}
+                              style={{ marginBottom: 5 }}
                               hyphenationCallback={(word) => [word]}
                             >
-                              {item.item_name}
+                              {item.item_description}
                             </Text>
+                          )}
 
-                            {/* Item Description */}
-                            {item.item_description && (
-                              <Text
-                                style={{ marginBottom: 5 }}
-                                hyphenationCallback={(word) => [word]}
-                              >
-                                {item.item_description}
-                              </Text>
-                            )}
+                          {/* Location and Scope on same line */}
+                          {(item.location || item.scope_of_work) && (
+                            <View style={styles.locationScopeRow}>
+                              {/* Location with Icon */}
+                              {item.location && (
+                                <View style={styles.locationContainer}>
+                                  <Image
+                                    src={locationIcon}
+                                    style={styles.locationIcon}
+                                  />
+                                  <Text
+                                    style={styles.locationText}
+                                    hyphenationCallback={(word) => [word]}
+                                  >
+                                    {item.location}
+                                  </Text>
+                                </View>
+                              )}
 
-                            {/* Location and Scope on same line */}
-                            {(item.location || item.scope_of_work) && (
-                              <View style={styles.locationScopeRow}>
-                                {/* Location with Icon */}
-                                {item.location && (
-                                  <View style={styles.locationContainer}>
-                                    <Image
-                                      src={locationIcon}
-                                      style={styles.locationIcon}
-                                    />
-                                    <Text
-                                      style={styles.locationText}
-                                      hyphenationCallback={(word) => [word]}
-                                    >
-                                      {item.location}
-                                    </Text>
-                                  </View>
-                                )}
+                              {/* Scope of Work Badge */}
+                              {item.scope_of_work && (
+                                <View style={styles.scopeBadge}>
+                                  <Text
+                                    style={styles.scopeText}
+                                    hyphenationCallback={(word) => [word]}
+                                  >
+                                    {item.scope_of_work}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          )}
+                        </View>
 
-                                {/* Scope of Work Badge */}
-                                {item.scope_of_work && (
-                                  <View style={styles.scopeBadge}>
-                                    <Text
-                                      style={styles.scopeText}
-                                      hyphenationCallback={(word) => [word]}
-                                    >
-                                      {item.scope_of_work}
-                                    </Text>
-                                  </View>
+                        <Text style={styles.detailColQty}>
+                          {item.quantity} {item.unit}
+                        </Text>
+                        {showPrices && (
+                          <Text style={styles.detailColRate}>
+                            {item.rate_per_quantity?.toLocaleString()}
+                          </Text>
+                        )}
+                        {showPrices && (
+                          <Text style={styles.detailColTotal}>
+                            {boqHeader.currency}{" "}
+                            {item.total_cost?.toLocaleString()}
+                          </Text>
+                        )}
+
+                        <View style={styles.detailColAttachment}>
+                          {item.attachments &&
+                            Array.isArray(item.attachments) &&
+                            item.attachments.length > 0 && (
+                              <View style={styles.attachmentContainer}>
+                                {item.attachments.map(
+                                  (base64Url: string, i: number) => {
+                                    if (!base64Url || base64Url.trim() === "")
+                                      return null;
+
+                                    return (
+                                      <View
+                                        key={i}
+                                        style={styles.attachmentWrapper}
+                                      >
+                                        <Image
+                                          src={base64Url}
+                                          style={styles.attachmentImage}
+                                        />
+                                      </View>
+                                    );
+                                  },
                                 )}
                               </View>
                             )}
-                          </View>
-
-                          <Text style={styles.detailColQty}>
-                            {item.quantity} {item.unit}
-                          </Text>
-                          {showPrices && (
-                            <Text style={styles.detailColRate}>
-                              {item.rate_per_quantity?.toLocaleString()}
-                            </Text>
-                          )}
-                          {showPrices && (
-                            <Text style={styles.detailColTotal}>
-                              {boqHeader.currency}{" "}
-                              {item.total_cost?.toLocaleString()}
-                            </Text>
-                          )}
-
-                          <View style={styles.detailColAttachment}>
-                            {item.attachments &&
-                              Array.isArray(item.attachments) &&
-                              item.attachments.length > 0 && (
-                                <View style={styles.attachmentContainer}>
-                                  {item.attachments.map(
-                                    (base64Url: string, i: number) => {
-                                      if (!base64Url || base64Url.trim() === "")
-                                        return null;
-
-                                      return (
-                                        <View
-                                          key={i}
-                                          style={styles.attachmentWrapper}
-                                        >
-                                          <Image
-                                            src={base64Url}
-                                            style={styles.attachmentImage}
-                                          />
-                                        </View>
-                                      );
-                                    },
-                                  )}
-                                </View>
-                              )}
-                          </View>
                         </View>
-                      );
-                    })}
-
-                    {/* Subtotal Row - Only show if showPrices is true */}
-                    {showPrices && (
-                      <View style={styles.subtotalRow}>
-                        {/* Empty columns to align with table structure */}
-                        <Text style={styles.detailColItemNo}></Text>
-                        <Text
-                          style={styles.detailColCategory}
-                          hyphenationCallback={(word) => [word]}
-                        >
-                          SUBTOTAL FOR {subCategory.toUpperCase()}
-                        </Text>
-                        <Text style={styles.detailColQty}></Text>
-                        <Text style={styles.detailColRate}></Text>
-                        <Text style={styles.detailColTotal}>
-                          {boqHeader.currency}{" "}
-                          {subCategoryTotal.toLocaleString()}
-                        </Text>
-                        <Text style={styles.detailColAttachment}></Text>
                       </View>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          );
-        })}
+                    );
+                  })}
 
-        <Text
-          style={styles.pageNumber}
-          render={({ pageNumber }) => `${String(pageNumber).padStart(2, "0")}`}
-          fixed
-        />
-      </Page>
+                  {/* Subtotal Row - Only show if showPrices is true */}
+                  {showPrices && (
+                    <View style={styles.subtotalRow} wrap={false}>
+                      {/* Empty columns to align with table structure */}
+                      <Text style={styles.detailColItemNo}></Text>
+                      <Text
+                        style={styles.detailColCategory}
+                        hyphenationCallback={(word) => [word]}
+                      >
+                        SUBTOTAL FOR {subCategory.toUpperCase()}
+                      </Text>
+                      <Text style={styles.detailColQty}></Text>
+                      <Text style={styles.detailColRate}></Text>
+                      <Text style={styles.detailColTotal}>
+                        {boqHeader.currency} {subCategoryTotal.toLocaleString()}
+                      </Text>
+                      <Text style={styles.detailColAttachment}></Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+
+            <Text
+              style={styles.pageNumber}
+              render={({ pageNumber }) =>
+                `${String(pageNumber).padStart(2, "0")}`
+              }
+              fixed
+            />
+          </Page>
+        );
+      })}
     </Document>
   );
 }

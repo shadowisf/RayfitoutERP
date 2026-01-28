@@ -235,7 +235,7 @@ export default function BoqLinesView({
             type: "category",
             items: categories.map((category, index) => ({
               category,
-              order: index,
+              order: index + 1, // ← Changed: Start from 1 instead of 0
               boqId: boqHeader.id,
             })),
           }),
@@ -268,7 +268,7 @@ export default function BoqLinesView({
             items: subcategories.map((subCategory, index) => ({
               category,
               subCategory,
-              order: index,
+              order: index + 1, // ← Changed: Start from 1 instead of 0
               boqId: boqHeader.id,
             })),
           }),
@@ -290,7 +290,7 @@ export default function BoqLinesView({
     try {
       console.log(
         "Saving item order:",
-        items.map((item, idx) => ({ id: item.id, order: idx })),
+        items.map((item, idx) => ({ id: item.id, order: idx + 1 })), // ← Changed: idx + 1
       );
 
       const response = await fetch(
@@ -302,7 +302,7 @@ export default function BoqLinesView({
             type: "item",
             items: items.map((item, index) => ({
               id: item.id,
-              item_order: index,
+              item_order: index + 1, // ← Changed: Start from 1 instead of 0
             })),
           }),
         },

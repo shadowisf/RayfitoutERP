@@ -37,18 +37,26 @@ export async function POST(request: NextRequest) {
       );
       await Promise.all(updatePromises);
     } else if (type === "item") {
-      console.log("Updating item order:", items); // Add logging
-      const updatePromises = items.map(
-        (item: { id: number; item_order: number }) => {
-          console.log(`Setting item ${item.id} to order ${item.item_order}`); // Debug log
-          return db.query("UPDATE boq_lines SET item_order = ? WHERE id = ?", [
-            item.item_order,
-            item.id,
-          ]);
-        },
-      );
-      const results = await Promise.all(updatePromises);
-      console.log("Update results:", results); // Check if updates actually happened
+      console.log("Updating item order:", JSON.stringify(items, null, 2));
+
+      // Update each item individually
+      for (const item of items) {
+        console.log(`Setting item ${item.id} to order ${item.item_order}`);
+
+        const [result]: any = await db.query(
+          "UPDATE boq_lines SET item_order = ? WHERE id = ?",
+          [item.item_order, item.id],
+        );
+
+        console.log(`Update result for item ${item.id}:`, result);
+
+        // Verify the update
+        const [verify]: any = await db.query(
+          "SELECT id, item_name, item_order FROM boq_lines WHERE id = ?",
+          [item.id],
+        );
+        console.log(`Verification for item ${item.id}:`, verify[0]);
+      }
     }
 
     return NextResponse.json({ success: true });
