@@ -81,9 +81,26 @@ export default function EditMrItemButton({
     return [];
   });
 
-  const [boqLineID, setBoqLineID] = useState<string | number>(
-    item.boq_line_id || "",
-  );
+  // ✅ Parse boq_ids from the view (comma-separated string to array)
+  const [boqLineIDs, setBoqLineIDs] = useState<number[]>(() => {
+    if (item.boq_line_ids) {
+      if (typeof item.boq_line_ids === "string") {
+        const ids = item.boq_line_ids
+          .split(",")
+          .map((id) => id.trim())
+          .filter((id) => id && id !== "")
+          .map((id) => Number(id))
+          .filter((id) => !isNaN(id));
+        return ids;
+      }
+
+      if (typeof item.boq_line_ids === "number") {
+        return [item.boq_line_ids];
+      }
+    }
+    return [];
+  });
+
   const [materialDescription, setMaterialDescription] = useState(
     item.material_description,
   );
@@ -214,6 +231,11 @@ export default function EditMrItemButton({
     }
   };
 
+  // ✅ Handle BOQ selection
+  const handleBoqSelection = (boqIDs: number[], boqInfo: string) => {
+    setBoqLineIDs(boqIDs);
+  };
+
   // Handle category change
   const handleCategoryChange = (categoryId: string | number) => {
     setCategoriesManuallySelected(true);
@@ -235,8 +257,8 @@ export default function EditMrItemButton({
       return;
     }
 
-    /* if (!boqLineID && purposeID === 1) {
-      toast("Please select a bill of quantity line", "error");
+    /* if (boqLineIDs.length === 0 && purposeID === 1) {
+      toast("Please select at least one bill of quantity line", "error");
       return;
     } */
 
@@ -279,7 +301,7 @@ export default function EditMrItemButton({
         body: JSON.stringify({
           action: "updateAll",
           id: Number(item.id),
-          boq_line_id: boqLineID ? Number(boqLineID) : null,
+          boq_line_ids: boqLineIDs, // ✅ Send as array
           material_category_id: Number(materialCategoryID),
           material_subcategory_id: cleanedSubcategoryIds,
           material_description: materialDescription.trim(),
@@ -374,10 +396,11 @@ export default function EditMrItemButton({
                 <small>(OPTIONAL)</small>
               </label>
 
+              {/* ✅ Updated to use checkbox component with multiple selection */}
               <MultipleSelectBoqItemButton
                 projectID={projectID}
-                onSelectBoq={setBoqLineID}
-                currentBoqLineID={boqLineID}
+                onSelectBoq={handleBoqSelection}
+                currentBoqLineIDs={boqLineIDs}
               />
             </div>
           </div>

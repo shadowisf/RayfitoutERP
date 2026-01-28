@@ -63,7 +63,6 @@ export default function AddMrItemButton({
   >([]);
   // ✅ Changed to array for multiple BOQ items
   const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
-  const [boqLineInfo, setBoqLineInfo] = useState<string>(""); // ✅ For display text
   const [materialDescription, setMaterialDescription] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
@@ -246,9 +245,8 @@ export default function AddMrItemButton({
   };
 
   // ✅ Handle BOQ selection
-  const handleBoqSelection = (boqIDs: number[], infoText: string) => {
+  const handleBoqSelection = (boqIDs: number[]) => {
     setBoqLineIDs(boqIDs);
-    setBoqLineInfo(infoText);
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -326,7 +324,6 @@ export default function AddMrItemButton({
         setUnit("");
         setNotes("");
         setBoqLineIDs([]); // ✅ Reset array
-        setBoqLineInfo(""); // ✅ Reset info
         setBrand("");
         setSpecification("");
         setDeliveryLocation("");
