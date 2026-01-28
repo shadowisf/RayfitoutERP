@@ -33,7 +33,7 @@ export default function ManualAddToStockButton({
   const [quantity, setQuantity] = useState("");
   const [reasonForEntry, setReasonForEntry] = useState("");
   const [projectID, setProjectID] = useState<string | number>("");
-  const [boqLineID, setBoqLineID] = useState<string | number>("");
+  const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]); // ✅ Changed to array
   const [condition, setCondition] = useState("");
   const [grnFile, setGrnFile] = useState<File | null>(null);
   const [qcReportFile, setQcReportFile] = useState<File | null>(null);
@@ -69,6 +69,11 @@ export default function ManualAddToStockButton({
         setProjectValues(data);
       });
   }, []);
+
+  // ✅ Handle BOQ selection
+  const handleBoqSelection = (boqIDs: number[], boqInfo: string) => {
+    setBoqLineIDs(boqIDs);
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -193,7 +198,7 @@ export default function ManualAddToStockButton({
         notes,
         unit_price: unitPrice,
         project_id: projectID,
-        boq_line_id: boqLineID,
+        boq_line_ids: boqLineIDs, // ✅ Send as array
         condition,
         grn_file: JSON.stringify(grnFileUrl),
         qc_report_file: JSON.stringify(qcReportFileUrl),
@@ -212,7 +217,7 @@ export default function ManualAddToStockButton({
       setQuantity("");
       setReasonForEntry("");
       setProjectID("");
-      setBoqLineID("");
+      setBoqLineIDs([]); // ✅ Reset array
       setCondition("");
       setGrnFile(null);
       setQcReportFile(null);
@@ -337,25 +342,17 @@ export default function ManualAddToStockButton({
               labelField="name"
               required={false}
             />
-            {/* <SingleSelectDropdown
-              label={"BILL OF QUANTITY CODE"}
-              dbData={boqLineValues}
-              selectedValue={boqLineID}
-              onChange={setBoqLineID}
-              placeholder="SELECT BILL OF QUANTITY"
-              required={false}
-              disabled={projectID === ""}
-            /> */}
             <div className="input-item">
               <label className="custom">
                 <span>BILL OF QUANTITY</span>
                 <small>(OPTIONAL)</small>
               </label>
 
+              {/* ✅ Updated to use array */}
               <MultipleSelectBoqItemButton
                 projectID={Number(projectID)}
-                onSelectBoq={setBoqLineID}
-                currentBoqLineID={boqLineID}
+                onSelectBoq={handleBoqSelection}
+                currentBoqLineIDs={boqLineIDs}
                 disabled={projectID === ""}
                 style={{ height: "30.5px" }}
               />
@@ -413,30 +410,7 @@ export default function ManualAddToStockButton({
             />
           </div>
 
-          {/* <div className="input-row half">
-            <InputItem
-              label={"CONDITION AT ENTRY"}
-              value={condition}
-              type={"select"}
-              placeholder={"SELECT CONDITION"}
-              required={false}
-              onChange={(e) => setCondition(e.target.value)}
-              selectOptions={["Good", "Fair", "Damaged"]}
-            />
-          </div> */}
-
           <br />
-
-          {/* <div className="input-row full">
-            <InputItem
-              label={"NOTES"}
-              value={notes}
-              type={"textarea"}
-              placeholder={"ENTER NOTES"}
-              required={false}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div> */}
 
           <FormContextHeader>PROOF/ATTACHMENTS</FormContextHeader>
           <div className="input-row half">

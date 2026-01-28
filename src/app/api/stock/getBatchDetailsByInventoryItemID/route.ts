@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (!inventoryItemId) {
       return NextResponse.json(
         { error: "Inventory item ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
         reason_for_entry,
         notes,
         project_id,
-        boq_line_id,
         item_condition,
         grn_file,
         qc_report_file,
@@ -48,13 +47,13 @@ export async function POST(request: NextRequest) {
       : [inventoryItemId];
     const [stockRows] = await db.query<RowDataPacket[]>(
       stockQuery,
-      stockParams
+      stockParams,
     );
 
     if (stockRows.length === 0) {
       return NextResponse.json(
         { error: "No stock entry found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -82,6 +81,29 @@ export async function POST(request: NextRequest) {
       return null;
     };
 
+    // ✅ Helper function to fetch BOQ details for a stock entry
+    const fetchBoqDetails = async (stockId: number) => {
+      const boqQuery = `
+        SELECT 
+          bl.id as boq_line_id,
+          bl.item_name as boq_item_name,
+          bl.item_description as boq_item_description,
+          bl.quantity as boq_quantity,
+          bl.unit as boq_unit,
+          bl.rate_per_quantity as boq_rate,
+          bl.total_cost as boq_total_cost,
+          bh.id as boq_header_id,
+          bh.project_id as boq_project_id
+        FROM jt_stocks_boq_lines jt
+        INNER JOIN boq_lines bl ON jt.boq_line_id = bl.id
+        INNER JOIN boq_headers bh ON bl.boq_id = bh.id
+        WHERE jt.stock_id = ?
+      `;
+
+      const [boqRows] = await db.query<RowDataPacket[]>(boqQuery, [stockId]);
+      return boqRows;
+    };
+
     // Check if this is a manual entry (no MR references)
     if (!mr_header_id || !mr_line_id) {
       // Manual stock entry - simplified query with batch_id filter
@@ -106,12 +128,6 @@ export async function POST(request: NextRequest) {
           p.id as project_id,
           p.name as project_name,
           
-          -- BOQ Details
-          bl.id as boq_line_id,
-          bh.id as boq_header_id,
-          bl.item_name as boq_item_name,
-          bl.quantity as boq_quantity,
-          
           -- Supplier Details
           sup.id as supplier_id,
           sup.name as supplier_name,
@@ -123,10 +139,6 @@ export async function POST(request: NextRequest) {
         
         -- Join Project (may be null)
         LEFT JOIN projects p ON s.project_id = p.id
-        
-        -- Join BOQ Line (may be null)
-        LEFT JOIN boq_lines bl ON s.boq_line_id = bl.id
-        LEFT JOIN boq_headers bh ON bl.boq_id = bh.id
         
         -- Join Supplier (may be null)
         LEFT JOIN suppliers sup ON s.supplier_id = sup.id
@@ -142,11 +154,14 @@ export async function POST(request: NextRequest) {
         : [inventoryItemId];
       const [manualRows] = await db.query<any[]>(
         manualStockQuery,
-        manualParams
+        manualParams,
       );
 
       if (manualRows.length > 0) {
         const manualDetails = manualRows[0];
+
+        // ✅ Fetch BOQ details for this stock entry
+        const boqDetails = await fetchBoqDetails(manualDetails.stock_id);
 
         const response = {
           type: "manual",
@@ -155,11 +170,35 @@ export async function POST(request: NextRequest) {
           qc_report_file: parseAttachment(manualDetails.qc_report_file),
           lpo_file: parseAttachment(manualDetails.lpo_file),
           dn_file: parseAttachment(manualDetails.dn_file),
+          boq_items: boqDetails, // ✅ Array of BOQ items
         };
 
         return NextResponse.json(response);
       }
     } else {
+      // ✅ Helper function to fetch BOQ details for an MR line
+      const fetchMrBoqDetails = async (mrLineId: number) => {
+        const boqQuery = `
+          SELECT 
+            bl.id as boq_line_id,
+            bl.item_name as boq_item_name,
+            bl.item_description as boq_item_description,
+            bl.quantity as boq_quantity,
+            bl.unit as boq_unit,
+            bl.rate_per_quantity as boq_rate,
+            bl.total_cost as boq_total_cost,
+            bh.id as boq_header_id,
+            bh.project_id as boq_project_id
+          FROM jt_mr_lines_boq_lines jt
+          INNER JOIN boq_lines bl ON jt.boq_line_id = bl.id
+          INNER JOIN boq_headers bh ON bl.boq_id = bh.id
+          WHERE jt.mr_line_id = ?
+        `;
+
+        const [boqRows] = await db.query<RowDataPacket[]>(boqQuery, [mrLineId]);
+        return boqRows;
+      };
+
       // Stock entry with MR - full detailed query
       const detailsQuery = `
         SELECT 
@@ -193,12 +232,6 @@ export async function POST(request: NextRequest) {
             -- Project Details
             p.id as project_id,
             p.name as project_name,
-            
-            -- BOQ Details
-            bl.id as boq_line_id,
-            bh.id as boq_header_id,
-            bl.item_name as boq_item_name,
-            bl.quantity as boq_quantity,
             
             -- Supplier Details
             sup.id as supplier_id,
@@ -254,10 +287,6 @@ export async function POST(request: NextRequest) {
         -- Join Project (may be null for non-project MRs)
         LEFT JOIN projects p ON mrh.project_id = p.id
         
-        -- Join BOQ Line (may be null)
-        LEFT JOIN boq_lines bl ON mrl.boq_line_id = bl.id
-        LEFT JOIN boq_headers bh ON bl.boq_id = bh.id
-        
         -- Join Supplier
         LEFT JOIN suppliers sup ON s.supplier_id = sup.id
         
@@ -288,11 +317,15 @@ export async function POST(request: NextRequest) {
       if (rows.length > 0) {
         const batchDetails = rows[0];
 
+        // ✅ Fetch BOQ details for this MR line
+        const boqDetails = await fetchMrBoqDetails(batchDetails.mr_line_id);
+
         const response = {
           type: "mr",
           ...batchDetails,
           invoice_file: parseAttachment(batchDetails.invoice_file),
           lpo_signed_file: parseAttachment(batchDetails.lpo_signed_file),
+          boq_items: boqDetails, // ✅ Array of BOQ items
         };
 
         return NextResponse.json(response);
@@ -301,13 +334,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { error: "Batch details not found" },
-      { status: 404 }
+      { status: 404 },
     );
   } catch (error) {
     console.error("Error fetching batch details:", error);
     return NextResponse.json(
       { error: "Failed to fetch batch details" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

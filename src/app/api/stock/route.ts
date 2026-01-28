@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { RowDataPacket } from "mysql2";
+import { ResultSetHeader, RowDataPacket } from "mysql2";
 
 export async function GET() {
   try {
@@ -20,10 +20,10 @@ export async function POST(request: NextRequest) {
     if (body.action === "addStock") {
       // Get the max batch_id for this inventory_item_id
       const maxBatchQuery = `
-        SELECT COALESCE(MAX(batch_id), 0) as max_batch_id 
-        FROM stocks 
-        WHERE inventory_item_id = ?
-      `;
+    SELECT COALESCE(MAX(batch_id), 0) as max_batch_id 
+    FROM stocks 
+    WHERE inventory_item_id = ?
+  `;
 
       const [batchResult] = await db.query<RowDataPacket[]>(maxBatchQuery, [
         Number(body.inventory_item_id),
@@ -32,11 +32,12 @@ export async function POST(request: NextRequest) {
       // Get the next batch_id (max + 1)
       const nextBatchId = batchResult[0].max_batch_id + 1;
 
+      // ✅ Insert stock WITHOUT boq_line_id
       const query = `
-        INSERT INTO stocks 
-        (batch_id, mr_header_id, mr_line_id, inventory_item_id, supplier_id, received_by, reason_for_entry, quantity, unit_price, location, notes, project_id, boq_line_id, item_condition, grn_file, qc_report_file, lpo_file, dn_file)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+    INSERT INTO stocks 
+    (batch_id, mr_header_id, mr_line_id, inventory_item_id, supplier_id, received_by, reason_for_entry, quantity, unit_price, location, notes, project_id, item_condition, grn_file, qc_report_file, lpo_file, dn_file)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
 
       const values = [
         nextBatchId,
@@ -51,7 +52,6 @@ export async function POST(request: NextRequest) {
         body.location,
         body.notes,
         Number(body.project_id) || null,
-        Number(body.boq_line_id) || null,
         body.condition,
         body.grn_file || null,
         body.qc_report_file || null,
@@ -59,11 +59,33 @@ export async function POST(request: NextRequest) {
         body.dn_file || null,
       ];
 
-      await db.query(query, values);
+      const [result] = await db.query<ResultSetHeader>(query, values);
+      const stockId = result.insertId;
+
+      // ✅ Insert BOQ associations into junction table
+      const boqLineIds = Array.isArray(body.boq_line_ids)
+        ? body.boq_line_ids
+        : body.boq_line_ids
+          ? [body.boq_line_ids]
+          : [];
+
+      const validBoqLineIds = boqLineIds
+        .filter((id: any) => id && !isNaN(Number(id)))
+        .map((id: any) => Number(id));
+
+      if (validBoqLineIds.length > 0) {
+        const boqJunctionQuery = `INSERT INTO jt_stocks_boq_lines (stock_id, boq_line_id) VALUES ?`;
+        const boqJunctionValues = validBoqLineIds.map((boqId: number) => [
+          stockId,
+          boqId,
+        ]);
+        await db.query(boqJunctionQuery, [boqJunctionValues]);
+      }
 
       return NextResponse.json({
         success: true,
         batch_id: nextBatchId,
+        stock_id: stockId,
       });
     }
 
