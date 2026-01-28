@@ -370,13 +370,13 @@ export default function TransferIssueStocksButton({
                   </small>
                 </label>
 
-                <MultipleSelectBoqItemButton
+                {/* <MultipleSelectBoqItemButton
                   projectID={Number(projectID)}
                   onSelectBoq={setBoqLineID}
                   disabled={projectID === ""}
                   currentBoqLineID={boqLineID}
                   style={{ height: "30.5px" }}
-                />
+                /> */}
               </div>
             </div>
           )}
