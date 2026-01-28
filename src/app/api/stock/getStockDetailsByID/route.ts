@@ -11,7 +11,6 @@ export async function POST(request: NextRequest) {
         -- Stock Transfer Issue fields
         sti.id,
         sti.project_id,
-        sti.boq_line_id,
         sti.created_on,
         sti.type,
         sti.transferee,
@@ -24,7 +23,6 @@ export async function POST(request: NextRequest) {
         sti.signed_tsc_file,
         sti.third_party_involved,
         sti.packing_list_required,
-        sti.receiver_name,
         
         -- Junction table fields (inventory items)
         jt.inventory_item_id,
@@ -49,10 +47,6 @@ export async function POST(request: NextRequest) {
         -- Project name
         p.name as project_name,
         
-        -- BOQ line details for numbering
-        bl.category as boq_category,
-        bl.sub_category as boq_sub_category,
-        
         -- Batch ID (get the most recent batch for this inventory item)
         (
           SELECT s.batch_id 
@@ -66,7 +60,6 @@ export async function POST(request: NextRequest) {
       LEFT JOIN jt_stocks_transfer_issue_inventory_item jt ON sti.id = jt.stocks_transfer_issue_id
       LEFT JOIN inventory i ON jt.inventory_item_id = i.id
       LEFT JOIN projects p ON sti.project_id = p.id
-      LEFT JOIN boq_lines bl ON sti.boq_line_id = bl.id
       WHERE sti.id = ?
     `;
 
@@ -75,15 +68,28 @@ export async function POST(request: NextRequest) {
     if (rows.length === 0) {
       return NextResponse.json(
         { error: "Stock transfer not found", success: false },
-        { status: 404 }
+        { status: 404 },
       );
     }
+
+    // ✅ Fetch BOQ items from junction table
+    const boqQuery = `
+      SELECT 
+        bl.id as boq_line_id,
+        bl.item_name as boq_item_name,
+        bl.category as boq_category,
+        bl.sub_category as boq_sub_category
+      FROM jt_stocks_transfer_issue_boq_lines jt
+      INNER JOIN boq_lines bl ON jt.boq_line_id = bl.id
+      WHERE jt.stocks_transfer_issue_id = ?
+    `;
+
+    const [boqRows] = await db.query<RowDataPacket[]>(boqQuery, [body.id]);
 
     // Group the results - one transfer can have multiple items
     const transferData = {
       id: rows[0].id,
       project_id: rows[0].project_id,
-      boq_line_id: rows[0].boq_line_id,
       created_on: rows[0].created_on,
       type: rows[0].type,
       transferee: rows[0].transferee,
@@ -98,63 +104,9 @@ export async function POST(request: NextRequest) {
       packing_list_required: rows[0].packing_list_required,
       full_name_of_receiver: rows[0].receiver_name,
       project_name: rows[0].project_name,
-      boq_category: rows[0].boq_category,
-      boq_sub_category: rows[0].boq_sub_category,
+      boq_items: boqRows, // ✅ Array of BOQ items
       items: [] as any[],
     };
-
-    // Calculate BOQ item number if project_id and boq_line_id exist
-    let boq_item_number = null;
-    if (rows[0].project_id && rows[0].boq_line_id) {
-      try {
-        // Fetch all BOQ lines for this project
-        const [boqRows]: any = await db.query(
-          `SELECT * FROM vw_boq_lines WHERE project_id = ?`,
-          [rows[0].project_id]
-        );
-
-        // Track numbering
-        const categoryMap = new Map();
-        const subCategoryMap = new Map();
-        const itemCountMap = new Map();
-
-        // Process all rows to find the correct item number
-        for (const boqRow of boqRows) {
-          const category = boqRow.category;
-          const subCategory = boqRow.sub_category;
-
-          // Assign category number
-          if (!categoryMap.has(category)) {
-            categoryMap.set(category, categoryMap.size + 1);
-          }
-          const categoryNumber = categoryMap.get(category);
-
-          // Assign subcategory number
-          const subCategoryKey = `${category}-${subCategory}`;
-          if (!subCategoryMap.has(subCategoryKey)) {
-            const subCategoriesInCategory = Array.from(
-              subCategoryMap.keys()
-            ).filter((key: any) => key.startsWith(`${category}-`)).length;
-            subCategoryMap.set(subCategoryKey, subCategoriesInCategory + 1);
-          }
-          const subCategoryNumber = subCategoryMap.get(subCategoryKey);
-
-          // Track item number within subcategory
-          const itemKey = `${category}-${subCategory}`;
-          const currentCount = itemCountMap.get(itemKey) || 0;
-          itemCountMap.set(itemKey, currentCount + 1);
-          const itemNumber = currentCount + 1;
-
-          // Check if this is our target BOQ line
-          if (boqRow.id === rows[0].boq_line_id) {
-            boq_item_number = `${categoryNumber}.${subCategoryNumber}.${itemNumber}`;
-            break;
-          }
-        }
-      } catch (error) {
-        console.error("Error calculating BOQ item number:", error);
-      }
-    }
 
     // Process each inventory item in the transfer
     for (const row of rows) {
@@ -164,7 +116,7 @@ export async function POST(request: NextRequest) {
           quantity: row.quantity,
           serial_number: row.serial_number,
           received_quantity: row.received_quantity,
-          attachment: row.attachment, // ✅ Added attachment from junction table
+          attachment: row.attachment,
           batch_id: row.batch_id,
           description: row.description,
           unit: row.unit,
@@ -183,16 +135,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: {
-        ...transferData,
-        boq_item_number,
-      },
+      data: transferData,
     });
   } catch (error: any) {
     console.error(error.sqlMessage);
     return NextResponse.json(
       { error: error.sqlMessage, success: false },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -25,9 +25,9 @@ export default function TransactionDetailsPopUpButton({
   const noImageIcon = "/icons/no-image.jpg";
 
   function formatQuantity(qty: number | string | undefined | null) {
-    if (qty == null) return "0"; // handles undefined or null
+    if (qty == null) return "0";
     const num = Number(qty);
-    if (isNaN(num)) return "0"; // fallback if it's not a valid number
+    if (isNaN(num)) return "0";
     return Number.isInteger(num)
       ? num.toString()
       : num.toFixed(3).replace(/\.?0+$/, "");
@@ -176,7 +176,14 @@ export default function TransactionDetailsPopUpButton({
                 </div>
                 <div>
                   <small>BOQ REFERENCE</small>
-                  <h3>{transaction?.boq_item_number || "-"}</h3>
+                  {/* ✅ Updated to show multiple BOQ items */}
+                  <h3>
+                    {transaction?.boq_items && transaction.boq_items.length > 0
+                      ? transaction.boq_items.length === 1
+                        ? transaction.boq_items[0].boq_item_number
+                        : `${transaction.boq_items.length} BOQ ITEMS`
+                      : "-"}
+                  </h3>
                 </div>
                 <div>
                   <small>ISSUED FROM</small>
@@ -295,15 +302,6 @@ export default function TransactionDetailsPopUpButton({
                       </div>
                     </td>
                     <td>
-                      {/* <Button
-                        componentType={"button"}
-                        bgColor={"rgba(239, 239, 239, 1)"}
-                        borderColor={"rgba(223, 223, 223, 1)"}
-                        textColor={"black"}
-                        style={{ padding: "7px 7px" }}
-                      >
-                        <img src={externalLinkIcon} alt="external link" />
-                      </Button> */}
                       {item.specification ? (
                         <InfoPopUpButton
                           header={"SPECIFICATION"}

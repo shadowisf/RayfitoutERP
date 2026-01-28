@@ -34,7 +34,6 @@ export async function POST(req: NextRequest) {
         SELECT 
           sti.id,
           sti.project_id,
-          sti.boq_line_id,
           sti.created_on,
           sti.type,
           sti.transferee,
@@ -46,6 +45,7 @@ export async function POST(req: NextRequest) {
           sti.received_on,
           sti.signed_tsc_file,
           sti.third_party_involved,
+          sti.packing_list_required,
           jt.inventory_item_id,
           jt.quantity,
           jt.serial_number,
@@ -53,7 +53,11 @@ export async function POST(req: NextRequest) {
           jt.attachment,
           i.description,
           i.unit,
-          p.name as project_name
+          p.name as project_name,
+          -- ✅ Get comma-separated BOQ IDs from junction table
+          (SELECT GROUP_CONCAT(DISTINCT jt_boq.boq_line_id ORDER BY jt_boq.boq_line_id ASC SEPARATOR ', ')
+           FROM jt_stocks_transfer_issue_boq_lines jt_boq
+           WHERE jt_boq.stocks_transfer_issue_id = sti.id) AS boq_ids
         FROM stocks_transfer_issue sti
         INNER JOIN jt_stocks_transfer_issue_inventory_item jt ON sti.id = jt.stocks_transfer_issue_id
         INNER JOIN inventory i ON jt.inventory_item_id = i.id

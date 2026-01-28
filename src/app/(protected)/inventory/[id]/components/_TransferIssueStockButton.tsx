@@ -37,7 +37,7 @@ export default function TransferIssueStocksButton({
   const [thirdParty, setThirdParty] = useState(false);
   const [packingList, setPackingList] = useState(false);
   const [projectID, setProjectID] = useState<string | number>("");
-  const [boqLineID, setBoqLineID] = useState<string | number>("");
+  const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]); // ✅ Changed to array
 
   const [availableQuantity, setAvailableQuantity] = useState<number | string>(
     "",
@@ -141,7 +141,7 @@ export default function TransferIssueStocksButton({
         // Add to to_location
         if (transaction.to_location === from) {
           locationQuantity = round(
-            locationQuantity + Number(stocksData.quantity),
+            locationQuantity + Number(transaction.quantity),
           );
         }
       }
@@ -158,8 +158,13 @@ export default function TransferIssueStocksButton({
     setFile(null);
     setThirdParty(false);
     setProjectID("");
-    setBoqLineID("");
+    setBoqLineIDs([]); // ✅ Reset array
   }, [type]);
+
+  // ✅ Handle BOQ selection
+  const handleBoqSelection = (boqIDs: number[], boqInfo: string) => {
+    setBoqLineIDs(boqIDs);
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -217,7 +222,7 @@ export default function TransferIssueStocksButton({
         action: "transferIssueStock",
         inventory_item_id: inventoryItem.id,
         project_id: projectID,
-        boq_line_id: boqLineID,
+        boq_line_ids: boqLineIDs, // ✅ Send as array
         type,
         transferee: userInfo?.name,
         from,
@@ -253,8 +258,9 @@ export default function TransferIssueStocksButton({
       setAvailableQuantity("");
       setFile(null);
       setThirdParty(false);
+      setPackingList(false);
       setProjectID("");
-      setBoqLineID("");
+      setBoqLineIDs([]); // ✅ Reset array
 
       router.refresh();
 
@@ -350,18 +356,6 @@ export default function TransferIssueStocksButton({
                 labelField="name"
                 required={false}
               />
-              {/* <SingleSelectDropdown
-                label={"BILL OF QUANTITY REFERENCE"}
-                dbData={boqLineValues}
-                selectedValue={boqLineID}
-                onChange={setBoqLineID}
-                placeholder="SELECT BILL OF QUANTITY REFERENCE"
-                required={false}
-                disabled={projectID === ""}
-                categorized={true}
-                categoryField="category"
-                subCategoryField="sub_category"
-              /> */}
               <div className="input-item">
                 <label className="custom">
                   <span>BILL OF QUANTITY REFERENCE</span>
@@ -370,13 +364,14 @@ export default function TransferIssueStocksButton({
                   </small>
                 </label>
 
-                {/* <MultipleSelectBoqItemButton
+                {/* ✅ Updated callback signature */}
+                <MultipleSelectBoqItemButton
                   projectID={Number(projectID)}
-                  onSelectBoq={setBoqLineID}
+                  onSelectBoq={handleBoqSelection}
                   disabled={projectID === ""}
-                  currentBoqLineID={boqLineID}
+                  currentBoqLineIDs={boqLineIDs}
                   style={{ height: "30.5px" }}
-                /> */}
+                />
               </div>
             </div>
           )}
@@ -592,12 +587,6 @@ export default function TransferIssueStocksButton({
                       : "ENTER QUANTITY TO ISSUE"
                   }
                   required
-                  /* onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "" || /^\d+$/.test(val)) {
-                      setQuantity(val === "" ? "" : Number(val));
-                    }
-                  }} */
                   onChange={(e) => {
                     let val = e.target.value;
 

@@ -95,16 +95,16 @@ export async function POST(request: NextRequest) {
         if (body.type.toLowerCase().includes("transfer")) {
           // Find if there's an existing transfer that brought stock to the current "from" location
           const checkReverseTransferQuery = `
-            SELECT sti.id, jt.inventory_item_id, jt.quantity, sti.from_location, sti.to_location
-            FROM stocks_transfer_issue sti
-            JOIN jt_stocks_transfer_issue_inventory_item jt ON sti.id = jt.stocks_transfer_issue_id
-            WHERE jt.inventory_item_id = ? 
-              AND sti.type LIKE '%Transfer%' 
-              AND sti.to_location = ? 
-              AND sti.from_location = ?
-            ORDER BY sti.received_on DESC
-            LIMIT 1
-          `;
+        SELECT sti.id, jt.inventory_item_id, jt.quantity, sti.from_location, sti.to_location
+        FROM stocks_transfer_issue sti
+        JOIN jt_stocks_transfer_issue_inventory_item jt ON sti.id = jt.stocks_transfer_issue_id
+        WHERE jt.inventory_item_id = ? 
+          AND sti.type LIKE '%Transfer%' 
+          AND sti.to_location = ? 
+          AND sti.from_location = ?
+        ORDER BY sti.received_on DESC
+        LIMIT 1
+      `;
 
           const [existingTransfers] = await db.query<RowDataPacket[]>(
             checkReverseTransferQuery,
@@ -118,9 +118,9 @@ export async function POST(request: NextRequest) {
             // If the quantity matches exactly, delete the junction entry
             if (existingTransfer.quantity === Number(body.quantity)) {
               const deleteJunctionQuery = `
-                DELETE FROM jt_stocks_transfer_issue_inventory_item 
-                WHERE stocks_transfer_issue_id = ? AND inventory_item_id = ?
-              `;
+            DELETE FROM jt_stocks_transfer_issue_inventory_item 
+            WHERE stocks_transfer_issue_id = ? AND inventory_item_id = ?
+          `;
               await db.query(deleteJunctionQuery, [
                 existingTransfer.id,
                 body.inventory_item_id,
@@ -135,9 +135,9 @@ export async function POST(request: NextRequest) {
               // If no other items, delete the transfer header
               if (remainingItems[0].count === 0) {
                 const deleteTransferQuery = `
-                  DELETE FROM stocks_transfer_issue 
-                  WHERE id = ?
-                `;
+              DELETE FROM stocks_transfer_issue 
+              WHERE id = ?
+            `;
                 await db.query(deleteTransferQuery, [existingTransfer.id]);
               }
 
@@ -150,10 +150,10 @@ export async function POST(request: NextRequest) {
             // If quantity is less, update the existing junction entry quantity
             else if (existingTransfer.quantity > Number(body.quantity)) {
               const updateQuery = `
-                UPDATE jt_stocks_transfer_issue_inventory_item 
-                SET quantity = quantity - ? 
-                WHERE stocks_transfer_issue_id = ? AND inventory_item_id = ?
-              `;
+            UPDATE jt_stocks_transfer_issue_inventory_item 
+            SET quantity = quantity - ? 
+            WHERE stocks_transfer_issue_id = ? AND inventory_item_id = ?
+          `;
               await db.query(updateQuery, [
                 Number(body.quantity),
                 existingTransfer.id,
@@ -170,16 +170,15 @@ export async function POST(request: NextRequest) {
         }
 
         // If not a reverse transfer, create a new transfer/issue entry
-        // ✅ Removed attachment from header - no longer storing attachments here
+        // ✅ Removed boq_line_id from header
         const insertTransferQuery = `
-          INSERT INTO stocks_transfer_issue 
-          (project_id, boq_line_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved, packing_list_required) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+      INSERT INTO stocks_transfer_issue 
+      (project_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved, packing_list_required) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
         const [transferResult] = await db.query<any>(insertTransferQuery, [
           Number(body.project_id) || null,
-          Number(body.boq_line_id) || null,
           body.transferee,
           body.type,
           body.from,
@@ -192,20 +191,40 @@ export async function POST(request: NextRequest) {
 
         const transferId = transferResult.insertId;
 
-        // ✅ Insert into junction table WITH attachment for this specific item
+        // ✅ Insert into inventory item junction table WITH attachment for this specific item
         const insertJunctionQuery = `
-          INSERT INTO jt_stocks_transfer_issue_inventory_item 
-          (stocks_transfer_issue_id, inventory_item_id, quantity, serial_number, attachment) 
-          VALUES (?, ?, ?, ?, ?)
-        `;
+      INSERT INTO jt_stocks_transfer_issue_inventory_item 
+      (stocks_transfer_issue_id, inventory_item_id, quantity, serial_number, attachment) 
+      VALUES (?, ?, ?, ?, ?)
+    `;
 
         await db.query(insertJunctionQuery, [
           transferId,
           body.inventory_item_id,
           body.quantity,
           body.serial_number || null,
-          body.attachment || null, // ✅ Attachment now stored per item
+          body.attachment || null,
         ]);
+
+        // ✅ Insert BOQ associations into junction table
+        const boqLineIds = Array.isArray(body.boq_line_ids)
+          ? body.boq_line_ids
+          : body.boq_line_ids
+            ? [body.boq_line_ids]
+            : [];
+
+        const validBoqLineIds = boqLineIds
+          .filter((id: any) => id && !isNaN(Number(id)))
+          .map((id: any) => Number(id));
+
+        if (validBoqLineIds.length > 0) {
+          const boqJunctionQuery = `INSERT INTO jt_stocks_transfer_issue_boq_lines (stocks_transfer_issue_id, boq_line_id) VALUES ?`;
+          const boqJunctionValues = validBoqLineIds.map((boqId: number) => [
+            transferId,
+            boqId,
+          ]);
+          await db.query(boqJunctionQuery, [boqJunctionValues]);
+        }
 
         return NextResponse.json({
           success: true,
@@ -219,16 +238,15 @@ export async function POST(request: NextRequest) {
 
     if (body.action === "transferIssueMultipleStocks") {
       try {
-        // ✅ Insert the transfer header WITHOUT attachments
+        // ✅ Insert the transfer header WITHOUT boq_line_id and attachments
         const insertTransferQuery = `
-          INSERT INTO stocks_transfer_issue 
-          (project_id, boq_line_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved, packing_list_required) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+      INSERT INTO stocks_transfer_issue 
+      (project_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved, packing_list_required) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
         const [transferResult] = await db.query<any>(insertTransferQuery, [
           Number(body.project_id) || null,
-          Number(body.boq_line_id) || null,
           body.transferee,
           body.type,
           body.from,
@@ -244,10 +262,10 @@ export async function POST(request: NextRequest) {
         // ✅ Insert all items into the junction table WITH individual attachments
         for (const item of body.items) {
           const insertJunctionQuery = `
-            INSERT INTO jt_stocks_transfer_issue_inventory_item 
-            (stocks_transfer_issue_id, inventory_item_id, quantity, serial_number, attachment) 
-            VALUES (?, ?, ?, ?, ?)
-          `;
+        INSERT INTO jt_stocks_transfer_issue_inventory_item 
+        (stocks_transfer_issue_id, inventory_item_id, quantity, serial_number, attachment) 
+        VALUES (?, ?, ?, ?, ?)
+      `;
 
           await db.query(insertJunctionQuery, [
             transferId,
@@ -256,6 +274,26 @@ export async function POST(request: NextRequest) {
             item.serial_number || null,
             item.attachment ? JSON.stringify([item.attachment]) : null,
           ]);
+        }
+
+        // ✅ Insert BOQ associations into junction table
+        const boqLineIds = Array.isArray(body.boq_line_ids)
+          ? body.boq_line_ids
+          : body.boq_line_ids
+            ? [body.boq_line_ids]
+            : [];
+
+        const validBoqLineIds = boqLineIds
+          .filter((id: any) => id && !isNaN(Number(id)))
+          .map((id: any) => Number(id));
+
+        if (validBoqLineIds.length > 0) {
+          const boqJunctionQuery = `INSERT INTO jt_stocks_transfer_issue_boq_lines (stocks_transfer_issue_id, boq_line_id) VALUES ?`;
+          const boqJunctionValues = validBoqLineIds.map((boqId: number) => [
+            transferId,
+            boqId,
+          ]);
+          await db.query(boqJunctionQuery, [boqJunctionValues]);
         }
 
         return NextResponse.json({

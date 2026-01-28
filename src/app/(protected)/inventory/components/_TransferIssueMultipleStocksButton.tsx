@@ -57,7 +57,7 @@ export default function TransferIssueMultipleStocks({
   const [thirdParty, setThirdParty] = useState(false);
   const [packingList, setPackingList] = useState(false);
   const [projectID, setProjectID] = useState<string | number>("");
-  const [boqLineID, setBoqLineID] = useState<string | number>("");
+  const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]); // ✅ Changed to array
 
   const [fromValues, setFromValues] = useState<any>([]);
   const [toValues, setToValues] = useState<any>([]);
@@ -70,6 +70,11 @@ export default function TransferIssueMultipleStocks({
     [key: number]: number;
   }>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // ✅ Handle BOQ selection
+  const handleBoqSelection = (boqIDs: number[], boqInfo: string) => {
+    setBoqLineIDs(boqIDs);
+  };
 
   // Fetch available locations dynamically
   useEffect(() => {
@@ -170,7 +175,7 @@ export default function TransferIssueMultipleStocks({
     setFile(null);
     setThirdParty(false);
     setProjectID("");
-    setBoqLineID("");
+    setBoqLineIDs([]); // ✅ Reset array
     setSelectedItems([]);
   }, [type]);
 
@@ -438,7 +443,7 @@ export default function TransferIssueMultipleStocks({
           action: "transferIssueMultipleStocks",
           items: itemsForBackend, // ✅ Each item now has its own attachment
           project_id: projectID,
-          boq_line_id: boqLineID,
+          boq_line_ids: boqLineIDs, // ✅ Send as array
           type,
           transferee: userInfo?.name,
           from,
@@ -447,7 +452,6 @@ export default function TransferIssueMultipleStocks({
           third_party_involved: thirdParty,
           packing_list_required: packingList,
           receiver_name: receiverName,
-          // ✅ No attachment field here - attachments are per item now
         }),
       });
 
@@ -473,8 +477,9 @@ export default function TransferIssueMultipleStocks({
         setReceiverName("");
         setFile(null);
         setThirdParty(false);
+        setPackingList(false);
         setProjectID("");
-        setBoqLineID("");
+        setBoqLineIDs([]); // ✅ Reset array
         setSelectedItems([]);
 
         router.refresh();
@@ -584,18 +589,6 @@ export default function TransferIssueMultipleStocks({
                 labelField="name"
                 required={false}
               />
-              {/* <SingleSelectDropdown
-                label={"BILL OF QUANTITY REFERENCE"}
-                dbData={boqLineValues}
-                selectedValue={boqLineID}
-                onChange={setBoqLineID}
-                placeholder="SELECT BILL OF QUANTITY REFERENCE"
-                required={false}
-                disabled={projectID === ""}
-                categorized={true}
-                categoryField="category"
-                subCategoryField="sub_category"
-              /> */}
               <div className="input-item">
                 <label className="custom">
                   <span>BILL OF QUANTITY REFERENCE</span>
@@ -604,13 +597,14 @@ export default function TransferIssueMultipleStocks({
                   </small>
                 </label>
 
-                {/*  <MultipleSelectBoqItemButton
+                {/* ✅ Updated to support multiple BOQ items */}
+                <MultipleSelectBoqItemButton
                   projectID={Number(projectID)}
-                  onSelectBoq={setBoqLineID}
+                  onSelectBoq={handleBoqSelection}
                   disabled={projectID === ""}
-                  currentBoqLineID={boqLineID}
+                  currentBoqLineIDs={boqLineIDs}
                   style={{ height: "30.5px" }}
-                /> */}
+                />
               </div>
             </div>
           )}
