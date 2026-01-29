@@ -175,7 +175,6 @@ export default function MR() {
     24: 11, // Awaiting stock entry → Storekeeper
   };
 
-  // ✅ Updated canViewMR for managers - only show progress_id 3 and 10
   const canViewMR = (mr: any) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
@@ -188,18 +187,19 @@ export default function MR() {
     // Completed MRs (progress_id 25) are accessible to everyone
     if (mr.progress_id === 25) return true;
 
-    // ✅ Management (department ID 8) can ONLY see progress_id 3 and 10 when filtering
-    if (userDeptId === 8) {
-      return (
-        [3, 10].includes(mr.progress_id) && mr.department_id !== userDeptId
-      );
-    }
-
-    // ✅ Only show MRs where this department needs to take action
-    // Exclude MRs from the user's own department
+    // ✅ Get the responsible department for this progress stage
     const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
 
-    if (responsibleDept === userDeptId && mr.department_id !== userDeptId) {
+    // ✅ Management (department ID 8) - Show progress_id 3 and 10
+    if (userDeptId === 8) {
+      // Show if this stage requires management action (3 or 10)
+      if ([3, 10].includes(mr.progress_id) && responsibleDept === 8) {
+        return true;
+      }
+    }
+
+    // ✅ For all users: Show MRs where their department is responsible for this stage
+    if (responsibleDept === userDeptId) {
       return true;
     }
 

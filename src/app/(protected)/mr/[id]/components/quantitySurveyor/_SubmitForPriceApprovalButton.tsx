@@ -60,7 +60,7 @@ export default function SubmitForPricingApprovalButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        SUBMIT FOR PRICING APPROVAL
+        SUBMIT FOR MANAGER PRICE APPROVAL
       </Button>
 
       {isOpen && (

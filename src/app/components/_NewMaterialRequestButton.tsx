@@ -100,7 +100,7 @@ export default function NewMrButton() {
           setIsOpen(true);
         }}
       >
-        NEW MATERIAL REQUEST +
+        NEW MR +
       </Button>
 
       {isOpen && (

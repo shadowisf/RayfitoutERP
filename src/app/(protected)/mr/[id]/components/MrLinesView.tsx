@@ -1878,6 +1878,23 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return false;
   }
 
+  // Add this function with your other helper functions
+  function hasAnyItemWithBoqReference() {
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
+          for (const item of items) {
+            if (item.boq_line_ids) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   function hasAnyQSRejectedItems() {
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
@@ -3347,24 +3364,30 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         userInfo?.departmentID === mrHeader.department_id && (
           <div className="bottom-nav">
             <div></div>
-            {/* <SubmitForInitialApprovalButton
-              mrHeaderID={mrHeader.id}
-              disabled={hasAnyRejectedItems()}
-              style={{
-                opacity: hasAnyRejectedItems() ? "0.5" : "1",
-                cursor: hasAnyRejectedItems() ? "not-allowed" : "pointer",
-                pointerEvents: hasAnyRejectedItems() ? "none" : "auto",
-              }}
-            /> */}
-            <SubmitForQSApprovalButton
-              mrHeaderID={mrHeader.id}
-              disabled={hasAnyRejectedItems()}
-              style={{
-                opacity: hasAnyRejectedItems() ? "0.5" : "1",
-                cursor: hasAnyRejectedItems() ? "not-allowed" : "pointer",
-                pointerEvents: hasAnyRejectedItems() ? "none" : "auto",
-              }}
-            />
+            {/* ✅ Check if any item has BOQ reference */}
+            {hasAnyItemWithBoqReference() ? (
+              // If any item has BOQ → Submit for QS Approval
+              <SubmitForQSApprovalButton
+                mrHeaderID={mrHeader.id}
+                disabled={hasAnyRejectedItems()}
+                style={{
+                  opacity: hasAnyRejectedItems() ? "0.5" : "1",
+                  cursor: hasAnyRejectedItems() ? "not-allowed" : "pointer",
+                  pointerEvents: hasAnyRejectedItems() ? "none" : "auto",
+                }}
+              />
+            ) : (
+              // If no items have BOQ → Submit directly to Manager Approval
+              <SubmitForInitialApprovalButton
+                mrHeaderID={mrHeader.id}
+                disabled={hasAnyRejectedItems()}
+                style={{
+                  opacity: hasAnyRejectedItems() ? "0.5" : "1",
+                  cursor: hasAnyRejectedItems() ? "not-allowed" : "pointer",
+                  pointerEvents: hasAnyRejectedItems() ? "none" : "auto",
+                }}
+              />
+            )}
           </div>
         )}
 
@@ -3448,34 +3471,63 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           <div className="bottom-nav">
             <div></div>
 
-            <SubmitForQSPricingApprovalButton
-              mrHeaderID={mrHeader.id}
-              disabled={
-                !allItemsHaveSupplierQuotations() ||
-                hasAnyRejectedSuppliers() ||
-                hasAnyQSRejectedSuppliers() // Added this condition
-              }
-              style={{
-                opacity:
+            {/* ✅ Check if any item has BOQ reference */}
+            {hasAnyItemWithBoqReference() ? (
+              // If any item has BOQ → Submit for QS Price Approval
+              <SubmitForQSPricingApprovalButton
+                mrHeaderID={mrHeader.id}
+                disabled={
                   !allItemsHaveSupplierQuotations() ||
                   hasAnyRejectedSuppliers() ||
-                  hasAnyQSRejectedSuppliers() // Added this condition
-                    ? "0.5"
-                    : "1",
-                cursor:
-                  !allItemsHaveSupplierQuotations() ||
-                  hasAnyRejectedSuppliers() ||
-                  hasAnyQSRejectedSuppliers() // Added this condition
-                    ? "not-allowed"
-                    : "pointer",
-                pointerEvents:
-                  !allItemsHaveSupplierQuotations() ||
-                  hasAnyRejectedSuppliers() ||
-                  hasAnyQSRejectedSuppliers() // Added this condition
-                    ? "none"
-                    : "auto",
-              }}
-            />
+                  hasAnyQSRejectedSuppliers()
+                }
+                style={{
+                  opacity:
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers() ||
+                    hasAnyQSRejectedSuppliers()
+                      ? "0.5"
+                      : "1",
+                  cursor:
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers() ||
+                    hasAnyQSRejectedSuppliers()
+                      ? "not-allowed"
+                      : "pointer",
+                  pointerEvents:
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers() ||
+                    hasAnyQSRejectedSuppliers()
+                      ? "none"
+                      : "auto",
+                }}
+              />
+            ) : (
+              // If no items have BOQ → Submit directly to Manager Price Approval
+              <SubmitForPricingApprovalButton
+                mrHeaderID={mrHeader.id}
+                disabled={
+                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                }
+                style={{
+                  opacity:
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers()
+                      ? "0.5"
+                      : "1",
+                  cursor:
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers()
+                      ? "not-allowed"
+                      : "pointer",
+                  pointerEvents:
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers()
+                      ? "none"
+                      : "auto",
+                }}
+              />
+            )}
           </div>
         )}
 
