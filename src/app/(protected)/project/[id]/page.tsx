@@ -11,6 +11,7 @@ import { BoqHeader } from "../../boq/[id]/types/boqHeader";
 import { MrHeader } from "../../mr/[id]/types/mrHeader";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import CreateBoqHeaderButton from "../../boq/[id]/components/manager/_CreateBoqHeaderButton";
+import BoqCard from "../../boq/[id]/components/BoqCard";
 
 export default function ProjectWithID() {
   const externalLinkIcon = "/icons/external-link.svg";
@@ -95,8 +96,6 @@ export default function ProjectWithID() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
-            borderBottom: "rgba(227, 219, 219, 1) 1px solid",
-            paddingBottom: "25px",
           }}
         >
           <div
@@ -115,17 +114,6 @@ export default function ProjectWithID() {
               <small>TYPE</small>
               <h2>{project?.type}</h2>
             </div>
-
-            {/* <Button
-              componentType={"link"}
-              bgColor={"transparent"}
-              borderColor={"rgba(207, 207, 207, 1)"}
-              textColor={"black"}
-              style={{ borderRadius: "50px" }}
-              href={`/boq/${project?.id}`}
-            >
-              BOQ <img src={externalLinkIcon} alt="external link" />
-            </Button> */}
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
             {(userInfo?.departmentID === 8 ||
@@ -152,7 +140,7 @@ export default function ProjectWithID() {
           }}
         >
           <div>
-            <small>ID</small>
+            <small>PROJECT ID</small>
             <h2>RAY-{String(project?.id).padStart(5, "0")}</h2>
           </div>
 
@@ -290,95 +278,11 @@ export default function ProjectWithID() {
       {boqs?.length === 0 ? (
         <div>No bill of quantities created</div>
       ) : (
-        <table className="items-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>PROJECT</th>
-              {/* <th>LOCATION</th> */}
-              <th>CLIENT NAME</th>
-              <th>PAYMENT TERMS</th>
-              <th>VALIDITY TERMS</th>
-              <th>COMPLETION</th>
-              <th>EXCLUSION</th>
-              <th>TERMS & CONDITIONS</th>
-              <th>ACTION</th>
-            </tr>
-          </thead>
-          <tbody>
-            {boqs?.map((item: BoqHeader, index: number) => (
-              <tr key={index}>
-                <td>BOQ-{String(item.id).padStart(5, "0")}</td>
-                <td>{item.project_name || "-"}</td>
-                {/* <td>{item.location || "-"}</td> */}
-                <td>{item.client_name || "-"}</td>
-
-                <td>
-                  {item.payment_terms ? (
-                    <InfoPopUpButton
-                      text={item.payment_terms}
-                      header={"PAYMENT TERMS"}
-                    />
-                  ) : (
-                    "-"
-                  )}
-                </td>
-                <td>
-                  {item.validity_terms ? (
-                    <InfoPopUpButton
-                      text={item.validity_terms}
-                      header={"VALIDITY TERMS"}
-                    />
-                  ) : (
-                    "-"
-                  )}
-                </td>
-                <td>
-                  {item.completion ? (
-                    <InfoPopUpButton
-                      text={item.completion}
-                      header={"COMPLETION"}
-                    />
-                  ) : (
-                    "-"
-                  )}
-                </td>
-                <td>
-                  {item.exclusion ? (
-                    <InfoPopUpButton
-                      text={item.exclusion}
-                      header={"EXCLUSION"}
-                    />
-                  ) : (
-                    "-"
-                  )}
-                </td>
-                <td>
-                  {item.terms_and_conditions ? (
-                    <InfoPopUpButton
-                      text={item.terms_and_conditions}
-                      header={"TERMS & CONDITIONS"}
-                    />
-                  ) : (
-                    "-"
-                  )}
-                </td>
-                <td>
-                  <Button
-                    componentType={"link"}
-                    bgColor={"rgba(239, 239, 239, 1)"}
-                    borderColor={"rgba(223, 223, 223, 1)"}
-                    textColor={"black"}
-                    style={{ padding: "7px 7px" }}
-                    href={`/boq/${item.id}`}
-                  >
-                    <img src={externalLinkIcon} alt="external link" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="widget-grid active-projects">
+          {boqs?.map((boq: any, index) => (
+            <BoqCard key={index} boqHeader={boq} />
+          ))}
+        </div>
       )}
 
       <br />

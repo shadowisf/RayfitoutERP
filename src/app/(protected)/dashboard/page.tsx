@@ -7,7 +7,7 @@ import PendingApprovalMrsWidget from "./components/W_PendingApprovalMrs";
 import PendingPaymentMrsWidget from "./components/W_PendingPaymentsMrs";
 import PendingDeliveryMrsWidget from "./components/manager/W_PendingDeliveryMrs";
 import OutboundPaymentMrsWidget from "./components/manager/W_OutboundPaymentMrs";
-import ProjectBox from "@/app/(protected)/project/components/ProjectBox";
+import ProjectCard from "@/app/(protected)/project/components/ProjectCard";
 import AlertsAndRiskMrsWidget from "./components/manager/W_AlertsAndRisksMrs";
 import ExpectedDeliveriesWidget from "./components/W_ExpectedDeliveries";
 import AvgTimeSpentPerStageWidget from "./components/manager/W_AvgTimeSpentPerStage";
@@ -33,7 +33,6 @@ export default function Dashboard() {
   const { userInfo } = useAuth();
 
   const [projects, setProjects] = useState<any[]>([]);
-
   const [overviewFilter, setOverviewFilter] = useState(7);
 
   const DEPARTMENT_IDS = [1, 2, 3, 4, 5, 6, 7, 13, 14, 16];
@@ -159,7 +158,7 @@ export default function Dashboard() {
           <br />
           <div className="widget-grid active-projects">
             {projects.slice(0, 3).map((proj: any, index) => (
-              <ProjectBox project={proj} key={index} />
+              <ProjectCard project={proj} key={index} />
             ))}
           </div>
           <br />
@@ -222,7 +221,7 @@ export default function Dashboard() {
           <br />
           <div className="widget-grid active-projects">
             {projects.slice(0, 3).map((proj: any, index) => (
-              <ProjectBox project={proj} key={index} />
+              <ProjectCard project={proj} key={index} />
             ))}
           </div>
           <br />
@@ -304,7 +303,7 @@ export default function Dashboard() {
           <br />
           <div className="widget-grid active-projects">
             {projects.slice(0, 3).map((proj: any, index) => (
-              <ProjectBox project={proj} key={index} />
+              <ProjectCard project={proj} key={index} />
             ))}
           </div>
         </>
@@ -374,7 +373,7 @@ export default function Dashboard() {
           <br />
           <div className="widget-grid active-projects">
             {projects.slice(0, 3).map((proj: any, index) => (
-              <ProjectBox project={proj} key={index} />
+              <ProjectCard project={proj} key={index} />
             ))}
           </div>
         </>

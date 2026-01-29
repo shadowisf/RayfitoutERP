@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { Supplier } from "./types/supplier";
 import SupplierDetailsPopUp from "../mr/[id]/components/SupplierDetailsPopUp";
 import CreateSupplierButton from "./components/_CreateSupplierButton";
-import ThreeDotsMenuButton from "./components/_ThreeDotMenuButton";
 import { useAuth } from "@/app/context/AuthContext";
+import ThreeDotsMenuButton from "@/app/components/_ThreeButtonsMenuButton";
+import EditSupplierButton from "./components/_EditSupplierButton";
+import DeleteSupplierButton from "./components/_DeleteSupplierButton";
 
 export default function Vendor() {
   const { userInfo } = useAuth();
@@ -197,10 +199,8 @@ export default function Vendor() {
             return (
               <tr key={supplier.id}>
                 <td>{index + 1}</td>
-                <td style={{ textWrap: "nowrap" }}>
-                  VEN-{String(supplier.id).padStart(5, "0")}
-                </td>
-                <td style={{ textWrap: "nowrap" }}>{supplier.name}</td>
+                <td>VEN-{String(supplier.id).padStart(5, "0")}</td>
+                <td>{supplier.name}</td>
                 <td>
                   <div
                     className="approval-pill normal-text centered"
@@ -230,10 +230,16 @@ export default function Vendor() {
                 {(userInfo?.departmentID === 8 ||
                   userInfo?.departmentID === 9) && (
                   <td>
-                    <ThreeDotsMenuButton
-                      supplier={supplier}
-                      onSuccess={() => fetchSuppliers()}
-                    />
+                    <ThreeDotsMenuButton>
+                      <EditSupplierButton
+                        supplier={supplier}
+                        onSuccess={() => fetchSuppliers()}
+                      />
+                      <DeleteSupplierButton
+                        supplier={supplier}
+                        onSuccess={() => fetchSuppliers()}
+                      />
+                    </ThreeDotsMenuButton>
                   </td>
                 )}
               </tr>

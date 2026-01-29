@@ -27,7 +27,6 @@ import RenameBoqSubCategoryButton from "./manager/_RenameBoqSubCategory";
 import { useAuth } from "@/app/context/AuthContext";
 import { BoqHeader } from "../types/boqHeader";
 import DownloadBoqButton from "./manager/_DownloadBoqButton";
-import ThreeDotsMenuButton from "./_ThreeDotsMenuButton";
 import EditBoqCategoryButton from "./manager/_EditBoqCategoryButton";
 import DeleteBoqCategoryButton from "./manager/_DeleteBoqCategoryButton";
 import { DeleteBoqHeaderButton } from "@/app/(protected)/boq/[id]/components/manager/_DeleteBoqHeaderButton";
@@ -35,6 +34,11 @@ import EditBoqHeaderButton from "./manager/_EditBoqHeaderButton";
 import { DraggableCategory } from "./DraggableCategory";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import EditBoqItemLocationButton from "./manager/_EditBoqItemLocationButton";
+import ThreeDotsMenuButton from "@/app/components/_ThreeButtonsMenuButton";
+import DeleteBoqItemButton from "./manager/_DeleteBoqItemButton";
+import DuplicateBoqItemButton from "./manager/_DuplicateBoqItemButton";
+import EditBoqItemButton from "./manager/_EditBoqItemButton";
+import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -52,6 +56,8 @@ export default function BoqLinesView({
   boqHeader,
 }: BoqLinesViewProps) {
   const { userInfo } = useAuth();
+
+  const externalLinkIcon = "/icons/external-link.svg";
 
   const locationIcon = "/icons/location-boq.svg";
   const arrowRight = "/icons/arrow-right.svg";
@@ -620,7 +626,11 @@ export default function BoqLinesView({
 
                         {canManage && (
                           <td>
-                            <ThreeDotsMenuButton item={item} />
+                            <ThreeDotsMenuButton>
+                              <EditBoqItemButton item={item} />
+                              <DuplicateBoqItemButton item={item} />
+                              <DeleteBoqItemButton item={item} />
+                            </ThreeDotsMenuButton>
                           </td>
                         )}
                       </DraggableBoqItem>
@@ -723,29 +733,134 @@ export default function BoqLinesView({
   };
 
   return (
-    <>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <h2>
-          <a href="/project">PROJECTS</a> &gt;{" "}
-          <a href={`/project/${boqHeader?.project_id}`}>
-            {boqHeader?.project_name.toUpperCase()}
-          </a>{" "}
-          &gt; BOQ-
-          {String(boqHeader?.id).padStart(5, "0")}
-        </h2>
-        <div style={{ display: "flex", gap: "5px" }}>
-          {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
-            <>
-              <EditBoqHeaderButton boqHeader={boqHeader} />
-              <DeleteBoqHeaderButton boqHeader={boqHeader} />
-            </>
-          )}
+    <div className="dashboard">
+      <h2>
+        <a href="/project">PROJECTS</a> &gt;{" "}
+        <a href={`/project/${boqHeader?.project_id}`}>
+          {boqHeader?.project_name.toUpperCase()}
+        </a>{" "}
+        &gt; BOQ-
+        {String(boqHeader?.id).padStart(5, "0")}
+      </h2>
+
+      <br />
+      <br />
+
+      <div className="project-with-id">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "25px",
+              textTransform: "uppercase",
+            }}
+          >
+            <div>
+              <small>BOQ ID</small>
+              <h2>BOQ-{String(boqHeader?.id).padStart(5, "0")}</h2>
+            </div>
+
+            <div>
+              <small>LOCATION</small>
+              <h2>{boqHeader?.location}</h2>
+            </div>
+
+            <div>
+              <small>CLIENT NAME</small>
+              <h2>{boqHeader?.client_name}</h2>
+            </div>
+
+            <div>
+              <small>DATE</small>
+              <h2>
+                {boqHeader?.boq_date
+                  ? new Date(boqHeader?.boq_date).toLocaleDateString("en-GB")
+                  : "-"}
+              </h2>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "10px" }}>
+            {(userInfo?.departmentID === 8 ||
+              userInfo?.departmentID === 16) && (
+              <>
+                <EditBoqHeaderButton boqHeader={boqHeader} />
+                <DeleteBoqHeaderButton boqHeader={boqHeader} />
+              </>
+            )}
+          </div>
+        </div>
+
+        <br />
+        <br />
+
+        <div
+          style={{
+            display: "flex",
+            gap: "25px",
+            textTransform: "uppercase",
+          }}
+        >
+          <InfoPopUpButton
+            text={boqHeader.payment_terms}
+            header={"PAYMENT TERMS"}
+            style={{ padding: "7px 25px", borderRadius: "50px" }}
+            bgColor="transparent"
+            borderColor="rgba(207, 207, 207, 1)"
+            textColor="black"
+          >
+            PAYMENT TERMS <img src={externalLinkIcon} />
+          </InfoPopUpButton>
+
+          <InfoPopUpButton
+            text={boqHeader.validity_terms}
+            header={"VALIDITY TERMS"}
+            style={{ padding: "7px 25px", borderRadius: "50px" }}
+            bgColor="transparent"
+            borderColor="rgba(207, 207, 207, 1)"
+            textColor="black"
+          >
+            VALIDITY TERMS <img src={externalLinkIcon} />
+          </InfoPopUpButton>
+
+          <InfoPopUpButton
+            text={boqHeader.warranty}
+            header={"WARRANTY"}
+            style={{ padding: "7px 25px", borderRadius: "50px" }}
+            bgColor="transparent"
+            borderColor="rgba(207, 207, 207, 1)"
+            textColor="black"
+          >
+            WARRANTY <img src={externalLinkIcon} />
+          </InfoPopUpButton>
+
+          <InfoPopUpButton
+            text={boqHeader.completion}
+            header={"COMPLETION"}
+            style={{ padding: "7px 25px", borderRadius: "50px" }}
+            bgColor="transparent"
+            borderColor="rgba(207, 207, 207, 1)"
+            textColor="black"
+          >
+            COMPLETION <img src={externalLinkIcon} />
+          </InfoPopUpButton>
+
+          <InfoPopUpButton
+            text={boqHeader.exclusion}
+            header={"EXCLUSIONS"}
+            style={{ padding: "7px 25px", borderRadius: "50px" }}
+            bgColor="transparent"
+            borderColor="rgba(207, 207, 207, 1)"
+            textColor="black"
+          >
+            EXCLUSIONS <img src={externalLinkIcon} />
+          </InfoPopUpButton>
         </div>
       </div>
 
@@ -1057,6 +1172,6 @@ export default function BoqLinesView({
             ADD SUBCATEGORY & ITEM +
           </AddBoqItemButton>
         )}
-    </>
+    </div>
   );
 }

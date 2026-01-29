@@ -9,9 +9,14 @@ import { BoqHeader } from "../../types/boqHeader";
 type props = {
   boqHeader: BoqHeader | null;
   onSuccess?: () => void;
+  threeDotsMenu?: boolean;
 };
 
-export default function EditBoqHeaderButton({ boqHeader, onSuccess }: props) {
+export default function EditBoqHeaderButton({
+  boqHeader,
+  onSuccess,
+  threeDotsMenu,
+}: props) {
   const router = useRouter();
 
   const pencilIcon = "/icons/pencil.svg";
@@ -83,16 +88,30 @@ export default function EditBoqHeaderButton({ boqHeader, onSuccess }: props) {
 
   return (
     <>
-      <Button
-        componentType={"button"}
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(223, 223, 223, 1)"}
-        textColor={"black"}
-        onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 7px" }}
-      >
-        <img src={pencilIcon} alt="pencil" />
-      </Button>
+      {threeDotsMenu ? (
+        <Button
+          componentType="button"
+          bgColor={"transparent"}
+          borderColor={"transparent"}
+          textColor={"black"}
+          onClick={() => setIsOpen(true)}
+          full
+          style={{ justifyContent: "flex-start" }}
+        >
+          <img src={pencilIcon} alt="pencil" /> Edit
+        </Button>
+      ) : (
+        <Button
+          componentType={"button"}
+          bgColor={"rgba(239, 239, 239, 1)"}
+          borderColor={"rgba(223, 223, 223, 1)"}
+          textColor={"black"}
+          onClick={() => setIsOpen(true)}
+          style={{ padding: "7px 7px" }}
+        >
+          <img src={pencilIcon} alt="pencil" />
+        </Button>
+      )}
 
       {isOpen && (
         <FormPopUp

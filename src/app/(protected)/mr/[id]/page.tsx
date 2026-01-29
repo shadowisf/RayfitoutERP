@@ -342,6 +342,9 @@ export default async function MrWithID({
           </div>
         </div>
 
+        <br />
+        <br />
+
         <div className="bottom">
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <div>
@@ -406,6 +409,9 @@ export default async function MrWithID({
             )}
           </div>
         </div>
+
+        <br />
+        <br />
 
         {mrHeader?.progress_id === 17 && (
           <div className="bottom">

@@ -529,6 +529,11 @@ export function BoqPDF({
             </Text>
           </View>
 
+          <View style={styles.termsSection}>
+            <Text style={styles.termsTitle}>WARRANTY</Text>
+            <Text style={styles.termsText}>{boqHeader.warranty || "N/A"}</Text>
+          </View>
+
           {/* Completion */}
           <View style={styles.termsSection}>
             <Text style={styles.termsTitle}>COMPLETION</Text>

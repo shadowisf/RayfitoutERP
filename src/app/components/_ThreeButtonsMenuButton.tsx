@@ -1,14 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Supplier } from "../types/supplier";
-import DeleteSupplierButton from "./_DeleteSupplierButton";
-import EditSupplierButton from "./_EditSupplierButton";
 
 type props = {
-  supplier: Supplier;
-  onSuccess?: () => void;
+  children: React.ReactNode;
 };
 
-export default function ThreeDotsMenuButton({ supplier, onSuccess }: props) {
+export default function ThreeDotsMenuButton({ children }: props) {
   const [isOpen, setIsOpen] = useState(false);
 
   const menuRef = useRef<HTMLDivElement>(null);
@@ -83,8 +79,7 @@ export default function ThreeDotsMenuButton({ supplier, onSuccess }: props) {
             zIndex: 1000,
           }}
         >
-          <EditSupplierButton supplier={supplier} onSuccess={onSuccess} />
-          <DeleteSupplierButton supplier={supplier} onSuccess={onSuccess} />
+          {children}
         </div>
       )}
     </div>

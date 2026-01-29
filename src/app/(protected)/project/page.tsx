@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ProjectBox from "@/app/(protected)/project/components/ProjectBox";
+import ProjectCard from "@/app/(protected)/project/components/ProjectCard";
 import { useAuth } from "@/app/context/AuthContext";
 
 export default function Project() {
@@ -69,7 +69,7 @@ export default function Project() {
       <br />
       <div className="widget-grid active-projects">
         {projectsWithBOQ.map((proj: any, index) => (
-          <ProjectBox project={proj} key={index} />
+          <ProjectCard project={proj} key={index} />
         ))}
       </div>
 
@@ -83,7 +83,7 @@ export default function Project() {
           <br />
           <div className="widget-grid active-projects">
             {quotationProjects.map((proj: any, index) => (
-              <ProjectBox
+              <ProjectCard
                 project={proj}
                 key={index}
                 onSuccess={() => fetchProjects()}

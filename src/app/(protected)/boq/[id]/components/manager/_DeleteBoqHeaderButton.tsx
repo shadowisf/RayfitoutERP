@@ -10,9 +10,14 @@ import { BoqHeader } from "@/app/(protected)/boq/[id]/types/boqHeader";
 type props = {
   boqHeader: BoqHeader | null;
   onSuccess?: () => void;
+  threeDotsMenu?: boolean;
 };
 
-export function DeleteBoqHeaderButton({ boqHeader, onSuccess }: props) {
+export function DeleteBoqHeaderButton({
+  boqHeader,
+  onSuccess,
+  threeDotsMenu,
+}: props) {
   const router = useRouter();
 
   const trashIcon = "/icons/trash.svg";
@@ -47,16 +52,30 @@ export function DeleteBoqHeaderButton({ boqHeader, onSuccess }: props) {
 
   return (
     <>
-      <Button
-        componentType={"button"}
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(223, 223, 223, 1)"}
-        textColor={"black"}
-        onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 7px" }}
-      >
-        <img src={trashIcon} />
-      </Button>
+      {threeDotsMenu ? (
+        <Button
+          componentType="button"
+          bgColor={"transparent"}
+          borderColor={"transparent"}
+          textColor={"black"}
+          onClick={() => setIsOpen(true)}
+          full
+          style={{ justifyContent: "flex-start" }}
+        >
+          <img src={trashIcon} alt="trash" /> Delete
+        </Button>
+      ) : (
+        <Button
+          componentType={"button"}
+          bgColor={"rgba(239, 239, 239, 1)"}
+          borderColor={"rgba(223, 223, 223, 1)"}
+          textColor={"black"}
+          onClick={() => setIsOpen(true)}
+          style={{ padding: "7px 7px" }}
+        >
+          <img src={trashIcon} />
+        </Button>
+      )}
 
       {isOpen && (
         <FormPopUp

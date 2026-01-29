@@ -369,7 +369,7 @@ button {
   }
 
   .project-with-id {
-    padding: 20px;
+    padding: 25px;
     background-color: white;
     border-radius: 5px;
   }
@@ -377,18 +377,15 @@ button {
   .mr-with-id {
     background-color: white;
     border-radius: 5px;
-    padding: 10px 25px;
+    padding: 25px;
 
     .top {
-      padding: 20px;
       /* display: flex;
       gap: 50px;
       align-items: center; */
-      border-bottom: 1px solid rgba(217, 217, 217, 1);
     }
 
     .bottom {
-      padding: 20px;
       display: flex;
       gap: 40px;
     }

@@ -1,36 +1,46 @@
 "use client";
 
 import FormPopUp from "@/app/components/FormPopup";
-import { useState } from "react";
+import React, { CSSProperties, useState } from "react";
 import Button from "@/app/components/Button";
 
 type InfoPopUpButtonProps = {
   text: React.ReactNode;
   header: string;
+  children?: React.ReactNode;
+  bgColor?: string;
+  borderColor?: string;
+  textColor?: string;
+  style?: CSSProperties;
 };
+
+const externalLinkIcon = "/icons/external-link.svg";
 
 export default function InfoPopUpButton({
   text,
   header,
+  children = <img src={externalLinkIcon} alt="external link icon" />,
+  bgColor = "rgba(239, 239, 239, 1)",
+  borderColor = "rgba(223, 223, 223, 1)",
+  textColor = "black",
+  style = { padding: "7px 7px" },
 }: InfoPopUpButtonProps) {
-  const externalLinkIcon = "/icons/external-link.svg";
-
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
       <Button
         componentType={"button"}
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(223, 223, 223, 1)"}
-        textColor={"black"}
+        bgColor={bgColor}
+        borderColor={borderColor}
+        textColor={textColor}
         onClick={(e) => {
           e.preventDefault();
           setIsOpen(true);
         }}
-        style={{ padding: "7px 7px" }}
+        style={style}
       >
-        <img src={externalLinkIcon} alt="external link icon" />
+        {children}
       </Button>
 
       {isOpen && (

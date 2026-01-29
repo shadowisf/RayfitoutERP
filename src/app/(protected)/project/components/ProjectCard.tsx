@@ -7,12 +7,12 @@ import CreateBoqHeaderButton from "../../boq/[id]/components/manager/_CreateBoqH
 import { Project } from "../[id]/types/project";
 import { DeleteProjectButton } from "../[id]/components/_DeleteProjectButton";
 
-type ProjectBoxProps = {
+type props = {
   project: Project;
   onSuccess?: () => void;
 };
 
-export default function ProjectBox({ project, onSuccess }: ProjectBoxProps) {
+export default function ProjectCard({ project, onSuccess }: props) {
   const { userInfo } = useAuth();
 
   const [quotedBudget, setQuotedBudget] = useState(0);
