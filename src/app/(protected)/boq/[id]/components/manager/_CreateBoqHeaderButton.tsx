@@ -6,7 +6,7 @@ import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Project } from "../types/project";
+import { Project } from "../../../../project/[id]/types/project";
 
 type props = {
   bgColor?: string;
@@ -35,6 +35,7 @@ export default function CreateBoqHeaderButton({
   const [date, setDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [validityTerms, setValidityTerms] = useState("");
+  const [warranty, setWarranty] = useState("");
   const [completion, setCompletion] = useState("");
   const [exclusion, setExclusion] = useState("");
   const [termsAndConditions, setTermsAndConditions] =
@@ -61,6 +62,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
         date: date || null,
         payment_terms: paymentTerms,
         validity_terms: validityTerms,
+        warranty,
         completion,
         exclusion,
         terms_and_conditions: termsAndConditions,
@@ -82,6 +84,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
       setDate("");
       setPaymentTerms("");
       setValidityTerms("");
+      setWarranty("");
       setCompletion("");
       setExclusion("");
       setTermsAndConditions("");
@@ -178,6 +181,18 @@ vii. Contractor reserve the right to request for an extension of time for reason
               required
               onChange={(e) => {
                 setValidityTerms(e.target.value);
+              }}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"WARRANTY"}
+              value={warranty}
+              type={"textarea"}
+              required
+              onChange={(e) => {
+                setWarranty(e.target.value);
               }}
             />
           </div>

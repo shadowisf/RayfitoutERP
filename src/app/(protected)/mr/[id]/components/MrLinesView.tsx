@@ -2101,7 +2101,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     <th>APPROVAL STATUS</th>
                                   )}
                                   {(mrHeader.progress_id === 1 ||
-                                    mrHeader.progress_id === 5) &&
+                                    mrHeader.progress_id === 5 ||
+                                    mrHeader.progress_id === 11) &&
                                     userInfo?.departmentID ===
                                       mrHeader.department_id && (
                                       <th>ACTIONS</th>
@@ -2114,9 +2115,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     userInfo?.departmentID === 16 && (
                                       <th>ACTIONS</th>
                                     )}
-                                  {mrHeader.progress_id >= 10 && (
-                                    <th>VENDOR & QUOTATION</th>
-                                  )}
+                                  {mrHeader.progress_id >= 10 &&
+                                    mrHeader.progress_id !== 11 && (
+                                      <th>VENDOR & QUOTATION</th>
+                                    )}
                                   {mrHeader.progress_id === 7 &&
                                     userInfo?.departmentID === 9 && (
                                       <th>VENDOR & QUOTATION</th>
@@ -2299,7 +2301,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         )}
 
                                         {(mrHeader.progress_id === 1 ||
-                                          mrHeader.progress_id === 5) &&
+                                          mrHeader.progress_id === 5 ||
+                                          mrHeader.progress_id === 11) &&
                                           userInfo?.departmentID ===
                                             mrHeader.department_id && (
                                             <td>
@@ -2309,45 +2312,35 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                   gap: "10px",
                                                 }}
                                               >
-                                                <>
-                                                  <EditMrItemButton
-                                                    projectID={
-                                                      mrHeader.project_id
-                                                    }
-                                                    purposeID={
-                                                      mrHeader.purpose_id
-                                                    }
-                                                    item={item}
-                                                    bgColor={
-                                                      "rgba(239, 239, 239, 1)"
-                                                    }
-                                                    borderColor={
-                                                      "rgba(223, 223, 223, 1)"
-                                                    }
-                                                    textColor={"black"}
-                                                  >
-                                                    <img
-                                                      src={pencilIcon}
-                                                      alt="pencil icon"
-                                                    />
-                                                  </EditMrItemButton>
+                                                <EditMrItemButton
+                                                  projectID={
+                                                    mrHeader.project_id
+                                                  }
+                                                  purposeID={
+                                                    mrHeader.purpose_id
+                                                  }
+                                                  item={item}
+                                                  bgColor="rgba(239, 239, 239, 1)"
+                                                  borderColor="rgba(223, 223, 223, 1)"
+                                                  textColor="black"
+                                                >
+                                                  <img
+                                                    src={pencilIcon}
+                                                    alt="pencil icon"
+                                                  />
+                                                </EditMrItemButton>
 
-                                                  <DeleteMrItemButton
-                                                    item={item}
-                                                    bgColor={
-                                                      "rgba(239, 239, 239, 1)"
-                                                    }
-                                                    borderColor={
-                                                      "rgba(223, 223, 223, 1)"
-                                                    }
-                                                    textColor={"black"}
-                                                  >
-                                                    <img
-                                                      src={trashIcon}
-                                                      alt="trash icon"
-                                                    />
-                                                  </DeleteMrItemButton>
-                                                </>
+                                                <DeleteMrItemButton
+                                                  item={item}
+                                                  bgColor="rgba(239, 239, 239, 1)"
+                                                  borderColor="rgba(223, 223, 223, 1)"
+                                                  textColor="black"
+                                                >
+                                                  <img
+                                                    src={trashIcon}
+                                                    alt="trash icon"
+                                                  />
+                                                </DeleteMrItemButton>
                                               </div>
                                             </td>
                                           )}
@@ -2646,7 +2639,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 <th>APPROVAL STATUS</th>
                               )}
                               {(mrHeader.progress_id === 1 ||
-                                mrHeader.progress_id === 5) &&
+                                mrHeader.progress_id === 5 ||
+                                mrHeader.progress_id === 11) &&
                                 userInfo?.departmentID ===
                                   mrHeader.department_id && <th>ACTIONS</th>}
                               {mrHeader.progress_id === 3 &&
@@ -2657,9 +2651,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 userInfo?.departmentID === 16 && (
                                   <th>ACTIONS</th>
                                 )}
-                              {mrHeader.progress_id >= 10 && (
-                                <th>VENDOR & QUOTATION</th>
-                              )}
+                              {mrHeader.progress_id >= 10 &&
+                                mrHeader.progress_id !== 11 && (
+                                  <th>VENDOR & QUOTATION</th>
+                                )}
                               {mrHeader.progress_id === 7 &&
                                 userInfo?.departmentID === 9 && (
                                   <th>VENDOR & QUOTATION</th>
@@ -2697,7 +2692,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       {item.quantity} {item.unit}
                                     </td>
                                     <td>
-                                      {item.boq_item_number ? (
+                                      {item.boq_line_ids ? (
                                         <div
                                           style={{
                                             display: "flex",
@@ -2705,11 +2700,36 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             gap: "10px",
                                           }}
                                         >
-                                          {item.boq_item_number}
-                                          <BoqReferencePopUp
-                                            item={item}
-                                            mrHeader={mrHeader}
-                                          />
+                                          {/* ✅ Parse the boq_ids string and show count */}
+                                          {(() => {
+                                            const boqIdsArray =
+                                              item.boq_line_ids
+                                                .split(",")
+                                                .map((id: string) => id.trim())
+                                                .filter(
+                                                  (id: string) => id !== "",
+                                                );
+
+                                            return boqIdsArray.length === 1 ? (
+                                              // Single BOQ item - show the ID
+                                              <>
+                                                {item.boq_item_number}
+                                                <BoqReferencePopUp
+                                                  item={item}
+                                                  mrHeader={mrHeader}
+                                                />
+                                              </>
+                                            ) : (
+                                              // Multiple BOQ items - show count
+                                              <>
+                                                {boqIdsArray.length} BOQ ITEMS
+                                                <BoqReferencePopUp
+                                                  item={item}
+                                                  mrHeader={mrHeader}
+                                                />
+                                              </>
+                                            );
+                                          })()}
                                         </div>
                                       ) : (
                                         "-"
@@ -2811,7 +2831,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     )}
 
                                     {(mrHeader.progress_id === 1 ||
-                                      mrHeader.progress_id === 5) &&
+                                      mrHeader.progress_id === 5 ||
+                                      mrHeader.progress_id === 11) &&
                                       userInfo?.departmentID ===
                                         mrHeader.department_id && (
                                         <td>
@@ -2821,41 +2842,31 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                               gap: "10px",
                                             }}
                                           >
-                                            <>
-                                              <EditMrItemButton
-                                                projectID={mrHeader.project_id}
-                                                purposeID={mrHeader.purpose_id}
-                                                item={item}
-                                                bgColor={
-                                                  "rgba(239, 239, 239, 1)"
-                                                }
-                                                borderColor={
-                                                  "rgba(223, 223, 223, 1)"
-                                                }
-                                                textColor={"black"}
-                                              >
-                                                <img
-                                                  src={pencilIcon}
-                                                  alt="pencil icon"
-                                                />
-                                              </EditMrItemButton>
+                                            <EditMrItemButton
+                                              projectID={mrHeader.project_id}
+                                              purposeID={mrHeader.purpose_id}
+                                              item={item}
+                                              bgColor="rgba(239, 239, 239, 1)"
+                                              borderColor="rgba(223, 223, 223, 1)"
+                                              textColor="black"
+                                            >
+                                              <img
+                                                src={pencilIcon}
+                                                alt="pencil icon"
+                                              />
+                                            </EditMrItemButton>
 
-                                              <DeleteMrItemButton
-                                                item={item}
-                                                bgColor={
-                                                  "rgba(239, 239, 239, 1)"
-                                                }
-                                                borderColor={
-                                                  "rgba(223, 223, 223, 1)"
-                                                }
-                                                textColor={"black"}
-                                              >
-                                                <img
-                                                  src={trashIcon}
-                                                  alt="trash icon"
-                                                />
-                                              </DeleteMrItemButton>
-                                            </>
+                                            <DeleteMrItemButton
+                                              item={item}
+                                              bgColor="rgba(239, 239, 239, 1)"
+                                              borderColor="rgba(223, 223, 223, 1)"
+                                              textColor="black"
+                                            >
+                                              <img
+                                                src={trashIcon}
+                                                alt="trash icon"
+                                              />
+                                            </DeleteMrItemButton>
                                           </div>
                                         </td>
                                       )}
@@ -3197,7 +3208,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       {item.quantity} {item.unit}
                     </td>
                     <td>
-                      {item.boq_item_number ? (
+                      {item.boq_line_ids ? (
                         <div
                           style={{
                             display: "flex",
@@ -3205,8 +3216,33 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             gap: "10px",
                           }}
                         >
-                          {item.boq_item_number}
-                          <BoqReferencePopUp item={item} mrHeader={mrHeader} />
+                          {/* ✅ Parse the boq_ids string and show count */}
+                          {(() => {
+                            const boqIdsArray = item.boq_line_ids
+                              .split(",")
+                              .map((id: string) => id.trim())
+                              .filter((id: string) => id !== "");
+
+                            return boqIdsArray.length === 1 ? (
+                              // Single BOQ item - show the ID
+                              <>
+                                {item.boq_item_number}
+                                <BoqReferencePopUp
+                                  item={item}
+                                  mrHeader={mrHeader}
+                                />
+                              </>
+                            ) : (
+                              // Multiple BOQ items - show count
+                              <>
+                                {boqIdsArray.length} BOQ ITEMS
+                                <BoqReferencePopUp
+                                  item={item}
+                                  mrHeader={mrHeader}
+                                />
+                              </>
+                            );
+                          })()}
                         </div>
                       ) : (
                         "-"

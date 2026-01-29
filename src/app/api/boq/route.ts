@@ -9,8 +9,8 @@ export async function POST(req: Request) {
     if (body.action === "createBoqHeader") {
       const query = `
       INSERT INTO boq_headers 
-      (project_id, company_name, client_name, location, date, payment_terms, validity_terms, completion, exclusion, terms_and_conditions)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (project_id, company_name, client_name, location, date, payment_terms, validity_terms, warranty, completion, exclusion, terms_and_conditions)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const values = [
@@ -21,6 +21,7 @@ export async function POST(req: Request) {
         body.date || null,
         body.payment_terms,
         body.validity_terms,
+        body.warranty,
         body.completion,
         body.exclusion,
         body.terms_and_conditions,
@@ -117,9 +118,10 @@ export async function POST(req: Request) {
 
     if (body.action === "duplicateBoqLine") {
       try {
-        // Get the original item's category and subcategory
+        // Get the original item's details including its order
         const [originalItem]: any = await db.query(
-          `SELECT boq_id, category, sub_category FROM boq_lines WHERE id = ?`,
+          `SELECT boq_id, category, sub_category, item_order, category_order, subcategory_order 
+       FROM boq_lines WHERE id = ?`,
           [Number(body.id)],
         );
 
@@ -127,36 +129,24 @@ export async function POST(req: Request) {
           throw new Error("Original BOQ line not found");
         }
 
-        const { boq_id, category, sub_category } = originalItem[0];
+        const {
+          boq_id,
+          category,
+          sub_category,
+          item_order,
+          category_order,
+          subcategory_order,
+        } = originalItem[0];
 
-        // FIXED: Get max order from entire boq_id for category
-        const [maxCategoryOrder]: any = await db.query(
-          `SELECT COALESCE(MAX(category_order), -1) as max_order 
-       FROM boq_lines 
-       WHERE boq_id = ?`, // ← Changed: removed category filter
-          [boq_id],
+        // Increment item_order for all items that come after the original item
+        await db.query(
+          `UPDATE boq_lines 
+       SET item_order = item_order + 1 
+       WHERE boq_id = ? AND category = ? AND sub_category = ? AND item_order > ?`,
+          [boq_id, category, sub_category, item_order],
         );
 
-        // FIXED: Get max order from category for subcategory
-        const [maxSubcategoryOrder]: any = await db.query(
-          `SELECT COALESCE(MAX(subcategory_order), -1) as max_order 
-       FROM boq_lines 
-       WHERE boq_id = ? AND category = ?`, // ← Changed: only filter by category
-          [boq_id, category],
-        );
-
-        const [maxItemOrder]: any = await db.query(
-          `SELECT COALESCE(MAX(item_order), -1) as max_order 
-       FROM boq_lines 
-       WHERE boq_id = ? AND category = ? AND sub_category = ?`,
-          [boq_id, category, sub_category],
-        );
-
-        const nextCategoryOrder = maxCategoryOrder[0].max_order + 1;
-        const nextSubcategoryOrder = maxSubcategoryOrder[0].max_order + 1;
-        const nextItemOrder = maxItemOrder[0].max_order + 1;
-
-        // Duplicate the item with new order values
+        // Duplicate the item with order = original item_order + 1
         const query = `
       INSERT INTO boq_lines 
       (boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments, category_order, subcategory_order, item_order)
@@ -166,9 +156,9 @@ export async function POST(req: Request) {
     `;
 
         const values = [
-          nextCategoryOrder,
-          nextSubcategoryOrder,
-          nextItemOrder,
+          category_order,
+          subcategory_order,
+          item_order + 1, // Place right after the original item
           Number(body.id),
         ];
 
@@ -216,7 +206,7 @@ export async function PUT(req: Request) {
     if (body.action === "updateBoqHeader") {
       const query = `
         UPDATE boq_headers 
-        SET project_id = ?, company_name = ?, client_name = ?, location = ?, date = ?, payment_terms = ?, validity_terms = ?, completion = ?, exclusion = ?, terms_and_conditions = ?
+        SET project_id = ?, company_name = ?, client_name = ?, location = ?, date = ?, payment_terms = ?, validity_terms = ?, warranty = ?, completion = ?, exclusion = ?, terms_and_conditions = ?
         WHERE id = ?
       `;
 
@@ -228,6 +218,7 @@ export async function PUT(req: Request) {
         body.date || null,
         body.payment_terms,
         body.validity_terms,
+        body.warranty,
         body.completion,
         body.exclusion,
         body.terms_and_conditions,

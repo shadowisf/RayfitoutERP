@@ -10,7 +10,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { BoqHeader } from "../../boq/[id]/types/boqHeader";
 import { MrHeader } from "../../mr/[id]/types/mrHeader";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
-import CreateBoqHeaderButton from "./components/_CreateBoqHeaderButton";
+import CreateBoqHeaderButton from "../../boq/[id]/components/manager/_CreateBoqHeaderButton";
 
 export default function ProjectWithID() {
   const externalLinkIcon = "/icons/external-link.svg";

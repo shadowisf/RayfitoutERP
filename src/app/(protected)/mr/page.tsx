@@ -162,9 +162,11 @@ export default function MR() {
   const progressToResponsibleDepartment: { [key: number]: number } = {
     2: 16, // Awaiting QS initial approval → QS
     3: 8, // Awaiting manager initial approval → Management
+    5: 0, // Initial approval rejected → Originating department
     7: 9, // Awaiting quotations → Procurement
     9: 16, // Awaiting QS price approval → QS
     10: 8, // Awaiting manager price approval → Management
+    11: 0, // Price approval rejected → Originating department
     12: 9, // Awaiting LPO & invoice → Procurement
     16: 9, // GRN failed → Procurement
     14: 10, // Pending payment → Finance
@@ -175,6 +177,7 @@ export default function MR() {
     24: 11, // Awaiting stock entry → Storekeeper
   };
 
+  // ✅ Updated canViewMR - Shows MRs that need action from user's department
   const canViewMR = (mr: any) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
@@ -187,12 +190,19 @@ export default function MR() {
     // Completed MRs (progress_id 25) are accessible to everyone
     if (mr.progress_id === 25) return true;
 
+    // ✅ Rejected MRs (progress_id 5 or 11): Show only to originating department
+    if ([5, 11].includes(mr.progress_id)) {
+      // Managers can see all rejected MRs
+      if (userDeptId === 8) return true;
+      // Other departments only see their own rejected MRs
+      return mr.department_id === userDeptId;
+    }
+
     // ✅ Get the responsible department for this progress stage
     const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
 
-    // ✅ Management (department ID 8) - Show progress_id 3 and 10
+    // ✅ Management (department ID 8) - Can see all MRs at stages 3 and 10
     if (userDeptId === 8) {
-      // Show if this stage requires management action (3 or 10)
       if ([3, 10].includes(mr.progress_id) && responsibleDept === 8) {
         return true;
       }
@@ -207,22 +217,25 @@ export default function MR() {
   };
 
   const departmentViewPermissions: { [key: number]: number[] } = {
-    /* JOINERY */ 1: [1, 2, 5, 25],
-    /* MARKETING */ 2: [1, 2, 5, 25],
-    /* ALUMINUM & GLASS */ 3: [1, 2, 5, 25],
-    /* MEP */ 4: [1, 2, 5, 25],
-    /* CIVIL */ 5: [1, 2, 5, 25],
-    /* PAINT */ 6: [1, 2, 5, 25],
-    /* DESIGN */ 7: [1, 2, 5, 25],
+    /* JOINERY */ 1: [1, 2, 3, 5, 11, 25],
+    /* MARKETING */ 2: [1, 2, 3, 5, 11, 25],
+    /* ALUMINUM & GLASS */ 3: [1, 2, 3, 5, 11, 25],
+    /* MEP */ 4: [1, 2, 3, 5, 11, 25],
+    /* CIVIL */ 5: [1, 2, 3, 5, 11, 25],
+    /* PAINT */ 6: [1, 2, 3, 5, 11, 25],
+    /* DESIGN */ 7: [1, 2, 3, 5, 11, 25],
     /* DIRECTORS/MANAGEMENT */ 8: [1, 2, 3, 5, 9, 10, 11, 25],
     /* PROCUREMENT */ 9: [1, 2, 5, 7, 11, 12, 13, 16, 25],
     /* FINANCE */ 10: [1, 2, 5, 14, 25],
     /* STOREKEEPER */ 11: [1, 2, 5, 17, 24, 25],
-    /* QUALITY CONTORL */ 12: [1, 2, 5, 21, 23, 25],
-    /* PROJECTS */ 13: [1, 2, 5, 25],
-    /* AUTOMATION */ 14: [1, 2, 5, 25],
+    /* QUALITY CONTROL */ 12: [1, 2, 5, 21, 23, 25],
+    /* PROJECTS */ 13: [1, 2, 3, 5, 11, 25],
+    /* AUTOMATION */ 14: [1, 2, 3, 5, 11, 25],
     /* ADMIN */ 15: [1, 2, 3, 5, 7, 9, 10, 11, 12, 14, 17, 21, 23, 24, 25],
     /* QS (QUANTITY SURVEYOR) */ 16: [1, 2, 5, 9, 25],
+    /* HUMAN RESOURCES */ 17: [1, 2, 3, 5, 11, 25],
+    /* VIDEOGRAPHER */ 18: [1, 2, 3, 5, 11, 25],
+    /* SITE SUPERVISOR */ 19: [1, 2, 3, 5, 11, 25],
   };
 
   // Map progress status to responsible department
@@ -241,7 +254,7 @@ export default function MR() {
         name: "Directors/Management",
         id: 8,
       },
-      "Price approval rejected": { name: "Procurement", id: 9 },
+      "Price approval rejected": { name: "", id: 0 },
       "Awaiting LPO & invoice": { name: "Procurement", id: 9 },
       "Pending payment": { name: "Finance", id: 10 },
       "Payment rejected": { name: "Finance", id: 10 },
@@ -314,7 +327,7 @@ export default function MR() {
 
   const universalProgressIds = [1, 2, 5];
 
-  // ✅ Updated view permission check - still allows viewing own department's MRs
+  // ✅ Updated view permission check - handles rejected MRs properly
   const canUserViewMR = (mr: any) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
@@ -324,6 +337,11 @@ export default function MR() {
 
     // Completed MRs (progress_id 25) are accessible to everyone
     if (mr.progress_id === 25) return true;
+
+    // ✅ Rejected MRs (5, 11): Only originating department can view
+    if ([5, 11].includes(mr.progress_id)) {
+      return mr.department_id === userDeptId;
+    }
 
     // Users can always view their own department's MRs
     if (userDeptId === mr.department_id) return true;

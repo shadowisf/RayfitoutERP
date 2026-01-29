@@ -739,7 +739,7 @@ export function BoqPDF({
                         style={styles.detailColCategory}
                         hyphenationCallback={(word) => [word]}
                       >
-                        SUBTOTAL FOR {subCategory.toUpperCase()}
+                        SUBTOTAL
                       </Text>
                       <Text style={styles.detailColQty}></Text>
                       <Text style={styles.detailColRate}></Text>

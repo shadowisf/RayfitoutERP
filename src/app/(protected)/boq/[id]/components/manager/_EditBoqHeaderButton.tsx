@@ -38,6 +38,7 @@ export default function EditBoqHeaderButton({ boqHeader, onSuccess }: props) {
   const [validityTerms, setValidityTerms] = useState(
     boqHeader?.validity_terms || "",
   );
+  const [warranty, setWarranty] = useState(boqHeader?.warranty || "");
   const [completion, setCompletion] = useState(boqHeader?.completion || "");
   const [exclusion, setExclusion] = useState(boqHeader?.exclusion || "");
   const [termsAndConditions, setTermsAndConditions] = useState(
@@ -60,6 +61,7 @@ export default function EditBoqHeaderButton({ boqHeader, onSuccess }: props) {
         date,
         payment_terms: paymentTerms,
         validity_terms: validityTerms,
+        warranty,
         completion,
         exclusion,
         terms_and_conditions: termsAndConditions,
@@ -166,6 +168,18 @@ export default function EditBoqHeaderButton({ boqHeader, onSuccess }: props) {
               required
               onChange={(e) => {
                 setValidityTerms(e.target.value);
+              }}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"WARRANTY"}
+              value={warranty}
+              type={"textarea"}
+              required
+              onChange={(e) => {
+                setWarranty(e.target.value);
               }}
             />
           </div>

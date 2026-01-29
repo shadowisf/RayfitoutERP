@@ -122,16 +122,29 @@ export default function AddBoqItemButton({
           formData.append("files", file);
         });
 
+        console.log(`Uploading ${attachmentFiles.length} file(s)...`);
+
         const uploadResponse = await fetch("/api/s3", {
           method: "POST",
           body: formData,
         });
 
         if (!uploadResponse.ok) {
-          throw new Error("Failed to upload files");
+          const errorData = await uploadResponse.json();
+          throw new Error(errorData.error || "Failed to upload files");
         }
 
         const uploadData = await uploadResponse.json();
+
+        // ✅ Handle partial success (some files uploaded, some failed)
+        if (uploadData.failedFiles && uploadData.failedFiles.length > 0) {
+          console.warn("Some files failed to upload:", uploadData.failedFiles);
+          toast(
+            `Warning: ${uploadData.failedFiles.length} file(s) failed to upload`,
+            "warning",
+          );
+        }
+
         attachmentUrls = uploadData.urls || [];
 
         if (!Array.isArray(attachmentUrls)) {
@@ -139,6 +152,11 @@ export default function AddBoqItemButton({
         }
 
         console.log(`Successfully uploaded ${attachmentUrls.length} file(s)`);
+
+        // ✅ If all files failed, don't proceed
+        if (attachmentUrls.length === 0 && attachmentFiles.length > 0) {
+          throw new Error("All file uploads failed");
+        }
       }
 
       // Step 2: Create BOQ item with attachment URLs
@@ -158,7 +176,7 @@ export default function AddBoqItemButton({
           rate_per_quantity: ratePerQuantity,
           total_cost: totalCost,
           item_description: itemDescription,
-          attachments: JSON.stringify(attachmentUrls),
+          attachments: attachmentUrls, // ✅ Pass array directly, not JSON string
         }),
       });
 
@@ -179,21 +197,14 @@ export default function AddBoqItemButton({
 
         setIsOpen(false);
 
-        setTimeout(() => {
-          router.refresh();
-        }, 1000);
+        router.refresh();
       } else {
-        toast(
-          "Failed to create bill of quantity item. Something went wrong",
-          "error",
-        );
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to create BOQ item");
       }
     } catch (error: any) {
       console.error("Create error:", error);
-      toast(
-        "Failed to create bill of quantity item. Something went wrong",
-        "error",
-      );
+      toast(error.message || "Failed to create bill of quantity item", "error");
     }
   }
 

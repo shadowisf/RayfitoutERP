@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Button from "../../../components/Button";
 import { useAuth } from "@/app/context/AuthContext";
-import CreateBoqHeaderButton from "../[id]/components/_CreateBoqHeaderButton";
+import CreateBoqHeaderButton from "../../boq/[id]/components/manager/_CreateBoqHeaderButton";
 import { Project } from "../[id]/types/project";
 import { DeleteProjectButton } from "../[id]/components/_DeleteProjectButton";
 
