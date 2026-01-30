@@ -36,7 +36,7 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
   const [isEditMode, setIsEditMode] = useState(false);
 
   const [existingStock, setExistingStock] = useState<ExistingStock | null>(
-    null
+    null,
   );
 
   const [inventoryItemValues, setInventoryItemValues] = useState<any>([]);
@@ -48,7 +48,7 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
 
   useEffect(() => {
     fetchInventoryItems();
-  }, []);
+  }, [isOpen]);
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
@@ -67,7 +67,7 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`,
         {
           method: "GET",
-        }
+        },
       );
       const data = await res.json();
       setInventoryItemValues(data.data);
@@ -87,7 +87,7 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
           body: JSON.stringify({
             mr_line_id: mrLine.id,
           }),
-        }
+        },
       );
 
       const data = await res.json();
@@ -118,77 +118,6 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
       setNotes(existingStock.notes || "");
     }
   }, [isOpen, isEditMode, existingStock]);
-
-  // Function to calculate similarity between two strings
-  const calculateSimilarity = (str1: string, str2: string): number => {
-    const s1 = str1.toLowerCase();
-    const s2 = str2.toLowerCase();
-
-    // Exact match
-    if (s1 === s2) return 1000;
-
-    // Contains match (higher score for shorter containing string)
-    if (s1.includes(s2)) return 500 / s1.length;
-    if (s2.includes(s1)) return 500 / s2.length;
-
-    // Word-based matching
-    const words1 = s1.split(/\s+/);
-    const words2 = s2.split(/\s+/);
-
-    let matchingWords = 0;
-    words1.forEach((word1) => {
-      if (
-        words2.some((word2) => word2.includes(word1) || word1.includes(word2))
-      ) {
-        matchingWords++;
-      }
-    });
-
-    return (matchingWords / Math.max(words1.length, words2.length)) * 100;
-  };
-
-  // Find closest matching inventory item
-  const findClosestMatch = () => {
-    if (!inventoryItemValues || inventoryItemValues.length === 0) return "";
-
-    const searchText = mrLine.material_description || "";
-
-    if (!searchText) return "";
-
-    let bestMatch = inventoryItemValues[0];
-    let bestScore = 0;
-
-    inventoryItemValues.forEach((item: any) => {
-      const score = calculateSimilarity(item.description, searchText);
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = item;
-      }
-    });
-
-    // Only auto-select if there's a reasonable match (score > 10)
-    if (bestScore > 10) {
-      return bestMatch.id;
-    }
-
-    return "";
-  };
-
-  // Auto-select closest match when modal opens (only for create mode)
-  useEffect(() => {
-    if (
-      isOpen &&
-      !isEditMode &&
-      inventoryItemValues.length > 0 &&
-      !inventoryItemID
-    ) {
-      const closestMatch = findClosestMatch();
-      if (closestMatch) {
-        setInventoryItemID(closestMatch);
-      }
-    }
-  }, [isOpen, isEditMode, inventoryItemValues]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -334,7 +263,7 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
               idField="id"
               /* labelField="description" */
               formatOptionLabel={(item) =>
-                `MRT-${String(item.id).padStart(5, "0")} - ${item.description}`
+                `INV-${String(item.id).padStart(5, "0")} - ${item.description}`
               }
               /* createButtonLabel="NEW INVENTORY ITEM +"
               showCreateButton */

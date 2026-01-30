@@ -5,9 +5,12 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
+    // ✅ Added ORDER BY id ASC to maintain insertion order
     const [rows]: any = await db.query(
       `
-      SELECT * FROM vw_mr_lines WHERE mr_header_id = ?`,
+      SELECT * FROM vw_mr_lines 
+      WHERE mr_header_id = ?
+      ORDER BY id ASC`,
       [Number(body.id)],
     );
 
@@ -82,10 +85,19 @@ export async function POST(req: Request) {
 
     const grouped: any = {};
 
-    rows.forEach(function (row: any) {
+    // ✅ Track the first occurrence order of each supplier within category/subcategory
+    const supplierFirstOrder: any = {};
+
+    rows.forEach(function (row: any, index: number) {
       const category = row.material_category || "Uncategorized";
       const subCategory = row.material_subcategory || "Uncategorized";
       const supplier = row.approved_supplier_name || "Unassigned";
+
+      // ✅ Track first occurrence of this supplier in this category/subcategory
+      const supplierKey = `${category}|||${subCategory}|||${supplier}`;
+      if (!(supplierKey in supplierFirstOrder)) {
+        supplierFirstOrder[supplierKey] = index;
+      }
 
       if (!grouped[category]) {
         grouped[category] = {};
@@ -101,10 +113,40 @@ export async function POST(req: Request) {
 
       grouped[category][subCategory][supplier].push({
         ...row,
-
         boq_item_number: row.boq_line_id
           ? boqNumbering.get(row.boq_line_id)
           : null,
+        original_order: index, // ✅ Preserve original position
+      });
+    });
+
+    // ✅ Sort suppliers by their first occurrence, then sort items within by original_order
+    Object.keys(grouped).forEach((category) => {
+      Object.keys(grouped[category]).forEach((subCategory) => {
+        // Convert to array to sort suppliers
+        const supplierEntries = Object.entries(
+          grouped[category][subCategory],
+        ).map(([supplier, items]: [string, any]) => {
+          const supplierKey = `${category}|||${subCategory}|||${supplier}`;
+          return {
+            supplier,
+            items,
+            firstOrder: supplierFirstOrder[supplierKey],
+          };
+        });
+
+        // Sort suppliers by first occurrence
+        supplierEntries.sort((a, b) => a.firstOrder - b.firstOrder);
+
+        // Rebuild the object with sorted suppliers
+        const sortedSuppliers: any = {};
+        supplierEntries.forEach(({ supplier, items }) => {
+          // Sort items within supplier by original order
+          items.sort((a: any, b: any) => a.original_order - b.original_order);
+          sortedSuppliers[supplier] = items;
+        });
+
+        grouped[category][subCategory] = sortedSuppliers;
       });
     });
 

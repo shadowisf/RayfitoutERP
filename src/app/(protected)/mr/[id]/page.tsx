@@ -270,7 +270,7 @@ export default async function MrWithID({
               alignItems: "flex-start",
             }}
           >
-            <div style={{ display: "flex", gap: "50px", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
               <div>
                 <small>MATERIAL REQUEST ID</small>
                 <h2>MR-{String(id).padStart(5, "0")}</h2>
@@ -410,52 +410,54 @@ export default async function MrWithID({
           </div>
         </div>
 
-        <br />
-        <br />
-
         {mrHeader?.progress_id === 17 && (
-          <div className="bottom">
-            {/* ✅ Delivery Dates by Vendor */}
-            {deliveryDates && deliveryDates.length > 0 && (
-              <>
-                {deliveryDates.map((delivery: any, index: number) => {
-                  const { text, style } = calculateDaysLeft(
-                    delivery.delivery_date,
-                  );
+          <>
+            <br />
+            <br />
 
-                  return (
-                    <div key={index} style={{ display: "flex", gap: "10px" }}>
-                      <div>
-                        <small style={{ textWrap: "nowrap" }}>
-                          {delivery.supplier_name.toUpperCase()} DELIVERY DATE
-                        </small>
-                        <h2>
-                          {new Date(delivery.delivery_date).toLocaleDateString(
-                            "en-US",
-                          )}
-                        </h2>
-                      </div>
-                      {!isCompleted && (
+            <div className="bottom">
+              {/* ✅ Delivery Dates by Vendor */}
+              {deliveryDates && deliveryDates.length > 0 && (
+                <>
+                  {deliveryDates.map((delivery: any, index: number) => {
+                    const { text, style } = calculateDaysLeft(
+                      delivery.delivery_date,
+                    );
+
+                    return (
+                      <div key={index} style={{ display: "flex", gap: "10px" }}>
                         <div>
-                          <h2
-                            className="approval-pill normal-text"
-                            style={{
-                              backgroundColor: style.backgroundColor,
-                              color: style.color,
-                              borderRadius: "5px",
-                              textWrap: "nowrap",
-                            }}
-                          >
-                            {text}
+                          <small style={{ textWrap: "nowrap" }}>
+                            {delivery.supplier_name.toUpperCase()} DELIVERY DATE
+                          </small>
+                          <h2>
+                            {new Date(
+                              delivery.delivery_date,
+                            ).toLocaleDateString("en-US")}
                           </h2>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
+                        {!isCompleted && (
+                          <div>
+                            <h2
+                              className="approval-pill normal-text"
+                              style={{
+                                backgroundColor: style.backgroundColor,
+                                color: style.color,
+                                borderRadius: "5px",
+                                textWrap: "nowrap",
+                              }}
+                            >
+                              {text}
+                            </h2>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          </>
         )}
       </div>
 

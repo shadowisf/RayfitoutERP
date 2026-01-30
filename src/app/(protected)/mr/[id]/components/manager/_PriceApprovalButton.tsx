@@ -4,6 +4,7 @@ import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { SupplierQuotation } from "../../types/supplierQuotation";
 import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
@@ -19,7 +20,11 @@ type PriceApprovalButtonProps = {
   borderColor?: string;
   full?: boolean;
   style?: React.CSSProperties;
-  onTotalPriceChange?: (mrLineId: number, totalPrice: number) => void; // ✅ New prop
+  onTotalPriceChange?: (mrLineId: number, totalPrice: number) => void;
+  // ✅ New props for Smart Select All
+  isSmartSelectPortal?: boolean;
+  allMrLines?: any;
+  portalTargetId?: string;
 };
 
 export default function PriceApprovalButton({
@@ -30,7 +35,11 @@ export default function PriceApprovalButton({
   borderColor = "rgba(239, 239, 239, 1)",
   full,
   style,
-  onTotalPriceChange, // ✅ New prop
+  onTotalPriceChange,
+  // ✅ New props
+  isSmartSelectPortal = false,
+  allMrLines,
+  portalTargetId = "smart-select-portal",
 }: PriceApprovalButtonProps) {
   const diamondIcon = "/icons/diamond.svg";
   const externalLinkIcon = "/icons/external-link.svg";
@@ -39,13 +48,10 @@ export default function PriceApprovalButton({
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
-
   const [supplierQuotations, setSupplierQuotations] = useState<
     SupplierQuotation[]
   >([]);
-
   const [selectedSupplierID, setSelectedSupplierID] = useState("");
-
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [rejectText, setRejectText] = useState("");
 
@@ -61,7 +67,26 @@ export default function PriceApprovalButton({
   const [allQsRejected, setAllQsRejected] = useState(false);
   const [allQsPending, setAllQsPending] = useState(false);
 
+  // ✅ Smart Select All states
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
+    null,
+  );
+
+  // ✅ Find portal container
+  useEffect(() => {
+    if (isSmartSelectPortal) {
+      const container = document.getElementById(portalTargetId);
+      setPortalContainer(container);
+    }
+  }, [isSmartSelectPortal, portalTargetId]);
+
   const fetchQuotations = () => {
+    // ✅ Don't fetch if this is the portal button
+    if (isSmartSelectPortal || !mrLine?.id) {
+      return;
+    }
+
     fetch("/api/supplier/getAllSupplierAndQuotationByMrLineID", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -69,7 +94,15 @@ export default function PriceApprovalButton({
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log(data);
+        console.log(`Fetched quotations for MR Line ${mrLine.id}:`, data);
+
+        // ✅ Check if data is an array before using array methods
+        if (!Array.isArray(data)) {
+          console.error("Invalid data format:", data);
+          setSupplierQuotations([]);
+          return;
+        }
+
         setSupplierQuotations(data);
 
         // Manager Approval Status
@@ -78,7 +111,6 @@ export default function PriceApprovalButton({
         );
         setApprovedQuotation(approved || null);
 
-        // ✅ Call callback with approved quotation's total price
         if (approved && onTotalPriceChange) {
           onTotalPriceChange(mrLine.id, parseFloat(approved.total_price) || 0);
         } else if (onTotalPriceChange) {
@@ -114,19 +146,140 @@ export default function PriceApprovalButton({
         setAllQsPending(qsPending && data.length > 0);
       })
       .catch((err) => {
-        console.error(err);
+        console.error("Error fetching quotations:", err);
+        setSupplierQuotations([]);
       });
   };
 
+  // ✅ SINGLE useEffect - removed duplicate
   useEffect(() => {
-    fetchQuotations();
-  }, [mrLine.id]);
+    // ✅ Only fetch if NOT portal button and has valid mrLine
+    if (!isSmartSelectPortal && mrLine?.id) {
+      fetchQuotations();
+    }
 
-  // In PriceApprovalButton.tsx
+    // ✅ Listen for custom event
+    const handleQuotationsUpdated = () => {
+      console.log("Quotations updated event received, refetching...");
+      if (!isSmartSelectPortal && mrLine?.id) {
+        fetchQuotations();
+      }
+    };
+
+    window.addEventListener("quotationsUpdated", handleQuotationsUpdated);
+
+    return () => {
+      window.removeEventListener("quotationsUpdated", handleQuotationsUpdated);
+    };
+  }, [mrLine?.id, isSmartSelectPortal]);
+
+  // ✅ Smart Select All handler
+  async function handleSmartSelectAll() {
+    if (!allMrLines) {
+      toast("No MR lines available", "error");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    const allItems: any[] = [];
+
+    // Collect all MR line IDs
+    for (const category in allMrLines) {
+      for (const subCategory in allMrLines[category]) {
+        for (const supplier in allMrLines[category][subCategory]) {
+          const items = allMrLines[category][subCategory][supplier];
+          allItems.push(...items);
+        }
+      }
+    }
+
+    console.log(`Processing ${allItems.length} items for smart select...`);
+
+    let successful = 0;
+    let failed = 0;
+
+    // Process each item
+    for (const item of allItems) {
+      try {
+        const quotationsResponse = await fetch(
+          "/api/supplier/getAllSupplierAndQuotationByMrLineID",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: item.id }),
+          },
+        );
+
+        if (!quotationsResponse.ok) {
+          failed++;
+          continue;
+        }
+
+        const quotations = await quotationsResponse.json();
+
+        if (!quotations || quotations.length === 0) {
+          failed++;
+          continue;
+        }
+
+        const lowestPriceQuotation = quotations.reduce(
+          (prev: any, current: any) => {
+            return Number(current.total_price) < Number(prev.total_price)
+              ? current
+              : prev;
+          },
+        );
+
+        const approveResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "approveSupplierAndQuotation",
+              quotation_id: lowestPriceQuotation.id,
+              mr_line_id: item.id,
+              supplier_id: lowestPriceQuotation.supplier_id,
+            }),
+          },
+        );
+
+        if (approveResponse.ok) {
+          successful++;
+        } else {
+          failed++;
+        }
+      } catch (error) {
+        failed++;
+        console.error(`Error processing item ${item.id}:`, error);
+      }
+    }
+
+    setIsProcessing(false);
+
+    if (successful > 0 && failed === 0) {
+      toast(
+        `Smart Select completed: ${successful} vendor${successful > 1 ? "s" : ""} approved`,
+        "success",
+      );
+    } else if (successful > 0 && failed > 0) {
+      toast(
+        `Smart Select completed: ${successful} approved, ${failed} failed`,
+        "warning",
+      );
+    } else {
+      toast("Smart Select failed: No vendors approved", "error");
+    }
+
+    // ✅ Trigger refresh
+    window.dispatchEvent(new CustomEvent("quotationsUpdated"));
+    router.refresh();
+  }
+
   async function handleApproveSupplierAndQuotation(e: React.FormEvent) {
     e.preventDefault();
 
-    // ✅ Find the selected quotation object
     const selectedQuotation = supplierQuotations.find(
       (q) => q.supplier_id === Number(selectedSupplierID),
     );
@@ -149,7 +302,7 @@ export default function PriceApprovalButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "approveSupplierAndQuotation",
-          quotation_id: selectedQuotation.id, // ✅ Pass the quotation ID
+          quotation_id: selectedQuotation.id,
           mr_line_id: mrLine.id,
           supplier_id: selectedSupplierID,
         }),
@@ -198,17 +351,11 @@ export default function PriceApprovalButton({
     }
   }
 
-  // In PriceApprovalButton.tsx
   async function handleReset() {
     if (!approvedQuotation) {
       toast("No approved quotation to reset", "error");
       return;
     }
-
-    console.log("Resetting quotation:", {
-      mr_line_id: mrLine.id,
-      supplier_id: approvedQuotation.supplier_id,
-    });
 
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
@@ -224,7 +371,6 @@ export default function PriceApprovalButton({
     );
 
     if (res.ok) {
-      toast("Vendor selection reset successfully", "success");
       fetchQuotations();
       router.refresh();
     } else {
@@ -232,44 +378,28 @@ export default function PriceApprovalButton({
     }
   }
 
-  // Smart Select: Find supplier with lowest total price
-  async function handleSmartSelect() {
-    if (supplierQuotations.length === 0) {
-      toast("No suppliers available to select", "error");
-      return;
-    }
-
-    const lowestPriceSupplier = supplierQuotations.reduce(
-      (prev: any, current: any) => {
-        return Number(current.total_price) < Number(prev.total_price)
-          ? current
-          : prev;
-      },
+  // ✅ Render Smart Select Portal Button
+  if (isSmartSelectPortal && portalContainer) {
+    return createPortal(
+      <Button
+        componentType={"button"}
+        bgColor={"white"}
+        borderColor={"rgba(207, 207, 207, 1)"}
+        textColor={"black"}
+        onClick={handleSmartSelectAll}
+        disabled={isProcessing}
+        style={{
+          padding: "7px 20px",
+          borderRadius: "25px",
+          opacity: isProcessing ? 0.5 : 1,
+          cursor: isProcessing ? "not-allowed" : "pointer",
+        }}
+      >
+        {isProcessing ? "Processing..." : "Smart Select"}{" "}
+        <img src={diamondIcon} alt="diamond icon" />
+      </Button>,
+      portalContainer,
     );
-
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "approveSupplierAndQuotation",
-          mr_line_id: mrLine.id,
-          supplier_id: lowestPriceSupplier.supplier_id,
-        }),
-      },
-    );
-
-    if (res.ok) {
-      toast(
-        `Smart Select: ${lowestPriceSupplier.supplier_name} approved with lowest price (AED ${lowestPriceSupplier.total_price})`,
-        "success",
-      );
-      fetchQuotations();
-      router.refresh();
-    } else {
-      toast("Failed to approve vendor", "error");
-    }
   }
 
   // RENDER STATUS PILLS (for progressID === 11 or 9)
@@ -285,7 +415,6 @@ export default function PriceApprovalButton({
       >
         {/* Manager Approval Status Row */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {/* Show approved pill */}
           {approvedQuotation && (
             <div
               className="approval-pill"
@@ -310,7 +439,6 @@ export default function PriceApprovalButton({
             </div>
           )}
 
-          {/* Show rejected pill */}
           {allRejected && !approvedQuotation && (
             <div
               style={{
@@ -332,7 +460,6 @@ export default function PriceApprovalButton({
             </div>
           )}
 
-          {/* Show pending pill */}
           {allPending && !approvedQuotation && !allRejected && (
             <div
               style={{
@@ -354,7 +481,6 @@ export default function PriceApprovalButton({
 
         {/* QS Approval Status Row */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {/* Show QS rejected pill */}
           {allQsRejected && (
             <div
               style={{
@@ -376,7 +502,6 @@ export default function PriceApprovalButton({
             </div>
           )}
 
-          {/* Show QS pending pill */}
           {allQsPending && !allQsRejected && (
             <div
               style={{
@@ -395,7 +520,6 @@ export default function PriceApprovalButton({
             </div>
           )}
 
-          {/* Show QS approved pill */}
           {qsApprovedQuotation && (
             <div
               style={{
@@ -420,7 +544,6 @@ export default function PriceApprovalButton({
 
   // RENDER ACTION BUTTONS (for progressID === 10)
   if (progressID === 10) {
-    // If approved, show approved pill with reset option
     if (approvedQuotation) {
       return (
         <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
@@ -456,16 +579,10 @@ export default function PriceApprovalButton({
               />
             </div>
           </div>
-          {/* 
-          <span>
-            AED{" "}
-            {Number(approvedQuotation.unit_price * mrLine.quantity).toFixed(2)}
-          </span> */}
         </div>
       );
     }
 
-    // If all rejected, show rejected pill with reset option
     if (allRejected) {
       return (
         <div
@@ -493,7 +610,6 @@ export default function PriceApprovalButton({
       );
     }
 
-    // Otherwise show selection buttons
     return (
       <>
         <div style={{ display: "flex", gap: "10px" }}>
@@ -508,16 +624,6 @@ export default function PriceApprovalButton({
             Manually Select{" "}
             <img src={externalLinkIcon} alt="external link icon" />
           </Button>
-          {/* <Button
-            componentType={"button"}
-            bgColor={bgColor}
-            borderColor={borderColor}
-            textColor={textColor}
-            onClick={handleSmartSelect}
-            style={style}
-          >
-            Smart Select <img src={diamondIcon} alt="diamond icon" />
-          </Button> */}
         </div>
 
         {isOpen && (
@@ -537,83 +643,81 @@ export default function PriceApprovalButton({
                   setIsRejectOpen(true);
                 }}
               >
-                REJECT ALL VENDORS
+                REJECT
               </Button>
             }
           >
-            <>
-              <table className="items-table">
-                <thead>
-                  <tr>
-                    <th></th>
-                    <th>VENDOR</th>
-                    <th>QUOTATION</th>
-                    <th>UNIT PRICE</th>
-                    <th>TOTAL PRICE</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {supplierQuotations.map(
-                    (quotation: SupplierQuotation, index: number) => (
-                      <tr key={index}>
-                        <td>
-                          <input
-                            type="radio"
-                            name="supplier"
-                            value={quotation.supplier_id}
-                            onChange={(e) =>
-                              setSelectedSupplierID(e.target.value)
-                            }
-                            required
+            <table className="items-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>VENDOR</th>
+                  <th>QUOTATION</th>
+                  <th>UNIT PRICE</th>
+                  <th>TOTAL PRICE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {supplierQuotations.map(
+                  (quotation: SupplierQuotation, index: number) => (
+                    <tr key={index}>
+                      <td>
+                        <input
+                          type="radio"
+                          name="supplier"
+                          value={quotation.supplier_id}
+                          onChange={(e) =>
+                            setSelectedSupplierID(e.target.value)
+                          }
+                          required
+                        />
+                      </td>
+                      <td>
+                        <SupplierDetailsPopUp
+                          item={quotation}
+                          style={{
+                            padding: "7px 20px",
+                            textWrap: "nowrap",
+                            minWidth: "300px",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            borderRadius: "25px",
+                          }}
+                        >
+                          {quotation.supplier_name}
+                          <img
+                            src="/icons/external-link.svg"
+                            alt="external link icon"
                           />
-                        </td>
-                        <td>
-                          <SupplierDetailsPopUp
-                            item={quotation}
-                            style={{
-                              padding: "7px 20px",
-                              textWrap: "nowrap",
-                              minWidth: "300px",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              borderRadius: "25px",
-                            }}
-                          >
-                            {quotation.supplier_name}
-                            <img
-                              src="/icons/external-link.svg"
-                              alt="external link icon"
-                            />
-                          </SupplierDetailsPopUp>
-                        </td>
-                        <td>
-                          <Button
-                            componentType={"link"}
-                            bgColor={"white"}
-                            borderColor={"rgba(207, 207, 207, 1)"}
-                            textColor={"black"}
-                            href={quotation.quotation_file[0]}
-                            target="_blank"
-                            style={{
-                              padding: "7px 20px",
-                              borderRadius: "25px",
-                            }}
-                          >
-                            Quotation
-                            <img
-                              src="/icons/external-link.svg"
-                              alt="external link icon"
-                            />
-                          </Button>
-                        </td>
-                        <td>{quotation.unit_price} AED</td>
-                        <td>{quotation.total_price} AED</td>
-                      </tr>
-                    ),
-                  )}
-                </tbody>
-              </table>
-            </>
+                        </SupplierDetailsPopUp>
+                      </td>
+                      <td>
+                        <Button
+                          componentType={"link"}
+                          bgColor={"white"}
+                          borderColor={"rgba(207, 207, 207, 1)"}
+                          textColor={"black"}
+                          href={quotation.quotation_file[0]}
+                          target="_blank"
+                          style={{
+                            padding: "7px 20px",
+                            borderRadius: "25px",
+                          }}
+                        >
+                          Quotation
+                          <img
+                            src="/icons/external-link.svg"
+                            alt="external link icon"
+                          />
+                        </Button>
+                      </td>
+                      <td>{quotation.unit_price} AED</td>
+                      <td>{quotation.total_price} AED</td>
+                    </tr>
+                  ),
+                )}
+              </tbody>
+            </table>
           </FormPopUp>
         )}
 
@@ -641,6 +745,5 @@ export default function PriceApprovalButton({
     );
   }
 
-  // Default: return null for other progressIDs
   return null;
 }

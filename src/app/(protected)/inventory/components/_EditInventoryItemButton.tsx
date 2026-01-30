@@ -24,14 +24,14 @@ export default function EditInventoryItemButton({
   const [isOpen, setIsOpen] = useState(false);
 
   const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
-    []
+    [],
   );
   const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
     any[]
   >([]);
 
   const [materialCategoryID, setMaterialCategoryID] = useState<string | number>(
-    ""
+    "",
   );
   const [materialSubCategoryID, setMaterialSubCategoryID] = useState<
     string | number | ""
@@ -52,7 +52,7 @@ export default function EditInventoryItemButton({
   // Fetch material categories
   useEffect(() => {
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
     )
       .then((res) => res.json())
       .then((data) => {
@@ -68,7 +68,7 @@ export default function EditInventoryItemButton({
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -87,7 +87,7 @@ export default function EditInventoryItemButton({
           body: JSON.stringify({
             category_id: materialCategoryID,
           }),
-        }
+        },
       )
         .then((res) => res.json())
         .then((data) => {
@@ -103,7 +103,7 @@ export default function EditInventoryItemButton({
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
-        }
+        },
       )
         .then((res) => res.json())
         .then((data) => {
@@ -131,7 +131,7 @@ export default function EditInventoryItemButton({
           body: JSON.stringify({
             id: inventoryItem.id,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -249,7 +249,7 @@ export default function EditInventoryItemButton({
           specification,
           image: imageUrl,
         }),
-      }
+      },
     );
 
     if (res.ok) {
@@ -304,7 +304,7 @@ export default function EditInventoryItemButton({
                   setMaterialSubCategoryID(subCategoryId);
 
                   const selectedSubCategory = materialSubCategoryValues.find(
-                    (sc: any) => sc.id === subCategoryId
+                    (sc: any) => sc.id === subCategoryId,
                   ) as any;
 
                   if (selectedSubCategory?.category_id) {

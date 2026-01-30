@@ -62,6 +62,17 @@ export default function TopSuppliersChart({
 }: TopSuppliersChartProps) {
   const [isHovered, setIsHovered] = useState(false);
 
+  const formatNumber = (value: number): string | number => {
+    // Check if the number has decimal places
+    if (value % 1 === 0) {
+      // No decimal places, return as integer
+      return Math.round(value);
+    } else {
+      // Has decimal places, format to remove trailing zeros
+      return parseFloat(value.toFixed(3));
+    }
+  };
+
   // Calculate net stock by supplier (accounting for issues and transfers)
   const calculateStockBySupplier = () => {
     const supplierMap: { [key: string]: number } = {};
@@ -82,7 +93,7 @@ export default function TopSuppliersChart({
         if (transaction.received) {
           // Find the original stock entry to get supplier
           const originalStock = stocks.find(
-            (s) => s.location === transaction.from_location
+            (s) => s.location === transaction.from_location,
           );
           const supplier = originalStock?.supplier_name || "Others";
 
@@ -113,7 +124,7 @@ export default function TopSuppliersChart({
   // Calculate total stock
   const totalStock = stockBySupplier.reduce(
     (sum, item) => sum + item.quantity,
-    0
+    0,
   );
 
   // Define colors for different suppliers
@@ -289,7 +300,7 @@ export default function TopSuppliersChart({
                   </span>
                 </div>
                 <span style={{ fontWeight: "600" }}>
-                  {supplier.value} {unit}
+                  {formatNumber(supplier.value)} {unit}
                 </span>
               </div>
             ))}

@@ -65,12 +65,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const trashIcon = "/icons/trash.svg";
   const externalLinkIcon = "/icons/external-link.svg";
 
-  const totalInvoicePortalRef = useRef<HTMLDivElement>(null);
-
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
-  const [expandedDescriptions, setExpandedDescriptions] = useState<number[]>(
-    [],
-  );
 
   const [showBySupplier, setShowBySupplier] = useState<boolean>(
     mrHeader.progress_id >= 12,
@@ -1343,22 +1338,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     checkStockStatuses();
   }, [mrLines, mrHeader.progress_id, mrHeader.id]);
 
-  function toggleDescription(itemId: number) {
-    setExpandedDescriptions(function (prev) {
-      if (prev.includes(itemId)) {
-        return prev.filter(function (id) {
-          return id !== itemId;
-        });
-      } else {
-        return [...prev, itemId];
-      }
-    });
-  }
-
-  function isExpanded(itemId: number) {
-    return expandedDescriptions.includes(itemId);
-  }
-
   function getActiveCategoryID() {
     if (activeCategory === "ALL") {
       const firstCategory = Object.keys(regroupedMrLines)[0];
@@ -2041,6 +2020,21 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       className="subcategory-section"
                     >
                       <div className="subcategory-header">
+                        {userInfo?.departmentID === 8 &&
+                          mrHeader.progress_id === 10 && (
+                            <PriceApprovalButton
+                              progressID={mrHeader.progress_id}
+                              mrLine={{} as MrLine}
+                              isSmartSelectPortal
+                              allMrLines={
+                                showByItem
+                                  ? regroupedMrLines
+                                  : mrLinesBySupplier
+                              }
+                              portalTargetId="smart-select-portal"
+                            />
+                          )}
+
                         <h2 style={{ textTransform: "uppercase" }}>
                           <span style={{ marginRight: "25px" }}>
                             {categoryIndex + 1}.{subCategoryIndex + 1}
@@ -2080,10 +2074,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               <thead>
                                 <tr>
                                   <th>#</th>
-                                  <th>DESCRIPTION</th>
+                                  <th>ITEM</th>
                                   <th>QTY</th>
                                   <th>BOQ REF.</th>
-                                  <th>BRAND & SPECIFICATION</th>
+                                  <th>BRAND & SPECS</th>
                                   <th>ATTACHMENT</th>
                                   {((mrHeader.progress_id === 5 &&
                                     (userInfo?.departmentID ===
@@ -2117,7 +2111,21 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     )}
                                   {mrHeader.progress_id >= 10 &&
                                     mrHeader.progress_id !== 11 && (
-                                      <th>VENDOR & QUOTATION</th>
+                                      <th>
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            gap: "10px",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          <span>VENDOR & QUOTATION</span>
+                                          {userInfo?.departmentID === 8 &&
+                                            mrHeader.progress_id === 10 && (
+                                              <div id="smart-select-portal"></div>
+                                            )}
+                                        </div>
+                                      </th>
                                     )}
                                   {mrHeader.progress_id === 7 &&
                                     userInfo?.departmentID === 9 && (
@@ -2157,48 +2165,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         </td>
                                         <td>
                                           {item.boq_line_ids ? (
-                                            <div
-                                              style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "10px",
-                                              }}
-                                            >
-                                              {/* ✅ Parse the boq_ids string and show count */}
-                                              {(() => {
-                                                const boqIdsArray =
-                                                  item.boq_line_ids
-                                                    .split(",")
-                                                    .map((id: string) =>
-                                                      id.trim(),
-                                                    )
-                                                    .filter(
-                                                      (id: string) => id !== "",
-                                                    );
-
-                                                return boqIdsArray.length ===
-                                                  1 ? (
-                                                  // Single BOQ item - show the ID
-                                                  <>
-                                                    {item.boq_item_number}
-                                                    <BoqReferencePopUp
-                                                      item={item}
-                                                      mrHeader={mrHeader}
-                                                    />
-                                                  </>
-                                                ) : (
-                                                  // Multiple BOQ items - show count
-                                                  <>
-                                                    {boqIdsArray.length} BOQ
-                                                    ITEMS
-                                                    <BoqReferencePopUp
-                                                      item={item}
-                                                      mrHeader={mrHeader}
-                                                    />
-                                                  </>
-                                                );
-                                              })()}
-                                            </div>
+                                            <BoqReferencePopUp
+                                              item={item}
+                                              mrHeader={mrHeader}
+                                            />
                                           ) : (
                                             "-"
                                           )}
@@ -2392,7 +2362,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                 textColor="black"
                                                 style={{
                                                   borderRadius: "25px",
-                                                  padding: "5px 20px",
+                                                  padding: "7px 20px",
                                                 }}
                                                 onTotalPriceChange={
                                                   handleTotalPriceChange
@@ -2499,7 +2469,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     borderRadius: "25px",
                                   }}
                                 >
-                                  <h4>TOTAL</h4>
+                                  <h4>TOTAL + VAT</h4>
                                   <h4>AED {totalInvoiceAmount.toFixed(2)}</h4>
                                 </div>
                               </div>
@@ -2581,6 +2551,19 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               return (
                 <div key={subCategory} className="subcategory-section">
                   <div className="subcategory-header">
+                    {userInfo?.departmentID === 8 &&
+                      mrHeader.progress_id === 10 && (
+                        <PriceApprovalButton
+                          progressID={mrHeader.progress_id}
+                          mrLine={{} as MrLine}
+                          isSmartSelectPortal
+                          allMrLines={
+                            showByItem ? regroupedMrLines : mrLinesBySupplier
+                          }
+                          portalTargetId="smart-select-portal"
+                        />
+                      )}
+
                     <h2 style={{ textTransform: "uppercase" }}>
                       <span style={{ marginRight: "25px" }}>
                         {categories.indexOf(activeCategory) + 1}.{index + 1}
@@ -2618,10 +2601,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           <thead>
                             <tr>
                               <th>#</th>
-                              <th>DESCRIPTION</th>
+                              <th>ITEM</th>
                               <th>QTY</th>
                               <th>BOQ REF.</th>
-                              <th>BRAND & SPECIFICATION</th>
+                              <th>BRAND & SPECS</th>
                               <th>ATTACHMENT</th>
                               {((mrHeader.progress_id === 5 &&
                                 (userInfo?.departmentID ===
@@ -2653,7 +2636,21 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 )}
                               {mrHeader.progress_id >= 10 &&
                                 mrHeader.progress_id !== 11 && (
-                                  <th>VENDOR & QUOTATION</th>
+                                  <th>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: "10px",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      <span>VENDOR & QUOTATION</span>
+                                      {userInfo?.departmentID === 8 &&
+                                        mrHeader.progress_id === 10 && (
+                                          <div id="smart-select-portal"></div>
+                                        )}
+                                    </div>
+                                  </th>
                                 )}
                               {mrHeader.progress_id === 7 &&
                                 userInfo?.departmentID === 9 && (
@@ -2693,44 +2690,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     </td>
                                     <td>
                                       {item.boq_line_ids ? (
-                                        <div
-                                          style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "10px",
-                                          }}
-                                        >
-                                          {/* ✅ Parse the boq_ids string and show count */}
-                                          {(() => {
-                                            const boqIdsArray =
-                                              item.boq_line_ids
-                                                .split(",")
-                                                .map((id: string) => id.trim())
-                                                .filter(
-                                                  (id: string) => id !== "",
-                                                );
-
-                                            return boqIdsArray.length === 1 ? (
-                                              // Single BOQ item - show the ID
-                                              <>
-                                                {item.boq_item_number}
-                                                <BoqReferencePopUp
-                                                  item={item}
-                                                  mrHeader={mrHeader}
-                                                />
-                                              </>
-                                            ) : (
-                                              // Multiple BOQ items - show count
-                                              <>
-                                                {boqIdsArray.length} BOQ ITEMS
-                                                <BoqReferencePopUp
-                                                  item={item}
-                                                  mrHeader={mrHeader}
-                                                />
-                                              </>
-                                            );
-                                          })()}
-                                        </div>
+                                        <BoqReferencePopUp
+                                          item={item}
+                                          mrHeader={mrHeader}
+                                        />
                                       ) : (
                                         "-"
                                       )}
@@ -2912,7 +2875,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             textColor="black"
                                             style={{
                                               borderRadius: "25px",
-                                              padding: "5px 20px",
+                                              padding: "7px 20px",
                                             }}
                                             onTotalPriceChange={
                                               handleTotalPriceChange
@@ -3016,7 +2979,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 borderRadius: "25px",
                               }}
                             >
-                              <h4>TOTAL</h4>
+                              <h4>TOTAL + VAT</h4>
                               <h4>AED {totalInvoiceAmount.toFixed(2)}</h4>
                             </div>
                           </div>
@@ -3178,11 +3141,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   <th>#</th>
                   <th>CATEGORY</th>
                   <th>SUBCATEGORY</th>
-                  <th>DESCRIPTION</th>
+                  <th>ITEM</th>
                   <th>QTY</th>
                   <th>BOQ REF.</th>
-                  <th>BRAND & SPECIFICATION</th>
-                  {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>}
+                  <th>BRAND & SPECS</th>
+                  {/* {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>} */}
+                  <th>ATTACHMENT</th>
                   {mrHeader.progress_id >= 10 && canSeePrice && (
                     <th>UNIT PRICE</th>
                   )}
@@ -3209,41 +3173,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     </td>
                     <td>
                       {item.boq_line_ids ? (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                          }}
-                        >
-                          {/* ✅ Parse the boq_ids string and show count */}
-                          {(() => {
-                            const boqIdsArray = item.boq_line_ids
-                              .split(",")
-                              .map((id: string) => id.trim())
-                              .filter((id: string) => id !== "");
-
-                            return boqIdsArray.length === 1 ? (
-                              // Single BOQ item - show the ID
-                              <>
-                                {item.boq_item_number}
-                                <BoqReferencePopUp
-                                  item={item}
-                                  mrHeader={mrHeader}
-                                />
-                              </>
-                            ) : (
-                              // Multiple BOQ items - show count
-                              <>
-                                {boqIdsArray.length} BOQ ITEMS
-                                <BoqReferencePopUp
-                                  item={item}
-                                  mrHeader={mrHeader}
-                                />
-                              </>
-                            );
-                          })()}
-                        </div>
+                        <BoqReferencePopUp item={item} mrHeader={mrHeader} />
                       ) : (
                         "-"
                       )}
@@ -3269,7 +3199,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       )}
                     </td>
 
-                    {mrHeader.progress_id >= 12 && (
+                    {/* {mrHeader.progress_id >= 12 && (
                       <td>
                         <div
                           style={{
@@ -3292,12 +3222,30 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               alt="external link icon"
                             />
                           </SupplierDetailsPopUp>
-                          {/* {canSeePrice && (
+                          {canSeePrice && (
                             <span>{item.approved_total_price} AED</span>
-                          )} */}
+                          )}
                         </div>
                       </td>
-                    )}
+                    )} */}
+
+                    <td>
+                      {item.attachment ? (
+                        <Button
+                          componentType={"link"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"rgba(223, 223, 223, 1)"}
+                          textColor={"black"}
+                          style={{ padding: "7px 7px" }}
+                          href={item.attachment}
+                          target="_blank"
+                        >
+                          <img src={externalLinkIcon} alt="external link" />
+                        </Button>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
 
                     {mrHeader.progress_id >= 10 && canSeePrice && (
                       <td>
@@ -3351,7 +3299,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     borderRadius: "25px",
                   }}
                 >
-                  <h4>TOTAL</h4>
+                  <h4>TOTAL + VAT</h4>
                   <h4>AED {totalInvoiceAmount.toFixed(2)}</h4>
                 </div>
               </div>

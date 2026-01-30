@@ -187,13 +187,22 @@ export default function MR() {
       return mr.department_id === userDeptId;
     }
 
-    // Completed MRs (progress_id 25) are accessible to everyone
-    if (mr.progress_id === 25) return true;
+    // ✅ Completed MRs (progress_id 25): Show only own department's completed MRs
+    if (mr.progress_id === 25) {
+      // Managers can see all completed MRs
+      if (userDeptId === 8) return true;
+      // Other departments only see their own completed MRs
+      return mr.department_id === userDeptId;
+    }
 
     // ✅ Rejected MRs (progress_id 5 or 11): Show only to originating department
     if ([5, 11].includes(mr.progress_id)) {
-      // Managers can see all rejected MRs
-      if (userDeptId === 8) return true;
+      // ✅ Managers should NOT see price approval rejected (progress_id 11) in "Show Related Cards"
+      if (userDeptId === 8 && mr.progress_id === 11) {
+        return false;
+      }
+      // Managers can see initial approval rejected (progress_id 5)
+      if (userDeptId === 8 && mr.progress_id === 5) return true;
       // Other departments only see their own rejected MRs
       return mr.department_id === userDeptId;
     }
@@ -335,8 +344,10 @@ export default function MR() {
     // Managers (department ID 8) can view all MRs
     if (userDeptId === 8) return true;
 
-    // Completed MRs (progress_id 25) are accessible to everyone
-    if (mr.progress_id === 25) return true;
+    // ✅ Completed MRs (progress_id 25): Only show own department's completed MRs
+    if (mr.progress_id === 25) {
+      return mr.department_id === userDeptId;
+    }
 
     // ✅ Rejected MRs (5, 11): Only originating department can view
     if ([5, 11].includes(mr.progress_id)) {

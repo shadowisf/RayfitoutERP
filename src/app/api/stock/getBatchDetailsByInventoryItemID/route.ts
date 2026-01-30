@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
           qc_report_file: parseAttachment(manualDetails.qc_report_file),
           lpo_file: parseAttachment(manualDetails.lpo_file),
           dn_file: parseAttachment(manualDetails.dn_file),
-          boq_items: boqDetails, // ✅ Array of BOQ items
+          boq_items: boqDetails,
         };
 
         return NextResponse.json(response);
@@ -199,7 +199,20 @@ export async function POST(request: NextRequest) {
         return boqRows;
       };
 
-      // Stock entry with MR - full detailed query
+      // ✅ Helper function to get material subcategory from view
+      const fetchMaterialSubcategory = async (mrLineId: number) => {
+        const subcatQuery = `
+          SELECT material_subcategory
+          FROM vw_mr_lines
+          WHERE id = ?
+          LIMIT 1
+        `;
+
+        const [rows] = await db.query<RowDataPacket[]>(subcatQuery, [mrLineId]);
+        return rows.length > 0 ? rows[0].material_subcategory : null;
+      };
+
+      // Stock entry with MR - full detailed query (WITHOUT subcategory join)
       const detailsQuery = `
         SELECT 
             -- Stock Entry Details
@@ -226,8 +239,10 @@ export async function POST(request: NextRequest) {
             mrl.quantity as requested_quantity,
             mrl.material_description,
             mrl.unit as material_unit,
+            mrl.specification,
+            mrl.brand,
+            mrl.attachment as mr_line_attachment,
             mc.value as material_category,
-            msc.value as material_subcategory,
             
             -- Project Details
             p.id as project_id,
@@ -260,12 +275,14 @@ export async function POST(request: NextRequest) {
             grn.received_by as grn_received_by,
             gml.received_quantity,
             gml.notes as grn_notes,
+            gml.attachment as grn_attachment,
             
             -- QC Details (via qc_mr_line)
             qc.id as qc_id,
             qc.checked_by as qc_checked_by,
             qc.accepted_quantity as qc_accepted_quantity,
             qc.qc_status,
+            qc.reason_for_added_protection,
             
             -- QC Resolution
             qcr.id as qc_resolution_id,
@@ -282,7 +299,6 @@ export async function POST(request: NextRequest) {
         -- Join MR Line
         INNER JOIN mr_lines mrl ON s.mr_line_id = mrl.id
         INNER JOIN lut_material_categories mc ON mrl.material_category_id = mc.id
-        INNER JOIN lut_material_subcategories msc ON mrl.material_subcategory_id = msc.id
         
         -- Join Project (may be null for non-project MRs)
         LEFT JOIN projects p ON mrh.project_id = p.id
@@ -320,12 +336,20 @@ export async function POST(request: NextRequest) {
         // ✅ Fetch BOQ details for this MR line
         const boqDetails = await fetchMrBoqDetails(batchDetails.mr_line_id);
 
+        // ✅ Fetch material subcategory from view
+        const materialSubcategory = await fetchMaterialSubcategory(
+          batchDetails.mr_line_id,
+        );
+
         const response = {
           type: "mr",
           ...batchDetails,
+          material_subcategory: materialSubcategory, // ✅ Add subcategory
           invoice_file: parseAttachment(batchDetails.invoice_file),
           lpo_signed_file: parseAttachment(batchDetails.lpo_signed_file),
-          boq_items: boqDetails, // ✅ Array of BOQ items
+          mr_line_attachment: parseAttachment(batchDetails.mr_line_attachment),
+          grn_attachment: parseAttachment(batchDetails.grn_attachment),
+          boq_items: boqDetails,
         };
 
         return NextResponse.json(response);

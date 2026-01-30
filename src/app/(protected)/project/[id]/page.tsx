@@ -9,9 +9,9 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { BoqHeader } from "../../boq/[id]/types/boqHeader";
 import { MrHeader } from "../../mr/[id]/types/mrHeader";
-import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import CreateBoqHeaderButton from "../../boq/[id]/components/manager/_CreateBoqHeaderButton";
 import BoqCard from "../../boq/[id]/components/BoqCard";
+import { UploadAdditionalAttachmentsButton } from "./components/_UploadAdditionalAttachmentsButton";
 
 export default function ProjectWithID() {
   const externalLinkIcon = "/icons/external-link.svg";
@@ -249,6 +249,14 @@ export default function ProjectWithID() {
             </div>
           </>
         )}
+
+        <br />
+        <br />
+
+        <div>
+          <small>ADDITIONAL ATTACHMENTS</small>
+          <UploadAdditionalAttachmentsButton project={project} />
+        </div>
       </div>
 
       <br />
@@ -257,33 +265,35 @@ export default function ProjectWithID() {
       <br />
       <br />
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <h3>BILL OF QUANTITIES</h3>
-        {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
-          <CreateBoqHeaderButton
-            project={project}
-            onSuccess={() => fetchAllBoqsByProjectID()}
-          />
+      <div className="widget-container">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <h3>BILL OF QUANTITIES</h3>
+          {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
+            <CreateBoqHeaderButton
+              project={project}
+              onSuccess={() => fetchAllBoqsByProjectID()}
+            />
+          )}
+        </div>
+
+        <br />
+
+        {boqs?.length === 0 ? (
+          <div>No bill of quantities created</div>
+        ) : (
+          <div className="widget-grid boqs">
+            {boqs?.map((boq: any, index) => (
+              <BoqCard key={index} boqHeader={boq} />
+            ))}
+          </div>
         )}
       </div>
-
-      <br />
-
-      {boqs?.length === 0 ? (
-        <div>No bill of quantities created</div>
-      ) : (
-        <div className="widget-grid active-projects">
-          {boqs?.map((boq: any, index) => (
-            <BoqCard key={index} boqHeader={boq} />
-          ))}
-        </div>
-      )}
 
       <br />
       <br />
@@ -296,7 +306,7 @@ export default function ProjectWithID() {
       {mrs?.length === 0 ? (
         <div>No material requests created</div>
       ) : (
-        <table className="items-table">
+        <table className="items-table two-toned">
           <thead>
             <tr>
               <th>ID</th>

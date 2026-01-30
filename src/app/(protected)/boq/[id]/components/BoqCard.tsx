@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth } from "@/app/context/AuthContext";
 import { BoqHeader } from "../types/boqHeader";
 import Button from "@/app/components/Button";
 import ThreeDotsMenuButton from "@/app/components/_ThreeButtonsMenuButton";
@@ -12,8 +11,6 @@ type props = {
 };
 
 export default function BoqCard({ boqHeader }: props) {
-  const { userInfo } = useAuth();
-
   return (
     <div className="item" key={boqHeader?.id}>
       <div
@@ -66,25 +63,19 @@ export default function BoqCard({ boqHeader }: props) {
       <br />
       <br />
 
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <Button
-          componentType={"link"}
-          bgColor={"black"}
-          borderColor={"black"}
-          textColor={"white"}
-          href={`/boq/${boqHeader?.id}`}
-          target=""
-          style={{
-            width: "125px",
-            display: "flex",
-            justifyContent: "space-between",
-            borderRadius: "50px",
-          }}
-        >
-          <p>VIEW</p>
-          <p>&gt;</p>
-        </Button>
-      </div>
+      <Button
+        componentType={"link"}
+        bgColor={"black"}
+        borderColor={"black"}
+        textColor={"white"}
+        href={`/boq/${boqHeader?.id}`}
+        style={{
+          borderRadius: "50px",
+        }}
+        full
+      >
+        <p style={{ textAlign: "center" }}>VIEW &gt;</p>
+      </Button>
     </div>
   );
 }

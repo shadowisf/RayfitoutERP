@@ -76,12 +76,6 @@ export default function Inventory() {
       console.error("Error fetching inventory items:", error);
     }
   }
-
-  useEffect(() => {
-    getInventoryItems();
-  }, []);
-
-  // Fetch available quantities for all inventory items
   // Fetch available quantities for all inventory items
   useEffect(() => {
     async function fetchAllQuantities() {
@@ -154,6 +148,10 @@ export default function Inventory() {
 
     fetchAllQuantities();
   }, [inventory, filters.selectedProjects, filters.selectedLocations]); // ✅ Re-fetch when filters change
+
+  useEffect(() => {
+    getInventoryItems();
+  }, []);
 
   // Fetch all stocks for filtering
   useEffect(() => {

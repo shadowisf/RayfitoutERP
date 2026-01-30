@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { InventoryItem } from "../../types/inventoryItem";
-import { BoqLine } from "@/app/(protected)/boq/[id]/types/boqLine";
 import DownloadLPOButton from "@/app/(protected)/mr/[id]/components/procurement/_DownloadLPOButton";
 import GRNRefPopUp from "@/app/(protected)/mr/[id]/components/storekeeper/_GRNRefPopUp";
 import { MrLine } from "@/app/(protected)/mr/[id]/types/mrLine";
@@ -12,6 +11,19 @@ import { MrLine } from "@/app/(protected)/mr/[id]/types/mrLine";
 type BatchDetailsPopUpButtonProps = {
   inventoryItem: InventoryItem;
   batchID: number;
+};
+
+type BoqItem = {
+  boq_line_id: number;
+  boq_item_name: string;
+  boq_item_description: string;
+  boq_quantity: number;
+  boq_unit: string;
+  boq_rate: number;
+  boq_total_cost: number;
+  boq_header_id: number;
+  boq_project_id: number;
+  item_number?: string; // ✅ Add item_number field
 };
 
 type MRBatchDetails = {
@@ -48,10 +60,7 @@ type MRBatchDetails = {
   project_name: string | null;
 
   // BOQ Details
-  boq_line_id: number | null;
-  boq_header_id: number | null;
-  boq_item_name: string | null;
-  boq_quantity: number | null;
+  boq_items?: BoqItem[];
 
   // Supplier Details
   supplier_id: number | null;
@@ -114,10 +123,7 @@ type ManualStockDetails = {
   project_name: string | null;
 
   // BOQ Details
-  boq_line_id: number | null;
-  boq_header_id: number | null;
-  boq_item_name: string | null;
-  boq_quantity: number | null;
+  boq_items?: BoqItem[];
 
   // Supplier Details
   supplier_id: number | null;
@@ -138,8 +144,8 @@ export default function BatchDetailsPopUpButton({
 
   const [isOpen, setIsOpen] = useState(false);
   const [batchDetails, setBatchDetails] = useState<BatchDetails | null>(null);
-  const [boqItemNumber, setBoqItemNumber] = useState<string | null>(null);
   const [allStocks, setAllStocks] = useState<any[]>([]);
+  const [boqItemNumbers, setBoqItemNumbers] = useState<string[]>([]); // ✅ Store item numbers
 
   // Price analytics state
   const [priceAnalytics, setPriceAnalytics] = useState<{
@@ -150,6 +156,17 @@ export default function BatchDetailsPopUpButton({
 
   const externalLinkIcon = "/icons/external-link.svg";
   const downloadIcon = "/icons/download.svg";
+
+  const formatNumber = (value: number): string | number => {
+    // Check if the number has decimal places
+    if (value % 1 === 0) {
+      // No decimal places, return as integer
+      return Math.round(value);
+    } else {
+      // Has decimal places, format to remove trailing zeros
+      return parseFloat(value.toFixed(3));
+    }
+  };
 
   // Fetch all stocks for this inventory item
   const fetchAllStocks = async () => {
@@ -199,42 +216,49 @@ export default function BatchDetailsPopUpButton({
       }
 
       const data = await response.json();
-
       setBatchDetails(data);
 
-      // Fetch BOQ item number if boq_line_id exists
-      if (data.boq_line_id && data.project_id) {
-        fetchBOQItemNumber(data.project_id, data.boq_line_id);
+      // ✅ Fetch BOQ item numbers if boq_items exist
+      if (data.boq_items && data.boq_items.length > 0 && data.project_id) {
+        fetchBoqItemNumbers(data.project_id, data.boq_items);
       }
     } catch (error) {
       console.error("Error fetching batch details:", error);
     }
   };
 
-  const fetchBOQItemNumber = async (projectId: number, boqLineId: number) => {
+  // ✅ Fetch BOQ item numbers using the boq route
+  const fetchBoqItemNumbers = async (
+    projectId: number,
+    boqItems: BoqItem[],
+  ) => {
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getAllBoqLinesWithNumberRef`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            project_id: projectId,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ project_id: projectId }),
         },
       );
 
       if (response.ok) {
-        const boqLines: BoqLine[] = await response.json();
-        const boqLine = boqLines.find((line) => line.id === boqLineId);
-        if (boqLine) {
-          setBoqItemNumber(boqLine.item_number);
-        }
+        const allBoqLines = await response.json();
+
+        // Map boq_line_id to item_number
+        const itemNumbers = boqItems
+          .map((boqItem) => {
+            const matchingLine = allBoqLines.find(
+              (line: any) => line.id === boqItem.boq_line_id,
+            );
+            return matchingLine?.item_number || null;
+          })
+          .filter(Boolean);
+
+        setBoqItemNumbers(itemNumbers);
       }
     } catch (error) {
-      console.error("Error fetching BOQ item number:", error);
+      console.error("Error fetching BOQ item numbers:", error);
     }
   };
 
@@ -310,16 +334,6 @@ export default function BatchDetailsPopUpButton({
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     return `${diffDays} days`;
-  };
-
-  const getQuantityMissing = () => {
-    if (!batchDetails || batchDetails.type !== "mr") return "N/A";
-
-    const requested = batchDetails.requested_quantity || 0;
-    const received = batchDetails.received_quantity || 0;
-    const missing = requested - received;
-
-    return missing > 0 ? missing : 0;
   };
 
   // Price Analytics Component
@@ -497,33 +511,52 @@ export default function BatchDetailsPopUpButton({
             <small>PROJECT</small>
             <h3>
               {details.project_name ? (
-                <a href={`/project/${details.project_id}`}>
-                  {details.project_name}
-                </a>
-              ) : (
-                "-"
-              )}
-            </h3>
-          </div>
-          <div>
-            <small>BILL OF QUANTITY ITEM</small>
-            <h3>
-              {details.boq_header_id ? (
                 <Button
                   componentType={"link"}
                   bgColor={"transparent"}
                   borderColor={"transparent"}
                   textColor={"black"}
+                  href={`/project/${details.project_id}`}
                   style={{ padding: "0px", textDecoration: "underline" }}
-                  href={`/boq/${details.boq_header_id}`}
                 >
-                  {boqItemNumber || "-"}
+                  {details.project_name}
                 </Button>
               ) : (
                 "-"
               )}
             </h3>
           </div>
+          {/* ✅ Display BOQ item numbers as comma-separated list */}
+          {boqItemNumbers.length > 0 && (
+            <div>
+              <small>BILL OF QUANTITY ITEM(S)</small>
+              <h3>
+                {boqItemNumbers.map((itemNumber, index) => {
+                  const boqItem = details.boq_items?.[index];
+
+                  return (
+                    <span key={index}>
+                      {index > 0 ? ", " : ""}
+                      <Button
+                        componentType="link"
+                        bgColor="transparent"
+                        borderColor="transparent"
+                        textColor="black"
+                        style={{
+                          padding: "0",
+                          textDecoration: "underline",
+                          display: "inline",
+                        }}
+                        href={`/boq/${boqItem?.boq_header_id}`}
+                      >
+                        {itemNumber}
+                      </Button>
+                    </span>
+                  );
+                })}
+              </h3>
+            </div>
+          )}
           <div>
             <small>REQUESTED BY</small>
             <h3>{details.requested_by || "-"}</h3>
@@ -654,7 +687,8 @@ export default function BatchDetailsPopUpButton({
             <div>
               <small>ADDED QUANTITY</small>
               <h3>
-                {details.stock_quantity || "-"} {inventoryItem.unit}
+                {formatNumber(details.stock_quantity) || "-"}{" "}
+                {inventoryItem.unit}
               </h3>
             </div>
             <div>
@@ -756,22 +790,6 @@ export default function BatchDetailsPopUpButton({
                   </Button>
                 )}
             </div>
-            {/* <div>
-              {details.resolution_type && (
-                <Button
-                  componentType={"link"}
-                  bgColor={"rgba(255, 255, 255, 1)"}
-                  borderColor={"rgba(207, 207, 207, 1)"}
-                  textColor={"black"}
-                  style={{ borderRadius: "25px" }}
-                  href={""}
-                  target="_blank"
-                >
-                  NCR
-                  <img src={downloadIcon} alt="Download" />
-                </Button>
-              )}
-            </div> */}
           </div>
         </div>
       </div>
@@ -858,9 +876,16 @@ export default function BatchDetailsPopUpButton({
               <small>PROJECT</small>
               <h3>
                 {details.project_name ? (
-                  <a href={`/project/${details.project_id}`}>
+                  <Button
+                    componentType={"link"}
+                    bgColor={"transparent"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                    href={`/project/${details.project_id}`}
+                    style={{ padding: "0px", textDecoration: "underline" }}
+                  >
                     {details.project_name}
-                  </a>
+                  </Button>
                 ) : (
                   "-"
                 )}
@@ -968,7 +993,8 @@ export default function BatchDetailsPopUpButton({
               <div>
                 <small>ADDED QUANTITY</small>
                 <h3>
-                  {details.stock_quantity || "-"} {inventoryItem.unit}
+                  {formatNumber(details.stock_quantity) || "-"}{" "}
+                  {inventoryItem.unit}
                 </h3>
               </div>
               <div>
@@ -982,8 +1008,8 @@ export default function BatchDetailsPopUpButton({
         <br />
         <br />
 
-        {/* BOQ DETAILS */}
-        {details.boq_line_id && (
+        {/* ✅ BOQ DETAILS - Condensed version */}
+        {boqItemNumbers.length > 0 && (
           <>
             <div
               style={{
@@ -997,7 +1023,7 @@ export default function BatchDetailsPopUpButton({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(3, auto)",
+                  gridTemplateColumns: "repeat(2, auto)",
                   gap: "25px",
                   width: "fit-content",
                 }}
@@ -1012,7 +1038,7 @@ export default function BatchDetailsPopUpButton({
                         borderColor={"transparent"}
                         textColor={"black"}
                         href={`/project/${details.project_id}`}
-                        style={{ padding: "0px" }}
+                        style={{ padding: "0px", textDecoration: "underline" }}
                       >
                         {details.project_name}
                       </Button>
@@ -1022,23 +1048,32 @@ export default function BatchDetailsPopUpButton({
                   </h3>
                 </div>
                 <div>
-                  <small>BILL OF QUANTITY CODE</small>
+                  <small>BILL OF QUANTITY ITEM(S)</small>
                   <h3>
-                    <Button
-                      componentType={"link"}
-                      bgColor={"transparent"}
-                      borderColor={"transparent"}
-                      textColor={"black"}
-                      style={{ padding: "0px" }}
-                      href={`/boq/${details.boq_header_id}`}
-                    >
-                      {boqItemNumber || "-"}
-                    </Button>
+                    {boqItemNumbers.map((itemNumber, index) => {
+                      const boqItem = details.boq_items?.[index];
+
+                      return (
+                        <span key={index}>
+                          {index > 0 ? ", " : ""}
+                          <Button
+                            componentType="link"
+                            bgColor="transparent"
+                            borderColor="transparent"
+                            textColor="black"
+                            style={{
+                              padding: "0",
+                              textDecoration: "underline",
+                              display: "inline",
+                            }}
+                            href={`/boq/${boqItem?.boq_header_id}`}
+                          >
+                            {itemNumber}
+                          </Button>
+                        </span>
+                      );
+                    })}
                   </h3>
-                </div>
-                <div>
-                  <small>ITEM NAME</small>
-                  <h3>{details.boq_item_name || "-"}</h3>
                 </div>
               </div>
             </div>
