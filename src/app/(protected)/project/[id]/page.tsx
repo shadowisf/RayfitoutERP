@@ -12,6 +12,7 @@ import { MrHeader } from "../../mr/[id]/types/mrHeader";
 import CreateBoqHeaderButton from "../../boq/[id]/components/manager/_CreateBoqHeaderButton";
 import BoqCard from "../../boq/[id]/components/BoqCard";
 import { UploadAdditionalAttachmentsButton } from "./components/_UploadAdditionalAttachmentsButton";
+import AttachmentsList from "./components/AttachmentList";
 
 export default function ProjectWithID() {
   const externalLinkIcon = "/icons/external-link.svg";
@@ -255,7 +256,17 @@ export default function ProjectWithID() {
 
         <div>
           <small>ADDITIONAL ATTACHMENTS</small>
-          <UploadAdditionalAttachmentsButton project={project} />
+          <div style={{ display: "flex", gap: "25px" }}>
+            <AttachmentsList
+              attachments={project?.attachments}
+              projectId={project?.id}
+              onDeleteSuccess={() => fetchProjectByID()}
+            />
+            <UploadAdditionalAttachmentsButton
+              project={project}
+              onUploadSuccess={() => fetchProjectByID()}
+            />
+          </div>
         </div>
       </div>
 

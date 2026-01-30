@@ -13,4 +13,5 @@ export type Project = {
   start_date: string;
   end_date: string;
   type: string;
+  attachments: any[];
 };
