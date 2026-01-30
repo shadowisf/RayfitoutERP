@@ -1,6 +1,5 @@
 export type MrHeader = {
   mrHeader: number;
-  mrHeader: number;
   id: number;
   project_id: number;
   project_name: string;
