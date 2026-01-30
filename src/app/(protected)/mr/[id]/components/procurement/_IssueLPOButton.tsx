@@ -81,6 +81,20 @@ export default function IssueLPOButton({
     }
   }, [mrHeader.id, mrLines]);
 
+  // Add this useEffect after the existing useEffect hooks
+  useEffect(() => {
+    // Check if supplier type is marketplace and set VAT to 0
+    if (
+      mrLines.length > 0 &&
+      mrLines[0]?.approved_supplier_type === "marketplace"
+    ) {
+      setVatRate("0");
+    } else {
+      // Set default VAT rate for non-marketplace suppliers
+      setVatRate("5");
+    }
+  }, [mrLines]);
+
   useEffect(() => {
     const initialUnitPrices: { [key: number]: string } = {};
     const initialTotalPrices: { [key: number]: string } = {};
