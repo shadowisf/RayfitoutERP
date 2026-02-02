@@ -153,11 +153,10 @@ const styles = StyleSheet.create({
     color: "#333333",
   },
   tableColDescription: {
-    width: "50%",
+    width: "75%",
   },
   tableColQty: {
-    width: "15%",
-    textAlign: "center",
+    width: "20%",
   },
   tableColUnitPrice: {
     width: "17.5%",
@@ -277,6 +276,26 @@ type LpoPDFProps = {
 export function LpoPDF({ lpo }: LpoPDFProps) {
   const logo = "/icons/logo.jpg";
 
+  const vatRate = Number(lpo.vat_rate) || 0;
+  const discountRate = Number(lpo.discount) || 0;
+  const shipping = Number(lpo.shipping_and_handling) || 0;
+
+  const lineCalculations = lpo.lpo_mr_lines.map((item) => {
+    const unitPrice = Number(item.unit_price) || 0;
+    const quantity = Number(item.quantity) || 0;
+
+    const subtotal = unitPrice * quantity;
+    const vat = subtotal * (vatRate / 100);
+    const total = subtotal + vat;
+
+    return {
+      ...item,
+      subtotal,
+      vat,
+      total,
+    };
+  });
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -390,10 +409,10 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
                 {Number(item.quantity).toFixed(2)} {item.unit}
               </Text>
               <Text style={styles.tableColUnitPrice}>
-                AED {Number(item.unit_price).toFixed(2)}
+                AED {(item.unit_price * (1 + vatRate / 100)).toFixed(2)}
               </Text>
               <Text style={styles.tableColTotalPrice}>
-                AED {Number(item.total_price).toFixed(2)}
+                AED {(item.total_price * (1 + vatRate / 100)).toFixed(2)}
               </Text>
             </View>
           ))}
@@ -419,9 +438,15 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
             {/* Summary Table with Borders */}
             <View style={styles.summaryTable}>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>SUB TOTAL</Text>
+                <Text style={styles.summaryLabel}>SUBTOTAL</Text>
                 <Text style={styles.summaryValue}>
-                  AED {Number(lpo.subtotal).toFixed(2)}
+                  AED{" "}
+                  {Number(
+                    lineCalculations.reduce(
+                      (sum, item) => sum + item.subtotal,
+                      0,
+                    ),
+                  ).toFixed(2)}
                 </Text>
               </View>
 
@@ -454,7 +479,10 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>TOTAL</Text>
               <Text style={styles.totalValue}>
-                AED {Number(lpo.total).toFixed(2)}
+                AED{" "}
+                {Number(
+                  lineCalculations.reduce((sum, item) => sum + item.total, 0),
+                ).toFixed(2)}
               </Text>
             </View>
 

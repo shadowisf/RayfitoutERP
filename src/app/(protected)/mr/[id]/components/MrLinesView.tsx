@@ -375,186 +375,57 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     );
   }
 
+  const toNumber = (value: any) => Number(value) || 0;
+
+  const calculateLineTotalWithVat = (item: MrLine) => {
+    const unitPrice = toNumber(item.approved_unit_price);
+    const quantity = toNumber(item.quantity);
+    const vatRate = toNumber(item.approved_vat_rate); // percentage
+
+    return unitPrice * quantity * (1 + vatRate / 100);
+  };
+
   // Update the useEffect that calculates total
   useEffect(() => {
-    async function calculateTotal() {
-      let total = 0;
+    let total = 0;
 
-      // ✅ For progress_id >= 12, try to fetch LPO totals, fallback to approved prices
-      if (mrHeader.progress_id >= 12) {
-        try {
-          // Get unique supplier IDs
-          const uniqueSupplierIds = new Set<number>();
+    const calculateItemTotal = (item: MrLine) => {
+      const unitPrice = Number(item.approved_unit_price) || 0;
+      const quantity = Number(item.quantity) || 0;
+      const vatRate = Number(item.approved_vat_rate) || 0;
 
-          if (showBySupplier) {
-            for (const supplier in mrLinesBySupplier) {
-              const items = mrLinesBySupplier[supplier];
-              if (items.length > 0 && items[0].approved_supplier_id) {
-                uniqueSupplierIds.add(items[0].approved_supplier_id);
-              }
-            }
-          } else {
-            for (const category in regroupedMrLines) {
-              for (const subCategory in regroupedMrLines[category]) {
-                for (const supplier in regroupedMrLines[category][
-                  subCategory
-                ]) {
-                  const items =
-                    regroupedMrLines[category][subCategory][supplier];
-                  if (items.length > 0 && items[0].approved_supplier_id) {
-                    uniqueSupplierIds.add(items[0].approved_supplier_id);
-                  }
-                }
-              }
-            }
-          }
+      const subtotal = unitPrice * quantity;
+      const vatAmount = subtotal * (vatRate / 100);
 
-          // Fetch LPO total for each supplier
-          const lpoPromises = Array.from(uniqueSupplierIds).map(
-            async (supplierId) => {
-              try {
-                const response = await fetch(
-                  `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      mr_header_id: mrHeader.id,
-                      supplier_id: supplierId,
-                    }),
-                  },
-                );
+      return subtotal + vatAmount;
+    };
 
-                if (response.ok) {
-                  const data = await response.json();
-                  if (data.success && data.data && data.data.length > 0) {
-                    const lpo = data.data[0];
-                    return {
-                      hasLpo: true,
-                      total: parseFloat(String(lpo.total)) || 0,
-                      supplierId,
-                    };
-                  }
-                }
-                return { hasLpo: false, total: 0, supplierId };
-              } catch (error) {
-                console.error(
-                  `Error fetching LPO for supplier ${supplierId}:`,
-                  error,
-                );
-                return { hasLpo: false, total: 0, supplierId };
-              }
-            },
-          );
+    if (showByItem) {
+      for (const category in regroupedMrLines) {
+        for (const subCategory in regroupedMrLines[category]) {
+          for (const supplier in regroupedMrLines[category][subCategory]) {
+            const items = regroupedMrLines[category][subCategory][supplier];
 
-          const lpoResults = await Promise.all(lpoPromises);
-
-          // Check if all suppliers have LPOs
-          const allHaveLpos = lpoResults.every((result) => result.hasLpo);
-
-          if (allHaveLpos && lpoResults.length > 0) {
-            // ✅ Use LPO totals if all suppliers have LPOs
-            total = lpoResults.reduce((sum, result) => sum + result.total, 0);
-          } else {
-            // ✅ Fallback to approved_total_price if any supplier doesn't have LPO
-            if (showByItem) {
-              for (const category in regroupedMrLines) {
-                for (const subCategory in regroupedMrLines[category]) {
-                  for (const supplier in regroupedMrLines[category][
-                    subCategory
-                  ]) {
-                    const items =
-                      regroupedMrLines[category][subCategory][supplier];
-                    items.forEach((item: MrLine) => {
-                      if (item.approved_total_price) {
-                        total +=
-                          parseFloat(String(item.approved_total_price)) || 0;
-                      }
-                    });
-                  }
-                }
-              }
-            } else if (showBySupplier) {
-              for (const supplier in mrLinesBySupplier) {
-                const items = mrLinesBySupplier[supplier];
-                items.forEach((item: MrLine) => {
-                  if (item.approved_total_price) {
-                    total += parseFloat(String(item.approved_total_price)) || 0;
-                  }
-                });
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Error calculating LPO totals:", error);
-          // ✅ Fallback to approved_total_price on error
-          if (showByItem) {
-            for (const category in regroupedMrLines) {
-              for (const subCategory in regroupedMrLines[category]) {
-                for (const supplier in regroupedMrLines[category][
-                  subCategory
-                ]) {
-                  const items =
-                    regroupedMrLines[category][subCategory][supplier];
-                  items.forEach((item: MrLine) => {
-                    if (item.approved_total_price) {
-                      total +=
-                        parseFloat(String(item.approved_total_price)) || 0;
-                    }
-                  });
-                }
-              }
-            }
-          } else if (showBySupplier) {
-            for (const supplier in mrLinesBySupplier) {
-              const items = mrLinesBySupplier[supplier];
-              items.forEach((item: MrLine) => {
-                if (item.approved_total_price) {
-                  total += parseFloat(String(item.approved_total_price)) || 0;
-                }
-              });
-            }
-          }
-        }
-      } else {
-        // ✅ For progress_id < 12, use approved_total_price
-        if (showByItem) {
-          for (const category in regroupedMrLines) {
-            for (const subCategory in regroupedMrLines[category]) {
-              for (const supplier in regroupedMrLines[category][subCategory]) {
-                const items = regroupedMrLines[category][subCategory][supplier];
-                items.forEach((item: MrLine) => {
-                  if (item.approved_total_price) {
-                    total += parseFloat(String(item.approved_total_price)) || 0;
-                  }
-                });
-              }
-            }
-          }
-        } else if (showBySupplier) {
-          for (const supplier in mrLinesBySupplier) {
-            const items = mrLinesBySupplier[supplier];
             items.forEach((item: MrLine) => {
-              if (item.approved_total_price) {
-                total += parseFloat(String(item.approved_total_price)) || 0;
-              }
+              total += calculateItemTotal(item);
             });
           }
         }
       }
-
-      setTotalInvoiceAmount(total);
     }
 
-    calculateTotal();
-  }, [
-    regroupedMrLines,
-    mrLinesBySupplier,
-    showByItem,
-    showBySupplier,
-    mrHeader.progress_id,
-    mrHeader.id,
-  ]);
+    if (showBySupplier) {
+      for (const supplier in mrLinesBySupplier) {
+        const items = mrLinesBySupplier[supplier];
+
+        items.forEach((item: MrLine) => {
+          total += calculateItemTotal(item);
+        });
+      }
+    }
+
+    setTotalInvoiceAmount(Number(total.toFixed(2)));
+  }, [regroupedMrLines, mrLinesBySupplier, showByItem, showBySupplier]);
 
   useEffect(() => {
     const total = Object.values(mrLinePrices).reduce(
@@ -2414,7 +2285,20 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           canSeePrice && (
                                             <td>
                                               {item.approved_unit_price
-                                                ? `AED ${parseFloat(String(item.approved_unit_price)).toFixed(2)}`
+                                                ? (() => {
+                                                    const unitPrice = Number(
+                                                      item.approved_unit_price,
+                                                    );
+                                                    const vatRate = Number(
+                                                      item.approved_vat_rate ||
+                                                        0,
+                                                    ); // percentage
+                                                    const priceWithVat =
+                                                      unitPrice *
+                                                      (1 + vatRate / 100);
+
+                                                    return `AED ${priceWithVat.toFixed(2)}`;
+                                                  })()
                                                 : "-"}
                                             </td>
                                           )}
@@ -2422,7 +2306,20 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           canSeePrice && (
                                             <td>
                                               {item.approved_total_price
-                                                ? `AED ${parseFloat(String(item.approved_total_price)).toFixed(2)}`
+                                                ? (() => {
+                                                    const unitPrice = Number(
+                                                      item.approved_total_price,
+                                                    );
+                                                    const vatRate = Number(
+                                                      item.approved_vat_rate ||
+                                                        0,
+                                                    ); // percentage
+                                                    const priceWithVat =
+                                                      unitPrice *
+                                                      (1 + vatRate / 100);
+
+                                                    return `AED ${priceWithVat.toFixed(2)}`;
+                                                  })()
                                                 : "-"}
                                             </td>
                                           )}
@@ -2488,7 +2385,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                 padding: "15px 20px",
                                               }}
                                             >
-                                              TOTAL + VAT
+                                              TOTAL
                                             </td>
                                             <td></td>
                                             <td></td>
@@ -2968,7 +2865,19 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       canSeePrice && (
                                         <td>
                                           {item.approved_unit_price
-                                            ? `AED ${parseFloat(String(item.approved_unit_price)).toFixed(2)}`
+                                            ? (() => {
+                                                const unitPrice = Number(
+                                                  item.approved_unit_price,
+                                                );
+                                                const vatRate = Number(
+                                                  item.approved_vat_rate || 0,
+                                                ); // percentage
+                                                const priceWithVat =
+                                                  unitPrice *
+                                                  (1 + vatRate / 100);
+
+                                                return `AED ${priceWithVat.toFixed(2)}`;
+                                              })()
                                             : "-"}
                                         </td>
                                       )}
@@ -2976,7 +2885,19 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       canSeePrice && (
                                         <td>
                                           {item.approved_total_price
-                                            ? `AED ${parseFloat(String(item.approved_total_price)).toFixed(2)}`
+                                            ? (() => {
+                                                const unitPrice = Number(
+                                                  item.approved_total_price,
+                                                );
+                                                const vatRate = Number(
+                                                  item.approved_vat_rate || 0,
+                                                ); // percentage
+                                                const priceWithVat =
+                                                  unitPrice *
+                                                  (1 + vatRate / 100);
+
+                                                return `AED ${priceWithVat.toFixed(2)}`;
+                                              })()
                                             : "-"}
                                         </td>
                                       )}
@@ -3039,7 +2960,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             padding: "15px 20px",
                                           }}
                                         >
-                                          TOTAL + VAT
+                                          TOTAL
                                         </td>
                                         <td></td>
                                         <td></td>
@@ -3332,14 +3253,36 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     {mrHeader.progress_id >= 10 && canSeePrice && (
                       <td>
                         {item.approved_unit_price
-                          ? `AED ${parseFloat(String(item.approved_unit_price)).toFixed(2)}`
+                          ? (() => {
+                              const unitPrice = Number(
+                                item.approved_unit_price,
+                              );
+                              const vatRate = Number(
+                                item.approved_vat_rate || 0,
+                              ); // percentage
+                              const priceWithVat =
+                                unitPrice * (1 + vatRate / 100);
+
+                              return `AED ${priceWithVat.toFixed(2)}`;
+                            })()
                           : "-"}
                       </td>
                     )}
                     {mrHeader.progress_id >= 10 && canSeePrice && (
                       <td>
                         {item.approved_total_price
-                          ? `AED ${parseFloat(String(item.approved_total_price)).toFixed(2)}`
+                          ? (() => {
+                              const unitPrice = Number(
+                                item.approved_total_price,
+                              );
+                              const vatRate = Number(
+                                item.approved_vat_rate || 0,
+                              ); // percentage
+                              const priceWithVat =
+                                unitPrice * (1 + vatRate / 100);
+
+                              return `AED ${priceWithVat.toFixed(2)}`;
+                            })()
                           : "-"}
                       </td>
                     )}
@@ -3395,7 +3338,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 padding: "15px 20px",
                               }}
                             >
-                              TOTAL + VAT
+                              TOTAL
                             </td>
                             <td></td>
                             <td></td>

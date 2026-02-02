@@ -48,4 +48,5 @@ export type MrLine = {
   approved_supplier_phone: string;
   approved_supplier_email: string;
   approved_supplier_address: string;
+  approved_vat_rate: number;
 };
