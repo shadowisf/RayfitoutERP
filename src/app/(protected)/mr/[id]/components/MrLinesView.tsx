@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect } from "react";
 import AddMrItemButton from "./department/_AddMrItemButton";
 import { MrLine } from "../types/mrLine";
 import EditMrItemButton from "./department/_EditMrItemButton";
@@ -136,12 +136,133 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
   const [mrLinePrices, setMrLinePrices] = useState<{ [key: number]: number }>(
     {},
   );
+  const [lpoLinePrices, setLpoLinePrices] = useState<{
+    [mrLineId: number]: {
+      unitPrice: number;
+      totalPrice: number;
+      vatRate: number;
+    };
+  }>({});
 
   const canSeePrice =
     userInfo?.departmentID === 8 ||
+    userInfo?.departmentID === 9 ||
     userInfo?.departmentID === 12 ||
     userInfo?.departmentID === 10 ||
     userInfo?.departmentID === 16;
+
+  useEffect(() => {
+    async function fetchLpoPrices() {
+      const pricesMap: {
+        [mrLineId: number]: {
+          unitPrice: number;
+          totalPrice: number;
+          vatRate: number;
+        };
+      } = {};
+
+      try {
+        // Get all unique supplier IDs
+        const uniqueSuppliers = new Map<number, MrLine[]>();
+
+        for (const category in mrLines) {
+          for (const subCategory in mrLines[category]) {
+            for (const supplier in mrLines[category][subCategory]) {
+              const items = mrLines[category][subCategory][supplier];
+              if (items.length > 0) {
+                const supplierId = items[0].approved_supplier_id;
+                if (supplierId) {
+                  if (!uniqueSuppliers.has(supplierId)) {
+                    uniqueSuppliers.set(supplierId, []);
+                  }
+                  uniqueSuppliers.get(supplierId)?.push(...items);
+                }
+              }
+            }
+          }
+        }
+
+        // Fetch LPO details for each supplier
+        const fetchPromises = Array.from(uniqueSuppliers.entries()).map(
+          async ([supplierId, supplierItems]) => {
+            try {
+              // Get LPO for this supplier
+              const lpoResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    mr_header_id: mrHeader.id,
+                    supplier_id: supplierId,
+                  }),
+                },
+              );
+
+              if (lpoResponse.ok) {
+                const lpoData = await lpoResponse.json();
+
+                if (
+                  lpoData.success &&
+                  lpoData.data &&
+                  lpoData.data.length > 0
+                ) {
+                  const lpo = lpoData.data[0];
+
+                  // Get LPO details
+                  const lpoDetailsResponse = await fetch(
+                    `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPODetails`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ lpo_id: lpo.id }),
+                    },
+                  );
+
+                  if (lpoDetailsResponse.ok) {
+                    const lpoDetailsData = await lpoDetailsResponse.json();
+
+                    if (
+                      lpoDetailsData.success &&
+                      lpoDetailsData.data &&
+                      lpoDetailsData.data.lpo_mr_lines
+                    ) {
+                      // Map LPO line prices to MR line IDs
+                      lpoDetailsData.data.lpo_mr_lines.forEach(
+                        (lpoLine: any) => {
+                          const unitPrice = Number(lpoLine.unit_price) || 0;
+                          const quantity = Number(lpoLine.quantity) || 0;
+                          const vatRate = Number(lpo.vat_rate) || 0;
+
+                          pricesMap[lpoLine.mr_line_id] = {
+                            unitPrice: unitPrice,
+                            totalPrice: unitPrice * quantity,
+                            vatRate: vatRate,
+                          };
+                        },
+                      );
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error(
+                `Error fetching LPO prices for supplier ${supplierId}:`,
+                error,
+              );
+            }
+          },
+        );
+
+        await Promise.all(fetchPromises);
+        setLpoLinePrices(pricesMap);
+      } catch (error) {
+        console.error("Error fetching LPO prices:", error);
+      }
+    }
+
+    fetchLpoPrices();
+  }, [mrLines, mrHeader.progress_id, mrHeader.id]);
 
   // Regroup mrLines based on progress_id
   useEffect(() => {
@@ -375,24 +496,25 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     );
   }
 
-  const toNumber = (value: any) => Number(value) || 0;
-
-  const calculateLineTotalWithVat = (item: MrLine) => {
-    const unitPrice = toNumber(item.approved_unit_price);
-    const quantity = toNumber(item.quantity);
-    const vatRate = toNumber(item.approved_vat_rate); // percentage
-
-    return unitPrice * quantity * (1 + vatRate / 100);
-  };
-
-  // Update the useEffect that calculates total
   useEffect(() => {
     let total = 0;
 
     const calculateItemTotal = (item: MrLine) => {
-      const unitPrice = Number(item.approved_unit_price) || 0;
-      const quantity = Number(item.quantity) || 0;
-      const vatRate = Number(item.approved_vat_rate) || 0;
+      let unitPrice: number;
+      let quantity: number;
+      let vatRate: number;
+
+      if (mrHeader.progress_id >= 12 && lpoLinePrices[item.id]) {
+        // Use LPO prices
+        unitPrice = lpoLinePrices[item.id].unitPrice;
+        quantity = Number(item.quantity) || 0;
+        vatRate = lpoLinePrices[item.id].vatRate;
+      } else {
+        // Use quotation prices
+        unitPrice = Number(item.approved_unit_price) || 0;
+        quantity = Number(item.quantity) || 0;
+        vatRate = Number(item.approved_vat_rate) || 0;
+      }
 
       const subtotal = unitPrice * quantity;
       const vatAmount = subtotal * (vatRate / 100);
@@ -405,7 +527,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         for (const subCategory in regroupedMrLines[category]) {
           for (const supplier in regroupedMrLines[category][subCategory]) {
             const items = regroupedMrLines[category][subCategory][supplier];
-
             items.forEach((item: MrLine) => {
               total += calculateItemTotal(item);
             });
@@ -417,7 +538,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     if (showBySupplier) {
       for (const supplier in mrLinesBySupplier) {
         const items = mrLinesBySupplier[supplier];
-
         items.forEach((item: MrLine) => {
           total += calculateItemTotal(item);
         });
@@ -425,7 +545,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     }
 
     setTotalInvoiceAmount(Number(total.toFixed(2)));
-  }, [regroupedMrLines, mrLinesBySupplier, showByItem, showBySupplier]);
+  }, [
+    regroupedMrLines,
+    mrLinesBySupplier,
+    showByItem,
+    showBySupplier,
+    lpoLinePrices,
+    mrHeader.progress_id,
+  ]);
 
   useEffect(() => {
     const total = Object.values(mrLinePrices).reduce(
@@ -1899,10 +2026,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               isSmartSelectPortal
                               allMrLines={
                                 showByItem
-                                  ? regroupedMrLines
+                                  ? { [category]: { [subCategory]: suppliers } }
                                   : mrLinesBySupplier
                               }
-                              portalTargetId="smart-select-portal"
+                              portalTargetId={`smart-select-portal-${categoryIndex}-${subCategoryIndex}`}
                             />
                           )}
 
@@ -1997,7 +2124,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           <span>VENDOR & QUOTATION</span>
                                           {userInfo?.departmentID === 8 &&
                                             mrHeader.progress_id === 10 && (
-                                              <div id="smart-select-portal"></div>
+                                              <div
+                                                id={`smart-select-portal-${categoryIndex}-${subCategoryIndex}`}
+                                              ></div>
                                             )}
                                         </div>
                                       </th>
@@ -2284,43 +2413,76 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         {mrHeader.progress_id >= 10 &&
                                           canSeePrice && (
                                             <td>
-                                              {item.approved_unit_price
-                                                ? (() => {
-                                                    const unitPrice = Number(
-                                                      item.approved_unit_price,
-                                                    );
-                                                    const vatRate = Number(
-                                                      item.approved_vat_rate ||
-                                                        0,
-                                                    ); // percentage
-                                                    const priceWithVat =
-                                                      unitPrice *
-                                                      (1 + vatRate / 100);
+                                              {(() => {
+                                                let unitPrice: number;
+                                                let vatRate: number;
 
-                                                    return `AED ${priceWithVat.toFixed(2)}`;
-                                                  })()
-                                                : "-"}
+                                                if (
+                                                  mrHeader.progress_id >= 12 &&
+                                                  lpoLinePrices[item.id]
+                                                ) {
+                                                  // Use LPO prices
+                                                  unitPrice =
+                                                    lpoLinePrices[item.id]
+                                                      .unitPrice;
+                                                  vatRate =
+                                                    lpoLinePrices[item.id]
+                                                      .vatRate;
+                                                } else {
+                                                  // Use quotation prices
+                                                  unitPrice =
+                                                    Number(
+                                                      item.approved_unit_price,
+                                                    ) || 0;
+                                                  vatRate =
+                                                    Number(
+                                                      item.approved_vat_rate,
+                                                    ) || 0;
+                                                }
+
+                                                const priceWithVat =
+                                                  unitPrice *
+                                                  (1 + vatRate / 100);
+                                                return `AED ${priceWithVat.toFixed(2)}`;
+                                              })()}
                                             </td>
                                           )}
+
                                         {mrHeader.progress_id >= 10 &&
                                           canSeePrice && (
                                             <td>
-                                              {item.approved_total_price
-                                                ? (() => {
-                                                    const unitPrice = Number(
-                                                      item.approved_total_price,
-                                                    );
-                                                    const vatRate = Number(
-                                                      item.approved_vat_rate ||
-                                                        0,
-                                                    ); // percentage
-                                                    const priceWithVat =
-                                                      unitPrice *
-                                                      (1 + vatRate / 100);
+                                              {(() => {
+                                                let totalPrice: number;
+                                                let vatRate: number;
 
-                                                    return `AED ${priceWithVat.toFixed(2)}`;
-                                                  })()
-                                                : "-"}
+                                                if (
+                                                  mrHeader.progress_id >= 12 &&
+                                                  lpoLinePrices[item.id]
+                                                ) {
+                                                  // Use LPO prices
+                                                  totalPrice =
+                                                    lpoLinePrices[item.id]
+                                                      .totalPrice;
+                                                  vatRate =
+                                                    lpoLinePrices[item.id]
+                                                      .vatRate;
+                                                } else {
+                                                  // Use quotation prices
+                                                  totalPrice =
+                                                    Number(
+                                                      item.approved_total_price,
+                                                    ) || 0;
+                                                  vatRate =
+                                                    Number(
+                                                      item.approved_vat_rate,
+                                                    ) || 0;
+                                                }
+
+                                                const priceWithVat =
+                                                  totalPrice *
+                                                  (1 + vatRate / 100);
+                                                return `AED ${priceWithVat.toFixed(2)}`;
+                                              })()}
                                             </td>
                                           )}
 
@@ -2497,9 +2659,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           mrLine={{} as MrLine}
                           isSmartSelectPortal
                           allMrLines={
-                            showByItem ? regroupedMrLines : mrLinesBySupplier
+                            showByItem
+                              ? {
+                                  [activeCategory]: {
+                                    [subCategory]: suppliers,
+                                  },
+                                }
+                              : mrLinesBySupplier
                           }
-                          portalTargetId="smart-select-portal"
+                          portalTargetId={`smart-select-portal-specific-${index}`}
                         />
                       )}
 
@@ -2590,7 +2758,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       <span>VENDOR & QUOTATION</span>
                                       {userInfo?.departmentID === 8 &&
                                         mrHeader.progress_id === 10 && (
-                                          <div id="smart-select-portal"></div>
+                                          <div
+                                            id={`smart-select-portal-specific-${index}`}
+                                          ></div>
                                         )}
                                     </div>
                                   </th>
@@ -2864,41 +3034,72 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     {mrHeader.progress_id >= 10 &&
                                       canSeePrice && (
                                         <td>
-                                          {item.approved_unit_price
-                                            ? (() => {
-                                                const unitPrice = Number(
-                                                  item.approved_unit_price,
-                                                );
-                                                const vatRate = Number(
-                                                  item.approved_vat_rate || 0,
-                                                ); // percentage
-                                                const priceWithVat =
-                                                  unitPrice *
-                                                  (1 + vatRate / 100);
+                                          {(() => {
+                                            let unitPrice: number;
+                                            let vatRate: number;
 
-                                                return `AED ${priceWithVat.toFixed(2)}`;
-                                              })()
-                                            : "-"}
+                                            if (
+                                              mrHeader.progress_id >= 12 &&
+                                              lpoLinePrices[item.id]
+                                            ) {
+                                              // Use LPO prices
+                                              unitPrice =
+                                                lpoLinePrices[item.id]
+                                                  .unitPrice;
+                                              vatRate =
+                                                lpoLinePrices[item.id].vatRate;
+                                            } else {
+                                              // Use quotation prices
+                                              unitPrice =
+                                                Number(
+                                                  item.approved_unit_price,
+                                                ) || 0;
+                                              vatRate =
+                                                Number(
+                                                  item.approved_vat_rate,
+                                                ) || 0;
+                                            }
+
+                                            const priceWithVat =
+                                              unitPrice * (1 + vatRate / 100);
+                                            return `AED ${priceWithVat.toFixed(2)}`;
+                                          })()}
                                         </td>
                                       )}
+
                                     {mrHeader.progress_id >= 10 &&
                                       canSeePrice && (
                                         <td>
-                                          {item.approved_total_price
-                                            ? (() => {
-                                                const unitPrice = Number(
-                                                  item.approved_total_price,
-                                                );
-                                                const vatRate = Number(
-                                                  item.approved_vat_rate || 0,
-                                                ); // percentage
-                                                const priceWithVat =
-                                                  unitPrice *
-                                                  (1 + vatRate / 100);
+                                          {(() => {
+                                            let totalPrice: number;
+                                            let vatRate: number;
 
-                                                return `AED ${priceWithVat.toFixed(2)}`;
-                                              })()
-                                            : "-"}
+                                            if (
+                                              mrHeader.progress_id >= 12 &&
+                                              lpoLinePrices[item.id]
+                                            ) {
+                                              // Use LPO prices
+                                              totalPrice =
+                                                lpoLinePrices[item.id]
+                                                  .totalPrice;
+                                              vatRate =
+                                                lpoLinePrices[item.id].vatRate;
+                                            } else {
+                                              // Use quotation prices
+                                              totalPrice =
+                                                Number(
+                                                  item.approved_total_price,
+                                                ) || 0;
+                                              vatRate =
+                                                Number(
+                                                  item.approved_vat_rate,
+                                                ) || 0;
+                                            }
+
+                                            const priceWithVat =
+                                              totalPrice * (1 + vatRate / 100);
+                                            return `AED ${priceWithVat.toFixed(2)}`;
+                                          })()}
                                         </td>
                                       )}
 
@@ -3252,38 +3453,51 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
                     {mrHeader.progress_id >= 10 && canSeePrice && (
                       <td>
-                        {item.approved_unit_price
-                          ? (() => {
-                              const unitPrice = Number(
-                                item.approved_unit_price,
-                              );
-                              const vatRate = Number(
-                                item.approved_vat_rate || 0,
-                              ); // percentage
-                              const priceWithVat =
-                                unitPrice * (1 + vatRate / 100);
+                        {(() => {
+                          let unitPrice: number;
+                          let vatRate: number;
 
-                              return `AED ${priceWithVat.toFixed(2)}`;
-                            })()
-                          : "-"}
+                          if (
+                            mrHeader.progress_id >= 12 &&
+                            lpoLinePrices[item.id]
+                          ) {
+                            // Use LPO prices
+                            unitPrice = lpoLinePrices[item.id].unitPrice;
+                            vatRate = lpoLinePrices[item.id].vatRate;
+                          } else {
+                            // Use quotation prices
+                            unitPrice = Number(item.approved_unit_price) || 0;
+                            vatRate = Number(item.approved_vat_rate) || 0;
+                          }
+
+                          const priceWithVat = unitPrice * (1 + vatRate / 100);
+                          return `AED ${priceWithVat.toFixed(2)}`;
+                        })()}
                       </td>
                     )}
+
                     {mrHeader.progress_id >= 10 && canSeePrice && (
                       <td>
-                        {item.approved_total_price
-                          ? (() => {
-                              const unitPrice = Number(
-                                item.approved_total_price,
-                              );
-                              const vatRate = Number(
-                                item.approved_vat_rate || 0,
-                              ); // percentage
-                              const priceWithVat =
-                                unitPrice * (1 + vatRate / 100);
+                        {(() => {
+                          let totalPrice: number;
+                          let vatRate: number;
 
-                              return `AED ${priceWithVat.toFixed(2)}`;
-                            })()
-                          : "-"}
+                          if (
+                            mrHeader.progress_id >= 12 &&
+                            lpoLinePrices[item.id]
+                          ) {
+                            // Use LPO prices
+                            totalPrice = lpoLinePrices[item.id].totalPrice;
+                            vatRate = lpoLinePrices[item.id].vatRate;
+                          } else {
+                            // Use quotation prices
+                            totalPrice = Number(item.approved_total_price) || 0;
+                            vatRate = Number(item.approved_vat_rate) || 0;
+                          }
+
+                          const priceWithVat = totalPrice * (1 + vatRate / 100);
+                          return `AED ${priceWithVat.toFixed(2)}`;
+                        })()}
                       </td>
                     )}
 

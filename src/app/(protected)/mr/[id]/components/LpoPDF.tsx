@@ -280,21 +280,25 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
   const discountRate = Number(lpo.discount) || 0;
   const shipping = Number(lpo.shipping_and_handling) || 0;
 
-  const lineCalculations = lpo.lpo_mr_lines.map((item) => {
+  // ✅ Calculate subtotal from all line items (without VAT)
+  const subtotal = lpo.lpo_mr_lines.reduce((sum, item) => {
     const unitPrice = Number(item.unit_price) || 0;
     const quantity = Number(item.quantity) || 0;
+    return sum + unitPrice * quantity;
+  }, 0);
 
-    const subtotal = unitPrice * quantity;
-    const vat = subtotal * (vatRate / 100);
-    const total = subtotal + vat;
+  // ✅ Apply discount
+  const discountAmount = subtotal * (discountRate / 100);
+  const subtotalAfterDiscount = subtotal - discountAmount;
 
-    return {
-      ...item,
-      subtotal,
-      vat,
-      total,
-    };
-  });
+  // ✅ Add shipping
+  const subtotalWithShipping = subtotalAfterDiscount + shipping;
+
+  // ✅ Calculate VAT on the final amount
+  const vatAmount = subtotalWithShipping * (vatRate / 100);
+
+  // ✅ Final total
+  const total = subtotalWithShipping + vatAmount;
 
   return (
     <Document>
@@ -400,22 +404,28 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
             <Text style={styles.tableColUnitPrice}>UNIT PRICE</Text>
             <Text style={styles.tableColTotalPrice}>TOTAL PRICE</Text>
           </View>
-          {lpo.lpo_mr_lines.map((item, index) => (
-            <View key={index} style={styles.tableRow}>
-              <Text style={styles.tableColDescription}>
-                {item.material_description}
-              </Text>
-              <Text style={styles.tableColQty}>
-                {Number(item.quantity).toFixed(2)} {item.unit}
-              </Text>
-              <Text style={styles.tableColUnitPrice}>
-                AED {(item.unit_price * (1 + vatRate / 100)).toFixed(2)}
-              </Text>
-              <Text style={styles.tableColTotalPrice}>
-                AED {(item.total_price * (1 + vatRate / 100)).toFixed(2)}
-              </Text>
-            </View>
-          ))}
+          {lpo.lpo_mr_lines.map((item, index) => {
+            const unitPrice = Number(item.unit_price) || 0;
+            const quantity = Number(item.quantity) || 0;
+            const lineTotal = unitPrice * quantity;
+
+            return (
+              <View key={index} style={styles.tableRow}>
+                <Text style={styles.tableColDescription}>
+                  {item.material_description}
+                </Text>
+                <Text style={styles.tableColQty}>
+                  {quantity.toFixed(2)} {item.unit}
+                </Text>
+                <Text style={styles.tableColUnitPrice}>
+                  AED {unitPrice.toFixed(2)}
+                </Text>
+                <Text style={styles.tableColTotalPrice}>
+                  AED {lineTotal.toFixed(2)}
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
         {/* Bottom Section - Terms on Left, Summary + Signature on Right */}
@@ -440,37 +450,37 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>SUBTOTAL</Text>
                 <Text style={styles.summaryValue}>
-                  AED{" "}
-                  {Number(
-                    lineCalculations.reduce(
-                      (sum, item) => sum + item.subtotal,
-                      0,
-                    ),
-                  ).toFixed(2)}
+                  AED {subtotal.toFixed(2)}
                 </Text>
               </View>
 
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>DISCOUNT</Text>
-                <Text style={styles.summaryValue}>{lpo.discount}%</Text>
+                <Text style={styles.summaryLabel}>
+                  DISCOUNT ({discountRate}%)
+                </Text>
+                <Text style={styles.summaryValue}>
+                  - AED {discountAmount.toFixed(2)}
+                </Text>
               </View>
 
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>S&H</Text>
                 <Text style={styles.summaryValue}>
-                  AED {Number(lpo.shipping_and_handling).toFixed(2)}
+                  AED {shipping.toFixed(2)}
                 </Text>
               </View>
 
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>VAT RATE</Text>
-                <Text style={styles.summaryValue}>{lpo.vat_rate}%</Text>
+                <Text style={styles.summaryLabel}>VAT ({vatRate}%)</Text>
+                <Text style={styles.summaryValue}>
+                  AED {vatAmount.toFixed(2)}
+                </Text>
               </View>
 
               <View style={[styles.summaryRow, styles.summaryRowLast]}>
-                <Text style={styles.summaryLabel}>VAT</Text>
+                <Text style={styles.summaryLabel}>SUBTOTAL AFTER VAT</Text>
                 <Text style={styles.summaryValue}>
-                  AED {Number(lpo.vat).toFixed(2)}
+                  AED {(subtotalAfterDiscount + vatAmount).toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -478,12 +488,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
             {/* Total Row */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>TOTAL</Text>
-              <Text style={styles.totalValue}>
-                AED{" "}
-                {Number(
-                  lineCalculations.reduce((sum, item) => sum + item.total, 0),
-                ).toFixed(2)}
-              </Text>
+              <Text style={styles.totalValue}>AED {total.toFixed(2)}</Text>
             </View>
 
             {/* Signature Box - Below Summary */}
