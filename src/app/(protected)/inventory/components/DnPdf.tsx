@@ -21,6 +21,11 @@ Font.register({
   src: "/fonts/Mont-SemiBold.otf",
 });
 
+Font.register({
+  family: "Mont-Regular-Italic",
+  src: "/fonts/Mont-RegularItalic.otf",
+});
+
 Font.registerHyphenationCallback((word) => [word]);
 
 const styles = StyleSheet.create({
@@ -144,10 +149,10 @@ const styles = StyleSheet.create({
     width: "30%",
   },
   tableColQuantity: {
-    width: "20%",
+    width: "15%",
   },
   tableColSerial: {
-    width: "20%",
+    width: "30%",
   },
   tableColAttachments: {
     width: "25%",
@@ -174,52 +179,105 @@ const styles = StyleSheet.create({
     marginTop: 100,
   },
 
+  // Main container for acknowledgement section
+  acknowledgementSection: {
+    marginBottom: 10,
+  },
+
+  // Section title
+  sectionTitle: {
+    fontSize: 12,
+    fontFamily: "Mont-SemiBold",
+    color: "#000000",
+    marginBottom: 3,
+  },
+
+  // Subtitle
+  sectionSubtitle: {
+    fontSize: 8,
+    fontFamily: "Mont-Regular-Italic",
+    color: "#666666",
+    textTransform: "none",
+  },
+
   // Signature Row - side by side layout
   signatureRow: {
     flexDirection: "row",
     gap: 20,
-    marginBottom: 20,
   },
 
-  // Left side - checkbox and text
+  // Left side - checkboxes and text
   confirmationSection: {
     flex: 1,
   },
 
-  // Signature Box
+  // Signature Box - Updated with relative positioning
   signatureBox: {
     border: "1 solid rgba(217, 217, 217, 1)",
-    borderRadius: 5,
-    padding: 10,
-    height: 100,
-    width: 250,
+    borderRadius: 8,
+    padding: 15,
+    width: 280,
     position: "relative",
+    justifyContent: "center",
   },
 
   // Confirmation Row
   confirmationRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 8,
+    gap: 10,
+    marginBottom: 15,
   },
+
   confirmationText: {
-    fontSize: 7,
-    fontFamily: "Mont",
-    color: "#000000",
+    fontSize: 8,
+    fontFamily: "Mont-Regular-Italic",
+    color: "rgba(94, 94, 94, 1)",
     flex: 1,
     textTransform: "none",
   },
 
   signatureLabel: {
     fontFamily: "Mont-SemiBold",
-    fontSize: 8,
+    fontSize: 9,
+    textTransform: "uppercase",
+    position: "absolute",
+    top: -4,
+    left: 10,
+    backgroundColor: "white",
+    paddingLeft: 5,
+    paddingRight: 5,
   },
-  receiverName: {
+
+  signatureContent: {
+    marginTop: 10,
+  },
+
+  signatureField: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+
+  signatureFieldLabel: {
+    fontSize: 8,
+    fontFamily: "Mont",
+    color: "rgba(145, 145, 145, 1)",
+    textTransform: "uppercase",
+    width: 65,
+  },
+
+  signatureFieldValue: {
     fontSize: 8,
     fontFamily: "Mont-SemiBold",
-    position: "absolute",
-    bottom: 10,
-    left: 10,
+    color: "#000000",
+    flex: 1,
+  },
+
+  signatureFieldLine: {
+    borderBottom: "1 solid rgba(217, 217, 217, 1)",
+    flex: 1,
+    height: 10,
   },
 });
 
@@ -446,242 +504,480 @@ export function DnPdf({ transaction }: props) {
           )}
         </View>
 
-        {/* Bottom Section - Two Signatures */}
+        {/* Bottom Section */}
         <View style={{ marginTop: calculateBottomMargin() }}>
-          {/* Driver/Transport Custody Section */}
+          {/* MATERIAL TRANSFER */}
           {transaction.type.toLowerCase().includes("transfer") && (
-            <View style={styles.signatureRow} wrap={false}>
-              {/* Left: Checkbox and Text */}
-              <View style={styles.confirmationSection}>
-                <View style={styles.confirmationRow}>
-                  <Svg height="16" width="16">
-                    <Rect
-                      x="1"
-                      y="1"
-                      width="14"
-                      height="14"
-                      stroke="rgba(217, 217, 217, 1)"
-                      strokeWidth="1"
-                      rx="3"
-                      ry="3"
-                    />
-                  </Svg>
+            <>
+              {/* Title */}
+              <View style={styles.acknowledgementSection}>
+                <Text style={styles.sectionTitle}>
+                  ACKNOWLEDGEMENT & RESPONSIBILITY
+                </Text>
+                <Text style={styles.sectionSubtitle}>
+                  Kindly ensure all checkboxes are ticked
+                </Text>
+              </View>
 
-                  <Text style={styles.confirmationText}>
-                    I confirm that I have taken custody of the listed
-                    material(s) for transport and accept responsibility for
-                    their safe handling and delivery to the specified
-                    destination. I will ensure that the material(s) are
-                    transported securely and protected from loss, damage, or
-                    misuse while under my custody during transit.{"\n\n"}I
-                    understand that any shortages, damages, or losses occurring
-                    during transportation may be subject to investigation and
-                    responsibility in accordance with applicable company and
-                    contractual policies.
+              {/* First Row - Driver/Transport Custody */}
+              <View
+                style={{
+                  ...styles.signatureRow,
+                  paddingBottom: 15,
+                  borderBottom: "1px solid rgba(217, 217, 217, 1)",
+                }}
+                wrap={false}
+              >
+                {/* Left - Checkboxes */}
+                <View style={styles.confirmationSection}>
+                  <View style={styles.confirmationRow}>
+                    <Svg height="20" width="20">
+                      <Rect
+                        x="1"
+                        y="1"
+                        width="18"
+                        height="18"
+                        stroke="rgba(217, 217, 217, 1)"
+                        strokeWidth="1.5"
+                        rx="4"
+                        ry="4"
+                        fill="white"
+                      />
+                    </Svg>
+                    <Text style={styles.confirmationText}>
+                      I confirm that I have taken custody of the listed
+                      material(s) for transport and accept responsibility for
+                      their safe handling and delivery to the specified
+                      destination. I will ensure that the material(s) are
+                      transported securely and protected from loss, damage, or
+                      misuse while under my custody during transit.
+                    </Text>
+                  </View>
+
+                  <View style={styles.confirmationRow}>
+                    <Svg height="20" width="20">
+                      <Rect
+                        x="1"
+                        y="1"
+                        width="18"
+                        height="18"
+                        stroke="rgba(217, 217, 217, 1)"
+                        strokeWidth="1.5"
+                        rx="4"
+                        ry="4"
+                        fill="white"
+                      />
+                    </Svg>
+                    <Text style={styles.confirmationText}>
+                      I understand that any shortages, damages, or losses
+                      occurring during transportation may be subject to
+                      investigation and responsibility in accordance with
+                      applicable company and contractual policies.
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Right - Signature Box */}
+                <View style={styles.signatureBox}>
+                  <Text style={styles.signatureLabel}>
+                    SIGNATURE OF DRIVER / TRANSPORT CUSTODY
                   </Text>
+
+                  <View style={styles.signatureContent}>
+                    <View
+                      style={{ ...styles.signatureField, marginBottom: 25 }}
+                    >
+                      <Text style={styles.signatureFieldLabel}>NAME</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+
+                    <View style={styles.signatureField}>
+                      <Text style={styles.signatureFieldLabel}>SIGNATURE</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+
+                    <View style={{ ...styles.signatureField, marginBottom: 0 }}>
+                      <Text style={styles.signatureFieldLabel}>DATE</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+                  </View>
                 </View>
               </View>
 
-              {/* Right: Signature Box */}
-              <View style={styles.signatureBox}>
-                <Text style={styles.signatureLabel}>
-                  SIGNATURE OF DRIVER / TRANSPORT CUSTODY
-                </Text>
-                <Text style={styles.receiverName}></Text>
-              </View>
-            </View>
-          )}
+              {/* Second Row - Site Recipient */}
+              <View
+                style={{
+                  ...styles.signatureRow,
+                  paddingTop: 20,
+                }}
+                wrap={false}
+              >
+                {/* Left - Checkboxes */}
+                <View style={styles.confirmationSection}>
+                  <View style={styles.confirmationRow}>
+                    <Svg height="20" width="20">
+                      <Rect
+                        x="1"
+                        y="1"
+                        width="18"
+                        height="18"
+                        stroke="rgba(217, 217, 217, 1)"
+                        strokeWidth="1.5"
+                        rx="4"
+                        ry="4"
+                        fill="white"
+                      />
+                    </Svg>
+                    <Text style={styles.confirmationText}>
+                      I hereby confirm that I have received the above-listed
+                      material(s) / tool(s) in good condition. I understand that
+                      I am responsible for using and safeguarding these items
+                      while they are under my custody.
+                    </Text>
+                  </View>
 
-          {transaction.type.toLowerCase().includes("transfer") && (
-            <View style={styles.signatureRow} wrap={false}>
-              {/* Left: Checkbox and Text */}
-              <View style={styles.confirmationSection}>
-                <View style={styles.confirmationRow}>
-                  <Svg height="16" width="16">
-                    <Rect
-                      x="1"
-                      y="1"
-                      width="14"
-                      height="14"
-                      stroke="rgba(217, 217, 217, 1)"
-                      strokeWidth="1"
-                      rx="3"
-                      ry="3"
-                    />
-                  </Svg>
+                  <View style={styles.confirmationRow}>
+                    <Svg height="20" width="20">
+                      <Rect
+                        x="1"
+                        y="1"
+                        width="18"
+                        height="18"
+                        stroke="rgba(217, 217, 217, 1)"
+                        strokeWidth="1.5"
+                        rx="4"
+                        ry="4"
+                        fill="white"
+                      />
+                    </Svg>
+                    <Text style={styles.confirmationText}>
+                      I agree to handle them with care and return them upon
+                      request or when work is completed. If the items are lost,
+                      damaged, or misused due to negligence, I acknowledge that
+                      appropriate responsibility or cost recovery may apply.
+                    </Text>
+                  </View>
+                </View>
 
-                  <Text style={styles.confirmationText}>
-                    I confirm that I have taken custody of the listed
-                    material(s) for transport and accept responsibility for
-                    their safe handling and delivery to the specified
-                    destination. I will ensure that the material(s) are
-                    transported securely and protected from loss, damage, or
-                    misuse while under my custody during transit.{"\n\n"}I
-                    understand that any shortages, damages, or losses occurring
-                    during transportation may be subject to investigation and
-                    responsibility in accordance with applicable company and
-                    contractual policies.
+                {/* Right - Signature Box */}
+                <View style={styles.signatureBox}>
+                  <Text style={styles.signatureLabel}>
+                    SIGNATURE OF SITE RECIPIENT
                   </Text>
+
+                  <View style={styles.signatureContent}>
+                    <View style={styles.signatureField}>
+                      <Text style={styles.signatureFieldLabel}>NAME</Text>
+                      <Text style={styles.signatureFieldValue}>
+                        {transaction.receiver_name}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={{ ...styles.signatureField, marginBottom: 25 }}
+                    >
+                      <Text style={styles.signatureFieldLabel}>
+                        DESIGNATION
+                      </Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+
+                    <View style={styles.signatureField}>
+                      <Text style={styles.signatureFieldLabel}>SIGNATURE</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+
+                    <View style={{ ...styles.signatureField, marginBottom: 0 }}>
+                      <Text style={styles.signatureFieldLabel}>DATE</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+                  </View>
                 </View>
               </View>
-
-              {/* Right: Signature Box */}
-              <View style={styles.signatureBox}>
-                <Text style={styles.signatureLabel}>
-                  SIGNATURE OF SITE RECIPIENT ({transaction.receiver_name})
-                </Text>
-                <Text style={styles.receiverName}></Text>
-              </View>
-            </View>
+            </>
           )}
 
+          {/* ISSUE FOR USE */}
           {transaction.type.toLowerCase().includes("issue") && (
-            <View style={styles.signatureRow} wrap={false}>
-              {/* Left: Checkbox and Text */}
-              <View style={styles.confirmationSection}>
-                <View style={styles.confirmationRow}>
-                  <Svg height="16" width="16">
-                    <Rect
-                      x="1"
-                      y="1"
-                      width="14"
-                      height="14"
-                      stroke="rgba(217, 217, 217, 1)"
-                      strokeWidth="1"
-                      rx="3"
-                      ry="3"
-                    />
-                  </Svg>
-
-                  <Text style={styles.confirmationText}>
-                    I hereby confirm that I have received the above-listed
-                    material(s) / tool(s) in good condition. I understand that I
-                    am responsible for using and safeguarding these items while
-                    they are under my custody.
-                  </Text>
-                </View>
-
-                <View>
-                  <Text>{"\n"}</Text>
-                </View>
-
-                <View style={styles.confirmationRow}>
-                  <Svg height="16" width="16">
-                    <Rect
-                      x="1"
-                      y="1"
-                      width="14"
-                      height="14"
-                      stroke="rgba(217, 217, 217, 1)"
-                      strokeWidth="1"
-                      rx="3"
-                      ry="3"
-                    />
-                  </Svg>
-
-                  <Text style={styles.confirmationText}>
-                    I agree to handle them with care and return them upon
-                    request or when work is completed. If the items are lost,
-                    damaged, or misused due to negligence, I acknowledge that
-                    appropriate responsibility or cost recovery may apply as per
-                    company policy.
-                  </Text>
-                </View>
-              </View>
-
-              {/* Right: Signature Box */}
-              <View style={styles.signatureBox}>
-                <Text style={styles.signatureLabel}>
-                  RECEIVED AND ACCEPTED BY {transaction.receiver_name}
-                  {"\n\n"}DESIGNATION:
+            <>
+              <View style={styles.acknowledgementSection}>
+                <Text style={styles.sectionTitle}>
+                  ACKNOWLEDGEMENT & RESPONSIBILITY
                 </Text>
-                <Text style={styles.receiverName}>DATE:</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Kindly ensure all checkboxes are ticked
+                </Text>
               </View>
-            </View>
+
+              <View style={styles.signatureRow} wrap={false}>
+                <View style={styles.confirmationSection}>
+                  <View style={styles.confirmationRow}>
+                    <Svg height="20" width="20">
+                      <Rect
+                        x="1"
+                        y="1"
+                        width="18"
+                        height="18"
+                        stroke="rgba(217, 217, 217, 1)"
+                        strokeWidth="1.5"
+                        rx="4"
+                        ry="4"
+                        fill="white"
+                      />
+                    </Svg>
+                    <Text style={styles.confirmationText}>
+                      I hereby confirm that I have received the above-listed
+                      material(s) / tool(s) in good condition. I understand that
+                      I am responsible for using and safeguarding these items
+                      while they are under my custody.
+                    </Text>
+                  </View>
+
+                  <View style={styles.confirmationRow}>
+                    <Svg height="20" width="20">
+                      <Rect
+                        x="1"
+                        y="1"
+                        width="18"
+                        height="18"
+                        stroke="rgba(217, 217, 217, 1)"
+                        strokeWidth="1.5"
+                        rx="4"
+                        ry="4"
+                        fill="white"
+                      />
+                    </Svg>
+                    <Text style={styles.confirmationText}>
+                      I agree to handle them with care and return them upon
+                      request or when work is completed. If the items are lost,
+                      damaged, or misused due to negligence, I acknowledge that
+                      appropriate responsibility or cost recovery may apply as
+                      per company policy.
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.signatureBox}>
+                  <Text style={styles.signatureLabel}>
+                    RECEIVED AND ACCEPTED BY
+                  </Text>
+
+                  <View style={styles.signatureContent}>
+                    <View style={styles.signatureField}>
+                      <Text style={styles.signatureFieldLabel}>NAME</Text>
+                      <Text style={styles.signatureFieldValue}>
+                        {transaction.receiver_name}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={{ ...styles.signatureField, marginBottom: 25 }}
+                    >
+                      <Text style={styles.signatureFieldLabel}>
+                        DESIGNATION
+                      </Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+
+                    <View style={styles.signatureField}>
+                      <Text style={styles.signatureFieldLabel}>SIGNATURE</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+
+                    <View style={{ ...styles.signatureField, marginBottom: 0 }}>
+                      <Text style={styles.signatureFieldLabel}>DATE</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </>
           )}
 
+          {/* SEND FOR PROCESSING */}
           {transaction.type.toLowerCase().includes("send") && (
-            <View style={styles.signatureRow} wrap={false}>
-              {/* Left: Checkbox and Text */}
-              <View style={styles.confirmationSection}>
-                <View style={styles.confirmationRow}>
-                  <Svg height="16" width="16">
-                    <Rect
-                      x="1"
-                      y="1"
-                      width="14"
-                      height="14"
-                      stroke="rgba(217, 217, 217, 1)"
-                      strokeWidth="1"
-                      rx="3"
-                      ry="3"
-                    />
-                  </Svg>
+            <>
+              <View style={styles.acknowledgementSection}>
+                <Text style={styles.sectionTitle}>
+                  ACKNOWLEDGEMENT & RESPONSIBILITY
+                </Text>
+                <Text style={styles.sectionSubtitle}>
+                  Kindly ensure all checkboxes are ticked
+                </Text>
+              </View>
 
-                  <Text style={styles.confirmationText}>
-                    I confirm that I have taken custody of the listed
-                    material(s) for transport and accept responsibility for
-                    their safe handling and delivery to the specified
-                    destination. I will ensure that the material(s) are
-                    transported securely and protected from loss, damage, or
-                    misuse while under my custody during transit.{"\n\n"}I
-                    understand that any shortages, damages, or losses occurring
-                    during transportation may be subject to investigation and
-                    responsibility in accordance with applicable company and
-                    contractual policies.
+              {/* First Row - Driver/Transport Custody */}
+              <View
+                style={{
+                  ...styles.signatureRow,
+                  paddingBottom: 15,
+                  borderBottom: "1px solid rgba(217, 217, 217, 1)",
+                }}
+                wrap={false}
+              >
+                <View style={styles.confirmationSection}>
+                  <View style={styles.confirmationRow}>
+                    <Svg height="20" width="20">
+                      <Rect
+                        x="1"
+                        y="1"
+                        width="18"
+                        height="18"
+                        stroke="rgba(217, 217, 217, 1)"
+                        strokeWidth="1.5"
+                        rx="4"
+                        ry="4"
+                        fill="white"
+                      />
+                    </Svg>
+                    <Text style={styles.confirmationText}>
+                      I confirm that I have taken custody of the listed
+                      material(s) for transport and accept responsibility for
+                      their safe handling and delivery to the specified
+                      destination. I will ensure that the material(s) are
+                      transported securely and protected from loss, damage, or
+                      misuse while under my custody during transit.
+                    </Text>
+                  </View>
+
+                  <View style={styles.confirmationRow}>
+                    <Svg height="20" width="20">
+                      <Rect
+                        x="1"
+                        y="1"
+                        width="18"
+                        height="18"
+                        stroke="rgba(217, 217, 217, 1)"
+                        strokeWidth="1.5"
+                        rx="4"
+                        ry="4"
+                        fill="white"
+                      />
+                    </Svg>
+                    <Text style={styles.confirmationText}>
+                      I understand that any shortages, damages, or losses
+                      occurring during transportation may be subject to
+                      investigation and responsibility in accordance with
+                      applicable company and contractual policies.
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.signatureBox}>
+                  <Text style={styles.signatureLabel}>
+                    SIGNATURE OF DRIVER / TRANSPORT CUSTODY
                   </Text>
+
+                  <View style={styles.signatureContent}>
+                    <View
+                      style={{ ...styles.signatureField, marginBottom: 25 }}
+                    >
+                      <Text style={styles.signatureFieldLabel}>NAME</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+
+                    <View style={styles.signatureField}>
+                      <Text style={styles.signatureFieldLabel}>SIGNATURE</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+
+                    <View style={{ ...styles.signatureField, marginBottom: 0 }}>
+                      <Text style={styles.signatureFieldLabel}>DATE</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+                  </View>
                 </View>
               </View>
 
-              {/* Right: Signature Box */}
-              <View style={styles.signatureBox}>
-                <Text style={styles.signatureLabel}>
-                  SIGNATURE OF DRIVER / TRANSPORT CUSTODY
-                </Text>
-                <Text style={styles.receiverName}></Text>
-              </View>
-            </View>
-          )}
+              {/* Second Row - Recipient */}
+              <View
+                style={{
+                  ...styles.signatureRow,
+                  paddingTop: 20,
+                }}
+                wrap={false}
+              >
+                <View style={styles.confirmationSection}>
+                  <View style={styles.confirmationRow}>
+                    <Svg height="20" width="20">
+                      <Rect
+                        x="1"
+                        y="1"
+                        width="18"
+                        height="18"
+                        stroke="rgba(217, 217, 217, 1)"
+                        strokeWidth="1.5"
+                        rx="4"
+                        ry="4"
+                        fill="white"
+                      />
+                    </Svg>
+                    <Text style={styles.confirmationText}>
+                      I hereby confirm that I have received the above-listed
+                      material(s) / tool(s) in good condition. I understand that
+                      I am responsible for using and safeguarding these items
+                      while they are under my custody.
+                    </Text>
+                  </View>
 
-          {transaction.type.toLowerCase().includes("send") && (
-            <View style={styles.signatureRow} wrap={false}>
-              {/* Left: Checkbox and Text */}
-              <View style={styles.confirmationSection}>
-                <View style={styles.confirmationRow}>
-                  <Svg height="16" width="16">
-                    <Rect
-                      x="1"
-                      y="1"
-                      width="14"
-                      height="14"
-                      stroke="rgba(217, 217, 217, 1)"
-                      strokeWidth="1"
-                      rx="3"
-                      ry="3"
-                    />
-                  </Svg>
+                  <View style={styles.confirmationRow}>
+                    <Svg height="20" width="20">
+                      <Rect
+                        x="1"
+                        y="1"
+                        width="18"
+                        height="18"
+                        stroke="rgba(217, 217, 217, 1)"
+                        strokeWidth="1.5"
+                        rx="4"
+                        ry="4"
+                        fill="white"
+                      />
+                    </Svg>
+                    <Text style={styles.confirmationText}>
+                      I agree to handle them with care and return them upon
+                      request or when work is completed. If the items are lost,
+                      damaged, or misused due to negligence, I acknowledge that
+                      appropriate responsibility or cost recovery may apply.
+                    </Text>
+                  </View>
+                </View>
 
-                  <Text style={styles.confirmationText}>
-                    I hereby confirm that I have received the above-listed
-                    material(s) / tool(s) in good condition. I understand that I
-                    am responsible for using and safeguarding these items while
-                    they are under my custody.{"\n\n"}I agree to handle them
-                    with care and return them upon request or when work is
-                    completed. If the items are lost, damaged, or misused due to
-                    negligence, I acknowledge that appropriate responsibility or
-                    cost recovery may apply.
+                <View style={styles.signatureBox}>
+                  <Text style={styles.signatureLabel}>
+                    SIGNATURE OF RECIPIENT
                   </Text>
+
+                  <View style={styles.signatureContent}>
+                    <View style={styles.signatureField}>
+                      <Text style={styles.signatureFieldLabel}>NAME</Text>
+                      <Text style={styles.signatureFieldValue}>
+                        {transaction.receiver_name}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={{ ...styles.signatureField, marginBottom: 25 }}
+                    >
+                      <Text style={styles.signatureFieldLabel}>
+                        DESIGNATION
+                      </Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+
+                    <View style={styles.signatureField}>
+                      <Text style={styles.signatureFieldLabel}>SIGNATURE</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+
+                    <View style={{ ...styles.signatureField, marginBottom: 0 }}>
+                      <Text style={styles.signatureFieldLabel}>DATE</Text>
+                      <View style={styles.signatureFieldLine} />
+                    </View>
+                  </View>
                 </View>
               </View>
-
-              {/* Right: Signature Box */}
-              <View style={styles.signatureBox}>
-                <Text style={styles.signatureLabel}>
-                  SIGNATURE OF RECIPIENT ({transaction.receiver_name})
-                </Text>
-                <Text style={styles.receiverName}></Text>
-              </View>
-            </View>
+            </>
           )}
         </View>
       </Page>
