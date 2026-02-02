@@ -584,7 +584,6 @@ export default function Inventory() {
     };
   };
 
-  // Filter transactions based on search
   const getFilteredTransactions = () => {
     let filtered = allTransactions;
 
@@ -627,7 +626,40 @@ export default function Inventory() {
           transaction.from_location?.toLowerCase().includes(query) ||
           transaction.to_location?.toLowerCase().includes(query);
 
-        return materialMatch || locationMatch;
+        // Search in transaction ID
+        const transactionIdMatch = transaction.id
+          ?.toString()
+          .padStart(5, "0")
+          .includes(query);
+
+        // Search in quantity only
+        const quantityMatch = transaction.items?.some((item: any) =>
+          item.quantity?.toString().includes(query),
+        );
+
+        // Search in project name
+        const projectMatch = transaction.project_name
+          ?.toLowerCase()
+          .includes(query);
+
+        // ✅ Search in quantity + unit (e.g., "1 NOS", "5 KG")
+        const quantityUnitMatch = transaction.items?.some((item: any) => {
+          // Parse quantity as a number and remove trailing zeros
+          const cleanQuantity = parseFloat(item.quantity);
+          const quantityUnitString = `${cleanQuantity} ${item.unit || ""}`
+            .toLowerCase()
+            .trim();
+          return quantityUnitString.includes(query);
+        });
+
+        return (
+          materialMatch ||
+          locationMatch ||
+          transactionIdMatch ||
+          quantityMatch ||
+          projectMatch ||
+          quantityUnitMatch
+        );
       });
     }
 

@@ -19,6 +19,9 @@ export async function GET() {
         sti.received,
         sti.third_party_involved,
         
+        -- Get project name
+        p.name as project_name,
+        
         -- Get all items for this transaction
         jt.inventory_item_id,
         jt.quantity,
@@ -29,6 +32,7 @@ export async function GET() {
       FROM stocks_transfer_issue sti
       LEFT JOIN jt_stocks_transfer_issue_inventory_item jt ON sti.id = jt.stocks_transfer_issue_id
       LEFT JOIN inventory i ON jt.inventory_item_id = i.id
+      LEFT JOIN projects p ON sti.project_id = p.id
       ORDER BY sti.created_on DESC
     `;
 
@@ -42,6 +46,7 @@ export async function GET() {
         transactionsMap.set(row.id, {
           id: row.id,
           project_id: row.project_id,
+          project_name: row.project_name, // ✅ Added this line
           created_on: row.created_on,
           type: row.type,
           transferee: row.transferee,
@@ -77,7 +82,7 @@ export async function GET() {
     console.error("Error fetching all transactions:", error);
     return NextResponse.json(
       { error: error.message, success: false },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
