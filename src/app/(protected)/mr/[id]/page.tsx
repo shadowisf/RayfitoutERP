@@ -13,6 +13,7 @@ export default async function MrWithID({
 }) {
   const { id } = await params;
 
+  const uTurnIcon = "/icons/u-turn.svg";
   const externalLinkIcon = "/icons/external-link.svg";
 
   const mrHeader: MrHeader = await fetch(
@@ -261,6 +262,33 @@ export default async function MrWithID({
 
   return (
     <div className="dashboard">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h2>
+          <a href="/mr">MATERIAL REQUISITIONS</a> &gt; MR-
+          {String(mrHeader.id).padStart(5, "0")}
+        </h2>
+
+        {mrHeader?.progress_id !== 1 && mrHeader.progress_id !== 25 && (
+          <CancelMaterialRequestButton
+            mrHeaderID={Number(id)}
+            bgColor="rgba(248, 77, 77, 1)"
+            borderColor="rgba(248, 77, 77, 1)"
+            textColor="white"
+            currentProgressId={mrHeader.progress_id}
+          >
+            ROLL BACK MATERIAL REQUEST <img src={uTurnIcon} alt="u-turn" />
+          </CancelMaterialRequestButton>
+        )}
+      </div>
+
+      <br />
+
       <div className="mr-with-id">
         <div className="top">
           <div
@@ -325,17 +353,6 @@ export default async function MrWithID({
             </div>
 
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              {mrHeader?.progress_id >= 2 && mrHeader.progress_id <= 12 && (
-                <CancelMaterialRequestButton
-                  mrHeaderID={Number(id)}
-                  bgColor="black"
-                  borderColor="black"
-                  textColor="white"
-                >
-                  ROLL BACK MATERIAL REQUEST
-                </CancelMaterialRequestButton>
-              )}
-
               <EditMrHeaderButton mrHeader={mrHeader} />
               <DeleteMrHeaderButton mrHeader={mrHeader} />
             </div>

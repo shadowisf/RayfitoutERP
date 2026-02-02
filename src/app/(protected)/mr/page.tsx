@@ -170,17 +170,30 @@ export default function MR() {
     12: 9, // Awaiting LPO & invoice → Procurement
     16: 9, // GRN failed → Procurement
     14: 10, // Pending payment → Finance
-    15: 9, // Payment rejected → Procurement
+    15: 9, // Payment rejected → Procurement (CHANGED FROM 13)
     17: 11, // Pending delivery → Storekeeper
     21: 12, // Awaiting QC check → Quality Control
     23: 12, // Failed QC → Quality Control
     24: 11, // Awaiting stock entry → Storekeeper
   };
 
-  // ✅ Updated canViewMR - Shows MRs that need action from user's department
+  // ✅ UPDATED canViewMR - Shows MRs that need action from user's department
   const canViewMR = (mr: any) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
+
+    // ✅ Managers (dept 8) - Only see specific stages in "Show Related Cards"
+    if (userDeptId === 8) {
+      // Managers see:
+      // - Draft (1): All drafts
+      // - Awaiting manager initial approval (3)
+      // - Awaiting manager price approval (10)
+      // - Completed (25): All completed
+      if ([1, 3, 10, 25].includes(mr.progress_id)) {
+        return true;
+      }
+      return false;
+    }
 
     // ✅ Draft (progress_id 1): Show only own department's MRs
     if (mr.progress_id === 1) {
@@ -189,43 +202,28 @@ export default function MR() {
 
     // ✅ Completed MRs (progress_id 25): Show only own department's completed MRs
     if (mr.progress_id === 25) {
-      // Managers can see all completed MRs
-      if (userDeptId === 8) return true;
-      // Other departments only see their own completed MRs
       return mr.department_id === userDeptId;
     }
 
-    if (mr.progress_id === 11) {
-      // Procurement sees ALL price approval rejected MRs
-      if (userDeptId === 9) return true;
-
-      // Management should NOT see price approval rejected
-      if (userDeptId === 8) return false;
-
-      // Other departments see only their own
-      return mr.department_id === userDeptId;
-    }
-
+    // ✅ Initial approval rejected (progress_id 5): Only show own department's
     if (mr.progress_id === 5) {
-      // Initial approval rejected
-      // Management can see all
-      if (userDeptId === 8) return true;
-
-      // Others only their own
       return mr.department_id === userDeptId;
+    }
+
+    // ✅ Price approval rejected (progress_id 11): Only Procurement sees them
+    if (mr.progress_id === 11) {
+      return userDeptId === 9;
+    }
+
+    // ✅ Payment rejected (progress_id 15): Only Procurement sees them
+    if (mr.progress_id === 15) {
+      return userDeptId === 9;
     }
 
     // ✅ Get the responsible department for this progress stage
     const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
 
-    // ✅ Management (department ID 8) - Can see all MRs at stages 3 and 10
-    if (userDeptId === 8) {
-      if ([3, 10].includes(mr.progress_id) && responsibleDept === 8) {
-        return true;
-      }
-    }
-
-    // ✅ For all users: Show MRs where their department is responsible for this stage
+    // ✅ Show MRs where their department is responsible for this stage
     if (responsibleDept === userDeptId) {
       return true;
     }
@@ -233,26 +231,53 @@ export default function MR() {
     return false;
   };
 
-  const departmentViewPermissions: { [key: number]: number[] } = {
-    /* JOINERY */ 1: [1, 2, 3, 5, 11, 25],
-    /* MARKETING */ 2: [1, 2, 3, 5, 11, 25],
-    /* ALUMINUM & GLASS */ 3: [1, 2, 3, 5, 11, 25],
-    /* MEP */ 4: [1, 2, 3, 5, 11, 25],
-    /* CIVIL */ 5: [1, 2, 3, 5, 11, 25],
-    /* PAINT */ 6: [1, 2, 3, 5, 11, 25],
-    /* DESIGN */ 7: [1, 2, 3, 5, 11, 25],
-    /* DIRECTORS/MANAGEMENT */ 8: [1, 2, 3, 5, 9, 10, 11, 25],
-    /* PROCUREMENT */ 9: [1, 2, 5, 7, 11, 12, 13, 16, 25],
-    /* FINANCE */ 10: [1, 2, 5, 14, 25],
-    /* STOREKEEPER */ 11: [1, 2, 5, 17, 24, 25],
-    /* QUALITY CONTROL */ 12: [1, 2, 5, 21, 23, 25],
-    /* PROJECTS */ 13: [1, 2, 3, 5, 11, 25],
-    /* AUTOMATION */ 14: [1, 2, 3, 5, 11, 25],
-    /* ADMIN */ 15: [1, 2, 3, 5, 7, 9, 10, 11, 12, 14, 17, 21, 23, 24, 25],
-    /* QS (QUANTITY SURVEYOR) */ 16: [1, 2, 5, 9, 25],
-    /* HUMAN RESOURCES */ 17: [1, 2, 3, 5, 11, 25],
-    /* VIDEOGRAPHER */ 18: [1, 2, 3, 5, 11, 25],
-    /* SITE SUPERVISOR */ 19: [1, 2, 3, 5, 11, 25],
+  // ✅ UPDATED canUserViewMR - Determines if user can VIEW an MR (click to open)
+  const canUserViewMR = (mr: any) => {
+    const userDeptId = userInfo?.departmentID;
+    if (!userDeptId) return false;
+
+    // ✅ Managers (department ID 8) can view ALL MRs
+    if (userDeptId === 8) return true;
+
+    // ✅ Draft (progress_id 1): Only own department can view
+    if (mr.progress_id === 1) {
+      return mr.department_id === userDeptId;
+    }
+
+    // ✅ Completed MRs (progress_id 25): Only own department can view
+    if (mr.progress_id === 25) {
+      return mr.department_id === userDeptId;
+    }
+
+    // ✅ Initial approval rejected (progress_id 5): Only own department can view
+    if (mr.progress_id === 5) {
+      return mr.department_id === userDeptId;
+    }
+
+    // ✅ Price approval rejected (progress_id 11): Only Procurement can view
+    if (mr.progress_id === 11) {
+      return userDeptId === 9;
+    }
+
+    // ✅ Payment rejected (progress_id 15): Only Procurement can view
+    if (mr.progress_id === 15) {
+      return userDeptId === 9;
+    }
+
+    // ✅ Get the responsible department for this progress stage
+    const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
+
+    // ✅ Users can view if their department is responsible
+    if (responsibleDept === userDeptId) {
+      return true;
+    }
+
+    // ✅ Users can always view their own department's MRs
+    if (mr.department_id === userDeptId) {
+      return true;
+    }
+
+    return false;
   };
 
   // Map progress status to responsible department
@@ -271,10 +296,10 @@ export default function MR() {
         name: "Directors/Management",
         id: 8,
       },
-      "Price approval rejected": { name: "", id: 0 },
+      "Price approval rejected": { name: "Procurement", id: 9 }, // ✅ CHANGED
       "Awaiting LPO & invoice": { name: "Procurement", id: 9 },
       "Pending payment": { name: "Finance", id: 10 },
-      "Payment rejected": { name: "Finance", id: 10 },
+      "Payment rejected": { name: "Procurement", id: 9 }, // ✅ CHANGED FROM FINANCE
       "GRN failed": { name: "Procurement", id: 9 },
       "Pending delivery": { name: "Storekeeper", id: 11 },
       "Awaiting QC check": { name: "Quality Control", id: 12 },
@@ -340,42 +365,6 @@ export default function MR() {
     }
 
     return "rgba(235, 223, 90, 1)";
-  };
-
-  const universalProgressIds = [1, 2, 5];
-
-  // ✅ Updated view permission check - handles rejected MRs properly
-  const canUserViewMR = (mr: any) => {
-    const userDeptId = userInfo?.departmentID;
-    if (!userDeptId) return false;
-
-    // Managers (department ID 8) can view all MRs
-    if (userDeptId === 8) return true;
-
-    // ✅ Completed MRs (progress_id 25): Only show own department's completed MRs
-    if (mr.progress_id === 25) {
-      return mr.department_id === userDeptId;
-    }
-
-    // ✅ Rejected MRs handling
-    if (mr.progress_id === 11) {
-      // Procurement CAN view price approval rejected
-      return userDeptId === 9;
-    }
-
-    if (mr.progress_id === 5) {
-      // Initial approval rejected → originating department only
-      return mr.department_id === userDeptId;
-    }
-
-    // Users can always view their own department's MRs
-    if (userDeptId === mr.department_id) return true;
-
-    // Check if user's department has permission to view this progress stage
-    const allowedProgressIds = departmentViewPermissions[userDeptId];
-    if (!allowedProgressIds) return false;
-
-    return allowedProgressIds.includes(mr.progress_id);
   };
 
   const getPriority = (requiredDate: string) => {
@@ -563,7 +552,7 @@ export default function MR() {
           gap: "25px",
         }}
       >
-        <h2>MATERIAL REQUESTS</h2>
+        <h2>MATERIAL REQUISITIONS</h2>
 
         <div
           onClick={() => setFilterRelevant(!filterRelevant)}

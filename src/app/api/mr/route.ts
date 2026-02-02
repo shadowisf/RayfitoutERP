@@ -154,9 +154,17 @@ export async function PUT(req: Request) {
     const body = await req.json();
 
     if (body.action === "cancelMaterialRequest") {
-      await db.query(`UPDATE mr_headers SET progress_id = 1 WHERE id = ?`, [
+      await db.query(`UPDATE mr_headers SET progress_id = ? WHERE id = ?`, [
+        body.rollback_progress_id,
         body.id,
       ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log 
+   (mr_header_id, progress_id, changed_by) 
+   VALUES (?, ?, ?)`,
+        [body.id, body.rollback_progress_id, `${body.changed_by} (ROLLBACK)`],
+      );
 
       return NextResponse.json({ status: 200 });
     }
