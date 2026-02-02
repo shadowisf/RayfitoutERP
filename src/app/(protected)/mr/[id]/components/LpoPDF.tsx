@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     gap: 30,
   },
   infoItem: {
-    flex: 1,
+    /* flex: 1, */
   },
   infoLabel: {
     fontSize: 8,
@@ -322,7 +322,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
 
         {/* Section Headers with Dotted Line - FULL WIDTH */}
         <View style={styles.sectionHeadersRow}>
-          <Text style={styles.sectionHeader}>VENDOR/SUPPLIER</Text>
+          <Text style={styles.sectionHeader}>VENDOR</Text>
 
           {/* Dotted Line */}
           <View style={styles.dottedLine}>
@@ -387,20 +387,20 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
                 {item.material_description}
               </Text>
               <Text style={styles.tableColQty}>
-                {item.quantity} {item.unit}
+                {Number(item.quantity).toFixed(2)} {item.unit}
               </Text>
               <Text style={styles.tableColUnitPrice}>
-                {item.unit_price} AED
+                AED {Number(item.unit_price).toFixed(2)}
               </Text>
               <Text style={styles.tableColTotalPrice}>
-                {item.total_price} AED
+                AED {Number(item.total_price).toFixed(2)}
               </Text>
             </View>
           ))}
         </View>
 
         {/* Bottom Section - Terms on Left, Summary + Signature on Right */}
-        <View style={styles.bottomSection}>
+        <View style={styles.bottomSection} wrap={false}>
           {/* Left Column - Terms */}
           <View style={styles.termsColumn}>
             {/* Delivery Terms */}
@@ -420,7 +420,9 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
             <View style={styles.summaryTable}>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>SUB TOTAL</Text>
-                <Text style={styles.summaryValue}>{lpo.subtotal} AED</Text>
+                <Text style={styles.summaryValue}>
+                  AED {Number(lpo.subtotal).toFixed(2)}
+                </Text>
               </View>
 
               <View style={styles.summaryRow}>
@@ -431,7 +433,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>S&H</Text>
                 <Text style={styles.summaryValue}>
-                  {lpo.shipping_and_handling} AED
+                  AED {Number(lpo.shipping_and_handling).toFixed(2)}
                 </Text>
               </View>
 
@@ -442,14 +444,18 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
 
               <View style={[styles.summaryRow, styles.summaryRowLast]}>
                 <Text style={styles.summaryLabel}>VAT</Text>
-                <Text style={styles.summaryValue}>{lpo.vat} AED</Text>
+                <Text style={styles.summaryValue}>
+                  AED {Number(lpo.vat).toFixed(2)}
+                </Text>
               </View>
             </View>
 
             {/* Total Row */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>TOTAL</Text>
-              <Text style={styles.totalValue}>{lpo.total} AED</Text>
+              <Text style={styles.totalValue}>
+                AED {Number(lpo.total).toFixed(2)}
+              </Text>
             </View>
 
             {/* Signature Box - Below Summary */}
