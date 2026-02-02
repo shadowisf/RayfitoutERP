@@ -186,7 +186,10 @@ export default function QrCodeDownloadButton({
         }}
       >
         <div ref={qrcodeRef} id="qrcode-container">
-          <QRCodeSVG value={`/inventory/${item.id}`} size={150} />
+          <QRCodeSVG
+            value={`${process.env.NEXT_PUBLIC_BASE_URL}/inventory/${item.id}`}
+            size={150}
+          />
         </div>
       </div>
 
