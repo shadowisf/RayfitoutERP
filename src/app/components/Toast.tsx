@@ -10,13 +10,13 @@ let listeners: ((msg: string, type: ToastType, duration: number) => void)[] =
 export function toast(
   message: string,
   type: ToastType = "success",
-  duration = 3000
+  duration = 3000,
 ) {
   listeners.forEach((cb) => cb(message, type, duration));
 }
 
 function subscribe(
-  cb: (msg: string, type: ToastType, duration: number) => void
+  cb: (msg: string, type: ToastType, duration: number) => void,
 ) {
   listeners.push(cb);
   return () => {
@@ -59,7 +59,7 @@ export default function GlobalToast() {
         gap: "8px",
         zIndex: 9999,
         width: "100%",
-        paddingLeft: "290px",
+        paddingLeft: "325px",
         paddingRight: "40px",
       }}
     >
@@ -77,10 +77,10 @@ export default function GlobalToast() {
               t.type === "success"
                 ? "rgba(34, 150, 100, 1)"
                 : t.type === "error"
-                ? "rgba(194, 60, 60, 1)"
-                : t.type === "warning"
-                ? "#d97706"
-                : "#2563eb",
+                  ? "rgba(194, 60, 60, 1)"
+                  : t.type === "warning"
+                    ? "#d97706"
+                    : "#2563eb",
             boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
             minWidth: "200px",
           }}

@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     if (!filter || typeof filter !== "number" || filter <= 0) {
       return NextResponse.json(
         { error: "Invalid 'filter' parameter. Must be a positive number." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -28,10 +28,8 @@ export async function POST(request: Request) {
         AND changed_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
       ORDER BY changed_at DESC
       `,
-      [days]
+      [days],
     );
-
-    console.log("Completed MRs:", completedMRs);
 
     if (completedMRs.length === 0) {
       // Return empty chart data
@@ -56,7 +54,7 @@ export async function POST(request: Request) {
           chartData: emptyChartData,
           overallMedian: 0,
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
@@ -74,10 +72,8 @@ export async function POST(request: Request) {
       WHERE mr_header_id IN (?)
       GROUP BY mr_header_id
       `,
-      [mrIds]
+      [mrIds],
     );
-
-    console.log("Lifespan data:", lifespanRows);
 
     // ✅ Map lifespan to completion date
     const lifespanMap: any = {};
@@ -97,8 +93,6 @@ export async function POST(request: Request) {
       };
     });
 
-    console.log("Completed MRs with lifespan:", completedMRsWithLifespan);
-
     // ✅ Get previous period data
     const [prevCompletedMRs]: any = await db.query(
       `
@@ -109,7 +103,7 @@ export async function POST(request: Request) {
         AND changed_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
         AND changed_at < DATE_SUB(CURDATE(), INTERVAL ? DAY)
       `,
-      [days * 2, days]
+      [days * 2, days],
     );
 
     let prevMedian = 0;
@@ -124,7 +118,7 @@ export async function POST(request: Request) {
         WHERE mr_header_id IN (?)
         GROUP BY mr_header_id
         `,
-        [prevMrIds]
+        [prevMrIds],
       );
 
       const prevLifespans = prevLifespanRows
@@ -184,23 +178,13 @@ export async function POST(request: Request) {
       dailyData[dateStr] = [];
     }
 
-    console.log("Daily data keys:", Object.keys(dailyData));
-
     completedMRsWithLifespan.forEach((mr: any) => {
       const dateStr = mr.completed_date;
-      console.log(
-        `Checking date: ${dateStr}, exists: ${dailyData[dateStr] !== undefined}`
-      );
 
       if (dailyData[dateStr] !== undefined) {
         dailyData[dateStr].push(mr.lifespan_hours);
-        console.log(`Added ${mr.lifespan_hours} hours to ${dateStr}`);
-      } else {
-        console.log(`Date ${dateStr} not found in dailyData keys`);
       }
     });
-
-    console.log("Daily data after adding:", dailyData);
 
     const chartData = Object.keys(dailyData)
       .sort()
@@ -216,8 +200,6 @@ export async function POST(request: Request) {
         };
       });
 
-    console.log("Chart data:", chartData);
-
     return NextResponse.json(
       {
         currentMedian: Math.round(currentMedian * 10) / 10,
@@ -228,7 +210,7 @@ export async function POST(request: Request) {
         chartData,
         overallMedian: currentMedian,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (err: any) {
     console.error("Error fetching median lifespan:", err);
@@ -237,7 +219,7 @@ export async function POST(request: Request) {
         error: err.message || "Internal server error",
         sqlMessage: err.sqlMessage,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

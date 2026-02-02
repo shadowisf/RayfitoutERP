@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     if (!mr_header_id || !progress_id) {
       return NextResponse.json(
         { error: "mr_header_id and progress_id are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -74,13 +74,13 @@ export async function POST(req: Request) {
         AND pl.progress_id = ?
       ORDER BY pl.changed_at DESC
       LIMIT 1`,
-      [mr_header_id, progress_id]
+      [mr_header_id, progress_id],
     );
 
     if (rows.length === 0) {
       return NextResponse.json(
         { error: "No record found for this MR and stage" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
     console.error(err.sqlMessage || err.message);
     return NextResponse.json(
       { error: err.sqlMessage || err.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

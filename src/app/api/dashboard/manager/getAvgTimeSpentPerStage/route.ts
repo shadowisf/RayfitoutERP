@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     if (filter === undefined || typeof filter !== "number" || filter < 0) {
       return NextResponse.json(
         { error: "Invalid 'filter' parameter. Must be a non-negative number." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
         error: err.message || "Internal server error",
         sqlMessage: err.sqlMessage,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
