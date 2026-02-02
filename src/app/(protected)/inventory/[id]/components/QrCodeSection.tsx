@@ -27,7 +27,10 @@ export default function QrCodeSection({ item }: QrCodeSectionProps) {
         />
       </div> */}
       <div /* style={{ marginTop: "10px" }} */>
-        <QRCodeSVG value={`/inventory/${item.id}`} size={125} />
+        <QRCodeSVG
+          value={`${process.env.NEXT_PUBLIC_BASE_URL}/inventory/${item.id}`}
+          size={125}
+        />
       </div>
     </div>
   );
