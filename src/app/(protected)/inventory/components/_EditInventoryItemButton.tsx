@@ -3,7 +3,7 @@
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "@/app/components/Toast";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { useRouter } from "next/navigation";
@@ -51,30 +51,32 @@ export default function EditInventoryItemButton({
 
   // Fetch material categories
   useEffect(() => {
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setMaterialCategoryValues(data);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
+    if (isOpen) {
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          setMaterialCategoryValues(data);
+        })
+        .catch((err) => {
+          console.error(err);
+        });
 
-    // Fetch all subcategories initially
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      },
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setMaterialSubCategoryValues(data);
-      });
-  }, []);
+      // Fetch all subcategories initially
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        },
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          setMaterialSubCategoryValues(data);
+        });
+    }
+  }, [isOpen]);
 
   // Fetch material subcategories when category changes
   useEffect(() => {
@@ -117,7 +119,7 @@ export default function EditInventoryItemButton({
     if (isOpen) {
       fetchInventoryItemDetails();
     }
-  }, [isOpen]);
+  }, [isOpen, inventoryItem.id]);
 
   const fetchInventoryItemDetails = async () => {
     try {
@@ -142,8 +144,6 @@ export default function EditInventoryItemButton({
 
       // Access the first item from the rows array
       const data: InventoryItem = result.rows[0];
-
-      console.log("Fetched inventory data:", data); // Debug log
 
       // Populate form fields with existing data
       setMaterialCategoryID(data.category_id || "");
