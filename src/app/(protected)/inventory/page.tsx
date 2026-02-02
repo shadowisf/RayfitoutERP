@@ -59,6 +59,10 @@ export default function Inventory() {
   >([]);
   const [transferLogTimeFilter, setTransferLogTimeFilter] =
     useState<string>("all");
+  const rawQuery = searchQuery.toLowerCase().trim();
+
+  // Remove "ta-" if user typed it
+  const normalizedQuery = rawQuery.replace(/^ta-/, "");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -627,10 +631,13 @@ export default function Inventory() {
           transaction.to_location?.toLowerCase().includes(query);
 
         // Search in transaction ID
-        const transactionIdMatch = transaction.id
+        const formattedTransactionId = `ta-${transaction.id
           ?.toString()
-          .padStart(5, "0")
-          .includes(query);
+          .padStart(5, "0")}`;
+
+        const transactionIdMatch =
+          formattedTransactionId.includes(rawQuery) ||
+          transaction.id?.toString().includes(normalizedQuery);
 
         // Search in quantity only
         const quantityMatch = transaction.items?.some((item: any) =>
