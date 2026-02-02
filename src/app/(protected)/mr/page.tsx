@@ -166,7 +166,7 @@ export default function MR() {
     7: 9, // Awaiting quotations → Procurement
     9: 16, // Awaiting QS price approval → QS
     10: 8, // Awaiting manager price approval → Management
-    11: 0, // Price approval rejected → Originating department
+    11: 9, // Price approval rejected → Procurement
     12: 9, // Awaiting LPO & invoice → Procurement
     16: 9, // GRN failed → Procurement
     14: 10, // Pending payment → Finance
@@ -195,15 +195,23 @@ export default function MR() {
       return mr.department_id === userDeptId;
     }
 
-    // ✅ Rejected MRs (progress_id 5 or 11): Show only to originating department
-    if ([5, 11].includes(mr.progress_id)) {
-      // ✅ Managers should NOT see price approval rejected (progress_id 11) in "Show Related Cards"
-      if (userDeptId === 8 && mr.progress_id === 11) {
-        return false;
-      }
-      // Managers can see initial approval rejected (progress_id 5)
-      if (userDeptId === 8 && mr.progress_id === 5) return true;
-      // Other departments only see their own rejected MRs
+    if (mr.progress_id === 11) {
+      // Procurement sees ALL price approval rejected MRs
+      if (userDeptId === 9) return true;
+
+      // Management should NOT see price approval rejected
+      if (userDeptId === 8) return false;
+
+      // Other departments see only their own
+      return mr.department_id === userDeptId;
+    }
+
+    if (mr.progress_id === 5) {
+      // Initial approval rejected
+      // Management can see all
+      if (userDeptId === 8) return true;
+
+      // Others only their own
       return mr.department_id === userDeptId;
     }
 
@@ -349,8 +357,14 @@ export default function MR() {
       return mr.department_id === userDeptId;
     }
 
-    // ✅ Rejected MRs (5, 11): Only originating department can view
-    if ([5, 11].includes(mr.progress_id)) {
+    // ✅ Rejected MRs handling
+    if (mr.progress_id === 11) {
+      // Procurement CAN view price approval rejected
+      return userDeptId === 9;
+    }
+
+    if (mr.progress_id === 5) {
+      // Initial approval rejected → originating department only
       return mr.department_id === userDeptId;
     }
 

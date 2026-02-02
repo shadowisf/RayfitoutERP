@@ -2101,6 +2101,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       mrHeader.department_id && (
                                       <th>ACTIONS</th>
                                     )}
+                                  {mrHeader.progress_id === 11 &&
+                                    userInfo?.departmentID === 9 && (
+                                      <th>ACTIONS</th>
+                                    )}
                                   {mrHeader.progress_id === 3 &&
                                     userInfo?.departmentID === 8 && (
                                       <th>ACTIONS</th>
@@ -2455,25 +2459,63 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     );
                                   })}
                               </tbody>
-                            </table>
 
-                            {mrHeader.progress_id >= 10 && canSeePrice && (
-                              <div>
-                                <br />
-                                <div
+                              {mrHeader.progress_id >= 10 && canSeePrice && (
+                                <tfoot
                                   style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    backgroundColor: "rgba(239, 239, 239, 1)",
-                                    padding: "7px 20px",
-                                    borderRadius: "25px",
+                                    borderTop:
+                                      "1px solid rgba(239, 239, 239, 1)",
                                   }}
                                 >
-                                  <h4>TOTAL + VAT</h4>
-                                  <h4>AED {totalInvoiceAmount.toFixed(2)}</h4>
-                                </div>
-                              </div>
-                            )}
+                                  <tr>
+                                    <td
+                                      colSpan={100}
+                                      style={{
+                                        padding: "0",
+                                      }}
+                                    >
+                                      <table
+                                        style={{
+                                          width: "100%",
+                                          tableLayout: "fixed",
+                                        }}
+                                      >
+                                        <tbody>
+                                          <tr>
+                                            <td
+                                              style={{
+                                                fontWeight: "600",
+                                                padding: "15px 20px",
+                                              }}
+                                            >
+                                              TOTAL + VAT
+                                            </td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td
+                                              style={{
+                                                padding: "15px 20px",
+                                                fontWeight: "600",
+                                                borderRadius: "50px",
+                                              }}
+                                            >
+                                              AED{" "}
+                                              {totalInvoiceAmount.toFixed(2)}
+                                            </td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </td>
+                                  </tr>
+                                </tfoot>
+                              )}
+                            </table>
 
                             <br />
                           </div>
@@ -2626,6 +2668,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 mrHeader.progress_id === 11) &&
                                 userInfo?.departmentID ===
                                   mrHeader.department_id && <th>ACTIONS</th>}
+                              {mrHeader.progress_id === 11 &&
+                                userInfo?.departmentID === 9 && (
+                                  <th>ACTIONS</th>
+                                )}
                               {mrHeader.progress_id === 3 &&
                                 userInfo?.departmentID === 8 && (
                                   <th>ACTIONS</th>
@@ -2965,25 +3011,61 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 );
                               })}
                           </tbody>
-                        </table>
 
-                        {mrHeader.progress_id >= 10 && canSeePrice && (
-                          <div>
-                            <br />
-                            <div
+                          {mrHeader.progress_id >= 10 && canSeePrice && (
+                            <tfoot
                               style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                backgroundColor: "rgba(239, 239, 239, 1)",
-                                padding: "7px 20px",
-                                borderRadius: "25px",
+                                borderTop: "1px solid rgba(239, 239, 239, 1)",
                               }}
                             >
-                              <h4>TOTAL + VAT</h4>
-                              <h4>AED {totalInvoiceAmount.toFixed(2)}</h4>
-                            </div>
-                          </div>
-                        )}
+                              <tr>
+                                <td
+                                  colSpan={100}
+                                  style={{
+                                    padding: "0",
+                                  }}
+                                >
+                                  <table
+                                    style={{
+                                      width: "100%",
+                                      tableLayout: "fixed",
+                                    }}
+                                  >
+                                    <tbody>
+                                      <tr>
+                                        <td
+                                          style={{
+                                            fontWeight: "600",
+                                            padding: "15px 20px",
+                                          }}
+                                        >
+                                          TOTAL + VAT
+                                        </td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td
+                                          style={{
+                                            padding: "15px 20px",
+                                            fontWeight: "600",
+                                            borderRadius: "50px",
+                                          }}
+                                        >
+                                          AED {totalInvoiceAmount.toFixed(2)}
+                                        </td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </td>
+                              </tr>
+                            </tfoot>
+                          )}
+                        </table>
 
                         <br />
                       </div>
@@ -3285,27 +3367,62 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   </tr>
                 ))}
               </tbody>
-            </table>
 
-            {mrHeader.progress_id >= 10 && canSeePrice && (
-              <div>
-                <br />
-                <div
+              {mrHeader.progress_id >= 10 && canSeePrice && (
+                <tfoot
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    backgroundColor: "rgba(239, 239, 239, 1)",
-                    padding: "7px 20px",
-                    borderRadius: "25px",
+                    borderTop: "1px solid rgba(239, 239, 239, 1)",
                   }}
                 >
-                  <h4>TOTAL + VAT</h4>
-                  <h4>AED {totalInvoiceAmount.toFixed(2)}</h4>
-                </div>
-              </div>
-            )}
+                  <tr>
+                    <td
+                      colSpan={100}
+                      style={{
+                        padding: "0",
+                      }}
+                    >
+                      <table
+                        style={{
+                          width: "100%",
+                          tableLayout: "fixed",
+                        }}
+                      >
+                        <tbody>
+                          <tr>
+                            <td
+                              style={{
+                                fontWeight: "600",
+                                padding: "15px 20px",
+                              }}
+                            >
+                              TOTAL + VAT
+                            </td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td
+                              style={{
+                                padding: "15px 20px",
+                                fontWeight: "600",
+                                borderRadius: "50px",
+                              }}
+                            >
+                              AED {totalInvoiceAmount.toFixed(2)}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
 
-            <br />
             <br />
           </div>
         ))}
@@ -3353,11 +3470,20 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               // If any item has BOQ → Submit for QS Approval
               <SubmitForQSApprovalButton
                 mrHeaderID={mrHeader.id}
-                disabled={hasAnyRejectedItems()}
+                disabled={hasAnyRejectedItems() || hasAnyQSRejectedItems()}
                 style={{
-                  opacity: hasAnyRejectedItems() ? "0.5" : "1",
-                  cursor: hasAnyRejectedItems() ? "not-allowed" : "pointer",
-                  pointerEvents: hasAnyRejectedItems() ? "none" : "auto",
+                  opacity:
+                    hasAnyRejectedItems() || hasAnyQSRejectedItems()
+                      ? "0.5"
+                      : "1",
+                  cursor:
+                    hasAnyRejectedItems() || hasAnyQSRejectedItems()
+                      ? "not-allowed"
+                      : "pointer",
+                  pointerEvents:
+                    hasAnyRejectedItems() || hasAnyQSRejectedItems()
+                      ? "none"
+                      : "auto",
                 }}
               />
             ) : (
