@@ -146,16 +146,19 @@ const styles = StyleSheet.create({
     width: "5%",
   },
   tableColDescription: {
-    width: "30%",
+    width: "35%",
+  },
+  tableColSpecification: {
+    width: "50%",
   },
   tableColQuantity: {
-    width: "15%",
+    width: "20%",
   },
   tableColSerial: {
-    width: "30%",
+    width: "40%",
   },
   tableColAttachments: {
-    width: "25%",
+    width: "30%",
   },
 
   // Attachment Image Styles
@@ -186,7 +189,7 @@ const styles = StyleSheet.create({
 
   // Section title
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 9,
     fontFamily: "Mont-SemiBold",
     color: "#000000",
     marginBottom: 3,
@@ -448,7 +451,7 @@ export function DnPdf({ transaction }: props) {
           <View style={styles.tableHeader}>
             <Text style={styles.tableColIndex}>#</Text>
             <Text style={styles.tableColDescription}>ITEM</Text>
-            <Text style={styles.tableColDescription}>SPECIFICATION</Text>
+            <Text style={styles.tableColSpecification}>SPECIFICATION</Text>
             <Text style={styles.tableColQuantity}>QUANTITY</Text>
             {transaction.type.toLowerCase().includes("issue") && (
               <Text style={styles.tableColSerial}>MODEL / SERIAL NUMBER</Text>
@@ -467,7 +470,7 @@ export function DnPdf({ transaction }: props) {
                 >
                   {item.description}
                 </Text>
-                <Text style={styles.tableColDescription}>
+                <Text style={styles.tableColSpecification}>
                   {item.specification}
                 </Text>
                 <Text style={styles.tableColQuantity}>
@@ -509,16 +512,6 @@ export function DnPdf({ transaction }: props) {
           {/* MATERIAL TRANSFER */}
           {transaction.type.toLowerCase().includes("transfer") && (
             <>
-              {/* Title */}
-              <View style={styles.acknowledgementSection}>
-                <Text style={styles.sectionTitle}>
-                  ACKNOWLEDGEMENT & RESPONSIBILITY
-                </Text>
-                <Text style={styles.sectionSubtitle}>
-                  Kindly ensure all checkboxes are ticked
-                </Text>
-              </View>
-
               {/* First Row - Driver/Transport Custody */}
               <View
                 style={{
@@ -530,6 +523,16 @@ export function DnPdf({ transaction }: props) {
               >
                 {/* Left - Checkboxes */}
                 <View style={styles.confirmationSection}>
+                  {/* Title */}
+                  <View style={styles.acknowledgementSection}>
+                    <Text style={styles.sectionTitle}>
+                      ACKNOWLEDGEMENT & RESPONSIBILITY
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      Kindly ensure all checkboxes are ticked
+                    </Text>
+                  </View>
+
                   <View style={styles.confirmationRow}>
                     <Svg height="20" width="20">
                       <Rect
@@ -700,17 +703,17 @@ export function DnPdf({ transaction }: props) {
           {/* ISSUE FOR USE */}
           {transaction.type.toLowerCase().includes("issue") && (
             <>
-              <View style={styles.acknowledgementSection}>
-                <Text style={styles.sectionTitle}>
-                  ACKNOWLEDGEMENT & RESPONSIBILITY
-                </Text>
-                <Text style={styles.sectionSubtitle}>
-                  Kindly ensure all checkboxes are ticked
-                </Text>
-              </View>
-
               <View style={styles.signatureRow} wrap={false}>
                 <View style={styles.confirmationSection}>
+                  <View style={styles.acknowledgementSection}>
+                    <Text style={styles.sectionTitle}>
+                      ACKNOWLEDGEMENT & RESPONSIBILITY
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      Kindly ensure all checkboxes are ticked
+                    </Text>
+                  </View>
+
                   <View style={styles.confirmationRow}>
                     <Svg height="20" width="20">
                       <Rect
@@ -797,15 +800,6 @@ export function DnPdf({ transaction }: props) {
           {/* SEND FOR PROCESSING */}
           {transaction.type.toLowerCase().includes("send") && (
             <>
-              <View style={styles.acknowledgementSection}>
-                <Text style={styles.sectionTitle}>
-                  ACKNOWLEDGEMENT & RESPONSIBILITY
-                </Text>
-                <Text style={styles.sectionSubtitle}>
-                  Kindly ensure all checkboxes are ticked
-                </Text>
-              </View>
-
               {/* First Row - Driver/Transport Custody */}
               <View
                 style={{
@@ -816,6 +810,15 @@ export function DnPdf({ transaction }: props) {
                 wrap={false}
               >
                 <View style={styles.confirmationSection}>
+                  <View style={styles.acknowledgementSection}>
+                    <Text style={styles.sectionTitle}>
+                      ACKNOWLEDGEMENT & RESPONSIBILITY
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      Kindly ensure all checkboxes are ticked
+                    </Text>
+                  </View>
+
                   <View style={styles.confirmationRow}>
                     <Svg height="20" width="20">
                       <Rect
