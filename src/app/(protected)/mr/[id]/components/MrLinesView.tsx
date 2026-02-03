@@ -1669,17 +1669,23 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     for (const supplierId of uniqueSupplierIds) {
       const status = lpoInvoiceStatus[supplierId];
 
-      if (!status || !status.hasLpo || !status.hasInvoice) {
+      // ✅ If supplier doesn't exist in status map yet, not ready
+      if (!status || !status.hasLpo) {
         return false;
       }
 
-      // ✅ Only require signed file for local suppliers
-      const isMarketplace = status.supplierType
-        ?.toLowerCase()
-        .includes("marketplace");
+      // ✅ Check supplier type
+      const isCredit = status.supplierType?.toLowerCase().includes("credit");
 
-      if (!isMarketplace && !status.hasSignedFile) {
-        return false;
+      if (isCredit) {
+        // ✅ For credit suppliers: ONLY require LPO (no invoice, no signed file)
+        // Already checked status.hasLpo above, so credit suppliers are good
+        continue;
+      } else {
+        // ✅ For local suppliers: require LPO + invoice + signed file
+        if (!status.hasInvoice || !status.hasSignedFile) {
+          return false;
+        }
       }
     }
 

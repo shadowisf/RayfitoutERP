@@ -170,7 +170,7 @@ export default function MR() {
     12: 9, // Awaiting LPO & invoice → Procurement
     16: 9, // GRN failed → Procurement
     14: 10, // Pending payment → Finance
-    15: 9, // Payment rejected → Procurement (CHANGED FROM 13)
+    13: 9, // Payment rejected → Procurement (CHANGED FROM 13)
     17: 11, // Pending delivery → Storekeeper
     21: 12, // Awaiting QC check → Quality Control
     23: 12, // Failed QC → Quality Control
