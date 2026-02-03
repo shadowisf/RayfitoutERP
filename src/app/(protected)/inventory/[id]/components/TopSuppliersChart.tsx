@@ -63,13 +63,21 @@ export default function TopSuppliersChart({
   const [isHovered, setIsHovered] = useState(false);
 
   const formatNumber = (value: number): string | number => {
+    // ✅ Ensure value is a number and handle edge cases
+    const numValue = typeof value === "number" ? value : parseFloat(value);
+
+    // ✅ Check if conversion resulted in NaN
+    if (isNaN(numValue)) {
+      return 0;
+    }
+
     // Check if the number has decimal places
-    if (value % 1 === 0) {
+    if (numValue % 1 === 0) {
       // No decimal places, return as integer
-      return Math.round(value);
+      return Math.round(numValue);
     } else {
       // Has decimal places, format to remove trailing zeros
-      return parseFloat(value.toFixed(3));
+      return parseFloat(numValue.toFixed(3));
     }
   };
 

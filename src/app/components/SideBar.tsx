@@ -126,8 +126,8 @@ export default function SideBar() {
             {item.count !== undefined && item.count > 0 && (
               <span
                 style={{
-                  backgroundColor: isActive(item.path) ? "white" : "black",
-                  color: isActive(item.path) ? "black" : "white",
+                  backgroundColor: "rgb(248, 77, 77, 1)",
+                  color: "white",
                   borderRadius: "50%",
                   width: "24px",
                   height: "24px",

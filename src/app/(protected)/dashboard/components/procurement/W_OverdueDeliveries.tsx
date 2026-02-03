@@ -92,7 +92,7 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
   return (
     <div className="item">
       <div className="top">
-        <span>Incomplete Deliveries</span>
+        <span>Overdue Deliveries</span>
         <img src={deliveriesIcon} alt="deliveries icon" />
       </div>
       <div>
