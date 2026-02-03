@@ -50,13 +50,18 @@ export default function SideBar() {
   }, [userInfo]);
 
   useEffect(() => {
+    if (!userInfo?.departmentID) return;
+
+    // Only Manager & Storekeeper
+    if (![8, 11].includes(userInfo.departmentID)) {
+      setInventoryActionCount(0);
+      return;
+    }
+
     const fetchInventoryActionCount = async () => {
       try {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getActionCount`,
-          {
-            method: "GET",
-          },
         );
 
         const data = await res.json();
@@ -71,9 +76,7 @@ export default function SideBar() {
 
     fetchInventoryActionCount();
 
-    // Refresh every 30 seconds
     const interval = setInterval(fetchInventoryActionCount, 30000);
-
     return () => clearInterval(interval);
   }, [userInfo]);
 
