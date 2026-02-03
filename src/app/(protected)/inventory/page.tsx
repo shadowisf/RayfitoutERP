@@ -41,28 +41,24 @@ export default function Inventory() {
   const [filters, setFilters] = useState<{
     selectedCategories: string[];
     selectedLocations: string[];
-    selectedProjects: number[]; // Change from string[] to number[]
+    selectedProjects: number[];
     stockAddedIn: string;
-    selectedStockStatuses: string[]; // ✅ New
+    selectedStockStatuses: string[];
   }>({
     selectedCategories: [],
     selectedLocations: [],
     selectedProjects: [],
     stockAddedIn: "all",
-    selectedStockStatuses: [], // ✅ New
+    selectedStockStatuses: [],
   });
   const [stocksByInventoryItem, setStocksByInventoryItem] = useState<{
     [itemId: number]: any[];
   }>({});
   const [availableProjects, setAvailableProjects] = useState<
-    { id: number; name: string }[] // Change from string to number
+    { id: number; name: string }[]
   >([]);
   const [transferLogTimeFilter, setTransferLogTimeFilter] =
     useState<string>("all");
-  const rawQuery = searchQuery.toLowerCase().trim();
-
-  // Remove "ta-" if user typed it
-  const normalizedQuery = rawQuery.replace(/^ta-/, "");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +76,7 @@ export default function Inventory() {
       console.error("Error fetching inventory items:", error);
     }
   }
+
   // Fetch available quantities for all inventory items
   useEffect(() => {
     async function fetchAllQuantities() {
@@ -151,7 +148,7 @@ export default function Inventory() {
     }
 
     fetchAllQuantities();
-  }, [inventory, filters.selectedProjects, filters.selectedLocations]); // ✅ Re-fetch when filters change
+  }, [inventory, filters.selectedProjects, filters.selectedLocations]);
 
   useEffect(() => {
     getInventoryItems();
@@ -462,10 +459,33 @@ export default function Inventory() {
 
     // Filter by search query
     if (searchQuery.trim() !== "") {
-      const query = searchQuery.toLowerCase();
-      processed = processed.filter((item) =>
-        item.description.toLowerCase().includes(query),
-      );
+      const rawQuery = searchQuery.toLowerCase().trim();
+      // Remove "inv-" if user typed it
+      const normalizedQuery = rawQuery.replace(/^inv-/, "");
+
+      processed = processed.filter((item) => {
+        // Search in description
+        const descriptionMatch = item.description
+          .toLowerCase()
+          .includes(rawQuery);
+
+        // Search in inventory ID with prefix (INV-00157, INV-157, 157)
+        const formattedInventoryId = `inv-${item.id.toString().padStart(5, "0")}`;
+        const inventoryIdMatch =
+          formattedInventoryId.includes(rawQuery) ||
+          item.id.toString().includes(normalizedQuery);
+
+        // Search in quantity + unit (e.g., "10 NOS", "1 KG")
+        const quantityData = availableQuantities[item.id];
+        const availableQty = quantityData?.available_quantity ?? 0;
+        const cleanQuantity = parseFloat(availableQty.toString());
+        const quantityUnitString = `${cleanQuantity} ${item.unit || ""}`
+          .toLowerCase()
+          .trim();
+        const quantityUnitMatch = quantityUnitString.includes(rawQuery);
+
+        return descriptionMatch || inventoryIdMatch || quantityUnitMatch;
+      });
     }
 
     // Sort by user-selected sort order
@@ -618,52 +638,47 @@ export default function Inventory() {
 
     // Apply search filter
     if (searchQuery.trim() !== "") {
-      const query = searchQuery.toLowerCase();
+      const rawQuery = searchQuery.toLowerCase().trim();
+      // Remove "ta-" if user typed it
+      const normalizedQuery = rawQuery.replace(/^ta-/, "");
+
       filtered = filtered.filter((transaction) => {
         // Search in materials
         const materialMatch = transaction.items?.some((item: any) =>
-          item.description?.toLowerCase().includes(query),
+          item.description?.toLowerCase().includes(rawQuery),
         );
 
         // Search in locations
         const locationMatch =
-          transaction.from_location?.toLowerCase().includes(query) ||
-          transaction.to_location?.toLowerCase().includes(query);
+          transaction.from_location?.toLowerCase().includes(rawQuery) ||
+          transaction.to_location?.toLowerCase().includes(rawQuery);
 
-        // Search in transaction ID
+        // Search in transaction ID (TA-00018, TA-018, 18)
         const formattedTransactionId = `ta-${transaction.id
           ?.toString()
           .padStart(5, "0")}`;
-
         const transactionIdMatch =
           formattedTransactionId.includes(rawQuery) ||
           transaction.id?.toString().includes(normalizedQuery);
 
-        // Search in quantity only
-        const quantityMatch = transaction.items?.some((item: any) =>
-          item.quantity?.toString().includes(query),
-        );
-
         // Search in project name
         const projectMatch = transaction.project_name
           ?.toLowerCase()
-          .includes(query);
+          .includes(rawQuery);
 
         // ✅ Search in quantity + unit (e.g., "1 NOS", "5 KG")
         const quantityUnitMatch = transaction.items?.some((item: any) => {
-          // Parse quantity as a number and remove trailing zeros
           const cleanQuantity = parseFloat(item.quantity);
           const quantityUnitString = `${cleanQuantity} ${item.unit || ""}`
             .toLowerCase()
             .trim();
-          return quantityUnitString.includes(query);
+          return quantityUnitString.includes(rawQuery);
         });
 
         return (
           materialMatch ||
           locationMatch ||
           transactionIdMatch ||
-          quantityMatch ||
           projectMatch ||
           quantityUnitMatch
         );
@@ -695,7 +710,7 @@ export default function Inventory() {
       selectedLocations: [],
       selectedProjects: [],
       stockAddedIn: "all",
-      selectedStockStatuses: [], // ✅ New
+      selectedStockStatuses: [],
     });
   };
 
@@ -705,7 +720,7 @@ export default function Inventory() {
     filters.selectedLocations.length > 0 ||
     filters.selectedProjects.length > 0 ||
     filters.stockAddedIn !== "all" ||
-    filters.selectedStockStatuses.length > 0; // ✅ New
+    filters.selectedStockStatuses.length > 0;
 
   return (
     <div className="dashboard">
