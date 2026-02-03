@@ -26,6 +26,9 @@ export default function Inventory() {
       total_issued: number;
     };
   }>({});
+  // ✅ Add loading state
+  const [isLoadingQuantities, setIsLoadingQuantities] = useState(false);
+
   const [activeTab, setActiveTab] = useState<"inventory" | "transfer-log">(
     "inventory",
   );
@@ -83,6 +86,9 @@ export default function Inventory() {
       if (!inventory || inventory.length === 0) {
         return;
       }
+
+      // ✅ Set loading state to true
+      setIsLoadingQuantities(true);
 
       try {
         const hasProjectFilter = filters.selectedProjects.length === 1;
@@ -172,6 +178,9 @@ export default function Inventory() {
         setAvailableQuantities(allQuantities);
       } catch (error) {
         console.error("Error fetching available quantities:", error);
+      } finally {
+        // ✅ Set loading state to false when done
+        setIsLoadingQuantities(false);
       }
     }
 
@@ -379,6 +388,15 @@ export default function Inventory() {
         textColor: "rgba(0, 108, 60, 1)",
       };
     }
+  };
+
+  // ✅ Add loading status helper
+  const getLoadingStatus = () => {
+    return {
+      label: "LOADING...",
+      bgColor: "rgba(231, 231, 231, 1)",
+      textColor: "rgba(107, 107, 107, 1)",
+    };
   };
 
   // Get unique categories
@@ -1244,10 +1262,14 @@ export default function Inventory() {
                   {processedInventory.map((item, index) => {
                     const quantityData = availableQuantities[item.id];
                     const availableQty = quantityData?.available_quantity ?? 0;
-                    const stockStatus = getStockStatus(
-                      availableQty,
-                      item.minimum_stock_quantity,
-                    );
+
+                    // ✅ Show loading status if still fetching quantities
+                    const stockStatus = isLoadingQuantities
+                      ? getLoadingStatus()
+                      : getStockStatus(
+                          availableQty,
+                          item.minimum_stock_quantity,
+                        );
 
                     return (
                       <tr key={item.id}>
@@ -1292,7 +1314,16 @@ export default function Inventory() {
                           </div>
                         </td>
 
-                        <td>{`${availableQty} ${item.unit || ""}`}</td>
+                        <td>
+                          {/* ✅ Show loading or actual quantity */}
+                          {isLoadingQuantities ? (
+                            <span style={{ color: "rgba(107, 107, 107, 1)" }}>
+                              Loading...
+                            </span>
+                          ) : (
+                            `${availableQty} ${item.unit || ""}`
+                          )}
+                        </td>
                         <td>
                           <div
                             className="approval-pill normal-text"
@@ -1308,7 +1339,8 @@ export default function Inventory() {
                           <div style={{ display: "flex", gap: "10px" }}>
                             <EditInventoryItemButton inventoryItem={item} />
 
-                            {availableQty === 0 && (
+                            {/* ✅ Only show delete button if not loading and qty is 0 */}
+                            {!isLoadingQuantities && availableQty === 0 && (
                               <DeleteInventoryItemButton inventoryItem={item} />
                             )}
 
