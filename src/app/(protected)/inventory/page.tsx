@@ -85,19 +85,10 @@ export default function Inventory() {
       }
 
       try {
-        // ✅ Determine if we're filtering by project or location
         const hasProjectFilter = filters.selectedProjects.length === 1;
         const hasLocationFilter = filters.selectedLocations.length === 1;
 
-        // Batch fetch quantities
         const inventoryIds = inventory.map((item) => item.id);
-
-        // Split into batches of 50 to avoid URL length issues
-        const batchSize = 50;
-        const batches = [];
-        for (let i = 0; i < inventoryIds.length; i += batchSize) {
-          batches.push(inventoryIds.slice(i, i + batchSize));
-        }
 
         const allQuantities: {
           [itemId: number]: {
@@ -107,35 +98,72 @@ export default function Inventory() {
           };
         } = {};
 
-        // Fetch all batches sequentially to avoid overwhelming the server
+        // ✅ Process in batches to avoid overwhelming the server
+        const batchSize = 10; // Reduced batch size for parallel processing
+        const batches = [];
+
+        for (let i = 0; i < inventoryIds.length; i += batchSize) {
+          batches.push(inventoryIds.slice(i, i + batchSize));
+        }
+
+        // ✅ Process batches sequentially to avoid rate limiting
         for (const batch of batches) {
           try {
-            const body: any = { inventory_item_ids: batch };
+            // ✅ Fetch all items in the batch in parallel
+            const quantityPromises = batch.map(async (itemId) => {
+              const body: any = { inventory_item_id: itemId };
 
-            // ✅ Add project filter if single project selected
-            if (hasProjectFilter) {
-              body.project_id = filters.selectedProjects[0];
-            }
+              // Add filters if needed
+              if (hasProjectFilter) {
+                body.project_id = filters.selectedProjects[0];
+              }
 
-            // ✅ Add location filter if single location selected
-            if (hasLocationFilter) {
-              body.location = filters.selectedLocations[0];
-            }
+              if (hasLocationFilter) {
+                body.location = filters.selectedLocations[0];
+              }
 
-            const response = await fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getBatchedQuantities`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-              },
-            );
+              const response = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getTotalQuantityByInventoryItemID`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(body),
+                },
+              );
 
-            const data = await response.json();
+              const data = await response.json();
 
-            if (data.success && data.data) {
-              Object.assign(allQuantities, data.data);
-            }
+              if (data.success && data.data) {
+                return {
+                  itemId,
+                  quantity: data.data.available_quantity || 0,
+                  total_stock: data.data.total_stock || 0,
+                  total_issued: data.data.total_issued || 0,
+                };
+              }
+
+              return {
+                itemId,
+                quantity: 0,
+                total_stock: 0,
+                total_issued: 0,
+              };
+            });
+
+            // Wait for all requests in this batch to complete
+            const results = await Promise.all(quantityPromises);
+
+            // Aggregate results
+            results.forEach((result) => {
+              allQuantities[result.itemId] = {
+                available_quantity: result.quantity,
+                total_stock: result.total_stock,
+                total_issued: result.total_issued,
+              };
+            });
+
+            // ✅ Small delay between batches to prevent overwhelming the server
+            await new Promise((resolve) => setTimeout(resolve, 100));
           } catch (error) {
             console.error(`Error fetching batch:`, error);
           }
