@@ -41,7 +41,6 @@ export default function CreateMrLineClient({
         full
         mrHeaderID={mrHeaderID}
         projectID={projectID}
-        purposeID={purposeID}
         style={{ padding: "20px 0px" }}
       >
         ADD ITEM +
