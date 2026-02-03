@@ -10,6 +10,8 @@ import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import CreateCategoryButton from "./_CreateCategoryButton";
+import CreateSubCategoryButton from "./_CreateSubcategoryButton";
 
 type AddMrItemButtonProps = {
   mrHeaderID: number;
@@ -21,7 +23,6 @@ type AddMrItemButtonProps = {
   autoSubCategoryIDs?: (string | number)[];
   children: React.ReactNode;
   full?: boolean;
-  purposeID: number;
   style?: React.CSSProperties;
 };
 
@@ -35,7 +36,6 @@ export default function AddMrItemButton({
   autoSubCategoryIDs,
   children,
   full,
-  purposeID,
   style,
 }: AddMrItemButtonProps) {
   const router = useRouter();
@@ -61,7 +61,6 @@ export default function AddMrItemButton({
   const [materialSubCategoryIDs, setMaterialSubCategoryIDs] = useState<
     (string | number)[]
   >([]);
-  // ✅ Changed to array for multiple BOQ items
   const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
   const [materialDescription, setMaterialDescription] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -72,9 +71,37 @@ export default function AddMrItemButton({
   const [deliveryLocation, setDeliveryLocation] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
 
-  // Fetch initial data
-  useEffect(() => {
-    // Fetch material categories
+  async function refreshSubcategories() {
+    if (materialCategoryID && userInitiatedCategorySelection) {
+      // If a category is selected, fetch only its subcategories
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category_id: materialCategoryID,
+          }),
+        },
+      );
+      const data = await res.json();
+      setMaterialSubCategoryValues(data);
+    } else {
+      // If no category selected, fetch all subcategories
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+      const data = await res.json();
+      setMaterialSubCategoryValues(data);
+    }
+  }
+
+  async function getMaterialCategoriesAndSubcategories() {
+    // Fetch categories
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
     )
@@ -86,18 +113,13 @@ export default function AddMrItemButton({
         console.error(err);
       });
 
-    // Fetch all subcategories initially
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      },
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setMaterialSubCategoryValues(data);
-      });
+    // ✅ Use the new refresh function instead of fetching all subcategories
+    await refreshSubcategories();
+  }
+
+  // Fetch initial data
+  useEffect(() => {
+    getMaterialCategoriesAndSubcategories();
 
     // Fetch projects for delivery location
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
@@ -244,7 +266,7 @@ export default function AddMrItemButton({
     setMaterialCategoryID(categoryId);
   };
 
-  // ✅ Handle BOQ selection
+  // Handle BOQ selection
   const handleBoqSelection = (boqIDs: number[]) => {
     setBoqLineIDs(boqIDs);
   };
@@ -262,11 +284,6 @@ export default function AddMrItemButton({
       toast("Please select at least one material subcategory", "error");
       return;
     }
-
-    /* if (boqLineIDs.length === 0 && purposeID === 1) {
-      toast("Please select at least one bill of quantity line", "error");
-      return;
-    } */
 
     try {
       let attachmentUrl = null;
@@ -299,7 +316,7 @@ export default function AddMrItemButton({
           action: "createMrLine",
           mr_header_id: mrHeaderID,
           material_category_id: materialCategoryID,
-          material_subcategory_ids: materialSubCategoryIDs, // Send as array
+          material_subcategory_ids: materialSubCategoryIDs,
           material_description: materialDescription,
           quantity: Number(quantity),
           unit,
@@ -307,7 +324,7 @@ export default function AddMrItemButton({
           brand,
           specification,
           delivery_location: deliveryLocation,
-          boq_line_ids: boqLineIDs, // ✅ Send as array
+          boq_line_ids: boqLineIDs,
           attachment: JSON.stringify(attachmentUrl),
         }),
       });
@@ -323,7 +340,7 @@ export default function AddMrItemButton({
         setQuantity("");
         setUnit("");
         setNotes("");
-        setBoqLineIDs([]); // ✅ Reset array
+        setBoqLineIDs([]);
         setBrand("");
         setSpecification("");
         setDeliveryLocation("");
@@ -378,6 +395,13 @@ export default function AddMrItemButton({
               onChange={handleCategoryChange}
               placeholder="SELECT CATEGORY"
               required
+              bottomButtonComponent={
+                <CreateCategoryButton
+                  onSuccess={() => {
+                    getMaterialCategoriesAndSubcategories();
+                  }}
+                />
+              }
             />
 
             <MultiSelectDropdown
@@ -388,6 +412,14 @@ export default function AddMrItemButton({
               placeholder="SELECT SUBCATEGORIES"
               required
               style={{ width: "350px" }}
+              bottomButtonComponent={
+                <CreateSubCategoryButton
+                  materialCategoryID={Number(materialCategoryID)}
+                  onSuccess={() => {
+                    refreshSubcategories();
+                  }}
+                />
+              }
             />
           </div>
 
@@ -407,7 +439,6 @@ export default function AddMrItemButton({
                 <small>(OPTIONAL)</small>
               </label>
 
-              {/* ✅ Updated to use checkbox component */}
               <MultipleSelectBoqItemButton
                 projectID={projectID}
                 onSelectBoq={handleBoqSelection}

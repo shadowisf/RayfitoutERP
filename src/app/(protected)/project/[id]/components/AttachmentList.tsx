@@ -69,7 +69,7 @@ export default function AttachmentsList({
     }
   };
 
-  if (attachments?.length === 0) {
+  if (attachments?.length === 0 || !attachments) {
     return null;
   }
 

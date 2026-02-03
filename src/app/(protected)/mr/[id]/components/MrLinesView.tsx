@@ -1987,9 +1987,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       bgColor="black"
                       borderColor="black"
                       textColor="white"
-                      purposeID={mrHeader.purpose_id}
                     >
-                      ADD ITEM +
+                      ADD CATEGORY & ITEM +
                     </AddMrItemButton>
                   </>
                 )}
@@ -2289,9 +2288,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                 <EditMrItemButton
                                                   projectID={
                                                     mrHeader.project_id
-                                                  }
-                                                  purposeID={
-                                                    mrHeader.purpose_id
                                                   }
                                                   item={item}
                                                   bgColor="rgba(239, 239, 239, 1)"
@@ -2625,7 +2621,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
                                 return [];
                               })()}
-                              purposeID={mrHeader.purpose_id}
                               style={{ padding: "20px 0px" }}
                             >
                               ADD ITEM +
@@ -2920,7 +2915,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           >
                                             <EditMrItemButton
                                               projectID={mrHeader.project_id}
-                                              purposeID={mrHeader.purpose_id}
                                               item={item}
                                               bgColor="rgba(239, 239, 239, 1)"
                                               borderColor="rgba(223, 223, 223, 1)"
@@ -3236,7 +3230,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
                             return [];
                           })()}
-                          purposeID={mrHeader.purpose_id}
                           style={{ padding: "20px 0px" }}
                         >
                           ADD ITEM +
@@ -3604,7 +3597,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               textColor="black"
               full
               autoCategoryID={getActiveCategoryID()}
-              purposeID={mrHeader.purpose_id}
               style={{ padding: "40px 0px", backgroundColor: "white" }}
             >
               ADD SUBCATEGORY & ITEM +

@@ -11,6 +11,8 @@ import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { MrLine } from "../../types/mrLine";
 import { toast } from "@/app/components/Toast";
 import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
+import CreateSubCategoryButton from "./_CreateSubcategoryButton";
+import CreateCategoryButton from "./_CreateCategoryButton";
 
 type EditMrItemButtonProps = {
   projectID: number;
@@ -20,7 +22,6 @@ type EditMrItemButtonProps = {
   borderColor?: string;
   children?: React.ReactNode;
   full?: boolean;
-  purposeID: number;
 };
 
 export default function EditMrItemButton({
@@ -31,7 +32,6 @@ export default function EditMrItemButton({
   borderColor = "rgba(239, 239, 239, 1)",
   children,
   full,
-  purposeID,
 }: EditMrItemButtonProps) {
   const router = useRouter();
 
@@ -55,7 +55,6 @@ export default function EditMrItemButton({
     item.material_category_id,
   );
 
-  // Parse material_subcategory_id from the view (comma-separated string to array)
   const [materialSubCategoryIDs, setMaterialSubCategoryIDs] = useState<
     (string | number)[]
   >(() => {
@@ -114,8 +113,37 @@ export default function EditMrItemButton({
   );
   const [attachment, setAttachment] = useState<File | null>(null);
 
-  // Fetch initial data
-  useEffect(() => {
+  async function refreshSubcategories() {
+    if (materialCategoryID && userInitiatedCategorySelection) {
+      // If a category is selected, fetch only its subcategories
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category_id: materialCategoryID,
+          }),
+        },
+      );
+      const data = await res.json();
+      setMaterialSubCategoryValues(data);
+    } else {
+      // If no category selected, fetch all subcategories
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+      const data = await res.json();
+      setMaterialSubCategoryValues(data);
+    }
+  }
+
+  async function getMaterialCategoriesAndSubcategories() {
+    // Fetch categories
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
     )
@@ -124,23 +152,15 @@ export default function EditMrItemButton({
         setMaterialCategoryValues(data);
       })
       .catch((err) => {
-        console.error("Error fetching categories:", err);
+        console.error(err);
       });
 
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      },
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setMaterialSubCategoryValues(data);
-      })
-      .catch((err) => {
-        console.error("Error fetching subcategories:", err);
-      });
+    // ✅ Use the new refresh function instead of fetching all subcategories
+    await refreshSubcategories();
+  }
+
+  useEffect(() => {
+    getMaterialCategoriesAndSubcategories();
 
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
       method: "GET",
@@ -367,6 +387,13 @@ export default function EditMrItemButton({
               onChange={handleCategoryChange}
               placeholder="SELECT CATEGORY"
               required
+              bottomButtonComponent={
+                <CreateCategoryButton
+                  onSuccess={() => {
+                    getMaterialCategoriesAndSubcategories();
+                  }}
+                />
+              }
             />
 
             <MultiSelectDropdown
@@ -377,6 +404,14 @@ export default function EditMrItemButton({
               placeholder="SELECT SUBCATEGORIES"
               required
               style={{ width: "350px" }}
+              bottomButtonComponent={
+                <CreateSubCategoryButton
+                  materialCategoryID={Number(materialCategoryID)}
+                  onSuccess={() => {
+                    refreshSubcategories();
+                  }}
+                />
+              }
             />
           </div>
 

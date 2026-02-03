@@ -143,6 +143,19 @@ export async function POST(req: Request) {
         );
       }
     }
+
+    if (body.action === "createCategory") {
+      const query = "INSERT INTO lut_material_categories (value) VALUES (?)";
+      await db.query(query, [body.value]);
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "createSubCategory") {
+      const query =
+        "INSERT INTO lut_material_subcategories (category_id, value) VALUES (?, ?)";
+      await db.query(query, [body.category_id, body.value]);
+      return NextResponse.json({ success: true });
+    }
   } catch (err: any) {
     console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
