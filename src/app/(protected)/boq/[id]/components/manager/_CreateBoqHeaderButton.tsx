@@ -29,6 +29,7 @@ export default function CreateBoqHeaderButton({
 
   const [isOpen, setIsOpen] = useState(false);
 
+  const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("RAYFITOUT CONTRACTING LLC");
   const [clientName, setClientName] = useState("");
   const [location, setLocation] = useState("");
@@ -56,6 +57,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
       body: JSON.stringify({
         action: "createBoqHeader",
         project_id: project?.id,
+        name,
         company_name: companyName,
         client_name: clientName,
         location,
@@ -66,6 +68,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
         completion,
         exclusion,
         terms_and_conditions: termsAndConditions,
+        project_name: project?.name,
       }),
     });
 
@@ -79,6 +82,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
       toast("Bill of quantity created", "success");
 
       setCompanyName("RAYFITOUT CONTRACTING LLC");
+      setName("");
       setClientName("");
       setLocation("");
       setDate("");
@@ -113,7 +117,14 @@ vii. Contractor reserve the right to request for an extension of time for reason
           addButtonLabel="CONFIRM"
           handleSubmit={handleSubmit}
         >
-          <div className="input-row half">
+          <div className="input-row three-col">
+            <InputItem
+              label={"NAME"}
+              value={name}
+              type={"text"}
+              required
+              onChange={(e) => setName(e.target.value)}
+            />
             <InputItem
               label={"COMPANY NAME"}
               value={companyName}

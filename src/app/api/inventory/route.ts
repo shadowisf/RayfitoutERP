@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { describe } from "node:test";
+import { ResultSetHeader } from "mysql2";
 
 export async function GET() {
   try {
@@ -13,7 +15,7 @@ export async function GET() {
     console.error(error.sqlMessage);
     return NextResponse.json(
       { error: error.sqlMessage, success: false },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -44,7 +46,27 @@ export async function POST(request: NextRequest) {
         body.created_by,
       ];
 
-      await db.query(query, values);
+      const [res] = await db.query<ResultSetHeader>(query, values);
+
+      await db.query(
+        `INSERT INTO notification (inventory_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          res.insertId,
+          8,
+          "New Inventory Item",
+          `${body.description} was created by ${body.created_by}`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (inventory_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          res.insertId,
+          16,
+          "New Inventory Item",
+          `${body.description} was created by ${body.created_by}`,
+        ],
+      );
 
       return NextResponse.json({
         success: true,
@@ -94,7 +116,7 @@ export async function POST(request: NextRequest) {
     console.error(error.sqlMessage);
     return NextResponse.json(
       { error: error.sqlMessage, success: false },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -109,7 +131,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { error: "Missing stock ID", success: false },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -128,7 +150,7 @@ export async function DELETE(request: NextRequest) {
     console.error("Error deleting stock:", error);
     return NextResponse.json(
       { error: error.sqlMessage || error.message, success: false },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,5 +1,6 @@
 export type BoqHeader = {
   id: number;
+  name: string;
   project_id: number;
   company_name: string;
   client_name: string;

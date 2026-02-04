@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       const [rows] = await db.query(
         `SELECT COUNT(*) as count 
          FROM mr_headers
-         WHERE progress_id IN (3, 10, 5)`,
+         WHERE progress_id IN (3, 10) OR (progress_id = 5 AND department_id = ?)`,
       );
       count = Number((rows as any)[0].count);
     } else if (department_id === 9) {

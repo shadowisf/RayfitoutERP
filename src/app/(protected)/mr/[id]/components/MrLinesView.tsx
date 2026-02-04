@@ -1674,15 +1674,26 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         return false;
       }
 
-      // ✅ Check supplier type
-      const isCredit = status.supplierType?.toLowerCase().includes("credit");
+      // ✅ Get supplier type and normalize it
+      const supplierType = status.supplierType?.toLowerCase() || "";
+
+      // ✅ Check if it's a credit supplier (skip invoice/signed LPO)
+      const isCredit = supplierType.includes("credit");
+
+      // ✅ Check if it's a marketplace/online supplier (skip signed LPO)
+      const isMarketplace =
+        supplierType.includes("marketplace") || supplierType.includes("online");
 
       if (isCredit) {
-        // ✅ For credit suppliers: ONLY require LPO (no invoice, no signed file)
-        // Already checked status.hasLpo above, so credit suppliers are good
+        // ✅ Credit suppliers: ONLY require LPO (no invoice, no signed file)
         continue;
+      } else if (isMarketplace) {
+        // ✅ Marketplace/Online suppliers: Require LPO + invoice (NO signed file)
+        if (!status.hasInvoice) {
+          return false;
+        }
       } else {
-        // ✅ For local suppliers: require LPO + invoice + signed file
+        // ✅ Cash/Local suppliers: Require LPO + invoice + signed file
         if (!status.hasInvoice || !status.hasSignedFile) {
           return false;
         }
@@ -3624,7 +3635,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             {hasAnyItemWithBoqReference() ? (
               // If any item has BOQ → Submit for QS Approval
               <SubmitForQSApprovalButton
-                mrHeaderID={mrHeader.id}
+                mrHeader={mrHeader}
                 disabled={hasAnyRejectedItems() || hasAnyQSRejectedItems()}
                 style={{
                   opacity:
@@ -3644,7 +3655,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             ) : (
               // If no items have BOQ → Submit directly to Manager Approval
               <SubmitForInitialApprovalButton
-                mrHeaderID={mrHeader.id}
+                mrHeader={mrHeader}
                 disabled={hasAnyRejectedItems()}
                 style={{
                   opacity: hasAnyRejectedItems() ? "0.5" : "1",
@@ -3686,10 +3697,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           <div></div>
 
           {hasRejectedItems() ? (
-            <SubmitForResubmissionButton mrHeaderID={mrHeader.id} />
+            <SubmitForResubmissionButton mrHeader={mrHeader} />
           ) : (
             <SubmitForQuotationsButton
-              mrHeaderID={mrHeader.id}
+              mrHeader={mrHeader}
               disabled={!allItemsApproved()}
               style={{
                 opacity: !allItemsApproved() ? "0.5" : "1",
@@ -3715,10 +3726,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           <div></div>
 
           {hasQSRejectedItems() ? (
-            <SubmitForResubmissionButton mrHeaderID={mrHeader.id} />
+            <SubmitForResubmissionButton mrHeader={mrHeader} />
           ) : (
             <SubmitForInitialApprovalButton
-              mrHeaderID={mrHeader.id}
+              mrHeader={mrHeader}
               disabled={!allItemsQSApproved()} // Changed this line
               style={{
                 opacity: !allItemsQSApproved() ? "0.5" : "1", // Changed this line
@@ -3855,6 +3866,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           <div className="bottom-nav">
             <div></div>
             <SubmitForPaymentButton
+              paymentValue={totalInvoiceAmount}
               mrHeaderID={mrHeader.id}
               disabled={!allSuppliersHaveLpoWithInvoicesAndSignedFiles()}
               style={{
@@ -3896,7 +3908,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               // Show Submit for Delivery button, disabled if not all payments are approved
               return (
                 <SubmitForDeliveryButton
-                  mrHeaderID={mrHeader.id}
+                  mrHeader={mrHeader}
+                  deliveryDate={mrHeader.delivery_date}
+                  paymentValue={totalInvoiceAmount}
                   disabled={!allPaymentsApproved}
                   style={{
                     opacity: !allPaymentsApproved ? "0.5" : "1",
@@ -3971,7 +3985,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         <div className="bottom-nav">
           <div></div>
           <CompleteMaterialRequestButton
-            mrHeaderID={mrHeader.id}
+            mrHeader={mrHeader}
+            mrLineItems={mrLines}
             disabled={!allItemsHaveStock()}
             style={{
               opacity: !allItemsHaveStock() ? "0.5" : "1",

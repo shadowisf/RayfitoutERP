@@ -190,6 +190,8 @@ export default function ManualAddToStockButton({
       body: JSON.stringify({
         action: "addStock",
         inventory_item_id: inventoryItem.id,
+        inventory_item_unit: inventoryItem.unit,
+        inventory_item_description: inventoryItem.description,
         supplier_id: supplierID,
         received_by: userInfo?.name,
         reason_for_entry: reasonForEntry,

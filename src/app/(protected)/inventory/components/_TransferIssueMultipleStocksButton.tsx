@@ -441,9 +441,12 @@ export default function TransferIssueMultipleStocks({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "transferIssueMultipleStocks",
-          items: itemsForBackend, // ✅ Each item now has its own attachment
+          items: itemsForBackend.map((item, index) => ({
+            ...item,
+            inventory_item_name: selectedItems[index].description, // ✅ Add item name
+          })),
           project_id: projectID,
-          boq_line_ids: boqLineIDs, // ✅ Send as array
+          boq_line_ids: boqLineIDs,
           type,
           transferee: userInfo?.name,
           from,

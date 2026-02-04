@@ -6,15 +6,16 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { MrHeader } from "../../types/mrHeader";
 
 type SubitForInitialApprovalButtonProps = {
-  mrHeaderID: number;
+  mrHeader: MrHeader;
   disabled?: boolean;
   style?: React.CSSProperties;
 };
 
 export default function SubmitForInitialApprovalButton({
-  mrHeaderID,
+  mrHeader,
   disabled,
   style,
 }: SubitForInitialApprovalButtonProps) {
@@ -32,8 +33,9 @@ export default function SubmitForInitialApprovalButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "submitForInitialApproval",
-        id: mrHeaderID,
+        id: mrHeader.id,
         changed_by: userInfo?.name,
+        department_id: mrHeader.department_id,
       }),
     });
 

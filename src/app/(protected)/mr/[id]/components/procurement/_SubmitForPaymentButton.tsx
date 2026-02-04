@@ -11,12 +11,14 @@ type SubitForPaymentButtonProps = {
   mrHeaderID: number;
   style?: React.CSSProperties;
   disabled?: boolean;
+  paymentValue: number;
 };
 
 export default function SubmitForPaymentButton({
   mrHeaderID,
   style,
   disabled,
+  paymentValue,
 }: SubitForPaymentButtonProps) {
   const router = useRouter();
 
@@ -34,6 +36,7 @@ export default function SubmitForPaymentButton({
         action: "submitForPayment",
         id: mrHeaderID,
         changed_by: userInfo?.name,
+        payment_value: Number(paymentValue).toFixed(2),
       }),
     });
 

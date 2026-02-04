@@ -65,6 +65,28 @@ export default function Inventory() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    // Check URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get("tab");
+    const search = urlParams.get("search");
+
+    // Set active tab if provided
+    if (tab === "transfer-log") {
+      setActiveTab("transfer-log");
+    }
+
+    // Set search query if provided
+    if (search) {
+      setSearchQuery(search);
+    }
+
+    // Clean up URL after reading parameters (optional)
+    if (tab || search) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   async function getInventoryItems() {
     try {
       const response = await fetch(

@@ -6,21 +6,26 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { MrHeader } from "../../types/mrHeader";
 
 type SubitForDeliveryButtonProps = {
-  mrHeaderID: number;
+  mrHeader: MrHeader;
   disabled?: boolean;
   style?: React.CSSProperties;
+  deliveryDate: string;
+  paymentValue: number;
 };
 
 export default function SubmitForDeliveryButton({
-  mrHeaderID,
+  mrHeader,
   disabled,
   style,
+  deliveryDate,
+  paymentValue,
 }: SubitForDeliveryButtonProps) {
   const router = useRouter();
 
-  const {userInfo} = useAuth();
+  const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -32,8 +37,11 @@ export default function SubmitForDeliveryButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "submitForDelivery",
-        id: mrHeaderID,
+        id: mrHeader.id,
         changed_by: userInfo?.name,
+        department_id: mrHeader.department_id,
+        delivery_date: new Date(deliveryDate).toLocaleDateString("en-GB"),
+        payment_value: Number(paymentValue).toFixed(2),
       }),
     });
 

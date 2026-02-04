@@ -6,15 +6,16 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { MrHeader } from "../../types/mrHeader";
 
 type SubmitForQuotationsButtonProps = {
-  mrHeaderID: number;
+  mrHeader: MrHeader;
   disabled?: boolean;
   style?: React.CSSProperties;
 };
 
 export default function SubmitForQuotationsButton({
-  mrHeaderID,
+  mrHeader,
   style,
   disabled,
 }: SubmitForQuotationsButtonProps) {
@@ -32,8 +33,9 @@ export default function SubmitForQuotationsButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "submitForQuotations",
-        id: mrHeaderID,
+        id: mrHeader.id,
         changed_by: userInfo?.name,
+        department_id: mrHeader.department_id,
       }),
     });
 

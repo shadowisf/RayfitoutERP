@@ -51,7 +51,7 @@ export default function IssueLPOButton({
   );
   const [deliveryTerms, setDeliveryTerms] =
     useState(`• Delivery will be made to Street 34, Al Qusais 5, Dubai, UAE
-• Any deviations or damages will be responsibility of the supplier which he/she will rectify without any additional charges`);
+- Any deviations or damages will be responsibility of the supplier which he/she will rectify without any additional charges`);
   const [discount, setDiscount] = useState("0");
   const [vatRate, setVatRate] = useState("5");
   const [shippingHandling, setShippingHandling] = useState("0");
@@ -83,10 +83,13 @@ export default function IssueLPOButton({
 
   // Add this useEffect after the existing useEffect hooks
   useEffect(() => {
-    // Check if supplier type is marketplace and set VAT to 0
+    // Check if supplier type is marketplace/online and set VAT to 0
+    const supplierType =
+      mrLines[0]?.approved_supplier_type?.toLowerCase() || "";
+
     if (
-      mrLines.length > 0 &&
-      mrLines[0]?.approved_supplier_type === "marketplace"
+      supplierType.includes("marketplace") ||
+      supplierType.includes("online")
     ) {
       setVatRate("0");
     } else {
@@ -349,34 +352,43 @@ export default function IssueLPOButton({
         mrHeader.progress_id === 13 ||
         mrHeader.progress_id === 16);
 
+    // ✅ Check supplier type to determine which buttons to show
+    const supplierTypeLower = supplierType?.toLowerCase() || "";
+    const isCredit = supplierTypeLower.includes("credit");
+    const isMarketplace =
+      supplierTypeLower.includes("marketplace") ||
+      supplierTypeLower.includes("online");
+
     return (
       <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-        {/* {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
-          <EditLPOButton lpoId={existingLpoId} />
-        )} */}
-
         <ViewLPOButton lpoID={existingLpoId} mrHeader={mrHeader} />
 
-        <UploadSignedLPOButton
-          mrHeader={mrHeader}
-          mrLine={mrLines[0]}
-          LpoID={existingLpoId}
-          supplierId={supplierId}
-          supplierType={supplierType}
-          signedLpoFiles={signedLpoFiles}
-          onFilesUpdate={setSignedLpoFiles}
-          canDelete={canDelete}
-        />
+        {/* ✅ Only show Upload Signed LPO for Cash/Local suppliers (NOT credit, NOT marketplace) */}
+        {!isCredit && !isMarketplace && (
+          <UploadSignedLPOButton
+            mrHeader={mrHeader}
+            mrLine={mrLines[0]}
+            LpoID={existingLpoId}
+            supplierId={supplierId}
+            supplierType={supplierType}
+            signedLpoFiles={signedLpoFiles}
+            onFilesUpdate={setSignedLpoFiles}
+            canDelete={canDelete}
+          />
+        )}
 
-        <UploadInvoiceButton
-          mrHeader={mrHeader}
-          mrLine={mrLines[0]}
-          LpoID={existingLpoId}
-          supplierId={supplierId}
-          invoiceFiles={invoiceFiles}
-          onFilesUpdate={setInvoiceFiles}
-          canDelete={canDelete}
-        />
+        {/* ✅ Only show Upload Invoice for Cash/Local and Marketplace (NOT credit) */}
+        {!isCredit && (
+          <UploadInvoiceButton
+            mrHeader={mrHeader}
+            mrLine={mrLines[0]}
+            LpoID={existingLpoId}
+            supplierId={supplierId}
+            invoiceFiles={invoiceFiles}
+            onFilesUpdate={setInvoiceFiles}
+            canDelete={canDelete}
+          />
+        )}
       </div>
     );
   }

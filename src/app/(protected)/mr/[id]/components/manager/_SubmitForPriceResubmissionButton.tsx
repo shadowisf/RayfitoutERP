@@ -30,6 +30,8 @@ export default function SubmitForPricingResubmissionButton({
         action: "submitForPricingResubmission",
         id: mrHeaderID,
         changed_by: userInfo?.name,
+        user_name: userInfo?.name,
+        user_role: userInfo?.role,
       }),
     });
 

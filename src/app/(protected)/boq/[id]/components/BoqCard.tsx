@@ -5,12 +5,15 @@ import Button from "@/app/components/Button";
 import ThreeDotsMenuButton from "@/app/components/_ThreeButtonsMenuButton";
 import EditBoqHeaderButton from "./manager/_EditBoqHeaderButton";
 import { DeleteBoqHeaderButton } from "./manager/_DeleteBoqHeaderButton";
+import { Project } from "@/app/(protected)/project/[id]/types/project";
 
 type props = {
   boqHeader: BoqHeader | null;
+  onSuccess?: () => void;
+  project: Project | null;
 };
 
-export default function BoqCard({ boqHeader }: props) {
+export default function BoqCard({ boqHeader, project, onSuccess }: props) {
   return (
     <div className="item" key={boqHeader?.id}>
       <div
@@ -25,13 +28,22 @@ export default function BoqCard({ boqHeader }: props) {
         </div>
 
         <div>
-          <small>CLIENT NAME</small>
-          <h2>{boqHeader?.client_name}</h2>
+          <small>NAME</small>
+          <h2>{boqHeader?.name || "-"}</h2>
         </div>
 
         <ThreeDotsMenuButton>
-          <EditBoqHeaderButton boqHeader={boqHeader} threeDotsMenu />
-          <DeleteBoqHeaderButton boqHeader={boqHeader} threeDotsMenu />
+          <EditBoqHeaderButton
+            boqHeader={boqHeader}
+            threeDotsMenu
+            onSuccess={onSuccess}
+            project={project}
+          />
+          <DeleteBoqHeaderButton
+            boqHeader={boqHeader}
+            threeDotsMenu
+            onSuccess={onSuccess}
+          />
         </ThreeDotsMenuButton>
       </div>
 
@@ -56,6 +68,24 @@ export default function BoqCard({ boqHeader }: props) {
               : "-"}
           </h2>
         </div>
+
+        <div></div>
+      </div>
+
+      <br />
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr auto",
+        }}
+      >
+        <div>
+          <small>CLIENT NAME</small>
+          <h2>{boqHeader?.client_name || "-"}</h2>
+        </div>
+
+        <div></div>
 
         <div></div>
       </div>

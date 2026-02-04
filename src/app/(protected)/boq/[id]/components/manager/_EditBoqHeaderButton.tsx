@@ -5,19 +5,25 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { BoqHeader } from "../../types/boqHeader";
+import { Project } from "@/app/(protected)/project/[id]/types/project";
+import { useAuth } from "@/app/context/AuthContext";
 
 type props = {
   boqHeader: BoqHeader | null;
   onSuccess?: () => void;
   threeDotsMenu?: boolean;
+  project: Project | null;
 };
 
 export default function EditBoqHeaderButton({
   boqHeader,
   onSuccess,
   threeDotsMenu,
+  project,
 }: props) {
   const router = useRouter();
+
+  const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -33,6 +39,7 @@ export default function EditBoqHeaderButton({
     return `${year}-${month}-${day}`;
   };
 
+  const [name, setName] = useState(boqHeader?.name || "");
   const [companyName, setCompanyName] = useState(boqHeader?.company_name || "");
   const [clientName, setClientName] = useState(boqHeader?.client_name || "");
   const [location, setLocation] = useState(boqHeader?.location || "");
@@ -60,6 +67,7 @@ export default function EditBoqHeaderButton({
         action: "updateBoqHeader",
         id: boqHeader?.id,
         project_id: boqHeader?.project_id,
+        name,
         company_name: companyName,
         client_name: clientName,
         location,
@@ -70,6 +78,8 @@ export default function EditBoqHeaderButton({
         completion,
         exclusion,
         terms_and_conditions: termsAndConditions,
+        project_name: project?.name,
+        updated_by: userInfo?.name,
       }),
     });
 
@@ -120,7 +130,14 @@ export default function EditBoqHeaderButton({
           handleSubmit={(e) => handleSubmit(e)}
           addButtonLabel="CONFIRM"
         >
-          <div className="input-row half">
+          <div className="input-row three-col">
+            <InputItem
+              label={"NAME"}
+              value={name}
+              type={"text"}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
             <InputItem
               label={"COMPANY NAME"}
               value={companyName}

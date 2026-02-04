@@ -6,15 +6,27 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { MrHeader } from "../../types/mrHeader";
+import { MrLine } from "../../types/mrLine";
+
+type GroupedMrLines = {
+  [category: string]: {
+    [subCategory: string]: {
+      [supplier: string]: MrLine[];
+    };
+  };
+};
 
 type CompleteMaterialRequestButtonProps = {
-  mrHeaderID: number;
+  mrHeader: MrHeader;
+  mrLineItems: GroupedMrLines; // ✅ Add this prop to pass MR line items
   style?: React.CSSProperties;
   disabled?: boolean;
 };
 
 export default function CompleteMaterialRequestButton({
-  mrHeaderID,
+  mrHeader,
+  mrLineItems, // ✅ Add this
   style,
   disabled,
 }: CompleteMaterialRequestButtonProps) {
@@ -27,13 +39,26 @@ export default function CompleteMaterialRequestButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    // ✅ Flatten the grouped MR lines into a single array
+    const flattenedItems: any[] = [];
+    for (const category in mrLineItems) {
+      for (const subCategory in mrLineItems[category]) {
+        for (const supplier in mrLineItems[category][subCategory]) {
+          const items = mrLineItems[category][subCategory][supplier];
+          flattenedItems.push(...items);
+        }
+      }
+    }
+
     const res = await fetch(`/api/mr`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "submitForCompletion",
-        id: mrHeaderID,
+        id: mrHeader.id,
         changed_by: userInfo?.name,
+        department_id: mrHeader.department_id,
+        mr_line_items: flattenedItems, // ✅ Pass all MR line items
       }),
     });
 

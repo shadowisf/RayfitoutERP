@@ -6,15 +6,16 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { MrHeader } from "../../types/mrHeader";
 
 type SubmitForResubmissionButtonProps = {
-  mrHeaderID: number;
+  mrHeader: MrHeader;
   style?: React.CSSProperties;
   disabled?: boolean;
 };
 
 export default function SubmitForResubmissionButton({
-  mrHeaderID,
+  mrHeader,
   style,
   disabled,
 }: SubmitForResubmissionButtonProps) {
@@ -32,8 +33,11 @@ export default function SubmitForResubmissionButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "submitForResubmission",
-        id: mrHeaderID,
+        id: mrHeader.id,
         changed_by: userInfo?.name,
+        department_id: mrHeader.department_id,
+        user_name: userInfo?.name,
+        user_role: userInfo?.role,
       }),
     });
 

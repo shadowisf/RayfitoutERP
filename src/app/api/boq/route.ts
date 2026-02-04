@@ -9,12 +9,13 @@ export async function POST(req: Request) {
     if (body.action === "createBoqHeader") {
       const query = `
       INSERT INTO boq_headers 
-      (project_id, company_name, client_name, location, date, payment_terms, validity_terms, warranty, completion, exclusion, terms_and_conditions)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (project_id, name, company_name, client_name, location, date, payment_terms, validity_terms, warranty, completion, exclusion, terms_and_conditions)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const values = [
         Number(body.project_id),
+        body.name,
         body.company_name,
         body.client_name,
         body.location,
@@ -28,6 +29,26 @@ export async function POST(req: Request) {
       ];
 
       const [result] = await db.query<ResultSetHeader>(query, values);
+
+      await db.query(
+        `INSERT INTO notification (boq_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          result.insertId,
+          8,
+          "BOQ Created",
+          `A new BOQ ${body.name} was created for ${body.project_name}`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (boq_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          result.insertId,
+          16,
+          "BOQ Created",
+          `A new BOQ ${body.name} was created for ${body.project_name}`,
+        ],
+      );
 
       return NextResponse.json({ success: true, id: result.insertId });
     }
@@ -206,12 +227,13 @@ export async function PUT(req: Request) {
     if (body.action === "updateBoqHeader") {
       const query = `
         UPDATE boq_headers 
-        SET project_id = ?, company_name = ?, client_name = ?, location = ?, date = ?, payment_terms = ?, validity_terms = ?, warranty = ?, completion = ?, exclusion = ?, terms_and_conditions = ?
+        SET project_id = ?, name = ?, company_name = ?, client_name = ?, location = ?, date = ?, payment_terms = ?, validity_terms = ?, warranty = ?, completion = ?, exclusion = ?, terms_and_conditions = ?
         WHERE id = ?
       `;
 
       const values = [
         Number(body.project_id),
+        body.name,
         body.company_name,
         body.client_name,
         body.location,
@@ -226,6 +248,38 @@ export async function PUT(req: Request) {
       ];
 
       await db.query(query, values);
+
+      await db.query(
+        `INSERT INTO notification (boq_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          8,
+          "BOQ Updated",
+          `${body.name} was updated for ${body.project_name} by ${body.updated_by} at ${new Date().toLocaleTimeString(
+            "en-US",
+            {
+              hour: "2-digit",
+              minute: "2-digit",
+            },
+          )}`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (boq_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          16,
+          "BOQ Updated",
+          `${body.name} was updated for ${body.project_name} by ${body.updated_by} at ${new Date().toLocaleTimeString(
+            "en-US",
+            {
+              hour: "2-digit",
+              minute: "2-digit",
+            },
+          )}`,
+        ],
+      );
 
       return NextResponse.json({ success: true });
     }

@@ -82,6 +82,36 @@ export async function POST(request: NextRequest) {
         await db.query(boqJunctionQuery, [boqJunctionValues]);
       }
 
+      await db.query(
+        `INSERT INTO notification (inventory_item_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.inventory_item_id,
+          8,
+          "Stock Added",
+          `${body.quantity} ${body.inventory_item_unit} was added to ${body.inventory_item_description}`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (inventory_item_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.inventory_item_id,
+          16,
+          "Stock Added",
+          `${body.quantity} ${body.inventory_item_unit} was added to ${body.inventory_item_description}`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (inventory_item_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.inventory_item_id,
+          11,
+          "Stock Added",
+          `${body.quantity} ${body.inventory_item_unit} was added to ${body.inventory_item_description}`,
+        ],
+      );
+
       return NextResponse.json({
         success: true,
         batch_id: nextBatchId,
@@ -226,6 +256,42 @@ export async function POST(request: NextRequest) {
           await db.query(boqJunctionQuery, [boqJunctionValues]);
         }
 
+        if (body.type.toLowerCase().includes("issue")) {
+          await db.query(
+            "INSERT INTO notification (transfer_id, department_id, header, message) VALUES (?, ?, ?, ?)",
+            [
+              transferId,
+              11,
+              "Stock Issued",
+              `${body.inventory_item_name} was issued to ${body.receiver_name}`,
+            ],
+          );
+        }
+
+        if (body.type.toLowerCase().includes("transfer")) {
+          await db.query(
+            "INSERT INTO notification (transfer_id, department_id, header, message) VALUES (?, ?, ?, ?)",
+            [
+              transferId,
+              11,
+              "Stock Transferred",
+              `${body.inventory_item_name} was transferred from ${body.from} to ${body.to}`,
+            ],
+          );
+        }
+
+        if (body.type.toLowerCase().includes("send")) {
+          await db.query(
+            "INSERT INTO notification (transfer_id, department_id, header, message) VALUES (?, ?, ?, ?)",
+            [
+              transferId,
+              11,
+              "Stock Sent",
+              `${body.inventory_item_name} was sent for processing (${body.purpose})`,
+            ],
+          );
+        }
+
         return NextResponse.json({
           success: true,
           message: "Stock transferred/issued successfully",
@@ -294,6 +360,47 @@ export async function POST(request: NextRequest) {
             boqId,
           ]);
           await db.query(boqJunctionQuery, [boqJunctionValues]);
+        }
+
+        // ✅ Create summarized notification with all inventory items
+        const inventoryNames = body.items
+          .map((item: any) => item.inventory_item_name || "Unknown Item")
+          .join(", ");
+
+        if (body.type.toLowerCase().includes("issue")) {
+          await db.query(
+            "INSERT INTO notification (transfer_id, department_id, header, message) VALUES (?, ?, ?, ?)",
+            [
+              transferId,
+              11,
+              "Stock Issued",
+              `${inventoryNames} was issued to ${body.receiver_name}`,
+            ],
+          );
+        }
+
+        if (body.type.toLowerCase().includes("transfer")) {
+          await db.query(
+            "INSERT INTO notification (transfer_id, department_id, header, message) VALUES (?, ?, ?, ?)",
+            [
+              transferId,
+              11,
+              "Stock Transferred",
+              `${inventoryNames} was transferred from ${body.from} to ${body.to}`,
+            ],
+          );
+        }
+
+        if (body.type.toLowerCase().includes("send")) {
+          await db.query(
+            "INSERT INTO notification (transfer_id, department_id, header, message) VALUES (?, ?, ?, ?)",
+            [
+              transferId,
+              11,
+              "Stock Sent",
+              `${inventoryNames} was sent for processing (${body.purpose})`,
+            ],
+          );
         }
 
         return NextResponse.json({

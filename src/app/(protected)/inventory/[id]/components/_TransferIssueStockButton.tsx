@@ -220,7 +220,7 @@ export default function TransferIssueStocksButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "transferIssueStock",
-        inventory_item_id: inventoryItem.id,
+        inventory_item_id: inventoryItem?.id,
         project_id: projectID,
         boq_line_ids: boqLineIDs, // ✅ Send as array
         type,
@@ -234,6 +234,7 @@ export default function TransferIssueStocksButton({
         receiver_name: receiverName,
         serial_number: serialNumber,
         attachment: JSON.stringify(attachmentUrls),
+        inventory_item_name: inventoryItem?.description,
       }),
     });
 

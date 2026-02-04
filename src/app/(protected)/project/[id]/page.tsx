@@ -300,7 +300,12 @@ export default function ProjectWithID() {
         ) : (
           <div className="widget-grid boqs">
             {boqs?.map((boq: any, index) => (
-              <BoqCard key={index} boqHeader={boq} />
+              <BoqCard
+                key={index}
+                boqHeader={boq}
+                onSuccess={() => fetchAllBoqsByProjectID()}
+                project={project}
+              />
             ))}
           </div>
         )}

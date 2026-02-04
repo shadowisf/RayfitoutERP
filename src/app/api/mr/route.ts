@@ -192,6 +192,16 @@ export async function PUT(req: Request) {
         [body.id, body.changed_by],
       );
 
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          16,
+          "QS Price Approval Required",
+          `MR-${String(body.id).padStart(5, "0")} is awaiting your review`,
+        ],
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -203,6 +213,26 @@ export async function PUT(req: Request) {
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 2, ?)`,
         [body.id, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          16,
+          "QS Initial Approval Required",
+          `MR-${String(body.id).padStart(5, "0")} is awaiting your review`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          "MR Submitted",
+          `Your MR-${String(body.id).padStart(5, "0")} is awaiting QS approval`,
+        ],
       );
 
       return NextResponse.json({ status: 200 });
@@ -218,6 +248,16 @@ export async function PUT(req: Request) {
         [body.id, body.changed_by],
       );
 
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          9,
+          "LPO Required",
+          `MR-${String(body.id).padStart(5, "0")} is awaiting LPO & invoice`,
+        ],
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -229,6 +269,16 @@ export async function PUT(req: Request) {
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 11, ?)`,
         [body.id, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          9,
+          "Quotations Rejected",
+          `MR-${String(body.id).padStart(5, "0")} was rejected by ${body.user_name}, ${body.user_role}`,
+        ],
       );
 
       return NextResponse.json({ status: 200 });
@@ -268,6 +318,26 @@ export async function PUT(req: Request) {
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 3, ?)`,
         [body.id, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          8,
+          "Manager Initial Approval Required",
+          `MR-${String(body.id).padStart(5, "0")} is awaiting your review`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          "MR Submitted",
+          `Your MR-${String(body.id).padStart(5, "0")} is awaiting manager approval`,
+        ],
       );
 
       return NextResponse.json({ status: 200 });
@@ -337,6 +407,16 @@ export async function PUT(req: Request) {
         [body.id, body.changed_by],
       );
 
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          "MR Rejected",
+          `MR-${String(body.id).padStart(5, "0")} was rejected by ${body.user_name}, ${body.user_role}`,
+        ],
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -348,6 +428,26 @@ export async function PUT(req: Request) {
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 7, ?)`,
         [body.id, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          9,
+          "Quotations Required",
+          `MR-${String(body.id).padStart(5, "0")} is awaiting quotations`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          "MR Approved",
+          `Your MR-${String(body.id).padStart(5, "0")} is awaiting quotations`,
+        ],
       );
 
       return NextResponse.json({ status: 200 });
@@ -363,6 +463,16 @@ export async function PUT(req: Request) {
         [body.id, body.changed_by],
       );
 
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          8,
+          "Manager Price Approval Required",
+          `MR-${String(body.id).padStart(5, "0")} is awaiting your review`,
+        ],
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -376,6 +486,16 @@ export async function PUT(req: Request) {
         [body.id, body.changed_by],
       );
 
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          10,
+          "Pending Payment",
+          `MR-${String(body.id).padStart(5, "0")} is awaiting payment (AED ${body.payment_value})`,
+        ],
+      );
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -387,6 +507,56 @@ export async function PUT(req: Request) {
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 17, ?)`,
         [body.id, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          10,
+          "Payment Successful",
+          `A payment (AED ${body.payment_value}) was made against MR-${String(body.id).padStart(5, "0")}`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          8,
+          "MR Awaiting Delivery",
+          `MR-${String(body.id).padStart(5, "0")} is awaiting delivery (ETA: ${body.delivery_date})`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          9,
+          "MR Awaiting Delivery",
+          `MR-${String(body.id).padStart(5, "0")} is awaiting delivery (ETA: ${body.delivery_date})`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          16,
+          "MR Awaiting Delivery",
+          `MR-${String(body.id).padStart(5, "0")} is awaiting delivery (ETA: ${body.delivery_date})`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          "MR Awaiting Delivery",
+          `MR-${String(body.id).padStart(5, "0")} is awaiting delivery (ETA: ${body.delivery_date})`,
+        ],
       );
 
       return NextResponse.json({ status: 200 });
@@ -440,6 +610,76 @@ export async function PUT(req: Request) {
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 25, ?)`,
         [body.id, body.changed_by],
       );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          "Material Received",
+          `Your MR-${String(body.id).padStart(5, "0")} was fulfilled successfully`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          9,
+          "Material Received",
+          `MR-${String(body.id).padStart(5, "0")} was fulfilled successfully`,
+        ],
+      );
+
+      if (body.mr_line_items && Array.isArray(body.mr_line_items)) {
+        const notificationPromises = body.mr_line_items.map(
+          async (item: any) => {
+            await db.query(
+              `
+      INSERT INTO notification
+      (mr_header_id, department_id, header, message)
+      VALUES (?, ?, ?, ?)
+      `,
+              [
+                body.id,
+                11,
+                "Stock Added",
+                `${item.quantity} ${item.unit} was added to ${item.material_description}`,
+              ],
+            );
+
+            await db.query(
+              `
+      INSERT INTO notification
+      (mr_header_id, department_id, header, message)
+      VALUES (?, ?, ?, ?)
+      `,
+              [
+                body.id,
+                8,
+                "Stock Added",
+                `${item.quantity} ${item.unit} was added to ${item.material_description}`,
+              ],
+            );
+
+            await db.query(
+              `
+      INSERT INTO notification
+      (mr_header_id, department_id, header, message)
+      VALUES (?, ?, ?, ?)
+      `,
+              [
+                body.id,
+                16,
+                "Stock Added",
+                `${item.quantity} ${item.unit} was added to ${item.material_description}`,
+              ],
+            );
+          },
+        );
+
+        await Promise.all(notificationPromises);
+      }
 
       return NextResponse.json({ status: 200 });
     }
