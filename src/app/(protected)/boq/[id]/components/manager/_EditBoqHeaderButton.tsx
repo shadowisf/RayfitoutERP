@@ -5,21 +5,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { BoqHeader } from "../../types/boqHeader";
-import { Project } from "@/app/(protected)/project/[id]/types/project";
 import { useAuth } from "@/app/context/AuthContext";
 
 type props = {
   boqHeader: BoqHeader | null;
   onSuccess?: () => void;
   threeDotsMenu?: boolean;
-  project: Project | null;
+  projectName: string;
 };
 
 export default function EditBoqHeaderButton({
   boqHeader,
   onSuccess,
   threeDotsMenu,
-  project,
+  projectName,
 }: props) {
   const router = useRouter();
 
@@ -78,7 +77,7 @@ export default function EditBoqHeaderButton({
         completion,
         exclusion,
         terms_and_conditions: termsAndConditions,
-        project_name: project?.name,
+        project_name: projectName,
         updated_by: userInfo?.name,
       }),
     });
