@@ -790,10 +790,7 @@ export default function BoqLinesView({
             {(userInfo?.departmentID === 8 ||
               userInfo?.departmentID === 16) && (
               <>
-                <EditBoqHeaderButton
-                  boqHeader={boqHeader}
-                  projectName={boqHeader.project_name}
-                />
+                <EditBoqHeaderButton boqHeader={boqHeader} />
                 <DeleteBoqHeaderButton boqHeader={boqHeader} />
               </>
             )}
