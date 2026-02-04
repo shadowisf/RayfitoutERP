@@ -11,14 +11,12 @@ type props = {
   boqHeader: BoqHeader | null;
   onSuccess?: () => void;
   threeDotsMenu?: boolean;
-  projectName: string;
 };
 
 export default function EditBoqHeaderButton({
   boqHeader,
   onSuccess,
   threeDotsMenu,
-  projectName,
 }: props) {
   const router = useRouter();
 
@@ -77,7 +75,7 @@ export default function EditBoqHeaderButton({
         completion,
         exclusion,
         terms_and_conditions: termsAndConditions,
-        project_name: projectName,
+        project_name: boqHeader?.project_name,
         updated_by: userInfo?.name,
       }),
     });

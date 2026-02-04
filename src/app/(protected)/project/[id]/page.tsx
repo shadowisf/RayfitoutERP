@@ -304,7 +304,6 @@ export default function ProjectWithID() {
                 key={index}
                 boqHeader={boq}
                 onSuccess={() => fetchAllBoqsByProjectID()}
-                project={project}
               />
             ))}
           </div>
