@@ -136,13 +136,44 @@ function NotificationToast({
                 style={{
                   fontSize: "12px",
                   color: "rgba(107, 114, 128, 1)",
-                  fontWeight: 600,
                   marginBottom: "10px",
                 }}
               >
                 {(() => {
                   const message = notification.message;
                   const headerLower = notification.header.toLowerCase();
+
+                  // ✅ Special handling for "Payment Rejected" notifications
+                  if (
+                    headerLower.includes("payment") &&
+                    headerLower.includes("rejected")
+                  ) {
+                    const regex = /^Payment for (LPO-\d+) was rejected$/i;
+                    const match = message.match(regex);
+
+                    if (match) {
+                      const lpoId = match[1];
+
+                      return (
+                        <>
+                          <span style={{ color: "rgba(107, 114, 128, 1)" }}>
+                            Payment for{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>{lpoId}</span>
+                          <span style={{ color: "rgba(107, 114, 128, 1)" }}>
+                            {" "}
+                            has been rejected
+                          </span>
+                        </>
+                      );
+                    }
+
+                    return (
+                      <span style={{ color: "rgba(107, 114, 128, 1)" }}>
+                        {message}
+                      </span>
+                    );
+                  }
 
                   // ✅ Special handling for "Stock Transferred" notifications
                   if (
@@ -391,6 +422,41 @@ function NotificationToast({
                     return <span style={{ color: "inherit" }}>{message}</span>;
                   }
 
+                  // ✅ Special handling for "Missing DN" notifications
+                  if (
+                    headerLower.includes("missing") &&
+                    headerLower.includes("dn")
+                  ) {
+                    const regex =
+                      /^Delivery note for (.+?) has been missing for 72hrs!$/i;
+                    const match = message.match(regex);
+
+                    if (match) {
+                      const description = match[1];
+
+                      return (
+                        <>
+                          <span style={{ color: "rgba(107, 114, 128, 1)" }}>
+                            Delivery note for{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>
+                            {description}
+                          </span>
+                          <span style={{ color: "rgba(107, 114, 128, 1)" }}>
+                            {" "}
+                            has been missing for 72hrs!
+                          </span>
+                        </>
+                      );
+                    }
+
+                    return (
+                      <span style={{ color: "rgba(107, 114, 128, 1)" }}>
+                        {message}
+                      </span>
+                    );
+                  }
+
                   // ✅ Original handling for other notifications
                   const byIndex = message.toLowerCase().indexOf(" by ");
 
@@ -401,10 +467,12 @@ function NotificationToast({
                     byIndex !== -1 ? message.slice(byIndex + 4) : null;
 
                   const renderText = (text: string, makeBlack = false) => {
-                    const parts = text.split(/(MR-\d+|\([^)]*AED[^)]*\))/g);
+                    const parts = text.split(
+                      /(MR-\d+|LPO-\d+|\([^)]*AED[^)]*\))/g,
+                    );
 
                     return parts.map((part, index) => {
-                      if (part.startsWith("MR-")) {
+                      if (part.startsWith("MR-") || part.startsWith("LPO-")) {
                         return (
                           <span key={index} style={{ color: "#000000" }}>
                             {part}
@@ -503,6 +571,7 @@ export default function NotificationDropdown() {
 
   const paymentCheckIcon = "/icons/notification-payment-check.svg";
   const paymentExcalamationIcon = "/icons/notification-payment-exclamation.svg";
+  const paymentCrossIcon = "/icons/notification-payment-cross.svg";
 
   const deliveryIcon = "/icons/notification-delivery.svg";
 
@@ -759,6 +828,33 @@ export default function NotificationDropdown() {
     const headerLower = header.toLowerCase();
     const messageLower = message.toLowerCase();
 
+    // ✅ Check for payment rejected (MUST come before general "rejected" check)
+    if (headerLower.includes("payment") && headerLower.includes("rejected")) {
+      return {
+        icon: paymentCrossIcon,
+        headerColor: "rgba(248, 77, 77, 1)",
+        dotColor: "rgba(248, 77, 77, 1)",
+      };
+    }
+
+    // ✅ Check for payment overdue
+    if (headerLower.includes("payment") && headerLower.includes("overdue")) {
+      return {
+        icon: paymentExcalamationIcon,
+        headerColor: "rgba(248, 77, 77, 1)",
+        dotColor: "rgba(248, 77, 77, 1)",
+      };
+    }
+
+    // ✅ Check for missing delivery note
+    if (headerLower.includes("missing") && headerLower.includes("dn")) {
+      return {
+        icon: mrExcalamationIcon,
+        headerColor: "rgba(248, 77, 77, 1)",
+        dotColor: "rgba(248, 77, 77, 1)",
+      };
+    }
+
     // ✅ Check for stock transferred (stock transfer icon, black text)
     if (headerLower.includes("stock") && headerLower.includes("transferred")) {
       return {
@@ -834,7 +930,7 @@ export default function NotificationDropdown() {
       };
     }
 
-    // ✅ Check for payment-related notifications
+    // ✅ Check for payment-related notifications (pending payment)
     if (headerLower.includes("pending") && headerLower.includes("payment")) {
       return {
         icon: paymentExcalamationIcon,
@@ -852,7 +948,7 @@ export default function NotificationDropdown() {
       };
     }
 
-    // ✅ Check for MR rejected or required
+    // ✅ Check for MR rejected or required (this comes AFTER payment rejected check)
     if (headerLower.includes("rejected") || headerLower.includes("required")) {
       return {
         icon: mrExcalamationIcon,
@@ -1051,9 +1147,6 @@ export default function NotificationDropdown() {
                       style={{
                         padding: "16px 24px",
                         borderBottom: "1px solid rgba(239, 239, 239, 1)",
-                        backgroundColor: notification.is_read
-                          ? "white"
-                          : "rgba(249, 250, 251, 1)",
                       }}
                     >
                       <div
@@ -1091,7 +1184,6 @@ export default function NotificationDropdown() {
                               style={{
                                 fontSize: "12px",
                                 color: "rgba(107, 114, 128, 1)",
-                                fontWeight: 600,
                                 marginBottom: "10px",
                               }}
                             >
@@ -1099,6 +1191,57 @@ export default function NotificationDropdown() {
                                 const message = notification.message;
                                 const headerLower =
                                   notification.header.toLowerCase();
+
+                                // ✅ Special handling for "Payment Rejected" notifications
+                                if (
+                                  headerLower.includes("payment") &&
+                                  headerLower.includes("rejected")
+                                ) {
+                                  const regex =
+                                    /^Payment for (LPO-\d+) was rejected$/i;
+                                  const match = message.match(regex);
+
+                                  if (match) {
+                                    const lpoId = match[1];
+
+                                    return (
+                                      <>
+                                        <span
+                                          style={{
+                                            color: "rgba(107, 114, 128, 1)",
+                                          }}
+                                        >
+                                          Payment for{" "}
+                                        </span>
+                                        <span
+                                          style={{
+                                            color: "#000000",
+                                          }}
+                                        >
+                                          {lpoId}
+                                        </span>
+                                        <span
+                                          style={{
+                                            color: "rgba(107, 114, 128, 1)",
+                                          }}
+                                        >
+                                          {" "}
+                                          has been rejected
+                                        </span>
+                                      </>
+                                    );
+                                  }
+
+                                  return (
+                                    <span
+                                      style={{
+                                        color: "rgba(107, 114, 128, 1)",
+                                      }}
+                                    >
+                                      {message}
+                                    </span>
+                                  );
+                                }
 
                                 // ✅ Special handling for "Stock Transferred" notifications
                                 if (
@@ -1412,6 +1555,57 @@ export default function NotificationDropdown() {
                                   );
                                 }
 
+                                // ✅ Special handling for "Missing DN" notifications
+                                if (
+                                  headerLower.includes("missing") &&
+                                  headerLower.includes("dn")
+                                ) {
+                                  const regex =
+                                    /^Delivery note for (.+?) has been missing for 72hrs!$/i;
+                                  const match = message.match(regex);
+
+                                  if (match) {
+                                    const description = match[1];
+
+                                    return (
+                                      <>
+                                        <span
+                                          style={{
+                                            color: "rgba(107, 114, 128, 1)",
+                                          }}
+                                        >
+                                          Delivery note for{" "}
+                                        </span>
+                                        <span
+                                          style={{
+                                            color: "#000000",
+                                          }}
+                                        >
+                                          {description}
+                                        </span>
+                                        <span
+                                          style={{
+                                            color: "rgba(107, 114, 128, 1)",
+                                          }}
+                                        >
+                                          {" "}
+                                          has been missing for 72hrs!
+                                        </span>
+                                      </>
+                                    );
+                                  }
+
+                                  return (
+                                    <span
+                                      style={{
+                                        color: "rgba(107, 114, 128, 1)",
+                                      }}
+                                    >
+                                      {message}
+                                    </span>
+                                  );
+                                }
+
                                 // ✅ Original handling for other notifications
                                 const byIndex = message
                                   .toLowerCase()
@@ -1432,11 +1626,14 @@ export default function NotificationDropdown() {
                                   makeBlack = false,
                                 ) => {
                                   const parts = text.split(
-                                    /(MR-\d+|\([^)]*AED[^)]*\))/g,
+                                    /(MR-\d+|LPO-\d+|\([^)]*AED[^)]*\))/g,
                                   );
 
                                   return parts.map((part, index) => {
-                                    if (part.startsWith("MR-")) {
+                                    if (
+                                      part.startsWith("MR-") ||
+                                      part.startsWith("LPO-")
+                                    ) {
                                       return (
                                         <span
                                           key={index}
@@ -1490,7 +1687,7 @@ export default function NotificationDropdown() {
                                 marginBottom: "10px",
                               }}
                             >
-                              {getTimeAgo(notification.created_at)}
+                              {getTimeAgo(notification.created_at)} ago
                             </div>
 
                             {/* ✅ OPEN button now uses regular button with onClick */}

@@ -29,7 +29,7 @@ export default async function InventoryItemWithID({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: id }),
-    }
+    },
   )
     .then((res) => res.json())
     .then((data) => {
@@ -50,7 +50,7 @@ export default async function InventoryItemWithID({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ inventoryItemId: id }),
-    }
+    },
   )
     .then((res) => res.json())
     .then((data) => {
@@ -80,7 +80,7 @@ export default async function InventoryItemWithID({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ inventory_item_id: id }),
-    }
+    },
   )
     .then((res) => res.json())
     .then((data) => {
@@ -98,7 +98,7 @@ export default async function InventoryItemWithID({
   const getStockStatus = (availableQty: number, minimumStock: number) => {
     if (availableQty === 0) {
       return {
-        label: "OUT OF STOCK",
+        label: "EMPTY STOCK",
         bgColor: "rgba(255, 181, 181, 1)",
         textColor: "rgba(248, 77, 77, 1)",
       };
@@ -110,7 +110,7 @@ export default async function InventoryItemWithID({
       };
     } else {
       return {
-        label: "IN STOCK",
+        label: "IN-STOCK",
         bgColor: "rgba(149, 222, 189, 1)",
         textColor: "rgba(0, 108, 60, 1)",
       };
@@ -119,7 +119,7 @@ export default async function InventoryItemWithID({
 
   const stockStatus = getStockStatus(
     availableQuantityData,
-    inventoryItem.minimum_stock_quantity
+    inventoryItem.minimum_stock_quantity,
   );
 
   return (

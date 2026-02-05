@@ -470,7 +470,7 @@ export default function PaymentButtons({
 
   return (
     <>
-      <div style={{ display: "flex", gap: "10px" }}>
+      <div style={{ display: "flex", gap: "5px" }}>
         <Button
           componentType={"button"}
           bgColor={"rgba(34, 150, 100, 1)"}

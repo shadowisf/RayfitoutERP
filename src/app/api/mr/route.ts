@@ -592,6 +592,16 @@ export async function PUT(req: Request) {
         [body.id, body.changed_by],
       );
 
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          9,
+          "Payment Rejected",
+          `Payment for LPO-${String(body.id).padStart(5, "0")} was rejected`,
+        ],
+      );
+
       return NextResponse.json({ status: 200 });
     }
 

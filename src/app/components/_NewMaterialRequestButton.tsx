@@ -56,6 +56,13 @@ export default function NewMrButton() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (purposeReasonID === 1 || purposeReasonID === 2) {
+      if (!projectID) {
+        toast("Please select a project", "error");
+        return;
+      }
+    }
+
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

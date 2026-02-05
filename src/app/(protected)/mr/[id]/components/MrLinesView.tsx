@@ -151,6 +151,22 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     userInfo?.departmentID === 10 ||
     userInfo?.departmentID === 16;
 
+  const formatNumber = (value: unknown): string => {
+    // Convert to number safely
+    const num = Number(value);
+
+    // If not a valid number, return empty string or 0
+    if (isNaN(num)) return "";
+
+    // Integer case
+    if (Number.isInteger(num)) {
+      return num.toString();
+    }
+
+    // Decimal case: max 3 decimals, remove trailing zeros
+    return parseFloat(num.toFixed(3)).toString();
+  };
+
   useEffect(() => {
     async function fetchLpoPrices() {
       const pricesMap: {
@@ -2181,7 +2197,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         <td>{itemIndex + 1}</td>
                                         <td>{item.material_description}</td>
                                         <td>
-                                          {item.quantity} {item.unit}
+                                          {formatNumber(item?.quantity)}{" "}
+                                          {item.unit}
                                         </td>
                                         <td>
                                           {item.boq_line_ids ? (

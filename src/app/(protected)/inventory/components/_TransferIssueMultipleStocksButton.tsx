@@ -199,12 +199,15 @@ export default function TransferIssueMultipleStocks({
       const data = await res.json();
 
       let locationQuantity = 0;
+      const round = (n: number) => Math.round(n * 1000) / 1000;
 
       // ✅ Step 1: Add quantity from stocks table for this location
       if (data.stocks && Array.isArray(data.stocks)) {
         data.stocks.forEach((stock: any) => {
           if (stock.location === location) {
-            locationQuantity += parseFloat(stock.quantity) || 0;
+            locationQuantity = round(
+              locationQuantity + (parseFloat(stock.quantity) || 0),
+            );
           }
         });
       }
@@ -212,50 +215,36 @@ export default function TransferIssueMultipleStocks({
       // ✅ Step 2: Process transfers and issues for this location
       if (data.stocksTransferIssue && Array.isArray(data.stocksTransferIssue)) {
         data.stocksTransferIssue.forEach((transaction: any) => {
-          // Find the specific item in the transaction
-          const transactionItem = transaction.items?.find(
-            (item: any) => item.inventory_item_id === inventoryItemId,
-          );
+          const transactionType = transaction.type?.toLowerCase() || "";
+          const transactionQty = parseFloat(transaction.quantity) || 0;
 
-          if (!transactionItem) return; // Skip if this transaction doesn't involve this item
-
-          const transactionQty = parseFloat(transactionItem.quantity) || 0;
-
-          // ✅ Issue for use
-          if (transaction.type?.toLowerCase().includes("issue")) {
-            // Only subtract if received AND from this location
-            if (
-              transaction.received === 1 &&
-              transaction.from_location === location
-            ) {
-              locationQuantity -= transactionQty;
-            }
-          }
-          // ✅ Material transfer
-          else if (transaction.type?.toLowerCase().includes("transfer")) {
-            // Only process if received
-            if (transaction.received === 1) {
-              // Subtract from source location
-              if (transaction.from_location === location) {
-                locationQuantity -= transactionQty;
-              }
-              // Add to destination location
-              if (transaction.to_location === location) {
-                locationQuantity += transactionQty;
-              }
-            }
-          }
-          // ✅ Send for processing
-          else if (transaction.type?.toLowerCase().includes("send")) {
-            // Subtract from source location (sent items leave the location)
+          // ✅ Issue for use - subtract from from_location immediately
+          if (transactionType.includes("issue")) {
             if (transaction.from_location === location) {
-              locationQuantity -= transactionQty;
+              locationQuantity = round(locationQuantity - transactionQty);
+            }
+          }
+          // ✅ Send for processing - subtract from from_location immediately
+          else if (transactionType.includes("send")) {
+            if (transaction.from_location === location) {
+              locationQuantity = round(locationQuantity - transactionQty);
+            }
+          }
+          // ✅ Material transfer - move stock between locations
+          else if (transactionType.includes("transfer")) {
+            // Subtract from from_location
+            if (transaction.from_location === location) {
+              locationQuantity = round(locationQuantity - transactionQty);
+            }
+            // Add to to_location
+            if (transaction.to_location === location) {
+              locationQuantity = round(locationQuantity + transactionQty);
             }
           }
         });
       }
 
-      return locationQuantity > 0 ? locationQuantity : 0;
+      return locationQuantity > 0 ? round(locationQuantity) : 0;
     } catch (error) {
       console.error("Error fetching available quantity:", error);
       return 0;

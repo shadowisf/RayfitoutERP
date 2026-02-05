@@ -28,7 +28,7 @@ export default function TotalSpentWidget({ filterDays }: props) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ filter: filterDays }),
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -75,8 +75,8 @@ export default function TotalSpentWidget({ filterDays }: props) {
   const backgroundColor = hasNoTotalSpent
     ? "rgba(156, 156, 156, 1)"
     : isIncrease
-    ? "rgba(12, 143, 87, 1)"
-    : "rgba(248, 77, 77, 1)";
+      ? "rgba(12, 143, 87, 1)"
+      : "rgba(248, 77, 77, 1)";
   const textColor = isIncrease
     ? "rgba(1, 184, 105, 1)"
     : "rgba(255, 255, 255, 1)";
@@ -87,8 +87,8 @@ export default function TotalSpentWidget({ filterDays }: props) {
   const changeText = hasNoTotalSpent
     ? "Nothing spent yet"
     : isIncrease
-    ? `${changeMagnitude} increase from last ${periodLabel}`
-    : `${changeMagnitude} decrease from last ${periodLabel}`;
+      ? `${changeMagnitude} increase from last ${periodLabel}`
+      : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
     <div className="item" style={{ backgroundColor, color: "white" }}>
@@ -98,7 +98,7 @@ export default function TotalSpentWidget({ filterDays }: props) {
       </div>
       <div>
         <div className="bottom">
-          <p className="number">{isLoading ? "..." : thisWeek}</p>
+          <p className="number">AED {isLoading ? "..." : thisWeek}</p>
           {!hasNoTotalSpent && !isLoading && (
             <div className="data-pill">
               <span style={{ color: textColor }}>

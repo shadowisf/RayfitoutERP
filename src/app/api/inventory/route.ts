@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       const [res] = await db.query<ResultSetHeader>(query, values);
 
       await db.query(
-        `INSERT INTO notification (inventory_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO notification (inventory_item_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
         [
           res.insertId,
           8,
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       );
 
       await db.query(
-        `INSERT INTO notification (inventory_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO notification (inventory_item_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
         [
           res.insertId,
           16,

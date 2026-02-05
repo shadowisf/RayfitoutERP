@@ -450,8 +450,8 @@ export default function EditMrItemButton({
               required
               onChange={(e) => {
                 const val = e.target.value;
-                // Allow only positive numbers
-                if (val === "" || /^\d+$/.test(val)) {
+
+                if (val === "" || /^\d*\.?\d*$/.test(val)) {
                   setQuantity(val);
                 }
               }}

@@ -27,13 +27,13 @@ export default function EditMrHeaderButton({
   const [projects, setProjects] = useState<[]>([]);
 
   const [purposeReasonID, setPurposeReasonID] = useState<string | number>(
-    mrHeader.purpose_id
+    mrHeader.purpose_id,
   );
   const [projectID, setProjectID] = useState<string | number>(
-    mrHeader.project_id
+    mrHeader.project_id,
   );
   const [neededBy, setNeededBy] = useState(
-    new Date(mrHeader.required_date).toLocaleDateString("en-CA")
+    new Date(mrHeader.required_date).toLocaleDateString("en-CA"),
   );
 
   const pencilIcon = "/icons/pencil.svg";
@@ -62,6 +62,13 @@ export default function EditMrHeaderButton({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (purposeReasonID === 1 || purposeReasonID === 2) {
+      if (!projectID) {
+        toast("Please select a project", "error");
+        return;
+      }
+    }
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "PUT",
@@ -135,19 +142,16 @@ export default function EditMrHeaderButton({
               required
             />
 
-            <InputItem
+            <SingleSelectDropdown
               label={"PROJECT"}
-              value={projectID}
-              type={"select"}
-              placeholder={purposeReasonID === "6" ? "" : "SELECT PROJECT"}
-              onChange={(e) => setProjectID(e.target.value)}
-              dbMap={projects.map((pr: any) => (
-                <option key={pr.id} value={pr.id}>
-                  RAY-{pr.id} - {pr.name}
-                </option>
-              ))}
+              selectedValue={projectID}
+              onChange={setProjectID}
+              placeholder={"SELECT PROJECT"}
+              dbData={[...projects]}
+              idField="id"
+              labelField="name"
               required={purposeReasonID === 1 || purposeReasonID === 2}
-              disabled={mrHeader.progress_id !== 1 || purposeReasonID === 6}
+              disabled={purposeReasonID === 6}
             />
           </div>
 

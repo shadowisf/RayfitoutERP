@@ -37,7 +37,7 @@ export default function TransferIssueStocksButton({
   const [thirdParty, setThirdParty] = useState(false);
   const [packingList, setPackingList] = useState(false);
   const [projectID, setProjectID] = useState<string | number>("");
-  const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]); // ✅ Changed to array
+  const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
 
   const [availableQuantity, setAvailableQuantity] = useState<number | string>(
     "",
@@ -59,7 +59,15 @@ export default function TransferIssueStocksButton({
       });
   }, []);
 
+  // ✅ Fetch stocks data whenever the modal opens (fresh data every time)
   useEffect(() => {
+    if (isOpen) {
+      fetchStocksData();
+    }
+  }, [isOpen]);
+
+  // ✅ Separate function to fetch stocks data
+  const fetchStocksData = () => {
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getStocksByInventoryItemID`,
       {
@@ -72,7 +80,7 @@ export default function TransferIssueStocksButton({
     )
       .then((res) => res.json())
       .then((data) => {
-        console.log(data);
+        console.log("Fetched stocks data:", data);
         // Store the full data for later quantity calculation
         setStocksData(data);
 
@@ -102,7 +110,7 @@ export default function TransferIssueStocksButton({
         const locations = data.map((item: { name: string }) => item.name);
         setToValues(locations);
       });
-  }, [isOpen]);
+  };
 
   // Calculate available quantity when "from" location changes
   useEffect(() => {
@@ -124,14 +132,23 @@ export default function TransferIssueStocksButton({
 
     // Process transfers and issues for this location
     stocksData.stocksTransferIssue.forEach((transaction: any) => {
-      if (transaction.type.includes("Issue")) {
-        // Subtract issues from the location if received
-        if (transaction.received && transaction.from_location === from) {
+      const transactionType = transaction.type.toLowerCase();
+
+      if (transactionType.includes("issue")) {
+        // ✅ Subtract issues from the from_location
+        if (transaction.from_location === from) {
           locationQuantity = round(
             locationQuantity - Number(transaction.quantity),
           );
         }
-      } else if (transaction.type.toLowerCase().includes("transfer")) {
+      } else if (transactionType.includes("send")) {
+        // ✅ Subtract sends from the from_location
+        if (transaction.from_location === from) {
+          locationQuantity = round(
+            locationQuantity - Number(transaction.quantity),
+          );
+        }
+      } else if (transactionType.includes("transfer")) {
         // Subtract from from_location
         if (transaction.from_location === from) {
           locationQuantity = round(
@@ -158,7 +175,7 @@ export default function TransferIssueStocksButton({
     setFile(null);
     setThirdParty(false);
     setProjectID("");
-    setBoqLineIDs([]); // ✅ Reset array
+    setBoqLineIDs([]);
   }, [type]);
 
   // ✅ Handle BOQ selection
@@ -222,7 +239,7 @@ export default function TransferIssueStocksButton({
         action: "transferIssueStock",
         inventory_item_id: inventoryItem?.id,
         project_id: projectID,
-        boq_line_ids: boqLineIDs, // ✅ Send as array
+        boq_line_ids: boqLineIDs,
         type,
         transferee: userInfo?.name,
         from,
@@ -261,7 +278,7 @@ export default function TransferIssueStocksButton({
       setThirdParty(false);
       setPackingList(false);
       setProjectID("");
-      setBoqLineIDs([]); // ✅ Reset array
+      setBoqLineIDs([]);
 
       router.refresh();
 
@@ -365,7 +382,6 @@ export default function TransferIssueStocksButton({
                   </small>
                 </label>
 
-                {/* ✅ Updated callback signature */}
                 <MultipleSelectBoqItemButton
                   projectID={Number(projectID)}
                   onSelectBoq={handleBoqSelection}

@@ -189,12 +189,18 @@ export default function MR() {
     24: 11, // Stock Entry → Storekeeper
   };
 
+  // ✅ Updated canViewMR - for use with "Only Related Cards" filter
   const canViewMR = (mr: MrHeader) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
-    // Draft / Rejected / Completed → ONLY originating department
-    if ([1, 5, 25].includes(mr.progress_id)) {
+    // Draft → ALWAYS only originating department can see their own MRs
+    if (mr.progress_id === 1) {
+      return mr.department_id === userDeptId;
+    }
+
+    // Rejected / Completed → originating department sees their own
+    if ([5, 25].includes(mr.progress_id)) {
       return mr.department_id === userDeptId;
     }
 
@@ -210,44 +216,6 @@ export default function MR() {
     const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
 
     return responsibleDept === userDeptId;
-  };
-
-  const canUserViewMR = (mr: any) => {
-    const userDeptId = userInfo?.departmentID;
-    if (!userDeptId) return false;
-
-    if (userDeptId === 8) return true;
-
-    if (mr.progress_id === 1) {
-      return mr.department_id === userDeptId;
-    }
-
-    if (mr.progress_id === 25) {
-      return mr.department_id === userDeptId;
-    }
-
-    if (mr.progress_id === 5) {
-      return mr.department_id === userDeptId;
-    }
-
-    if (mr.progress_id === 11) {
-      return userDeptId === 9;
-    }
-
-    if (mr.progress_id === 15) {
-      return userDeptId === 9;
-    }
-
-    const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
-
-    if (responsibleDept === userDeptId) {
-    }
-
-    if (mr.department_id === userDeptId) {
-      return true;
-    }
-
-    return false;
   };
 
   const getResponsibleDepartment = (status: string) => {
@@ -412,15 +380,21 @@ export default function MR() {
   const getFilteredMRs = () => {
     let filtered = mrHeaders;
 
-    // Apply "Only Related Cards" filter first
+    // ✅ ALWAYS filter Draft MRs to only show user's own department
+    filtered = filtered.filter((mr) => {
+      if (mr.progress_id === 1) {
+        return mr.department_id === userInfo?.departmentID;
+      }
+      return true;
+    });
+
+    // Apply "Only Related Cards" filter for non-Draft MRs
     if (filterRelevant) {
       filtered = filtered.filter((mr) => {
-        // Draft, Rejected, Completed → only show user's own department MRs
-        if ([1, 5, 25].includes(mr.progress_id)) {
-          return mr.department_id === userInfo?.departmentID;
+        // Draft is already filtered above
+        if (mr.progress_id === 1) {
+          return true;
         }
-
-        // For all other statuses, use canViewMR logic
         return canViewMR(mr);
       });
     }
@@ -514,10 +488,15 @@ export default function MR() {
 
     const mrs = groupedMRs[status.name] || [];
 
+    // Draft → ALWAYS show if user has MRs from their own department (already filtered)
+    if (status.progress_id === 1) {
+      return mrs.length > 0;
+    }
+
     // Management sees everything
     if (userDeptId === 8) {
-      // Draft, Rejected, Completed → only if user has MRs from their department
-      if ([1, 5, 25].includes(status.progress_id)) {
+      // Rejected, Completed → only if user has MRs from their department
+      if ([5, 25].includes(status.progress_id)) {
         return mrs.some((mr: any) => mr.department_id === userDeptId);
       }
 
@@ -526,8 +505,8 @@ export default function MR() {
       return responsibleDept.id === 8;
     }
 
-    // Draft, Rejected, Completed → only if user has MRs from their department
-    if ([1, 5, 25].includes(status.progress_id)) {
+    // Rejected, Completed → only if user has MRs from their department
+    if ([5, 25].includes(status.progress_id)) {
       return mrs.some((mr: any) => mr.department_id === userDeptId);
     }
 
@@ -841,13 +820,7 @@ export default function MR() {
             }
 
             const mrs = groupedMRs[status.name] || [];
-
-            // When filtering, count only MRs user can view
-            const count = filterRelevant
-              ? mrs.filter((mr: MrHeader) => canViewMR(mr)).length
-              : mrs.length;
-
-            return sum + count;
+            return sum + mrs.length;
           }, 0);
 
           return (
@@ -902,10 +875,8 @@ export default function MR() {
                     responsibleDept.id,
                   );
 
-                  // ✅ Filter MRs based on canViewMR when filtering is enabled
-                  const visibleMRs = filterRelevant
-                    ? mrs.filter((mr: MrHeader) => canViewMR(mr))
-                    : mrs;
+                  // ✅ Draft is already filtered, so just use the MRs as-is
+                  const visibleMRs = mrs;
 
                   // ✅ Check if this status is empty based on visible MRs
                   const isEmpty = visibleMRs.length === 0;
@@ -1024,7 +995,6 @@ export default function MR() {
                             const daysLeftStyle = getDaysLeftStyle(
                               mr.required_date,
                             );
-                            const hasViewPermission = canUserViewMR(mr);
 
                             return (
                               <div
