@@ -10,7 +10,7 @@ let listeners: ((msg: string, type: ToastType, duration: number) => void)[] =
 export function toast(
   message: string,
   type: ToastType = "success",
-  duration = 3000,
+  duration = 5000,
 ) {
   listeners.forEach((cb) => cb(message, type, duration));
 }
@@ -52,15 +52,18 @@ export default function GlobalToast() {
     <div
       style={{
         position: "fixed",
-        top: "75px",
-        right: "0",
+        top: "100px",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+
         display: "flex",
         flexDirection: "column",
         gap: "8px",
         zIndex: 9999,
-        width: "100%",
-        paddingLeft: "325px",
-        paddingRight: "40px",
+
+        width: "420px",
+        maxWidth: "90vw",
       }}
     >
       {toasts.map((t) => (

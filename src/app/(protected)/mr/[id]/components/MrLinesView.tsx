@@ -3316,6 +3316,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     />
                   )}
 
+                {mrHeader.progress_id > 14 && (
+                  <PaymentButtons
+                    mrHeader={mrHeader}
+                    mrLine={items[0]}
+                    supplierId={items[0].approved_supplier_id}
+                  />
+                )}
+
                 {(mrHeader.progress_id === 16 || mrHeader.progress_id === 17) &&
                   userInfo?.departmentID === 11 && (
                     <CreateGRNButton

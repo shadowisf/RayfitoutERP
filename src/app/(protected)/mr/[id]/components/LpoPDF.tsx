@@ -276,6 +276,14 @@ type LpoPDFProps = {
 export function LpoPDF({ lpo }: LpoPDFProps) {
   const logo = "/icons/logo.jpg";
 
+  // ✅ Helper function to format numbers with commas
+  const formatNumber = (num: number) => {
+    return num.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   const vatRate = Number(lpo.vat_rate) || 0;
   const discountRate = Number(lpo.discount) || 0;
   const shipping = Number(lpo.shipping_and_handling) || 0;
@@ -415,13 +423,13 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
                   {item.material_description}
                 </Text>
                 <Text style={styles.tableColQty}>
-                  {quantity.toFixed(2)} {item.unit}
+                  {formatNumber(quantity)} {item.unit}
                 </Text>
                 <Text style={styles.tableColUnitPrice}>
-                  AED {unitPrice.toFixed(2)}
+                  AED {formatNumber(unitPrice)}
                 </Text>
                 <Text style={styles.tableColTotalPrice}>
-                  AED {lineTotal.toFixed(2)}
+                  AED {formatNumber(lineTotal)}
                 </Text>
               </View>
             );
@@ -450,7 +458,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>SUBTOTAL</Text>
                 <Text style={styles.summaryValue}>
-                  AED {subtotal.toFixed(2)}
+                  AED {formatNumber(subtotal)}
                 </Text>
               </View>
 
@@ -459,28 +467,28 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
                   DISCOUNT ({discountRate}%)
                 </Text>
                 <Text style={styles.summaryValue}>
-                  - AED {discountAmount.toFixed(2)}
+                  - AED {formatNumber(discountAmount)}
                 </Text>
               </View>
 
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>S&H</Text>
                 <Text style={styles.summaryValue}>
-                  AED {shipping.toFixed(2)}
+                  AED {formatNumber(shipping)}
                 </Text>
               </View>
 
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>VAT ({vatRate}%)</Text>
                 <Text style={styles.summaryValue}>
-                  AED {vatAmount.toFixed(2)}
+                  AED {formatNumber(vatAmount)}
                 </Text>
               </View>
 
               <View style={[styles.summaryRow, styles.summaryRowLast]}>
                 <Text style={styles.summaryLabel}>SUBTOTAL AFTER VAT</Text>
                 <Text style={styles.summaryValue}>
-                  AED {(subtotalAfterDiscount + vatAmount).toFixed(2)}
+                  AED {formatNumber(subtotalAfterDiscount + vatAmount)}
                 </Text>
               </View>
             </View>
@@ -488,7 +496,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
             {/* Total Row */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>TOTAL</Text>
-              <Text style={styles.totalValue}>AED {total.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>AED {formatNumber(total)}</Text>
             </View>
 
             {/* Signature Box - Below Summary */}

@@ -5,7 +5,6 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import RejectCommentPopUp from "../manager/RejectCommentPopUp";
 import { useRouter } from "next/navigation";
 import { LpoHeader } from "../../types/lpoHeader";
@@ -33,6 +32,7 @@ export default function PaymentButtons({
 
   const crossIcon = "/icons/cross-small.svg";
   const externalLinkIcon = "/icons/external-link.svg";
+  const downloadIcon = "/icons/download.svg";
 
   const [lpo, setLpo] = useState<LpoHeader | null>(null);
 
@@ -47,6 +47,9 @@ export default function PaymentButtons({
 
   const [rejectText, setRejectText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Check if we're past the payment stage (progress_id > 14)
+  const isPastPaymentStage = mrHeader.progress_id > 14;
 
   // Fetch LPO payment status on mount
   useEffect(() => {
@@ -76,7 +79,28 @@ export default function PaymentButtons({
             const paymentFile = lpo.payment_file;
 
             if (paymentFile) {
-              setPaymentFileUrl(paymentFile);
+              // Handle if it's a JSON string or already parsed
+              try {
+                let fileUrl = paymentFile;
+
+                // Check if it's a JSON string (starts with '[' or '{')
+                if (
+                  typeof paymentFile === "string" &&
+                  (paymentFile.startsWith("[") || paymentFile.startsWith("{"))
+                ) {
+                  const parsedFile = JSON.parse(paymentFile);
+                  // If it's an array, get the first file, otherwise use the file directly
+                  fileUrl = Array.isArray(parsedFile)
+                    ? parsedFile[0]
+                    : parsedFile;
+                }
+
+                setPaymentFileUrl(fileUrl || "");
+              } catch (error) {
+                console.error("Error parsing payment file:", error);
+                // If parsing fails, just use the original value as it's likely a plain URL
+                setPaymentFileUrl(paymentFile || "");
+              }
             }
 
             if (!paymentStatus) {
@@ -141,6 +165,38 @@ export default function PaymentButtons({
 
     const data = await response.json();
     return data.urls[0];
+  }
+
+  // Handle download payment receipt
+  async function handleDownloadReceipt(event: React.MouseEvent) {
+    event.stopPropagation();
+
+    if (!paymentFileUrl) {
+      toast("No payment receipt available", "error");
+      return;
+    }
+
+    try {
+      const response = await fetch(paymentFileUrl);
+      if (!response.ok) {
+        throw new Error("Download failed");
+      }
+
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `Payment-Receipt-${String(lpoId).padStart(5, "0")}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      toast("Failed to download payment receipt", "error");
+    }
   }
 
   // Handle proceed payment submission
@@ -286,6 +342,34 @@ export default function PaymentButtons({
     }
   }
 
+  // If past payment stage, just show download button
+  if (isPastPaymentStage && paymentFileUrl) {
+    return (
+      <Button
+        bgColor={"white"}
+        borderColor={"rgba(207, 207, 207, 1)"}
+        textColor={"black"}
+        onClick={() => {}}
+        componentType="none"
+        style={{ padding: "7px 20px", borderRadius: "25px" }}
+      >
+        Payment Receipt
+        <img
+          src={downloadIcon}
+          alt="download"
+          onClick={handleDownloadReceipt}
+          style={{ cursor: "pointer" }}
+        />
+      </Button>
+    );
+  }
+
+  // If past payment stage but no payment file, don't show anything
+  if (isPastPaymentStage) {
+    return null;
+  }
+
+  // Original approval pill logic for payment stage (progress_id = 14)
   if (status === "approved") {
     return (
       <>

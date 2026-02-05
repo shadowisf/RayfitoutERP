@@ -20,7 +20,7 @@ export default function MedianMRLifespanWidget() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filter }),
-      }
+      },
     )
       .then((res) => {
         if (!res.ok) {
@@ -29,7 +29,6 @@ export default function MedianMRLifespanWidget() {
         return res.json();
       })
       .then((responseData) => {
-        console.log("Received data:", responseData);
         setData(responseData);
       })
       .catch((err) => {
@@ -40,6 +39,20 @@ export default function MedianMRLifespanWidget() {
         setIsLoading(false);
       });
   }, [filter]);
+
+  // ✅ Helper function to format hours into days and hours
+  const formatHours = (hours: number) => {
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      const remainingHours = hours % 24;
+
+      if (remainingHours === 0) {
+        return `${days}d`;
+      }
+      return `${days}d ${remainingHours}h`;
+    }
+    return `${hours} Hrs`;
+  };
 
   if (error) {
     return (
@@ -76,7 +89,7 @@ export default function MedianMRLifespanWidget() {
   // Get max value from the chart data
   const maxValue = Math.max(
     ...data.chartData.map((d: any) => d.median).filter((m: number) => m > 0),
-    1
+    1,
   );
 
   const chartHeight = 125;
@@ -90,19 +103,19 @@ export default function MedianMRLifespanWidget() {
     filter === 7
       ? "last 7 days"
       : filter === 14
-      ? "last 14 days"
-      : filter === 30
-      ? "last month"
-      : `last ${filter} days`;
+        ? "last 14 days"
+        : filter === 30
+          ? "last month"
+          : `last ${filter} days`;
 
   const comparisonLabel =
     filter === 7
       ? "LAST WEEK"
       : filter === 14
-      ? "PREVIOUS 14 DAYS"
-      : filter === 30
-      ? "PREVIOUS MONTH"
-      : `PREVIOUS ${filter} DAYS`;
+        ? "PREVIOUS 14 DAYS"
+        : filter === 30
+          ? "PREVIOUS MONTH"
+          : `PREVIOUS ${filter} DAYS`;
 
   return (
     <div
@@ -137,8 +150,9 @@ export default function MedianMRLifespanWidget() {
           </select>
         </div>
         <br />
+        {/* ✅ Updated to show days and hours */}
         <h1 style={{ fontSize: "32px", fontWeight: "900" }}>
-          {data.currentMedian} Hrs
+          {formatHours(data.currentMedian)}
         </h1>
         {data.previousMedian > 0 ? (
           <span
@@ -298,7 +312,8 @@ export default function MedianMRLifespanWidget() {
                         boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
                       }}
                     >
-                      {item.median} Hrs ({item.count}{" "}
+                      {/* ✅ Updated tooltip to show days and hours */}
+                      {formatHours(item.median)} ({item.count}{" "}
                       {item.count === 1 ? "MR" : "MRs"}){/* Tooltip Arrow */}
                       <div
                         style={{

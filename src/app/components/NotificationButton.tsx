@@ -24,385 +24,435 @@ function NotificationToast({
     dotColor: string;
   };
 }) {
+  const [isVisible, setIsVisible] = useState(true);
+
   useEffect(() => {
     // Auto-close after 5 seconds
     const timer = setTimeout(() => {
-      onClose();
-    }, 5000);
+      setIsVisible(false);
+      // Give time for fade out animation before calling onClose
+      setTimeout(() => {
+        onClose();
+      }, 300);
+    }, 4000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [onClose]);
 
   const style = getNotificationStyle(notification.header, notification.message);
 
+  if (!isVisible) return null;
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: "75px",
-        right: "20px",
-        backgroundColor: "white",
-        borderRadius: "10px",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-        padding: "16px 20px",
-        zIndex: 10000,
-        minWidth: "350px",
-        maxWidth: "400px",
-        animation: "slideDown 0.3s ease-out",
-        display: "flex",
-        flexDirection: "column",
-        gap: "12px",
-      }}
-    >
-      <style jsx>{`
-        @keyframes slideDown {
-          from {
-            transform: translateY(-100%);
-            opacity: 0;
+    <>
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+          @keyframes slideDown {
+            from {
+              transform: translateY(-100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateY(0);
+              opacity: 1;
+            }
           }
-          to {
-            transform: translateY(0);
-            opacity: 1;
+          
+          @keyframes fadeOut {
+            from {
+              opacity: 1;
+            }
+            to {
+              opacity: 0;
+            }
           }
-        }
-      `}</style>
+          
+          .notification-toast {
+            animation: slideDown 0.3s ease-out;
+          }
+          
+          .notification-toast.closing {
+            animation: fadeOut 0.3s ease-out;
+          }
+        `,
+        }}
+      />
 
       <div
+        className="notification-toast"
         style={{
+          position: "fixed",
+          top: "75px",
+          right: "20px",
+          backgroundColor: "white",
+          borderRadius: "10px",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          padding: "16px 20px",
+          zIndex: 10000,
+          minWidth: "350px",
+          maxWidth: "400px",
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
+          flexDirection: "column",
           gap: "12px",
         }}
       >
-        {/* Content */}
         <div
           style={{
             display: "flex",
+            justifyContent: "space-between",
             alignItems: "flex-start",
-            gap: "10px",
-            flex: 1,
+            gap: "12px",
           }}
         >
-          {/* ✅ Dynamic icon based on notification type */}
-          <img src={style.icon} alt="notification icon" />
+          {/* Content */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "10px",
+              flex: 1,
+            }}
+          >
+            {/* ✅ Dynamic icon based on notification type */}
+            <img src={style.icon} alt="notification icon" />
 
-          <div style={{ flex: 1 }}>
-            {/* ✅ Title with dynamic color */}
-            <div
-              style={{
-                fontWeight: 600,
-                color: style.headerColor,
-                marginBottom: "3px",
-              }}
-            >
-              {notification.header}
-            </div>
+            <div style={{ flex: 1 }}>
+              {/* ✅ Title with dynamic color */}
+              <div
+                style={{
+                  fontWeight: 600,
+                  color: style.headerColor,
+                  marginBottom: "3px",
+                }}
+              >
+                {notification.header}
+              </div>
 
-            {/* ✅ Message with same formatting as dropdown */}
-            <div
-              style={{
-                fontSize: "12px",
-                color: "rgba(107, 114, 128, 1)",
-                fontWeight: 600,
-                marginBottom: "10px",
-              }}
-            >
-              {(() => {
-                const message = notification.message;
-                const headerLower = notification.header.toLowerCase();
+              {/* ✅ Message with same formatting as dropdown */}
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: "rgba(107, 114, 128, 1)",
+                  fontWeight: 600,
+                  marginBottom: "10px",
+                }}
+              >
+                {(() => {
+                  const message = notification.message;
+                  const headerLower = notification.header.toLowerCase();
 
-                // ✅ Special handling for "Stock Transferred" notifications
-                if (
-                  headerLower.includes("stock") &&
-                  headerLower.includes("transferred")
-                ) {
-                  const regex =
-                    /^(.+?)\s+was transferred from\s+(.+?)\s+to\s+(.+)$/i;
-                  const match = message.match(regex);
+                  // ✅ Special handling for "Stock Transferred" notifications
+                  if (
+                    headerLower.includes("stock") &&
+                    headerLower.includes("transferred")
+                  ) {
+                    const regex =
+                      /^(.+?)\s+was transferred from\s+(.+?)\s+to\s+(.+)$/i;
+                    const match = message.match(regex);
 
-                  if (match) {
-                    const inventoryName = match[1];
-                    const from = match[2];
-                    const to = match[3];
+                    if (match) {
+                      const inventoryName = match[1];
+                      const from = match[2];
+                      const to = match[3];
 
-                    return (
-                      <>
-                        <span style={{ color: "#000000" }}>
-                          {inventoryName}
-                        </span>
-                        <span style={{ color: "inherit" }}>
-                          {" "}
-                          was transferred from{" "}
-                        </span>
-                        <span style={{ color: "#000000" }}>{from}</span>
-                        <span style={{ color: "inherit" }}> to </span>
-                        <span style={{ color: "#000000" }}>{to}</span>
-                      </>
-                    );
-                  }
-
-                  return <span style={{ color: "inherit" }}>{message}</span>;
-                }
-
-                // ✅ Special handling for "Stock Issued" notifications
-                if (
-                  headerLower.includes("stock") &&
-                  headerLower.includes("issued")
-                ) {
-                  const regex = /^(.+?)\s+was issued to\s+(.+)$/i;
-                  const match = message.match(regex);
-
-                  if (match) {
-                    const inventoryName = match[1];
-                    const receiverName = match[2];
-
-                    return (
-                      <>
-                        <span style={{ color: "#000000" }}>
-                          {inventoryName}
-                        </span>
-                        <span style={{ color: "inherit" }}>
-                          {" "}
-                          was issued to{" "}
-                        </span>
-                        <span style={{ color: "#000000" }}>{receiverName}</span>
-                      </>
-                    );
-                  }
-
-                  return <span style={{ color: "inherit" }}>{message}</span>;
-                }
-
-                // ✅ Special handling for "Stock Sent" notifications
-                if (
-                  headerLower.includes("stock") &&
-                  headerLower.includes("sent")
-                ) {
-                  const regex =
-                    /^(.+?)\s+was sent for processing\s+\((.+?)\)$/i;
-                  const match = message.match(regex);
-
-                  if (match) {
-                    const inventoryName = match[1];
-                    const purpose = match[2];
-
-                    return (
-                      <>
-                        <span style={{ color: "#000000" }}>
-                          {inventoryName}
-                        </span>
-                        <span style={{ color: "inherit" }}>
-                          {" "}
-                          was sent for processing{" "}
-                        </span>
-                        <span style={{ color: "#000000" }}>({purpose})</span>
-                      </>
-                    );
-                  }
-
-                  return <span style={{ color: "inherit" }}>{message}</span>;
-                }
-
-                // ✅ Special handling for "BOQ Created" notifications
-                if (
-                  headerLower.includes("boq") &&
-                  headerLower.includes("created")
-                ) {
-                  const regex = /^A new BOQ\s+(.+?)\s+was created for\s+(.+)$/i;
-                  const match = message.match(regex);
-
-                  if (match) {
-                    const boqName = match[1];
-                    const projectName = match[2];
-
-                    return (
-                      <>
-                        <span style={{ color: "inherit" }}>A new BOQ </span>
-                        <span style={{ color: "#000000" }}>{boqName}</span>
-                        <span style={{ color: "inherit" }}>
-                          {" "}
-                          was created for{" "}
-                        </span>
-                        <span style={{ color: "#000000" }}>{projectName}</span>
-                      </>
-                    );
-                  }
-
-                  return <span style={{ color: "inherit" }}>{message}</span>;
-                }
-
-                // ✅ Special handling for "BOQ Updated" notifications
-                if (
-                  headerLower.includes("boq") &&
-                  headerLower.includes("updated")
-                ) {
-                  const regex = /^A new BOQ\s+(.+?)\s+was created for\s+(.+)$/i;
-                  const match = message.match(regex);
-
-                  if (match) {
-                    const boqName = match[1];
-                    const projectName = match[2];
-
-                    return (
-                      <>
-                        <span style={{ color: "inherit" }}>A new BOQ </span>
-                        <span style={{ color: "#000000" }}>{boqName}</span>
-                        <span style={{ color: "inherit" }}>
-                          {" "}
-                          was created for{" "}
-                        </span>
-                        <span style={{ color: "#000000" }}>{projectName}</span>
-                      </>
-                    );
-                  }
-
-                  return <span style={{ color: "inherit" }}>{message}</span>;
-                }
-
-                // ✅ Special handling for "New Inventory Item" notifications
-                if (
-                  headerLower.includes("new") &&
-                  headerLower.includes("inventory")
-                ) {
-                  const regex = /^(.+?)\s+was created by\s+(.+)$/i;
-                  const match = message.match(regex);
-
-                  if (match) {
-                    const itemName = match[1];
-                    const createdBy = match[2];
-
-                    return (
-                      <>
-                        <span style={{ color: "#000000" }}>{itemName}</span>
-                        <span style={{ color: "inherit" }}>
-                          {" "}
-                          was created by{" "}
-                        </span>
-                        <span style={{ color: "#000000" }}>{createdBy}</span>
-                      </>
-                    );
-                  }
-
-                  return <span style={{ color: "inherit" }}>{message}</span>;
-                }
-
-                // ✅ Special handling for "Stock Added" notifications
-                if (
-                  headerLower.includes("stock") &&
-                  headerLower.includes("added")
-                ) {
-                  const regex = /^(\d+\s+\w+)\s+was added to\s+(.+)$/i;
-                  const match = message.match(regex);
-
-                  if (match) {
-                    const quantityUnit = match[1];
-                    const materialName = match[2];
-
-                    return (
-                      <>
-                        <span style={{ color: "#000000" }}>{quantityUnit}</span>
-                        <span style={{ color: "inherit" }}> was added to </span>
-                        <span style={{ color: "#000000" }}>{materialName}</span>
-                      </>
-                    );
-                  }
-
-                  return <span style={{ color: "inherit" }}>{message}</span>;
-                }
-
-                // ✅ Original handling for other notifications
-                const byIndex = message.toLowerCase().indexOf(" by ");
-
-                const beforeBy =
-                  byIndex !== -1 ? message.slice(0, byIndex + 4) : message;
-
-                const afterBy =
-                  byIndex !== -1 ? message.slice(byIndex + 4) : null;
-
-                const renderText = (text: string, makeBlack = false) => {
-                  const parts = text.split(/(MR-\d+|\([^)]*AED[^)]*\))/g);
-
-                  return parts.map((part, index) => {
-                    if (part.startsWith("MR-")) {
                       return (
-                        <span key={index} style={{ color: "#000000" }}>
-                          {part}
-                        </span>
-                      );
-                    } else if (
-                      part.startsWith("(") &&
-                      part.includes("AED") &&
-                      part.endsWith(")")
-                    ) {
-                      return (
-                        <span key={index} style={{ color: "#000000" }}>
-                          {part}
-                        </span>
-                      );
-                    } else {
-                      return (
-                        <span
-                          key={index}
-                          style={{
-                            color: makeBlack ? "#000000" : "inherit",
-                          }}
-                        >
-                          {part}
-                        </span>
+                        <>
+                          <span style={{ color: "#000000" }}>
+                            {inventoryName}
+                          </span>
+                          <span style={{ color: "inherit" }}>
+                            {" "}
+                            was transferred from{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>{from}</span>
+                          <span style={{ color: "inherit" }}> to </span>
+                          <span style={{ color: "#000000" }}>{to}</span>
+                        </>
                       );
                     }
-                  });
-                };
 
-                return (
-                  <>
-                    {renderText(beforeBy)}
-                    {afterBy && renderText(afterBy, true)}
-                  </>
-                );
-              })()}
+                    return <span style={{ color: "inherit" }}>{message}</span>;
+                  }
+
+                  // ✅ Special handling for "Stock Issued" notifications
+                  if (
+                    headerLower.includes("stock") &&
+                    headerLower.includes("issued")
+                  ) {
+                    const regex = /^(.+?)\s+was issued to\s+(.+)$/i;
+                    const match = message.match(regex);
+
+                    if (match) {
+                      const inventoryName = match[1];
+                      const receiverName = match[2];
+
+                      return (
+                        <>
+                          <span style={{ color: "#000000" }}>
+                            {inventoryName}
+                          </span>
+                          <span style={{ color: "inherit" }}>
+                            {" "}
+                            was issued to{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>
+                            {receiverName}
+                          </span>
+                        </>
+                      );
+                    }
+
+                    return <span style={{ color: "inherit" }}>{message}</span>;
+                  }
+
+                  // ✅ Special handling for "Stock Sent" notifications
+                  if (
+                    headerLower.includes("stock") &&
+                    headerLower.includes("sent")
+                  ) {
+                    const regex =
+                      /^(.+?)\s+was sent for processing\s+\((.+?)\)$/i;
+                    const match = message.match(regex);
+
+                    if (match) {
+                      const inventoryName = match[1];
+                      const purpose = match[2];
+
+                      return (
+                        <>
+                          <span style={{ color: "#000000" }}>
+                            {inventoryName}
+                          </span>
+                          <span style={{ color: "inherit" }}>
+                            {" "}
+                            was sent for processing{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>({purpose})</span>
+                        </>
+                      );
+                    }
+
+                    return <span style={{ color: "inherit" }}>{message}</span>;
+                  }
+
+                  // ✅ Special handling for "BOQ Created" notifications
+                  if (
+                    headerLower.includes("boq") &&
+                    headerLower.includes("created")
+                  ) {
+                    const regex =
+                      /^A new BOQ\s+(.+?)\s+was created for\s+(.+)$/i;
+                    const match = message.match(regex);
+
+                    if (match) {
+                      const boqName = match[1];
+                      const projectName = match[2];
+
+                      return (
+                        <>
+                          <span style={{ color: "inherit" }}>A new BOQ </span>
+                          <span style={{ color: "#000000" }}>{boqName}</span>
+                          <span style={{ color: "inherit" }}>
+                            {" "}
+                            was created for{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>
+                            {projectName}
+                          </span>
+                        </>
+                      );
+                    }
+
+                    return <span style={{ color: "inherit" }}>{message}</span>;
+                  }
+
+                  // ✅ Special handling for "BOQ Updated" notifications
+                  if (
+                    headerLower.includes("boq") &&
+                    headerLower.includes("updated")
+                  ) {
+                    const regex =
+                      /^A new BOQ\s+(.+?)\s+was created for\s+(.+)$/i;
+                    const match = message.match(regex);
+
+                    if (match) {
+                      const boqName = match[1];
+                      const projectName = match[2];
+
+                      return (
+                        <>
+                          <span style={{ color: "inherit" }}>A new BOQ </span>
+                          <span style={{ color: "#000000" }}>{boqName}</span>
+                          <span style={{ color: "inherit" }}>
+                            {" "}
+                            was created for{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>
+                            {projectName}
+                          </span>
+                        </>
+                      );
+                    }
+
+                    return <span style={{ color: "inherit" }}>{message}</span>;
+                  }
+
+                  // ✅ Special handling for "New Inventory Item" notifications
+                  if (
+                    headerLower.includes("new") &&
+                    headerLower.includes("inventory")
+                  ) {
+                    const regex = /^(.+?)\s+was created by\s+(.+)$/i;
+                    const match = message.match(regex);
+
+                    if (match) {
+                      const itemName = match[1];
+                      const createdBy = match[2];
+
+                      return (
+                        <>
+                          <span style={{ color: "#000000" }}>{itemName}</span>
+                          <span style={{ color: "inherit" }}>
+                            {" "}
+                            was created by{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>{createdBy}</span>
+                        </>
+                      );
+                    }
+
+                    return <span style={{ color: "inherit" }}>{message}</span>;
+                  }
+
+                  // ✅ Special handling for "Stock Added" notifications
+                  if (
+                    headerLower.includes("stock") &&
+                    headerLower.includes("added")
+                  ) {
+                    const regex = /^(\d+\s+\w+)\s+was added to\s+(.+)$/i;
+                    const match = message.match(regex);
+
+                    if (match) {
+                      const quantityUnit = match[1];
+                      const materialName = match[2];
+
+                      return (
+                        <>
+                          <span style={{ color: "#000000" }}>
+                            {quantityUnit}
+                          </span>
+                          <span style={{ color: "inherit" }}>
+                            {" "}
+                            was added to{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>
+                            {materialName}
+                          </span>
+                        </>
+                      );
+                    }
+
+                    return <span style={{ color: "inherit" }}>{message}</span>;
+                  }
+
+                  // ✅ Original handling for other notifications
+                  const byIndex = message.toLowerCase().indexOf(" by ");
+
+                  const beforeBy =
+                    byIndex !== -1 ? message.slice(0, byIndex + 4) : message;
+
+                  const afterBy =
+                    byIndex !== -1 ? message.slice(byIndex + 4) : null;
+
+                  const renderText = (text: string, makeBlack = false) => {
+                    const parts = text.split(/(MR-\d+|\([^)]*AED[^)]*\))/g);
+
+                    return parts.map((part, index) => {
+                      if (part.startsWith("MR-")) {
+                        return (
+                          <span key={index} style={{ color: "#000000" }}>
+                            {part}
+                          </span>
+                        );
+                      } else if (
+                        part.startsWith("(") &&
+                        part.includes("AED") &&
+                        part.endsWith(")")
+                      ) {
+                        return (
+                          <span key={index} style={{ color: "#000000" }}>
+                            {part}
+                          </span>
+                        );
+                      } else {
+                        return (
+                          <span
+                            key={index}
+                            style={{
+                              color: makeBlack ? "#000000" : "inherit",
+                            }}
+                          >
+                            {part}
+                          </span>
+                        );
+                      }
+                    });
+                  };
+
+                  return (
+                    <>
+                      {renderText(beforeBy)}
+                      {afterBy && renderText(afterBy, true)}
+                    </>
+                  );
+                })()}
+              </div>
             </div>
           </div>
+
+          {/* ✅ Close button */}
+          <button
+            onClick={() => {
+              onClose();
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "20px",
+              color: "#999",
+              padding: "0",
+              lineHeight: "1",
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
         </div>
 
-        {/* ✅ Close button */}
+        {/* ✅ Full-width action button */}
         <button
-          onClick={onClose}
+          onClick={onOpen}
           style={{
-            background: "none",
+            backgroundColor: "black",
+            color: "white",
             border: "none",
+            borderRadius: "5px",
+            padding: "10px 16px",
+            fontSize: "12px",
+            fontWeight: 600,
             cursor: "pointer",
-            fontSize: "20px",
-            color: "#999",
-            padding: "0",
-            lineHeight: "1",
-            flexShrink: 0,
+            width: "100%",
+            textAlign: "center",
           }}
         >
-          ×
+          OPEN NOTIFICATIONS
         </button>
       </div>
-
-      {/* ✅ Full-width action button */}
-      <button
-        onClick={onOpen}
-        style={{
-          backgroundColor: "black",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          padding: "10px 16px",
-          fontSize: "12px",
-          fontWeight: 600,
-          cursor: "pointer",
-          width: "100%",
-          textAlign: "center",
-        }}
-      >
-        OPEN NOTIFICATIONS
-      </button>
-    </div>
+    </>
   );
 }
 
@@ -435,6 +485,54 @@ export default function NotificationDropdown() {
     null,
   );
   const previousNotificationCount = useRef<number>(0);
+  const latestNotificationIdRef = useRef<number | null>(null);
+
+  // ✅ Browser notification permission state
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermission>("default");
+
+  // ✅ Request notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window) {
+      setNotificationPermission(Notification.permission);
+
+      // If permission is default, request it
+      if (Notification.permission === "default") {
+        Notification.requestPermission().then((permission) => {
+          setNotificationPermission(permission);
+        });
+      }
+    }
+  }, []);
+
+  // ✅ Function to show browser notification
+  const showBrowserNotification = (notification: Notif) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      // Strip HTML and get plain text for browser notification
+      const plainTextMessage = notification.message.replace(/<[^>]*>/g, "");
+
+      const browserNotif = new Notification(notification.header, {
+        body: plainTextMessage,
+        icon: "/icons/notification.svg",
+        badge: "/icons/notification.svg",
+        tag: `notification-${notification.id}`,
+        requireInteraction: false,
+      });
+
+      // Handle notification click - navigate to the appropriate page
+      browserNotif.onclick = () => {
+        window.focus();
+        const url = getNotificationUrl(notification);
+        router.push(url);
+        browserNotif.close();
+      };
+
+      // Auto-close after 5 seconds
+      setTimeout(() => {
+        browserNotif.close();
+      }, 5000);
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -451,12 +549,50 @@ export default function NotificationDropdown() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // ✅ Updated polling logic - only polls when tab is visible
   useEffect(() => {
-    fetchNotifications();
+    let interval: NodeJS.Timeout | null = null;
 
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [isOpen]);
+    const startPolling = () => {
+      if (!interval) {
+        fetchNotifications();
+        interval = setInterval(() => {
+          fetchNotifications();
+        }, 5000); // Poll every 5 seconds
+      }
+    };
+
+    const stopPolling = () => {
+      if (interval) {
+        console.log("Stopping polling..."); // Debug log
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    // Start immediately if tab is already focused
+    if (document.visibilityState === "visible") {
+      startPolling();
+    }
+
+    // Listen for tab focus/blur
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        console.log("Tab became visible"); // Debug log
+        startPolling();
+      } else {
+        console.log("Tab became hidden"); // Debug log
+        stopPolling();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   async function fetchNotifications() {
     try {
@@ -479,13 +615,28 @@ export default function NotificationDropdown() {
             return dateB - dateA; // Newest first
           });
 
-          // ✅ Check if there's a new notification
+          // ✅ Check if there's a new notification by comparing IDs
           if (
-            previousNotificationCount.current > 0 &&
-            sortedNotifications.length > previousNotificationCount.current
+            sortedNotifications.length > 0 &&
+            latestNotificationIdRef.current !== null
           ) {
-            // Show toast for the newest notification
-            setToastNotification(sortedNotifications[0]);
+            const newestNotification = sortedNotifications[0];
+
+            // If the newest notification has a different ID than what we last saw
+            if (newestNotification.id !== latestNotificationIdRef.current) {
+              console.log("New notification detected:", newestNotification); // Debug log
+
+              // Show in-app toast
+              setToastNotification(newestNotification);
+
+              // ✅ Show browser notification
+              showBrowserNotification(newestNotification);
+            }
+          }
+
+          // Update the latest notification ID
+          if (sortedNotifications.length > 0) {
+            latestNotificationIdRef.current = sortedNotifications[0].id;
           }
 
           // Update the count
@@ -731,7 +882,10 @@ export default function NotificationDropdown() {
       {toastNotification && (
         <NotificationToast
           notification={toastNotification}
-          onClose={() => setToastNotification(null)}
+          onClose={() => {
+            console.log("Toast onClose called"); // Debug log
+            setToastNotification(null);
+          }}
           onOpen={() => {
             setToastNotification(null);
             setIsOpen(true);
