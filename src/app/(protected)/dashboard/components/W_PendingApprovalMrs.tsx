@@ -99,7 +99,7 @@ export default function PendingApprovalMrsWidget({ filterDays }: props) {
       <div>
         <div className="bottom">
           <p className="number">{isLoading ? "..." : thisWeek}</p>
-          {!hasNoPendingApprovals && !isLoading && (
+          {/* {!hasNoPendingApprovals && !isLoading && (
             <div
               className="data-pill"
               style={{ backgroundColor: pillBackgroundColor }}
@@ -110,7 +110,7 @@ export default function PendingApprovalMrsWidget({ filterDays }: props) {
               </span>
               <img src={arrow} alt="trend arrow" />
             </div>
-          )}
+          )} */}
         </div>
         <br />
         <span>{isLoading ? "Loading..." : changeText}</span>

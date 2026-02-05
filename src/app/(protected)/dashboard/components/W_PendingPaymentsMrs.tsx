@@ -99,7 +99,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
       <div>
         <div className="bottom">
           <p className="number">{isLoading ? "..." : thisWeek}</p>
-          {!hasNoPendingPayments && !isLoading && (
+          {/* {!hasNoPendingPayments && !isLoading && (
             <div
               className="data-pill"
               style={{ backgroundColor: pillBackgroundColor }}
@@ -110,7 +110,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
               </span>
               <img src={arrow} alt="trend arrow" />
             </div>
-          )}
+          )} */}
         </div>
         <br />
         <span>{isLoading ? "Loading..." : changeText}</span>

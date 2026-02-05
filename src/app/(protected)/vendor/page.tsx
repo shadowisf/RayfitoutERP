@@ -103,7 +103,7 @@ export default function Vendor() {
           gap: "20px",
         }}
       >
-        <h2>VENDORS</h2>
+        <h1>VENDORS</h1>
 
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>

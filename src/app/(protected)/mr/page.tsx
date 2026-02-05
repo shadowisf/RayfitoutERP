@@ -363,7 +363,7 @@ export default function MR() {
     {
       name: "Rejected",
       statuses: [
-        { name: "Requested Rejected", progress_id: 5 },
+        { name: "Request Rejected", progress_id: 5 },
         { name: "Price Approval Rejected", progress_id: 11 },
         { name: "Payment Rejected", progress_id: 15 },
         { name: "GRN Failed", progress_id: 16 },
@@ -595,7 +595,7 @@ export default function MR() {
           justifyContent: "space-between",
         }}
       >
-        <h2>MATERIAL REQUISITIONS</h2>
+        <h1>MATERIAL REQUISITIONS</h1>
 
         <div
           style={{

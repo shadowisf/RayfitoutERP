@@ -882,7 +882,7 @@ export default function Inventory() {
           alignItems: "center",
         }}
       >
-        <h2>INVENTORY</h2>
+        <h1>INVENTORY</h1>
         <div style={{ display: "flex", gap: "10px" }}>
           <CreateInventoryItemButton onSuccess={() => getInventoryItems()} />
 
@@ -1166,9 +1166,9 @@ export default function Inventory() {
                     style={{
                       padding: "10px 15px",
                       borderRadius: "50px",
-                      border: "1px solid rgba(223, 223, 223, 1)",
                       backgroundColor: "white",
                       cursor: "pointer",
+                      border: "1px solid rgba(241, 244, 246, 1)",
                     }}
                   >
                     <option value="none">SORT BY STOCK</option>
@@ -1177,6 +1177,10 @@ export default function Inventory() {
                     <option value="newest-oldest">NEWEST - OLDEST</option>
                     <option value="oldest-newest">OLDEST - NEWEST</option>
                   </select>
+
+                  <div
+                    style={{ borderRight: "1px solid rgba(207, 207, 207, 1)" }}
+                  ></div>
 
                   <InventoryFilterButton
                     categories={categories}

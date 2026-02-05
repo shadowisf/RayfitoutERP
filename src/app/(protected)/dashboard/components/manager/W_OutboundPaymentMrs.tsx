@@ -28,7 +28,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ filter: filterDays }),
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -74,8 +74,8 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   const pillBackgroundColor = hasNoOutboundPayments
     ? "rgba(156, 156, 156, 1)"
     : isIncrease
-    ? "rgba(246, 205, 205, 1)"
-    : "rgba(111, 243, 187, 1)";
+      ? "rgba(246, 205, 205, 1)"
+      : "rgba(111, 243, 187, 1)";
 
   const textColor = isIncrease ? "rgba(248, 77, 77, 1)" : "rgba(2, 122, 70, 1)";
 
@@ -86,8 +86,8 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   const changeText = hasNoOutboundPayments
     ? "No outbound payments"
     : isIncrease
-    ? `${changeMagnitude} increase from last ${periodLabel}`
-    : `${changeMagnitude} decrease from last ${periodLabel}`;
+      ? `${changeMagnitude} increase from last ${periodLabel}`
+      : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
     <div className="item">
@@ -98,15 +98,9 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
       <div>
         <div className="bottom">
           <p className="number">
-            {isLoading ? (
-              "..."
-            ) : (
-              <>
-                AED {thisWeek.toLocaleString("en-US")}
-              </>
-            )}
+            {isLoading ? "..." : <>AED {thisWeek.toLocaleString("en-US")}</>}
           </p>
-          {!hasNoOutboundPayments && !isLoading && (
+          {/* {!hasNoOutboundPayments && !isLoading && (
             <div
               className="data-pill"
               style={{ backgroundColor: pillBackgroundColor }}
@@ -120,7 +114,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
               </span>
               <img src={arrow} alt="trend arrow" />
             </div>
-          )}
+          )} */}
         </div>
         <br />
         <span>{isLoading ? "Loading..." : changeText}</span>

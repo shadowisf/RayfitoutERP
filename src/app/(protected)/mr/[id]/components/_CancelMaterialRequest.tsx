@@ -183,6 +183,10 @@ export default function CancelMaterialRequestButton({
     }
   }
 
+  if (userInfo?.departmentID !== 8) {
+    return null;
+  }
+
   return (
     <>
       <Button

@@ -28,7 +28,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ filter: filterDays }),
-      }
+      },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -72,14 +72,22 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   const changeMagnitude = isSubstantial ? "Substantial" : "Slight";
 
   // Determine styling based on increase/decrease or no active MRs
-  const backgroundColor = hasNoActiveMRs
+  /* const backgroundColor = hasNoActiveMRs
     ? "rgba(156, 156, 156, 1)"
     : isIncrease
-    ? "rgba(12, 143, 87, 1)"
-    : "rgba(248, 77, 77, 1)";
+      ? "rgba(12, 143, 87, 1)"
+      : "rgba(248, 77, 77, 1)";
   const textColor = isIncrease
     ? "rgba(1, 184, 105, 1)"
     : "rgba(255, 255, 255, 1)";
+  const arrow = isIncrease ? upArrow : downArrow; */
+
+  const backgroundColor = hasNoActiveMRs
+    ? "rgba(255, 255, 255, 1)"
+    : isIncrease
+      ? "rgba(255, 255, 255, 1)"
+      : "rgba(255, 255, 255, 1)";
+  const textColor = isIncrease ? "black" : "black";
   const arrow = isIncrease ? upArrow : downArrow;
 
   // ✅ Updated text to be more generic
@@ -87,11 +95,11 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   const changeText = hasNoActiveMRs
     ? "No active MRs"
     : isIncrease
-    ? `${changeMagnitude} increase from last ${periodLabel}`
-    : `${changeMagnitude} decrease from last ${periodLabel}`;
+      ? `${changeMagnitude} increase from last ${periodLabel}`
+      : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
-    <div className="item" style={{ backgroundColor, color: "white" }}>
+    <div className="item" style={{ backgroundColor /* color: "white" */ }}>
       <div className="top">
         <span>Active MRs</span>
         <img src={fileIcon} alt="file icon" />
@@ -99,7 +107,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
       <div>
         <div className="bottom">
           <p className="number">{isLoading ? "..." : thisWeek}</p>
-          {!hasNoActiveMRs && !isLoading && (
+          {/*  {!hasNoActiveMRs && !isLoading && (
             <div className="data-pill">
               <span style={{ color: textColor }}>
                 {isIncrease ? "+" : "-"}
@@ -107,7 +115,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
               </span>
               <img src={arrow} alt="trend arrow" />
             </div>
-          )}
+          )} */}
         </div>
         <br />
         <span>{isLoading ? "Loading..." : changeText}</span>

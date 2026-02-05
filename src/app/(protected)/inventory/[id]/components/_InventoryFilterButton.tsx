@@ -250,7 +250,7 @@ export default function InventoryFilterButton({
       <Button
         componentType={"button"}
         bgColor={"white"}
-        borderColor={"rgba(223, 223, 223, 1)"}
+        borderColor={"rgba(241, 244, 246, 1)"}
         textColor={"black"}
         onClick={handleOpen}
         style={{ position: "relative", borderRadius: "50px" }}

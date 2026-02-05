@@ -59,7 +59,7 @@ export default function Project() {
 
   return (
     <div className="dashboard">
-      <h2>PROJECTS</h2>
+      <h1>PROJECTS</h1>
 
       <br />
       <br />
