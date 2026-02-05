@@ -7,7 +7,7 @@ import Button from "@/app/components/Button";
 import EditInventoryItemButton from "./components/_EditInventoryItemButton";
 import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStocksButton";
 import TransactionDetailsPopUpButton from "./[id]/components/_IssueDetailsPopUpButton";
-import FilterButton from "./[id]/components/_FilterButton";
+import InventoryFilterButton from "./[id]/components/_InventoryFilterButton";
 import DeleteTransferButton from "./components/_DeleteTransferButton";
 import DeleteInventoryItemButton from "./[id]/components/_DeleteInventoryItemButton";
 
@@ -1178,7 +1178,7 @@ export default function Inventory() {
                     <option value="oldest-newest">OLDEST - NEWEST</option>
                   </select>
 
-                  <FilterButton
+                  <InventoryFilterButton
                     categories={categories}
                     onApplyFilters={setFilters}
                     currentFilters={filters}

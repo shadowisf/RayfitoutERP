@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 
-type FilterButtonProps = {
+type InventoryFilterButtonProps = {
   categories: string[];
   onApplyFilters: (filters: {
     selectedCategories: string[];
@@ -22,11 +22,11 @@ type FilterButtonProps = {
   };
 };
 
-export default function FilterButton({
+export default function InventoryFilterButton({
   categories,
   onApplyFilters,
   currentFilters,
-}: FilterButtonProps) {
+}: InventoryFilterButtonProps) {
   const searchIcon = "/icons/search.svg";
   const filterIcon = "/icons/filter.svg";
 
@@ -293,7 +293,7 @@ export default function FilterButton({
               style={{
                 border: "1px solid #e5e7eb",
                 borderRadius: "8px",
-                padding: "20px",
+                padding: "10px",
               }}
             >
               <div style={{ position: "relative", marginBottom: "15px" }}>
@@ -489,7 +489,7 @@ export default function FilterButton({
               style={{
                 border: "1px solid #e5e7eb",
                 borderRadius: "8px",
-                padding: "20px",
+                padding: "10px",
               }}
             >
               <div style={{ position: "relative", marginBottom: "15px" }}>

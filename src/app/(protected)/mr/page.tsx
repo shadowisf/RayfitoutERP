@@ -4,9 +4,12 @@ import Button from "@/app/components/Button";
 import { useAuth } from "@/app/context/AuthContext";
 import { useEffect, useState } from "react";
 import { MrHeader } from "./[id]/types/mrHeader";
+import MrFilterButton from "./[id]/components/_MrFilterButton";
 
 export default function MR() {
   const { userInfo } = useAuth();
+
+  const searchIcon = "/icons/search.svg";
 
   const [mrHeaders, setMrHeaders] = useState<MrHeader[]>([]);
   const [filterRelevant, setFilterRelevant] = useState(false);
@@ -17,6 +20,17 @@ export default function MR() {
   const [mrDeliveryDates, setMrDeliveryDates] = useState<{
     [mrId: number]: Array<{ supplier_name: string; delivery_date: string }>;
   }>({});
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<{
+    itemsRequestedIn: string;
+    selectedDepartments: number[];
+    selectedProjects: number[];
+  }>({
+    itemsRequestedIn: "all",
+    selectedDepartments: [],
+    selectedProjects: [],
+  });
 
   useEffect(() => {
     if (mrHeaders.length === 0) return;
@@ -175,44 +189,27 @@ export default function MR() {
     24: 11, // Stock Entry → Storekeeper
   };
 
-  const canViewMR = (mr: any) => {
+  const canViewMR = (mr: MrHeader) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
-    if (userDeptId === 8) {
-      if ([1, 3, 10, 25].includes(mr.progress_id)) {
-        return true;
-      }
-      return false;
-    }
-
-    if (mr.progress_id === 1) {
+    // Draft / Rejected / Completed → ONLY originating department
+    if ([1, 5, 25].includes(mr.progress_id)) {
       return mr.department_id === userDeptId;
     }
 
-    if (mr.progress_id === 25) {
-      return mr.department_id === userDeptId;
+    // Management sees everything else
+    if (userDeptId === 8) return true;
+
+    // Explicit special cases
+    if ([11, 15, 16].includes(mr.progress_id)) {
+      return userDeptId === 9; // Procurement
     }
 
-    if (mr.progress_id === 5) {
-      return mr.department_id === userDeptId;
-    }
-
-    if (mr.progress_id === 11) {
-      return userDeptId === 9;
-    }
-
-    if (mr.progress_id === 15) {
-      return userDeptId === 9;
-    }
-
+    // 🔑 MAIN RULE: show ONLY if user department is responsible for current stage
     const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
 
-    if (responsibleDept === userDeptId) {
-      return true;
-    }
-
-    return false;
+    return responsibleDept === userDeptId;
   };
 
   const canUserViewMR = (mr: any) => {
@@ -370,7 +367,6 @@ export default function MR() {
         { name: "QS Review", progress_id: 2 },
         { name: "Manager Approval", progress_id: 3 },
       ],
-      // ✅ Only count QS Review and Manager Approval for the item count
       countStatuses: [2, 3],
     },
     {
@@ -399,10 +395,10 @@ export default function MR() {
     {
       name: "Rejected",
       statuses: [
-        { name: "Initial approval rejected", progress_id: 5 },
+        { name: "Requested Rejected", progress_id: 5 },
         { name: "Price Approval Rejected", progress_id: 11 },
         { name: "Payment Rejected", progress_id: 15 },
-        { name: "GRN failed", progress_id: 16 },
+        { name: "GRN Failed", progress_id: 16 },
         { name: "Failed QC", progress_id: 23 },
       ],
     },
@@ -412,9 +408,94 @@ export default function MR() {
     },
   ];
 
-  const filteredMRs = filterRelevant
-    ? mrHeaders.filter((mr) => canViewMR(mr))
-    : mrHeaders;
+  // ✅ Apply filters and search
+  const getFilteredMRs = () => {
+    let filtered = mrHeaders;
+
+    // Apply "Only Related Cards" filter first
+    if (filterRelevant) {
+      filtered = filtered.filter((mr) => {
+        // Draft, Rejected, Completed → only show user's own department MRs
+        if ([1, 5, 25].includes(mr.progress_id)) {
+          return mr.department_id === userInfo?.departmentID;
+        }
+
+        // For all other statuses, use canViewMR logic
+        return canViewMR(mr);
+      });
+    }
+
+    // Apply time filter
+    if (filters.itemsRequestedIn !== "all") {
+      const now = new Date();
+      const timeframes: { [key: string]: number } = {
+        "24h": 1,
+        "3d": 3,
+        "7d": 7,
+        "14d": 14,
+        "30d": 30,
+      };
+
+      const daysAgo = timeframes[filters.itemsRequestedIn];
+      if (daysAgo) {
+        const cutoffDate = new Date(
+          now.getTime() - daysAgo * 24 * 60 * 60 * 1000,
+        );
+
+        filtered = filtered.filter((mr) => {
+          const createdDate = new Date(mr.date_requested);
+          return createdDate >= cutoffDate;
+        });
+      }
+    }
+
+    // Apply department filter (filter by department that created the MR)
+    if (filters.selectedDepartments.length > 0) {
+      filtered = filtered.filter((mr) =>
+        filters.selectedDepartments.includes(mr.department_id),
+      );
+    }
+
+    // Apply project filter
+    if (filters.selectedProjects.length > 0) {
+      filtered = filtered.filter((mr) =>
+        filters.selectedProjects.includes(mr.project_id),
+      );
+    }
+
+    // Apply search query
+    if (searchQuery.trim() !== "") {
+      const rawQuery = searchQuery.toLowerCase().trim();
+      const normalizedQuery = rawQuery.replace(/^mr-/, "");
+
+      filtered = filtered.filter((mr) => {
+        // MR ID match
+        const formattedMrId = `mr-${mr.id.toString().padStart(5, "0")}`;
+        const mrIdMatch =
+          formattedMrId.includes(rawQuery) ||
+          mr.id.toString().includes(normalizedQuery);
+
+        // Project match
+        const projectMatch = mr.project_name?.toLowerCase().includes(rawQuery);
+
+        // Requester match
+        const requesterMatch = mr.requested_by
+          ?.toLowerCase()
+          .includes(rawQuery);
+
+        // Department match
+        const departmentMatch = mr.department_name
+          ?.toLowerCase()
+          .includes(rawQuery);
+
+        return mrIdMatch || projectMatch || requesterMatch || departmentMatch;
+      });
+    }
+
+    return filtered;
+  };
+
+  const filteredMRs = getFilteredMRs();
 
   // Group MRs by progress_name
   const groupedMRs = filteredMRs.reduce((acc: any, mr: any) => {
@@ -426,41 +507,105 @@ export default function MR() {
     return acc;
   }, {});
 
-  // ✅ Helper function to check if user should see a status when filtering
+  // ✅ Check if user should see a specific status when filtering
   const shouldShowStatusWhenFiltering = (status: any) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
-    // Management can see everything
-    if (userDeptId === 8) return true;
+    const mrs = groupedMRs[status.name] || [];
 
-    const responsibleDept = getResponsibleDepartment(status.name);
+    // Management sees everything
+    if (userDeptId === 8) {
+      // Draft, Rejected, Completed → only if user has MRs from their department
+      if ([1, 5, 25].includes(status.progress_id)) {
+        return mrs.some((mr: any) => mr.department_id === userDeptId);
+      }
 
-    // Show if the user's department is responsible for this status
-    if (responsibleDept.id === userDeptId) return true;
+      // For all other statuses, check if manager is responsible for this stage
+      const responsibleDept = getResponsibleDepartment(status.name);
+      return responsibleDept.id === 8;
+    }
 
-    // Show Draft and Completed if user's department matches the MR's originating department
-    if (status.progress_id === 1 || status.progress_id === 25) {
-      const mrs = groupedMRs[status.name] || [];
+    // Draft, Rejected, Completed → only if user has MRs from their department
+    if ([1, 5, 25].includes(status.progress_id)) {
       return mrs.some((mr: any) => mr.department_id === userDeptId);
     }
 
-    return false;
+    // For all other statuses, check if user's department is responsible
+    const responsibleDept = getResponsibleDepartment(status.name);
+    return responsibleDept.id === userDeptId;
   };
 
-  // ✅ Helper function to check if user should see a group when filtering
+  // ✅ Check if user should see a group when filtering
   const shouldShowGroupWhenFiltering = (group: any) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
-    // Management can see everything
-    if (userDeptId === 8) return true;
-
-    // Check if any status in this group should be visible to the user
+    // Check if any status in this group should be visible
     return group.statuses.some((status: any) =>
       shouldShowStatusWhenFiltering(status),
     );
   };
+
+  // ✅ Get unique projects from MR headers
+  const availableProjects = Array.from(
+    new Map(
+      mrHeaders
+        .filter((mr) => mr.project_id && mr.project_name)
+        .map((mr) => [
+          mr.project_id,
+          { id: mr.project_id, name: mr.project_name },
+        ]),
+    ).values(),
+  ).sort((a, b) => a.name.localeCompare(b.name));
+
+  // ✅ Helper to get label for time filter
+  const getItemsRequestedLabel = (value: string) => {
+    const labels: { [key: string]: string } = {
+      all: "All Times",
+      "24h": "Last 24 Hours",
+      "3d": "Last 3 Days",
+      "7d": "Last 7 Days",
+      "14d": "Last 14 Days",
+      "30d": "Last 30 Days",
+    };
+    return labels[value] || value;
+  };
+
+  // ✅ Helper to get department name
+  const getDepartmentName = (departmentId: number) => {
+    const departmentNames: { [key: number]: string } = {
+      1: "Civil",
+      2: "MEP",
+      3: "Electrical",
+      4: "Plumbing",
+      5: "HVAC",
+      6: "Finishing",
+      7: "Landscaping",
+      8: "Manager",
+      9: "Procurement",
+      10: "Finance",
+      11: "Storekeeper",
+      12: "Quality Check",
+      16: "Quantity Surveyor",
+    };
+    return departmentNames[departmentId] || "Unknown";
+  };
+
+  // ✅ Reset all filters
+  const resetAllFilters = () => {
+    setFilters({
+      itemsRequestedIn: "all",
+      selectedDepartments: [],
+      selectedProjects: [],
+    });
+  };
+
+  // ✅ Check if there are active filters
+  const hasActiveFilters =
+    filters.itemsRequestedIn !== "all" ||
+    filters.selectedDepartments.length > 0 ||
+    filters.selectedProjects.length > 0;
 
   return (
     <div className="dashboard">
@@ -468,28 +613,60 @@ export default function MR() {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "25px",
+          justifyContent: "space-between",
         }}
       >
         <h2>MATERIAL REQUISITIONS</h2>
 
         <div
-          onClick={() => setFilterRelevant(!filterRelevant)}
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "20px",
+            maxWidth: "300px",
             backgroundColor: "white",
-            padding: "7px 20px",
-            borderRadius: "5px",
-            border: "1px solid rgba(217, 217, 217, 1)",
-            cursor: "pointer",
-            userSelect: "none",
+            position: "relative",
           }}
         >
-          <h4>SHOW RELATED CARDS</h4>
+          <input
+            type="text"
+            placeholder="SEARCH"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "300px",
+              padding: "10px 40px 10px 15px",
+              borderRadius: "8px",
+              border: "1px solid rgba(223, 223, 223, 1)",
+              fontSize: "14px",
+            }}
+          />
+          <img
+            src={searchIcon}
+            alt="search"
+            style={{
+              position: "absolute",
+              right: "15px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: "16px",
+              height: "16px",
+              opacity: 0.5,
+            }}
+          />
+        </div>
+      </div>
 
+      <br />
+      <br />
+
+      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        <Button
+          componentType={"button"}
+          bgColor={"white"}
+          borderColor={"rgba(241, 244, 246, 1)"}
+          textColor={"black"}
+          onClick={() => setFilterRelevant(!filterRelevant)}
+          style={{ padding: "7px 10px", borderRadius: "50px" }}
+        >
+          ONLY RELATED CARDS{" "}
           <div
             style={{
               position: "relative",
@@ -499,7 +676,6 @@ export default function MR() {
                 ? "rgb(34, 197, 94)"
                 : "rgba(200, 200, 200, 1)",
               borderRadius: "34px",
-              transition: "background-color 0.3s ease",
             }}
           >
             <div
@@ -515,7 +691,121 @@ export default function MR() {
               }}
             />
           </div>
-        </div>
+        </Button>
+
+        <div style={{ borderRight: "1px solid rgba(207, 207, 207, 1)" }}></div>
+
+        <MrFilterButton
+          availableProjects={availableProjects}
+          onApplyFilters={setFilters}
+          currentFilters={filters}
+        />
+
+        {hasActiveFilters && (
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            {filters.itemsRequestedIn !== "all" && (
+              <Button
+                style={{
+                  borderRadius: "50px",
+                  fontWeight: "600",
+                }}
+                componentType={"none"}
+                bgColor={"rgba(239, 239, 239, 1)"}
+                borderColor={"transparent"}
+                textColor={"black"}
+              >
+                ITEMS REQUESTED IN:{" "}
+                <span
+                  style={{
+                    color: "rgba(16, 185, 129, 1)",
+                    textWrap: "nowrap",
+                  }}
+                >
+                  {getItemsRequestedLabel(
+                    filters.itemsRequestedIn,
+                  ).toUpperCase()}
+                </span>
+              </Button>
+            )}
+
+            {filters.selectedDepartments.length > 0 && (
+              <Button
+                style={{
+                  borderRadius: "50px",
+                  fontWeight: "600",
+                }}
+                componentType={"none"}
+                bgColor={"rgba(239, 239, 239, 1)"}
+                borderColor={"transparent"}
+                textColor={"black"}
+              >
+                DEPARTMENT:{" "}
+                <span
+                  style={{
+                    color: "rgba(16, 185, 129, 1)",
+                    textWrap: "nowrap",
+                  }}
+                >
+                  {getDepartmentName(
+                    filters.selectedDepartments[0],
+                  ).toUpperCase()}
+                  {filters.selectedDepartments.length > 1 &&
+                    `, +${filters.selectedDepartments.length - 1} MORE`}
+                </span>
+              </Button>
+            )}
+
+            {filters.selectedProjects.length > 0 && (
+              <Button
+                style={{
+                  borderRadius: "50px",
+                  fontWeight: "600",
+                }}
+                componentType={"none"}
+                bgColor={"rgba(239, 239, 239, 1)"}
+                borderColor={"transparent"}
+                textColor={"black"}
+              >
+                PROJECT:{" "}
+                <span
+                  style={{
+                    color: "rgba(16, 185, 129, 1)",
+                    textWrap: "nowrap",
+                  }}
+                >
+                  {(() => {
+                    const firstProject = availableProjects.find(
+                      (p) => p.id === filters.selectedProjects[0],
+                    );
+                    return firstProject
+                      ? firstProject.name.toUpperCase()
+                      : "UNKNOWN";
+                  })()}
+                  {filters.selectedProjects.length > 1 &&
+                    `, +${filters.selectedProjects.length - 1} MORE`}
+                </span>
+              </Button>
+            )}
+
+            <Button
+              onClick={resetAllFilters}
+              componentType={"button"}
+              bgColor={"transparent"}
+              borderColor={"transparent"}
+              textColor={"black"}
+              style={{ padding: "0px" }}
+            >
+              RESET FILTER
+            </Button>
+          </div>
+        )}
       </div>
 
       <br />
@@ -530,13 +820,18 @@ export default function MR() {
         }}
       >
         {stageGroups.map((group) => {
-          // ✅ Hide group header when filtering if user shouldn't see it
+          // ✅ Hide entire group when filtering if user shouldn't see it
           if (filterRelevant && !shouldShowGroupWhenFiltering(group)) {
             return null;
           }
 
           // ✅ Calculate count based on countStatuses if defined, otherwise use all statuses
           const totalCount = group.statuses.reduce((sum, status) => {
+            // Skip if filtering and user shouldn't see this status
+            if (filterRelevant && !shouldShowStatusWhenFiltering(status)) {
+              return sum;
+            }
+
             // Skip counting if we have countStatuses defined and this status isn't in it
             if (
               group.countStatuses &&
@@ -544,18 +839,16 @@ export default function MR() {
             ) {
               return sum;
             }
-            const mrs = groupedMRs[status.name] || [];
-            return sum + mrs.length;
-          }, 0);
 
-          // Skip empty groups if not filtering
-          if (
-            !filterRelevant &&
-            totalCount === 0 &&
-            group.name !== "Completed"
-          ) {
-            return null;
-          }
+            const mrs = groupedMRs[status.name] || [];
+
+            // When filtering, count only MRs user can view
+            const count = filterRelevant
+              ? mrs.filter((mr: MrHeader) => canViewMR(mr)).length
+              : mrs.length;
+
+            return sum + count;
+          }, 0);
 
           return (
             <div key={group.name}>
@@ -595,13 +888,7 @@ export default function MR() {
                 }}
               >
                 {group.statuses.map((status) => {
-                  const mrs = groupedMRs[status.name] || [];
-                  const responsibleDept = getResponsibleDepartment(status.name);
-                  const departmentStyle = getDepartmentStyle(
-                    responsibleDept.id,
-                  );
-
-                  // ✅ Skip statuses that don't match user's department when filtering
+                  // ✅ Hide status when filtering if user shouldn't see it
                   if (
                     filterRelevant &&
                     !shouldShowStatusWhenFiltering(status)
@@ -609,17 +896,19 @@ export default function MR() {
                     return null;
                   }
 
-                  // Skip empty rejected statuses if not filtering
-                  if (
-                    !filterRelevant &&
-                    group.name === "Rejected" &&
-                    mrs.length === 0
-                  ) {
-                    return null;
-                  }
+                  const mrs = groupedMRs[status.name] || [];
+                  const responsibleDept = getResponsibleDepartment(status.name);
+                  const departmentStyle = getDepartmentStyle(
+                    responsibleDept.id,
+                  );
 
-                  // ✅ Check if this status is empty
-                  const isEmpty = mrs.length === 0;
+                  // ✅ Filter MRs based on canViewMR when filtering is enabled
+                  const visibleMRs = filterRelevant
+                    ? mrs.filter((mr: MrHeader) => canViewMR(mr))
+                    : mrs;
+
+                  // ✅ Check if this status is empty based on visible MRs
+                  const isEmpty = visibleMRs.length === 0;
 
                   return (
                     <div
@@ -688,7 +977,7 @@ export default function MR() {
                             </div>
                           )}
 
-                          {/* ✅ Conditional styling for count badge */}
+                          {/* ✅ Show count of visible MRs */}
                           <div
                             style={{
                               fontSize: "16px",
@@ -704,7 +993,7 @@ export default function MR() {
                               lineHeight: 1,
                             }}
                           >
-                            {mrs.length}
+                            {visibleMRs.length}
                           </div>
                         </div>
                       </div>
@@ -721,8 +1010,8 @@ export default function MR() {
                           marginTop: "15px",
                         }}
                       >
-                        {mrs.length > 0 ? (
-                          mrs.map((mr: MrHeader) => {
+                        {visibleMRs.length > 0 ? (
+                          visibleMRs.map((mr: MrHeader) => {
                             const durationKey = `${mr.id}-${mr.progress_id}`;
                             const durationData = mrDurations[durationKey] || {
                               duration: "00:00:00",
