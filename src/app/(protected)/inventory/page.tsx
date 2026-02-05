@@ -26,7 +26,6 @@ export default function Inventory() {
       total_issued: number;
     };
   }>({});
-  // ✅ Add loading state
   const [isLoadingQuantities, setIsLoadingQuantities] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"inventory" | "transfer-log">(
@@ -62,6 +61,12 @@ export default function Inventory() {
   >([]);
   const [transferLogTimeFilter, setTransferLogTimeFilter] =
     useState<string>("all");
+
+  // ✅ Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(50);
+  const [transactionCurrentPage, setTransactionCurrentPage] = useState(1);
+  const [transactionsPerPage] = useState(50);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -102,23 +107,29 @@ export default function Inventory() {
     }
   }
 
-  // Fetch available quantities for all inventory items
+  // ✅ Optimized: Only fetch quantities for items on current page
   useEffect(() => {
-    async function fetchAllQuantities() {
-      if (!inventory || inventory.length === 0) {
+    async function fetchPageQuantities() {
+      const processedInventory = getProcessedInventory();
+
+      if (!processedInventory || processedInventory.length === 0) {
         return;
       }
 
-      // ✅ Set loading state to true
       setIsLoadingQuantities(true);
 
       try {
         const hasProjectFilter = filters.selectedProjects.length === 1;
         const hasLocationFilter = filters.selectedLocations.length === 1;
 
-        const inventoryIds = inventory.map((item) => item.id);
+        // ✅ Only get items for current page
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageItems = processedInventory.slice(startIndex, endIndex);
 
-        const allQuantities: {
+        const inventoryIds = pageItems.map((item) => item.id);
+
+        const pageQuantities: {
           [itemId: number]: {
             available_quantity: number;
             total_stock: number;
@@ -126,22 +137,19 @@ export default function Inventory() {
           };
         } = {};
 
-        // ✅ Process in batches to avoid overwhelming the server
-        const batchSize = 10; // Reduced batch size for parallel processing
+        // Process in smaller batches
+        const batchSize = 10;
         const batches = [];
 
         for (let i = 0; i < inventoryIds.length; i += batchSize) {
           batches.push(inventoryIds.slice(i, i + batchSize));
         }
 
-        // ✅ Process batches sequentially to avoid rate limiting
         for (const batch of batches) {
           try {
-            // ✅ Fetch all items in the batch in parallel
             const quantityPromises = batch.map(async (itemId) => {
               const body: any = { inventory_item_id: itemId };
 
-              // Add filters if needed
               if (hasProjectFilter) {
                 body.project_id = filters.selectedProjects[0];
               }
@@ -178,36 +186,47 @@ export default function Inventory() {
               };
             });
 
-            // Wait for all requests in this batch to complete
             const results = await Promise.all(quantityPromises);
 
-            // Aggregate results
             results.forEach((result) => {
-              allQuantities[result.itemId] = {
+              pageQuantities[result.itemId] = {
                 available_quantity: result.quantity,
                 total_stock: result.total_stock,
                 total_issued: result.total_issued,
               };
             });
 
-            // ✅ Small delay between batches to prevent overwhelming the server
             await new Promise((resolve) => setTimeout(resolve, 100));
           } catch (error) {
             console.error(`Error fetching batch:`, error);
           }
         }
 
-        setAvailableQuantities(allQuantities);
+        // ✅ Merge with existing quantities instead of replacing
+        setAvailableQuantities((prev) => ({
+          ...prev,
+          ...pageQuantities,
+        }));
       } catch (error) {
         console.error("Error fetching available quantities:", error);
       } finally {
-        // ✅ Set loading state to false when done
         setIsLoadingQuantities(false);
       }
     }
 
-    fetchAllQuantities();
-  }, [inventory, filters.selectedProjects, filters.selectedLocations]);
+    fetchPageQuantities();
+  }, [
+    currentPage,
+    filters.selectedProjects,
+    filters.selectedLocations,
+    inventory,
+    activeCategory,
+    searchQuery,
+    sortOrder,
+    filters.selectedCategories,
+    filters.stockAddedIn,
+    filters.selectedStockStatuses,
+  ]);
 
   useEffect(() => {
     getInventoryItems();
@@ -221,14 +240,12 @@ export default function Inventory() {
       const stocksMap: { [itemId: number]: any[] } = {};
 
       try {
-        // ✅ Batch the stock fetches
         const inventoryIds = inventory.map((item) => item.id);
         const batchSize = 100;
 
         for (let i = 0; i < inventoryIds.length; i += batchSize) {
           const batch = inventoryIds.slice(i, i + batchSize);
 
-          // Fetch regular stocks for this batch
           const stocksResponse = await fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getStocksByBatch`,
             {
@@ -242,7 +259,6 @@ export default function Inventory() {
             const stocksData = await stocksResponse.json();
 
             if (stocksData.success && stocksData.data) {
-              // Group stocks by inventory_item_id
               stocksData.data.forEach((stock: any) => {
                 if (!stocksMap[stock.inventory_item_id]) {
                   stocksMap[stock.inventory_item_id] = [];
@@ -256,7 +272,6 @@ export default function Inventory() {
           }
         }
 
-        // Fetch transfer/issue transactions (only once)
         const transfersResponse = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAllTransferIssueTransactions`,
           {
@@ -268,7 +283,6 @@ export default function Inventory() {
           const transfersData = await transfersResponse.json();
 
           if (transfersData.success && transfersData.transactions) {
-            // Add transfer locations to stocksMap
             transfersData.transactions.forEach((transfer: any) => {
               if (transfer.items && Array.isArray(transfer.items)) {
                 transfer.items.forEach((item: any) => {
@@ -276,7 +290,6 @@ export default function Inventory() {
                     stocksMap[item.inventory_item_id] = [];
                   }
 
-                  // Add to_location as a location for this item
                   if (transfer.to_location) {
                     stocksMap[item.inventory_item_id].push({
                       inventory_item_id: item.inventory_item_id,
@@ -300,7 +313,6 @@ export default function Inventory() {
     fetchAllStocks();
   }, [inventory]);
 
-  // Fetch projects for display
   useEffect(() => {
     async function fetchProjects() {
       try {
@@ -333,7 +345,6 @@ export default function Inventory() {
     setIsLoadingTransactions(true);
 
     try {
-      // Fetch all transfer/issue transactions
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAllTransferIssueTransactions`,
         {
@@ -348,7 +359,6 @@ export default function Inventory() {
       const data = await response.json();
 
       if (data.success && data.transactions) {
-        // Sort by date (newest first)
         const sorted = data.transactions.sort((a: any, b: any) => {
           const dateA = new Date(a.created_on).getTime();
           const dateB = new Date(b.created_on).getTime();
@@ -364,12 +374,10 @@ export default function Inventory() {
     }
   }
 
-  // Fetch all transactions when Transfer Log tab is active
   useEffect(() => {
     fetchAllTransactions();
   }, [activeTab]);
 
-  // Check scroll position to show/hide arrows
   const checkScroll = () => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } =
@@ -389,11 +397,10 @@ export default function Inventory() {
     }
   };
 
-  // Get stock status based on available quantity
   const getStockStatus = (availableQty: number, minimumStock: number) => {
     if (availableQty === 0) {
       return {
-        label: "OUT OF STOCK",
+        label: "EMPTY STOCK",
         bgColor: "rgba(255, 181, 181, 1)",
         textColor: "rgba(248, 77, 77, 1)",
       };
@@ -405,14 +412,13 @@ export default function Inventory() {
       };
     } else {
       return {
-        label: "IN STOCK",
+        label: "IN-STOCK",
         bgColor: "rgba(149, 222, 189, 1)",
         textColor: "rgba(0, 108, 60, 1)",
       };
     }
   };
 
-  // ✅ Add loading status helper
   const getLoadingStatus = () => {
     return {
       label: "LOADING...",
@@ -421,7 +427,6 @@ export default function Inventory() {
     };
   };
 
-  // Get unique categories
   const categories = Array.from(
     new Set(inventory.map((item) => item.category_name)),
   ).sort();
@@ -432,42 +437,30 @@ export default function Inventory() {
     return () => window.removeEventListener("resize", checkScroll);
   }, [categories]);
 
-  // Get item count per category
   const getCategoryCount = (category: string) => {
     return inventory.filter((item) => item.category_name === category).length;
   };
 
-  // Filter, search, and sort inventory
   const getProcessedInventory = () => {
     let processed = inventory;
 
-    // Filter by selected categories from filter
     if (filters.selectedCategories.length > 0) {
       processed = processed.filter((item) =>
         filters.selectedCategories.includes(item.category_name),
       );
     }
 
-    // Filter by selected locations from filter (check stocks table AND transfer table)
     if (filters.selectedLocations.length > 0) {
       processed = processed.filter((item) => {
         const itemStocks = stocksByInventoryItem[item.id] || [];
-
-        // Check if item exists in regular stocks with selected location
         const hasStockLocation = itemStocks.some((stock) =>
           filters.selectedLocations.includes(stock.location),
         );
-
-        // If already found in stocks, return true
         if (hasStockLocation) return true;
-
-        // Otherwise, we need to check transfers - you'll need to fetch this data
-        // For now, just return hasStockLocation
         return hasStockLocation;
       });
     }
 
-    // Filter by selected projects from filter (check stocks table)
     if (filters.selectedProjects.length > 0) {
       processed = processed.filter((item) => {
         const itemStocks = stocksByInventoryItem[item.id] || [];
@@ -477,7 +470,6 @@ export default function Inventory() {
       });
     }
 
-    // Filter by stock added in timeframe (check stocks table created_at)
     if (filters.stockAddedIn !== "all") {
       const now = new Date();
       const timeframes: { [key: string]: number } = {
@@ -504,7 +496,6 @@ export default function Inventory() {
       }
     }
 
-    // ✅ Filter by stock status (BEFORE other filters that depend on order)
     if (filters.selectedStockStatuses.length > 0) {
       processed = processed.filter((item) => {
         const quantityData = availableQuantities[item.id];
@@ -518,32 +509,26 @@ export default function Inventory() {
       });
     }
 
-    // Filter by active category tab
     if (activeCategory !== "ALL") {
       processed = processed.filter(
         (item) => item.category_name === activeCategory,
       );
     }
 
-    // Filter by search query
     if (searchQuery.trim() !== "") {
       const rawQuery = searchQuery.toLowerCase().trim();
-      // Remove "inv-" if user typed it
       const normalizedQuery = rawQuery.replace(/^inv-/, "");
 
       processed = processed.filter((item) => {
-        // Search in description
         const descriptionMatch = item.description
           .toLowerCase()
           .includes(rawQuery);
 
-        // Search in inventory ID with prefix (INV-00157, INV-157, 157)
         const formattedInventoryId = `inv-${item.id.toString().padStart(5, "0")}`;
         const inventoryIdMatch =
           formattedInventoryId.includes(rawQuery) ||
           item.id.toString().includes(normalizedQuery);
 
-        // Search in quantity + unit (e.g., "10 NOS", "1 KG")
         const quantityData = availableQuantities[item.id];
         const availableQty = quantityData?.available_quantity ?? 0;
         const cleanQuantity = parseFloat(availableQty.toString());
@@ -556,7 +541,6 @@ export default function Inventory() {
       });
     }
 
-    // Sort by user-selected sort order
     if (sortOrder !== "none") {
       processed = [...processed].sort((a, b) => {
         if (sortOrder === "high-low" || sortOrder === "low-high") {
@@ -585,8 +569,6 @@ export default function Inventory() {
       });
     }
 
-    // ✅ Always sort OUT OF STOCK items to the bottom (UNLESS filtering by stock status)
-    // If user is specifically filtering by OUT OF STOCK, don't push them to bottom
     if (
       filters.selectedStockStatuses.length === 0 ||
       filters.selectedStockStatuses.length > 1
@@ -595,12 +577,9 @@ export default function Inventory() {
         const qtyA = availableQuantities[a.id]?.available_quantity ?? 0;
         const qtyB = availableQuantities[b.id]?.available_quantity ?? 0;
 
-        // If A is out of stock and B is not, B comes first
         if (qtyA === 0 && qtyB !== 0) return 1;
-        // If B is out of stock and A is not, A comes first
         if (qtyB === 0 && qtyA !== 0) return -1;
 
-        // If both have stock or both out of stock, maintain existing sort order
         return 0;
       });
     }
@@ -610,7 +589,26 @@ export default function Inventory() {
 
   const processedInventory = getProcessedInventory();
 
-  // Get transfer type label
+  // ✅ Pagination calculations for inventory
+  const totalPages = Math.ceil(processedInventory.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = processedInventory.slice(startIndex, endIndex);
+
+  // ✅ Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    activeCategory,
+    searchQuery,
+    sortOrder,
+    filters.selectedCategories,
+    filters.selectedLocations,
+    filters.selectedProjects,
+    filters.stockAddedIn,
+    filters.selectedStockStatuses,
+  ]);
+
   const getTransferTypeLabel = (transaction: any) => {
     if (transaction.type?.toLowerCase().includes("transfer")) {
       return "MATERIAL TRANSFER";
@@ -623,7 +621,6 @@ export default function Inventory() {
     return transaction.type || "-";
   };
 
-  // Get status for transfer log
   const getTransferStatus = (transaction: any) => {
     if (transaction.received === 1) {
       if (transaction.type?.toLowerCase().includes("issue")) {
@@ -679,7 +676,6 @@ export default function Inventory() {
   const getFilteredTransactions = () => {
     let filtered = allTransactions;
 
-    // Apply time filter
     if (transferLogTimeFilter !== "all") {
       const now = new Date();
       const timeframes: { [key: string]: number } = {
@@ -704,24 +700,19 @@ export default function Inventory() {
       }
     }
 
-    // Apply search filter
     if (searchQuery.trim() !== "") {
       const rawQuery = searchQuery.toLowerCase().trim();
-      // Remove "ta-" if user typed it
       const normalizedQuery = rawQuery.replace(/^ta-/, "");
 
       filtered = filtered.filter((transaction) => {
-        // Search in materials
         const materialMatch = transaction.items?.some((item: any) =>
           item.description?.toLowerCase().includes(rawQuery),
         );
 
-        // Search in locations
         const locationMatch =
           transaction.from_location?.toLowerCase().includes(rawQuery) ||
           transaction.to_location?.toLowerCase().includes(rawQuery);
 
-        // Search in transaction ID (TA-00018, TA-018, 18)
         const formattedTransactionId = `ta-${transaction.id
           ?.toString()
           .padStart(5, "0")}`;
@@ -729,12 +720,10 @@ export default function Inventory() {
           formattedTransactionId.includes(rawQuery) ||
           transaction.id?.toString().includes(normalizedQuery);
 
-        // Search in project name
         const projectMatch = transaction.project_name
           ?.toLowerCase()
           .includes(rawQuery);
 
-        // ✅ Search in quantity + unit (e.g., "1 NOS", "5 KG")
         const quantityUnitMatch = transaction.items?.some((item: any) => {
           const cleanQuantity = parseFloat(item.quantity);
           const quantityUnitString = `${cleanQuantity} ${item.unit || ""}`
@@ -758,7 +747,23 @@ export default function Inventory() {
 
   const filteredTransactions = getFilteredTransactions();
 
-  // Helper function to get stock added label
+  // ✅ Pagination calculations for transactions
+  const totalTransactionPages = Math.ceil(
+    filteredTransactions.length / transactionsPerPage,
+  );
+  const transactionStartIndex =
+    (transactionCurrentPage - 1) * transactionsPerPage;
+  const transactionEndIndex = transactionStartIndex + transactionsPerPage;
+  const currentTransactions = filteredTransactions.slice(
+    transactionStartIndex,
+    transactionEndIndex,
+  );
+
+  // ✅ Reset transaction page when filters change
+  useEffect(() => {
+    setTransactionCurrentPage(1);
+  }, [transferLogTimeFilter, searchQuery]);
+
   const getStockAddedLabel = (value: string) => {
     const labels: { [key: string]: string } = {
       all: "All Times",
@@ -771,7 +776,6 @@ export default function Inventory() {
     return labels[value] || value;
   };
 
-  // Reset all filters
   const resetAllFilters = () => {
     setFilters({
       selectedCategories: [],
@@ -782,13 +786,92 @@ export default function Inventory() {
     });
   };
 
-  // Check if any filters are active
   const hasActiveFilters =
     filters.selectedCategories.length > 0 ||
     filters.selectedLocations.length > 0 ||
     filters.selectedProjects.length > 0 ||
     filters.stockAddedIn !== "all" ||
     filters.selectedStockStatuses.length > 0;
+
+  // ✅ Pagination component
+  const PaginationControls = ({
+    currentPage,
+    totalPages,
+    onPageChange,
+  }: {
+    currentPage: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+  }) => {
+    const getPageNumbers = () => {
+      const pages = [];
+      const maxVisible = 7;
+
+      if (totalPages <= maxVisible) {
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        if (currentPage <= 4) {
+          for (let i = 1; i <= 5; i++) pages.push(i);
+          pages.push("...");
+          pages.push(totalPages);
+        } else if (currentPage >= totalPages - 3) {
+          pages.push(1);
+          pages.push("...");
+          for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+        } else {
+          pages.push(1);
+          pages.push("...");
+          for (let i = currentPage - 1; i <= currentPage + 1; i++)
+            pages.push(i);
+          pages.push("...");
+          pages.push(totalPages);
+        }
+      }
+
+      return pages;
+    };
+
+    if (totalPages <= 1) return null;
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "10px",
+          marginTop: "20px",
+        }}
+      >
+        {getPageNumbers().map((page, index) => (
+          <button
+            key={index}
+            onClick={() => typeof page === "number" && onPageChange(page)}
+            disabled={page === "..."}
+            style={{
+              padding: "8px 12px",
+              borderRadius: "5px",
+              border: "1px solid rgba(223, 223, 223, 1)",
+              backgroundColor:
+                page === currentPage
+                  ? "black"
+                  : page === "..."
+                    ? "transparent"
+                    : "white",
+              color: page === currentPage ? "white" : "black",
+              cursor: page === "..." ? "default" : "pointer",
+              fontWeight: "600",
+              minWidth: "40px",
+            }}
+          >
+            {page}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="dashboard">
@@ -866,42 +949,6 @@ export default function Inventory() {
               <option value="90d">Last 90 Days</option>
             </select>
           )}
-
-          <div
-            style={{
-              position: "relative",
-              flex: 1,
-              maxWidth: "400px",
-              backgroundColor: "white",
-            }}
-          >
-            <input
-              type="text"
-              placeholder="SEARCH"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: "400px",
-                padding: "10px 40px 10px 15px",
-                borderRadius: "8px",
-                border: "1px solid rgba(223, 223, 223, 1)",
-                fontSize: "14px",
-              }}
-            />
-            <img
-              src={searchIcon}
-              alt="search"
-              style={{
-                position: "absolute",
-                right: "15px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: "16px",
-                height: "16px",
-                opacity: 0.5,
-              }}
-            />
-          </div>
         </div>
       </div>
 
@@ -910,8 +957,12 @@ export default function Inventory() {
       {activeTab === "inventory" && (
         <>
           {/* Category Tabs with Scroll */}
-          <div className="category-grid" style={{ position: "relative" }}>
-            {/* Left Fade Gradient */}
+          <div
+            className="category-grid"
+            style={{
+              position: "relative",
+            }}
+          >
             {showLeftArrow && (
               <div
                 style={{
@@ -928,7 +979,6 @@ export default function Inventory() {
               />
             )}
 
-            {/* Left Arrow Button */}
             {showLeftArrow && (
               <button
                 onClick={() => scroll("left")}
@@ -1038,7 +1088,6 @@ export default function Inventory() {
               </div>
             </div>
 
-            {/* Right Fade Gradient */}
             {showRightArrow && (
               <div
                 style={{
@@ -1055,7 +1104,6 @@ export default function Inventory() {
               />
             )}
 
-            {/* Right Arrow Button */}
             {showRightArrow && (
               <button
                 onClick={() => scroll("right")}
@@ -1083,183 +1131,248 @@ export default function Inventory() {
           </div>
 
           <br />
+          <br />
 
           {activeTab === "inventory" && (
-            <div style={{ display: "flex", gap: "10px" }}>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <select
-                  value={sortOrder}
-                  onChange={(e) =>
-                    setSortOrder(
-                      e.target.value as
-                        | "none"
-                        | "high-low"
-                        | "low-high"
-                        | "newest-oldest"
-                        | "oldest-newest",
-                    )
-                  }
-                  style={{
-                    padding: "10px 15px",
-                    borderRadius: "50px",
-                    border: "1px solid rgba(223, 223, 223, 1)",
-                    backgroundColor: "white",
-                    cursor: "pointer",
-                  }}
-                >
-                  <option value="none">Sort by stock</option>
-                  <option value="high-low">Highest - Lowest</option>
-                  <option value="low-high">Lowest - Highest</option>
-                  <option value="newest-oldest">Newest - Oldest</option>
-                  <option value="oldest-newest">Oldest - Newest</option>
-                </select>
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+                paddingTop: "30px",
+                borderTop: "1px solid rgba(207, 207, 207, 1)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  justifyContent: "space-between",
+                  width: "100%",
+                }}
+              >
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) =>
+                      setSortOrder(
+                        e.target.value as
+                          | "none"
+                          | "high-low"
+                          | "low-high"
+                          | "newest-oldest"
+                          | "oldest-newest",
+                      )
+                    }
+                    style={{
+                      padding: "10px 15px",
+                      borderRadius: "50px",
+                      border: "1px solid rgba(223, 223, 223, 1)",
+                      backgroundColor: "white",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <option value="none">SORT BY STOCK</option>
+                    <option value="high-low">HIGHEST - LOWEST</option>
+                    <option value="low-high">LOWEST - HIGHEST</option>
+                    <option value="newest-oldest">NEWEST - OLDEST</option>
+                    <option value="oldest-newest">OLDEST - NEWEST</option>
+                  </select>
 
-                <FilterButton
-                  categories={categories}
-                  onApplyFilters={setFilters}
-                  currentFilters={filters}
-                />
-              </div>
+                  <FilterButton
+                    categories={categories}
+                    onApplyFilters={setFilters}
+                    currentFilters={filters}
+                  />
 
-              {hasActiveFilters && (
+                  {hasActiveFilters && (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        alignItems: "center",
+                      }}
+                    >
+                      {filters.selectedCategories.length > 0 && (
+                        <Button
+                          style={{
+                            borderRadius: "50px",
+                            fontWeight: 600,
+                          }}
+                          componentType={"none"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"transparent"}
+                          textColor={"black"}
+                        >
+                          SUBCATEGORY:{" "}
+                          <span
+                            style={{
+                              color: "rgba(16, 185, 129, 1)",
+                              textWrap: "nowrap",
+                            }}
+                          >
+                            {filters.selectedCategories[0].toUpperCase()}
+                            {filters.selectedCategories.length > 1 &&
+                              `, +${filters.selectedCategories.length - 1} MORE`}
+                          </span>
+                        </Button>
+                      )}
+
+                      {filters.stockAddedIn !== "all" && (
+                        <Button
+                          style={{
+                            borderRadius: "50px",
+                            fontWeight: "600",
+                          }}
+                          componentType={"none"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"transparent"}
+                          textColor={"black"}
+                        >
+                          STOCK ADDED IN:{" "}
+                          <span
+                            style={{
+                              color: "rgba(16, 185, 129, 1)",
+                              textWrap: "nowrap",
+                            }}
+                          >
+                            {getStockAddedLabel(
+                              filters.stockAddedIn,
+                            ).toUpperCase()}
+                          </span>
+                        </Button>
+                      )}
+
+                      {filters.selectedStockStatuses.length > 0 && (
+                        <Button
+                          style={{
+                            borderRadius: "50px",
+                            fontWeight: "600",
+                          }}
+                          componentType={"none"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"transparent"}
+                          textColor={"black"}
+                        >
+                          STATUS:{" "}
+                          <span
+                            style={{
+                              color: "rgba(16, 185, 129, 1)",
+                              textWrap: "nowrap",
+                            }}
+                          >
+                            {filters.selectedStockStatuses[0]}
+                            {filters.selectedStockStatuses.length > 1 &&
+                              `, +${filters.selectedStockStatuses.length - 1} MORE`}
+                          </span>
+                        </Button>
+                      )}
+
+                      {filters.selectedProjects.length > 0 && (
+                        <Button
+                          style={{
+                            borderRadius: "50px",
+                            fontWeight: "600",
+                          }}
+                          componentType={"none"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"transparent"}
+                          textColor={"black"}
+                        >
+                          PROJECT:{" "}
+                          <span
+                            style={{
+                              color: "rgba(16, 185, 129, 1)",
+                              textWrap: "nowrap",
+                            }}
+                          >
+                            {(() => {
+                              const firstProject = availableProjects.find(
+                                (p) => p.id === filters.selectedProjects[0],
+                              );
+                              return firstProject
+                                ? firstProject.name.toUpperCase()
+                                : "UNKNOWN";
+                            })()}
+                            {filters.selectedProjects.length > 1 &&
+                              `, +${filters.selectedProjects.length - 1} MORE`}
+                          </span>
+                        </Button>
+                      )}
+
+                      {filters.selectedLocations.length > 0 && (
+                        <Button
+                          style={{
+                            borderRadius: "50px",
+                            fontWeight: "600",
+                          }}
+                          componentType={"none"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"transparent"}
+                          textColor={"black"}
+                        >
+                          LOCATION:{" "}
+                          <span
+                            style={{
+                              color: "rgba(16, 185, 129, 1)",
+                              textWrap: "nowrap",
+                            }}
+                          >
+                            {filters.selectedLocations[0].toUpperCase()}
+                            {filters.selectedLocations.length > 1 &&
+                              `, +${filters.selectedLocations.length - 1} MORE`}
+                          </span>
+                        </Button>
+                      )}
+
+                      <Button
+                        onClick={resetAllFilters}
+                        componentType={"button"}
+                        bgColor={"transparent"}
+                        borderColor={"transparent"}
+                        textColor={"black"}
+                        style={{ padding: "0px" }}
+                      >
+                        RESET FILTER
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
                 <div
                   style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "10px",
-                    alignItems: "center",
+                    maxWidth: "300px",
+                    backgroundColor: "white",
+                    position: "relative",
                   }}
                 >
-                  {/* Subcategory Filters */}
-                  {filters.selectedCategories.length > 0 && (
-                    <Button
-                      style={{
-                        borderRadius: "50px",
-                        fontWeight: 600,
-                      }}
-                      componentType={"none"}
-                      bgColor={"rgba(239, 239, 239, 1)"}
-                      borderColor={"transparent"}
-                      textColor={"black"}
-                    >
-                      SUBCATEGORY:{" "}
-                      <span
-                        style={{
-                          color: "rgba(16, 185, 129, 1)",
-                        }}
-                      >
-                        {filters.selectedCategories[0].toUpperCase()}
-                        {filters.selectedCategories.length > 1 &&
-                          `, +${filters.selectedCategories.length - 1} MORE`}
-                      </span>
-                    </Button>
-                  )}
-
-                  {/* Stock Added Filter */}
-                  {filters.stockAddedIn !== "all" && (
-                    <Button
-                      style={{
-                        borderRadius: "50px",
-                        fontWeight: "600",
-                      }}
-                      componentType={"none"}
-                      bgColor={"rgba(239, 239, 239, 1)"}
-                      borderColor={"transparent"}
-                      textColor={"black"}
-                    >
-                      STOCK ADDED IN:{" "}
-                      <span
-                        style={{
-                          color: "rgba(16, 185, 129, 1)",
-                        }}
-                      >
-                        {getStockAddedLabel(filters.stockAddedIn).toUpperCase()}
-                      </span>
-                    </Button>
-                  )}
-
-                  {filters.selectedStockStatuses.length > 0 && (
-                    <Button
-                      style={{
-                        borderRadius: "50px",
-                        fontWeight: "600",
-                      }}
-                      componentType={"none"}
-                      bgColor={"rgba(239, 239, 239, 1)"}
-                      borderColor={"transparent"}
-                      textColor={"black"}
-                    >
-                      STATUS:{" "}
-                      <span style={{ color: "rgba(16, 185, 129, 1)" }}>
-                        {filters.selectedStockStatuses[0]}
-                        {filters.selectedStockStatuses.length > 1 &&
-                          `, +${filters.selectedStockStatuses.length - 1} MORE`}
-                      </span>
-                    </Button>
-                  )}
-
-                  {/* Project Filters */}
-                  {filters.selectedProjects.length > 0 && (
-                    <Button
-                      style={{
-                        borderRadius: "50px",
-                        fontWeight: "600",
-                      }}
-                      componentType={"none"}
-                      bgColor={"rgba(239, 239, 239, 1)"}
-                      borderColor={"transparent"}
-                      textColor={"black"}
-                    >
-                      PROJECT:{" "}
-                      <span style={{ color: "rgba(16, 185, 129, 1)" }}>
-                        {(() => {
-                          const firstProject = availableProjects.find(
-                            (p) => p.id === filters.selectedProjects[0],
-                          );
-                          return firstProject
-                            ? firstProject.name.toUpperCase()
-                            : "UNKNOWN";
-                        })()}
-                        {filters.selectedProjects.length > 1 &&
-                          `, +${filters.selectedProjects.length - 1} MORE`}
-                      </span>
-                    </Button>
-                  )}
-
-                  {/* Location Filters */}
-                  {filters.selectedLocations.length > 0 && (
-                    <Button
-                      style={{
-                        borderRadius: "50px",
-                        fontWeight: "600",
-                      }}
-                      componentType={"none"}
-                      bgColor={"rgba(239, 239, 239, 1)"}
-                      borderColor={"transparent"}
-                      textColor={"black"}
-                    >
-                      LOCATION:{" "}
-                      <span style={{ color: "rgba(16, 185, 129, 1)" }}>
-                        {filters.selectedLocations[0].toUpperCase()}
-                        {filters.selectedLocations.length > 1 &&
-                          `, +${filters.selectedLocations.length - 1} MORE`}
-                      </span>
-                    </Button>
-                  )}
-
-                  {/* Reset Filter Button */}
-                  <Button
-                    onClick={resetAllFilters}
-                    componentType={"button"}
-                    bgColor={"transparent"}
-                    borderColor={"transparent"}
-                    textColor={"black"}
-                    style={{ padding: "0px" }}
-                  >
-                    RESET FILTER
-                  </Button>
+                  <input
+                    type="text"
+                    placeholder="SEARCH"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      width: "300px",
+                      padding: "10px 40px 10px 15px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(223, 223, 223, 1)",
+                      fontSize: "14px",
+                    }}
+                  />
+                  <img
+                    src={searchIcon}
+                    alt="search"
+                    style={{
+                      position: "absolute",
+                      right: "15px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: "16px",
+                      height: "16px",
+                      opacity: 0.5,
+                    }}
+                  />
                 </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -1268,124 +1381,136 @@ export default function Inventory() {
 
           {/* Inventory Table */}
           <div style={{ overflowX: "auto" }}>
-            {processedInventory.length > 0 ? (
-              <table className="items-table two-toned">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>ID</th>
-                    <th style={{ minWidth: "600px" }}>MATERIAL</th>
-                    <th>TOTAL QUANTITY</th>
-                    <th>STATUS</th>
-                    <th>ACTION</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {processedInventory.map((item, index) => {
-                    const quantityData = availableQuantities[item.id];
-                    const availableQty = quantityData?.available_quantity ?? 0;
+            {currentItems.length > 0 ? (
+              <>
+                <table className="items-table alt two-toned">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>ID</th>
+                      <th style={{ minWidth: "600px" }}>MATERIAL</th>
+                      <th>TOTAL QTY</th>
+                      <th>STATUS</th>
+                      <th>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentItems.map((item, index) => {
+                      const quantityData = availableQuantities[item.id];
+                      const availableQty =
+                        quantityData?.available_quantity ?? 0;
 
-                    // ✅ Show loading status if still fetching quantities
-                    const stockStatus = isLoadingQuantities
-                      ? getLoadingStatus()
-                      : getStockStatus(
-                          availableQty,
-                          item.minimum_stock_quantity,
-                        );
+                      const stockStatus = isLoadingQuantities
+                        ? getLoadingStatus()
+                        : getStockStatus(
+                            availableQty,
+                            item.minimum_stock_quantity,
+                          );
 
-                    return (
-                      <tr key={item.id}>
-                        <td>{index + 1}</td>
-                        <td style={{ whiteSpace: "nowrap" }}>
-                          INV-{String(item.id).padStart(5, "0")}
-                        </td>
-                        <td>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "25px",
-                            }}
+                      return (
+                        <tr key={item.id}>
+                          <td>{startIndex + index + 1}</td>
+                          <td
+                            style={{ whiteSpace: "nowrap", fontWeight: "600" }}
                           >
-                            <div style={{ width: "50px" }}>
-                              {item.image ? (
-                                <img
-                                  src={item.image}
-                                  alt="reference image"
-                                  width={50}
-                                  style={{
-                                    aspectRatio: "1/1",
-                                    objectFit: "cover",
-                                    borderRadius: "5px",
-                                  }}
-                                />
-                              ) : (
-                                <img
-                                  src={noImageIcon}
-                                  alt="reference image"
-                                  width={50}
-                                  style={{
-                                    aspectRatio: "1/1",
-                                    objectFit: "cover",
-                                    borderRadius: "5px",
-                                  }}
+                            INV-{String(item.id).padStart(5, "0")}
+                          </td>
+                          <td style={{ fontWeight: "600" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "25px",
+                              }}
+                            >
+                              <div style={{ width: "50px" }}>
+                                {item.image ? (
+                                  <img
+                                    src={item.image}
+                                    alt="reference image"
+                                    width={50}
+                                    style={{
+                                      aspectRatio: "1/1",
+                                      objectFit: "cover",
+                                      borderRadius: "5px",
+                                    }}
+                                  />
+                                ) : (
+                                  <img
+                                    src={noImageIcon}
+                                    alt="reference image"
+                                    width={50}
+                                    style={{
+                                      aspectRatio: "1/1",
+                                      objectFit: "cover",
+                                      borderRadius: "5px",
+                                    }}
+                                  />
+                                )}
+                              </div>
+                              {item.description}
+                            </div>
+                          </td>
+
+                          <td style={{ fontWeight: "600" }}>
+                            {isLoadingQuantities ? (
+                              <span style={{ color: "rgba(107, 107, 107, 1)" }}>
+                                Loading...
+                              </span>
+                            ) : (
+                              `${availableQty} ${item.unit || ""}`
+                            )}
+                          </td>
+                          <td>
+                            <div
+                              className="approval-pill normal-text"
+                              style={{
+                                backgroundColor: stockStatus.bgColor,
+                                color: stockStatus.textColor,
+                                fontWeight: "normal",
+                              }}
+                            >
+                              {stockStatus.label}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", gap: "10px" }}>
+                              <EditInventoryItemButton inventoryItem={item} />
+
+                              {!isLoadingQuantities && availableQty === 0 && (
+                                <DeleteInventoryItemButton
+                                  inventoryItem={item}
                                 />
                               )}
+
+                              <Button
+                                componentType={"link"}
+                                bgColor={"rgba(239, 239, 239, 1)"}
+                                borderColor={"rgba(223, 223, 223, 1)"}
+                                textColor={"white"}
+                                style={{ padding: "7px 7px" }}
+                                href={`/inventory/${item.id}`}
+                              >
+                                <img
+                                  src={externalLinkIcon}
+                                  alt="external link"
+                                ></img>
+                              </Button>
                             </div>
-                            {item.description}
-                          </div>
-                        </td>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
 
-                        <td>
-                          {/* ✅ Show loading or actual quantity */}
-                          {isLoadingQuantities ? (
-                            <span style={{ color: "rgba(107, 107, 107, 1)" }}>
-                              Loading...
-                            </span>
-                          ) : (
-                            `${availableQty} ${item.unit || ""}`
-                          )}
-                        </td>
-                        <td>
-                          <div
-                            className="approval-pill normal-text"
-                            style={{
-                              backgroundColor: stockStatus.bgColor,
-                              color: stockStatus.textColor,
-                            }}
-                          >
-                            {stockStatus.label}
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ display: "flex", gap: "10px" }}>
-                            <EditInventoryItemButton inventoryItem={item} />
-
-                            {/* ✅ Only show delete button if not loading and qty is 0 */}
-                            {!isLoadingQuantities && availableQty === 0 && (
-                              <DeleteInventoryItemButton inventoryItem={item} />
-                            )}
-
-                            <Button
-                              componentType={"link"}
-                              bgColor={"rgba(239, 239, 239, 1)"}
-                              borderColor={"rgba(223, 223, 223, 1)"}
-                              textColor={"white"}
-                              style={{ padding: "7px 7px" }}
-                              href={`/inventory/${item.id}`}
-                            >
-                              <img
-                                src={externalLinkIcon}
-                                alt="external link"
-                              ></img>
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                {/* ✅ Pagination Controls */}
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </>
             ) : (
               <div
                 style={{ textAlign: "center", padding: "40px", color: "#888" }}
@@ -1411,127 +1536,137 @@ export default function Inventory() {
             >
               Loading transactions...
             </div>
-          ) : filteredTransactions.length > 0 ? (
-            <table className="items-table two-toned">
-              <thead>
-                <tr>
-                  <th>DATE & TIME</th>
-                  <th></th>
-                  <th style={{ paddingLeft: "5px" }}>TRANSACTION ID</th>
-                  <th style={{ minWidth: "500px" }}>MATERIAL</th>
-                  <th>TRANSFER TYPE</th>
-                  <th>STATUS</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.map((transaction, index) => {
-                  const date = new Date(transaction.created_on);
-                  const formattedDate = date
-                    .toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })
-                    .toUpperCase();
+          ) : currentTransactions.length > 0 ? (
+            <>
+              <table className="items-table two-toned">
+                <thead>
+                  <tr>
+                    <th>DATE & TIME</th>
+                    <th></th>
+                    <th style={{ paddingLeft: "5px" }}>TRANSACTION ID</th>
+                    <th style={{ minWidth: "500px" }}>MATERIAL</th>
+                    <th>TRANSFER TYPE</th>
+                    <th>STATUS</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentTransactions.map((transaction, index) => {
+                    const date = new Date(transaction.created_on);
+                    const formattedDate = date
+                      .toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                      .toUpperCase();
 
-                  const status = getTransferStatus(transaction);
-                  const transferType = getTransferTypeLabel(transaction);
+                    const status = getTransferStatus(transaction);
+                    const transferType = getTransferTypeLabel(transaction);
 
-                  return (
-                    <tr key={`${transaction.id}-${index}`}>
-                      <td style={{ whiteSpace: "nowrap" }}>{formattedDate}</td>
-                      <td style={{ padding: 0 }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "flex-end",
-                          }}
-                        >
-                          {transaction.received === 0 && (
-                            <img src={warningIcon} alt="warning" />
+                    return (
+                      <tr key={`${transaction.id}-${index}`}>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          {formattedDate}
+                        </td>
+                        <td style={{ padding: 0 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "flex-end",
+                            }}
+                          >
+                            {transaction.received === 0 && (
+                              <img src={warningIcon} alt="warning" />
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ paddingLeft: "5px" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                            }}
+                          >
+                            <span>
+                              TA-{transaction.id?.toString().padStart(5, "0")}
+                            </span>
+                            <TransactionDetailsPopUpButton
+                              transferID={transaction.id}
+                              onSuccess={() => fetchAllTransactions()}
+                            />
+                          </div>
+                        </td>
+                        <td>
+                          {transaction.items && transaction.items.length > 0 ? (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "5px",
+                              }}
+                            >
+                              {transaction.items.map(
+                                (item: any, itemIndex: number) => (
+                                  <div
+                                    key={itemIndex}
+                                    style={{
+                                      marginBottom: "10px",
+                                      marginTop: "10px",
+                                    }}
+                                  >
+                                    {item.description}
+                                  </div>
+                                ),
+                              )}
+                            </div>
+                          ) : (
+                            "-"
                           )}
-                        </div>
-                      </td>
-                      <td style={{ paddingLeft: "5px" }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                          }}
-                        >
-                          <span>
-                            TA-{transaction.id?.toString().padStart(5, "0")}
-                          </span>
-                          <TransactionDetailsPopUpButton
-                            transferID={transaction.id}
-                            onSuccess={() => fetchAllTransactions()}
-                          />
-                        </div>
-                      </td>
-                      <td>
-                        {/* Display all materials */}
-                        {transaction.items && transaction.items.length > 0 ? (
+                        </td>
+                        <td style={{ textTransform: "uppercase" }}>
+                          {transferType}
+                        </td>
+                        <td>
                           <div
                             style={{
                               display: "flex",
                               flexDirection: "column",
-                              gap: "5px",
+                              gap: "10px",
                             }}
                           >
-                            {transaction.items.map(
-                              (item: any, itemIndex: number) => (
-                                <div
-                                  key={itemIndex}
-                                  style={{
-                                    marginBottom: "10px",
-                                    marginTop: "10px",
-                                  }}
-                                >
-                                  {item.description}
-                                </div>
-                              ),
-                            )}
+                            <div
+                              className="approval-pill normal-text"
+                              style={{
+                                backgroundColor: status.bgColor,
+                                color: status.textColor,
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              {status.label}
+                            </div>
                           </div>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td style={{ textTransform: "uppercase" }}>
-                        {transferType}
-                      </td>
-                      <td>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "10px",
-                          }}
-                        >
-                          <div
-                            className="approval-pill normal-text"
-                            style={{
-                              backgroundColor: status.bgColor,
-                              color: status.textColor,
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            {status.label}
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <DeleteTransferButton
-                          transaction={transaction}
-                          onSuccess={() => fetchAllTransactions()}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td>
+                          <DeleteTransferButton
+                            transaction={transaction}
+                            onSuccess={() => fetchAllTransactions()}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {/* ✅ Pagination Controls for Transactions */}
+              <PaginationControls
+                currentPage={transactionCurrentPage}
+                totalPages={totalTransactionPages}
+                onPageChange={setTransactionCurrentPage}
+              />
+            </>
           ) : (
             <div
               style={{ textAlign: "center", padding: "40px", color: "#888" }}

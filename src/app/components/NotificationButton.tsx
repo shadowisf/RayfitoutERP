@@ -358,6 +358,39 @@ function NotificationToast({
                     return <span style={{ color: "inherit" }}>{message}</span>;
                   }
 
+                  // ✅ Special handling for "Rolled Back MR" notifications
+                  if (
+                    headerLower.includes("rolled") &&
+                    headerLower.includes("back")
+                  ) {
+                    const regex =
+                      /^(Your\s+)?(MR-\d+)\s+was moved to the\s+(.+?)\s+stage$/i;
+                    const match = message.match(regex);
+
+                    if (match) {
+                      const prefix = match[1] || "";
+                      const mrId = match[2];
+                      const stageName = match[3];
+
+                      return (
+                        <>
+                          {prefix && (
+                            <span style={{ color: "inherit" }}>{prefix}</span>
+                          )}
+                          <span style={{ color: "#000000" }}>{mrId}</span>
+                          <span style={{ color: "inherit" }}>
+                            {" "}
+                            was moved to the{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>{stageName}</span>
+                          <span style={{ color: "inherit" }}> stage</span>
+                        </>
+                      );
+                    }
+
+                    return <span style={{ color: "inherit" }}>{message}</span>;
+                  }
+
                   // ✅ Original handling for other notifications
                   const byIndex = message.toLowerCase().indexOf(" by ");
 
@@ -466,6 +499,7 @@ export default function NotificationDropdown() {
 
   const mrCheckIcon = "/icons/notification-mr-check.svg";
   const mrExcalamationIcon = "/icons/notification-mr-exclamation.svg";
+  const mrRollbackIcon = "/icons/notification-mr-rollback.svg";
 
   const paymentCheckIcon = "/icons/notification-payment-check.svg";
   const paymentExcalamationIcon = "/icons/notification-payment-exclamation.svg";
@@ -822,6 +856,15 @@ export default function NotificationDropdown() {
     if (headerLower.includes("rejected") || headerLower.includes("required")) {
       return {
         icon: mrExcalamationIcon,
+        headerColor: "rgba(248, 77, 77, 1)",
+        dotColor: "rgba(248, 77, 77, 1)",
+      };
+    }
+
+    // ✅ Check for MR rolled back
+    if (headerLower.includes("rolled") && headerLower.includes("back")) {
+      return {
+        icon: mrRollbackIcon,
         headerColor: "rgba(248, 77, 77, 1)",
         dotColor: "rgba(248, 77, 77, 1)",
       };
@@ -1311,6 +1354,52 @@ export default function NotificationDropdown() {
                                         </span>
                                         <span style={{ color: "#000000" }}>
                                           {materialName}
+                                        </span>
+                                      </>
+                                    );
+                                  }
+
+                                  return (
+                                    <span style={{ color: "inherit" }}>
+                                      {message}
+                                    </span>
+                                  );
+                                }
+
+                                // ✅ Special handling for "Rolled Back MR" notifications
+                                if (
+                                  headerLower.includes("rolled") &&
+                                  headerLower.includes("back")
+                                ) {
+                                  const regex =
+                                    /^(Your\s+)?(MR-\d+)\s+was moved to the\s+(.+?)\s+stage$/i;
+                                  const match = message.match(regex);
+
+                                  if (match) {
+                                    const prefix = match[1] || "";
+                                    const mrId = match[2];
+                                    const stageName = match[3];
+
+                                    return (
+                                      <>
+                                        {prefix && (
+                                          <span style={{ color: "inherit" }}>
+                                            {prefix}
+                                          </span>
+                                        )}
+                                        <span style={{ color: "#000000" }}>
+                                          {mrId}
+                                        </span>
+                                        <span style={{ color: "inherit" }}>
+                                          {" "}
+                                          was moved to the{" "}
+                                        </span>
+                                        <span style={{ color: "#000000" }}>
+                                          {stageName}
+                                        </span>
+                                        <span style={{ color: "inherit" }}>
+                                          {" "}
+                                          stage
                                         </span>
                                       </>
                                     );

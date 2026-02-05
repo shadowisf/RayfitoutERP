@@ -28,6 +28,7 @@ export default function FilterButton({
   currentFilters,
 }: FilterButtonProps) {
   const searchIcon = "/icons/search.svg";
+  const filterIcon = "/icons/filter.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
@@ -254,7 +255,7 @@ export default function FilterButton({
         onClick={handleOpen}
         style={{ position: "relative", borderRadius: "50px" }}
       >
-        FILTER
+        FILTER <img src={filterIcon} alt="filter" />
       </Button>
 
       {isOpen && (

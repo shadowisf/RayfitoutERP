@@ -276,7 +276,7 @@ export default async function MrWithID({
 
         {mrHeader?.progress_id !== 1 && mrHeader.progress_id !== 25 && (
           <CancelMaterialRequestButton
-            mrHeaderID={Number(id)}
+            mrHeader={mrHeader}
             bgColor="rgba(248, 77, 77, 1)"
             borderColor="rgba(248, 77, 77, 1)"
             textColor="white"

@@ -179,6 +179,26 @@ export async function PUT(req: Request) {
         [body.id, body.rollback_progress_id, `${body.changed_by} (ROLLBACK)`],
       );
 
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          8,
+          "Rolled Back MR",
+          `MR-${String(body.id).padStart(5, "0")} was moved to the ${body.rollback_progress_name} stage`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          "Rolled Back MR",
+          `Your MR-${String(body.id).padStart(5, "0")} was moved to the ${body.rollback_progress_name} stage`,
+        ],
+      );
+
       return NextResponse.json({ status: 200 });
     }
 

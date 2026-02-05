@@ -6,9 +6,10 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { MrHeader } from "../types/mrHeader";
 
 type CancelMaterialRequestButtonProps = {
-  mrHeaderID: number;
+  mrHeader: MrHeader;
   currentProgressId: number;
   bgColor?: string;
   textColor?: string;
@@ -17,7 +18,7 @@ type CancelMaterialRequestButtonProps = {
 };
 
 export default function CancelMaterialRequestButton({
-  mrHeaderID,
+  mrHeader,
   currentProgressId,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
@@ -38,15 +39,15 @@ export default function CancelMaterialRequestButton({
   // All progress stages with their names
   const allProgressStages: { [key: number]: string } = {
     1: "Draft",
-    2: "Awaiting QS initial approval",
-    3: "Awaiting manager initial approval",
-    7: "Awaiting quotations",
-    9: "Awaiting QS price approval",
-    10: "Awaiting manager price approval",
-    12: "Awaiting LPO & invoice",
-    14: "Pending payment",
-    17: "Pending delivery",
-    24: "Awaiting stock entry",
+    2: "QS Check",
+    3: "Manager Approval",
+    7: "Quotations",
+    9: "QS Price Check",
+    10: "Manager Price Approval",
+    12: "LPO & Invoice",
+    14: "Pending Payments",
+    17: "Awaiting Delivery",
+    24: "Stock Entry",
   };
 
   // Map progress_id to responsible department
@@ -165,8 +166,10 @@ export default function CancelMaterialRequestButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "cancelMaterialRequest",
-        id: mrHeaderID,
+        id: mrHeader.id,
         rollback_progress_id: selectedStage,
+        rollback_progress_name: allProgressStages[selectedStage],
+        department_id: mrHeader.department_id,
       }),
     });
 

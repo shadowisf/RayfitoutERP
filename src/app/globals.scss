@@ -875,7 +875,7 @@ label {
   width: 100%;
   border-collapse: collapse;
 
-  .alt {
+  &.alt {
     td {
       padding: 4px 30px;
     }

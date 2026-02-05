@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       const [rows] = await db.query(
         `SELECT COUNT(*) as count 
          FROM mr_headers
-         WHERE progress_id IN (3, 10) OR (progress_id = 5 AND department_id = ?)`,
+         WHERE progress_id IN (3, 10) OR (progress_id = 5 AND department_id = 8)`,
       );
       count = Number((rows as any)[0].count);
     } else if (department_id === 9) {
@@ -42,8 +42,7 @@ export async function POST(req: NextRequest) {
         `SELECT COUNT(*) as count 
          FROM mr_headers
          WHERE progress_id IN (7, 11, 12, 13, 15) 
-            OR (progress_id = 5 AND department_id = ?)`,
-        [department_id],
+            OR (progress_id = 5 AND department_id = 9)`,
       );
       count = Number((rows as any)[0].count);
     } else if (department_id === 16) {
@@ -52,8 +51,7 @@ export async function POST(req: NextRequest) {
         `SELECT COUNT(*) as count 
          FROM mr_headers 
          WHERE progress_id IN (2, 9)
-            OR (progress_id = 5 AND department_id = ?)`,
-        [department_id],
+            OR (progress_id = 5 AND department_id = 16)`,
       );
       count = Number((rows as any)[0].count);
     } else if (department_id === 10) {
@@ -62,8 +60,7 @@ export async function POST(req: NextRequest) {
         `SELECT COUNT(*) as count 
          FROM mr_headers 
          WHERE progress_id = 14
-            OR (progress_id = 5 AND department_id = ?)`,
-        [department_id],
+            OR (progress_id = 5 AND department_id = 10)`,
       );
       count = Number((rows as any)[0].count);
     } else if (department_id === 11) {
@@ -72,8 +69,7 @@ export async function POST(req: NextRequest) {
         `SELECT COUNT(*) as count 
          FROM mr_headers 
          WHERE progress_id IN (17, 24)
-            OR (progress_id = 5 AND department_id = ?)`,
-        [department_id],
+            OR (progress_id = 5 AND department_id = 11)`,
       );
       count = Number((rows as any)[0].count);
     } else {
