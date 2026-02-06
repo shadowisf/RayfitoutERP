@@ -364,31 +364,34 @@ export default function IssueLPOButton({
         <ViewLPOButton lpoID={existingLpoId} mrHeader={mrHeader} />
 
         {/* ✅ Only show Upload Signed LPO for Cash/Local suppliers (NOT credit, NOT marketplace) */}
-        {!isCredit && !isMarketplace && (
-          <UploadSignedLPOButton
-            mrHeader={mrHeader}
-            mrLine={mrLines[0]}
-            LpoID={existingLpoId}
-            supplierId={supplierId}
-            supplierType={supplierType}
-            signedLpoFiles={signedLpoFiles}
-            onFilesUpdate={setSignedLpoFiles}
-            canDelete={canDelete}
-          />
-        )}
+        {!isCredit &&
+          !isMarketplace &&
+          (userInfo?.departmentID === 9 || userInfo?.departmentID === 8) && (
+            <UploadSignedLPOButton
+              mrHeader={mrHeader}
+              mrLine={mrLines[0]}
+              LpoID={existingLpoId}
+              supplierId={supplierId}
+              supplierType={supplierType}
+              signedLpoFiles={signedLpoFiles}
+              onFilesUpdate={setSignedLpoFiles}
+              canDelete={canDelete}
+            />
+          )}
 
         {/* ✅ Only show Upload Invoice for Cash/Local and Marketplace (NOT credit) */}
-        {!isCredit && (
-          <UploadInvoiceButton
-            mrHeader={mrHeader}
-            mrLine={mrLines[0]}
-            LpoID={existingLpoId}
-            supplierId={supplierId}
-            invoiceFiles={invoiceFiles}
-            onFilesUpdate={setInvoiceFiles}
-            canDelete={canDelete}
-          />
-        )}
+        {!isCredit &&
+          (userInfo?.departmentID === 9 || userInfo?.departmentID === 8) && (
+            <UploadInvoiceButton
+              mrHeader={mrHeader}
+              mrLine={mrLines[0]}
+              LpoID={existingLpoId}
+              supplierId={supplierId}
+              invoiceFiles={invoiceFiles}
+              onFilesUpdate={setInvoiceFiles}
+              canDelete={canDelete}
+            />
+          )}
       </div>
     );
   }

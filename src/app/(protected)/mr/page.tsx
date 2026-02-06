@@ -1167,6 +1167,7 @@ export default function MR() {
                                   href={`/mr/${mr.id}`}
                                   full
                                   style={{ borderRadius: "50px" }}
+                                  disabled={!canViewMR(mr)}
                                 >
                                   VIEW{" "}
                                   <span style={{ marginLeft: "10px" }}>

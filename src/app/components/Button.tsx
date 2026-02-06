@@ -76,6 +76,8 @@ export default function Button({
           color: textColor,
           width: full ? "100%" : "fit-content",
           ...style,
+          pointerEvents: disabled ? "none" : "auto",
+          opacity: disabled ? 0.5 : 1,
         }}
         href={href}
         target={target}

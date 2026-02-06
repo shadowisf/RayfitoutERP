@@ -258,10 +258,11 @@ export async function PUT(req: Request) {
           8,
           "BOQ Updated",
           `${body.name} was updated for ${body.project_name} by ${body.updated_by} at ${new Date().toLocaleTimeString(
-            "en-US",
+            "en-GB",
             {
               hour: "2-digit",
               minute: "2-digit",
+              timeZone: "Asia/Dubai",
             },
           )}`,
         ],
@@ -274,10 +275,11 @@ export async function PUT(req: Request) {
           16,
           "BOQ Updated",
           `${body.name} was updated for ${body.project_name} by ${body.updated_by} at ${new Date().toLocaleTimeString(
-            "en-US",
+            "en-GB",
             {
               hour: "2-digit",
               minute: "2-digit",
+              timeZone: "Asia/Dubai",
             },
           )}`,
         ],
