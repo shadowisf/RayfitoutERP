@@ -12,6 +12,9 @@ type ButtonProps = {
   type?: "button" | "submit" | "reset";
   style?: React.CSSProperties;
   disabled?: boolean;
+  className?: string;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 };
 
 export default function Button({
@@ -27,6 +30,8 @@ export default function Button({
   style,
   target,
   disabled,
+  onMouseEnter,
+  onMouseLeave,
 }: ButtonProps) {
   if (componentType === "button") {
     return (
@@ -42,6 +47,8 @@ export default function Button({
         onClick={onClick}
         type={type ? type : undefined}
         disabled={disabled}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
       >
         {children}
       </button>

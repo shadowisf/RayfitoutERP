@@ -572,6 +572,8 @@ function NotificationToast({
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
   const router = useRouter();
 
   const { userInfo } = useAuth();
@@ -891,6 +893,8 @@ export default function NotificationDropdown() {
     // Then navigate
     const url = getNotificationUrl(notification);
     router.push(url);
+
+    setIsOpen(false);
   }
 
   function getTimeAgo(dateString: string) {
@@ -1135,13 +1139,21 @@ export default function NotificationDropdown() {
       )}
 
       <div ref={dropdownRef} style={{ position: "relative" }}>
-        {/* Bell Icon Button */}
         <Button
           componentType={"button"}
           bgColor={"transparent"}
           borderColor={"transparent"}
           textColor={"black"}
-          style={{ padding: "0px", position: "relative" }}
+          style={{
+            padding: "5px",
+            position: "relative",
+            borderRadius: "6px",
+            backgroundColor:
+              isOpen || isHovered ? "rgba(40, 40, 40, 1)" : "transparent",
+            transition: "background-color 150ms ease",
+          }}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
           onClick={() => setIsOpen(!isOpen)}
         >
           <img
@@ -1155,8 +1167,8 @@ export default function NotificationDropdown() {
             <div
               style={{
                 position: "absolute",
-                top: "0px",
-                right: "0px",
+                top: "2px",
+                right: "2px",
                 width: "10px",
                 height: "10px",
                 borderRadius: "50%",
