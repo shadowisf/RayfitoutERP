@@ -14,7 +14,7 @@ export default function MR() {
   const [mrHeaders, setMrHeaders] = useState<MrHeader[]>([]);
   const [filterRelevant, setFilterRelevant] = useState(false);
   const [mrDurations, setMrDurations] = useState<{
-    [key: string]: { duration: string; style: any };
+    [key: string]: { duration: string; hoursDecimal: number; style: any };
   }>({});
 
   const [mrDeliveryDates, setMrDeliveryDates] = useState<{
@@ -31,6 +31,12 @@ export default function MR() {
     selectedDepartments: [],
     selectedProjects: [],
   });
+
+  const getFlagColor = (hours: number) => {
+    if (hours > 12) return "rgba(250, 52, 52, 1)"; // red
+    if (hours > 2) return "rgba(255, 153, 36, 1)"; // orange
+    return "rgba(236, 207, 40, 1)"; // yellow
+  };
 
   useEffect(() => {
     if (mrHeaders.length === 0) return;
@@ -86,7 +92,7 @@ export default function MR() {
 
     const fetchDurations = async () => {
       const durationsMap: {
-        [key: string]: { duration: string; style: any };
+        [key: string]: { duration: string; hoursDecimal: number; style: any };
       } = {};
 
       await Promise.all(
@@ -116,13 +122,11 @@ export default function MR() {
                 Number(data.minutes_in_stage) / 60;
             }
 
-            // ✅ Calculate days, hours, minutes in 00:00:00 format
             const totalMinutes = Math.round(hoursDecimal * 60);
             const days = Math.floor(totalMinutes / (60 * 24));
             const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
             const minutes = totalMinutes % 60;
 
-            // ✅ Format duration string as 00:00:00 (days:hours:minutes)
             const durationString = `${String(days).padStart(2, "0")}:${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 
             let durationStyle = {
@@ -149,12 +153,14 @@ export default function MR() {
 
             durationsMap[`${mr.id}-${mr.progress_id}`] = {
               duration: durationString,
+              hoursDecimal,
               style: durationStyle,
             };
           } catch (err) {
             console.error(`Error fetching duration for MR ${mr.id}:`, err);
             durationsMap[`${mr.id}-${mr.progress_id}`] = {
               duration: "00:00:00",
+              hoursDecimal: 0,
               style: {
                 color: "black",
                 backgroundColor: "rgba(231, 231, 231, 1)",
@@ -170,51 +176,44 @@ export default function MR() {
     fetchDurations();
   }, [mrHeaders]);
 
-  // ✅ Map progress_id to responsible department ID
+  // Map progress_id to responsible department ID
   const progressToResponsibleDepartment: { [key: number]: number } = {
-    2: 16, // QS Review → QS
-    3: 8, // Manager Approval → Management
-    5: 0, // Initial approval rejected → Originating department
-    7: 9, // Quotations → Procurement
-    9: 16, // QS Price Check → QS
-    10: 8, // Manager Price Approval → Management
-    11: 9, // Price Approval Rejected → Procurement
-    12: 9, // LPO & Invoice → Procurement
-    16: 9, // GRN failed → Procurement
-    14: 10, // Pending Payments → Finance
-    13: 9, // Payment Rejected → Procurement
-    17: 11, // Awaiting Delivery → Storekeeper
-    21: 12, // QC Check → Quality Control
-    23: 12, // Failed QC → Quality Control
-    24: 11, // Stock Entry → Storekeeper
+    2: 16,
+    3: 8,
+    5: 0,
+    7: 9,
+    9: 16,
+    10: 8,
+    11: 9,
+    12: 9,
+    16: 9,
+    14: 10,
+    13: 9,
+    17: 11,
+    21: 12,
+    23: 12,
+    24: 11,
   };
 
-  // ✅ Updated canViewMR - for use with "Only Related Cards" filter
   const canViewMR = (mr: MrHeader) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
-    // Draft → ALWAYS only originating department can see their own MRs
     if (mr.progress_id === 1) {
       return mr.department_id === userDeptId;
     }
 
-    // Rejected / Completed → originating department sees their own
     if ([5, 25].includes(mr.progress_id)) {
       return mr.department_id === userDeptId;
     }
 
-    // Management sees everything else
     if (userDeptId === 8) return true;
 
-    // Explicit special cases
     if ([11, 15, 16].includes(mr.progress_id)) {
-      return userDeptId === 9; // Procurement
+      return userDeptId === 9;
     }
 
-    // 🔑 MAIN RULE: show ONLY if user department is responsible for current stage
     const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
-
     return responsibleDept === userDeptId;
   };
 
@@ -222,17 +221,11 @@ export default function MR() {
     const departmentMap: { [key: string]: { name: string; id: number } } = {
       Draft: { name: "", id: 0 },
       "QS Review": { name: "Quantity Surveyor", id: 16 },
-      "Manager Approval": {
-        name: "Directors/Management",
-        id: 8,
-      },
+      "Manager Approval": { name: "Directors/Management", id: 8 },
       "Request Rejected": { name: "", id: 0 },
       Quotations: { name: "Procurement", id: 9 },
       "QS Price Check": { name: "Quantity Surveyor", id: 16 },
-      "Manager Price Approval": {
-        name: "Directors/Management",
-        id: 8,
-      },
+      "Manager Price Approval": { name: "Directors/Management", id: 8 },
       "Price Approval Rejected": { name: "Procurement", id: 9 },
       "LPO & Invoice": { name: "Procurement", id: 9 },
       "Pending Payments": { name: "Finance", id: 10 },
@@ -244,7 +237,6 @@ export default function MR() {
       "Stock Entry": { name: "Storekeeper", id: 11 },
       Completed: { name: "", id: 0 },
     };
-
     return departmentMap[status] || { name: "", id: 0 };
   };
 
@@ -277,7 +269,6 @@ export default function MR() {
         color: "rgba(156, 87, 0, 1)",
       },
     };
-
     return (
       styles[departmentId] || {
         backgroundColor: "rgba(186, 230, 253, 1)",
@@ -295,13 +286,9 @@ export default function MR() {
       (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
     );
 
-    if (diffDays > 0) {
-      return `${diffDays}d left`;
-    } else if (diffDays === 0) {
-      return "Due today";
-    } else {
-      return `${Math.abs(diffDays)}d overdue`;
-    }
+    if (diffDays > 0) return `${diffDays}d left`;
+    if (diffDays === 0) return "Due today";
+    return `${Math.abs(diffDays)}d overdue`;
   };
 
   const getDaysLeftStyle = (requiredDate: string) => {
@@ -318,15 +305,13 @@ export default function MR() {
         backgroundColor: "rgba(255, 181, 181, 1)",
         color: "rgba(248, 77, 77, 1)",
       };
-    } else {
-      return {
-        backgroundColor: "rgba(255, 250, 189, 1)",
-        color: "rgba(134, 83, 47, 1)",
-      };
     }
+    return {
+      backgroundColor: "rgba(255, 250, 189, 1)",
+      color: "rgba(134, 83, 47, 1)",
+    };
   };
 
-  // ✅ Define stage groups with their respective statuses
   const stageGroups = [
     {
       name: "Approval",
@@ -370,36 +355,25 @@ export default function MR() {
         { name: "Failed QC", progress_id: 23 },
       ],
     },
-    {
-      name: "Completed",
-      statuses: [{ name: "Completed", progress_id: 25 }],
-    },
+    { name: "Completed", statuses: [{ name: "Completed", progress_id: 25 }] },
   ];
 
-  // ✅ Apply filters and search
   const getFilteredMRs = () => {
     let filtered = mrHeaders;
 
-    // ✅ ALWAYS filter Draft MRs to only show user's own department
     filtered = filtered.filter((mr) => {
-      if (mr.progress_id === 1) {
+      if (mr.progress_id === 1)
         return mr.department_id === userInfo?.departmentID;
-      }
       return true;
     });
 
-    // Apply "Only Related Cards" filter for non-Draft MRs
     if (filterRelevant) {
       filtered = filtered.filter((mr) => {
-        // Draft is already filtered above
-        if (mr.progress_id === 1) {
-          return true;
-        }
+        if (mr.progress_id === 1) return true;
         return canViewMR(mr);
       });
     }
 
-    // Apply time filter
     if (filters.itemsRequestedIn !== "all") {
       const now = new Date();
       const timeframes: { [key: string]: number } = {
@@ -409,60 +383,41 @@ export default function MR() {
         "14d": 14,
         "30d": 30,
       };
-
       const daysAgo = timeframes[filters.itemsRequestedIn];
       if (daysAgo) {
         const cutoffDate = new Date(
           now.getTime() - daysAgo * 24 * 60 * 60 * 1000,
         );
-
-        filtered = filtered.filter((mr) => {
-          const createdDate = new Date(mr.date_requested);
-          return createdDate >= cutoffDate;
-        });
+        filtered = filtered.filter(
+          (mr) => new Date(mr.date_requested) >= cutoffDate,
+        );
       }
     }
 
-    // Apply department filter (filter by department that created the MR)
     if (filters.selectedDepartments.length > 0) {
       filtered = filtered.filter((mr) =>
         filters.selectedDepartments.includes(mr.department_id),
       );
     }
 
-    // Apply project filter
     if (filters.selectedProjects.length > 0) {
       filtered = filtered.filter((mr) =>
         filters.selectedProjects.includes(mr.project_id),
       );
     }
 
-    // Apply search query
     if (searchQuery.trim() !== "") {
       const rawQuery = searchQuery.toLowerCase().trim();
       const normalizedQuery = rawQuery.replace(/^mr-/, "");
-
       filtered = filtered.filter((mr) => {
-        // MR ID match
         const formattedMrId = `mr-${mr.id.toString().padStart(5, "0")}`;
-        const mrIdMatch =
+        return (
           formattedMrId.includes(rawQuery) ||
-          mr.id.toString().includes(normalizedQuery);
-
-        // Project match
-        const projectMatch = mr.project_name?.toLowerCase().includes(rawQuery);
-
-        // Requester match
-        const requesterMatch = mr.requested_by
-          ?.toLowerCase()
-          .includes(rawQuery);
-
-        // Department match
-        const departmentMatch = mr.department_name
-          ?.toLowerCase()
-          .includes(rawQuery);
-
-        return mrIdMatch || projectMatch || requesterMatch || departmentMatch;
+          mr.id.toString().includes(normalizedQuery) ||
+          mr.project_name?.toLowerCase().includes(rawQuery) ||
+          mr.requested_by?.toLowerCase().includes(rawQuery) ||
+          mr.department_name?.toLowerCase().includes(rawQuery)
+        );
       });
     }
 
@@ -471,62 +426,38 @@ export default function MR() {
 
   const filteredMRs = getFilteredMRs();
 
-  // Group MRs by progress_name
-  const groupedMRs = filteredMRs.reduce((acc: any, mr: any) => {
-    const status = mr.progress_name || "Unknown";
-    if (!acc[status]) {
-      acc[status] = [];
-    }
-    acc[status].push(mr);
-    return acc;
-  }, {});
+  const groupedMRs = filteredMRs.reduce(
+    (acc: Record<string, MrHeader[]>, mr) => {
+      const status = mr.progress_name || "Unknown";
+      acc[status] = acc[status] || [];
+      acc[status].push(mr);
+      return acc;
+    },
+    {},
+  );
 
-  // ✅ Check if user should see a specific status when filtering
   const shouldShowStatusWhenFiltering = (status: any) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
     const mrs = groupedMRs[status.name] || [];
 
-    // Draft → ALWAYS show if user has MRs from their own department (already filtered)
-    if (status.progress_id === 1) {
-      return mrs.length > 0;
-    }
-
-    // Management sees everything
+    if (status.progress_id === 1) return mrs.length > 0;
     if (userDeptId === 8) {
-      // Rejected, Completed → only if user has MRs from their department
       if ([5, 25].includes(status.progress_id)) {
         return mrs.some((mr: any) => mr.department_id === userDeptId);
       }
-
-      // For all other statuses, check if manager is responsible for this stage
-      const responsibleDept = getResponsibleDepartment(status.name);
-      return responsibleDept.id === 8;
+      return getResponsibleDepartment(status.name).id === 8;
     }
-
-    // Rejected, Completed → only if user has MRs from their department
     if ([5, 25].includes(status.progress_id)) {
       return mrs.some((mr: any) => mr.department_id === userDeptId);
     }
-
-    // For all other statuses, check if user's department is responsible
-    const responsibleDept = getResponsibleDepartment(status.name);
-    return responsibleDept.id === userDeptId;
+    return getResponsibleDepartment(status.name).id === userDeptId;
   };
 
-  // ✅ Check if user should see a group when filtering
-  const shouldShowGroupWhenFiltering = (group: any) => {
-    const userDeptId = userInfo?.departmentID;
-    if (!userDeptId) return false;
+  const shouldShowGroupWhenFiltering = (group: any) =>
+    group.statuses.some(shouldShowStatusWhenFiltering);
 
-    // Check if any status in this group should be visible
-    return group.statuses.some((status: any) =>
-      shouldShowStatusWhenFiltering(status),
-    );
-  };
-
-  // ✅ Get unique projects from MR headers
   const availableProjects = Array.from(
     new Map(
       mrHeaders
@@ -538,9 +469,8 @@ export default function MR() {
     ).values(),
   ).sort((a, b) => a.name.localeCompare(b.name));
 
-  // ✅ Helper to get label for time filter
   const getItemsRequestedLabel = (value: string) => {
-    const labels: { [key: string]: string } = {
+    const labels: Record<string, string> = {
       all: "All Times",
       "24h": "Last 24 Hours",
       "3d": "Last 3 Days",
@@ -551,9 +481,8 @@ export default function MR() {
     return labels[value] || value;
   };
 
-  // ✅ Helper to get department name
   const getDepartmentName = (departmentId: number) => {
-    const departmentNames: { [key: number]: string } = {
+    const names: Record<number, string> = {
       1: "Civil",
       2: "MEP",
       3: "Electrical",
@@ -568,10 +497,9 @@ export default function MR() {
       12: "Quality Check",
       16: "Quantity Surveyor",
     };
-    return departmentNames[departmentId] || "Unknown";
+    return names[departmentId] || "Unknown";
   };
 
-  // ✅ Reset all filters
   const resetAllFilters = () => {
     setFilters({
       itemsRequestedIn: "all",
@@ -580,7 +508,6 @@ export default function MR() {
     });
   };
 
-  // ✅ Check if there are active filters
   const hasActiveFilters =
     filters.itemsRequestedIn !== "all" ||
     filters.selectedDepartments.length > 0 ||
@@ -638,10 +565,10 @@ export default function MR() {
 
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
         <Button
-          componentType={"button"}
-          bgColor={"white"}
-          borderColor={"rgba(241, 244, 246, 1)"}
-          textColor={"black"}
+          componentType="button"
+          bgColor="white"
+          borderColor="rgba(241, 244, 246, 1)"
+          textColor="black"
           onClick={() => setFilterRelevant(!filterRelevant)}
           style={{ padding: "7px 20px", borderRadius: "50px" }}
         >
@@ -672,7 +599,7 @@ export default function MR() {
           </div>
         </Button>
 
-        <div style={{ borderRight: "1px solid rgba(207, 207, 207, 1)" }}></div>
+        <div style={{ borderRight: "1px solid rgba(207, 207, 207, 1)" }} />
 
         <MrFilterButton
           availableProjects={availableProjects}
@@ -691,21 +618,15 @@ export default function MR() {
           >
             {filters.itemsRequestedIn !== "all" && (
               <Button
-                style={{
-                  borderRadius: "50px",
-                  fontWeight: "600",
-                }}
-                componentType={"none"}
-                bgColor={"rgba(239, 239, 239, 1)"}
-                borderColor={"transparent"}
-                textColor={"black"}
+                style={{ borderRadius: "50px", fontWeight: "600" }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
               >
                 ITEMS REQUESTED IN:{" "}
                 <span
-                  style={{
-                    color: "rgba(16, 185, 129, 1)",
-                    textWrap: "nowrap",
-                  }}
+                  style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}
                 >
                   {getItemsRequestedLabel(
                     filters.itemsRequestedIn,
@@ -716,21 +637,15 @@ export default function MR() {
 
             {filters.selectedDepartments.length > 0 && (
               <Button
-                style={{
-                  borderRadius: "50px",
-                  fontWeight: "600",
-                }}
-                componentType={"none"}
-                bgColor={"rgba(239, 239, 239, 1)"}
-                borderColor={"transparent"}
-                textColor={"black"}
+                style={{ borderRadius: "50px", fontWeight: "600" }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
               >
                 DEPARTMENT:{" "}
                 <span
-                  style={{
-                    color: "rgba(16, 185, 129, 1)",
-                    textWrap: "nowrap",
-                  }}
+                  style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}
                 >
                   {getDepartmentName(
                     filters.selectedDepartments[0],
@@ -743,29 +658,21 @@ export default function MR() {
 
             {filters.selectedProjects.length > 0 && (
               <Button
-                style={{
-                  borderRadius: "50px",
-                  fontWeight: "600",
-                }}
-                componentType={"none"}
-                bgColor={"rgba(239, 239, 239, 1)"}
-                borderColor={"transparent"}
-                textColor={"black"}
+                style={{ borderRadius: "50px", fontWeight: "600" }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
               >
                 PROJECT:{" "}
                 <span
-                  style={{
-                    color: "rgba(16, 185, 129, 1)",
-                    textWrap: "nowrap",
-                  }}
+                  style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}
                 >
                   {(() => {
-                    const firstProject = availableProjects.find(
+                    const first = availableProjects.find(
                       (p) => p.id === filters.selectedProjects[0],
                     );
-                    return firstProject
-                      ? firstProject.name.toUpperCase()
-                      : "UNKNOWN";
+                    return first ? first.name.toUpperCase() : "UNKNOWN";
                   })()}
                   {filters.selectedProjects.length > 1 &&
                     `, +${filters.selectedProjects.length - 1} MORE`}
@@ -775,10 +682,10 @@ export default function MR() {
 
             <Button
               onClick={resetAllFilters}
-              componentType={"button"}
-              bgColor={"transparent"}
-              borderColor={"transparent"}
-              textColor={"black"}
+              componentType="button"
+              bgColor="transparent"
+              borderColor="transparent"
+              textColor="black"
               style={{ padding: "0px" }}
             >
               RESET FILTER
@@ -790,42 +697,24 @@ export default function MR() {
       <br />
       <br />
 
-      {/* ✅ Vertical Kanban Layout */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "30px",
-        }}
-      >
+      <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
         {stageGroups.map((group) => {
-          // ✅ Hide entire group when filtering if user shouldn't see it
-          if (filterRelevant && !shouldShowGroupWhenFiltering(group)) {
+          if (filterRelevant && !shouldShowGroupWhenFiltering(group))
             return null;
-          }
 
-          // ✅ Calculate count based on countStatuses if defined, otherwise use all statuses
           const totalCount = group.statuses.reduce((sum, status) => {
-            // Skip if filtering and user shouldn't see this status
-            if (filterRelevant && !shouldShowStatusWhenFiltering(status)) {
+            if (filterRelevant && !shouldShowStatusWhenFiltering(status))
               return sum;
-            }
-
-            // Skip counting if we have countStatuses defined and this status isn't in it
             if (
               group.countStatuses &&
               !group.countStatuses.includes(status.progress_id)
-            ) {
+            )
               return sum;
-            }
-
-            const mrs = groupedMRs[status.name] || [];
-            return sum + mrs.length;
+            return sum + (groupedMRs[status.name]?.length || 0);
           }, 0);
 
           return (
             <div key={group.name}>
-              {/* ✅ Group Header */}
               <div
                 style={{
                   display: "flex",
@@ -841,9 +730,6 @@ export default function MR() {
                     color: "white",
                     borderRadius: "50px",
                     padding: "3px 8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
                     fontWeight: "600",
                     fontSize: "14px",
                   }}
@@ -852,7 +738,6 @@ export default function MR() {
                 </div>
               </div>
 
-              {/* ✅ 3-Column Grid Layout for Stages */}
               <div
                 style={{
                   display: "grid",
@@ -861,25 +746,13 @@ export default function MR() {
                 }}
               >
                 {group.statuses.map((status) => {
-                  // ✅ Hide status when filtering if user shouldn't see it
-                  if (
-                    filterRelevant &&
-                    !shouldShowStatusWhenFiltering(status)
-                  ) {
+                  if (filterRelevant && !shouldShowStatusWhenFiltering(status))
                     return null;
-                  }
 
                   const mrs = groupedMRs[status.name] || [];
-                  const responsibleDept = getResponsibleDepartment(status.name);
-                  const departmentStyle = getDepartmentStyle(
-                    responsibleDept.id,
-                  );
-
-                  // ✅ Draft is already filtered, so just use the MRs as-is
-                  const visibleMRs = mrs;
-
-                  // ✅ Check if this status is empty based on visible MRs
-                  const isEmpty = visibleMRs.length === 0;
+                  const dept = getResponsibleDepartment(status.name);
+                  const deptStyle = getDepartmentStyle(dept.id);
+                  const isEmpty = mrs.length === 0;
 
                   return (
                     <div
@@ -893,7 +766,6 @@ export default function MR() {
                         borderRadius: "15px",
                       }}
                     >
-                      {/* ✅ Stage Header with conditional styling */}
                       <div
                         style={{
                           display: "flex",
@@ -919,7 +791,6 @@ export default function MR() {
                         >
                           {status.name}
                         </h3>
-
                         <div
                           style={{
                             display: "flex",
@@ -927,49 +798,42 @@ export default function MR() {
                             gap: "10px",
                           }}
                         >
-                          {responsibleDept.name && !isEmpty && (
+                          {dept.name && !isEmpty && (
                             <div
                               style={{
-                                backgroundColor:
-                                  departmentStyle.backgroundColor,
-                                color: departmentStyle.color,
+                                ...deptStyle,
                                 padding: "7px 10px",
                                 borderRadius: "50px",
                                 fontSize: "10px",
                                 fontWeight: "600",
                                 display: "inline-flex",
                                 alignItems: "center",
-                                justifyContent: "center",
                                 gap: "6px",
                               }}
                             >
                               <span style={{ scale: "3" }}>•</span>
-                              {responsibleDept.name.toUpperCase()}
+                              {dept.name.toUpperCase()}
                             </div>
                           )}
-
-                          {/* ✅ Show count of visible MRs */}
                           <div
                             style={{
                               fontSize: "16px",
                               fontWeight: "600",
                               padding: "6px",
-                              minWidth: "28px",
+                              minWidth: "32px",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
                               borderRadius: "50%",
                               backgroundColor: isEmpty ? "white" : "black",
                               color: isEmpty ? "black" : "white",
-                              lineHeight: 1,
                             }}
                           >
-                            {visibleMRs.length}
+                            {mrs.length}
                           </div>
                         </div>
                       </div>
 
-                      {/* ✅ MR Cards Container - Vertical scroll with fixed height */}
                       <div
                         style={{
                           display: "flex",
@@ -981,20 +845,17 @@ export default function MR() {
                           marginTop: "15px",
                         }}
                       >
-                        {visibleMRs.length > 0 ? (
-                          visibleMRs.map((mr: MrHeader) => {
-                            const durationKey = `${mr.id}-${mr.progress_id}`;
-                            const durationData = mrDurations[durationKey] || {
+                        {mrs.length > 0 ? (
+                          mrs.map((mr) => {
+                            const key = `${mr.id}-${mr.progress_id}`;
+                            const dur = mrDurations[key] || {
                               duration: "00:00:00",
+                              hoursDecimal: 0,
                               style: {
                                 color: "black",
                                 backgroundColor: "rgba(231, 231, 231, 1)",
                               },
                             };
-
-                            const daysLeftStyle = getDaysLeftStyle(
-                              mr.required_date,
-                            );
 
                             return (
                               <div
@@ -1009,80 +870,107 @@ export default function MR() {
                                   border: "1px solid rgba(231, 231, 231, 1)",
                                 }}
                               >
-                                {/* MR Number & Duration */}
                                 <div
                                   style={{
                                     display: "flex",
-                                    alignItems: "flex-end",
-                                    gap: "10px",
+                                    alignItems: "flex-start",
+                                    justifyContent: "space-between",
                                   }}
                                 >
-                                  <div>
-                                    <small>MR NUMBER</small>
-                                    <h3>MR-{String(mr.id).padStart(5, "0")}</h3>
-                                  </div>
-
-                                  {/* ✅ Hide days left component when completed */}
-                                  {mr.progress_id !== 25 && (
-                                    <div
-                                      style={{
-                                        ...daysLeftStyle,
-                                        padding: "4px 10px",
-                                        borderRadius: "50px",
-                                        fontSize: "11px",
-                                        fontWeight: "600",
-                                        whiteSpace: "nowrap",
-                                      }}
-                                    >
-                                      {getDaysLeftText(mr.required_date)}
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "flex-end",
+                                      gap: "10px",
+                                    }}
+                                  >
+                                    <div>
+                                      <small>MR NUMBER</small>
+                                      <h3>
+                                        MR-{String(mr.id).padStart(5, "0")}
+                                      </h3>
                                     </div>
-                                  )}
 
-                                  {mr.progress_id !== 1 &&
-                                    mr.progress_id !== 25 && (
+                                    {mr.progress_id !== 25 && (
                                       <div
                                         style={{
-                                          padding: "4px 8px",
+                                          ...getDaysLeftStyle(mr.required_date),
+                                          padding: "4px 10px",
                                           borderRadius: "50px",
                                           fontSize: "11px",
                                           fontWeight: "600",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "5px",
-                                          backgroundColor:
-                                            "rgba(234, 234, 234, 1)",
-                                          color: "rgba(89, 89, 89, 1)",
+                                          whiteSpace: "nowrap",
                                         }}
                                       >
-                                        <svg
-                                          width="11"
-                                          height="11"
-                                          viewBox="0 0 11 11"
-                                          fill="none"
-                                          xmlns="http://www.w3.org/2000/svg"
+                                        {getDaysLeftText(mr.required_date)}
+                                      </div>
+                                    )}
+
+                                    {mr.progress_id !== 1 &&
+                                      mr.progress_id !== 25 && (
+                                        <div
                                           style={{
+                                            padding: "4px 8px",
+                                            borderRadius: "50px",
+                                            fontSize: "11px",
+                                            fontWeight: "600",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "5px",
+                                            backgroundColor:
+                                              "rgba(234, 234, 234, 1)",
                                             color: "rgba(89, 89, 89, 1)",
                                           }}
                                         >
+                                          <svg
+                                            width="11"
+                                            height="11"
+                                            viewBox="0 0 11 11"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            style={{
+                                              color: "rgba(89, 89, 89, 1)",
+                                            }}
+                                          >
+                                            <path
+                                              d="M5.5 2.5V5.5H8.5"
+                                              stroke="currentColor"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            />
+                                            <path
+                                              d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                              stroke="currentColor"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            />
+                                          </svg>
+                                          {dur.duration}
+                                        </div>
+                                      )}
+                                  </div>
+
+                                  {mr.progress_id !== 1 &&
+                                    mr.progress_id !== 25 && (
+                                      <div style={{ alignSelf: "flex-end" }}>
+                                        <svg
+                                          width="15"
+                                          height="17"
+                                          viewBox="0 0 15 17"
+                                          fill="none"
+                                          xmlns="http://www.w3.org/2000/svg"
+                                        >
                                           <path
-                                            d="M5.5 2.5V5.5H8.5"
-                                            stroke="currentColor"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                          />
-                                          <path
-                                            d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                                            stroke="currentColor"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
+                                            d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
+                                            fill={getFlagColor(
+                                              dur.hoursDecimal,
+                                            )}
                                           />
                                         </svg>
-                                        {durationData.duration}
                                       </div>
                                     )}
                                 </div>
 
-                                {/* Project */}
                                 <div>
                                   <small
                                     style={{
@@ -1095,7 +983,6 @@ export default function MR() {
                                   <h3>{mr.project_name || "-"}</h3>
                                 </div>
 
-                                {/* Requester */}
                                 <div>
                                   <small>REQUESTER</small>
                                   <div
@@ -1122,7 +1009,7 @@ export default function MR() {
                                       {mr.requested_by
                                         ? mr.requested_by
                                             .split(" ")
-                                            .map((n) => n[0])
+                                            .map((n: string) => n[0])
                                             .join("")
                                             .toUpperCase()
                                             .slice(0, 2)
@@ -1135,35 +1022,30 @@ export default function MR() {
                                   </div>
                                 </div>
 
-                                {/* ✅ Expected Delivery (Awaiting Delivery only) */}
                                 {mr.progress_id === 17 &&
-                                  mrDeliveryDates[mr.id] &&
-                                  mrDeliveryDates[mr.id].length > 0 && (
+                                  mrDeliveryDates[mr.id]?.length > 0 && (
                                     <div>
-                                      {mrDeliveryDates[mr.id].map(
-                                        (d, index) => (
-                                          <div key={index}>
-                                            <small>
-                                              {d.supplier_name.toUpperCase()}{" "}
-                                              DELIVERY ETA
-                                            </small>
-
-                                            <h3>
-                                              {new Date(
-                                                d.delivery_date,
-                                              ).toLocaleDateString("en-GB")}
-                                            </h3>
-                                          </div>
-                                        ),
-                                      )}
+                                      {mrDeliveryDates[mr.id].map((d, i) => (
+                                        <div key={i}>
+                                          <small>
+                                            {d.supplier_name.toUpperCase()}{" "}
+                                            DELIVERY ETA
+                                          </small>
+                                          <h3>
+                                            {new Date(
+                                              d.delivery_date,
+                                            ).toLocaleDateString("en-GB")}
+                                          </h3>
+                                        </div>
+                                      ))}
                                     </div>
                                   )}
 
                                 <Button
-                                  componentType={"link"}
-                                  bgColor={"rgba(239, 239, 239, 1)"}
-                                  borderColor={"rgba(239, 239, 239, 1)"}
-                                  textColor={"black"}
+                                  componentType="link"
+                                  bgColor="rgba(239, 239, 239, 1)"
+                                  borderColor="rgba(239, 239, 239, 1)"
+                                  textColor="black"
                                   href={`/mr/${mr.id}`}
                                   full
                                   style={{ borderRadius: "50px" }}

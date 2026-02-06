@@ -882,6 +882,18 @@ label {
     }
   }
 
+  &.popup-hover {
+    th {
+      background-color: transparent;
+      padding: 4px 0px;
+      border-bottom: 1px solid rgba(239, 239, 239, 1);
+    }
+
+    td {
+      padding: 4px 0px;
+    }
+  }
+
   td {
     padding: 25px 30px;
     text-align: left;
@@ -890,7 +902,7 @@ label {
   th {
     padding: 15px 30px;
     text-align: left;
-    border-bottom: 1px solid #eee;
+    /* border-bottom: 1px solid #eee; */
   }
 
   td {

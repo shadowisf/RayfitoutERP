@@ -10,6 +10,7 @@ import TransactionDetailsPopUpButton from "./[id]/components/_IssueDetailsPopUpB
 import InventoryFilterButton from "./[id]/components/_InventoryFilterButton";
 import DeleteTransferButton from "./components/_DeleteTransferButton";
 import DeleteInventoryItemButton from "./[id]/components/_DeleteInventoryItemButton";
+import StockLocationHoverPopup from "./components/_StockLocationHoverPopup";
 
 export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
@@ -67,6 +68,11 @@ export default function Inventory() {
   const [itemsPerPage] = useState(50);
   const [transactionCurrentPage, setTransactionCurrentPage] = useState(1);
   const [transactionsPerPage] = useState(50);
+
+  const [hoveredItemId, setHoveredItemId] = useState<number | null>(null);
+  const [hoverTimer, setHoverTimer] = useState<NodeJS.Timeout | null>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [showPopup, setShowPopup] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -873,6 +879,30 @@ export default function Inventory() {
     );
   };
 
+  const handleMouseEnter = (itemId: number, event: React.MouseEvent) => {
+    setMousePosition({ x: event.clientX, y: event.clientY });
+
+    const timer = setTimeout(() => {
+      setHoveredItemId(itemId);
+      setShowPopup(true);
+    }, 2000); // 2 second delay
+
+    setHoverTimer(timer);
+  };
+
+  const handleMouseMove = (event: React.MouseEvent) => {
+    setMousePosition({ x: event.clientX, y: event.clientY });
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer) {
+      clearTimeout(hoverTimer);
+      setHoverTimer(null);
+    }
+    setShowPopup(false);
+    setHoveredItemId(null);
+  };
+
   return (
     <div className="dashboard">
       <div
@@ -1412,7 +1442,13 @@ export default function Inventory() {
                           );
 
                       return (
-                        <tr key={item.id}>
+                        <tr
+                          key={item.id}
+                          onMouseEnter={(e) => handleMouseEnter(item.id, e)}
+                          onMouseMove={handleMouseMove}
+                          onMouseLeave={handleMouseLeave}
+                          style={{ position: "relative" }}
+                        >
                           <td>{startIndex + index + 1}</td>
                           <td
                             style={{ whiteSpace: "nowrap", fontWeight: "600" }}
@@ -1681,6 +1717,17 @@ export default function Inventory() {
             </div>
           )}
         </div>
+      )}
+
+      {showPopup && hoveredItemId !== null && (
+        <StockLocationHoverPopup
+          inventoryItemId={hoveredItemId}
+          mouseX={mousePosition.x}
+          mouseY={mousePosition.y}
+          unit={
+            currentItems.find((item) => item.id === hoveredItemId)?.unit || ""
+          }
+        />
       )}
     </div>
   );
