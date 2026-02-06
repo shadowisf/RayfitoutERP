@@ -37,6 +37,33 @@ export default function Dashboard() {
 
   const DEPARTMENT_IDS = [1, 2, 3, 4, 5, 6, 7, 13, 14, 16];
 
+  async function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+      console.log("Browser doesn't support notifications");
+      return;
+    }
+
+    if (Notification.permission === "default") {
+      try {
+        const permission = await Notification.requestPermission();
+        console.log("Notification permission:", permission);
+
+        if (permission === "granted") {
+          console.log("✅ Notifications enabled!");
+        } else if (permission === "denied") {
+          console.log("❌ Notifications blocked by user");
+        }
+      } catch (error) {
+        console.error("Error requesting notification permission:", error);
+      }
+    } else {
+      console.log(
+        "Notification permission already set:",
+        Notification.permission,
+      );
+    }
+  }
+
   // Fetch Projects
   useEffect(() => {
     const loadProjects = async () => {
@@ -53,6 +80,7 @@ export default function Dashboard() {
     };
 
     loadProjects();
+    requestNotificationPermission();
   }, []);
 
   return (

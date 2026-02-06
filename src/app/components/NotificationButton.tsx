@@ -615,9 +615,46 @@ export default function NotificationDropdown() {
 
   // ✅ Function to show browser notification
   const showBrowserNotification = (notification: Notif) => {
-    if ("Notification" in window && Notification.permission === "granted") {
-      // Strip HTML and get plain text for browser notification
+    console.log("Attempting to show browser notification...");
+    console.log("Notification permission:", Notification.permission);
+
+    if (!("Notification" in window)) {
+      console.log("❌ Browser doesn't support notifications");
+      return;
+    }
+
+    if (Notification.permission === "denied") {
+      console.log(
+        "❌ Notifications are blocked. User needs to enable them in browser settings.",
+      );
+      return;
+    }
+
+    if (Notification.permission === "default") {
+      console.log("⚠️ Notification permission not granted yet. Requesting...");
+      Notification.requestPermission().then((permission) => {
+        console.log("Permission result:", permission);
+        if (permission === "granted") {
+          createBrowserNotification(notification);
+        }
+      });
+      return;
+    }
+
+    if (Notification.permission === "granted") {
+      createBrowserNotification(notification);
+    }
+  };
+
+  // Helper function to actually create the notification
+  const createBrowserNotification = (notification: Notif) => {
+    try {
       const plainTextMessage = notification.message.replace(/<[^>]*>/g, "");
+
+      console.log("✅ Creating browser notification:", {
+        title: notification.header,
+        body: plainTextMessage,
+      });
 
       const browserNotif = new Notification(notification.header, {
         body: plainTextMessage,
@@ -627,18 +664,19 @@ export default function NotificationDropdown() {
         requireInteraction: false,
       });
 
-      // Handle notification click - navigate to the appropriate page
       browserNotif.onclick = () => {
+        console.log("Notification clicked!");
         window.focus();
         const url = getNotificationUrl(notification);
         router.push(url);
         browserNotif.close();
       };
 
-      // Auto-close after 5 seconds
       setTimeout(() => {
         browserNotif.close();
       }, 5000);
+    } catch (error) {
+      console.error("❌ Error creating browser notification:", error);
     }
   };
 

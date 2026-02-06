@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import InputItem from "./InputItem";
 import Button from "./Button";
 import { login, completeNewPassword } from "@/lib/auth";
@@ -12,6 +12,7 @@ export default function Login() {
   const backgroundImg = "/images/hq.jpg";
 
   const router = useRouter();
+
   const { checkAuth } = useAuth();
 
   const [userID, setUserID] = useState("");
@@ -25,15 +26,6 @@ export default function Login() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  async function requestNotificationPermission() {
-    if (!("Notification" in window)) return;
-
-    if (Notification.permission === "default") {
-      const permission = await Notification.requestPermission();
-      console.log("Notification permission:", permission);
-    }
-  }
 
   async function handleSubmit(e: any) {
     e.preventDefault();
@@ -55,7 +47,6 @@ export default function Login() {
       if (result.status === "SUCCESS") {
         // Re-check auth before redirecting
         await checkAuth();
-        await requestNotificationPermission();
         router.push("/dashboard");
       }
     } catch (err: any) {
