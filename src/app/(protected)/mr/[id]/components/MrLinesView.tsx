@@ -512,10 +512,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     );
   }
 
-  useEffect(() => {
+  function calculateItemsTotal(items: MrLine[]): number {
     let total = 0;
 
-    const calculateItemTotal = (item: MrLine) => {
+    items.forEach((item: MrLine) => {
       let unitPrice: number;
       let quantity: number;
       let vatRate: number;
@@ -524,59 +524,21 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         // Use LPO prices
         unitPrice = lpoLinePrices[item.id].unitPrice;
         quantity = Number(item.quantity) || 0;
-        vatRate = lpoLinePrices[item.id].vatRate;
+        /* vatRate = lpoLinePrices[item.id].vatRate; */
       } else {
         // Use quotation prices
         unitPrice = Number(item.approved_unit_price) || 0;
         quantity = Number(item.quantity) || 0;
-        vatRate = Number(item.approved_vat_rate) || 0;
+        /* vatRate = Number(item.approved_vat_rate) || 0; */
       }
 
       const subtotal = unitPrice * quantity;
-      const vatAmount = subtotal * (vatRate / 100);
+      // Don't add VAT to match your original calculation
+      total += subtotal;
+    });
 
-      return subtotal + vatAmount;
-    };
-
-    if (showByItem) {
-      for (const category in regroupedMrLines) {
-        for (const subCategory in regroupedMrLines[category]) {
-          for (const supplier in regroupedMrLines[category][subCategory]) {
-            const items = regroupedMrLines[category][subCategory][supplier];
-            items.forEach((item: MrLine) => {
-              total += calculateItemTotal(item);
-            });
-          }
-        }
-      }
-    }
-
-    if (showBySupplier) {
-      for (const supplier in mrLinesBySupplier) {
-        const items = mrLinesBySupplier[supplier];
-        items.forEach((item: MrLine) => {
-          total += calculateItemTotal(item);
-        });
-      }
-    }
-
-    setTotalInvoiceAmount(Number(total.toFixed(2)));
-  }, [
-    regroupedMrLines,
-    mrLinesBySupplier,
-    showByItem,
-    showBySupplier,
-    lpoLinePrices,
-    mrHeader.progress_id,
-  ]);
-
-  useEffect(() => {
-    const total = Object.values(mrLinePrices).reduce(
-      (sum, price) => sum + price,
-      0,
-    );
-    setTotalInvoiceAmount(total);
-  }, [mrLinePrices]);
+    return Number(total.toFixed(2));
+  }
 
   const handleTotalPriceChange = (mrLineId: number, totalPrice: number) => {
     setMrLinePrices((prev) => ({
@@ -2595,7 +2557,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                               }}
                                             >
                                               AED{" "}
-                                              {totalInvoiceAmount.toFixed(2)}
+                                              {calculateItemsTotal(
+                                                getAllItemsInSubCategory(
+                                                  suppliers,
+                                                ),
+                                              ).toFixed(2)}
                                             </td>
                                           </tr>
                                         </tbody>
@@ -3206,7 +3172,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             borderRadius: "50px",
                                           }}
                                         >
-                                          AED {totalInvoiceAmount.toFixed(2)}
+                                          AED{" "}
+                                          {calculateItemsTotal(
+                                            getAllItemsInSubCategory(suppliers),
+                                          ).toFixed(2)}
                                         </td>
                                       </tr>
                                     </tbody>
@@ -3498,15 +3467,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           ) {
                             // Use LPO prices
                             unitPrice = lpoLinePrices[item.id].unitPrice;
-                            vatRate = lpoLinePrices[item.id].vatRate;
+                            //vatRate = lpoLinePrices[item.id].vatRate;
                           } else {
                             // Use quotation prices
                             unitPrice = Number(item.approved_unit_price) || 0;
-                            vatRate = Number(item.approved_vat_rate) || 0;
+                            //vatRate = Number(item.approved_vat_rate) || 0;
                           }
 
-                          const priceWithVat = unitPrice * (1 + vatRate / 100);
-                          return `AED ${priceWithVat.toFixed(2)}`;
+                          //const priceWithVat = unitPrice * (1 + vatRate / 100);
+                          return `AED ${unitPrice.toFixed(2)}`;
                         })()}
                       </td>
                     )}
@@ -3523,15 +3492,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           ) {
                             // Use LPO prices
                             totalPrice = lpoLinePrices[item.id].totalPrice;
-                            vatRate = lpoLinePrices[item.id].vatRate;
+                            /* vatRate = lpoLinePrices[item.id].vatRate; */
                           } else {
                             // Use quotation prices
                             totalPrice = Number(item.approved_total_price) || 0;
-                            vatRate = Number(item.approved_vat_rate) || 0;
+                            /* vatRate = Number(item.approved_vat_rate) || 0; */
                           }
 
-                          const priceWithVat = totalPrice * (1 + vatRate / 100);
-                          return `AED ${priceWithVat.toFixed(2)}`;
+                          /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
+                          return `AED ${totalPrice.toFixed(2)}`;
                         })()}
                       </td>
                     )}
@@ -3604,7 +3573,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 borderRadius: "50px",
                               }}
                             >
-                              AED {totalInvoiceAmount.toFixed(2)}
+                              AED {calculateItemsTotal(items).toFixed(2)}
                             </td>
                           </tr>
                         </tbody>
@@ -3615,6 +3584,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               )}
             </table>
 
+            <br />
+            <br />
             <br />
           </div>
         ))}
