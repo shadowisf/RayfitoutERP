@@ -20,7 +20,7 @@ export async function POST(req: Request) {
         body.client_name,
         body.location,
         body.date || null,
-        body.discount,
+        body.discount || 0,
         body.payment_terms,
         body.validity_terms,
         body.warranty,
@@ -239,7 +239,7 @@ export async function PUT(req: Request) {
         body.client_name,
         body.location,
         body.date || null,
-        body.discount,
+        body.discount || 0,
         body.payment_terms,
         body.validity_terms,
         body.warranty,
@@ -262,6 +262,7 @@ export async function PUT(req: Request) {
             {
               hour: "2-digit",
               minute: "2-digit",
+              hour12: true,
               timeZone: "Asia/Dubai",
             },
           )}`,
@@ -279,6 +280,7 @@ export async function PUT(req: Request) {
             {
               hour: "2-digit",
               minute: "2-digit",
+              hour12: true,
               timeZone: "Asia/Dubai",
             },
           )}`,
