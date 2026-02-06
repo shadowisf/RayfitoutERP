@@ -228,7 +228,6 @@ export default function EditBoqHeaderButton({
               label={"WARRANTY"}
               value={warranty}
               type={"textarea"}
-              required
               onChange={(e) => {
                 setWarranty(e.target.value);
               }}

@@ -220,7 +220,6 @@ vii. Contractor reserve the right to request for an extension of time for reason
               label={"WARRANTY"}
               value={warranty}
               type={"textarea"}
-              required
               onChange={(e) => {
                 setWarranty(e.target.value);
               }}
