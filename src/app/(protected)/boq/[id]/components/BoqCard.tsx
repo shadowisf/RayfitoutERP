@@ -6,12 +6,16 @@ import ThreeDotsMenuButton from "@/app/components/_ThreeButtonsMenuButton";
 import EditBoqHeaderButton from "./manager/_EditBoqHeaderButton";
 import { DeleteBoqHeaderButton } from "./manager/_DeleteBoqHeaderButton";
 
+import { useAuth } from "@/app/context/AuthContext";
+
 type props = {
   boqHeader: BoqHeader;
   onSuccess?: () => void;
 };
 
 export default function BoqCard({ boqHeader, onSuccess }: props) {
+  const { userInfo } = useAuth();
+
   return (
     <div className="item" key={boqHeader?.id}>
       <div
@@ -82,18 +86,20 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
           <h2>{boqHeader?.client_name || "-"}</h2>
         </div>
 
-        <div>
-          <small>TOTAL VALUE</small>
-          <h2>
-            {boqHeader?.project_currency}{" "}
-            {(
-              Number(boqHeader?.total_value - boqHeader?.discount) || 0
-            ).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </h2>
-        </div>
+        {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
+          <div>
+            <small>TOTAL VALUE</small>
+            <h2>
+              {boqHeader?.project_currency}{" "}
+              {(
+                Number(boqHeader?.total_value - boqHeader?.discount) || 0
+              ).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </h2>
+          </div>
+        )}
 
         <div></div>
       </div>
