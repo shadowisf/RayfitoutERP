@@ -2794,7 +2794,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     <td>{itemIndex + 1}</td>
                                     <td>{item.material_description}</td>
                                     <td>
-                                      {item.quantity} {item.unit}
+                                      {formatNumber(item?.quantity)} {item.unit}
                                     </td>
                                     <td>
                                       {item.boq_line_ids ? (
@@ -3377,7 +3377,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     <td>{item.material_subcategory}</td>
                     <td>{item.material_description}</td>
                     <td>
-                      {item.quantity} {item.unit}
+                      {formatNumber(item?.quantity)} {item.unit}
                     </td>
                     <td>
                       {item.boq_line_ids ? (

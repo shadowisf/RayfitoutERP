@@ -16,7 +16,6 @@ import PendingQuotationsMrsWidget from "./components/procurement/W_PendingQuotat
 import DraftMrsWidget from "./components/department/W_DraftMrs";
 import MrsRejectedCompleted from "./components/department/W_MrsRejectedCompleted";
 import TopProjectsWithMrs from "./components/department/W_TopProjectsWithMrs";
-import BudgetAllocationGraph from "./components/manager/W_ProjectBudget";
 import Button from "@/app/components/Button";
 import PendingIncompleteDeliveriesWidget from "./components/procurement/W_OverdueDeliveries";
 import TopVendorsBySpendWidget from "./components/W_TopVendorsBySpend";

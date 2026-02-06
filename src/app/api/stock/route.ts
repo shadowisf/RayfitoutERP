@@ -82,35 +82,37 @@ export async function POST(request: NextRequest) {
         await db.query(boqJunctionQuery, [boqJunctionValues]);
       }
 
-      await db.query(
-        `INSERT INTO notification (inventory_item_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
-        [
-          body.inventory_item_id,
-          8,
-          "Stock Added",
-          `${body.quantity} ${body.inventory_item_unit} was added to ${body.inventory_item_description}`,
-        ],
-      );
+      if (body.manually_add === true) {
+        await db.query(
+          `INSERT INTO notification (inventory_item_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.inventory_item_id,
+            8,
+            "Stock Added",
+            `${+body.quantity % 1 === 0 ? +body.quantity : +body.quantity} ${body.inventory_item_unit} was added to ${body.inventory_item_description}`,
+          ],
+        );
 
-      await db.query(
-        `INSERT INTO notification (inventory_item_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
-        [
-          body.inventory_item_id,
-          16,
-          "Stock Added",
-          `${body.quantity} ${body.inventory_item_unit} was added to ${body.inventory_item_description}`,
-        ],
-      );
+        await db.query(
+          `INSERT INTO notification (inventory_item_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.inventory_item_id,
+            16,
+            "Stock Added",
+            `${+body.quantity % 1 === 0 ? +body.quantity : +body.quantity} ${body.inventory_item_unit} was added to ${body.inventory_item_description}`,
+          ],
+        );
 
-      await db.query(
-        `INSERT INTO notification (inventory_item_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
-        [
-          body.inventory_item_id,
-          11,
-          "Stock Added",
-          `${body.quantity} ${body.inventory_item_unit} was added to ${body.inventory_item_description}`,
-        ],
-      );
+        await db.query(
+          `INSERT INTO notification (inventory_item_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.inventory_item_id,
+            11,
+            "Stock Added",
+            `${+body.quantity % 1 === 0 ? +body.quantity : +body.quantity} ${body.inventory_item_unit} was added to ${body.inventory_item_description}`,
+          ],
+        );
+      }
 
       return NextResponse.json({
         success: true,

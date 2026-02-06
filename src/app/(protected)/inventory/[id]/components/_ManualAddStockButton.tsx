@@ -206,6 +206,7 @@ export default function ManualAddToStockButton({
         qc_report_file: JSON.stringify(qcReportFileUrl),
         lpo_file: JSON.stringify(lpoFileUrl),
         dn_file: JSON.stringify(dnFileUrl),
+        manually_add: true,
       }),
     });
 

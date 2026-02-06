@@ -674,7 +674,7 @@ export async function PUT(req: Request) {
                 body.id,
                 11,
                 "Stock Added",
-                `${item.quantity} ${item.unit} was added to ${item.material_description}`,
+                `${Number.isInteger(+item.quantity) ? +item.quantity : +item.quantity} ${item.unit} was added to ${item.material_description}`,
               ],
             );
 
@@ -688,7 +688,7 @@ export async function PUT(req: Request) {
                 body.id,
                 8,
                 "Stock Added",
-                `${item.quantity} ${item.unit} was added to ${item.material_description}`,
+                `${Number.isInteger(+item.quantity) ? +item.quantity : +item.quantity} ${item.unit} was added to ${item.material_description}`,
               ],
             );
 
@@ -702,7 +702,7 @@ export async function PUT(req: Request) {
                 body.id,
                 16,
                 "Stock Added",
-                `${item.quantity} ${item.unit} was added to ${item.material_description}`,
+                `${Number.isInteger(+item.quantity) ? +item.quantity : +item.quantity} ${item.unit} was added to ${item.material_description}`,
               ],
             );
           },

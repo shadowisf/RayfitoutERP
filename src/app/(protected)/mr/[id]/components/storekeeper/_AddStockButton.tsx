@@ -163,6 +163,9 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
           quantity: mrLine.quantity,
           location,
           notes,
+          inventory_item_unit: mrLine.unit,
+          inventory_item_description: mrLine.material_description,
+          manually_add: false,
         }),
       });
 
@@ -278,7 +281,9 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
             />
             <InputItem
               label={"QUANTITY"}
-              value={mrLine.quantity}
+              value={
+                +mrLine.quantity % 1 === 0 ? +mrLine.quantity : +mrLine.quantity
+              }
               type={"text"}
               placeholder={""}
               required
