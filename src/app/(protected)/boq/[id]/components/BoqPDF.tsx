@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   // Total Row
   totalRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     backgroundColor: "#000000",
     color: "#ffffff",
     paddingLeft: 12,
@@ -157,6 +157,22 @@ const styles = StyleSheet.create({
     paddingBottom: 5,
     borderRadius: 10,
     alignSelf: "flex-end",
+    width: 200,
+    marginBottom: 5,
+  },
+  totalRowAlt: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#f5f5f5",
+    color: "black",
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 8,
+    paddingBottom: 5,
+    borderRadius: 10,
+    alignSelf: "flex-end",
+    width: 200,
+    marginBottom: 5,
   },
   totalLabel: {
     fontFamily: "Mont-SemiBold",
@@ -501,12 +517,31 @@ export function BoqPDF({
           })}
         </View>
 
+        {showPrices && (
+          <View style={styles.totalRowAlt}>
+            <Text style={styles.totalLabel}>SUBTOTAL</Text>
+            <Text style={styles.totalValue}>
+              {boqHeader.currency} {grandTotal.toLocaleString()}
+            </Text>
+          </View>
+        )}
+
+        {showPrices && (
+          <View style={styles.totalRowAlt}>
+            <Text style={styles.totalLabel}>SPECIAL DISCOUNT</Text>
+            <Text style={styles.totalValue}>
+              {boqHeader.currency} {boqHeader.discount}
+            </Text>
+          </View>
+        )}
+
         {/* Total Row - Only show if showPrices is true */}
         {showPrices && (
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>GRAND TOTAL</Text>
             <Text style={styles.totalValue}>
-              {boqHeader.currency} {grandTotal.toLocaleString()}
+              {boqHeader.currency}{" "}
+              {(grandTotal - boqHeader.discount).toLocaleString()}
             </Text>
           </View>
         )}

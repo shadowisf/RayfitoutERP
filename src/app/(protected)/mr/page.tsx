@@ -1135,6 +1135,30 @@ export default function MR() {
                                   </div>
                                 </div>
 
+                                {/* ✅ Expected Delivery (Awaiting Delivery only) */}
+                                {mr.progress_id === 17 &&
+                                  mrDeliveryDates[mr.id] &&
+                                  mrDeliveryDates[mr.id].length > 0 && (
+                                    <div>
+                                      {mrDeliveryDates[mr.id].map(
+                                        (d, index) => (
+                                          <div key={index}>
+                                            <small>
+                                              {d.supplier_name.toUpperCase()}{" "}
+                                              DELIVERY ETA
+                                            </small>
+
+                                            <h3>
+                                              {new Date(
+                                                d.delivery_date,
+                                              ).toLocaleDateString("en-GB")}
+                                            </h3>
+                                          </div>
+                                        ),
+                                      )}
+                                    </div>
+                                  )}
+
                                 <Button
                                   componentType={"link"}
                                   bgColor={"rgba(239, 239, 239, 1)"}
@@ -1144,7 +1168,7 @@ export default function MR() {
                                   full
                                   style={{ borderRadius: "50px" }}
                                 >
-                                  VIEW DETAILS{" "}
+                                  VIEW{" "}
                                   <span style={{ marginLeft: "10px" }}>
                                     &gt;
                                   </span>

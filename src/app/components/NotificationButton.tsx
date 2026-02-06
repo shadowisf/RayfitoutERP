@@ -306,24 +306,29 @@ function NotificationToast({
                     headerLower.includes("updated")
                   ) {
                     const regex =
-                      /^A new BOQ\s+(.+?)\s+was created for\s+(.+)$/i;
+                      /^(.+?)\s+was updated for\s+(.+?)\s+by\s+(.+?)\s+at\s+(.+)$/i;
                     const match = message.match(regex);
 
                     if (match) {
                       const boqName = match[1];
                       const projectName = match[2];
+                      const userName = match[3];
+                      const time = match[4];
 
                       return (
                         <>
-                          <span style={{ color: "inherit" }}>A new BOQ </span>
                           <span style={{ color: "#000000" }}>{boqName}</span>
                           <span style={{ color: "inherit" }}>
                             {" "}
-                            was created for{" "}
+                            was updated for{" "}
                           </span>
                           <span style={{ color: "#000000" }}>
                             {projectName}
                           </span>
+                          <span style={{ color: "inherit" }}> by </span>
+                          <span style={{ color: "#000000" }}>{userName}</span>
+                          <span style={{ color: "inherit" }}> at </span>
+                          <span style={{ color: "#000000" }}>{time}</span>
                         </>
                       );
                     }
@@ -1404,27 +1409,40 @@ export default function NotificationDropdown() {
                                   headerLower.includes("updated")
                                 ) {
                                   const regex =
-                                    /^A new BOQ\s+(.+?)\s+was created for\s+(.+)$/i;
+                                    /^(.+?)\s+was updated for\s+(.+?)\s+by\s+(.+?)\s+at\s+(.+)$/i;
                                   const match = message.match(regex);
 
                                   if (match) {
                                     const boqName = match[1];
                                     const projectName = match[2];
+                                    const userName = match[3];
+                                    const time = match[4];
 
                                     return (
                                       <>
-                                        <span style={{ color: "inherit" }}>
-                                          A new BOQ{" "}
-                                        </span>
                                         <span style={{ color: "#000000" }}>
                                           {boqName}
                                         </span>
                                         <span style={{ color: "inherit" }}>
                                           {" "}
-                                          was created for{" "}
+                                          was updated for{" "}
                                         </span>
                                         <span style={{ color: "#000000" }}>
                                           {projectName}
+                                        </span>
+                                        <span style={{ color: "inherit" }}>
+                                          {" "}
+                                          by{" "}
+                                        </span>
+                                        <span style={{ color: "#000000" }}>
+                                          {userName}
+                                        </span>
+                                        <span style={{ color: "inherit" }}>
+                                          {" "}
+                                          at{" "}
+                                        </span>
+                                        <span style={{ color: "#000000" }}>
+                                          {time}
                                         </span>
                                       </>
                                     );
@@ -1691,22 +1709,29 @@ export default function NotificationDropdown() {
                             </div>
 
                             {/* ✅ OPEN button now uses regular button with onClick */}
-                            <Button
-                              componentType={"button"}
-                              bgColor={"black"}
-                              borderColor={"black"}
-                              textColor={"white"}
+                            <div
                               style={{
-                                borderRadius: "5px",
-                                padding: "7px 20px",
-                                fontSize: "12px",
+                                display: "flex",
+                                justifyContent: "space-between",
                               }}
-                              onClick={(e) =>
-                                handleNotificationOpen(e, notification)
-                              }
                             >
-                              OPEN
-                            </Button>
+                              <Button
+                                componentType={"button"}
+                                bgColor={"black"}
+                                borderColor={"black"}
+                                textColor={"white"}
+                                style={{
+                                  borderRadius: "5px",
+                                  padding: "7px 20px",
+                                  fontSize: "12px",
+                                }}
+                                onClick={(e) =>
+                                  handleNotificationOpen(e, notification)
+                                }
+                              >
+                                OPEN
+                              </Button>
+                            </div>
                           </div>
                         </div>
 

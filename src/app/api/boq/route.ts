@@ -9,8 +9,8 @@ export async function POST(req: Request) {
     if (body.action === "createBoqHeader") {
       const query = `
       INSERT INTO boq_headers 
-      (project_id, name, company_name, client_name, location, date, payment_terms, validity_terms, warranty, completion, exclusion, terms_and_conditions)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (project_id, name, company_name, client_name, location, date, discount, payment_terms, validity_terms, warranty, completion, exclusion, terms_and_conditions)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const values = [
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
         body.client_name,
         body.location,
         body.date || null,
+        body.discount,
         body.payment_terms,
         body.validity_terms,
         body.warranty,
@@ -227,7 +228,7 @@ export async function PUT(req: Request) {
     if (body.action === "updateBoqHeader") {
       const query = `
         UPDATE boq_headers 
-        SET project_id = ?, name = ?, company_name = ?, client_name = ?, location = ?, date = ?, payment_terms = ?, validity_terms = ?, warranty = ?, completion = ?, exclusion = ?, terms_and_conditions = ?
+        SET project_id = ?, name = ?, company_name = ?, client_name = ?, location = ?, date = ?, discount = ?, payment_terms = ?, validity_terms = ?, warranty = ?, completion = ?, exclusion = ?, terms_and_conditions = ?
         WHERE id = ?
       `;
 
@@ -238,6 +239,7 @@ export async function PUT(req: Request) {
         body.client_name,
         body.location,
         body.date || null,
+        body.discount,
         body.payment_terms,
         body.validity_terms,
         body.warranty,

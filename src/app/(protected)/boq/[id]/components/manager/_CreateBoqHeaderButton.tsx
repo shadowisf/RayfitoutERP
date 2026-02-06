@@ -47,6 +47,7 @@ iv. Progress of work will be according to the timely payment of the client.
 v. Any delay in taking decisions/ approval from the clients side will not be our responsibility.
 vi. Payments for the variations shall be issued on prorate basis as per the main payment terms.
 vii. Contractor reserve the right to request for an extension of time for reasons beyond its control.`);
+  const [discount, setDiscount] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,6 +63,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
         client_name: clientName,
         location,
         date: date || null,
+        discount,
         payment_terms: paymentTerms,
         validity_terms: validityTerms,
         warranty,
@@ -92,6 +94,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
       setCompletion("");
       setExclusion("");
       setTermsAndConditions("");
+      setDiscount("");
     } else {
       toast("Failed to create bill of quantity", "error");
     }
@@ -167,6 +170,22 @@ vii. Contractor reserve the right to request for an extension of time for reason
               onChange={(e) => {
                 setDate(e.target.value);
               }}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"DISCOUNT"}
+              value={discount}
+              type={"text postfix"}
+              onChange={(e) => {
+                const val = e.target.value;
+
+                if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                  setDiscount(val);
+                }
+              }}
+              postfixText={project?.currency}
             />
           </div>
 

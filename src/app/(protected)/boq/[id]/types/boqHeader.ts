@@ -6,6 +6,8 @@ export type BoqHeader = {
   client_name: string;
   location: string;
   boq_date: string;
+  discount: number;
+  total_value: number;
   payment_terms: string;
   validity_terms: string;
   warranty: string;

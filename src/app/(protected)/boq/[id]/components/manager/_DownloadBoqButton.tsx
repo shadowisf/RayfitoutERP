@@ -321,7 +321,7 @@ export default function DownloadBoqButton({
         <FormPopUp
           header={"EXPORT BILL OF QUANTITY"}
           setIsOpen={setIsOpen}
-          addButtonLabel="EXPORT BOQ"
+          addButtonLabel="CONFIRM"
           handleSubmit={handleDownload}
         >
           <div style={{ marginBottom: "30px" }}>

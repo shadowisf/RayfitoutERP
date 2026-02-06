@@ -82,7 +82,18 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
           <h2>{boqHeader?.client_name || "-"}</h2>
         </div>
 
-        <div></div>
+        <div>
+          <small>TOTAL VALUE</small>
+          <h2>
+            {boqHeader?.project_currency}{" "}
+            {(
+              Number(boqHeader?.total_value - boqHeader?.discount) || 0
+            ).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </h2>
+        </div>
 
         <div></div>
       </div>
@@ -101,7 +112,7 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
         }}
         full
       >
-        <p style={{ textAlign: "center" }}>VIEW &gt;</p>
+        VIEW <p style={{ marginLeft: "10px" }}>&gt;</p>
       </Button>
     </div>
   );

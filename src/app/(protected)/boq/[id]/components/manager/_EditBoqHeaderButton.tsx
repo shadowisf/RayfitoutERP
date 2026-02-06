@@ -53,6 +53,7 @@ export default function EditBoqHeaderButton({
   const [termsAndConditions, setTermsAndConditions] = useState(
     boqHeader?.terms_and_conditions || "",
   );
+  const [discount, setDiscount] = useState(boqHeader?.discount || "");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -69,6 +70,7 @@ export default function EditBoqHeaderButton({
         client_name: clientName,
         location,
         date,
+        discount,
         payment_terms: paymentTerms,
         validity_terms: validityTerms,
         warranty,
@@ -176,6 +178,22 @@ export default function EditBoqHeaderButton({
               onChange={(e) => {
                 setDate(e.target.value);
               }}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"DISCOUNT"}
+              value={discount}
+              type={"text postfix"}
+              onChange={(e) => {
+                const val = e.target.value;
+
+                if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                  setDiscount(val);
+                }
+              }}
+              postfixText={boqHeader?.project_currency}
             />
           </div>
 

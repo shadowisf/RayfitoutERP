@@ -1087,6 +1087,41 @@ export default function BoqLinesView({
             })}
           </tbody>
           <tfoot style={{ borderTop: "1px solid rgba(232, 223, 223, 1)" }}>
+            {boqHeader?.discount && (
+              <tr>
+                <td></td>
+                <td>
+                  <h3>SUBTOTAL</h3>
+                </td>
+                <td>
+                  <h3>
+                    {boqHeader.currency}{" "}
+                    {categories
+                      .reduce(
+                        (total, category) =>
+                          total + calculateCategorySubtotal(category),
+                        0,
+                      )
+                      .toLocaleString()}
+                  </h3>
+                </td>
+              </tr>
+            )}
+
+            {boqHeader?.discount && (
+              <tr>
+                <td></td>
+                <td>
+                  <h3>SPECIAL DISCOUNT</h3>
+                </td>
+                <td>
+                  <h3>
+                    {boqHeader.currency} {boqHeader.discount}
+                  </h3>
+                </td>
+              </tr>
+            )}
+
             <tr>
               <td></td>
               <td>
@@ -1095,12 +1130,13 @@ export default function BoqLinesView({
               <td>
                 <h3>
                   {boqHeader.currency}{" "}
-                  {categories
-                    .reduce(
+                  {(
+                    categories.reduce(
                       (total, category) =>
                         total + calculateCategorySubtotal(category),
                       0,
-                    )
+                    ) - (boqHeader.discount || 0)
+                  ) // subtract special discount here
                     .toLocaleString()}
                 </h3>
               </td>
