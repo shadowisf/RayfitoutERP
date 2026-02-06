@@ -1,7 +1,9 @@
 "use client";
 
+import { useAuth } from "@/app/context/AuthContext";
 import { InventoryItem } from "../../types/inventoryItem";
 import BatchDetailsPopUpButton from "./_BatchDetailsPopUpButton";
+import DeleteTransactionButton from "./_DeleteTransactionButton";
 import TransactionDetailsPopUpButton from "./_IssueDetailsPopUpButton";
 
 type StockData = any;
@@ -95,6 +97,8 @@ const TransactionCard = ({
   transaction: any;
   inventoryItem: InventoryItem;
 }) => {
+  const { userInfo } = useAuth();
+
   const warningIcon = "/icons/warning.svg";
 
   const getTransactionType = () => {
@@ -285,6 +289,12 @@ const TransactionCard = ({
                       inventoryItem={inventoryItem}
                       batchID={transaction.batch_id}
                     />
+                    {userInfo?.departmentID === 8 && (
+                      <DeleteTransactionButton
+                        transferID={transaction.id}
+                        type="stock"
+                      />
+                    )}
                   </div>
 
                   {/* {transaction.location && (
@@ -341,6 +351,9 @@ const TransactionCard = ({
                     <TransactionDetailsPopUpButton
                       transferID={transaction.id}
                     />
+                    {userInfo?.departmentID === 8 && (
+                      <DeleteTransactionButton transferID={transaction.id} />
+                    )}
                   </div>
                   <div style={{ textWrap: "nowrap" }}>
                     <small>PROJECT</small>
@@ -378,6 +391,11 @@ const TransactionCard = ({
                         <TransactionDetailsPopUpButton
                           transferID={transaction.id}
                         />
+                        {userInfo?.departmentID === 8 && (
+                          <DeleteTransactionButton
+                            transferID={transaction.id}
+                          />
+                        )}
                       </div>
                       <div>
                         <small>TRANSFER FROM</small>
@@ -416,6 +434,9 @@ const TransactionCard = ({
                     <TransactionDetailsPopUpButton
                       transferID={transaction.id}
                     />
+                    {userInfo?.departmentID === 8 && (
+                      <DeleteTransactionButton transferID={transaction.id} />
+                    )}
                   </div>
                   <div style={{ textWrap: "nowrap" }}>
                     <small>PURPOSE</small>

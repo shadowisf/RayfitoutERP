@@ -551,6 +551,12 @@ export async function DELETE(request: NextRequest) {
       await db.query(query, [Number(body.id)]);
       return NextResponse.json({ success: true });
     }
+
+    if (body.action === "deleteStock") {
+      const query = "DELETE FROM stocks WHERE id = ?";
+      await db.query(query, [Number(body.id)]);
+      return NextResponse.json({ success: true });
+    }
   } catch (err: any) {
     console.error("SQL Error:", err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });

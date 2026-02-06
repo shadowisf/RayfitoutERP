@@ -643,7 +643,7 @@ export default function MR() {
           borderColor={"rgba(241, 244, 246, 1)"}
           textColor={"black"}
           onClick={() => setFilterRelevant(!filterRelevant)}
-          style={{ padding: "7px 10px", borderRadius: "50px" }}
+          style={{ padding: "7px 20px", borderRadius: "50px" }}
         >
           ONLY RELATED CARDS{" "}
           <div

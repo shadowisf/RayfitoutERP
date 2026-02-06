@@ -131,10 +131,10 @@ export default async function InventoryItemWithID({
           alignItems: "center",
         }}
       >
-        <h2>
+        <h1>
           <a href="/inventory">INVENTORY</a> &gt;{" "}
           {inventoryItem?.description.toUpperCase()}
-        </h2>
+        </h1>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <EditInventoryItemButton inventoryItem={inventoryItem} />
 
@@ -314,7 +314,7 @@ export default async function InventoryItemWithID({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr 1.5fr",
+                gridTemplateColumns: "1fr 1.5fr 1.5fr",
                 gap: "5px",
               }}
             >

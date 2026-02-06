@@ -269,10 +269,10 @@ export default async function MrWithID({
           alignItems: "center",
         }}
       >
-        <h2>
+        <h1>
           <a href="/mr">MATERIAL REQUISITIONS</a> &gt; MR-
           {String(mrHeader.id).padStart(5, "0")}
-        </h2>
+        </h1>
 
         {mrHeader?.progress_id !== 1 && mrHeader.progress_id !== 25 && (
           <CancelMaterialRequestButton

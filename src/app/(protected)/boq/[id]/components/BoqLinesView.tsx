@@ -454,7 +454,7 @@ export default function BoqLinesView({
             className="subcategory-header"
             style={{ justifyContent: "flex-start" }}
           >
-            <h2
+            <h1
               style={{
                 textTransform: activeCategory === "ALL" ? "uppercase" : "none",
                 display: "flex",
@@ -484,7 +484,7 @@ export default function BoqLinesView({
               {activeCategory === "ALL"
                 ? `${category} / ${subCategory}`
                 : subCategory}
-            </h2>
+            </h1>
 
             {canManage && (
               <div className="right">
