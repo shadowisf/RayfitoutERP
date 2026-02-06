@@ -32,10 +32,38 @@ export default function MR() {
     selectedProjects: [],
   });
 
-  const getFlagColor = (hours: number) => {
-    if (hours > 12) return "rgba(250, 52, 52, 1)"; // red
-    if (hours > 2) return "rgba(255, 153, 36, 1)"; // orange
-    return "rgba(236, 207, 40, 1)"; // yellow
+  const getFlagColor = (hours: number, progress_id: number): string => {
+    // Defensive fallback
+    if (hours == null || isNaN(hours) || hours < 0) return "#ECCF28";
+
+    // Custom logic per stage
+    if (progress_id === 7) {
+      // Quotations
+      if (hours <= 1) return "#ECCF28"; // yellow ≤ 1h
+      if (hours <= 3) return "rgba(255, 153, 36, 1)"; // orange ≤ 3h
+      return "rgba(250, 52, 52, 1)"; // red > 3h
+    }
+
+    if (progress_id === 14) {
+      // Pending Payments
+      if (hours <= 0.333) return "#ECCF28"; // yellow ≤ ~20 min
+      if (hours <= 0.5) return "rgba(255, 153, 36, 1)"; // orange ≤ 30 min
+      return "rgba(250, 52, 52, 1)"; // red > 30 min
+    }
+
+    if (progress_id === 17) {
+      // Awaiting Delivery
+      if (hours <= 4) return "#ECCF28"; // yellow ≤ 4h
+      if (hours <= 14) return "rgba(255, 153, 36, 1)"; // orange ≤ 14h
+      return "rgba(250, 52, 52, 1)"; // red > 14h
+      // Note: you mentioned 48h earlier — if red should only start after 48h,
+      // change the last condition to: if (hours <= 48) orange else red
+    }
+
+    // Default for all other stages
+    if (hours <= 2) return "#ECCF28"; // yellow
+    if (hours <= 12) return "rgba(255, 153, 36, 1)"; // orange
+    return "rgba(250, 52, 52, 1)"; // red
   };
 
   useEffect(() => {
@@ -964,6 +992,7 @@ export default function MR() {
                                             d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
                                             fill={getFlagColor(
                                               dur.hoursDecimal,
+                                              mr.progress_id,
                                             )}
                                           />
                                         </svg>
