@@ -1,21 +1,19 @@
 import Button from "@/app/components/Button";
-import CreateMrLineClient from "./components/CreateMrLine";
-import DeleteMrHeaderButton from "./components/department/_DeleteMrHeaderButton";
-import EditMrHeaderButton from "./components/department/_EditMrHeaderButton";
-import MrLinesView from "./components/MrLinesView";
-import { MrHeader } from "./types/mrHeader";
-import CancelMaterialRequestButton from "./components/_CancelMaterialRequest";
+import LpoLinesView from "./components/LpoLinesView";
+import { MrHeader } from "../../types/mrHeader";
+import CancelMaterialRequestButton from "../../components/_CancelMaterialRequest";
 
-export default async function MrWithID({
+export default async function LpoWithID({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; lpoId: string }>;
 }) {
-  const { id } = await params;
+  const { id, lpoId } = await params;
 
   const uTurnIcon = "/icons/u-turn.svg";
   const externalLinkIcon = "/icons/external-link.svg";
 
+  // Fetch MR header (still needed for department_id, project, etc.)
   const mrHeader: MrHeader = await fetch(
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMrHeaderByID`,
     {
@@ -31,44 +29,48 @@ export default async function MrWithID({
       return {} as MrHeader;
     });
 
-  const mrLines = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMrLinesByMrHeaderID`,
+  // Fetch LPO with its lines
+  const lpoData = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOWithLines`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ lpo_id: lpoId }),
     },
   )
     .then((res) => res.json())
+    .then((data) => (data.success ? data.data : null))
     .catch((err) => {
-      console.error(err);
-      return {};
+      console.error("Error fetching LPO data:", err);
+      return null;
     });
 
-  const deliveryDates = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getDeliveryDatesByMrHeaderID`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mr_header_id: id }),
-    },
-  )
-    .then((res) => res.json())
-    .then((data) => (data.success ? data.delivery_dates : []))
-    .catch((err) => {
-      console.error("Error fetching delivery dates:", err);
-      return [];
-    });
+  if (!lpoData) {
+    return (
+      <div className="dashboard">
+        <h1>
+          <a href="/mr">MATERIAL REQUISITIONS</a> &gt;{" "}
+          <a href={`/mr/${id}`}>MR-{String(id).padStart(5, "0")}</a> &gt; LPO
+          Not Found
+        </h1>
+        <br />
+        <p>This LPO could not be found.</p>
+      </div>
+    );
+  }
 
-  // Fetch and format progress duration
+  const lpo = lpoData.lpo;
+  const lpoLines = lpoData.lines;
+
+  // Fetch LPO-specific progress duration
   const durationData = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getProgressDuration`,
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getProgressDuration`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        mr_header_id: id,
-        progress_id: mrHeader.progress_id,
+        lpo_id: lpoId,
+        progress_id: lpo.progress_id,
       }),
     },
   )
@@ -127,53 +129,40 @@ export default async function MrWithID({
 
   const { duration, durationStyle, hoursDecimal } = durationData;
 
-  // Flag color logic — same as in the Kanban list view
+  // Flag color logic
   const getFlagColor = (hours: number, progress_id: number): string => {
     if (hours == null || isNaN(hours) || hours < 0) return "#ECCF28";
 
-    if (progress_id === 7) {
-      // Quotations
-      if (hours <= 1) return "#ECCF28";
-      if (hours <= 3) return "rgba(255, 153, 36, 1)";
-      return "rgba(250, 52, 52, 1)";
-    }
-
     if (progress_id === 14) {
-      // Pending Payments
-      if (hours <= 0.333) return "#ECCF28"; // ≤ ~20 min
+      if (hours <= 0.333) return "#ECCF28";
       if (hours <= 0.5) return "rgba(255, 153, 36, 1)";
       return "rgba(250, 52, 52, 1)";
     }
 
     if (progress_id === 17) {
-      // Awaiting Delivery
       if (hours <= 4) return "#ECCF28";
       if (hours <= 14) return "rgba(255, 153, 36, 1)";
       return "rgba(250, 52, 52, 1)";
     }
 
-    // Default fallback
     if (hours <= 2) return "#ECCF28";
     if (hours <= 12) return "rgba(255, 153, 36, 1)";
     return "rgba(250, 52, 52, 1)";
   };
 
-  // Darker version of the flag color for readable priority text
   const getDarkerPriorityColor = (color: string): string => {
-    // Hard-coded darker shades for reliability and readability
     if (color === "#ECCF28" || color.includes("236, 207, 40")) {
-      return "#B8860B"; // dark gold/yellow
+      return "#B8860B";
     }
     if (color.includes("255, 153, 36")) {
-      return "#C45A00"; // dark orange
+      return "#C45A00";
     }
     if (color.includes("250, 52, 52")) {
-      return "#B91C1C"; // dark red
+      return "#B91C1C";
     }
-    return "#374151"; // very dark gray fallback
+    return "#374151";
   };
 
-  // Priority label (using the same logic as before – can be made stage-specific later if needed)
   const getPriorityLabel = (hours: number): string => {
     if (hours == null || isNaN(hours) || hours < 0) return "MEDIUM";
     if (hours <= 0.5) return "MEDIUM";
@@ -182,75 +171,10 @@ export default async function MrWithID({
   };
 
   const isCompleted =
-    mrHeader.progress_name === "Completed" || mrHeader.progress_id === 25;
-
-  const required = new Date(mrHeader.required_date);
-  const today = new Date();
-  required.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-  const diffDays = Math.ceil(
-    (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-  );
-
-  let daysLeftText = "";
-  if (diffDays > 0) {
-    daysLeftText = `${diffDays}${diffDays === 1 ? "d" : "d"} left`;
-  } else if (diffDays === 0) {
-    daysLeftText = "Due today";
-  } else {
-    daysLeftText = `${Math.abs(diffDays)}${Math.abs(diffDays) === 1 ? "d" : "d"} overdue`;
-  }
-
-  let daysLeftStyle = {
-    backgroundColor: "rgba(231, 231, 231, 1)",
-    color: "black",
-  };
-
-  if (diffDays < 0) {
-    daysLeftStyle = { backgroundColor: "rgba(175, 61, 61, 1)", color: "white" };
-  } else if (diffDays <= 1) {
-    daysLeftStyle = {
-      backgroundColor: "rgba(255, 181, 181, 1)",
-      color: "rgba(248, 77, 77, 1)",
-    };
-  } else if (diffDays <= 3) {
-    daysLeftStyle = {
-      backgroundColor: "rgba(255, 250, 189, 1)",
-      color: "rgba(134, 83, 47, 1)",
-    };
-  }
-
-  const calculateDaysLeft = (dateString: string) => {
-    const target = new Date(dateString);
-    target.setHours(0, 0, 0, 0);
-    const days = Math.ceil(
-      (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-    );
-
-    let text = "";
-    if (days > 0) text = `${days}${days === 1 ? "d" : "d"} left`;
-    else if (days === 0) text = "Due today";
-    else text = `${Math.abs(days)}${Math.abs(days) === 1 ? "d" : "d"} overdue`;
-
-    let style = { backgroundColor: "rgba(231, 231, 231, 1)", color: "black" };
-    if (days < 0)
-      style = { backgroundColor: "rgba(175, 61, 61, 1)", color: "white" };
-    else if (days <= 1)
-      style = {
-        backgroundColor: "rgba(255, 181, 181, 1)",
-        color: "rgba(248, 77, 77, 1)",
-      };
-    else if (days <= 3)
-      style = {
-        backgroundColor: "rgba(255, 250, 189, 1)",
-        color: "rgba(134, 83, 47, 1)",
-      };
-
-    return { text, style };
-  };
+    lpo.progress_name === "Completed" || lpo.progress_id === 25;
 
   const isRejected = ["reject", "fail"].some((word) =>
-    mrHeader.progress_name?.toLowerCase().includes(word),
+    lpo.progress_name?.toLowerCase().includes(word),
   );
 
   const progressStyle = isRejected
@@ -268,10 +192,93 @@ export default async function MrWithID({
           color: "rgba(134, 83, 47, 1)",
         };
 
-  // Priority color & label
-  const priorityColor = getFlagColor(hoursDecimal, mrHeader.progress_id);
+  const priorityColor = getFlagColor(hoursDecimal, lpo.progress_id);
   const darkerTextColor = getDarkerPriorityColor(priorityColor);
   const priorityLabel = getPriorityLabel(hoursDecimal);
+
+  // Required date days left calculation
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let requiredDaysLeftText = "";
+  let requiredDaysLeftStyle = {
+    backgroundColor: "rgba(231, 231, 231, 1)",
+    color: "black",
+  };
+
+  if (mrHeader.required_date) {
+    const requiredDate = new Date(mrHeader.required_date);
+    requiredDate.setHours(0, 0, 0, 0);
+    const reqDiffDays = Math.ceil(
+      (requiredDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    if (reqDiffDays > 0) {
+      requiredDaysLeftText = `${reqDiffDays}d left`;
+    } else if (reqDiffDays === 0) {
+      requiredDaysLeftText = "Due today";
+    } else {
+      requiredDaysLeftText = `${Math.abs(reqDiffDays)}d overdue`;
+    }
+
+    if (reqDiffDays < 0) {
+      requiredDaysLeftStyle = {
+        backgroundColor: "rgba(175, 61, 61, 1)",
+        color: "white",
+      };
+    } else if (reqDiffDays <= 1) {
+      requiredDaysLeftStyle = {
+        backgroundColor: "rgba(255, 181, 181, 1)",
+        color: "rgba(248, 77, 77, 1)",
+      };
+    } else if (reqDiffDays <= 3) {
+      requiredDaysLeftStyle = {
+        backgroundColor: "rgba(255, 250, 189, 1)",
+        color: "rgba(134, 83, 47, 1)",
+      };
+    }
+  }
+
+  // Delivery date days left calculation
+
+  let deliveryDaysLeftText = "";
+  let deliveryDaysLeftStyle = {
+    backgroundColor: "rgba(231, 231, 231, 1)",
+    color: "black",
+  };
+
+  if (lpo.delivery_date) {
+    const deliveryDate = new Date(lpo.delivery_date);
+    deliveryDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil(
+      (deliveryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    if (diffDays > 0) {
+      deliveryDaysLeftText = `${diffDays}d left`;
+    } else if (diffDays === 0) {
+      deliveryDaysLeftText = "Due today";
+    } else {
+      deliveryDaysLeftText = `${Math.abs(diffDays)}d overdue`;
+    }
+
+    if (diffDays < 0) {
+      deliveryDaysLeftStyle = {
+        backgroundColor: "rgba(175, 61, 61, 1)",
+        color: "white",
+      };
+    } else if (diffDays <= 1) {
+      deliveryDaysLeftStyle = {
+        backgroundColor: "rgba(255, 181, 181, 1)",
+        color: "rgba(248, 77, 77, 1)",
+      };
+    } else if (diffDays <= 3) {
+      deliveryDaysLeftStyle = {
+        backgroundColor: "rgba(255, 250, 189, 1)",
+        color: "rgba(134, 83, 47, 1)",
+      };
+    }
+  }
 
   return (
     <div className="dashboard">
@@ -283,21 +290,10 @@ export default async function MrWithID({
         }}
       >
         <h1>
-          <a href="/mr">MATERIAL REQUISITIONS</a> &gt; MR-
-          {String(mrHeader.id).padStart(5, "0")}
+          <a href="/mr">MATERIAL REQUISITIONS</a> &gt;{" "}
+          <a href={`/mr/${id}`}>MR-{String(id).padStart(5, "0")}</a> &gt; LPO-
+          {String(lpoId).padStart(5, "0")}
         </h1>
-
-        {mrHeader?.progress_id !== 1 && mrHeader.progress_id !== 25 && (
-          <CancelMaterialRequestButton
-            mrHeader={mrHeader}
-            bgColor="rgba(248, 77, 77, 1)"
-            borderColor="rgba(248, 77, 77, 1)"
-            textColor="white"
-            currentProgressId={mrHeader.progress_id}
-          >
-            ROLL BACK MATERIAL REQUEST <img src={uTurnIcon} alt="u-turn" />
-          </CancelMaterialRequestButton>
-        )}
       </div>
 
       <br />
@@ -314,7 +310,14 @@ export default async function MrWithID({
             <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
               <div>
                 <small>MR ID</small>
-                <h2>MR-{String(id).padStart(5, "0")}</h2>
+                <h2 style={{ textWrap: "nowrap" }}>
+                  MR-{String(id).padStart(5, "0")}
+                </h2>
+              </div>
+
+              <div>
+                <small>LPO ID</small>
+                <h2>LPO-{String(lpoId).padStart(5, "0")}</h2>
               </div>
 
               <div style={{ display: "flex", gap: "10px" }}>
@@ -322,16 +325,16 @@ export default async function MrWithID({
                   className="approval-pill normal-text"
                   style={{ ...progressStyle, textTransform: "uppercase" }}
                 >
-                  {mrHeader.progress_name}
+                  {lpo.progress_name}
                 </p>
               </div>
 
-              {mrHeader.progress_id !== 1 && mrHeader.progress_id !== 25 && (
+              {!isCompleted && (
                 <div
                   className="approval-pill normal-text centered"
                   style={{
                     backgroundColor: "white",
-                    color: darkerTextColor, // darker for readability
+                    color: darkerTextColor,
                     border: "1px solid rgba(207, 207, 207, 1)",
                     display: "flex",
                     alignItems: "center",
@@ -347,17 +350,12 @@ export default async function MrWithID({
                   >
                     <path
                       d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
-                      fill={priorityColor} // flag keeps original brightness
+                      fill={priorityColor}
                     />
                   </svg>
                   <span>PRIORITY: {priorityLabel}</span>
                 </div>
               )}
-            </div>
-
-            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              <EditMrHeaderButton mrHeader={mrHeader} />
-              <DeleteMrHeaderButton mrHeader={mrHeader} />
             </div>
           </div>
         </div>
@@ -405,34 +403,69 @@ export default async function MrWithID({
             <h2>{mrHeader.department_name}</h2>
           </div>
 
-          <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
-            <div>
-              <small style={{ textWrap: "nowrap" }}>REQUIRED DATE</small>
-              <h2>
-                {new Date(mrHeader.required_date).toLocaleDateString("en-US")}
-              </h2>
-            </div>
-
-            {!isCompleted && (
+          {mrHeader.required_date && (
+            <div
+              style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}
+            >
               <div>
-                <h2
-                  className="approval-pill normal-text"
-                  style={{
-                    ...daysLeftStyle,
-                    padding: "4px 10px",
-                    borderRadius: "50px",
-                    fontSize: "11px",
-                    fontWeight: "600",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {daysLeftText}
+                <small style={{ textWrap: "nowrap" }}>REQUIRED DATE</small>
+                <h2>
+                  {new Date(mrHeader.required_date).toLocaleDateString("en-US")}
                 </h2>
               </div>
-            )}
-          </div>
 
-          {mrHeader.progress_id !== 1 && mrHeader.progress_id !== 25 && (
+              {!isCompleted && (
+                <div>
+                  <h2
+                    className="approval-pill normal-text"
+                    style={{
+                      ...requiredDaysLeftStyle,
+                      padding: "4px 10px",
+                      borderRadius: "50px",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {requiredDaysLeftText}
+                  </h2>
+                </div>
+              )}
+            </div>
+          )}
+
+          {lpo.delivery_date && (
+            <div
+              style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}
+            >
+              <div>
+                <small style={{ textWrap: "nowrap" }}>DELIVERY DATE</small>
+                <h2>
+                  {new Date(lpo.delivery_date).toLocaleDateString("en-US")}
+                </h2>
+              </div>
+
+              {!isCompleted && (
+                <div>
+                  <h2
+                    className="approval-pill normal-text"
+                    style={{
+                      ...deliveryDaysLeftStyle,
+                      padding: "4px 10px",
+                      borderRadius: "50px",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {deliveryDaysLeftText}
+                  </h2>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!isCompleted && (
             <div>
               <small>CURRENT PROGRESS DURATION</small>
               <div
@@ -475,66 +508,21 @@ export default async function MrWithID({
             </div>
           )}
         </div>
-
-        {mrHeader?.progress_id === 17 && (
-          <>
-            <br />
-            <br />
-            <div className="bottom">
-              {deliveryDates?.length > 0 && (
-                <>
-                  {deliveryDates.map((delivery: any, index: number) => {
-                    const { text, style } = calculateDaysLeft(
-                      delivery.delivery_date,
-                    );
-                    return (
-                      <div key={index} style={{ display: "flex", gap: "10px" }}>
-                        <div>
-                          <small style={{ textWrap: "nowrap" }}>
-                            {delivery.supplier_name.toUpperCase()} DELIVERY DATE
-                          </small>
-                          <h2>
-                            {new Date(
-                              delivery.delivery_date,
-                            ).toLocaleDateString("en-US")}
-                          </h2>
-                        </div>
-                        {!isCompleted && (
-                          <div>
-                            <h2
-                              className="approval-pill normal-text"
-                              style={{
-                                ...style,
-                                borderRadius: "5px",
-                                textWrap: "nowrap",
-                              }}
-                            >
-                              {text}
-                            </h2>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-          </>
-        )}
       </div>
 
       <br />
       <br />
 
-      {mrLines && Object.keys(mrLines).length > 0 ? (
-        <MrLinesView mrLines={mrLines} mrHeader={mrHeader} />
-      ) : (
-        <CreateMrLineClient
-          mrHeaderID={mrHeader.id}
-          projectID={mrHeader.project_id}
-          projectName={mrHeader.project_name}
-          purposeID={mrHeader.purpose_id}
+      {lpoLines && Object.keys(lpoLines).length > 0 ? (
+        <LpoLinesView
+          lpoLines={lpoLines}
+          lpo={lpoData.lpo}
+          flatLines={lpoData.flatLines}
+          mrHeader={mrHeader}
+          refreshKey={Date.now()}
         />
+      ) : (
+        <p>No lines found for this LPO.</p>
       )}
     </div>
   );

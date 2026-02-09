@@ -10,6 +10,7 @@ import { MrHeader } from "../../types/mrHeader";
 
 type SubitForDeliveryButtonProps = {
   mrHeader: MrHeader;
+  lpoId?: number;
   disabled?: boolean;
   style?: React.CSSProperties;
   deliveryDate: string;
@@ -18,6 +19,7 @@ type SubitForDeliveryButtonProps = {
 
 export default function SubmitForDeliveryButton({
   mrHeader,
+  lpoId,
   disabled,
   style,
   deliveryDate,
@@ -32,17 +34,33 @@ export default function SubmitForDeliveryButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+    const apiUrl = lpoId
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`
+      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`;
+
+    const bodyData = lpoId
+      ? {
+          action: "submitLpoForDelivery",
+          lpo_id: lpoId,
+          mr_header_id: mrHeader.id,
+          changed_by: userInfo?.name,
+          department_id: mrHeader.department_id,
+          delivery_date: new Date(deliveryDate).toLocaleDateString("en-GB"),
+          payment_value: Number(paymentValue).toFixed(2),
+        }
+      : {
+          action: "submitForDelivery",
+          id: mrHeader.id,
+          changed_by: userInfo?.name,
+          department_id: mrHeader.department_id,
+          delivery_date: new Date(deliveryDate).toLocaleDateString("en-GB"),
+          payment_value: Number(paymentValue).toFixed(2),
+        };
+
+    const res = await fetch(apiUrl, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "submitForDelivery",
-        id: mrHeader.id,
-        changed_by: userInfo?.name,
-        department_id: mrHeader.department_id,
-        delivery_date: new Date(deliveryDate).toLocaleDateString("en-GB"),
-        payment_value: Number(paymentValue).toFixed(2),
-      }),
+      body: JSON.stringify(bodyData),
     });
 
     if (res.ok) {

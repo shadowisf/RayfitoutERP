@@ -9,6 +9,7 @@ import { useAuth } from "@/app/context/AuthContext";
 
 type SubitForPaymentButtonProps = {
   mrHeaderID: number;
+  lpoId?: number;
   style?: React.CSSProperties;
   disabled?: boolean;
   paymentValue: number;
@@ -16,6 +17,7 @@ type SubitForPaymentButtonProps = {
 
 export default function SubmitForPaymentButton({
   mrHeaderID,
+  lpoId,
   style,
   disabled,
   paymentValue,
@@ -29,15 +31,29 @@ export default function SubmitForPaymentButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+    const apiUrl = lpoId
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`
+      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`;
+
+    const bodyData = lpoId
+      ? {
+          action: "submitLpoForPayment",
+          lpo_id: lpoId,
+          mr_header_id: mrHeaderID,
+          changed_by: userInfo?.name,
+          payment_value: Number(paymentValue).toFixed(2),
+        }
+      : {
+          action: "submitForPayment",
+          id: mrHeaderID,
+          changed_by: userInfo?.name,
+          payment_value: Number(paymentValue).toFixed(2),
+        };
+
+    const res = await fetch(apiUrl, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "submitForPayment",
-        id: mrHeaderID,
-        changed_by: userInfo?.name,
-        payment_value: Number(paymentValue).toFixed(2),
-      }),
+      body: JSON.stringify(bodyData),
     });
 
     if (res.ok) {

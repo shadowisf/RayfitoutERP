@@ -9,12 +9,14 @@ import { useAuth } from "@/app/context/AuthContext";
 
 type SubmitForProcurementResolutionButtonProps = {
   mrHeaderID: number;
+  lpoId?: number;
   style?: React.CSSProperties;
   disabled?: boolean;
 };
 
 export default function SubmitForProcurementResolutionButton({
   mrHeaderID,
+  lpoId,
   style,
   disabled,
 }: SubmitForProcurementResolutionButtonProps) {
@@ -27,14 +29,27 @@ export default function SubmitForProcurementResolutionButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+    const apiUrl = lpoId
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`
+      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`;
+
+    const bodyData = lpoId
+      ? {
+          action: "submitLpoForProcurementResolution",
+          lpo_id: lpoId,
+          mr_header_id: mrHeaderID,
+          changed_by: userInfo?.name,
+        }
+      : {
+          action: "submitForProcurementResolution",
+          id: mrHeaderID,
+          changed_by: userInfo?.name,
+        };
+
+    const res = await fetch(apiUrl, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "submitForProcurementResolution",
-        id: mrHeaderID,
-        changed_by: userInfo?.name,
-      }),
+      body: JSON.stringify(bodyData),
     });
 
     if (res.ok) {
