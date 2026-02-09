@@ -3304,6 +3304,16 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     />
                   )}
 
+                {(userInfo?.departmentID === 8 ||
+                  userInfo?.departmentID === 9) &&
+                  mrHeader.progress_id === 13 && (
+                    <PaymentButtons
+                      mrHeader={mrHeader}
+                      mrLine={items[0]}
+                      supplierId={items[0].approved_supplier_id}
+                    />
+                  )}
+
                 {mrHeader.progress_id > 14 && (
                   <PaymentButtons
                     mrHeader={mrHeader}
