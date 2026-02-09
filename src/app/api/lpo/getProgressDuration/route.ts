@@ -1,0 +1,90 @@
+import { db } from "@/lib/db";
+import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { lpo_id, progress_id } = body;
+
+    if (!lpo_id || !progress_id) {
+      return NextResponse.json(
+        { error: "lpo_id and progress_id are required" },
+        { status: 400 },
+      );
+    }
+
+    const [rows]: any = await db.query(
+      `SELECT
+        pl.lpo_id,
+        pl.changed_at as stage_started,
+        COALESCE(
+          (SELECT changed_at
+           FROM mr_header_progress_log
+           WHERE lpo_id = pl.lpo_id
+           AND id > pl.id
+           ORDER BY id ASC
+           LIMIT 1
+          ),
+          NOW()
+        ) as stage_ended,
+        TIMESTAMPDIFF(
+          HOUR,
+          pl.changed_at,
+          COALESCE(
+            (SELECT changed_at
+             FROM mr_header_progress_log
+             WHERE lpo_id = pl.lpo_id
+             AND id > pl.id
+             ORDER BY id ASC
+             LIMIT 1
+            ),
+            NOW()
+          )
+        ) as hours_in_stage,
+        TIMESTAMPDIFF(
+          MINUTE,
+          pl.changed_at,
+          COALESCE(
+            (SELECT changed_at
+             FROM mr_header_progress_log
+             WHERE lpo_id = pl.lpo_id
+             AND id > pl.id
+             ORDER BY id ASC
+             LIMIT 1
+            ),
+            NOW()
+          )
+        ) as minutes_in_stage,
+        CASE
+          WHEN NOT EXISTS (
+            SELECT 1
+            FROM mr_header_progress_log
+            WHERE lpo_id = pl.lpo_id
+            AND id > pl.id
+          ) THEN true
+          ELSE false
+        END as is_current_stage
+      FROM mr_header_progress_log pl
+      WHERE pl.lpo_id = ?
+        AND pl.progress_id = ?
+      ORDER BY pl.changed_at DESC
+      LIMIT 1`,
+      [lpo_id, progress_id],
+    );
+
+    if (rows.length === 0) {
+      return NextResponse.json(
+        { error: "No record found for this LPO and stage" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(rows[0], { status: 200 });
+  } catch (err: any) {
+    console.error(err.sqlMessage || err.message);
+    return NextResponse.json(
+      { error: err.sqlMessage || err.message },
+      { status: 500 },
+    );
+  }
+}

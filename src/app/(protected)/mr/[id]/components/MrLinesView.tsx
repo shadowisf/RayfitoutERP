@@ -144,6 +144,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     };
   }>({});
 
+  // LPO per-supplier info for showing "View LPO" links at stage 12+
+  const [lpoPerSupplier, setLpoPerSupplier] = useState<{
+    [supplierId: number]: {
+      lpoId: number;
+      progressId: number;
+      progressName: string;
+    };
+  }>({});
+
   const canSeePrice =
     userInfo?.departmentID === 8 ||
     userInfo?.departmentID === 9 ||
@@ -278,6 +287,97 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     }
 
     fetchLpoPrices();
+  }, [mrLines, mrHeader.progress_id, mrHeader.id]);
+
+  // Fetch LPO IDs and progress per supplier for "View LPO" links
+  useEffect(() => {
+    async function fetchLpoPerSupplier() {
+      if (mrHeader.progress_id < 12) return;
+
+      const supplierLpoMap: {
+        [supplierId: number]: {
+          lpoId: number;
+          progressId: number;
+          progressName: string;
+        };
+      } = {};
+
+      try {
+        const uniqueSuppliers = new Map<number, string>();
+
+        for (const category in mrLines) {
+          for (const subCategory in mrLines[category]) {
+            for (const supplier in mrLines[category][subCategory]) {
+              const items = mrLines[category][subCategory][supplier];
+              if (items.length > 0) {
+                const supplierId = items[0].approved_supplier_id;
+                if (supplierId) {
+                  uniqueSuppliers.set(supplierId, supplier);
+                }
+              }
+            }
+          }
+        }
+
+        const fetchPromises = Array.from(uniqueSuppliers.keys()).map(
+          async (supplierId) => {
+            try {
+              const response = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    mr_header_id: mrHeader.id,
+                    supplier_id: supplierId,
+                  }),
+                },
+              );
+
+              if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.data && data.data.length > 0) {
+                  const lpo = data.data[0];
+
+                  // Fetch LPO progress name
+                  const lpoDetailRes = await fetch(
+                    `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOWithLines`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ lpo_id: lpo.id }),
+                    },
+                  );
+
+                  if (lpoDetailRes.ok) {
+                    const lpoDetail = await lpoDetailRes.json();
+                    if (lpoDetail.success && lpoDetail.data?.lpo) {
+                      supplierLpoMap[supplierId] = {
+                        lpoId: lpo.id,
+                        progressId: lpoDetail.data.lpo.progress_id,
+                        progressName: lpoDetail.data.lpo.progress_name || "",
+                      };
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error(
+                `Error fetching LPO for supplier ${supplierId}:`,
+                error,
+              );
+            }
+          },
+        );
+
+        await Promise.all(fetchPromises);
+        setLpoPerSupplier(supplierLpoMap);
+      } catch (error) {
+        console.error("Error fetching LPO per supplier:", error);
+      }
+    }
+
+    fetchLpoPerSupplier();
   }, [mrLines, mrHeader.progress_id, mrHeader.id]);
 
   // Regroup mrLines based on progress_id
@@ -3255,7 +3355,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         Object.entries(mrLinesBySupplier).map(([supplier, items], index) => (
           <div key={supplier} className="subcategory-section">
             <div className="subcategory-header">
-              <div style={{ display: "flex", gap: "10px" }}>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                 <h2
                   style={{
                     textTransform: "uppercase",
@@ -3281,6 +3381,62 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     style={{ width: "12px" }}
                   />
                 </SupplierDetailsPopUp>
+
+                {/* LPO Progress Badge + View LPO link */}
+                {mrHeader.progress_id >= 12 &&
+                  items[0]?.approved_supplier_id &&
+                  lpoPerSupplier[items[0].approved_supplier_id] && (() => {
+                    const lpoInfo = lpoPerSupplier[items[0].approved_supplier_id];
+                    const isLpoRejected = ["reject", "fail"].some((word) =>
+                      lpoInfo.progressName?.toLowerCase().includes(word),
+                    );
+                    const isLpoCompleted = lpoInfo.progressId === 25;
+                    const lpoProgressStyle = isLpoRejected
+                      ? {
+                          backgroundColor: "rgba(255, 181, 181, 1)",
+                          color: "rgba(248, 77, 77, 1)",
+                        }
+                      : isLpoCompleted
+                        ? {
+                            backgroundColor: "rgba(87, 244, 176, 1)",
+                            color: "rgba(31, 101, 71, 1)",
+                          }
+                        : {
+                            backgroundColor: "rgba(255, 250, 189, 1)",
+                            color: "rgba(134, 83, 47, 1)",
+                          };
+
+                    return (
+                      <>
+                        <span
+                          className="approval-pill normal-text"
+                          style={{
+                            ...lpoProgressStyle,
+                            textTransform: "uppercase",
+                            fontSize: "11px",
+                            padding: "4px 10px",
+                          }}
+                        >
+                          {lpoInfo.progressName}
+                        </span>
+                        <Button
+                          componentType="link"
+                          bgColor="black"
+                          borderColor="black"
+                          textColor="white"
+                          href={`/mr/${mrHeader.id}/lpo/${lpoInfo.lpoId}`}
+                          style={{
+                            padding: "5px 15px",
+                            borderRadius: "50px",
+                            fontSize: "11px",
+                            fontWeight: "600",
+                          }}
+                        >
+                          VIEW LPO &gt;
+                        </Button>
+                      </>
+                    );
+                  })()}
               </div>
 
               <div className="right">
@@ -3866,144 +4022,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         </div>
       )}
 
-      {/* Awaiting LPO & Invoice (Progress 12) - Procurement Submit for Payment */}
-      {userInfo?.departmentID === 9 &&
-        (mrHeader.progress_id === 12 ||
-          mrHeader.progress_id === 13 ||
-          mrHeader.progress_id === 16) && (
-          <div className="bottom-nav">
-            <div></div>
-            <SubmitForPaymentButton
-              paymentValue={totalInvoiceAmount}
-              mrHeaderID={mrHeader.id}
-              disabled={!allSuppliersHaveLpoWithInvoicesAndSignedFiles()}
-              style={{
-                opacity: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
-                  ? "0.5"
-                  : "1",
-                cursor: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
-                  ? "not-allowed"
-                  : "pointer",
-                pointerEvents: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
-                  ? "none"
-                  : "auto",
-              }}
-            />
-          </div>
-        )}
-
-      {/* Pending Payment (Progress 14) - Finance Submit for Delivery or Return to LPO */}
-      {userInfo?.departmentID === 10 && mrHeader.progress_id === 14 && (
-        <div className="bottom-nav">
-          <div></div>
-          {(() => {
-            // Check if any LPO has rejected payment status
-            const hasRejectedPayment = Object.values(lpoPaymentStatus).some(
-              (status) => status === "rejected",
-            );
-
-            // Check if all LPOs have approved payment status
-            const allPaymentsApproved = Object.values(lpoPaymentStatus).every(
-              (status) => status === "approved",
-            );
-
-            // If any payment is rejected, show LPO resubmission button
-            if (hasRejectedPayment) {
-              return (
-                <SubmitForLPOResubmissionButton mrHeaderID={mrHeader.id} />
-              );
-            } else {
-              // Show Submit for Delivery button, disabled if not all payments are approved
-              return (
-                <SubmitForDeliveryButton
-                  mrHeader={mrHeader}
-                  deliveryDate={mrHeader.delivery_date}
-                  paymentValue={totalInvoiceAmount}
-                  disabled={!allPaymentsApproved}
-                  style={{
-                    opacity: !allPaymentsApproved ? "0.5" : "1",
-                    cursor: !allPaymentsApproved ? "not-allowed" : "pointer",
-                    pointerEvents: !allPaymentsApproved ? "none" : "auto",
-                  }}
-                />
-              );
-            }
-          })()}
-        </div>
-      )}
-
-      {userInfo?.departmentID === 11 && mrHeader.progress_id === 17 && (
-        <div className="bottom-nav">
-          <div></div>
-          {!isCheckingGrnQuantity && allSuppliersHaveGrn() ? (
-            hasAnyGrnQuantityMismatch() ? (
-              <SubmitForLPOResubmissionGRNFailButton mrHeaderID={mrHeader.id} />
-            ) : (
-              /* <SubmitForQC mrHeaderID={mrHeader.id} /> */
-              // uncomment this when qc is ready
-              <SubmitForStockEntryButton mrHeaderID={mrHeader.id} />
-            )
-          ) : (
-            /* <SubmitForQC
-              mrHeaderID={mrHeader.id}
-              disabled={true}
-              style={{
-                opacity: "0.5",
-                cursor: "not-allowed",
-                pointerEvents: "none",
-              }}
-            /> */
-            // uncomment this when qc is ready
-
-            <SubmitForStockEntryButton
-              mrHeaderID={mrHeader.id}
-              disabled={true}
-              style={{
-                opacity: "0.5",
-                cursor: "not-allowed",
-                pointerEvents: "none",
-              }}
-            />
-          )}
-        </div>
-      )}
-
-      {/* Awaiting QC Check (Progress 21) - QC Submit for Stock Entry or Return for Resolution */}
-      {userInfo?.departmentID === 12 && mrHeader.progress_id === 21 && (
-        <div className="bottom-nav">
-          <div></div>
-          {!allItemsPassedQc() && !isCheckingQc && hasAllItemsCompletedQc() ? (
-            <SubmitForProcurementResolutionButton mrHeaderID={mrHeader.id} />
-          ) : (
-            <SubmitForStockEntryButton
-              mrHeaderID={mrHeader.id}
-              disabled={!allItemsPassedQc()}
-              style={{
-                opacity: !allItemsPassedQc() ? "0.5" : "1",
-                cursor: !allItemsPassedQc() ? "not-allowed" : "pointer",
-                pointerEvents: !allItemsPassedQc() ? "none" : "auto",
-              }}
-            />
-          )}
-        </div>
-      )}
-
-      {/* Awaiting Stock Entry (Progress 24) - Storekeeper Complete Material Request */}
-      {userInfo?.departmentID === 11 && mrHeader.progress_id === 24 && (
-        <div className="bottom-nav">
-          <div></div>
-          <CompleteMaterialRequestButton
-            mrHeader={mrHeader}
-            mrLineItems={mrLines}
-            disabled={!allItemsHaveStock()}
-            style={{
-              opacity: !allItemsHaveStock() ? "0.5" : "1",
-              cursor: !allItemsHaveStock() ? "not-allowed" : "pointer",
-              pointerEvents: !allItemsHaveStock() ? "none" : "auto",
-            }}
-          />
-        </div>
-      )}
+      {/*
+        LPO SEGREGATION NOTE:
+        Stages 12+ (LPO & Invoice, Pending Payments, Awaiting Delivery, QC, Stock Entry, etc.)
+        now operate per-LPO on the individual LPO detail page (/mr/[id]/lpo/[lpoId]).
+        The MR progress_id stays at 12 permanently once LPOs are issued.
+        Bottom nav action buttons for stages 12+ are handled per-LPO, not per-MR.
+        Use the "VIEW LPO" links in the vendor tab above to access each LPO's workflow.
+      */}
     </>
   );
 }

@@ -231,6 +231,197 @@ export async function PUT(req: Request) {
   `;
 
       await db.query(query, [Number(body.progress_id), Number(body.lpo_id)]);
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "submitLpoForPayment") {
+      await db.query(`UPDATE lpo SET progress_id = 14 WHERE id = ?`, [
+        Number(body.lpo_id),
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log
+         (mr_header_id, progress_id, changed_by, lpo_id)
+         VALUES (?, 14, ?, ?)`,
+        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          Number(body.mr_header_id),
+          10,
+          "Pending Payment",
+          `LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) is awaiting payment (AED ${body.payment_value})`,
+        ],
+      );
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "submitLpoForDelivery") {
+      await db.query(`UPDATE lpo SET progress_id = 17 WHERE id = ?`, [
+        Number(body.lpo_id),
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log
+         (mr_header_id, progress_id, changed_by, lpo_id)
+         VALUES (?, 17, ?, ?)`,
+        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          Number(body.mr_header_id),
+          10,
+          "Payment Successful",
+          `A payment (AED ${body.payment_value}) was made against LPO-${String(body.lpo_id).padStart(5, "0")}`,
+        ],
+      );
+
+      const deptIds = [8, 9, 11, 16];
+      if (body.department_id && !deptIds.includes(Number(body.department_id))) {
+        deptIds.push(Number(body.department_id));
+      }
+
+      for (const deptId of deptIds) {
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            Number(body.mr_header_id),
+            deptId,
+            "LPO Awaiting Delivery",
+            `LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) is awaiting delivery (ETA: ${body.delivery_date})`,
+          ],
+        );
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "submitLpoForLPOResubmission") {
+      await db.query(`UPDATE lpo SET progress_id = 13 WHERE id = ?`, [
+        Number(body.lpo_id),
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log
+         (mr_header_id, progress_id, changed_by, lpo_id)
+         VALUES (?, 13, ?, ?)`,
+        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          Number(body.mr_header_id),
+          9,
+          "Payment Rejected",
+          `Payment for LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) was rejected`,
+        ],
+      );
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "submitLpoForLPOResubmissionGRNFail") {
+      await db.query(`UPDATE lpo SET progress_id = 16 WHERE id = ?`, [
+        Number(body.lpo_id),
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log
+         (mr_header_id, progress_id, changed_by, lpo_id)
+         VALUES (?, 16, ?, ?)`,
+        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+      );
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "submitLpoForStockEntry") {
+      await db.query(`UPDATE lpo SET progress_id = 24 WHERE id = ?`, [
+        Number(body.lpo_id),
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log
+         (mr_header_id, progress_id, changed_by, lpo_id)
+         VALUES (?, 24, ?, ?)`,
+        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+      );
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "submitLpoForCompletion") {
+      await db.query(`UPDATE lpo SET progress_id = 25 WHERE id = ?`, [
+        Number(body.lpo_id),
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log
+         (mr_header_id, progress_id, changed_by, lpo_id)
+         VALUES (?, 25, ?, ?)`,
+        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          Number(body.mr_header_id),
+          Number(body.department_id),
+          "LPO Completed",
+          `LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) was fulfilled successfully`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          Number(body.mr_header_id),
+          9,
+          "LPO Completed",
+          `LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) was fulfilled successfully`,
+        ],
+      );
+
+      if (body.mr_line_items && Array.isArray(body.mr_line_items)) {
+        for (const item of body.mr_line_items) {
+          const stockDepts = [11, 8, 16];
+          for (const deptId of stockDepts) {
+            await db.query(
+              `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+              [
+                Number(body.mr_header_id),
+                deptId,
+                "Stock Added",
+                `${Number.isInteger(+item.quantity) ? +item.quantity : +item.quantity} ${item.unit} was added to ${item.material_description}`,
+              ],
+            );
+          }
+        }
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "submitLpoForProcurementResolution") {
+      await db.query(`UPDATE lpo SET progress_id = 23 WHERE id = ?`, [
+        Number(body.lpo_id),
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log
+         (mr_header_id, progress_id, changed_by, lpo_id)
+         VALUES (?, 23, ?, ?)`,
+        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+      );
+
+      return NextResponse.json({ success: true });
     }
   } catch (err: any) {
     console.error("SQL Error:", err.sqlMessage);

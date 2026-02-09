@@ -20,6 +20,7 @@ type GroupedMrLines = {
 type CompleteMaterialRequestButtonProps = {
   mrHeader: MrHeader;
   mrLineItems: GroupedMrLines; // ✅ Add this prop to pass MR line items
+  lpoId?: number;
   style?: React.CSSProperties;
   disabled?: boolean;
 };
@@ -27,6 +28,7 @@ type CompleteMaterialRequestButtonProps = {
 export default function CompleteMaterialRequestButton({
   mrHeader,
   mrLineItems, // ✅ Add this
+  lpoId,
   style,
   disabled,
 }: CompleteMaterialRequestButtonProps) {
@@ -50,16 +52,31 @@ export default function CompleteMaterialRequestButton({
       }
     }
 
-    const res = await fetch(`/api/mr`, {
+    const apiUrl = lpoId
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`
+      : `/api/mr`;
+
+    const bodyData = lpoId
+      ? {
+          action: "submitLpoForCompletion",
+          lpo_id: lpoId,
+          mr_header_id: mrHeader.id,
+          changed_by: userInfo?.name,
+          department_id: mrHeader.department_id,
+          mr_line_items: flattenedItems,
+        }
+      : {
+          action: "submitForCompletion",
+          id: mrHeader.id,
+          changed_by: userInfo?.name,
+          department_id: mrHeader.department_id,
+          mr_line_items: flattenedItems, // ✅ Pass all MR line items
+        };
+
+    const res = await fetch(apiUrl, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "submitForCompletion",
-        id: mrHeader.id,
-        changed_by: userInfo?.name,
-        department_id: mrHeader.department_id,
-        mr_line_items: flattenedItems, // ✅ Pass all MR line items
-      }),
+      body: JSON.stringify(bodyData),
     });
 
     if (res.ok) {

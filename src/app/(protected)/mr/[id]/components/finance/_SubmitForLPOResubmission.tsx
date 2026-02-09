@@ -9,12 +9,14 @@ import { useAuth } from "@/app/context/AuthContext";
 
 type SubitForLPOResubmissionButtonProps = {
   mrHeaderID: number;
+  lpoId?: number;
   style?: React.CSSProperties;
   disabled?: boolean;
 };
 
 export default function SubmitForLPOResubmissionButton({
   mrHeaderID,
+  lpoId,
   style,
   disabled,
 }: SubitForLPOResubmissionButtonProps) {
@@ -27,14 +29,27 @@ export default function SubmitForLPOResubmissionButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+    const apiUrl = lpoId
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`
+      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`;
+
+    const bodyData = lpoId
+      ? {
+          action: "submitLpoForLPOResubmission",
+          lpo_id: lpoId,
+          mr_header_id: mrHeaderID,
+          changed_by: userInfo?.name,
+        }
+      : {
+          action: "submitForLPOResubmission",
+          id: mrHeaderID,
+          changed_by: userInfo?.name,
+        };
+
+    const res = await fetch(apiUrl, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "submitForLPOResubmission",
-        id: mrHeaderID,
-        changed_by: userInfo?.name,
-      }),
+      body: JSON.stringify(bodyData),
     });
 
     if (res.ok) {
