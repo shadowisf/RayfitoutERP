@@ -2242,7 +2242,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                 (userInfo?.departmentID ===
                                                   mrHeader.department_id ||
                                                   userInfo?.departmentID ===
-                                                    16) && (
+                                                    16 ||
+                                                  userInfo?.departmentID ===
+                                                    8) && (
                                                   <QSInitialApprovalButtons
                                                     item={item}
                                                     progressID={
@@ -2874,8 +2876,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             mrHeader.progress_id === 2) &&
                                             (userInfo?.departmentID ===
                                               mrHeader.department_id ||
-                                              userInfo?.departmentID ===
-                                                16) && (
+                                              userInfo?.departmentID === 16 ||
+                                              userInfo?.departmentID === 8) && (
                                               <QSInitialApprovalButtons
                                                 item={item}
                                                 progressID={
