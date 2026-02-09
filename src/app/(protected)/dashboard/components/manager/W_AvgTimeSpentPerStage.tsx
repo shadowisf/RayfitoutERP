@@ -163,10 +163,6 @@ export default function AvgTimeSpentPerStageWidget() {
     return `${m} min`;
   };
 
-  const formatStageName = (stage: string) => {
-    return stage.replace(/manager/gi, "mgr.");
-  };
-
   return (
     <div
       style={{
@@ -231,7 +227,7 @@ export default function AvgTimeSpentPerStageWidget() {
               >
                 {/* Stage name */}
                 <div style={{ minWidth: "200px", fontSize: "14px" }}>
-                  {formatStageName(item.stage)}
+                  {item.stage}
                 </div>
 
                 {/* Bar */}

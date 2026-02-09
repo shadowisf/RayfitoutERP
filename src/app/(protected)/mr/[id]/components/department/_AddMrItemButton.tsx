@@ -491,6 +491,7 @@ export default function AddMrItemButton({
                 "BOX",
                 "BAG",
                 "ROLL",
+                "DRUM",
               ]}
             />
           </div>

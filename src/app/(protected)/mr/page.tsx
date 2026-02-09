@@ -227,6 +227,9 @@ export default function MR() {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
+    // Managers (dept 8) can view all MRs
+    if (userDeptId === 8) return true;
+
     if (mr.progress_id === 1) {
       return mr.department_id === userDeptId;
     }
@@ -234,8 +237,6 @@ export default function MR() {
     if ([5, 25].includes(mr.progress_id)) {
       return mr.department_id === userDeptId;
     }
-
-    if (userDeptId === 8) return true;
 
     if ([11, 15, 16].includes(mr.progress_id)) {
       return userDeptId === 9;

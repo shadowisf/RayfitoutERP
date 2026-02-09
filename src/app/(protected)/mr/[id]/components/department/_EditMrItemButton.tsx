@@ -484,6 +484,7 @@ export default function EditMrItemButton({
                 "BOX",
                 "BAG",
                 "ROLL",
+                "DRUM",
               ]}
             />
           </div>
