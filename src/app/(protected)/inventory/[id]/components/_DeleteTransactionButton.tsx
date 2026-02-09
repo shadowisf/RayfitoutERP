@@ -7,9 +7,14 @@ import { useState } from "react";
 type props = {
   transferID: number;
   type?: string;
+  onSuccess?: () => void;
 };
 
-export default function DeleteTransactionButton({ transferID, type }: props) {
+export default function DeleteTransactionButton({
+  transferID,
+  type,
+  onSuccess,
+}: props) {
   const trashIcon = "/icons/trash.svg";
 
   const router = useRouter();
@@ -31,6 +36,7 @@ export default function DeleteTransactionButton({ transferID, type }: props) {
 
       if (res.ok) {
         setIsOpen(false);
+        onSuccess && onSuccess();
         toast("Transaction deleted", "success");
         router.refresh();
       }

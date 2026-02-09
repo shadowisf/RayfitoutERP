@@ -138,19 +138,22 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   tableColPackageNo: {
-    width: "17%",
+    width: "20%",
   },
   tableColMarkAndNumbers: {
     width: "25%",
   },
   tableColDescription: {
-    width: "35%",
+    width: "25%",
   },
   tableColQuantity: {
     width: "20%",
   },
   tableColSerial: {
     width: "20%",
+  },
+  tableColDimensions: {
+    width: "30%",
   },
 
   // Attachment Image Styles
@@ -330,6 +333,7 @@ export function PlPdf({ transaction }: props) {
             <Text style={styles.tableColDescription}>ITEM</Text>
             <Text style={styles.tableColQuantity}>QUANTITY</Text>
             <Text style={styles.tableColDescription}>SPECIFICATION</Text>
+            <Text style={styles.tableColDimensions}>DIMENSIONS (LxWxH cm)</Text>
           </View>
 
           {/* Map through all items */}
@@ -351,6 +355,9 @@ export function PlPdf({ transaction }: props) {
                 </Text>
                 <Text style={styles.tableColDescription}>
                   {item.specification}
+                </Text>
+                <Text style={styles.tableColDimensions}>
+                  {item.length} x {item.width} x {item.height}
                 </Text>
               </View>
             ))

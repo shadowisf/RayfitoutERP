@@ -9,9 +9,13 @@ import { InventoryItem } from "../../types/inventoryItem";
 
 type props = {
   inventoryItem: InventoryItem;
+  onSuccess?: () => void;
 };
 
-export default function ArchiveInventoryItemButton({ inventoryItem }: props) {
+export default function ArchiveInventoryItemButton({
+  inventoryItem,
+  onSuccess,
+}: props) {
   const router = useRouter();
 
   const trashIcon = "/icons/trash.svg";
@@ -36,6 +40,8 @@ export default function ArchiveInventoryItemButton({ inventoryItem }: props) {
     if (res.ok) {
       toast("Inventory item archived", "success");
       setIsOpen(false);
+
+      onSuccess && onSuccess();
 
       router.replace("/inventory");
       router.refresh();

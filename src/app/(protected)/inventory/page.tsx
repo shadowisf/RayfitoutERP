@@ -8,10 +8,9 @@ import EditInventoryItemButton from "./components/_EditInventoryItemButton";
 import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStocksButton";
 import TransactionDetailsPopUpButton from "./[id]/components/_IssueDetailsPopUpButton";
 import InventoryFilterButton from "./[id]/components/_InventoryFilterButton";
-import DeleteTransferButton from "./components/_DeleteTransferButton";
-import DeleteInventoryItemButton from "./[id]/components/_DeleteInventoryItemButton";
 import StockLocationHoverPopup from "./components/_StockLocationHoverPopup";
-import { BucketLocationConstraint } from "@aws-sdk/client-s3";
+import ArchiveInventoryItemButton from "./[id]/components/_ArchiveInventoryItemButton";
+import DeleteTransactionButton from "./[id]/components/_DeleteTransactionButton";
 
 export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
@@ -1530,7 +1529,7 @@ export default function Inventory() {
                               <EditInventoryItemButton inventoryItem={item} />
 
                               {!isLoadingQuantities && availableQty === 0 && (
-                                <DeleteInventoryItemButton
+                                <ArchiveInventoryItemButton
                                   inventoryItem={item}
                                 />
                               )}
@@ -1701,8 +1700,8 @@ export default function Inventory() {
                           </div>
                         </td>
                         <td>
-                          <DeleteTransferButton
-                            transaction={transaction}
+                          <DeleteTransactionButton
+                            transferID={transaction.id}
                             onSuccess={() => fetchAllTransactions()}
                           />
                         </td>
