@@ -151,7 +151,7 @@ export default function EditInventoryItemButton({
       setDescription(data.description || "");
       setType(data.type || "");
       setUnit(data.unit || "");
-      setStockable(data.stockable);
+      setStockable(data.stockable === true);
       setMinimumStockQuantity(data.minimum_stock_quantity?.toString() || "");
       setBrand(data.brand || "");
       setCountryOfOrigin(data.country_of_origin || "");

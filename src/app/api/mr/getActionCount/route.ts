@@ -1,6 +1,15 @@
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 
+// Helper: count LPOs at given progress stages (uses lpo.progress_id directly)
+async function countLposAtStages(stages: number[]): Promise<number> {
+  const [rows] = await db.query(
+    `SELECT COUNT(*) as count FROM lpo WHERE progress_id IN (?)`,
+    [stages],
+  );
+  return Number((rows as any)[0].count);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { department_id } = await req.json();
@@ -22,81 +31,126 @@ export async function POST(req: NextRequest) {
       12: 9, // Awaiting LPO & invoice → Procurement
       14: 10, // Pending payment → Finance
       13: 9, // Payment rejected → Procurement
+      15: 9, // Payment rejected → Procurement
+      16: 9, // GRN failed → Procurement
       17: 11, // Pending delivery → Storekeeper
+      21: 12, // QC Check → Quality Control
+      23: 12, // Failed QC → Quality Control
       24: 11, // Awaiting stock entry → Storekeeper
     };
+
+    // LPO stages (12+) need to be counted from the lpo table, not mr_headers
+    const LPO_STAGES = [12, 13, 14, 15, 16, 17, 21, 23, 24, 25];
 
     let count = 0;
 
     if (department_id === 8) {
-      // ✅ Managers: Count MRs in stages 3, 10, and 5 (initial approval rejected - all departments)
-      const [rows] = await db.query(
-        `SELECT COUNT(*) as count 
+      // Managers: Count MRs in stages 3, 10 + rejected (5) for managers
+      const [mrRows] = await db.query(
+        `SELECT COUNT(*) as count
          FROM mr_headers
          WHERE progress_id IN (3, 10) OR (progress_id = 5 AND department_id = 8)`,
       );
-      count = Number((rows as any)[0].count);
+      count = Number((mrRows as any)[0].count);
     } else if (department_id === 9) {
-      // ✅ Procurement: Count stages 7, 11, 12, 13, 15 + own department's progress_id 5
-      const [rows] = await db.query(
-        `SELECT COUNT(*) as count 
+      // Procurement: MR stages 7, 11 + rejected (5)
+      // + LPO stages 12, 13, 15, 16
+      const [mrRows] = await db.query(
+        `SELECT COUNT(*) as count
          FROM mr_headers
-         WHERE progress_id IN (7, 11, 12, 13, 15) 
+         WHERE progress_id IN (7, 11)
             OR (progress_id = 5 AND department_id = 9)`,
       );
-      count = Number((rows as any)[0].count);
+      const mrCount = Number((mrRows as any)[0].count);
+      const lpoCount = await countLposAtStages([12, 13, 15, 16]);
+      count = mrCount + lpoCount;
     } else if (department_id === 16) {
-      // ✅ QS: Count stages 2, 9 + own department's progress_id 5
+      // QS: Count stages 2, 9 + own department's progress_id 5
       const [rows] = await db.query(
-        `SELECT COUNT(*) as count 
-         FROM mr_headers 
+        `SELECT COUNT(*) as count
+         FROM mr_headers
          WHERE progress_id IN (2, 9)
             OR (progress_id = 5 AND department_id = 16)`,
       );
       count = Number((rows as any)[0].count);
     } else if (department_id === 10) {
-      // ✅ Finance: Count stage 14 + own department's progress_id 5
-      const [rows] = await db.query(
-        `SELECT COUNT(*) as count 
-         FROM mr_headers 
-         WHERE progress_id = 14
-            OR (progress_id = 5 AND department_id = 10)`,
+      // Finance: LPO stage 14 + own department's rejected (5)
+      const [mrRows] = await db.query(
+        `SELECT COUNT(*) as count
+         FROM mr_headers
+         WHERE progress_id = 5 AND department_id = 10`,
       );
-      count = Number((rows as any)[0].count);
+      const mrCount = Number((mrRows as any)[0].count);
+      const lpoCount = await countLposAtStages([14]);
+      count = mrCount + lpoCount;
     } else if (department_id === 11) {
-      // ✅ Storekeeper: Count stages 17, 24 + own department's progress_id 5
-      const [rows] = await db.query(
-        `SELECT COUNT(*) as count 
-         FROM mr_headers 
-         WHERE progress_id IN (17, 24)
-            OR (progress_id = 5 AND department_id = 11)`,
+      // Storekeeper: LPO stages 17, 24 + own department's rejected (5)
+      const [mrRows] = await db.query(
+        `SELECT COUNT(*) as count
+         FROM mr_headers
+         WHERE progress_id = 5 AND department_id = 11`,
       );
-      count = Number((rows as any)[0].count);
+      const mrCount = Number((mrRows as any)[0].count);
+      const lpoCount = await countLposAtStages([17, 24]);
+      count = mrCount + lpoCount;
+    } else if (department_id === 12) {
+      // Quality Control: LPO stages 21, 23 + own department's rejected (5)
+      const [mrRows] = await db.query(
+        `SELECT COUNT(*) as count
+         FROM mr_headers
+         WHERE progress_id = 5 AND department_id = 12`,
+      );
+      const mrCount = Number((mrRows as any)[0].count);
+      const lpoCount = await countLposAtStages([21, 23]);
+      count = mrCount + lpoCount;
     } else {
-      // ✅ Other departments: Count responsible stages + own department's progress_id 5
-      const responsibleStages = Object.entries(progressToResponsibleDepartment)
-        .filter(([_, deptId]) => deptId === department_id)
+      // Other departments: Count responsible MR stages + LPO stages + own department's progress_id 5
+      const responsibleMrStages = Object.entries(
+        progressToResponsibleDepartment,
+      )
+        .filter(
+          ([progressId, deptId]) =>
+            deptId === department_id &&
+            !LPO_STAGES.includes(Number(progressId)),
+        )
         .map(([progressId]) => parseInt(progressId));
 
-      if (responsibleStages.length > 0) {
+      const responsibleLpoStages = Object.entries(
+        progressToResponsibleDepartment,
+      )
+        .filter(
+          ([progressId, deptId]) =>
+            deptId === department_id &&
+            LPO_STAGES.includes(Number(progressId)),
+        )
+        .map(([progressId]) => parseInt(progressId));
+
+      let mrCount = 0;
+      if (responsibleMrStages.length > 0) {
         const [rows] = await db.query(
-          `SELECT COUNT(*) as count 
-           FROM mr_headers 
+          `SELECT COUNT(*) as count
+           FROM mr_headers
            WHERE progress_id IN (?)
               OR (progress_id = 5 AND department_id = ?)`,
-          [responsibleStages, department_id],
+          [responsibleMrStages, department_id],
         );
-        count = Number((rows as any)[0].count);
+        mrCount = Number((rows as any)[0].count);
       } else {
-        // If no responsible stages, only count own department's progress_id 5
         const [rows] = await db.query(
-          `SELECT COUNT(*) as count 
-           FROM mr_headers 
+          `SELECT COUNT(*) as count
+           FROM mr_headers
            WHERE progress_id = 5 AND department_id = ?`,
           [department_id],
         );
-        count = Number((rows as any)[0].count);
+        mrCount = Number((rows as any)[0].count);
       }
+
+      let lpoCount = 0;
+      if (responsibleLpoStages.length > 0) {
+        lpoCount = await countLposAtStages(responsibleLpoStages);
+      }
+
+      count = mrCount + lpoCount;
     }
 
     return NextResponse.json({

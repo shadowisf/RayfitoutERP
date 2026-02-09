@@ -36,6 +36,7 @@ type LpoLinesViewProps = {
   lpo: any; // LPO data from getLPOWithLines
   flatLines: any[];
   mrHeader: MrHeader;
+  refreshKey?: number; // Changes on every server re-render to force useEffect re-runs
 };
 
 export default function LpoLinesView({
@@ -43,6 +44,7 @@ export default function LpoLinesView({
   lpo,
   flatLines,
   mrHeader,
+  refreshKey,
 }: LpoLinesViewProps) {
   const { userInfo } = useAuth();
 
@@ -87,7 +89,12 @@ export default function LpoLinesView({
     hasInvoice: boolean;
     hasSignedFile: boolean;
     supplierType: string;
-  }>({ hasLpo: false, hasInvoice: false, hasSignedFile: false, supplierType: "" });
+  }>({
+    hasLpo: false,
+    hasInvoice: false,
+    hasSignedFile: false,
+    supplierType: "",
+  });
   const [isCheckingLpoInvoices, setIsCheckingLpoInvoices] =
     useState<boolean>(true);
 
@@ -199,7 +206,7 @@ export default function LpoLinesView({
     }
 
     checkLpoInvoices();
-  }, [progressId, lpoId]);
+  }, [progressId, lpoId, refreshKey]);
 
   // Check payment status
   useEffect(() => {
@@ -243,7 +250,7 @@ export default function LpoLinesView({
     }
 
     checkPaymentStatus();
-  }, [progressId, lpoId]);
+  }, [progressId, lpoId, refreshKey]);
 
   // Check GRN status
   useEffect(() => {
@@ -277,7 +284,7 @@ export default function LpoLinesView({
     }
 
     checkGrnStatus();
-  }, [progressId, lpoId]);
+  }, [progressId, lpoId, refreshKey]);
 
   // Check GRN quantity mismatch
   useEffect(() => {
@@ -357,7 +364,7 @@ export default function LpoLinesView({
     }
 
     checkGrnQuantityMismatch();
-  }, [progressId, lpoId, allItems.length]);
+  }, [progressId, lpoId, allItems.length, refreshKey]);
 
   // Check QC statuses
   useEffect(() => {
@@ -385,10 +392,7 @@ export default function LpoLinesView({
         if (lpoDetailsResponse.ok) {
           const lpoDetailsData = await lpoDetailsResponse.json();
 
-          if (
-            lpoDetailsData.success &&
-            lpoDetailsData.data?.lpo_mr_lines
-          ) {
+          if (lpoDetailsData.success && lpoDetailsData.data?.lpo_mr_lines) {
             const checkPromises = allItems.map(async (item) => {
               try {
                 const lpoLine = lpoDetailsData.data.lpo_mr_lines.find(
@@ -437,7 +441,7 @@ export default function LpoLinesView({
     }
 
     checkQcStatuses();
-  }, [progressId, lpoId, allItems.length]);
+  }, [progressId, lpoId, allItems.length, refreshKey]);
 
   // Check inventory/stock statuses
   useEffect(() => {
@@ -465,10 +469,7 @@ export default function LpoLinesView({
             const data = await response.json();
             statusMap[item.id] = !!(data.success && data.data);
           } catch (error) {
-            console.error(
-              `Error checking stock for item ${item.id}:`,
-              error,
-            );
+            console.error(`Error checking stock for item ${item.id}:`, error);
             statusMap[item.id] = false;
           }
         });
@@ -483,7 +484,7 @@ export default function LpoLinesView({
     }
 
     checkStockStatuses();
-  }, [progressId, lpoId, allItems.length]);
+  }, [progressId, lpoId, allItems.length, refreshKey]);
 
   // Helper functions
   function allItemsPassedQc(): boolean {
@@ -524,9 +525,7 @@ export default function LpoLinesView({
   function calculateItemsTotal(items: MrLine[]): number {
     let total = 0;
     items.forEach((item: MrLine) => {
-      const flatLine = flatLines.find(
-        (fl: any) => fl.id === item.id,
-      );
+      const flatLine = flatLines.find((fl: any) => fl.id === item.id);
       if (flatLine) {
         const unitPrice = Number(flatLine.lpo_unit_price) || 0;
         const quantity = Number(item.quantity) || 0;
@@ -588,8 +587,7 @@ export default function LpoLinesView({
               <IssueLPOButton mrHeader={lpoAsMrHeader} mrLines={allItems} />
             )}
 
-            {(userInfo?.departmentID === 10 ||
-              userInfo?.departmentID === 11) &&
+            {(userInfo?.departmentID === 10 || userInfo?.departmentID === 11) &&
               (progressId === 13 || progressId === 14) && (
                 <PaymentButtons
                   mrHeader={lpoAsMrHeader}
@@ -598,8 +596,7 @@ export default function LpoLinesView({
                 />
               )}
 
-            {(userInfo?.departmentID === 8 ||
-              userInfo?.departmentID === 9) &&
+            {(userInfo?.departmentID === 8 || userInfo?.departmentID === 9) &&
               progressId === 13 && (
                 <PaymentButtons
                   mrHeader={lpoAsMrHeader}
@@ -636,7 +633,6 @@ export default function LpoLinesView({
         </div>
 
         <br />
-        <br />
 
         <table className="items-table">
           <thead>
@@ -664,9 +660,7 @@ export default function LpoLinesView({
           </thead>
           <tbody>
             {allItems.map((item: MrLine, itemIndex: number) => {
-              const flatLine = flatLines.find(
-                (fl: any) => fl.id === item.id,
-              );
+              const flatLine = flatLines.find((fl: any) => fl.id === item.id);
               const unitPrice = flatLine
                 ? Number(flatLine.lpo_unit_price) || 0
                 : Number(item.approved_unit_price) || 0;
@@ -727,20 +721,13 @@ export default function LpoLinesView({
                     )}
                   </td>
 
-                  {canSeePrice && (
-                    <td>AED {unitPrice.toFixed(2)}</td>
-                  )}
+                  {canSeePrice && <td>AED {unitPrice.toFixed(2)}</td>}
 
-                  {canSeePrice && (
-                    <td>AED {totalPrice.toFixed(2)}</td>
-                  )}
+                  {canSeePrice && <td>AED {totalPrice.toFixed(2)}</td>}
 
                   {userInfo?.departmentID === 12 && progressId === 21 && (
                     <td>
-                      <QCCheckListButton
-                        item={item}
-                        mrHeader={lpoAsMrHeader}
-                      />
+                      <QCCheckListButton item={item} mrHeader={lpoAsMrHeader} />
                     </td>
                   )}
 
@@ -752,10 +739,7 @@ export default function LpoLinesView({
 
                   {progressId === 23 && userInfo?.departmentID === 9 && (
                     <td>
-                      <ResolutionButton
-                        mrHeader={lpoAsMrHeader}
-                        item={item}
-                      />
+                      <ResolutionButton mrHeader={lpoAsMrHeader} item={item} />
                     </td>
                   )}
                 </tr>

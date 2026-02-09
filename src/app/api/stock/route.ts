@@ -205,8 +205,8 @@ export async function POST(request: NextRequest) {
         // ✅ Removed boq_line_id from header
         const insertTransferQuery = `
       INSERT INTO stocks_transfer_issue 
-      (project_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved, packing_list_required) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (project_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved, packing_list_required, container_number) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
         const [transferResult] = await db.query<any>(insertTransferQuery, [
@@ -219,6 +219,7 @@ export async function POST(request: NextRequest) {
           body.receiver_name,
           body.third_party_involved,
           body.packing_list_required,
+          body.container_number,
         ]);
 
         const transferId = transferResult.insertId;
@@ -226,8 +227,8 @@ export async function POST(request: NextRequest) {
         // ✅ Insert into inventory item junction table WITH attachment for this specific item
         const insertJunctionQuery = `
       INSERT INTO jt_stocks_transfer_issue_inventory_item 
-      (stocks_transfer_issue_id, inventory_item_id, quantity, serial_number, attachment) 
-      VALUES (?, ?, ?, ?, ?)
+      (stocks_transfer_issue_id, inventory_item_id, quantity, serial_number, attachment, length, width, height) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
         await db.query(insertJunctionQuery, [
@@ -236,6 +237,9 @@ export async function POST(request: NextRequest) {
           body.quantity,
           body.serial_number || null,
           body.attachment || null,
+          body.length,
+          body.width,
+          body.height,
         ]);
 
         // ✅ Insert BOQ associations into junction table
@@ -309,8 +313,8 @@ export async function POST(request: NextRequest) {
         // ✅ Insert the transfer header WITHOUT boq_line_id and attachments
         const insertTransferQuery = `
       INSERT INTO stocks_transfer_issue 
-      (project_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved, packing_list_required) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (project_id, transferee, type, from_location, to_location, purpose, receiver_name, third_party_involved, packing_list_required, container_number) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
         const [transferResult] = await db.query<any>(insertTransferQuery, [
@@ -323,6 +327,7 @@ export async function POST(request: NextRequest) {
           body.receiver_name,
           body.third_party_involved,
           body.packing_list_required,
+          body.container_number,
         ]);
 
         const transferId = transferResult.insertId;
@@ -331,8 +336,8 @@ export async function POST(request: NextRequest) {
         for (const item of body.items) {
           const insertJunctionQuery = `
         INSERT INTO jt_stocks_transfer_issue_inventory_item 
-        (stocks_transfer_issue_id, inventory_item_id, quantity, serial_number, attachment) 
-        VALUES (?, ?, ?, ?, ?)
+        (stocks_transfer_issue_id, inventory_item_id, quantity, serial_number, attachment, length, width, height) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
           await db.query(insertJunctionQuery, [
@@ -341,6 +346,9 @@ export async function POST(request: NextRequest) {
             item.quantity,
             item.serial_number || null,
             item.attachment ? JSON.stringify([item.attachment]) : null,
+            item.length,
+            item.width,
+            item.height,
           ]);
         }
 

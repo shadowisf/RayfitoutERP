@@ -352,29 +352,6 @@ export default function MR() {
     24: 11,
   };
 
-  const canViewMR = (mr: MrHeader) => {
-    const userDeptId = userInfo?.departmentID;
-    if (!userDeptId) return false;
-
-    // Managers (dept 8) can view all MRs
-    if (userDeptId === 8) return true;
-
-    if (mr.progress_id === 1) {
-      return mr.department_id === userDeptId;
-    }
-
-    if ([5, 25].includes(mr.progress_id)) {
-      return mr.department_id === userDeptId;
-    }
-
-    if ([11, 15, 16].includes(mr.progress_id)) {
-      return userDeptId === 9;
-    }
-
-    const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
-    return responsibleDept === userDeptId;
-  };
-
   const getResponsibleDepartment = (status: string) => {
     const departmentMap: { [key: string]: { name: string; id: number } } = {
       Draft: { name: "", id: 0 },
@@ -508,7 +485,7 @@ export default function MR() {
       statuses: [
         { name: "Request Rejected", progress_id: 5 },
         { name: "Price Approval Rejected", progress_id: 11 },
-        { name: "Payment Rejected", progress_id: 15 },
+        { name: "Payment Rejected", progress_id: 13 },
         { name: "GRN Failed", progress_id: 16 },
         { name: "Failed QC", progress_id: 23 },
       ],
@@ -527,11 +504,35 @@ export default function MR() {
       return lpoCard.department_id === userDeptId;
     }
 
-    if ([11, 15, 16].includes(lpoCard.progress_id)) {
+    if ([11, 13, 16].includes(lpoCard.progress_id)) {
       return userDeptId === 9;
     }
 
-    const responsibleDept = progressToResponsibleDepartment[lpoCard.progress_id];
+    const responsibleDept =
+      progressToResponsibleDepartment[lpoCard.progress_id];
+    return responsibleDept === userDeptId;
+  };
+
+  const canViewMR = (mr: MrHeader) => {
+    const userDeptId = userInfo?.departmentID;
+    if (!userDeptId) return false;
+
+    // Managers (dept 8) can view all MRs
+    if (userDeptId === 8) return true;
+
+    if (mr.progress_id === 1) {
+      return mr.department_id === userDeptId;
+    }
+
+    if ([5, 25].includes(mr.progress_id)) {
+      return mr.department_id === userDeptId;
+    }
+
+    if ([11, 13, 16].includes(mr.progress_id)) {
+      return userDeptId === 9;
+    }
+
+    const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
     return responsibleDept === userDeptId;
   };
 
@@ -570,7 +571,9 @@ export default function MR() {
 
     if (filters.selectedProjects.length > 0) {
       filtered = filtered.filter((lpoCard) =>
-        filters.selectedProjects.includes(lpoCard.project_id || lpoCard.mr_project_id),
+        filters.selectedProjects.includes(
+          lpoCard.project_id || lpoCard.mr_project_id,
+        ),
       );
     }
 
@@ -697,7 +700,8 @@ export default function MR() {
       if ([25].includes(status.progress_id)) {
         return lpos.some((l: any) => l.department_id === userDeptId);
       }
-      const responsibleDept = progressToResponsibleDepartment[status.progress_id];
+      const responsibleDept =
+        progressToResponsibleDepartment[status.progress_id];
       return responsibleDept === userDeptId;
     }
 
@@ -972,9 +976,12 @@ export default function MR() {
             )
               return sum;
             const useLpo = LPO_STAGE_IDS.includes(status.progress_id);
-            return sum + (useLpo
-              ? (groupedLPOs[status.name]?.length || 0)
-              : (groupedMRs[status.name]?.length || 0));
+            return (
+              sum +
+              (useLpo
+                ? groupedLPOs[status.name]?.length || 0
+                : groupedMRs[status.name]?.length || 0)
+            );
           }, 0);
 
           return (
@@ -1013,9 +1020,13 @@ export default function MR() {
                   if (filterRelevant && !shouldShowStatusWhenFiltering(status))
                     return null;
 
-                  const useLpoCards = LPO_STAGE_IDS.includes(status.progress_id);
-                  const mrs = useLpoCards ? [] : (groupedMRs[status.name] || []);
-                  const lpos = useLpoCards ? (groupedLPOs[status.name] || []) : [];
+                  const useLpoCards = LPO_STAGE_IDS.includes(
+                    status.progress_id,
+                  );
+                  const mrs = useLpoCards ? [] : groupedMRs[status.name] || [];
+                  const lpos = useLpoCards
+                    ? groupedLPOs[status.name] || []
+                    : [];
                   const cardCount = useLpoCards ? lpos.length : mrs.length;
                   const dept = getResponsibleDepartment(status.name);
                   const deptStyle = getDepartmentStyle(dept.id);
@@ -1147,75 +1158,87 @@ export default function MR() {
                                     }}
                                   >
                                     <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "flex-end",
-                                        gap: "10px",
-                                      }}
+                                      style={{ display: "flex", gap: "10px" }}
                                     >
                                       <div>
-                                        <small>LPO NUMBER</small>
+                                        <small>MR NUMBER</small>
                                         <h3>
-                                          LPO-{String(lpoCard.id).padStart(5, "0")}
+                                          MR-
+                                          {String(
+                                            lpoCard.mr_header_id,
+                                          ).padStart(5, "0")}
                                         </h3>
                                       </div>
 
-                                      {lpoCard.progress_id !== 25 && lpoCard.delivery_date && (
-                                        <div
-                                          style={{
-                                            ...getDaysLeftStyle(lpoCard.delivery_date),
-                                            padding: "4px 10px",
-                                            borderRadius: "50px",
-                                            fontSize: "11px",
-                                            fontWeight: "600",
-                                            whiteSpace: "nowrap",
-                                          }}
-                                        >
-                                          {getDaysLeftText(lpoCard.delivery_date)}
-                                        </div>
-                                      )}
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "flex-end",
+                                          gap: "10px",
+                                        }}
+                                      >
+                                        {lpoCard.progress_id !== 25 &&
+                                          lpoCard.delivery_date && (
+                                            <div
+                                              style={{
+                                                ...getDaysLeftStyle(
+                                                  lpoCard.delivery_date,
+                                                ),
+                                                padding: "4px 10px",
+                                                borderRadius: "50px",
+                                                fontSize: "11px",
+                                                fontWeight: "600",
+                                                whiteSpace: "nowrap",
+                                              }}
+                                            >
+                                              {getDaysLeftText(
+                                                lpoCard.delivery_date,
+                                              )}
+                                            </div>
+                                          )}
 
-                                      {lpoCard.progress_id !== 25 && (
-                                        <div
-                                          style={{
-                                            padding: "4px 8px",
-                                            borderRadius: "50px",
-                                            fontSize: "11px",
-                                            fontWeight: "600",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "5px",
-                                            backgroundColor:
-                                              "rgba(234, 234, 234, 1)",
-                                            color: "rgba(89, 89, 89, 1)",
-                                          }}
-                                        >
-                                          <svg
-                                            width="11"
-                                            height="11"
-                                            viewBox="0 0 11 11"
-                                            fill="none"
-                                            xmlns="http://www.w3.org/2000/svg"
+                                        {lpoCard.progress_id !== 25 && (
+                                          <div
                                             style={{
+                                              padding: "4px 8px",
+                                              borderRadius: "50px",
+                                              fontSize: "11px",
+                                              fontWeight: "600",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: "5px",
+                                              backgroundColor:
+                                                "rgba(234, 234, 234, 1)",
                                               color: "rgba(89, 89, 89, 1)",
                                             }}
                                           >
-                                            <path
-                                              d="M5.5 2.5V5.5H8.5"
-                                              stroke="currentColor"
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                            />
-                                            <path
-                                              d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                                              stroke="currentColor"
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                            />
-                                          </svg>
-                                          {dur.duration}
-                                        </div>
-                                      )}
+                                            <svg
+                                              width="11"
+                                              height="11"
+                                              viewBox="0 0 11 11"
+                                              fill="none"
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              style={{
+                                                color: "rgba(89, 89, 89, 1)",
+                                              }}
+                                            >
+                                              <path
+                                                d="M5.5 2.5V5.5H8.5"
+                                                stroke="currentColor"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                              />
+                                              <path
+                                                d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                                stroke="currentColor"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                              />
+                                            </svg>
+                                            {dur.duration}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
 
                                     {lpoCard.progress_id !== 25 && (
@@ -1240,6 +1263,14 @@ export default function MR() {
                                   </div>
 
                                   <div>
+                                    <small>LPO NUMBER</small>
+                                    <h3>
+                                      LPO-
+                                      {String(lpoCard.id).padStart(5, "0")}
+                                    </h3>
+                                  </div>
+
+                                  <div>
                                     <small
                                       style={{
                                         fontSize: "10px",
@@ -1251,37 +1282,16 @@ export default function MR() {
                                     <h3>{lpoCard.supplier_name || "-"}</h3>
                                   </div>
 
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      gap: "20px",
-                                      alignItems: "flex-start",
-                                    }}
-                                  >
-                                    <div>
-                                      <small
-                                        style={{
-                                          fontSize: "10px",
-                                          color: "#6b7280",
-                                        }}
-                                      >
-                                        MR NUMBER
-                                      </small>
-                                      <h3>
-                                        MR-{String(lpoCard.mr_header_id).padStart(5, "0")}
-                                      </h3>
-                                    </div>
-                                    <div>
-                                      <small
-                                        style={{
-                                          fontSize: "10px",
-                                          color: "#6b7280",
-                                        }}
-                                      >
-                                        PROJECT
-                                      </small>
-                                      <h3>{lpoCard.project_name || "-"}</h3>
-                                    </div>
+                                  <div>
+                                    <small
+                                      style={{
+                                        fontSize: "10px",
+                                        color: "#6b7280",
+                                      }}
+                                    >
+                                      PROJECT
+                                    </small>
+                                    <h3>{lpoCard.project_name || "-"}</h3>
                                   </div>
 
                                   <div>
@@ -1345,7 +1355,7 @@ export default function MR() {
                                     style={{ borderRadius: "50px" }}
                                     disabled={!canViewLPO(lpoCard)}
                                   >
-                                    VIEW LPO{" "}
+                                    VIEW{" "}
                                     <span style={{ marginLeft: "10px" }}>
                                       &gt;
                                     </span>
@@ -1356,219 +1366,221 @@ export default function MR() {
                           ) : (
                             /* ===== MR CARDS (original) ===== */
                             mrs.map((mr) => {
-                            const key = `${mr.id}-${mr.progress_id}`;
-                            const dur = mrDurations[key] || {
-                              duration: "00:00:00",
-                              hoursDecimal: 0,
-                              style: {
-                                color: "black",
-                                backgroundColor: "rgba(231, 231, 231, 1)",
-                              },
-                            };
+                              const key = `${mr.id}-${mr.progress_id}`;
+                              const dur = mrDurations[key] || {
+                                duration: "00:00:00",
+                                hoursDecimal: 0,
+                                style: {
+                                  color: "black",
+                                  backgroundColor: "rgba(231, 231, 231, 1)",
+                                },
+                              };
 
-                            return (
-                              <div
-                                key={mr.id}
-                                style={{
-                                  backgroundColor: "white",
-                                  borderRadius: "15px",
-                                  padding: "15px",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "12px",
-                                  border: "1px solid rgba(231, 231, 231, 1)",
-                                }}
-                              >
+                              return (
                                 <div
+                                  key={mr.id}
                                   style={{
+                                    backgroundColor: "white",
+                                    borderRadius: "15px",
+                                    padding: "15px",
                                     display: "flex",
-                                    alignItems: "flex-start",
-                                    justifyContent: "space-between",
+                                    flexDirection: "column",
+                                    gap: "12px",
+                                    border: "1px solid rgba(231, 231, 231, 1)",
                                   }}
                                 >
                                   <div
                                     style={{
                                       display: "flex",
-                                      alignItems: "flex-end",
-                                      gap: "10px",
+                                      alignItems: "flex-start",
+                                      justifyContent: "space-between",
                                     }}
                                   >
-                                    <div>
-                                      <small>MR NUMBER</small>
-                                      <h3>
-                                        MR-{String(mr.id).padStart(5, "0")}
-                                      </h3>
-                                    </div>
-
-                                    {mr.progress_id !== 25 && (
-                                      <div
-                                        style={{
-                                          ...getDaysLeftStyle(mr.required_date),
-                                          padding: "4px 10px",
-                                          borderRadius: "50px",
-                                          fontSize: "11px",
-                                          fontWeight: "600",
-                                          whiteSpace: "nowrap",
-                                        }}
-                                      >
-                                        {getDaysLeftText(mr.required_date)}
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "flex-end",
+                                        gap: "10px",
+                                      }}
+                                    >
+                                      <div>
+                                        <small>MR NUMBER</small>
+                                        <h3>
+                                          MR-{String(mr.id).padStart(5, "0")}
+                                        </h3>
                                       </div>
-                                    )}
 
-                                    {mr.progress_id !== 1 &&
-                                      mr.progress_id !== 25 && (
+                                      {mr.progress_id !== 25 && (
                                         <div
                                           style={{
-                                            padding: "4px 8px",
+                                            ...getDaysLeftStyle(
+                                              mr.required_date,
+                                            ),
+                                            padding: "4px 10px",
                                             borderRadius: "50px",
                                             fontSize: "11px",
                                             fontWeight: "600",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "5px",
-                                            backgroundColor:
-                                              "rgba(234, 234, 234, 1)",
-                                            color: "rgba(89, 89, 89, 1)",
+                                            whiteSpace: "nowrap",
                                           }}
                                         >
-                                          <svg
-                                            width="11"
-                                            height="11"
-                                            viewBox="0 0 11 11"
-                                            fill="none"
-                                            xmlns="http://www.w3.org/2000/svg"
+                                          {getDaysLeftText(mr.required_date)}
+                                        </div>
+                                      )}
+
+                                      {mr.progress_id !== 1 &&
+                                        mr.progress_id !== 25 && (
+                                          <div
                                             style={{
+                                              padding: "4px 8px",
+                                              borderRadius: "50px",
+                                              fontSize: "11px",
+                                              fontWeight: "600",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: "5px",
+                                              backgroundColor:
+                                                "rgba(234, 234, 234, 1)",
                                               color: "rgba(89, 89, 89, 1)",
                                             }}
                                           >
+                                            <svg
+                                              width="11"
+                                              height="11"
+                                              viewBox="0 0 11 11"
+                                              fill="none"
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              style={{
+                                                color: "rgba(89, 89, 89, 1)",
+                                              }}
+                                            >
+                                              <path
+                                                d="M5.5 2.5V5.5H8.5"
+                                                stroke="currentColor"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                              />
+                                              <path
+                                                d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                                stroke="currentColor"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                              />
+                                            </svg>
+                                            {dur.duration}
+                                          </div>
+                                        )}
+                                    </div>
+
+                                    {mr.progress_id !== 1 &&
+                                      mr.progress_id !== 25 && (
+                                        <div style={{ alignSelf: "flex-end" }}>
+                                          <svg
+                                            width="15"
+                                            height="17"
+                                            viewBox="0 0 15 17"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                          >
                                             <path
-                                              d="M5.5 2.5V5.5H8.5"
-                                              stroke="currentColor"
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                            />
-                                            <path
-                                              d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                                              stroke="currentColor"
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
+                                              d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
+                                              fill={getFlagColor(
+                                                dur.hoursDecimal,
+                                                mr.progress_id,
+                                              )}
                                             />
                                           </svg>
-                                          {dur.duration}
                                         </div>
                                       )}
                                   </div>
 
-                                  {mr.progress_id !== 1 &&
-                                    mr.progress_id !== 25 && (
-                                      <div style={{ alignSelf: "flex-end" }}>
-                                        <svg
-                                          width="15"
-                                          height="17"
-                                          viewBox="0 0 15 17"
-                                          fill="none"
-                                          xmlns="http://www.w3.org/2000/svg"
-                                        >
-                                          <path
-                                            d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
-                                            fill={getFlagColor(
-                                              dur.hoursDecimal,
-                                              mr.progress_id,
-                                            )}
-                                          />
-                                        </svg>
-                                      </div>
-                                    )}
-                                </div>
-
-                                <div>
-                                  <small
-                                    style={{
-                                      fontSize: "10px",
-                                      color: "#6b7280",
-                                    }}
-                                  >
-                                    PROJECT
-                                  </small>
-                                  <h3>{mr.project_name || "-"}</h3>
-                                </div>
-
-                                <div>
-                                  <small>REQUESTER</small>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      gap: "5px",
-                                      alignItems: "center",
-                                    }}
-                                  >
-                                    <h3
+                                  <div>
+                                    <small
                                       style={{
-                                        backgroundColor: "black",
-                                        color: "white",
-                                        borderRadius: "50%",
-                                        width: "24px",
-                                        height: "24px",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        fontSize: "11px",
-                                        fontWeight: "600",
+                                        fontSize: "10px",
+                                        color: "#6b7280",
                                       }}
                                     >
-                                      {mr.requested_by
-                                        ? mr.requested_by
-                                            .split(" ")
-                                            .map((n: string) => n[0])
-                                            .join("")
-                                            .toUpperCase()
-                                            .slice(0, 2)
-                                        : "?"}
-                                    </h3>
-                                    <h3>
-                                      {mr.requested_by || "-"},{" "}
-                                      {mr.department_name || "-"}
-                                    </h3>
+                                      PROJECT
+                                    </small>
+                                    <h3>{mr.project_name || "-"}</h3>
                                   </div>
-                                </div>
 
-                                {mr.progress_id === 17 &&
-                                  mrDeliveryDates[mr.id]?.length > 0 && (
-                                    <div>
-                                      {mrDeliveryDates[mr.id].map((d, i) => (
-                                        <div key={i}>
-                                          <small>
-                                            {d.supplier_name.toUpperCase()}{" "}
-                                            DELIVERY ETA
-                                          </small>
-                                          <h3>
-                                            {new Date(
-                                              d.delivery_date,
-                                            ).toLocaleDateString("en-GB")}
-                                          </h3>
-                                        </div>
-                                      ))}
+                                  <div>
+                                    <small>REQUESTER</small>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: "5px",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      <h3
+                                        style={{
+                                          backgroundColor: "black",
+                                          color: "white",
+                                          borderRadius: "50%",
+                                          width: "24px",
+                                          height: "24px",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          fontSize: "11px",
+                                          fontWeight: "600",
+                                        }}
+                                      >
+                                        {mr.requested_by
+                                          ? mr.requested_by
+                                              .split(" ")
+                                              .map((n: string) => n[0])
+                                              .join("")
+                                              .toUpperCase()
+                                              .slice(0, 2)
+                                          : "?"}
+                                      </h3>
+                                      <h3>
+                                        {mr.requested_by || "-"},{" "}
+                                        {mr.department_name || "-"}
+                                      </h3>
                                     </div>
-                                  )}
+                                  </div>
 
-                                <Button
-                                  componentType="link"
-                                  bgColor="rgba(239, 239, 239, 1)"
-                                  borderColor="rgba(239, 239, 239, 1)"
-                                  textColor="black"
-                                  href={`/mr/${mr.id}`}
-                                  full
-                                  style={{ borderRadius: "50px" }}
-                                  disabled={!canViewMR(mr)}
-                                >
-                                  VIEW{" "}
-                                  <span style={{ marginLeft: "10px" }}>
-                                    &gt;
-                                  </span>
-                                </Button>
-                              </div>
-                            );
-                          })
+                                  {mr.progress_id === 17 &&
+                                    mrDeliveryDates[mr.id]?.length > 0 && (
+                                      <div>
+                                        {mrDeliveryDates[mr.id].map((d, i) => (
+                                          <div key={i}>
+                                            <small>
+                                              {d.supplier_name.toUpperCase()}{" "}
+                                              DELIVERY ETA
+                                            </small>
+                                            <h3>
+                                              {new Date(
+                                                d.delivery_date,
+                                              ).toLocaleDateString("en-GB")}
+                                            </h3>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                  <Button
+                                    componentType="link"
+                                    bgColor="rgba(239, 239, 239, 1)"
+                                    borderColor="rgba(239, 239, 239, 1)"
+                                    textColor="black"
+                                    href={`/mr/${mr.id}`}
+                                    full
+                                    style={{ borderRadius: "50px" }}
+                                    disabled={!canViewMR(mr)}
+                                  >
+                                    VIEW{" "}
+                                    <span style={{ marginLeft: "10px" }}>
+                                      &gt;
+                                    </span>
+                                  </Button>
+                                </div>
+                              );
+                            })
                           )
                         ) : (
                           <div

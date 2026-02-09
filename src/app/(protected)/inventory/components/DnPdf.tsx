@@ -346,7 +346,7 @@ export function DnPdf({ transaction }: props) {
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>TRANSFER DATE</Text>
             <Text style={styles.infoValue}>
-              {new Date(transaction?.created_on).toLocaleDateString("en-US", {
+              {new Date(transaction?.created_on).toLocaleDateString("en-GB", {
                 day: "2-digit",
                 month: "2-digit",
                 year: "numeric",

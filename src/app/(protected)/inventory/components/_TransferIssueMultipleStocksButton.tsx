@@ -21,6 +21,9 @@ type SelectedItem = {
   serial_number?: string;
   attachment?: File | null;
   image: string;
+  length: string;
+  width: string;
+  height: string;
 };
 
 type TransferIssueMultipleStocksProps = {
@@ -58,6 +61,7 @@ export default function TransferIssueMultipleStocks({
   const [packingList, setPackingList] = useState(false);
   const [projectID, setProjectID] = useState<string | number>("");
   const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]); // ✅ Changed to array
+  const [containerNumber, setContainerNumber] = useState("");
 
   const [fromValues, setFromValues] = useState<any>([]);
   const [toValues, setToValues] = useState<any>([]);
@@ -280,6 +284,9 @@ export default function TransferIssueMultipleStocks({
           serial_number: "",
           attachment: null,
           image: inventoryItem.image || "",
+          length: "",
+          width: "",
+          height: "",
         });
       }
     }
@@ -306,6 +313,36 @@ export default function TransferIssueMultipleStocks({
       selectedItems.map((item) =>
         item.inventory_item_id === inventoryItemId
           ? { ...item, serial_number: serialNumber }
+          : item,
+      ),
+    );
+  }
+
+  function handleLengthChange(inventoryItemId: number, serialNumber: string) {
+    setSelectedItems(
+      selectedItems.map((item) =>
+        item.inventory_item_id === inventoryItemId
+          ? { ...item, length: serialNumber }
+          : item,
+      ),
+    );
+  }
+
+  function handleWidthChange(inventoryItemId: number, serialNumber: string) {
+    setSelectedItems(
+      selectedItems.map((item) =>
+        item.inventory_item_id === inventoryItemId
+          ? { ...item, width: serialNumber }
+          : item,
+      ),
+    );
+  }
+
+  function handleHeightChange(inventoryItemId: number, serialNumber: string) {
+    setSelectedItems(
+      selectedItems.map((item) =>
+        item.inventory_item_id === inventoryItemId
+          ? { ...item, height: serialNumber }
           : item,
       ),
     );
@@ -420,6 +457,9 @@ export default function TransferIssueMultipleStocks({
             quantity: item.quantity,
             serial_number: item.serial_number || null,
             attachment: attachmentUrl, // ✅ Each item has its own attachment
+            length: item.length,
+            width: item.width,
+            height: item.height,
           };
         }),
       );
@@ -444,6 +484,7 @@ export default function TransferIssueMultipleStocks({
           third_party_involved: thirdParty,
           packing_list_required: packingList,
           receiver_name: receiverName,
+          container_number: containerNumber,
         }),
       });
 
@@ -513,7 +554,7 @@ export default function TransferIssueMultipleStocks({
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
-          style={{ minWidth: from ? "1650px" : "" }}
+          style={{ minWidth: from ? "1800px" : "" }}
         >
           <FormContextHeader>TRANSFER CONTEXT</FormContextHeader>
           <div className="input-row half">
@@ -658,8 +699,6 @@ export default function TransferIssueMultipleStocks({
 
               {type.toLowerCase().includes("transfer") && (
                 <>
-                  <br />
-
                   <div className="input-row half">
                     <InputItem
                       label={"FULL NAME OF SITE RECIPIENT"}
@@ -671,8 +710,6 @@ export default function TransferIssueMultipleStocks({
                   </div>
                 </>
               )}
-
-              <br />
 
               {(type.toLowerCase().includes("transfer") ||
                 type.toLowerCase().includes("send")) && (
@@ -739,64 +776,76 @@ export default function TransferIssueMultipleStocks({
               )}
 
               {type.toLowerCase().includes("transfer") && (
-                <div className="input-row half">
-                  <div
-                    className="input-item"
-                    style={{ flexDirection: "row", alignItems: "center" }}
-                  >
+                <>
+                  <div className="input-row half">
                     <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        height: "100%",
-                      }}
+                      className="input-item"
+                      style={{ flexDirection: "row", alignItems: "center" }}
                     >
                       <div
-                        onClick={() => setPackingList(!packingList)}
                         style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "5px",
-                          border: packingList ? "none" : "2px solid #d1d5db",
-                          backgroundColor: packingList
-                            ? "#10b981"
-                            : "transparent",
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
+                          gap: "10px",
+                          height: "100%",
                         }}
                       >
-                        {packingList && (
-                          <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M16.6667 5L7.50004 14.1667L3.33337 10"
-                              stroke="white"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        )}
+                        <div
+                          onClick={() => setPackingList(!packingList)}
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "5px",
+                            border: packingList ? "none" : "2px solid #d1d5db",
+                            backgroundColor: packingList
+                              ? "#10b981"
+                              : "transparent",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {packingList && (
+                            <svg
+                              width="24"
+                              height="24"
+                              viewBox="0 0 20 20"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M16.6667 5L7.50004 14.1667L3.33337 10"
+                                stroke="white"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
                       </div>
+                      <label
+                        style={{
+                          maxWidth: "500px",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        PACKING LIST REQUIRED?
+                      </label>
                     </div>
-                    <label
-                      style={{
-                        maxWidth: "500px",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      PACKING LIST REQUIRED?
-                    </label>
                   </div>
-                </div>
+
+                  <div className="input-row half">
+                    <InputItem
+                      label={"CONTAINER NUMBER / VEHICLE REFERENCE NUMBER"}
+                      value={containerNumber}
+                      type={"text"}
+                      onChange={(e) => setContainerNumber(e.target.value)}
+                      required
+                    />
+                  </div>
+                </>
               )}
 
               <br />
@@ -810,9 +859,19 @@ export default function TransferIssueMultipleStocks({
                         <tr>
                           <th>#</th>
                           <th>ITEM</th>
-                          <th>TOTAL AVAILABLE QUANTITY</th>
-                          <th>QUANTITY</th>
+                          <th>AVAILABLE QUANTITY</th>
+                          <th>
+                            QUANTITY TO{" "}
+                            {type.toLowerCase().includes("issue")
+                              ? "ISSUE"
+                              : type.toLowerCase().includes("transfer")
+                                ? "TRANSFER"
+                                : "SEND"}
+                          </th>
                           <th>SERIAL/MODEL NUMBER</th>
+                          <th>LENGTH</th>
+                          <th>WIDTH</th>
+                          <th>HEIGHT</th>
                           <th>PROOF/ATTACHMENTS</th>
                           <th>ACTION</th>
                         </tr>
@@ -905,6 +964,51 @@ export default function TransferIssueMultipleStocks({
                                 type={"text"}
                                 onChange={(e) => {
                                   handleSerialNumberChange(
+                                    item.inventory_item_id,
+                                    e.target.value,
+                                  );
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <InputItem
+                                label=""
+                                placeholder="ENTER LENGTH"
+                                noOptionalLabel={true}
+                                value={item.length || ""}
+                                type={"text"}
+                                onChange={(e) => {
+                                  handleLengthChange(
+                                    item.inventory_item_id,
+                                    e.target.value,
+                                  );
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <InputItem
+                                label=""
+                                placeholder="ENTER WIDTH"
+                                noOptionalLabel={true}
+                                value={item.width || ""}
+                                type={"text"}
+                                onChange={(e) => {
+                                  handleWidthChange(
+                                    item.inventory_item_id,
+                                    e.target.value,
+                                  );
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <InputItem
+                                label=""
+                                placeholder="ENTER HEIGHT"
+                                noOptionalLabel={true}
+                                value={item.height || ""}
+                                type={"text"}
+                                onChange={(e) => {
+                                  handleHeightChange(
                                     item.inventory_item_id,
                                     e.target.value,
                                   );

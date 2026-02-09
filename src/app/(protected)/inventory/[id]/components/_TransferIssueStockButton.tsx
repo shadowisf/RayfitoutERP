@@ -38,6 +38,10 @@ export default function TransferIssueStocksButton({
   const [packingList, setPackingList] = useState(false);
   const [projectID, setProjectID] = useState<string | number>("");
   const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
+  const [containerNumber, setContainerNumber] = useState("");
+  const [length, setLength] = useState("");
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
 
   const [availableQuantity, setAvailableQuantity] = useState<number | string>(
     "",
@@ -176,6 +180,10 @@ export default function TransferIssueStocksButton({
     setThirdParty(false);
     setProjectID("");
     setBoqLineIDs([]);
+    setContainerNumber("");
+    setLength("");
+    setWidth("");
+    setHeight("");
   }, [type]);
 
   // ✅ Handle BOQ selection
@@ -251,6 +259,10 @@ export default function TransferIssueStocksButton({
         receiver_name: receiverName,
         serial_number: serialNumber,
         attachment: JSON.stringify(attachmentUrls),
+        container_number: containerNumber,
+        length,
+        width,
+        height,
         inventory_item_name: inventoryItem?.description,
       }),
     });
@@ -279,6 +291,10 @@ export default function TransferIssueStocksButton({
       setPackingList(false);
       setProjectID("");
       setBoqLineIDs([]);
+      setContainerNumber("");
+      setLength("");
+      setWidth("");
+      setHeight("");
 
       router.refresh();
 
@@ -569,6 +585,82 @@ export default function TransferIssueStocksButton({
                   </div>
                 </>
               )}
+
+              <div className="input-row half">
+                <InputItem
+                  label={"CONTAINER NUMBER / VEHICLE REFERENCE NUMBER"}
+                  value={containerNumber}
+                  type={"text"}
+                  onChange={(e) => setContainerNumber(e.target.value)}
+                  required
+                />
+
+                <div className="input-item">
+                  <label className="custom">
+                    <span>DIMENSIONS</span>
+                  </label>
+
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <InputItem
+                      label={"LENGTH"}
+                      value={length}
+                      type={"text"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+
+                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                          setLength(val);
+                        }
+                      }}
+                      required
+                      style={{
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        width: "175px",
+                      }}
+                    />
+                    <InputItem
+                      label={"WIDTH"}
+                      value={width}
+                      type={"text"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+
+                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                          setWidth(val);
+                        }
+                      }}
+                      required
+                      style={{
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        width: "175px",
+                      }}
+                    />
+                    <InputItem
+                      label={"HEIGHT"}
+                      value={height}
+                      type={"text"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+
+                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                          setHeight(val);
+                        }
+                      }}
+                      required
+                      style={{
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        width: "175px",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
 
               <div className="input-row three-col">
                 <InputItem

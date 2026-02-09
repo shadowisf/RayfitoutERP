@@ -1,47 +1,52 @@
+"use client";
+
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
+import { useState } from "react";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { InventoryItem } from "../../types/inventoryItem";
 
 type props = {
-  transferID: number;
-  type?: string;
+  inventoryItem: InventoryItem;
   onSuccess?: () => void;
 };
 
-export default function DeleteTransactionButton({
-  transferID,
-  type,
+export default function ArchiveInventoryItemButton({
+  inventoryItem,
   onSuccess,
 }: props) {
-  const trashIcon = "/icons/trash.svg";
-
   const router = useRouter();
+
+  const trashIcon = "/icons/trash.svg";
 
   const [isOpen, setIsOpen] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`, {
-        method: "DELETE",
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory`,
+      {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: type === "stock" ? "deleteStock" : "deleteTransfer",
-          id: transferID,
+          action: "archiveInventoryItem",
+          id: inventoryItem.id,
         }),
-      });
+      },
+    );
 
-      if (res.ok) {
-        setIsOpen(false);
-        onSuccess && onSuccess();
-        toast("Transaction deleted", "success");
-        router.refresh();
-      }
-    } catch (err: any) {
-      console.error(err);
+    if (res.ok) {
+      toast("Inventory item archived", "success");
+      setIsOpen(false);
+
+      onSuccess && onSuccess();
+
+      router.replace("/inventory");
+      router.refresh();
+    } else {
+      toast("Failed to archive inventory item", "error");
     }
   }
 
@@ -60,13 +65,12 @@ export default function DeleteTransactionButton({
 
       {isOpen && (
         <FormPopUp
-          header={"DELETE TRANSACTION"}
+          header={"ARCHIVE INVENTORY ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
-          style={{ textTransform: "none" }}
         >
-          Are you sure you want to delete this transaction?
+          Are you sure you want to archive this inventory item?
         </FormPopUp>
       )}
     </>

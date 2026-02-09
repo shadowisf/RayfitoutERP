@@ -196,9 +196,50 @@ export default async function LpoWithID({
   const darkerTextColor = getDarkerPriorityColor(priorityColor);
   const priorityLabel = getPriorityLabel(hoursDecimal);
 
-  // Delivery date days left calculation
+  // Required date days left calculation
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  let requiredDaysLeftText = "";
+  let requiredDaysLeftStyle = {
+    backgroundColor: "rgba(231, 231, 231, 1)",
+    color: "black",
+  };
+
+  if (mrHeader.required_date) {
+    const requiredDate = new Date(mrHeader.required_date);
+    requiredDate.setHours(0, 0, 0, 0);
+    const reqDiffDays = Math.ceil(
+      (requiredDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    if (reqDiffDays > 0) {
+      requiredDaysLeftText = `${reqDiffDays}d left`;
+    } else if (reqDiffDays === 0) {
+      requiredDaysLeftText = "Due today";
+    } else {
+      requiredDaysLeftText = `${Math.abs(reqDiffDays)}d overdue`;
+    }
+
+    if (reqDiffDays < 0) {
+      requiredDaysLeftStyle = {
+        backgroundColor: "rgba(175, 61, 61, 1)",
+        color: "white",
+      };
+    } else if (reqDiffDays <= 1) {
+      requiredDaysLeftStyle = {
+        backgroundColor: "rgba(255, 181, 181, 1)",
+        color: "rgba(248, 77, 77, 1)",
+      };
+    } else if (reqDiffDays <= 3) {
+      requiredDaysLeftStyle = {
+        backgroundColor: "rgba(255, 250, 189, 1)",
+        color: "rgba(134, 83, 47, 1)",
+      };
+    }
+  }
+
+  // Delivery date days left calculation
 
   let deliveryDaysLeftText = "";
   let deliveryDaysLeftStyle = {
@@ -216,9 +257,9 @@ export default async function LpoWithID({
     if (diffDays > 0) {
       deliveryDaysLeftText = `${diffDays}d left`;
     } else if (diffDays === 0) {
-      deliveryDaysLeftText = "DUE TODAY";
+      deliveryDaysLeftText = "Due today";
     } else {
-      deliveryDaysLeftText = `${Math.abs(diffDays)}d OVERDUE`;
+      deliveryDaysLeftText = `${Math.abs(diffDays)}d overdue`;
     }
 
     if (diffDays < 0) {
@@ -267,6 +308,13 @@ export default async function LpoWithID({
             }}
           >
             <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
+              <div>
+                <small>MR ID</small>
+                <h2 style={{ textWrap: "nowrap" }}>
+                  MR-{String(id).padStart(5, "0")}
+                </h2>
+              </div>
+
               <div>
                 <small>LPO ID</small>
                 <h2>LPO-{String(lpoId).padStart(5, "0")}</h2>
@@ -339,16 +387,14 @@ export default async function LpoWithID({
           </div>
 
           <div>
-            <small>SUPPLIER</small>
-            <h2 style={{ textWrap: "nowrap" }}>{lpo.supplier_name}</h2>
+            <small>PURPOSE</small>
+            <h2 style={{ textWrap: "nowrap" }}>{mrHeader.purpose_name}</h2>
           </div>
 
           <div>
-            <small>MR ID</small>
+            <small style={{ textWrap: "nowrap" }}>REQUESTED BY</small>
             <h2 style={{ textWrap: "nowrap" }}>
-              <a href={`/mr/${id}`} style={{ textDecoration: "underline" }}>
-                MR-{String(id).padStart(5, "0")}
-              </a>
+              {mrHeader.requested_by || ""}
             </h2>
           </div>
 
@@ -356,6 +402,37 @@ export default async function LpoWithID({
             <small>DEPARTMENT</small>
             <h2>{mrHeader.department_name}</h2>
           </div>
+
+          {mrHeader.required_date && (
+            <div
+              style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}
+            >
+              <div>
+                <small style={{ textWrap: "nowrap" }}>REQUIRED DATE</small>
+                <h2>
+                  {new Date(mrHeader.required_date).toLocaleDateString("en-US")}
+                </h2>
+              </div>
+
+              {!isCompleted && (
+                <div>
+                  <h2
+                    className="approval-pill normal-text"
+                    style={{
+                      ...requiredDaysLeftStyle,
+                      padding: "4px 10px",
+                      borderRadius: "50px",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {requiredDaysLeftText}
+                  </h2>
+                </div>
+              )}
+            </div>
+          )}
 
           {lpo.delivery_date && (
             <div
@@ -387,17 +464,6 @@ export default async function LpoWithID({
               )}
             </div>
           )}
-
-          <div>
-            <small>LPO TOTAL</small>
-            <h2>
-              AED{" "}
-              {Number(lpo.total).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </h2>
-          </div>
 
           {!isCompleted && (
             <div>
@@ -453,6 +519,7 @@ export default async function LpoWithID({
           lpo={lpoData.lpo}
           flatLines={lpoData.flatLines}
           mrHeader={mrHeader}
+          refreshKey={Date.now()}
         />
       ) : (
         <p>No lines found for this LPO.</p>

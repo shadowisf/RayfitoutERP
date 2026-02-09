@@ -196,9 +196,9 @@ export default async function MrWithID({
   if (diffDays > 0) {
     daysLeftText = `${diffDays}${diffDays === 1 ? "d" : "d"} left`;
   } else if (diffDays === 0) {
-    daysLeftText = "DUE TODAY";
+    daysLeftText = "Due today";
   } else {
-    daysLeftText = `${Math.abs(diffDays)}${Math.abs(diffDays) === 1 ? "d" : "d"} OVERDUE`;
+    daysLeftText = `${Math.abs(diffDays)}${Math.abs(diffDays) === 1 ? "d" : "d"} overdue`;
   }
 
   let daysLeftStyle = {
@@ -229,8 +229,8 @@ export default async function MrWithID({
 
     let text = "";
     if (days > 0) text = `${days}${days === 1 ? "d" : "d"} left`;
-    else if (days === 0) text = "DUE TODAY";
-    else text = `${Math.abs(days)}${Math.abs(days) === 1 ? "d" : "d"} OVERDUE`;
+    else if (days === 0) text = "Due today";
+    else text = `${Math.abs(days)}${Math.abs(days) === 1 ? "d" : "d"} overdue`;
 
     let style = { backgroundColor: "rgba(231, 231, 231, 1)", color: "black" };
     if (days < 0)

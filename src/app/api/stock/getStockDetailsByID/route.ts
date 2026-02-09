@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
         sti.signed_tsc_file,
         sti.third_party_involved,
         sti.packing_list_required,
+        sti.container_number,
         
         -- Junction table fields (inventory items)
         jt.inventory_item_id,
@@ -30,6 +31,9 @@ export async function POST(request: NextRequest) {
         jt.serial_number,
         jt.received_quantity,
         jt.attachment,
+        jt.length,
+        jt.width,
+        jt.height,
         
         -- Inventory Item fields
         i.description,
@@ -129,6 +133,9 @@ export async function POST(request: NextRequest) {
           country_of_origin: row.country_of_origin,
           specification: row.specification,
           image: row.image,
+          length: row.length,
+          width: row.width,
+          height: row.height,
         });
       }
     }

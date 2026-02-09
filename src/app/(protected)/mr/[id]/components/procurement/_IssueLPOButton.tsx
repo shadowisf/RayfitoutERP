@@ -366,7 +366,9 @@ export default function IssueLPOButton({
         {/* ✅ Only show Upload Signed LPO for Cash/Local suppliers (NOT credit, NOT marketplace) */}
         {!isCredit &&
           !isMarketplace &&
-          (userInfo?.departmentID === 9 || userInfo?.departmentID === 8) && (
+          (userInfo?.departmentID === 9 ||
+            userInfo?.departmentID === 8 ||
+            userInfo?.departmentID === 10) && (
             <UploadSignedLPOButton
               mrHeader={mrHeader}
               mrLine={mrLines[0]}
@@ -381,7 +383,9 @@ export default function IssueLPOButton({
 
         {/* ✅ Only show Upload Invoice for Cash/Local and Marketplace (NOT credit) */}
         {!isCredit &&
-          (userInfo?.departmentID === 9 || userInfo?.departmentID === 8) && (
+          (userInfo?.departmentID === 9 ||
+            userInfo?.departmentID === 8 ||
+            userInfo?.departmentID === 10) && (
             <UploadInvoiceButton
               mrHeader={mrHeader}
               mrLine={mrLines[0]}

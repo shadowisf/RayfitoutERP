@@ -13,6 +13,7 @@ import ReservedStocksChart from "./components/ReservedStocksChart";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import AverageLeadTimeWidget from "./components/AvgLeadTimeWidget";
 import TotalQuantityWidget from "./components/TotalQuantityWidget";
+import ArchiveInventoryItemButton from "./components/_ArchiveInventoryItemButton";
 
 export default async function InventoryItemWithID({
   params,
@@ -138,7 +139,7 @@ export default async function InventoryItemWithID({
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <EditInventoryItemButton inventoryItem={inventoryItem} />
 
-          <DeleteInventoryItemButton inventoryItem={inventoryItem} />
+          <ArchiveInventoryItemButton inventoryItem={inventoryItem} />
 
           {/* <ReceiveStocksButton inventoryItem={inventoryItem} /> */}
           <ManualAddToStockButton inventoryItem={inventoryItem} />

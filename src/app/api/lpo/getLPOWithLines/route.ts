@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
         s.address as supplier_address,
         s.trn_number as supplier_trn_number,
         s.type as supplier_type,
-        s.contact_person as supplier_contact_person,
+        s.contact_person_name as supplier_contact_person,
         s.phone as supplier_phone,
         s.email as supplier_email_address,
         pr.value as progress_name
