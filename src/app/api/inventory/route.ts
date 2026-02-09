@@ -5,7 +5,9 @@ import { ResultSetHeader } from "mysql2";
 
 export async function GET() {
   try {
-    const [rows] = await db.query("SELECT * FROM vw_inventory");
+    const [rows] = await db.query(
+      "SELECT * FROM vw_inventory WHERE is_archived = 0",
+    );
 
     return NextResponse.json({
       success: true,
@@ -121,6 +123,59 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    if (body.action === "archiveInventoryItem") {
+      const query = `
+        UPDATE inventory 
+        SET is_archived = 1
+        WHERE id = ?
+      `;
+
+      await db.query(query, [Number(body.id)]);
+
+      return NextResponse.json({
+        success: true,
+      });
+    }
+
+    if (body.action === "restoreInventoryItem") {
+      const query = `
+        UPDATE inventory 
+        SET is_archived = 0
+        WHERE id = ?
+      `;
+
+      await db.query(query, [Number(body.id)]);
+
+      return NextResponse.json({
+        success: true,
+      });
+    }
+
+    if (body.action === "restoreAllInventoryItem") {
+      const query = `
+        UPDATE inventory 
+        SET is_archived = 0
+      `;
+
+      await db.query(query);
+
+      return NextResponse.json({
+        success: true,
+      });
+    }
+  } catch (error: any) {
+    console.error(error.sqlMessage);
+    return NextResponse.json(
+      { error: error.sqlMessage, success: false },
+      { status: 500 },
+    );
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json();
@@ -130,7 +185,7 @@ export async function DELETE(request: NextRequest) {
     // Validate required fields
     if (!id) {
       return NextResponse.json(
-        { error: "Missing stock ID", success: false },
+        { error: "Missing inventory item ID", success: false },
         { status: 400 },
       );
     }
@@ -144,10 +199,10 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Stock deleted successfully",
+      message: "Inventory item deleted",
     });
   } catch (error: any) {
-    console.error("Error deleting stock:", error);
+    console.error("Error deleting inventory item:", error);
     return NextResponse.json(
       { error: error.sqlMessage || error.message, success: false },
       { status: 500 },

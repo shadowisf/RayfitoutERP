@@ -196,9 +196,9 @@ export default async function MrWithID({
   if (diffDays > 0) {
     daysLeftText = `${diffDays}${diffDays === 1 ? "d" : "d"} left`;
   } else if (diffDays === 0) {
-    daysLeftText = "DUE TODAY";
+    daysLeftText = "Due today";
   } else {
-    daysLeftText = `${Math.abs(diffDays)}${Math.abs(diffDays) === 1 ? "d" : "d"} OVERDUE`;
+    daysLeftText = `${Math.abs(diffDays)}${Math.abs(diffDays) === 1 ? "d" : "d"} overdue`;
   }
 
   let daysLeftStyle = {
