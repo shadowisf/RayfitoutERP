@@ -634,7 +634,7 @@ export default function LpoLinesView({
 
         <br />
 
-        <table className="items-table">
+        <table className="items-table two-toned">
           <thead>
             <tr>
               <th>#</th>
@@ -801,9 +801,11 @@ export default function LpoLinesView({
             </tfoot>
           )}
         </table>
-      </div>
 
-      {/* Bottom action nav — per-LPO progress transitions */}
+        <br />
+        <br />
+        <br />
+      </div>
 
       {/* Awaiting LPO & Invoice (Progress 12, 13, 16) - Procurement Submit for Payment */}
       {userInfo?.departmentID === 9 &&

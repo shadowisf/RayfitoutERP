@@ -1095,6 +1095,11 @@ export default function NotificationDropdown() {
       return `/inventory/${notification.inventory_item_id}`;
     }
 
+    // ✅ If notification has lpo_id, redirect to LPO detail page
+    if (notification.lpo_id && notification.mr_header_id) {
+      return `/mr/${notification.mr_header_id}/lpo/${notification.lpo_id}`;
+    }
+
     // ✅ Default to MR page
     return `/mr/${notification.mr_header_id}`;
   }

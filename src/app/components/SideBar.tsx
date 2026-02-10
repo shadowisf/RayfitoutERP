@@ -83,7 +83,7 @@ export default function SideBar() {
   const menuItems = [
     { label: "Dashboard", path: "/dashboard", icon: "/icons/dashboard.svg" },
     {
-      label: "Material Requisitions",
+      label: "Requisitions",
       path: "/mr",
       icon: "/icons/mr.svg",
       count: mrActionCount,

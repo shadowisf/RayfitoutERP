@@ -3,13 +3,14 @@
 import FormPopUp from "@/app/components/FormPopup";
 import { useEffect, useState } from "react";
 import { MrLine } from "../types/mrLine";
+import { JoLine } from "../types/joLine";
 import Button from "@/app/components/Button";
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 
 type BoqReferencePopUpProps = {
   mrHeader: MrHeader;
-  item: MrLine;
+  item: MrLine | JoLine;
 };
 
 type BoqItemDetail = {

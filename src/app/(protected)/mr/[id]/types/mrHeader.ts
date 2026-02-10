@@ -1,6 +1,7 @@
 export type MrHeader = {
   mrHeader: number;
   id: number;
+  type: "material" | "job";
   project_id: number;
   project_name: string;
   department_id: number;

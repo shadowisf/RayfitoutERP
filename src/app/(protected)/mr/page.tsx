@@ -19,7 +19,7 @@ type LpoCard = {
   created_at: string;
   supplier_name: string;
   requested_by: string;
-  department_id: number;
+  department_id: number; // This is the MR's department_id
   required_date: string;
   mr_project_id: number;
   project_name: string;
@@ -28,7 +28,7 @@ type LpoCard = {
 };
 
 // Progress IDs that use LPO cards instead of MR cards
-const LPO_STAGE_IDS = [12, 13, 14, 15, 16, 17, 21, 23, 24, 25];
+const LPO_STAGE_IDS = [13, 14, 15, 16, 17, 21, 23, 24, 25];
 
 export default function MR() {
   const { userInfo } = useAuth();
@@ -61,37 +61,29 @@ export default function MR() {
   });
 
   const getFlagColor = (hours: number, progress_id: number): string => {
-    // Defensive fallback
     if (hours == null || isNaN(hours) || hours < 0) return "#ECCF28";
 
-    // Custom logic per stage
     if (progress_id === 7) {
-      // Quotations
-      if (hours <= 1) return "#ECCF28"; // yellow ≤ 1h
-      if (hours <= 3) return "rgba(255, 153, 36, 1)"; // orange ≤ 3h
-      return "rgba(250, 52, 52, 1)"; // red > 3h
+      if (hours <= 1) return "#ECCF28";
+      if (hours <= 3) return "rgba(255, 153, 36, 1)";
+      return "rgba(250, 52, 52, 1)";
     }
 
     if (progress_id === 14) {
-      // Pending Payments
-      if (hours <= 0.333) return "#ECCF28"; // yellow ≤ ~20 min
-      if (hours <= 0.5) return "rgba(255, 153, 36, 1)"; // orange ≤ 30 min
-      return "rgba(250, 52, 52, 1)"; // red > 30 min
+      if (hours <= 0.333) return "#ECCF28";
+      if (hours <= 0.5) return "rgba(255, 153, 36, 1)";
+      return "rgba(250, 52, 52, 1)";
     }
 
     if (progress_id === 17) {
-      // Awaiting Delivery
-      if (hours <= 4) return "#ECCF28"; // yellow ≤ 4h
-      if (hours <= 14) return "rgba(255, 153, 36, 1)"; // orange ≤ 14h
-      return "rgba(250, 52, 52, 1)"; // red > 14h
-      // Note: you mentioned 48h earlier — if red should only start after 48h,
-      // change the last condition to: if (hours <= 48) orange else red
+      if (hours <= 4) return "#ECCF28";
+      if (hours <= 14) return "rgba(255, 153, 36, 1)";
+      return "rgba(250, 52, 52, 1)";
     }
 
-    // Default for all other stages
-    if (hours <= 2) return "#ECCF28"; // yellow
-    if (hours <= 12) return "rgba(255, 153, 36, 1)"; // orange
-    return "rgba(250, 52, 52, 1)"; // red
+    if (hours <= 2) return "#ECCF28";
+    if (hours <= 12) return "rgba(255, 153, 36, 1)";
+    return "rgba(250, 52, 52, 1)";
   };
 
   useEffect(() => {
@@ -141,7 +133,6 @@ export default function MR() {
       method: "GET",
     }).then((res) => res.json().then((data) => setMrHeaders(data)));
 
-    // Fetch LPO cards for kanban
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getAllLPOs`, {
       method: "GET",
     })
@@ -150,7 +141,6 @@ export default function MR() {
       .catch((err) => console.error("Error fetching LPO cards:", err));
   }, [userInfo]);
 
-  // Fetch durations for all LPOs
   useEffect(() => {
     if (lpoCards.length === 0) return;
 
@@ -243,7 +233,6 @@ export default function MR() {
     fetchLpoDurations();
   }, [lpoCards]);
 
-  // Fetch durations for all MRs
   useEffect(() => {
     if (mrHeaders.length === 0) return;
 
@@ -333,7 +322,6 @@ export default function MR() {
     fetchDurations();
   }, [mrHeaders]);
 
-  // Map progress_id to responsible department ID
   const progressToResponsibleDepartment: { [key: number]: number } = {
     2: 16,
     3: 8,
@@ -493,13 +481,30 @@ export default function MR() {
     { name: "Completed", statuses: [{ name: "Completed", progress_id: 25 }] },
   ];
 
-  const canViewLPO = (lpoCard: LpoCard) => {
+  // ===== MODIFIED canViewLPO to respect filterRelevant for managers =====
+  const canViewLPO = (
+    lpoCard: LpoCard,
+    isFilterRelevant: boolean = filterRelevant,
+  ) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
-    // Managers (dept 8) can view all LPOs
-    if (userDeptId === 8) return true;
+    if (userDeptId === 8) {
+      // Manager
+      if (isFilterRelevant) {
+        // When "only related" is ON:
+        // • Hide Pending Payments (progress 14) completely
+        // • Show only own department's items for everything else
+        if (lpoCard.progress_id === 14) {
+          return false;
+        }
+        return lpoCard.department_id === 8;
+      }
+      // filter off → managers see everything
+      return true;
+    }
 
+    // ───── Non-managers ─────
     if ([5, 25].includes(lpoCard.progress_id)) {
       return lpoCard.department_id === userDeptId;
     }
@@ -513,13 +518,24 @@ export default function MR() {
     return responsibleDept === userDeptId;
   };
 
-  const canViewMR = (mr: MrHeader) => {
+  const canViewMR = (
+    mr: MrHeader,
+    isFilterRelevant: boolean = filterRelevant,
+  ) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
-    // Managers (dept 8) can view all MRs
-    if (userDeptId === 8) return true;
+    if (userDeptId === 8) {
+      // Manager
+      if (isFilterRelevant) {
+        // When "only related" is ON → only own department (8)
+        return mr.department_id === 8;
+      }
+      // filter off → see everything
+      return true;
+    }
 
+    // ───── Normal users ─────
     if (mr.progress_id === 1) {
       return mr.department_id === userDeptId;
     }
@@ -539,8 +555,9 @@ export default function MR() {
   const getFilteredLPOs = () => {
     let filtered = lpoCards;
 
+    // Apply relevance filter using the modified canViewLPO
     if (filterRelevant) {
-      filtered = filtered.filter((lpoCard) => canViewLPO(lpoCard));
+      filtered = filtered.filter((lpoCard) => canViewLPO(lpoCard, true));
     }
 
     if (filters.itemsRequestedIn !== "all") {
@@ -611,7 +628,7 @@ export default function MR() {
     if (filterRelevant) {
       filtered = filtered.filter((mr) => {
         if (mr.progress_id === 1) return true;
-        return canViewMR(mr);
+        return canViewMR(mr, filterRelevant);
       });
     }
 
@@ -696,7 +713,13 @@ export default function MR() {
 
     if (useLpoCards) {
       const lpos = groupedLPOs[status.name] || [];
-      if (userDeptId === 8) return true;
+
+      if (userDeptId === 8 && filterRelevant) {
+        if (status.progress_id === 14) {
+          return false; // hide Pending Payments section completely
+        }
+        return lpos.some((l) => l.department_id === 8);
+      }
       if ([25].includes(status.progress_id)) {
         return lpos.some((l: any) => l.department_id === userDeptId);
       }
@@ -709,6 +732,7 @@ export default function MR() {
 
     if (status.progress_id === 1) return mrs.length > 0;
     if (userDeptId === 8) {
+      // Managers can see all MRs (as requested)
       if ([5, 25].includes(status.progress_id)) {
         return mrs.some((mr: any) => mr.department_id === userDeptId);
       }
@@ -1265,8 +1289,7 @@ export default function MR() {
                                   <div>
                                     <small>LPO NUMBER</small>
                                     <h3>
-                                      LPO-
-                                      {String(lpoCard.id).padStart(5, "0")}
+                                      LPO-{String(lpoCard.id).padStart(5, "0")}
                                     </h3>
                                   </div>
 
@@ -1353,7 +1376,9 @@ export default function MR() {
                                     href={`/mr/${lpoCard.mr_header_id}/lpo/${lpoCard.id}`}
                                     full
                                     style={{ borderRadius: "50px" }}
-                                    disabled={!canViewLPO(lpoCard)}
+                                    disabled={
+                                      !canViewLPO(lpoCard, filterRelevant)
+                                    }
                                   >
                                     VIEW{" "}
                                     <span style={{ marginLeft: "10px" }}>
@@ -1364,7 +1389,7 @@ export default function MR() {
                               );
                             })
                           ) : (
-                            /* ===== MR CARDS (original) ===== */
+                            /* ===== MR CARDS ===== */
                             mrs.map((mr) => {
                               const key = `${mr.id}-${mr.progress_id}`;
                               const dur = mrDurations[key] || {
@@ -1404,9 +1429,14 @@ export default function MR() {
                                       }}
                                     >
                                       <div>
-                                        <small>MR NUMBER</small>
+                                        <small>
+                                          {mr.type === "job"
+                                            ? "JO NUMBER"
+                                            : "MR NUMBER"}
+                                        </small>
                                         <h3>
-                                          MR-{String(mr.id).padStart(5, "0")}
+                                          {mr.type === "job" ? "JO" : "MR"}-
+                                          {String(mr.id).padStart(5, "0")}
                                         </h3>
                                       </div>
 
@@ -1571,7 +1601,7 @@ export default function MR() {
                                     href={`/mr/${mr.id}`}
                                     full
                                     style={{ borderRadius: "50px" }}
-                                    disabled={!canViewMR(mr)}
+                                    disabled={!canViewMR(mr, filterRelevant)}
                                   >
                                     VIEW{" "}
                                     <span style={{ marginLeft: "10px" }}>

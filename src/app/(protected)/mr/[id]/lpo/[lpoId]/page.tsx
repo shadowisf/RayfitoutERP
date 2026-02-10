@@ -1,7 +1,6 @@
 import Button from "@/app/components/Button";
 import LpoLinesView from "./components/LpoLinesView";
 import { MrHeader } from "../../types/mrHeader";
-import CancelMaterialRequestButton from "../../components/_CancelMaterialRequest";
 
 export default async function LpoWithID({
   params,
@@ -10,7 +9,6 @@ export default async function LpoWithID({
 }) {
   const { id, lpoId } = await params;
 
-  const uTurnIcon = "/icons/u-turn.svg";
   const externalLinkIcon = "/icons/external-link.svg";
 
   // Fetch MR header (still needed for department_id, project, etc.)

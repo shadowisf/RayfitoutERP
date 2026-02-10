@@ -33,6 +33,7 @@ export default function UploadSignedLPOButton({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const closeIcon = "/icons/cross-small.svg";
   const uploadIcon = "/icons/upload.svg";
@@ -148,19 +149,22 @@ export default function UploadSignedLPOButton({
     }
   }
 
-  function handleDragOver(event: React.DragEvent<HTMLDivElement>) {
+  function handleDragOver(event: any) {
     event.preventDefault();
     event.stopPropagation();
+    setIsDragOver(true);
   }
 
-  function handleDragLeave(event: React.DragEvent<HTMLDivElement>) {
+  function handleDragLeave(event: any) {
     event.preventDefault();
     event.stopPropagation();
+    setIsDragOver(false);
   }
 
-  async function handleDrop(event: React.DragEvent<HTMLDivElement>) {
+  async function handleDrop(event: any) {
     event.preventDefault();
     event.stopPropagation();
+    setIsDragOver(false);
 
     const files = event.dataTransfer.files;
     if (!files || files.length === 0) return;
@@ -292,34 +296,37 @@ export default function UploadSignedLPOButton({
           ))}
         </>
       ) : (
-        <div
+        <Button
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          componentType={"button"}
+          onClick={handleUploadClick}
+          bgColor={"black"}
+          borderColor={isDragOver ? "rgba(217, 217, 217, 1)" : "black"}
+          textColor={"white"}
           style={{
+            minWidth: "200px",
+            padding: "7px 20px",
             borderRadius: "25px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            cursor: isUploading ? "not-allowed" : "pointer",
+            backgroundColor: isDragOver ? "rgba(169, 255, 218, 1)" : "black",
+            color: isDragOver ? "rgba(34, 150, 100, 1)" : "white",
+            borderStyle: isDragOver ? "dashed" : "solid",
           }}
+          disabled={isUploading}
         >
-          <Button
-            componentType={"button"}
-            onClick={handleUploadClick}
-            bgColor={"black"}
-            borderColor={"black"}
-            textColor={"white"}
-            style={{
-              padding: "7px 20px",
-              borderRadius: "25px",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              minWidth: "150px",
-              cursor: isUploading ? "not-allowed" : "pointer",
-            }}
-            disabled={isUploading}
-          >
-            Upload Signed LPO <img src={uploadIcon} alt="upload icon" />
-          </Button>
-        </div>
+          {isDragOver ? (
+            "DROP HERE"
+          ) : (
+            <>
+              Upload Signed LPO <img src={uploadIcon} alt="upload icon" />
+            </>
+          )}
+        </Button>
       )}
     </>
   );

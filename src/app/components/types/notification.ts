@@ -1,6 +1,7 @@
 type Notif = {
   id: number;
   mr_header_id: number;
+  lpo_id: number;
   inventory_item_id: number;
   boq_header_id: number;
   transfer_id: number;

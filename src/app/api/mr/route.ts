@@ -28,12 +28,13 @@ export async function POST(req: Request) {
 
     if (body.action === "createMrHeader") {
       const headerQuery = `
-      INSERT INTO mr_headers 
-      (project_id, department_id, requested_by, required_date, purpose_id)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO mr_headers
+      (type, project_id, department_id, requested_by, required_date, purpose_id)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
 
       const headerValues = [
+        body.type || "material",
         Number(body.project_id) || null,
         Number(body.department_id),
         body.requested_by,
