@@ -9,40 +9,55 @@ import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { JoLine } from "../../types/joLine";
 
 type props = {
-  mrHeaderID: number;
+  item: JoLine;
   projectID: number;
-  full?: boolean;
-  style?: React.CSSProperties;
-  bgColor?: string;
-  textColor?: string;
-  borderColor?: string;
 };
 
-export default function AddJoItemButton({
-  mrHeaderID,
-  projectID,
-  full,
-  bgColor = "black",
-  textColor = "white",
-  borderColor = "black",
-  style,
-}: props) {
+export default function EditJoItemButton({ item, projectID }: props) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
 
+  const pencilIcon = "/icons/pencil.svg";
+
   const [jobScopes, setJobScopes] = useState<any[]>([]);
 
-  const [jobScopeID, setJobScopeID] = useState<string | number>("");
-  const [jobDescription, setJobDescription] = useState("");
-  const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
-  const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState("");
-  const [budgetEstimate, setBudgetEstimate] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [jobScopeID, setJobScopeID] = useState<string | number>(
+    item.job_scope_id,
+  );
+  const [jobDescription, setJobDescription] = useState(item.job_description);
+  const [boqLineIDs, setBoqLineIDs] = useState<number[]>(() => {
+    if (item.boq_line_ids) {
+      if (typeof item.boq_line_ids === "string") {
+        const ids = item.boq_line_ids
+          .split(",")
+          .map((id) => id.trim())
+          .filter((id) => id && id !== "")
+          .map((id) => Number(id))
+          .filter((id) => !isNaN(id));
+        return ids;
+      }
+
+      if (typeof item.boq_line_ids === "number") {
+        return [item.boq_line_ids];
+      }
+    }
+    return [];
+  });
+  const [quantity, setQuantity] = useState<string | number>(item.quantity);
+  const [unit, setUnit] = useState(item.unit);
+  const [budgetEstimate, setBudgetEstimate] = useState<string | number>(
+    item.budget_estimate,
+  );
+  const [startDate, setStartDate] = useState(
+    new Date(item.start_date).toLocaleDateString("en-CA"),
+  );
+  const [endDate, setEndDate] = useState(
+    new Date(item.end_date).toLocaleDateString("en-CA"),
+  );
   const [attachment, setAttachment] = useState<File | null>(null);
 
   useEffect(() => {
@@ -59,8 +74,9 @@ export default function AddJoItemButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    let attachmentUrl = null;
+    let attachmentUrl: string | undefined = undefined; // only set if new file uploaded
 
+    // Only upload if user selected a new file
     if (attachment) {
       const formData = new FormData();
       formData.append("folder", "jo-attachments");
@@ -83,39 +99,37 @@ export default function AddJoItemButton({
       attachmentUrl = uploadData.urls[0];
     }
 
+    // Build payload — only include attachment if we have a new URL
+    const payload: any = {
+      action: "updateJoLine",
+      id: item.id,
+      job_scope_id: jobScopeID || null,
+      job_description: jobDescription,
+      boq_line_ids: boqLineIDs,
+      quantity,
+      unit,
+      budget_estimate: budgetEstimate,
+      start_date: startDate || null,
+      end_date: endDate || null,
+    };
+
+    // Only add attachment field if we uploaded something new
+    if (attachmentUrl) {
+      payload.attachment = attachmentUrl;
+    }
+
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`, {
-      method: "POST",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "createJoLine",
-        mr_header_id: mrHeaderID,
-        job_scope_id: jobScopeID || null,
-        job_description: jobDescription,
-        boq_line_ids: boqLineIDs,
-        quantity,
-        unit,
-        budget_estimate: budgetEstimate,
-        start_date: startDate || null,
-        end_date: endDate || null,
-        attachment: attachmentUrl,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (res.ok) {
-      toast("Job item added", "success");
-      setIsOpen(false);
-      setJobScopeID("");
-      setJobDescription("");
-      setBoqLineIDs([]);
-      setQuantity("");
-      setUnit("");
-      setBudgetEstimate("");
-      setStartDate("");
-      setEndDate("");
-      setAttachment(null);
+      toast("Job item updated", "success");
       router.refresh();
+      setIsOpen(false);
     } else {
-      toast("Failed to add job item", "error");
+      toast("Failed to update job item", "error");
     }
   }
 
@@ -123,19 +137,18 @@ export default function AddJoItemButton({
     <>
       <Button
         componentType={"button"}
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
+        bgColor={"rgba(239, 239, 239, 1)"}
+        borderColor={"rgba(223, 223, 223, 1)"}
+        textColor={"black"}
         onClick={() => setIsOpen(true)}
-        full={full}
-        style={style}
+        style={{ padding: "7px 7px" }}
       >
-        ADD ITEM +
+        <img src={pencilIcon} alt="edit" />
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"CREATE JOB ITEM"}
+          header={"UPDATE JOB ITEM"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
@@ -259,9 +272,10 @@ export default function AddJoItemButton({
               fileState={attachment}
               setFileState={setAttachment}
               label="ATTACHMENT"
-              acceptedFileTypes=".pdf,.jpeg,.jpg,.png,.webp,.dwg,.dxf"
+              acceptedFileTypes=".pdf,.jpeg,.jpg,.png,.webp"
               placeholder="UPLOAD OR DRAG ATTACHMENT"
               buttonLabel="UPLOAD FILE"
+              existingFileUrl={item.attachment}
             />
           </div>
         </FormPopUp>

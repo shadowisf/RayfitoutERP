@@ -167,6 +167,23 @@ export async function PUT(req: Request) {
   try {
     const body = await req.json();
 
+    // Helper: determine MR- or JO- prefix based on mr_headers.type
+    let prefix = "MR";
+    if (body.id) {
+      try {
+        const [typeRows]: any = await db.query(
+          `SELECT type FROM mr_headers WHERE id = ?`,
+          [body.id],
+        );
+        if (typeRows?.[0]?.type === "job") {
+          prefix = "JO";
+        }
+      } catch {
+        // fallback to MR
+      }
+    }
+    const formattedId = `${prefix}-${String(body.id).padStart(5, "0")}`;
+
     if (body.action === "cancelMaterialRequest") {
       await db.query(`UPDATE mr_headers SET progress_id = ? WHERE id = ?`, [
         body.rollback_progress_id,
@@ -185,8 +202,8 @@ export async function PUT(req: Request) {
         [
           body.id,
           8,
-          "Rolled Back MR",
-          `MR-${String(body.id).padStart(5, "0")} was moved to the ${body.rollback_progress_name} stage`,
+          `Rolled Back ${prefix}`,
+          `${formattedId} was moved to the ${body.rollback_progress_name} stage`,
         ],
       );
 
@@ -195,8 +212,8 @@ export async function PUT(req: Request) {
         [
           body.id,
           body.department_id,
-          "Rolled Back MR",
-          `Your MR-${String(body.id).padStart(5, "0")} was moved to the ${body.rollback_progress_name} stage`,
+          `Rolled Back ${prefix}`,
+          `Your ${formattedId} was moved to the ${body.rollback_progress_name} stage`,
         ],
       );
 
@@ -219,7 +236,7 @@ export async function PUT(req: Request) {
           body.id,
           16,
           "QS Price Approval Required",
-          `MR-${String(body.id).padStart(5, "0")} is awaiting your review`,
+          `${formattedId} is awaiting your review`,
         ],
       );
 
@@ -242,7 +259,7 @@ export async function PUT(req: Request) {
           body.id,
           16,
           "QS Initial Approval Required",
-          `MR-${String(body.id).padStart(5, "0")} is awaiting your review`,
+          `${formattedId} is awaiting your review`,
         ],
       );
 
@@ -251,8 +268,8 @@ export async function PUT(req: Request) {
         [
           body.id,
           body.department_id,
-          "MR Submitted",
-          `Your MR-${String(body.id).padStart(5, "0")} is awaiting QS approval`,
+          `${prefix} Submitted`,
+          `Your ${formattedId} is awaiting QS approval`,
         ],
       );
 
@@ -275,7 +292,7 @@ export async function PUT(req: Request) {
           body.id,
           9,
           "LPO Required",
-          `MR-${String(body.id).padStart(5, "0")} is awaiting LPO & invoice`,
+          `${formattedId} is awaiting LPO & invoice`,
         ],
       );
 
@@ -298,7 +315,7 @@ export async function PUT(req: Request) {
           body.id,
           9,
           "Quotations Rejected",
-          `MR-${String(body.id).padStart(5, "0")} was rejected by ${body.user_name}, ${body.user_role}`,
+          `${formattedId} was rejected by ${body.user_name}, ${body.user_role}`,
         ],
       );
 
@@ -347,7 +364,7 @@ export async function PUT(req: Request) {
           body.id,
           8,
           "Manager Initial Approval Required",
-          `MR-${String(body.id).padStart(5, "0")} is awaiting your review`,
+          `${formattedId} is awaiting your review`,
         ],
       );
 
@@ -356,8 +373,8 @@ export async function PUT(req: Request) {
         [
           body.id,
           body.department_id,
-          "MR Submitted",
-          `Your MR-${String(body.id).padStart(5, "0")} is awaiting manager approval`,
+          `${prefix} Submitted`,
+          `Your ${formattedId} is awaiting manager approval`,
         ],
       );
 
@@ -433,8 +450,8 @@ export async function PUT(req: Request) {
         [
           body.id,
           body.department_id,
-          "MR Rejected",
-          `MR-${String(body.id).padStart(5, "0")} was rejected by ${body.user_name}, ${body.user_role}`,
+          `${prefix} Rejected`,
+          `${formattedId} was rejected by ${body.user_name}, ${body.user_role}`,
         ],
       );
 
@@ -457,7 +474,7 @@ export async function PUT(req: Request) {
           body.id,
           9,
           "Quotations Required",
-          `MR-${String(body.id).padStart(5, "0")} is awaiting quotations`,
+          `${formattedId} is awaiting quotations`,
         ],
       );
 
@@ -466,8 +483,8 @@ export async function PUT(req: Request) {
         [
           body.id,
           body.department_id,
-          "MR Approved",
-          `Your MR-${String(body.id).padStart(5, "0")} is awaiting quotations`,
+          `${prefix} Approved`,
+          `Your ${formattedId} is awaiting quotations`,
         ],
       );
 
@@ -490,7 +507,7 @@ export async function PUT(req: Request) {
           body.id,
           8,
           "Manager Price Approval Required",
-          `MR-${String(body.id).padStart(5, "0")} is awaiting your review`,
+          `${formattedId} is awaiting your review`,
         ],
       );
 
@@ -513,7 +530,7 @@ export async function PUT(req: Request) {
           body.id,
           10,
           "Pending Payment",
-          `MR-${String(body.id).padStart(5, "0")} is awaiting payment (AED ${body.payment_value})`,
+          `${formattedId} is awaiting payment (AED ${body.payment_value})`,
         ],
       );
 
@@ -536,7 +553,7 @@ export async function PUT(req: Request) {
           body.id,
           10,
           "Payment Successful",
-          `A payment (AED ${body.payment_value}) was made against MR-${String(body.id).padStart(5, "0")}`,
+          `A payment (AED ${body.payment_value}) was made against ${formattedId}`,
         ],
       );
 
@@ -545,8 +562,8 @@ export async function PUT(req: Request) {
         [
           body.id,
           8,
-          "MR Awaiting Delivery",
-          `MR-${String(body.id).padStart(5, "0")} is awaiting delivery (ETA: ${body.delivery_date})`,
+          `${prefix} Awaiting Delivery`,
+          `${formattedId} is awaiting delivery (ETA: ${body.delivery_date})`,
         ],
       );
 
@@ -555,8 +572,8 @@ export async function PUT(req: Request) {
         [
           body.id,
           9,
-          "MR Awaiting Delivery",
-          `MR-${String(body.id).padStart(5, "0")} is awaiting delivery (ETA: ${body.delivery_date})`,
+          `${prefix} Awaiting Delivery`,
+          `${formattedId} is awaiting delivery (ETA: ${body.delivery_date})`,
         ],
       );
 
@@ -565,8 +582,8 @@ export async function PUT(req: Request) {
         [
           body.id,
           16,
-          "MR Awaiting Delivery",
-          `MR-${String(body.id).padStart(5, "0")} is awaiting delivery (ETA: ${body.delivery_date})`,
+          `${prefix} Awaiting Delivery`,
+          `${formattedId} is awaiting delivery (ETA: ${body.delivery_date})`,
         ],
       );
 
@@ -575,8 +592,8 @@ export async function PUT(req: Request) {
         [
           body.id,
           body.department_id,
-          "MR Awaiting Delivery",
-          `MR-${String(body.id).padStart(5, "0")} is awaiting delivery (ETA: ${body.delivery_date})`,
+          `${prefix} Awaiting Delivery`,
+          `${formattedId} is awaiting delivery (ETA: ${body.delivery_date})`,
         ],
       );
 
@@ -648,7 +665,7 @@ export async function PUT(req: Request) {
           body.id,
           body.department_id,
           "Material Received",
-          `Your MR-${String(body.id).padStart(5, "0")} was fulfilled successfully`,
+          `Your ${formattedId} was fulfilled successfully`,
         ],
       );
 
@@ -658,7 +675,7 @@ export async function PUT(req: Request) {
           body.id,
           9,
           "Material Received",
-          `MR-${String(body.id).padStart(5, "0")} was fulfilled successfully`,
+          `${formattedId} was fulfilled successfully`,
         ],
       );
 
@@ -711,6 +728,49 @@ export async function PUT(req: Request) {
 
         await Promise.all(notificationPromises);
       }
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForJoCompletion") {
+      await db.query(`UPDATE mr_headers SET progress_id = 25 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 25, ?)`,
+        [body.id, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          "Job Order Completed",
+          `Your JO-${String(body.id).padStart(5, "0")} was completed successfully`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          9,
+          "Job Order Completed",
+          `JO-${String(body.id).padStart(5, "0")} was completed successfully`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          8,
+          "Job Order Completed",
+          `JO-${String(body.id).padStart(5, "0")} was completed successfully`,
+        ],
+      );
 
       return NextResponse.json({ status: 200 });
     }

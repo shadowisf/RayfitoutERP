@@ -194,7 +194,9 @@ export async function PUT(req: Request) {
             budget_estimate = ?,
             start_date = ?,
             end_date = ?,
-            attachment = ?
+            attachment = ?,
+            approval_status = null,
+            reject_comment = null
         WHERE id = ?
       `;
 

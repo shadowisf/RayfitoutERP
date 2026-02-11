@@ -309,7 +309,8 @@ export default async function MrWithID({
         }}
       >
         <h1>
-          <a href="/mr">MATERIAL REQUISITIONS</a> &gt; MR-
+          <a href="/mr">REQUISITIONS</a> &gt;{" "}
+          {mrHeader.type.toLowerCase().includes("material") ? "MR-" : "JO-"}
           {String(mrHeader.id).padStart(5, "0")}
         </h1>
 
@@ -339,8 +340,18 @@ export default async function MrWithID({
           >
             <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
               <div>
-                <small>MR ID</small>
-                <h2>MR-{String(id).padStart(5, "0")}</h2>
+                <small>
+                  {mrHeader.type.toLowerCase().includes("material")
+                    ? "MR"
+                    : "JO"}{" "}
+                  ID
+                </small>
+                <h2>
+                  {mrHeader.type.toLowerCase().includes("material")
+                    ? "MR-"
+                    : "JO-"}
+                  {String(mrHeader.id).padStart(5, "0")}
+                </h2>
               </div>
 
               <div style={{ display: "flex", gap: "10px" }}>

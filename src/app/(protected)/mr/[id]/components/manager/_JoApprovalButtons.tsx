@@ -9,19 +9,24 @@ import RejectCommentPopUp from "./RejectCommentPopUp";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { JoLine } from "../../types/joLine";
+import { MrHeader } from "../../types/mrHeader";
 
 type JoApprovalButtonsProps = {
   item: JoLine;
+  mrHeader: MrHeader;
 };
 
 type StatusType = "pending" | "approved" | "rejected";
 
-export default function JoApprovalButtons({ item }: JoApprovalButtonsProps) {
+export default function JoApprovalButtons({
+  item,
+  mrHeader,
+}: JoApprovalButtonsProps) {
   const router = useRouter();
   const { userInfo } = useAuth();
 
   const checkIcon = "/icons/check.svg";
-  const crossIcon = "/icons/cross.svg";
+  const crossIcon = "/icons/cross-small.svg";
 
   const [status, setStatus] = useState<StatusType>(getInitialStatus());
   const [isRejectOpen, setIsRejectOpen] = useState(false);
@@ -104,7 +109,7 @@ export default function JoApprovalButtons({ item }: JoApprovalButtonsProps) {
   }
 
   // Only managers (dept 8) can approve/reject
-  if (userInfo?.departmentID !== 8) {
+  if (userInfo?.departmentID !== 8 || mrHeader.progress_id === 5) {
     if (status === "approved") {
       return (
         <div
@@ -132,7 +137,17 @@ export default function JoApprovalButtons({ item }: JoApprovalButtonsProps) {
         </div>
       );
     }
-    return null;
+    return (
+      <div
+        className="approval-pill"
+        style={{
+          backgroundColor: "gray",
+          color: "white",
+        }}
+      >
+        <span>Pending</span>
+      </div>
+    );
   }
 
   if (status === "approved") {
@@ -180,40 +195,32 @@ export default function JoApprovalButtons({ item }: JoApprovalButtonsProps) {
 
   return (
     <>
-      <div style={{ display: "flex", gap: "5px" }}>
+      <div style={{ display: "flex", gap: "10px", width: "200px" }}>
         <Button
           componentType={"button"}
-          bgColor={"rgba(34, 150, 100, 1)"}
-          borderColor={"rgba(34, 150, 100, 1)"}
-          textColor={"white"}
+          bgColor={"white"}
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
           onClick={handleApprove}
-          style={{ borderRadius: "25px", padding: "7px 15px" }}
+          style={{ borderRadius: "20px", padding: "5px 20px", flexGrow: 1 }}
         >
-          <img
-            src={checkIcon}
-            alt="approve"
-            style={{ filter: "invert(1)", width: "12px" }}
-          />
+          <img src={checkIcon} alt="approve" />
         </Button>
         <Button
           componentType={"button"}
-          bgColor={"rgba(185, 28, 28, 1)"}
-          borderColor={"rgba(185, 28, 28, 1)"}
+          bgColor={"white"}
+          borderColor={"rgba(207, 207, 207, 1)"}
           textColor={"white"}
           onClick={() => setIsRejectOpen(true)}
-          style={{ borderRadius: "25px", padding: "7px 15px" }}
+          style={{ borderRadius: "20px", padding: "5px 20px", flexGrow: 1 }}
         >
-          <img
-            src={crossIcon}
-            alt="reject"
-            style={{ filter: "invert(1)", width: "10px" }}
-          />
+          <img src={crossIcon} alt="reject" />
         </Button>
       </div>
 
       {isRejectOpen && (
         <FormPopUp
-          header="REJECT ITEM"
+          header="REJECT JOB ITEM"
           setIsOpen={setIsRejectOpen}
           handleSubmit={handleReject}
           addButtonLabel="CONFIRM"
@@ -223,7 +230,6 @@ export default function JoApprovalButtons({ item }: JoApprovalButtonsProps) {
               label={"COMMENTS"}
               value={rejectText}
               type={"textarea"}
-              placeholder={"ENTER REJECTION REASON"}
               required
               onChange={(e) => setRejectText(e.target.value)}
             />

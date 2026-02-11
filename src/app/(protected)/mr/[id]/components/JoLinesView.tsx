@@ -3,17 +3,22 @@
 import { JoLine } from "../types/joLine";
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
-import { useRouter } from "next/navigation";
-import { toast } from "@/app/components/Toast";
+import { useState, useEffect, useCallback } from "react";
 import Button from "@/app/components/Button";
 import AddJoItemButton from "./department/_AddJoItemButton";
 import JoApprovalButtons from "./manager/_JoApprovalButtons";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import BoqReferencePopUp from "./BoqReferencePopUp";
-import SubmitForQSApprovalButton from "./department/_SubmitForQSApprovalButton";
 import SubmitForInitialApprovalButton from "./quantitySurveyor/_SubmitForInitialApprovalButton";
 import SubmitForQuotationsButton from "./manager/_SubmitForQuotationsButton";
 import SubmitForResubmissionButton from "./manager/_SubmitForInitialResubmissionButton";
+import { DeleteJoItemButton } from "./department/_DeleteJoItemButton";
+import EditJoItemButton from "./department/_EditJoItemButton";
+import SubcontractorAndQuotationButton from "./procurement/_SubcontractorAndQuotationButton";
+import JoPriceApprovalButton from "./manager/_JoPriceApprovalButton";
+import SubmitForJoPriceApprovalButton from "./procurement/_SubmitForJoPriceApprovalButton";
+import SubmitForJoCompletionButton from "./manager/_SubmitForJoCompletionButton";
+import SubmitForPricingResubmissionButton from "./manager/_SubmitForPriceResubmissionButton";
 
 type JoLinesViewProps = {
   joLines: JoLine[];
@@ -24,7 +29,6 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
   const { userInfo } = useAuth();
 
   const externalLinkIcon = "/icons/external-link.svg";
-  const trashIcon = "/icons/trash.svg";
 
   const canSeePrice =
     userInfo?.departmentID === 8 ||
@@ -54,11 +58,137 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
     (item) => item.approval_status === "Rejected",
   );
 
+  // Check if all lines have approved subcontractor (for completion)
+  const allLinesHaveApprovedSubcontractor = joLines.every(
+    (item) =>
+      item.approved_subcontractor_quotation_id &&
+      item.approved_subcontractor_quotation_id > 0,
+  );
+
   // Calculate total budget
   const totalBudget = joLines.reduce(
     (sum, item) => sum + (Number(item.budget_estimate) || 0),
     0,
   );
+
+  // ────────────────────────────────────────────────
+  // NEW: Check if ANY line has a REJECTED quotation
+  // (used to disable Submit for Manager Price Approval)
+  // ────────────────────────────────────────────────
+  const [hasAnyRejectedQuotation, setHasAnyRejectedQuotation] = useState(false);
+
+  const checkHasAnyRejectedQuotation = useCallback(async () => {
+    // Only relevant in stages 7 & 11 (Procurement submitting for price approval)
+    if (![7, 11].includes(mrHeader.progress_id) || joLines.length === 0) {
+      setHasAnyRejectedQuotation(false);
+      return;
+    }
+
+    // A line has a rejection if any of its quotations is "Rejected"
+    // We need to fetch the quotations for each line
+    try {
+      const results = await Promise.all(
+        joLines.map(async (line) => {
+          const res = await fetch(
+            "/api/subcontractor/getAllSubcontractorAndQuotationByJoLineID",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: line.id }),
+            },
+          );
+          if (!res.ok) return false;
+          const data = await res.json();
+          // Check if any quotation for this line is Rejected
+          return (
+            Array.isArray(data) &&
+            data.some((q: any) => q.approval_status === "Rejected")
+          );
+        }),
+      );
+
+      // If ANY line has at least one rejected quotation → disable button
+      const anyRejected = results.some((hasRejection) => hasRejection);
+      setHasAnyRejectedQuotation(anyRejected);
+    } catch (err) {
+      console.error("Error checking rejected quotations:", err);
+      setHasAnyRejectedQuotation(false);
+    }
+  }, [mrHeader.progress_id, joLines]);
+
+  useEffect(() => {
+    checkHasAnyRejectedQuotation();
+
+    const handleQuotationsUpdated = () => {
+      checkHasAnyRejectedQuotation();
+    };
+
+    window.addEventListener("joQuotationsUpdated", handleQuotationsUpdated);
+    return () => {
+      window.removeEventListener(
+        "joQuotationsUpdated",
+        handleQuotationsUpdated,
+      );
+    };
+  }, [checkHasAnyRejectedQuotation]);
+
+  // ────────────────────────────────────────────────
+  // Existing check for having quotations (keep it for other purposes)
+  // ────────────────────────────────────────────────
+  const [allLinesHaveQuotations, setAllLinesHaveQuotations] = useState(false);
+
+  const checkAllLinesHaveQuotations = useCallback(async () => {
+    if (![7, 11].includes(mrHeader.progress_id) || joLines.length === 0) {
+      setAllLinesHaveQuotations(false);
+      return;
+    }
+
+    try {
+      const results = await Promise.all(
+        joLines.map(async (line) => {
+          const res = await fetch(
+            "/api/subcontractor/getAllSubcontractorAndQuotationByJoLineID",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: line.id }),
+            },
+          );
+          if (!res.ok) return false;
+          const data = await res.json();
+          return Array.isArray(data) && data.length > 0;
+        }),
+      );
+
+      setAllLinesHaveQuotations(results.every((hasQuotation) => hasQuotation));
+    } catch {
+      setAllLinesHaveQuotations(false);
+    }
+  }, [mrHeader.progress_id, joLines]);
+
+  useEffect(() => {
+    checkAllLinesHaveQuotations();
+
+    const handleQuotationsUpdated = () => {
+      checkAllLinesHaveQuotations();
+    };
+
+    window.addEventListener("joQuotationsUpdated", handleQuotationsUpdated);
+    return () => {
+      window.removeEventListener(
+        "joQuotationsUpdated",
+        handleQuotationsUpdated,
+      );
+    };
+  }, [checkAllLinesHaveQuotations]);
+
+  // Show quotation column at stages 7, 10, 11
+  const showQuotationColumn =
+    [7, 11].includes(mrHeader.progress_id) && userInfo?.departmentID === 9;
+
+  // Show price approval column at stages 10, 11
+  const showPriceApprovalColumn =
+    [10, 11].includes(mrHeader.progress_id) && userInfo?.departmentID === 8;
 
   return (
     <>
@@ -67,19 +197,17 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
           <h2 style={{ textTransform: "uppercase" }}>JOB ITEMS</h2>
 
           <div className="right">
-            {/* Department can add items in Draft (1) and Resubmission (5) */}
             {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
               userInfo?.departmentID === mrHeader.department_id && (
                 <AddJoItemButton
                   mrHeaderID={mrHeader.id}
                   projectID={mrHeader.project_id}
-                  bgColor="black"
-                  borderColor="black"
-                  textColor="white"
-                >
-                  ADD JOB ITEM +
-                </AddJoItemButton>
+                />
               )}
+
+            {mrHeader.progress_id === 10 && userInfo?.departmentID === 8 && (
+              <div id="jo-smart-select-portal"></div>
+            )}
           </div>
         </div>
 
@@ -93,16 +221,24 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
               <th>DESCRIPTION</th>
               <th>BOQ REF.</th>
               <th>QTY</th>
-              <th>UNIT</th>
               {canSeePrice && <th>BUDGET EST.</th>}
-              <th>START DATE</th>
-              <th>END DATE</th>
               <th>ATTACHMENT</th>
-              {/* Show approval column during Manager Approval (3) */}
-              {mrHeader.progress_id === 3 && <th>APPROVAL</th>}
-              {/* Show delete in Draft / Resubmission */}
+
+              {mrHeader.progress_id === 3 && <th>APPROVAL STATUS</th>}
+
+              {mrHeader.progress_id === 5 &&
+                (userInfo?.departmentID === 8 ||
+                  userInfo?.departmentID === mrHeader.department_id) && (
+                  <th>APPROVAL STATUS</th>
+                )}
               {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-                userInfo?.departmentID === mrHeader.department_id && <th></th>}
+                userInfo?.departmentID === mrHeader.department_id && (
+                  <th>ACTIONS</th>
+                )}
+
+              {showQuotationColumn && <th>QUOTATIONS</th>}
+
+              {showPriceApprovalColumn && <th>PRICE APPROVAL</th>}
             </tr>
           </thead>
           <tbody>
@@ -112,37 +248,17 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                 <td>{item.job_scope_name || "-"}</td>
                 <td style={{ maxWidth: "250px" }}>
                   {item.job_description ? (
-                    item.job_description.length > 60 ? (
-                      <InfoPopUpButton
-                        text={
-                          <>
-                            <small>JOB DESCRIPTION</small>
-                            <h2>{item.job_description}</h2>
-                          </>
-                        }
-                        header="JOB DESCRIPTION"
-                      />
-                    ) : (
-                      item.job_description
-                    )
+                    <InfoPopUpButton
+                      text={item.job_description}
+                      header="JOB DESCRIPTION"
+                    />
                   ) : (
                     "-"
                   )}
                 </td>
                 <td>
                   {item.boq_line_ids ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      <span style={{ fontSize: "12px", fontWeight: 600 }}>
-                        {item.boq_item_numbers || "-"}
-                      </span>
-                      <BoqReferencePopUp item={item} mrHeader={mrHeader} />
-                    </div>
+                    <BoqReferencePopUp item={item} mrHeader={mrHeader} />
                   ) : (
                     "-"
                   )}
@@ -150,20 +266,16 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                 <td>
                   {formatNumber(item.quantity)} {item.unit}
                 </td>
-                <td>{item.unit}</td>
+
                 {canSeePrice && (
-                  <td>AED {Number(item.budget_estimate || 0).toFixed(2)}</td>
+                  <td>
+                    {item.budget_estimate ? (
+                      <>AED {Number(item.budget_estimate).toFixed(2)}</>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                 )}
-                <td>
-                  {item.start_date
-                    ? new Date(item.start_date).toLocaleDateString("en-US")
-                    : "-"}
-                </td>
-                <td>
-                  {item.end_date
-                    ? new Date(item.end_date).toLocaleDateString("en-US")
-                    : "-"}
-                </td>
                 <td>
                   {item.attachment ? (
                     <Button
@@ -182,20 +294,56 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                   )}
                 </td>
 
-                {/* Approval buttons during Manager Approval stage */}
                 {mrHeader.progress_id === 3 && (
                   <td>
-                    <JoApprovalButtons item={item} />
+                    <JoApprovalButtons item={item} mrHeader={mrHeader} />
                   </td>
                 )}
 
-                {/* Delete button in Draft / Resubmission */}
+                {mrHeader.progress_id === 5 &&
+                  (userInfo?.departmentID === 8 ||
+                    userInfo?.departmentID === mrHeader.department_id) && (
+                    <td>
+                      <JoApprovalButtons item={item} mrHeader={mrHeader} />
+                    </td>
+                  )}
+
                 {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
                   userInfo?.departmentID === mrHeader.department_id && (
                     <td>
-                      <DeleteJoItemButton itemId={item.id} />
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "10px",
+                          alignItems: "center",
+                        }}
+                      >
+                        <EditJoItemButton
+                          item={item}
+                          projectID={mrHeader.project_id}
+                        />
+                        <DeleteJoItemButton itemId={item.id} />
+                      </div>
                     </td>
                   )}
+
+                {showQuotationColumn && (
+                  <td>
+                    <SubcontractorAndQuotationButton
+                      mrHeader={mrHeader}
+                      joLine={item}
+                    />
+                  </td>
+                )}
+
+                {showPriceApprovalColumn && (
+                  <td>
+                    <JoPriceApprovalButton
+                      progressID={mrHeader.progress_id}
+                      joLine={item}
+                    />
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -219,27 +367,39 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
         </table>
       </div>
 
+      {/* Smart Select Portal */}
+      {mrHeader.progress_id === 10 &&
+        userInfo?.departmentID === 8 &&
+        joLines.length > 0 && (
+          <JoPriceApprovalButton
+            progressID={mrHeader.progress_id}
+            joLine={joLines[0]}
+            isSmartSelectPortal={true}
+            allJoLines={joLines}
+          />
+        )}
+
       {/* Bottom action nav — stage transitions */}
 
-      {/* Draft (1) - Department submits for QS/Manager approval */}
-      {mrHeader.progress_id === 1 &&
+      {/* Draft (1) / Resubmission (5) */}
+      {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
         userInfo?.departmentID === mrHeader.department_id &&
         joLines.length > 0 && (
           <div className="bottom-nav">
             <div></div>
-            <SubmitForQSApprovalButton mrHeader={mrHeader} />
+            <SubmitForInitialApprovalButton
+              mrHeader={mrHeader}
+              disabled={hasRejectedItems}
+              style={{
+                opacity: hasRejectedItems ? "0.5" : "1",
+                cursor: hasRejectedItems ? "not-allowed" : "pointer",
+                pointerEvents: hasRejectedItems ? "none" : "auto",
+              }}
+            />
           </div>
         )}
 
-      {/* QS Review (2) - For JO, QS forwards to Manager Approval */}
-      {mrHeader.progress_id === 2 && userInfo?.departmentID === 16 && (
-        <div className="bottom-nav">
-          <div></div>
-          <SubmitForInitialApprovalButton mrHeader={mrHeader} />
-        </div>
-      )}
-
-      {/* Manager Approval (3) - Submit for quotations or resubmission */}
+      {/* Manager Approval (3) */}
       {mrHeader.progress_id === 3 &&
         userInfo?.departmentID === 8 &&
         allItemsReviewed && (
@@ -252,41 +412,74 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             )}
           </div>
         )}
+
+      {/* Procurement Quotation (7) */}
+      {mrHeader.progress_id === 7 &&
+        userInfo?.departmentID === 9 &&
+        joLines.length > 0 && (
+          <div className="bottom-nav">
+            <div></div>
+            <SubmitForJoPriceApprovalButton
+              mrHeaderID={mrHeader.id}
+              disabled={hasAnyRejectedQuotation}
+              style={{
+                opacity: hasAnyRejectedQuotation ? "0.5" : "1",
+                cursor: hasAnyRejectedQuotation ? "not-allowed" : "pointer",
+                pointerEvents: hasAnyRejectedQuotation ? "none" : "auto",
+              }}
+            />
+          </div>
+        )}
+
+      {mrHeader.progress_id === 10 &&
+        userInfo?.departmentID === 8 &&
+        joLines.length > 0 && (
+          <div className="bottom-nav">
+            <div></div>
+            {hasAnyRejectedQuotation ? (
+              <>
+                <SubmitForPricingResubmissionButton mrHeaderID={mrHeader.id} />
+                <small
+                  style={{ color: "rgba(248, 77, 77, 1)", marginLeft: "12px" }}
+                >
+                  One or more quotations rejected — return for revision
+                </small>
+              </>
+            ) : (
+              <SubmitForJoCompletionButton
+                mrHeader={mrHeader}
+                disabled={!allLinesHaveApprovedSubcontractor}
+                style={{
+                  opacity: allLinesHaveApprovedSubcontractor ? "1" : "0.5",
+                  cursor: allLinesHaveApprovedSubcontractor
+                    ? "pointer"
+                    : "not-allowed",
+                  pointerEvents: allLinesHaveApprovedSubcontractor
+                    ? "auto"
+                    : "none",
+                }}
+              />
+            )}
+          </div>
+        )}
+
+      {/* Pricing Resubmission (11) */}
+      {mrHeader.progress_id === 11 &&
+        userInfo?.departmentID === 9 &&
+        joLines.length > 0 && (
+          <div className="bottom-nav">
+            <div></div>
+            <SubmitForJoPriceApprovalButton
+              mrHeaderID={mrHeader.id}
+              disabled={hasAnyRejectedQuotation}
+              style={{
+                opacity: hasAnyRejectedQuotation ? "0.5" : "1",
+                cursor: hasAnyRejectedQuotation ? "not-allowed" : "pointer",
+                pointerEvents: hasAnyRejectedQuotation ? "none" : "auto",
+              }}
+            />
+          </div>
+        )}
     </>
-  );
-}
-
-// Simple inline delete button component
-function DeleteJoItemButton({ itemId }: { itemId: number }) {
-  const router = useRouter();
-  const trashIcon = "/icons/trash.svg";
-
-  async function handleDelete() {
-    if (!confirm("Are you sure you want to delete this job line?")) return;
-
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "deleteItem", id: itemId }),
-    });
-
-    if (res.ok) {
-      toast("Job line deleted", "success");
-      router.refresh();
-    }
-  }
-
-  return (
-    <button
-      onClick={handleDelete}
-      style={{
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        padding: "5px",
-      }}
-    >
-      <img src={trashIcon} alt="delete" style={{ width: "14px" }} />
-    </button>
   );
 }

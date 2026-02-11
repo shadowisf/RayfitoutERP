@@ -68,8 +68,8 @@ export async function POST(req: Request) {
 
       const insertQuery = `
         INSERT INTO jo_line_subcontractor_quotation
-        (subcontractor_id, jo_line_id, quotation_file, rating, unit_price, total_price, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (subcontractor_id, jo_line_id, quotation_file, rating, total_price, created_by)
+        VALUES (?, ?, ?, ?, ?, ?)
       `;
 
       const insertedIds = [];
@@ -80,7 +80,6 @@ export async function POST(req: Request) {
           jo_line_id,
           JSON.stringify([quotation.quotation_file]),
           quotation.rating || null,
-          quotation.unit_price,
           quotation.total_price,
           quotation.created_by,
         ]);
@@ -198,6 +197,17 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (body.action === "resetAllSubcontractorQuotations") {
+      await db.query(
+        `UPDATE jo_line_subcontractor_quotation
+         SET approval_status = NULL, reject_comment = NULL
+         WHERE jo_line_id = ?`,
+        [body.jo_line_id],
+      );
+
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "updateSubcontractorQuotations") {
       const { jo_line_id, quotations } = body;
 
@@ -217,7 +227,6 @@ export async function PUT(req: Request) {
              SET subcontractor_id = ?,
                  quotation_file = ?,
                  rating = ?,
-                 unit_price = ?,
                  total_price = ?,
                  approval_status = NULL,
                  reject_comment = NULL,
@@ -227,7 +236,6 @@ export async function PUT(req: Request) {
               quotation.subcontractor_id,
               JSON.stringify([quotation.quotation_file]),
               quotation.rating,
-              quotation.unit_price,
               quotation.total_price,
               quotation.created_by,
               quotation.id,
@@ -237,14 +245,13 @@ export async function PUT(req: Request) {
         } else {
           const [result] = await db.query<ResultSetHeader>(
             `INSERT INTO jo_line_subcontractor_quotation
-             (subcontractor_id, jo_line_id, quotation_file, rating, unit_price, total_price, created_by)
+             (subcontractor_id, jo_line_id, quotation_file, rating, total_price, created_by)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
               quotation.subcontractor_id,
               jo_line_id,
               JSON.stringify([quotation.quotation_file]),
               quotation.rating,
-              quotation.unit_price,
               quotation.total_price,
               quotation.created_by,
             ],
