@@ -19,6 +19,8 @@ import JoPriceApprovalButton from "./manager/_JoPriceApprovalButton";
 import SubmitForJoPriceApprovalButton from "./procurement/_SubmitForJoPriceApprovalButton";
 import SubmitForJoCompletionButton from "./manager/_SubmitForJoCompletionButton";
 import SubmitForPricingResubmissionButton from "./manager/_SubmitForPriceResubmissionButton";
+import UploadJoInvoiceButton from "./procurement/_UploadJoInvoiceButton";
+import SubmitForJoFinalCompletionButton from "./procurement/_SubmitForJoFinalCompletionButton";
 
 type JoLinesViewProps = {
   joLines: JoLine[];
@@ -35,6 +37,17 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
     userInfo?.departmentID === 9 ||
     userInfo?.departmentID === 10 ||
     userInfo?.departmentID === 16;
+
+  // Invoice file state for stage 12 (LPO & Invoice)
+  const [joInvoiceFiles, setJoInvoiceFiles] = useState<string[]>(() => {
+    if (!mrHeader.jo_invoice_file) return [];
+    try {
+      const parsed = JSON.parse(mrHeader.jo_invoice_file);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
 
   const formatNumber = (value: unknown): string => {
     const num = Number(value);
@@ -220,6 +233,20 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             {mrHeader.progress_id === 10 && userInfo?.departmentID === 8 && (
               <div id="jo-smart-select-portal"></div>
             )}
+
+            {mrHeader.progress_id === 12 &&
+              userInfo?.departmentID === 9 &&
+              joLines.length > 0 && (
+                <div
+                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
+                >
+                  <UploadJoInvoiceButton
+                    mrHeader={mrHeader}
+                    invoiceFiles={joInvoiceFiles}
+                    onFilesUpdate={setJoInvoiceFiles}
+                  />
+                </div>
+              )}
           </div>
         </div>
 
@@ -435,11 +462,20 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             <div></div>
             <SubmitForJoPriceApprovalButton
               mrHeaderID={mrHeader.id}
-              disabled={hasAnyRejectedQuotation}
+              disabled={hasAnyRejectedQuotation || !allLinesHaveQuotations}
               style={{
-                opacity: hasAnyRejectedQuotation ? "0.5" : "1",
-                cursor: hasAnyRejectedQuotation ? "not-allowed" : "pointer",
-                pointerEvents: hasAnyRejectedQuotation ? "none" : "auto",
+                opacity:
+                  hasAnyRejectedQuotation || !allLinesHaveQuotations
+                    ? "0.5"
+                    : "1",
+                cursor:
+                  hasAnyRejectedQuotation || !allLinesHaveQuotations
+                    ? "not-allowed"
+                    : "pointer",
+                pointerEvents:
+                  hasAnyRejectedQuotation || !allLinesHaveQuotations
+                    ? "none"
+                    : "auto",
               }}
             />
           </div>
@@ -485,11 +521,38 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             <div></div>
             <SubmitForJoPriceApprovalButton
               mrHeaderID={mrHeader.id}
-              disabled={hasAnyRejectedQuotation}
+              disabled={hasAnyRejectedQuotation || !allLinesHaveQuotations}
               style={{
-                opacity: hasAnyRejectedQuotation ? "0.5" : "1",
-                cursor: hasAnyRejectedQuotation ? "not-allowed" : "pointer",
-                pointerEvents: hasAnyRejectedQuotation ? "none" : "auto",
+                opacity:
+                  hasAnyRejectedQuotation || !allLinesHaveQuotations
+                    ? "0.5"
+                    : "1",
+                cursor:
+                  hasAnyRejectedQuotation || !allLinesHaveQuotations
+                    ? "not-allowed"
+                    : "pointer",
+                pointerEvents:
+                  hasAnyRejectedQuotation || !allLinesHaveQuotations
+                    ? "none"
+                    : "auto",
+              }}
+            />
+          </div>
+        )}
+
+      {/* LPO & Invoice (12) — Procurement submits for completion */}
+      {mrHeader.progress_id === 12 &&
+        userInfo?.departmentID === 9 &&
+        joLines.length > 0 && (
+          <div className="bottom-nav">
+            <div></div>
+            <SubmitForJoFinalCompletionButton
+              mrHeader={mrHeader}
+              disabled={joInvoiceFiles.length === 0}
+              style={{
+                opacity: joInvoiceFiles.length > 0 ? "1" : "0.5",
+                cursor: joInvoiceFiles.length > 0 ? "pointer" : "not-allowed",
+                pointerEvents: joInvoiceFiles.length > 0 ? "auto" : "none",
               }}
             />
           </div>

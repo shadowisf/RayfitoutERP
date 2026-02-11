@@ -149,9 +149,7 @@ export default function Subcontractor() {
             <th>NAME</th>
             <th>MATERIAL CATEGORIES</th>
             <th>TRN</th>
-            {(userInfo?.departmentID === 8 || userInfo?.departmentID === 9) && (
-              <th></th>
-            )}
+            <th></th>
           </tr>
         </thead>
         <tbody>

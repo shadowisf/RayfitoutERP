@@ -733,6 +733,39 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitForJoCompletion") {
+      // Manager approved subcontractor → move to LPO & Invoice stage (12)
+      await db.query(`UPDATE mr_headers SET progress_id = 12 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 12, ?)`,
+        [body.id, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          9,
+          "Job Order Awaiting Invoice",
+          `JO-${String(body.id).padStart(5, "0")} requires invoice upload`,
+        ],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "updateJoInvoice") {
+      await db.query(
+        `UPDATE mr_headers SET jo_invoice_file = ? WHERE id = ?`,
+        [body.jo_invoice_file, body.id],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitJoForFinalCompletion") {
       await db.query(`UPDATE mr_headers SET progress_id = 25 WHERE id = ?`, [
         body.id,
       ]);

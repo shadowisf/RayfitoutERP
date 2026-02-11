@@ -96,6 +96,11 @@ export default function SideBar() {
       icon: "/icons/vendors.svg",
     },
     {
+      label: "Payments",
+      path: "/payment",
+      icon: "/icons/payment-black.svg",
+    },
+    {
       label: "Inventory",
       path: "/inventory",
       icon: "/icons/inventory.svg",

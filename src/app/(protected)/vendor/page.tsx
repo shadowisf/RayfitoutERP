@@ -186,9 +186,7 @@ export default function Vendor() {
             <th>MATERIAL CATEGORIES</th>
             <th>MATERIAL SUBCATEGORIES</th>
             <th>TRN</th>
-            {(userInfo?.departmentID === 8 || userInfo?.departmentID === 9) && (
-              <th></th>
-            )}
+            <th></th>
           </tr>
         </thead>
         <tbody>

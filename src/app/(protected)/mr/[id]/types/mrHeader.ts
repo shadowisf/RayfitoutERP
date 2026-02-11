@@ -15,4 +15,6 @@ export type MrHeader = {
   progress_name: string;
   date_requested: string;
   delivery_date: string;
+  jo_invoice_file: string;
+  jo_payment_receipt: string;
 };
