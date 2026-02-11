@@ -23,7 +23,7 @@ export default function ExpectedDeliveriesWidget() {
     <>
       <h2>EXPECTED DELIVERIES</h2>
       <br />
-      <table className="items-table">
+      <table className="items-table two-toned alt">
         <thead>
           <tr>
             <th>ID</th>

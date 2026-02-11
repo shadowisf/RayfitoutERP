@@ -11,7 +11,7 @@ import RejectCommentPopUp from "../manager/RejectCommentPopUp";
 import { MrHeader } from "../../types/mrHeader";
 import { JoLine } from "../../types/joLine";
 import { useAuth } from "@/app/context/AuthContext";
-import CreateSubcontractorButton from "../../../../vendor/components/_CreateSubcontractorButton";
+import CreateSubcontractorButton from "../../../../subcontractor/components/_CreateSubcontractorButton";
 
 type SubcontractorQuotation = {
   id?: number;

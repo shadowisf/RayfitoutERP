@@ -1,0 +1,16 @@
+type Subcontractor = {
+  id: number;
+  name: string;
+  trn_number: string;
+  trn_certificate: string;
+  contact_person_name: string;
+  phone: string;
+  email: string;
+  address: string;
+  website: string;
+  bank_name: string;
+  account_number: string;
+  notes: string;
+  material_categories: string;
+  material_category_ids: string;
+};

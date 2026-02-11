@@ -719,20 +719,22 @@ export default function MR() {
 
     const useLpoCards = LPO_STAGE_IDS.includes(status.progress_id);
 
-    // For Completed stage, check both LPOs and MRs (job orders)
+    // For Completed stage, check both LPOs and JOs (exclude material MRs)
     if (status.progress_id === 25) {
       const lpos = groupedLPOs[status.name] || [];
-      const mrs = groupedMRs[status.name] || [];
+      const jos = (groupedMRs[status.name] || []).filter(
+        (mr: any) => mr.type === "job",
+      );
 
       if (userDeptId === 8 && filterRelevant) {
         return (
           lpos.some((l) => l.department_id === 8) ||
-          mrs.some((mr: any) => mr.department_id === 8)
+          jos.some((mr: any) => mr.department_id === 8)
         );
       }
       return (
         lpos.some((l: any) => l.department_id === userDeptId) ||
-        mrs.some((mr: any) => mr.department_id === userDeptId)
+        jos.some((mr: any) => mr.department_id === userDeptId)
       );
     }
 
@@ -1024,11 +1026,10 @@ export default function MR() {
             const useLpo = LPO_STAGE_IDS.includes(status.progress_id);
             const isCompleted = status.progress_id === 25;
             if (isCompleted) {
-              return (
-                sum +
-                (groupedLPOs[status.name]?.length || 0) +
-                (groupedMRs[status.name]?.length || 0)
-              );
+              const joCount = (groupedMRs[status.name] || []).filter(
+                (mr) => mr.type === "job",
+              ).length;
+              return sum + (groupedLPOs[status.name]?.length || 0) + joCount;
             }
             return (
               sum +
@@ -1079,7 +1080,9 @@ export default function MR() {
                   );
                   const isCompletedStage = status.progress_id === 25;
                   const mrs = isCompletedStage
-                    ? groupedMRs[status.name] || []
+                    ? (groupedMRs[status.name] || []).filter(
+                        (mr) => mr.type === "job",
+                      )
                     : useLpoCards
                       ? []
                       : groupedMRs[status.name] || [];
@@ -1211,7 +1214,8 @@ export default function MR() {
                                       display: "flex",
                                       flexDirection: "column",
                                       gap: "12px",
-                                      border: "1px solid rgba(231, 231, 231, 1)",
+                                      border:
+                                        "1px solid rgba(231, 231, 231, 1)",
                                     }}
                                   >
                                     <div
@@ -1233,37 +1237,19 @@ export default function MR() {
                                             ).padStart(5, "0")}
                                           </h3>
                                         </div>
-
-                                        <div
-                                          style={{
-                                            display: "flex",
-                                            alignItems: "flex-end",
-                                            gap: "10px",
-                                          }}
-                                        >
-                                          <div>
-                                            <small>LPO NUMBER</small>
-                                            <h3>
-                                              LPO-
-                                              {String(lpoCard.id).padStart(
-                                                5,
-                                                "0",
-                                              )}
-                                            </h3>
-                                          </div>
-                                        </div>
                                       </div>
                                     </div>
 
                                     <div>
-                                      <small
-                                        style={{
-                                          fontSize: "10px",
-                                          color: "#6b7280",
-                                        }}
-                                      >
-                                        PROJECT
-                                      </small>
+                                      <small>LPO NUMBER</small>
+                                      <h3>
+                                        LPO-
+                                        {String(lpoCard.id).padStart(5, "0")}
+                                      </h3>
+                                    </div>
+
+                                    <div>
+                                      <small>PROJECT</small>
                                       <h3>{lpoCard.project_name || "-"}</h3>
                                     </div>
 
@@ -1352,7 +1338,8 @@ export default function MR() {
                                       display: "flex",
                                       flexDirection: "column",
                                       gap: "12px",
-                                      border: "1px solid rgba(231, 231, 231, 1)",
+                                      border:
+                                        "1px solid rgba(231, 231, 231, 1)",
                                     }}
                                   >
                                     <div
@@ -1384,14 +1371,7 @@ export default function MR() {
                                     </div>
 
                                     <div>
-                                      <small
-                                        style={{
-                                          fontSize: "10px",
-                                          color: "#6b7280",
-                                        }}
-                                      >
-                                        PROJECT
-                                      </small>
+                                      <small>PROJECT</small>
                                       <h3>{mr.project_name || "-"}</h3>
                                     </div>
 
@@ -1599,26 +1579,12 @@ export default function MR() {
                                   </div>
 
                                   <div>
-                                    <small
-                                      style={{
-                                        fontSize: "10px",
-                                        color: "#6b7280",
-                                      }}
-                                    >
-                                      SUPPLIER
-                                    </small>
+                                    <small>SUPPLIER</small>
                                     <h3>{lpoCard.supplier_name || "-"}</h3>
                                   </div>
 
                                   <div>
-                                    <small
-                                      style={{
-                                        fontSize: "10px",
-                                        color: "#6b7280",
-                                      }}
-                                    >
-                                      PROJECT
-                                    </small>
+                                    <small>PROJECT</small>
                                     <h3>{lpoCard.project_name || "-"}</h3>
                                   </div>
 
@@ -1829,14 +1795,7 @@ export default function MR() {
                                   </div>
 
                                   <div>
-                                    <small
-                                      style={{
-                                        fontSize: "10px",
-                                        color: "#6b7280",
-                                      }}
-                                    >
-                                      PROJECT
-                                    </small>
+                                    <small>PROJECT</small>
                                     <h3>{mr.project_name || "-"}</h3>
                                   </div>
 

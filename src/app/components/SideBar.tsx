@@ -91,6 +91,11 @@ export default function SideBar() {
     { label: "Projects", path: "/project", icon: "/icons/projects.svg" },
     { label: "Vendors", path: "/vendor", icon: "/icons/vendors.svg" },
     {
+      label: "Subcontractors",
+      path: "/subcontractor",
+      icon: "/icons/vendors.svg",
+    },
+    {
       label: "Inventory",
       path: "/inventory",
       icon: "/icons/inventory.svg",

@@ -71,6 +71,18 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
     0,
   );
 
+  // Calculate total approved price (after subcontractor & quotation approval)
+  const totalApprovedPrice = joLines.reduce(
+    (sum, item) => sum + (Number(item.approved_total_price) || 0),
+    0,
+  );
+
+  const hasAnyApprovedPrice = joLines.some(
+    (item) =>
+      item.approved_total_price != null &&
+      Number(item.approved_total_price) > 0,
+  );
+
   // ────────────────────────────────────────────────
   // NEW: Check if ANY line has a REJECTED quotation
   // (used to disable Submit for Manager Price Approval)
@@ -350,18 +362,20 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
 
           {canSeePrice && (
             <tfoot style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}>
-              <tr>
-                <td
-                  colSpan={6}
-                  style={{ fontWeight: "600", padding: "15px 20px" }}
-                >
-                  TOTAL BUDGET
-                </td>
-                <td style={{ fontWeight: "600", padding: "15px 20px" }}>
-                  AED {totalBudget.toFixed(2)}
-                </td>
-                <td colSpan={10}></td>
-              </tr>
+              {hasAnyApprovedPrice && (
+                <tr>
+                  <td
+                    colSpan={5}
+                    style={{ fontWeight: "600", padding: "15px 20px" }}
+                  >
+                    TOTAL PRICE
+                  </td>
+                  <td style={{ fontWeight: "600", padding: "15px 20px" }}>
+                    AED {totalApprovedPrice.toFixed(2)}
+                  </td>
+                  <td colSpan={10}></td>
+                </tr>
+              )}
             </tfoot>
           )}
         </table>

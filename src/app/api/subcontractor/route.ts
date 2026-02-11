@@ -6,7 +6,8 @@ export async function GET() {
   try {
     const [rows]: any = await db.query(`
       SELECT s.*,
-        GROUP_CONCAT(DISTINCT mc.value) as material_categories
+        GROUP_CONCAT(DISTINCT mc.value) as material_categories,
+        GROUP_CONCAT(DISTINCT mc.id) as material_category_ids
       FROM subcontractors s
       LEFT JOIN jt_subcontractor_material_category jsmc ON s.id = jsmc.subcontractor_id
       LEFT JOIN lut_material_categories mc ON jsmc.material_category_id = mc.id
