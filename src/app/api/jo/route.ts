@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 export async function GET() {
   try {
     const [rows]: any = await db.query(
-      `SELECT * FROM vw_jo_lines ORDER BY jl.id ASC`,
+      `SELECT * FROM vw_jo_lines ORDER BY id ASC`,
     );
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {

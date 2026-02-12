@@ -765,6 +765,15 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "updateJoPaymentReceipt") {
+      await db.query(
+        `UPDATE mr_headers SET jo_payment_receipt = ? WHERE id = ?`,
+        [body.jo_payment_receipt, body.id],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action === "submitJoForFinalCompletion") {
       await db.query(`UPDATE mr_headers SET progress_id = 25 WHERE id = ?`, [
         body.id,

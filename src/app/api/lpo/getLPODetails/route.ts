@@ -1,4 +1,3 @@
-// app/api/lpo/getLPODetails/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { RowDataPacket } from "mysql2";
@@ -26,7 +25,7 @@ export async function POST(request: NextRequest) {
     if (!lpoRows || lpoRows.length === 0) {
       return NextResponse.json(
         { success: false, error: "LPO not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -58,13 +57,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { success: true, data: completeData },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error fetching LPO details:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch LPO details" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

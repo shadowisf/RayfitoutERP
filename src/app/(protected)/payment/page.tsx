@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Button from "@/app/components/Button";
 
 type PaymentRow = {
   id: number;
@@ -16,6 +17,7 @@ type PaymentRow = {
 
 export default function Payments() {
   const searchIcon = "/icons/search.svg";
+  const externalLinkIcon = "/icons/external-link.svg";
 
   const [rows, setRows] = useState<PaymentRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -206,8 +208,9 @@ export default function Payments() {
             <th>NAME</th>
             <th>TYPE</th>
             <th>TOTAL AMOUNT</th>
-            <th>DUE DATE</th>
+            {/* <th>DUE DATE</th> */}
             <th>STATUS</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -232,11 +235,11 @@ export default function Payments() {
                   </div>
                 </td>
                 <td>AED {row.total_amount.toFixed(2)}</td>
-                <td>
+                {/* <td>
                   {row.due_date
                     ? new Date(row.due_date).toLocaleDateString("en-GB")
                     : "-"}
-                </td>
+                </td> */}
                 <td>
                   <div
                     className="approval-pill normal-text centered"
@@ -249,6 +252,20 @@ export default function Payments() {
                       ? "PAID"
                       : `${row.unpaid_count} UNPAID INVOICE${row.unpaid_count > 1 ? "S" : ""}`}
                   </div>
+                </td>
+                <td>
+                  <Button
+                    componentType={"link"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"rgba(223, 223, 223, 1)"}
+                    textColor={"black"}
+                    href={`/payment/${row.entity}/${row.id}`}
+                    style={{
+                      padding: "7px 7px",
+                    }}
+                  >
+                    <img src={externalLinkIcon} alt="external link" />
+                  </Button>
                 </td>
               </tr>
             );
