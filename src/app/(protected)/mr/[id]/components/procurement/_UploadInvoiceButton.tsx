@@ -31,17 +31,12 @@ export default function UploadInvoiceButton({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
 
   const closeIcon = "/icons/cross-small.svg";
   const downloadIcon = "/icons/download.svg";
   const uploadIcon = "/icons/upload.svg";
 
-  function handleUploadClick() {
-    if (!isUploading) {
-      fileInputRef.current?.click();
-    }
-  }
+  function handleUploadClick() {}
 
   async function handleDownload(url: string, event: React.MouseEvent) {
     event.stopPropagation();
@@ -71,8 +66,6 @@ export default function UploadInvoiceButton({
   }
 
   async function uploadFile(file: File) {
-    setIsUploading(true);
-
     try {
       // Upload to S3
       const formData = new FormData();
@@ -124,8 +117,6 @@ export default function UploadInvoiceButton({
     } catch (error) {
       console.error("Error uploading invoice:", error);
       toast("Failed to upload invoice", "error");
-    } finally {
-      setIsUploading(false);
     }
   }
 
@@ -183,7 +174,6 @@ export default function UploadInvoiceButton({
 
   async function handleRemoveFile(url: string, event: React.MouseEvent) {
     event.stopPropagation();
-    setIsUploading(true);
 
     try {
       // Delete from S3
@@ -233,8 +223,6 @@ export default function UploadInvoiceButton({
     } catch (error) {
       console.error("Error deleting invoice:", error);
       toast("Failed to delete invoice", "error");
-    } finally {
-      setIsUploading(false);
     }
   }
 
@@ -302,12 +290,10 @@ export default function UploadInvoiceButton({
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            cursor: isUploading ? "not-allowed" : "pointer",
             backgroundColor: isDragOver ? "rgba(169, 255, 218, 1)" : "black",
             color: isDragOver ? "rgba(34, 150, 100, 1)" : "white",
             borderStyle: isDragOver ? "dashed" : "solid",
           }}
-          disabled={isUploading}
         >
           {isDragOver ? (
             "DROP HERE"

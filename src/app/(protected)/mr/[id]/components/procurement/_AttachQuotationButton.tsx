@@ -15,6 +15,7 @@ export default function AttachQuotationButton({
 }: AttachQuotationButtonProps) {
   const uploadIcon = "/icons/upload.svg";
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [isDragOver, setIsDragOver] = useState(false);
 
   const allowedTypes = [
@@ -52,21 +53,19 @@ export default function AttachQuotationButton({
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isUploading) {
-      setIsDragOver(true);
-    }
+    setIsDragOver(true);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
@@ -92,42 +91,40 @@ export default function AttachQuotationButton({
       />
 
       {/* DROP ZONE */}
-      <div
+
+      <Button
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        componentType="button"
+        bgColor="black"
+        borderColor="black"
+        textColor="white"
+        onClick={handleButtonClick}
+        full
         style={{
-          width: "100%",
+          minWidth: "200px",
+          padding: "7px 20px",
           borderRadius: "25px",
-          backgroundColor: isDragOver
-            ? "rgba(169, 255, 218, 1)"
-            : "transparent",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "10px",
+          whiteSpace: "nowrap",
+          backgroundColor: isDragOver ? "rgba(169, 255, 218, 1)" : "black",
+          color: isDragOver ? "rgba(34, 150, 100, 1)" : "white",
+          borderStyle: isDragOver ? "dashed" : "solid",
         }}
       >
-        <Button
-          componentType="button"
-          bgColor="black"
-          borderColor="black"
-          textColor="white"
-          onClick={handleButtonClick}
-          full
-          style={{
-            padding: "7px 20px",
-            borderRadius: "25px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "10px",
-            whiteSpace: "nowrap",
-            opacity: isUploading ? 0.5 : 1,
-            cursor: isUploading ? "not-allowed" : "pointer",
-            pointerEvents: isUploading ? "none" : "auto",
-          }}
-        >
-          Upload Quotation
-          <img src={uploadIcon} alt="upload icon" />
-        </Button>
-      </div>
+        {isDragOver ? (
+          "DROP HERE"
+        ) : (
+          <>
+            Upload Quotation
+            <img src={uploadIcon} alt="upload icon" />
+          </>
+        )}
+      </Button>
     </>
   );
 }

@@ -766,7 +766,7 @@ export default function SupplierAndQuotationButton({
           setIsOpen={setIsOpen}
           handleSubmit={handleSupplierAndQuotationSubmit}
           addButtonLabel={"CONFIRM"}
-          style={{ minWidth: "1500px" }}
+          style={{ minWidth: "1600px" }}
         >
           <>
             <table className="items-table">
@@ -816,18 +816,19 @@ export default function SupplierAndQuotationButton({
                             borderColor="rgba(223, 223, 223, 1)"
                             textColor="black"
                             style={{
+                              minWidth: "200px",
                               padding: "7px 20px",
                               borderRadius: "25px",
                             }}
                           >
                             Quotation
-                            <a
+                            {/* <a
                               href={quotation.quotation_url}
                               target="_blank"
                               style={{ display: "flex" }}
                             >
                               <img src={externalLinkIcon} alt="view" />
-                            </a>
+                            </a> */}
                             <img
                               src={closeIcon}
                               alt="remove"
@@ -890,7 +891,7 @@ export default function SupplierAndQuotationButton({
                           <input
                             style={{ paddingRight: "50px" }}
                             type="text"
-                            placeholder=""
+                            placeholder="CALCULATING..."
                             value={quotation.total_price}
                             disabled
                           />

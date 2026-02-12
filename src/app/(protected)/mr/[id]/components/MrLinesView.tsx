@@ -22,24 +22,20 @@ import SubmitForLPO from "./manager/_SubmitForLPOButton";
 import Button from "@/app/components/Button";
 import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
 import IssueLPOButton from "./procurement/_IssueLPOButton";
-import SubmitForPaymentButton from "./procurement/_SubmitForPaymentButton";
+import SubmitForPaymentButton, {
+  SupplierInfo,
+} from "./procurement/_SubmitForPaymentButton";
 import PaymentButtons from "./finance/_PaymentButtons";
-import SubmitForDeliveryButton from "./finance/_SubmitForDeliveryButton";
 import CreateGRNButton from "./storekeeper/_CreateGRNButton";
 import QCCheckListButton from "./qualityControl/_QCCheckListButton";
-import SubmitForStockEntryButton from "./qualityControl/_SubmitForStockEntry";
 import AddToInventoryButton from "./storekeeper/_AddStockButton";
-import CompleteMaterialRequestButton from "./storekeeper/_CompleteMaterialRequestButton";
-import SubmitForProcurementResolutionButton from "./qualityControl/_SubmitForProcurementResolution";
 import QCRecheckButton from "./procurement/_QCRecheckButton";
 import ResolutionButton from "./procurement/_AddResolutionButton";
-import SubmitForLPOResubmissionButton from "./finance/_SubmitForLPOResubmission";
-import SubmitForLPOResubmissionGRNFailButton from "./storekeeper/_SubmitForLPOResubmissionGRNFail";
-import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
-import SubmitForQSApprovalButton from "./department/_SubmitForQSApprovalButton";
 import QSInitialApprovalButtons from "./quantitySurveyor/_InitialApprovalButton";
 import SubmitForQSPricingApprovalButton from "./procurement/_SubmitForQSPricingApprovalButton";
 import CheckPricesButton from "./quantitySurveyor/_CheckPricesButton";
+import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
+import SubmitForQSApprovalButton from "./department/_SubmitForQSApprovalButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -2641,7 +2637,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                 padding: "15px 20px",
                                               }}
                                             >
-                                              TOTAL
+                                              SUBTOTAL
                                             </td>
                                             <td></td>
                                             <td></td>
@@ -3259,7 +3255,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             padding: "15px 20px",
                                           }}
                                         >
-                                          TOTAL
+                                          SUBTOTAL
                                         </td>
                                         <td></td>
                                         <td></td>
@@ -3517,7 +3513,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             </div>
 
             <br />
-            <br />
 
             <table className="items-table two-toned">
               <thead>
@@ -3732,7 +3727,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 padding: "15px 20px",
                               }}
                             >
-                              TOTAL
+                              SUBTOTAL
                             </td>
                             <td></td>
                             <td></td>
@@ -4031,23 +4026,62 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
       )}
 
       {/* LPO & Invoice (Progress 12) - Procurement Submit for Payment */}
+      {/* LPO & Invoice (Progress 12) - Procurement Submit for Payment */}
       {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
         <div className="bottom-nav">
           <div></div>
-          <SubmitForPaymentButton
-            paymentValue={totalInvoiceAmount}
-            mrHeaderID={mrHeader.id}
-          />
+          {(() => {
+            // Build suppliers array from your existing data
+            const suppliersArray: SupplierInfo[] = [];
+
+            for (const category in mrLines) {
+              for (const subCategory in mrLines[category]) {
+                for (const supplierName in mrLines[category][subCategory]) {
+                  const items = mrLines[category][subCategory][supplierName];
+                  if (items.length > 0) {
+                    const supplierId = items[0].approved_supplier_id;
+                    const lpoInfo = supplierId
+                      ? lpoPerSupplier[supplierId]
+                      : null;
+                    const lpoStatus = supplierId
+                      ? lpoInvoiceStatus[supplierId]
+                      : null;
+
+                    if (lpoInfo && lpoStatus?.hasLpo) {
+                      suppliersArray.push({
+                        supplierId: supplierId!,
+                        lpoId: lpoInfo.lpoId,
+                        supplierType: lpoStatus.supplierType || "unknown",
+                        supplierName: supplierName,
+                        paymentValue: calculateItemsTotal(items),
+                      });
+                    }
+                  }
+                }
+              }
+            }
+
+            return (
+              <SubmitForPaymentButton
+                mrHeaderID={mrHeader.id}
+                suppliers={suppliersArray}
+                disabled={
+                  !allSuppliersHaveLpoWithInvoicesAndSignedFiles() ||
+                  suppliersArray.length === 0
+                }
+                style={{
+                  opacity: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
+                    ? "0.5"
+                    : "1",
+                  cursor: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
+                    ? "not-allowed"
+                    : "pointer",
+                }}
+              />
+            );
+          })()}
         </div>
       )}
-
-      {/*
-        LPO SEGREGATION NOTE:
-        Stages 13+ (Pending Payments, Awaiting Delivery, QC, Stock Entry, etc.)
-        now operate per-LPO on the individual LPO detail page (/mr/[id]/lpo/[lpoId]).
-        Bottom nav action buttons for stages 13+ are handled per-LPO, not per-MR.
-        Use the "VIEW LPO" links in the vendor tab above to access each LPO's workflow.
-      */}
     </>
   );
 }

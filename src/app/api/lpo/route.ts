@@ -273,7 +273,7 @@ export async function PUT(req: Request) {
         [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
       );
 
-      await db.query(
+      /*       await db.query(
         `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
         [
           Number(body.mr_header_id),
@@ -282,7 +282,7 @@ export async function PUT(req: Request) {
           "Payment Successful",
           `A payment (AED ${body.payment_value}) was made against LPO-${String(body.lpo_id).padStart(5, "0")}`,
         ],
-      );
+      ); */
 
       const deptIds = [8, 9, 11, 16];
       if (body.department_id && !deptIds.includes(Number(body.department_id))) {

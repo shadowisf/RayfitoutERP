@@ -243,6 +243,14 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "submitForLPOSegregation") {
+      await db.query(`UPDATE mr_headers SET progress_id = 26 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action === "submitForQSInitialApproval") {
       await db.query(`UPDATE mr_headers SET progress_id = 2 WHERE id = ?`, [
         body.id,
@@ -757,10 +765,10 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "updateJoInvoice") {
-      await db.query(
-        `UPDATE mr_headers SET jo_invoice_file = ? WHERE id = ?`,
-        [body.jo_invoice_file, body.id],
-      );
+      await db.query(`UPDATE mr_headers SET jo_invoice_file = ? WHERE id = ?`, [
+        body.jo_invoice_file,
+        body.id,
+      ]);
 
       return NextResponse.json({ status: 200 });
     }

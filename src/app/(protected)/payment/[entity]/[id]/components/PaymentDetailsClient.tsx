@@ -7,6 +7,7 @@ import UploadFileBox from "@/app/components/SingleUploadFileBox";
 import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
+import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReferencePopUp";
 
 type EntityType = "supplier" | "subcontractor";
 
@@ -68,6 +69,34 @@ type GrnData = {
   }[];
 };
 
+// Type for items to support boq_line_ids and other fields
+type LpoItem = {
+  id: number;
+  material_description: string;
+  quantity: number;
+  unit?: string;
+  unit_price: number | string;
+  total_price: number | string;
+  boq_line_ids?: string | null;
+  brand?: string | null;
+  specification?: string | null;
+  attachment?: string | null;
+};
+
+type JoItem = {
+  id: number;
+  job_scope_name?: string;
+  job_description?: string;
+  quantity: number;
+  unit?: string;
+  budget_estimate?: number;
+  approved_total_price?: number;
+  boq_line_ids?: string | null;
+  brand?: string | null;
+  specification?: string | null;
+  attachment?: string | null;
+};
+
 export default function PaymentDetailsClient({
   initialData,
   entity,
@@ -87,8 +116,6 @@ export default function PaymentDetailsClient({
   const [joPaymentFile, setJoPaymentFile] = useState<File | null>(null);
 
   const [isGrnOpen, setIsGrnOpen] = useState(false);
-  /* const [grnData, setGrnData] = useState<GrnData | null>(null);
-  const [isLoadingGrn, setIsLoadingGrn] = useState(false); */
 
   const downloadIcon = "/icons/download.svg";
   const externalLinkIcon = "/icons/external-link.svg";
@@ -275,41 +302,6 @@ export default function PaymentDetailsClient({
     }
   }
 
-  /* async function handleViewGrn(lpoId: number) {
-    setIsGrnOpen(true);
-    setIsLoadingGrn(true);
-    setGrnData(null);
-
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/grn/getGRNDetailsByLPOID`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lpo_id: lpoId }),
-        },
-      );
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch GRN");
-      }
-
-      const json = await res.json();
-      if (json.success && json.data) {
-        setGrnData(json.data as GrnData);
-      } else {
-        toast("No GRN found for this LPO", "error");
-        setIsGrnOpen(false);
-      }
-    } catch (error) {
-      console.error("Error fetching GRN:", error);
-      toast("Failed to fetch GRN details", "error");
-      setIsGrnOpen(false);
-    } finally {
-      setIsLoadingGrn(false);
-    }
-  } */
-
   async function handleSignedLpoDownload(url: string, lpoID: number) {
     try {
       const response = await fetch(url);
@@ -477,7 +469,10 @@ export default function PaymentDetailsClient({
 
               <br />
 
-              <SupplierLpoItemsTable lpoId={row.lpo_id} />
+              <SupplierLpoItemsTable
+                lpoId={row.lpo_id}
+                mrHeaderId={row.mr_header_id}
+              />
 
               <br />
               <br />
@@ -564,7 +559,7 @@ export default function PaymentDetailsClient({
                     borderColor={"rgba(223, 223, 223, 1)"}
                     textColor={"black"}
                     style={{ padding: "7px 7px" }}
-                    href={`/jo/${row.jo_id}`} // adjust path if needed
+                    href={`/mr/${row.jo_id}`}
                   >
                     <img src={externalLinkIcon} alt="external link" />
                   </Button>
@@ -615,7 +610,7 @@ export default function PaymentDetailsClient({
 
               <br />
 
-              <JobOrderItemsTable joId={row.jo_id} />
+              <JobOrderItemsTable joId={row.jo_id} projectId={row.project_id} />
 
               <br />
               <br />
@@ -649,114 +644,64 @@ export default function PaymentDetailsClient({
     <>
       {data && data.entity === "supplier" && renderSupplierView(data)}
       {data && data.entity === "subcontractor" && renderSubcontractorView(data)}
-
-      {/* {isGrnOpen && (
-        <FormPopUp header="GOOD RECEIVED NOTE" setIsOpen={setIsGrnOpen}>
-          {isLoadingGrn && (
-            <p style={{ padding: "10px 0" }}>Loading GRN details...</p>
-          )}
-
-          {!isLoadingGrn && grnData && (
-            <>
-              <div className="input-row three-col">
-                <div className="input-item">
-                  <label>GRN ID</label>
-                  <input type="text" value={String(grnData.id)} readOnly />
-                </div>
-                <div className="input-item">
-                  <label>RECEIVED DATE</label>
-                  <input
-                    type="text"
-                    value={formatDate(grnData.received_date)}
-                    readOnly
-                  />
-                </div>
-                <div className="input-item">
-                  <label>RECEIVED BY</label>
-                  <input
-                    type="text"
-                    value={grnData.received_by || ""}
-                    readOnly
-                  />
-                </div>
-              </div>
-
-              <br />
-
-              <table className="items-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>RECEIVED QTY</th>
-                    <th>NOTES</th>
-                    <th>ATTACHMENT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {grnData.grn_lines.map((line, index) => {
-                    let attachmentUrl = "";
-                    if (line.attachment) {
-                      try {
-                        const parsed =
-                          typeof line.attachment === "string"
-                            ? JSON.parse(line.attachment)
-                            : line.attachment;
-                        attachmentUrl = Array.isArray(parsed)
-                          ? parsed[0]
-                          : parsed || "";
-                      } catch {
-                        attachmentUrl = line.attachment || "";
-                      }
-                    }
-
-                    return (
-                      <tr key={line.id}>
-                        <td>{index + 1}</td>
-                        <td>{line.received_quantity}</td>
-                        <td>{line.notes || "-"}</td>
-                        <td>
-                          {attachmentUrl ? (
-                            <Button
-                              componentType={"link"}
-                              bgColor={"rgba(239, 239, 239, 1)"}
-                              borderColor={"rgba(223, 223, 223, 1)"}
-                              textColor={"black"}
-                              href={attachmentUrl}
-                              target="_blank"
-                              style={{
-                                padding: "6px 10px",
-                                borderRadius: "18px",
-                              }}
-                            >
-                              View
-                            </Button>
-                          ) : (
-                            <span style={{ color: "rgba(150,150,150,1)" }}>
-                              -
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </>
-          )}
-        </FormPopUp>
-      )} */}
     </>
   );
 }
 
-// Reusable JO items table (mirrors SupplierLpoItemsTable)
-type JobOrderItemsTableProps = {
-  joId: number;
+// Helper function to calculate total (similar to MrLinesView)
+function calculateItemsTotal(
+  items: Array<{
+    unit_price?: number | string;
+    total_price?: number | string;
+    quantity?: number;
+  }>,
+): number {
+  let total = 0;
+
+  items.forEach((item) => {
+    let itemTotal = 0;
+
+    if (typeof item.total_price === "number") {
+      itemTotal = item.total_price;
+    } else if (typeof item.total_price === "string" && item.total_price) {
+      itemTotal = parseFloat(item.total_price) || 0;
+    } else if (
+      typeof item.unit_price === "number" &&
+      typeof item.quantity === "number"
+    ) {
+      itemTotal = item.unit_price * item.quantity;
+    } else if (
+      typeof item.unit_price === "string" &&
+      item.unit_price &&
+      typeof item.quantity === "number"
+    ) {
+      itemTotal = (parseFloat(item.unit_price) || 0) * item.quantity;
+    }
+
+    total += itemTotal;
+  });
+
+  return Number(total.toFixed(2));
+}
+
+// Format number helper
+const formatNumber = (value: unknown): string => {
+  const num = Number(value);
+  if (isNaN(num)) return "";
+  if (Number.isInteger(num)) return num.toString();
+  return parseFloat(num.toFixed(3)).toString();
 };
 
-function JobOrderItemsTable({ joId }: JobOrderItemsTableProps) {
-  const [items, setItems] = useState<any[]>([]);
+// Reusable JO items table - matching JoLinesView structure with approved_total_price subtotal
+type JobOrderItemsTableProps = {
+  joId: number;
+  projectId?: number | null;
+};
+
+function JobOrderItemsTable({ joId, projectId }: JobOrderItemsTableProps) {
+  const [items, setItems] = useState<JoItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [mrHeader, setMrHeader] = useState<any>(null);
 
   useEffect(() => {
     async function fetchItems() {
@@ -777,13 +722,34 @@ function JobOrderItemsTable({ joId }: JobOrderItemsTableProps) {
 
         const json = await res.json();
 
-        // FIX: The API returns rows directly as an array, not wrapped in { success, data }
         if (Array.isArray(json)) {
           setItems(json);
         } else if (json.success && json.data && json.data.jo_lines) {
           setItems(json.data.jo_lines);
         } else {
           setItems([]);
+        }
+
+        // Fetch MR Header for BOQ reference popup
+        if (projectId) {
+          try {
+            const mrRes = await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMRByProjectID`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ project_id: projectId }),
+              },
+            );
+            if (mrRes.ok) {
+              const mrData = await mrRes.json();
+              if (mrData.success && mrData.data && mrData.data.length > 0) {
+                setMrHeader(mrData.data[0]);
+              }
+            }
+          } catch (e) {
+            console.error("Error fetching MR header:", e);
+          }
         }
       } catch (error) {
         console.error("Error fetching JO items:", error);
@@ -796,7 +762,7 @@ function JobOrderItemsTable({ joId }: JobOrderItemsTableProps) {
     if (joId) {
       fetchItems();
     }
-  }, [joId]);
+  }, [joId, projectId]);
 
   if (isLoading) {
     return <p style={{ padding: "10px 0" }}>Loading items...</p>;
@@ -810,6 +776,19 @@ function JobOrderItemsTable({ joId }: JobOrderItemsTableProps) {
     );
   }
 
+  // Calculate total using approved_total_price (matching JoLinesView pattern)
+  const totalApprovedPrice = items.reduce(
+    (sum, item) => sum + (Number(item.approved_total_price) || 0),
+    0,
+  );
+
+  // Check if any item has approved price to show/hide total row
+  const hasAnyApprovedPrice = items.some(
+    (item) =>
+      item.approved_total_price != null &&
+      Number(item.approved_total_price) > 0,
+  );
+
   return (
     <table className="items-table two-toned">
       <thead>
@@ -817,13 +796,15 @@ function JobOrderItemsTable({ joId }: JobOrderItemsTableProps) {
           <th>#</th>
           <th>SCOPE</th>
           <th>DESCRIPTION</th>
+          <th>BOQ REF.</th>
           <th>QTY</th>
-          <th>EST. BUDGET</th>
-          <th>TOTAL</th>
+          <th>ATTACHMENT</th>
+          <th>BUDGET EST.</th>
+          <th>TOTAL PRICE</th>
         </tr>
       </thead>
       <tbody>
-        {items.map((item: any, index: number) => (
+        {items.map((item, index) => (
           <tr key={item.id || index}>
             <td>{index + 1}</td>
             <td>{item.job_scope_name || "-"}</td>
@@ -831,43 +812,87 @@ function JobOrderItemsTable({ joId }: JobOrderItemsTableProps) {
               {item.job_description ? (
                 <InfoPopUpButton
                   text={item.job_description}
-                  header={"DESCRIPTION"}
+                  header="JOB DESCRIPTION"
                 />
               ) : (
                 "-"
               )}
             </td>
             <td>
-              {item.quantity} {item.unit}
+              {item.boq_line_ids && mrHeader ? (
+                <BoqReferencePopUp item={item as any} mrHeader={mrHeader} />
+              ) : (
+                "-"
+              )}
             </td>
             <td>
-              {typeof item.budget_estimate === "number"
-                ? `AED ${item.budget_estimate.toFixed(2)}`
-                : "-"}
+              {formatNumber(item.quantity)} {item.unit}
             </td>
             <td>
-              {typeof item.total_price === "number"
-                ? `AED ${item.total_price.toFixed(2)}`
-                : typeof item.budget_estimate === "number" &&
-                    typeof item.quantity === "number"
-                  ? `AED ${(item.budget_estimate * item.quantity).toFixed(2)}`
-                  : "-"}
+              {item.attachment ? (
+                <Button
+                  componentType={"link"}
+                  bgColor={"rgba(239, 239, 239, 1)"}
+                  borderColor={"rgba(223, 223, 223, 1)"}
+                  textColor={"black"}
+                  style={{ padding: "7px 7px" }}
+                  href={item.attachment}
+                  target="_blank"
+                >
+                  <img src="/icons/external-link.svg" alt="external link" />
+                </Button>
+              ) : (
+                "-"
+              )}
+            </td>
+            <td>
+              {item.budget_estimate ? (
+                <>AED {Number(item.budget_estimate).toFixed(2)}</>
+              ) : (
+                "-"
+              )}
+            </td>
+            <td>
+              {item.approved_total_price ? (
+                <>AED {Number(item.approved_total_price).toFixed(2)}</>
+              ) : (
+                "-"
+              )}
             </td>
           </tr>
         ))}
       </tbody>
+
+      {/* Subtotal Footer - Using approved_total_price like JoLinesView */}
+      {hasAnyApprovedPrice && (
+        <tfoot style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}>
+          <tr>
+            <td colSpan={7} style={{ fontWeight: "600", padding: "15px 20px" }}>
+              SUBTOTAL
+            </td>
+            <td style={{ fontWeight: "600", padding: "15px 20px" }}>
+              AED {totalApprovedPrice.toFixed(2)}
+            </td>
+          </tr>
+        </tfoot>
+      )}
     </table>
   );
 }
 
-// Reusable LPO items table (unchanged from your original)
+// Reusable LPO items table with all columns matching JoLinesView style
 type SupplierLpoItemsTableProps = {
   lpoId: number;
+  mrHeaderId?: number | null;
 };
 
-function SupplierLpoItemsTable({ lpoId }: SupplierLpoItemsTableProps) {
-  const [items, setItems] = useState<any[]>([]);
+function SupplierLpoItemsTable({
+  lpoId,
+  mrHeaderId,
+}: SupplierLpoItemsTableProps) {
+  const [items, setItems] = useState<LpoItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [mrHeader, setMrHeader] = useState<any>(null);
 
   useEffect(() => {
     async function fetchItems() {
@@ -892,6 +917,28 @@ function SupplierLpoItemsTable({ lpoId }: SupplierLpoItemsTableProps) {
         } else {
           setItems([]);
         }
+
+        // Fetch MR Header for BOQ reference popup
+        if (mrHeaderId) {
+          try {
+            const mrRes = await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMRByID`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: mrHeaderId }),
+              },
+            );
+            if (mrRes.ok) {
+              const mrData = await mrRes.json();
+              if (mrData.success && mrData.data) {
+                setMrHeader(mrData.data);
+              }
+            }
+          } catch (e) {
+            console.error("Error fetching MR header:", e);
+          }
+        }
       } catch (error) {
         console.error("Error fetching LPO items:", error);
         setItems([]);
@@ -901,7 +948,7 @@ function SupplierLpoItemsTable({ lpoId }: SupplierLpoItemsTableProps) {
     }
 
     fetchItems();
-  }, [lpoId]);
+  }, [lpoId, mrHeaderId]);
 
   if (isLoading) {
     return <p style={{ padding: "10px 0" }}>Loading items...</p>;
@@ -915,24 +962,71 @@ function SupplierLpoItemsTable({ lpoId }: SupplierLpoItemsTableProps) {
     );
   }
 
+  const total = calculateItemsTotal(items);
+
   return (
     <table className="items-table two-toned">
       <thead>
         <tr>
           <th>#</th>
           <th>DESCRIPTION</th>
+          <th>BOQ REF.</th>
           <th>QTY</th>
+          <th>BRAND & SPECS</th>
+          <th>ATTACHMENT</th>
           <th>UNIT PRICE</th>
           <th>TOTAL PRICE</th>
         </tr>
       </thead>
       <tbody>
-        {items.map((item: any, index: number) => (
+        {items.map((item, index) => (
           <tr key={item.id || index}>
             <td>{index + 1}</td>
             <td>{item.material_description || "-"}</td>
             <td>
-              {item.quantity} {item.unit || "-"}
+              {item.boq_line_ids && mrHeader ? (
+                <BoqReferencePopUp item={item as any} mrHeader={mrHeader} />
+              ) : (
+                "-"
+              )}
+            </td>
+            <td>
+              {formatNumber(item.quantity)} {item.unit || "-"}
+            </td>
+            <td>
+              {item.brand || item.specification ? (
+                <InfoPopUpButton
+                  text={
+                    <>
+                      <small>BRAND</small>
+                      <h2>{item.brand || "-"}</h2>
+                      <br />
+                      <small>SPECIFICATION</small>
+                      <h2>{item.specification || "-"}</h2>
+                    </>
+                  }
+                  header="BRAND & SPECIFICATION"
+                />
+              ) : (
+                "-"
+              )}
+            </td>
+            <td>
+              {item.attachment ? (
+                <Button
+                  componentType={"link"}
+                  bgColor={"rgba(239, 239, 239, 1)"}
+                  borderColor={"rgba(223, 223, 223, 1)"}
+                  textColor={"black"}
+                  style={{ padding: "7px 7px" }}
+                  href={item.attachment}
+                  target="_blank"
+                >
+                  <img src="/icons/external-link.svg" alt="external link" />
+                </Button>
+              ) : (
+                "-"
+              )}
             </td>
             <td>
               {typeof item.unit_price === "number"
@@ -951,6 +1045,18 @@ function SupplierLpoItemsTable({ lpoId }: SupplierLpoItemsTableProps) {
           </tr>
         ))}
       </tbody>
+
+      {/* Subtotal Footer - Matching JoLinesView/MrLinesView style */}
+      <tfoot style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}>
+        <tr>
+          <td colSpan={7} style={{ fontWeight: "600", padding: "15px 20px" }}>
+            SUBTOTAL
+          </td>
+          <td style={{ fontWeight: "600", padding: "15px 20px" }}>
+            AED {total.toFixed(2)}
+          </td>
+        </tr>
+      </tfoot>
     </table>
   );
 }
