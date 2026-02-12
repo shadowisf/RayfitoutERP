@@ -19,7 +19,7 @@ type LpoCard = {
   created_at: string;
   supplier_name: string;
   requested_by: string;
-  department_id: number;
+  department_id: number; // This is the MR's department_id
   required_date: string;
   mr_project_id: number;
   project_name: string;
@@ -28,7 +28,7 @@ type LpoCard = {
 };
 
 // Progress IDs that use LPO cards instead of MR cards
-const LPO_STAGE_IDS = [12, 13, 14, 15, 16, 17, 21, 23, 24, 25];
+const LPO_STAGE_IDS = [13, 14, 15, 16, 17, 21, 23, 24, 25];
 
 export default function MR() {
   const { userInfo } = useAuth();
@@ -61,37 +61,29 @@ export default function MR() {
   });
 
   const getFlagColor = (hours: number, progress_id: number): string => {
-    // Defensive fallback
     if (hours == null || isNaN(hours) || hours < 0) return "#ECCF28";
 
-    // Custom logic per stage
     if (progress_id === 7) {
-      // Quotations
-      if (hours <= 1) return "#ECCF28"; // yellow ≤ 1h
-      if (hours <= 3) return "rgba(255, 153, 36, 1)"; // orange ≤ 3h
-      return "rgba(250, 52, 52, 1)"; // red > 3h
+      if (hours <= 1) return "#ECCF28";
+      if (hours <= 3) return "rgba(255, 153, 36, 1)";
+      return "rgba(250, 52, 52, 1)";
     }
 
     if (progress_id === 14) {
-      // Pending Payments
-      if (hours <= 0.333) return "#ECCF28"; // yellow ≤ ~20 min
-      if (hours <= 0.5) return "rgba(255, 153, 36, 1)"; // orange ≤ 30 min
-      return "rgba(250, 52, 52, 1)"; // red > 30 min
+      if (hours <= 0.333) return "#ECCF28";
+      if (hours <= 0.5) return "rgba(255, 153, 36, 1)";
+      return "rgba(250, 52, 52, 1)";
     }
 
     if (progress_id === 17) {
-      // Awaiting Delivery
-      if (hours <= 4) return "#ECCF28"; // yellow ≤ 4h
-      if (hours <= 14) return "rgba(255, 153, 36, 1)"; // orange ≤ 14h
-      return "rgba(250, 52, 52, 1)"; // red > 14h
-      // Note: you mentioned 48h earlier — if red should only start after 48h,
-      // change the last condition to: if (hours <= 48) orange else red
+      if (hours <= 4) return "#ECCF28";
+      if (hours <= 14) return "rgba(255, 153, 36, 1)";
+      return "rgba(250, 52, 52, 1)";
     }
 
-    // Default for all other stages
-    if (hours <= 2) return "#ECCF28"; // yellow
-    if (hours <= 12) return "rgba(255, 153, 36, 1)"; // orange
-    return "rgba(250, 52, 52, 1)"; // red
+    if (hours <= 2) return "#ECCF28";
+    if (hours <= 12) return "rgba(255, 153, 36, 1)";
+    return "rgba(250, 52, 52, 1)";
   };
 
   useEffect(() => {
@@ -141,7 +133,6 @@ export default function MR() {
       method: "GET",
     }).then((res) => res.json().then((data) => setMrHeaders(data)));
 
-    // Fetch LPO cards for kanban
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getAllLPOs`, {
       method: "GET",
     })
@@ -150,7 +141,6 @@ export default function MR() {
       .catch((err) => console.error("Error fetching LPO cards:", err));
   }, [userInfo]);
 
-  // Fetch durations for all LPOs
   useEffect(() => {
     if (lpoCards.length === 0) return;
 
@@ -243,7 +233,6 @@ export default function MR() {
     fetchLpoDurations();
   }, [lpoCards]);
 
-  // Fetch durations for all MRs
   useEffect(() => {
     if (mrHeaders.length === 0) return;
 
@@ -333,7 +322,6 @@ export default function MR() {
     fetchDurations();
   }, [mrHeaders]);
 
-  // Map progress_id to responsible department ID
   const progressToResponsibleDepartment: { [key: number]: number } = {
     2: 16,
     3: 8,
@@ -493,15 +481,36 @@ export default function MR() {
     { name: "Completed", statuses: [{ name: "Completed", progress_id: 25 }] },
   ];
 
-  const canViewLPO = (lpoCard: LpoCard) => {
+  // ===== MODIFIED canViewLPO to respect filterRelevant for managers =====
+  const canViewLPO = (
+    lpoCard: LpoCard,
+    isFilterRelevant: boolean = filterRelevant,
+  ) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
-    // Managers (dept 8) can view all LPOs
-    if (userDeptId === 8) return true;
+    if (userDeptId === 8) {
+      // Manager
+      if (isFilterRelevant) {
+        // When "only related" is ON:
+        // • Hide Pending Payments (progress 14) completely
+        // • Show only own department's items for everything else
+        if (lpoCard.progress_id === 14) {
+          return false;
+        }
+        return lpoCard.department_id === 8;
+      }
+      // filter off → managers see everything
+      return true;
+    }
 
-    if ([5, 25].includes(lpoCard.progress_id)) {
+    // ───── Non-managers ─────
+    if ([5].includes(lpoCard.progress_id)) {
       return lpoCard.department_id === userDeptId;
+    }
+
+    if ([25].includes(lpoCard.progress_id)) {
+      return true;
     }
 
     if ([11, 13, 16].includes(lpoCard.progress_id)) {
@@ -513,23 +522,38 @@ export default function MR() {
     return responsibleDept === userDeptId;
   };
 
-  const canViewMR = (mr: MrHeader) => {
+  const canViewMR = (
+    mr: MrHeader,
+    isFilterRelevant: boolean = filterRelevant,
+  ) => {
     const userDeptId = userInfo?.departmentID;
     if (!userDeptId) return false;
 
-    // Managers (dept 8) can view all MRs
-    if (userDeptId === 8) return true;
+    if (userDeptId === 8) {
+      // Manager
+      if (isFilterRelevant) {
+        // When "only related" is ON → only own department (8)
+        return mr.department_id === 8;
+      }
+      // filter off → see everything
+      return true;
+    }
 
+    // ───── Normal users ─────
     if (mr.progress_id === 1) {
       return mr.department_id === userDeptId;
     }
 
-    if ([5, 25].includes(mr.progress_id)) {
+    if ([5].includes(mr.progress_id)) {
       return mr.department_id === userDeptId;
     }
 
     if ([11, 13, 16].includes(mr.progress_id)) {
       return userDeptId === 9;
+    }
+
+    if ([25].includes(mr.progress_id)) {
+      return true;
     }
 
     const responsibleDept = progressToResponsibleDepartment[mr.progress_id];
@@ -539,8 +563,9 @@ export default function MR() {
   const getFilteredLPOs = () => {
     let filtered = lpoCards;
 
+    // Apply relevance filter using the modified canViewLPO
     if (filterRelevant) {
-      filtered = filtered.filter((lpoCard) => canViewLPO(lpoCard));
+      filtered = filtered.filter((lpoCard) => canViewLPO(lpoCard, true));
     }
 
     if (filters.itemsRequestedIn !== "all") {
@@ -611,7 +636,7 @@ export default function MR() {
     if (filterRelevant) {
       filtered = filtered.filter((mr) => {
         if (mr.progress_id === 1) return true;
-        return canViewMR(mr);
+        return canViewMR(mr, filterRelevant);
       });
     }
 
@@ -694,11 +719,33 @@ export default function MR() {
 
     const useLpoCards = LPO_STAGE_IDS.includes(status.progress_id);
 
+    // For Completed stage, check both LPOs and JOs (exclude material MRs)
+    if (status.progress_id === 25) {
+      const lpos = groupedLPOs[status.name] || [];
+      const jos = (groupedMRs[status.name] || []).filter(
+        (mr: any) => mr.type === "job",
+      );
+
+      if (userDeptId === 8 && filterRelevant) {
+        return (
+          lpos.some((l) => l.department_id === 8) ||
+          jos.some((mr: any) => mr.department_id === 8)
+        );
+      }
+      return (
+        lpos.some((l: any) => l.department_id === userDeptId) ||
+        jos.some((mr: any) => mr.department_id === userDeptId)
+      );
+    }
+
     if (useLpoCards) {
       const lpos = groupedLPOs[status.name] || [];
-      if (userDeptId === 8) return true;
-      if ([25].includes(status.progress_id)) {
-        return lpos.some((l: any) => l.department_id === userDeptId);
+
+      if (userDeptId === 8 && filterRelevant) {
+        if (status.progress_id === 14) {
+          return false; // hide Pending Payments section completely
+        }
+        return lpos.some((l) => l.department_id === 8);
       }
       const responsibleDept =
         progressToResponsibleDepartment[status.progress_id];
@@ -709,6 +756,7 @@ export default function MR() {
 
     if (status.progress_id === 1) return mrs.length > 0;
     if (userDeptId === 8) {
+      // Managers can see all MRs (as requested)
       if ([5, 25].includes(status.progress_id)) {
         return mrs.some((mr: any) => mr.department_id === userDeptId);
       }
@@ -787,7 +835,7 @@ export default function MR() {
           justifyContent: "space-between",
         }}
       >
-        <h1>MATERIAL REQUISITIONS</h1>
+        <h1>REQUISITIONS</h1>
 
         <div
           style={{
@@ -976,6 +1024,13 @@ export default function MR() {
             )
               return sum;
             const useLpo = LPO_STAGE_IDS.includes(status.progress_id);
+            const isCompleted = status.progress_id === 25;
+            if (isCompleted) {
+              const joCount = (groupedMRs[status.name] || []).filter(
+                (mr) => mr.type === "job",
+              ).length;
+              return sum + (groupedLPOs[status.name]?.length || 0) + joCount;
+            }
             return (
               sum +
               (useLpo
@@ -1023,11 +1078,22 @@ export default function MR() {
                   const useLpoCards = LPO_STAGE_IDS.includes(
                     status.progress_id,
                   );
-                  const mrs = useLpoCards ? [] : groupedMRs[status.name] || [];
+                  const isCompletedStage = status.progress_id === 25;
+                  const mrs = isCompletedStage
+                    ? (groupedMRs[status.name] || []).filter(
+                        (mr) => mr.type === "job",
+                      )
+                    : useLpoCards
+                      ? []
+                      : groupedMRs[status.name] || [];
                   const lpos = useLpoCards
                     ? groupedLPOs[status.name] || []
                     : [];
-                  const cardCount = useLpoCards ? lpos.length : mrs.length;
+                  const cardCount = isCompletedStage
+                    ? lpos.length + mrs.length
+                    : useLpoCards
+                      ? lpos.length
+                      : mrs.length;
                   const dept = getResponsibleDepartment(status.name);
                   const deptStyle = getDepartmentStyle(dept.id);
                   const isEmpty = cardCount === 0;
@@ -1124,7 +1190,250 @@ export default function MR() {
                         }}
                       >
                         {cardCount > 0 ? (
-                          useLpoCards ? (
+                          isCompletedStage ? (
+                            /* ===== COMPLETED STAGE: BOTH LPO + MR/JO CARDS ===== */
+                            <>
+                              {lpos.map((lpoCard) => {
+                                const key = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
+                                const dur = lpoDurations[key] || {
+                                  duration: "00:00:00",
+                                  hoursDecimal: 0,
+                                  style: {
+                                    color: "black",
+                                    backgroundColor: "rgba(231, 231, 231, 1)",
+                                  },
+                                };
+
+                                return (
+                                  <div
+                                    key={`lpo-${lpoCard.id}`}
+                                    style={{
+                                      backgroundColor: "white",
+                                      borderRadius: "15px",
+                                      padding: "15px",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "12px",
+                                      border:
+                                        "1px solid rgba(231, 231, 231, 1)",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "flex-start",
+                                        justifyContent: "space-between",
+                                      }}
+                                    >
+                                      <div
+                                        style={{ display: "flex", gap: "10px" }}
+                                      >
+                                        <div>
+                                          <small>MR NUMBER</small>
+                                          <h3>
+                                            MR-
+                                            {String(
+                                              lpoCard.mr_header_id,
+                                            ).padStart(5, "0")}
+                                          </h3>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <small>LPO NUMBER</small>
+                                      <h3>
+                                        LPO-
+                                        {String(lpoCard.id).padStart(5, "0")}
+                                      </h3>
+                                    </div>
+
+                                    <div>
+                                      <small>PROJECT</small>
+                                      <h3>{lpoCard.project_name || "-"}</h3>
+                                    </div>
+
+                                    <div>
+                                      <small>SUPPLIER</small>
+                                      <h3>{lpoCard.supplier_name || "-"}</h3>
+                                    </div>
+
+                                    <div>
+                                      <small>REQUESTER</small>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          gap: "5px",
+                                          alignItems: "center",
+                                        }}
+                                      >
+                                        <h3
+                                          style={{
+                                            backgroundColor: "black",
+                                            color: "white",
+                                            borderRadius: "50%",
+                                            width: "24px",
+                                            height: "24px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "11px",
+                                            fontWeight: "600",
+                                          }}
+                                        >
+                                          {lpoCard.requested_by
+                                            ? lpoCard.requested_by
+                                                .split(" ")
+                                                .map((n: string) => n[0])
+                                                .join("")
+                                                .toUpperCase()
+                                                .slice(0, 2)
+                                            : "?"}
+                                        </h3>
+                                        <h3>
+                                          {lpoCard.requested_by || "-"},{" "}
+                                          {lpoCard.department_name || "-"}
+                                        </h3>
+                                      </div>
+                                    </div>
+
+                                    <Button
+                                      componentType="link"
+                                      bgColor="rgba(239, 239, 239, 1)"
+                                      borderColor="rgba(239, 239, 239, 1)"
+                                      textColor="black"
+                                      href={`/mr/${lpoCard.mr_header_id}/lpo/${lpoCard.id}`}
+                                      full
+                                      style={{ borderRadius: "50px" }}
+                                      disabled={
+                                        !canViewLPO(lpoCard, filterRelevant)
+                                      }
+                                    >
+                                      VIEW{" "}
+                                      <span style={{ marginLeft: "10px" }}>
+                                        &gt;
+                                      </span>
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                              {mrs.map((mr) => {
+                                const key = `${mr.id}-${mr.progress_id}`;
+                                const dur = mrDurations[key] || {
+                                  duration: "00:00:00",
+                                  hoursDecimal: 0,
+                                  style: {
+                                    color: "black",
+                                    backgroundColor: "rgba(231, 231, 231, 1)",
+                                  },
+                                };
+
+                                return (
+                                  <div
+                                    key={mr.id}
+                                    style={{
+                                      backgroundColor: "white",
+                                      borderRadius: "15px",
+                                      padding: "15px",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "12px",
+                                      border:
+                                        "1px solid rgba(231, 231, 231, 1)",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "flex-start",
+                                        justifyContent: "space-between",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "flex-end",
+                                          gap: "10px",
+                                        }}
+                                      >
+                                        <div>
+                                          <small>
+                                            {mr.type === "job"
+                                              ? "JO NUMBER"
+                                              : "MR NUMBER"}
+                                          </small>
+                                          <h3>
+                                            {mr.type === "job" ? "JO" : "MR"}-
+                                            {String(mr.id).padStart(5, "0")}
+                                          </h3>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <small>PROJECT</small>
+                                      <h3>{mr.project_name || "-"}</h3>
+                                    </div>
+
+                                    <div>
+                                      <small>REQUESTER</small>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          gap: "5px",
+                                          alignItems: "center",
+                                        }}
+                                      >
+                                        <h3
+                                          style={{
+                                            backgroundColor: "black",
+                                            color: "white",
+                                            borderRadius: "50%",
+                                            width: "24px",
+                                            height: "24px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "11px",
+                                            fontWeight: "600",
+                                          }}
+                                        >
+                                          {mr.requested_by
+                                            ? mr.requested_by
+                                                .split(" ")
+                                                .map((n: string) => n[0])
+                                                .join("")
+                                                .toUpperCase()
+                                                .slice(0, 2)
+                                            : "?"}
+                                        </h3>
+                                        <h3>
+                                          {mr.requested_by || "-"},{" "}
+                                          {mr.department_name || "-"}
+                                        </h3>
+                                      </div>
+                                    </div>
+
+                                    <Button
+                                      componentType="link"
+                                      bgColor="rgba(239, 239, 239, 1)"
+                                      borderColor="rgba(239, 239, 239, 1)"
+                                      textColor="black"
+                                      href={`/mr/${mr.id}`}
+                                      full
+                                      style={{ borderRadius: "50px" }}
+                                      disabled={!canViewMR(mr, filterRelevant)}
+                                    >
+                                      VIEW{" "}
+                                      <span style={{ marginLeft: "10px" }}>
+                                        &gt;
+                                      </span>
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </>
+                          ) : useLpoCards ? (
                             /* ===== LPO CARDS ===== */
                             lpos.map((lpoCard) => {
                               const key = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
@@ -1265,32 +1574,17 @@ export default function MR() {
                                   <div>
                                     <small>LPO NUMBER</small>
                                     <h3>
-                                      LPO-
-                                      {String(lpoCard.id).padStart(5, "0")}
+                                      LPO-{String(lpoCard.id).padStart(5, "0")}
                                     </h3>
                                   </div>
 
                                   <div>
-                                    <small
-                                      style={{
-                                        fontSize: "10px",
-                                        color: "#6b7280",
-                                      }}
-                                    >
-                                      SUPPLIER
-                                    </small>
+                                    <small>SUPPLIER</small>
                                     <h3>{lpoCard.supplier_name || "-"}</h3>
                                   </div>
 
                                   <div>
-                                    <small
-                                      style={{
-                                        fontSize: "10px",
-                                        color: "#6b7280",
-                                      }}
-                                    >
-                                      PROJECT
-                                    </small>
+                                    <small>PROJECT</small>
                                     <h3>{lpoCard.project_name || "-"}</h3>
                                   </div>
 
@@ -1353,7 +1647,9 @@ export default function MR() {
                                     href={`/mr/${lpoCard.mr_header_id}/lpo/${lpoCard.id}`}
                                     full
                                     style={{ borderRadius: "50px" }}
-                                    disabled={!canViewLPO(lpoCard)}
+                                    disabled={
+                                      !canViewLPO(lpoCard, filterRelevant)
+                                    }
                                   >
                                     VIEW{" "}
                                     <span style={{ marginLeft: "10px" }}>
@@ -1364,7 +1660,7 @@ export default function MR() {
                               );
                             })
                           ) : (
-                            /* ===== MR CARDS (original) ===== */
+                            /* ===== MR CARDS ===== */
                             mrs.map((mr) => {
                               const key = `${mr.id}-${mr.progress_id}`;
                               const dur = mrDurations[key] || {
@@ -1404,9 +1700,14 @@ export default function MR() {
                                       }}
                                     >
                                       <div>
-                                        <small>MR NUMBER</small>
+                                        <small>
+                                          {mr.type === "job"
+                                            ? "JO NUMBER"
+                                            : "MR NUMBER"}
+                                        </small>
                                         <h3>
-                                          MR-{String(mr.id).padStart(5, "0")}
+                                          {mr.type === "job" ? "JO" : "MR"}-
+                                          {String(mr.id).padStart(5, "0")}
                                         </h3>
                                       </div>
 
@@ -1494,14 +1795,7 @@ export default function MR() {
                                   </div>
 
                                   <div>
-                                    <small
-                                      style={{
-                                        fontSize: "10px",
-                                        color: "#6b7280",
-                                      }}
-                                    >
-                                      PROJECT
-                                    </small>
+                                    <small>PROJECT</small>
                                     <h3>{mr.project_name || "-"}</h3>
                                   </div>
 
@@ -1571,7 +1865,7 @@ export default function MR() {
                                     href={`/mr/${mr.id}`}
                                     full
                                     style={{ borderRadius: "50px" }}
-                                    disabled={!canViewMR(mr)}
+                                    disabled={!canViewMR(mr, filterRelevant)}
                                   >
                                     VIEW{" "}
                                     <span style={{ marginLeft: "10px" }}>

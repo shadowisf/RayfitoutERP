@@ -83,13 +83,23 @@ export default function SideBar() {
   const menuItems = [
     { label: "Dashboard", path: "/dashboard", icon: "/icons/dashboard.svg" },
     {
-      label: "Material Requisitions",
+      label: "Requisitions",
       path: "/mr",
       icon: "/icons/mr.svg",
       count: mrActionCount,
     },
     { label: "Projects", path: "/project", icon: "/icons/projects.svg" },
     { label: "Vendors", path: "/vendor", icon: "/icons/vendors.svg" },
+    {
+      label: "Subcontractors",
+      path: "/subcontractor",
+      icon: "/icons/vendors.svg",
+    },
+    {
+      label: "Payments",
+      path: "/payment",
+      icon: "/icons/payment-black.svg",
+    },
     {
       label: "Inventory",
       path: "/inventory",

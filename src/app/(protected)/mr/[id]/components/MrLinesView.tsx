@@ -2162,7 +2162,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       {Object.entries(suppliers).map(
                         ([supplier, items], supplierIndex) => (
                           <div key={supplier} style={{ marginBottom: "2rem" }}>
-                            <table className="items-table">
+                            <table className="items-table two-toned">
                               <thead>
                                 <tr>
                                   <th>#</th>
@@ -2675,6 +2675,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             </table>
 
                             <br />
+                            <br />
+                            <br />
                           </div>
                         ),
                       )}
@@ -2801,7 +2803,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   {Object.entries(suppliers).map(
                     ([supplier, items], supplierIndex) => (
                       <div key={supplier} style={{ marginBottom: "2rem" }}>
-                        <table className="items-table">
+                        <table className="items-table two-toned">
                           <thead>
                             <tr>
                               <th>#</th>
@@ -3289,6 +3291,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                         </table>
 
                         <br />
+                        <br />
+                        <br />
                       </div>
                     ),
                   )}
@@ -3355,7 +3359,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         Object.entries(mrLinesBySupplier).map(([supplier, items], index) => (
           <div key={supplier} className="subcategory-section">
             <div className="subcategory-header">
-              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <div
+                style={{ display: "flex", gap: "10px", alignItems: "center" }}
+              >
                 <h2
                   style={{
                     textTransform: "uppercase",
@@ -3383,10 +3389,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                 </SupplierDetailsPopUp>
 
                 {/* LPO Progress Badge + View LPO link */}
-                {mrHeader.progress_id >= 12 &&
+                {mrHeader.progress_id >= 13 &&
                   items[0]?.approved_supplier_id &&
-                  lpoPerSupplier[items[0].approved_supplier_id] && (() => {
-                    const lpoInfo = lpoPerSupplier[items[0].approved_supplier_id];
+                  lpoPerSupplier[items[0].approved_supplier_id] &&
+                  (() => {
+                    const lpoInfo =
+                      lpoPerSupplier[items[0].approved_supplier_id];
                     const isLpoRejected = ["reject", "fail"].some((word) =>
                       lpoInfo.progressName?.toLowerCase().includes(word),
                     );
@@ -3511,7 +3519,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             <br />
             <br />
 
-            <table className="items-table">
+            <table className="items-table two-toned">
               <thead>
                 <tr>
                   <th>#</th>
@@ -4022,12 +4030,22 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
         </div>
       )}
 
+      {/* LPO & Invoice (Progress 12) - Procurement Submit for Payment */}
+      {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
+        <div className="bottom-nav">
+          <div></div>
+          <SubmitForPaymentButton
+            paymentValue={totalInvoiceAmount}
+            mrHeaderID={mrHeader.id}
+          />
+        </div>
+      )}
+
       {/*
         LPO SEGREGATION NOTE:
-        Stages 12+ (LPO & Invoice, Pending Payments, Awaiting Delivery, QC, Stock Entry, etc.)
+        Stages 13+ (Pending Payments, Awaiting Delivery, QC, Stock Entry, etc.)
         now operate per-LPO on the individual LPO detail page (/mr/[id]/lpo/[lpoId]).
-        The MR progress_id stays at 12 permanently once LPOs are issued.
-        Bottom nav action buttons for stages 12+ are handled per-LPO, not per-MR.
+        Bottom nav action buttons for stages 13+ are handled per-LPO, not per-MR.
         Use the "VIEW LPO" links in the vendor tab above to access each LPO's workflow.
       */}
     </>

@@ -123,7 +123,7 @@ export default function Vendor() {
               }}
             >
               <option value="" disabled>
-                Sort by
+                SORT BY
               </option>
               <option value="name">Vendor Name</option>
               <option value="id">Vendor ID</option>
@@ -186,10 +186,7 @@ export default function Vendor() {
             <th>MATERIAL CATEGORIES</th>
             <th>MATERIAL SUBCATEGORIES</th>
             <th>TRN</th>
-            <th>DETAILS</th>
-            {(userInfo?.departmentID === 8 || userInfo?.departmentID === 9) && (
-              <th></th>
-            )}
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -199,7 +196,9 @@ export default function Vendor() {
             return (
               <tr key={supplier.id}>
                 <td>{index + 1}</td>
-                <td>VEN-{String(supplier.id).padStart(5, "0")}</td>
+                <td style={{ textWrap: "nowrap" }}>
+                  VEN-{String(supplier.id).padStart(5, "0")}
+                </td>
                 <td>{supplier.name}</td>
                 <td>
                   <div
@@ -216,32 +215,40 @@ export default function Vendor() {
                 <td>{supplier.material_categories || "-"}</td>
                 <td>{supplier.material_subcategories || "-"}</td>
                 <td>{supplier.trn_number || "-"}</td>
+
                 <td>
-                  <SupplierDetailsPopUp
-                    item={supplier}
-                    style={{ padding: "7px 7px" }}
-                    bgColor="rgba(239, 239, 239, 1)"
-                    borderColor="rgba(223, 223, 223, 1)"
-                    textColor="black"
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      alignItems: "center",
+                    }}
                   >
-                    <img src={externalLinkIcon} />
-                  </SupplierDetailsPopUp>
+                    <SupplierDetailsPopUp
+                      item={supplier}
+                      style={{ padding: "7px 7px" }}
+                      bgColor="rgba(239, 239, 239, 1)"
+                      borderColor="rgba(223, 223, 223, 1)"
+                      textColor="black"
+                    >
+                      <img src={externalLinkIcon} />
+                    </SupplierDetailsPopUp>
+
+                    {(userInfo?.departmentID === 8 ||
+                      userInfo?.departmentID === 9) && (
+                      <ThreeDotsMenuButton>
+                        <EditSupplierButton
+                          supplier={supplier}
+                          onSuccess={() => fetchSuppliers()}
+                        />
+                        <DeleteSupplierButton
+                          supplier={supplier}
+                          onSuccess={() => fetchSuppliers()}
+                        />
+                      </ThreeDotsMenuButton>
+                    )}
+                  </div>
                 </td>
-                {(userInfo?.departmentID === 8 ||
-                  userInfo?.departmentID === 9) && (
-                  <td>
-                    <ThreeDotsMenuButton>
-                      <EditSupplierButton
-                        supplier={supplier}
-                        onSuccess={() => fetchSuppliers()}
-                      />
-                      <DeleteSupplierButton
-                        supplier={supplier}
-                        onSuccess={() => fetchSuppliers()}
-                      />
-                    </ThreeDotsMenuButton>
-                  </td>
-                )}
               </tr>
             );
           })}

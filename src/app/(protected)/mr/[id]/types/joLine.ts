@@ -1,0 +1,24 @@
+export type JoLine = {
+  id: number;
+  mr_header_id: number;
+  job_scope_id: number;
+  job_scope_name: string;
+  job_description: string;
+  quantity: number;
+  unit: string;
+  budget_estimate: number;
+  start_date: string;
+  end_date: string;
+  attachment: string;
+  approval_status: string | null;
+  reject_comment: string | null;
+  boq_line_ids: string;
+  boq_line_names: string;
+  boq_item_numbers: string;
+  approved_subcontractor_quotation_id: number;
+  approved_subcontractor_id: number;
+  approved_subcontractor_name: string;
+  approved_unit_price: number;
+  approved_total_price: number;
+  approved_quotation_file: string;
+};

@@ -39,8 +39,9 @@ export async function POST(req: NextRequest) {
       24: 11, // Awaiting stock entry → Storekeeper
     };
 
-    // LPO stages (12+) need to be counted from the lpo table, not mr_headers
-    const LPO_STAGES = [12, 13, 14, 15, 16, 17, 21, 23, 24, 25];
+    // LPO stages (13+) need to be counted from the lpo table, not mr_headers
+    // Stage 12 remains an MR-level stage (procurement issues LPOs)
+    const LPO_STAGES = [13, 14, 15, 16, 17, 21, 23, 24, 25];
 
     let count = 0;
 
@@ -53,16 +54,16 @@ export async function POST(req: NextRequest) {
       );
       count = Number((mrRows as any)[0].count);
     } else if (department_id === 9) {
-      // Procurement: MR stages 7, 11 + rejected (5)
-      // + LPO stages 12, 13, 15, 16
+      // Procurement: MR stages 7, 11, 12 + rejected (5)
+      // + LPO stages 13, 15, 16
       const [mrRows] = await db.query(
         `SELECT COUNT(*) as count
          FROM mr_headers
-         WHERE progress_id IN (7, 11)
+         WHERE progress_id IN (7, 11, 12)
             OR (progress_id = 5 AND department_id = 9)`,
       );
       const mrCount = Number((mrRows as any)[0].count);
-      const lpoCount = await countLposAtStages([12, 13, 15, 16]);
+      const lpoCount = await countLposAtStages([13, 15, 16]);
       count = mrCount + lpoCount;
     } else if (department_id === 16) {
       // QS: Count stages 2, 9 + own department's progress_id 5

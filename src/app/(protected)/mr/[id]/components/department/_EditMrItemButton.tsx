@@ -529,6 +529,7 @@ export default function EditMrItemButton({
               setFileState={setAttachment}
               label={"ATTACHMENT"}
               acceptedFileTypes={".pdf,.png,.jpg,.jpeg"}
+              existingFileUrl={item.attachment}
             />
           </div>
         </FormPopUp>

@@ -1,6 +1,7 @@
 export type MrHeader = {
   mrHeader: number;
   id: number;
+  type: "material" | "job";
   project_id: number;
   project_name: string;
   department_id: number;
@@ -14,4 +15,6 @@ export type MrHeader = {
   progress_name: string;
   date_requested: string;
   delivery_date: string;
+  jo_invoice_file: string;
+  jo_payment_receipt: string;
 };

@@ -248,9 +248,10 @@ export async function PUT(req: Request) {
       );
 
       await db.query(
-        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
         [
           Number(body.mr_header_id),
+          Number(body.lpo_id),
           10,
           "Pending Payment",
           `LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) is awaiting payment (AED ${body.payment_value})`,
@@ -273,9 +274,10 @@ export async function PUT(req: Request) {
       );
 
       await db.query(
-        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
         [
           Number(body.mr_header_id),
+          Number(body.lpo_id),
           10,
           "Payment Successful",
           `A payment (AED ${body.payment_value}) was made against LPO-${String(body.lpo_id).padStart(5, "0")}`,
@@ -289,9 +291,10 @@ export async function PUT(req: Request) {
 
       for (const deptId of deptIds) {
         await db.query(
-          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
           [
             Number(body.mr_header_id),
+            Number(body.lpo_id),
             deptId,
             "LPO Awaiting Delivery",
             `LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) is awaiting delivery (ETA: ${body.delivery_date})`,
@@ -315,9 +318,10 @@ export async function PUT(req: Request) {
       );
 
       await db.query(
-        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
         [
           Number(body.mr_header_id),
+          Number(body.lpo_id),
           9,
           "Payment Rejected",
           `Payment for LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) was rejected`,
@@ -370,9 +374,10 @@ export async function PUT(req: Request) {
       );
 
       await db.query(
-        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
         [
           Number(body.mr_header_id),
+          Number(body.lpo_id),
           Number(body.department_id),
           "LPO Completed",
           `LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) was fulfilled successfully`,
@@ -380,9 +385,10 @@ export async function PUT(req: Request) {
       );
 
       await db.query(
-        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
         [
           Number(body.mr_header_id),
+          Number(body.lpo_id),
           9,
           "LPO Completed",
           `LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) was fulfilled successfully`,

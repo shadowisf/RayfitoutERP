@@ -30,6 +30,7 @@ export default function UploadInvoiceButton({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   const closeIcon = "/icons/cross-small.svg";
@@ -146,16 +147,19 @@ export default function UploadInvoiceButton({
   function handleDragOver(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
     event.stopPropagation();
+    setIsDragOver(true);
   }
 
   function handleDragLeave(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
     event.stopPropagation();
+    setIsDragOver(false);
   }
 
   async function handleDrop(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
     event.stopPropagation();
+    setIsDragOver(false);
 
     const files = event.dataTransfer.files;
     if (!files || files.length === 0) return;
@@ -282,34 +286,38 @@ export default function UploadInvoiceButton({
           ))}
         </>
       ) : (
-        <div
+        <Button
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          componentType={"button"}
+          onClick={handleUploadClick}
+          bgColor={"black"}
+          borderColor={isDragOver ? "rgba(217, 217, 217, 1)" : "black"}
+          textColor={"white"}
           style={{
+            minWidth: "175px",
+            padding: "7px 20px",
             borderRadius: "25px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            cursor: isUploading ? "not-allowed" : "pointer",
+            backgroundColor: isDragOver ? "rgba(169, 255, 218, 1)" : "black",
+            color: isDragOver ? "rgba(34, 150, 100, 1)" : "white",
+            borderStyle: isDragOver ? "dashed" : "solid",
           }}
+          disabled={isUploading}
         >
-          <Button
-            componentType={"button"}
-            onClick={handleUploadClick}
-            bgColor={"black"}
-            borderColor={"black"}
-            textColor={"white"}
-            style={{
-              padding: "7px 20px",
-              borderRadius: "25px",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              cursor: isUploading ? "not-allowed" : "pointer",
-            }}
-            disabled={isUploading}
-          >
-            Upload Invoice
-            <img src={uploadIcon} alt="upload icon" />
-          </Button>
-        </div>
+          {isDragOver ? (
+            "DROP HERE"
+          ) : (
+            <>
+              Upload Invoice
+              <img src={uploadIcon} alt="upload icon" />
+            </>
+          )}
+        </Button>
       )}
     </>
   );

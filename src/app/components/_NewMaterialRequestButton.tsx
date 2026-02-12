@@ -12,9 +12,15 @@ import SingleSelectDropdown from "./SingleSelectDropdown";
 export default function NewMrButton() {
   const { userInfo } = useAuth();
 
+  const jobIcon = "/icons/job-req.svg";
+  const mrIcon = "/icons/material-req.svg";
+
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const [mode, setMode] = useState<"material" | "job" | "">("");
 
   const [purposeReasonValues, setPurposeReasonValues] = useState<[]>([]);
   const [projects, setProjects] = useState<[]>([]);
@@ -69,6 +75,7 @@ export default function NewMrButton() {
       body: JSON.stringify({
         action: "createMrHeader",
         project_id: projectID,
+        type: mode,
         department_id: userInfo?.departmentID,
         requested_by: requestedBy,
         required_date: neededBy,
@@ -79,19 +86,23 @@ export default function NewMrButton() {
     const data = await res.json();
 
     if (res.ok) {
-      toast("Material request created", "success");
+      toast(
+        `${mode === "job" ? "Job" : "Material"} request created`,
+        "success",
+      );
 
-      setIsOpen(false);
+      setIsCreateOpen(false);
 
       setPurposeReasonID("");
       setProjectID("");
       setNeededBy("");
+      setMode("");
 
       router.refresh();
 
       router.replace(`/mr/${data.mrHeaderId}`);
     } else {
-      toast("Failed to create material request", "error");
+      toast(`Failed to create ${mode} request`, "error");
     }
   }
 
@@ -107,30 +118,185 @@ export default function NewMrButton() {
           setIsOpen(true);
         }}
       >
-        NEW MR +
+        NEW REQUEST +
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"CREATE MATERIAL REQUEST"}
+          header={"CREATE NEW REQUEST"}
           setIsOpen={setIsOpen}
+          handleSubmit={(e) => {
+            e.preventDefault();
+            setIsOpen(false);
+            setIsCreateOpen(true);
+          }}
+          addButtonLabel={"CONFIRM"}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "20px",
+            }}
+          >
+            <label
+              style={{
+                position: "relative",
+                border: `1px solid ${mode === "job" ? "rgba(0, 163, 93, 1)" : "rgba(217, 217, 217, 1)"}`,
+                borderRadius: "10px",
+                padding: "40px 20px",
+                cursor: "pointer",
+                background: mode === "job" ? "#d4f4e7" : "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onClick={() => setMode("job")}
+            >
+              <input
+                type="radio"
+                name="requestType"
+                value="job"
+                checked={mode === "job"}
+                onChange={() => setMode("job")}
+                style={{
+                  position: "absolute",
+                  top: "16px",
+                  left: "16px",
+                  width: "20px",
+                  height: "20px",
+                  cursor: "pointer",
+                  accentColor: "#00aa6c",
+                }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "20px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "80px",
+                    height: "80px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <img
+                    src={jobIcon}
+                    alt="Job Order"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                      filter:
+                        mode === "job" ? "brightness(100) invert(1)" : "none",
+                    }}
+                  />
+                </div>
+                <span
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 600,
+                    textAlign: "center",
+                    color: "black",
+                  }}
+                >
+                  JOB ORDER
+                </span>
+              </div>
+            </label>
+
+            <label
+              style={{
+                position: "relative",
+                border: `1px solid ${mode === "material" ? "rgba(0, 163, 93, 1)" : "rgba(217, 217, 217, 1)"}`,
+                borderRadius: "10px",
+                padding: "40px 20px",
+                cursor: "pointer",
+                background:
+                  mode === "material" ? "rgba(227, 255, 243, 1)" : "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onClick={() => setMode("material")}
+            >
+              <input
+                type="radio"
+                name="requestType"
+                value="mr"
+                checked={mode === "material"}
+                onChange={() => setMode("material")}
+                style={{
+                  position: "absolute",
+                  top: "16px",
+                  left: "16px",
+                  width: "20px",
+                  height: "20px",
+                  cursor: "pointer",
+                  accentColor: "#00aa6c",
+                }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "20px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "80px",
+                    height: "80px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <img
+                    src={mrIcon}
+                    alt="Material Request"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                      filter:
+                        mode === "material"
+                          ? "brightness(100) invert(1)"
+                          : "none",
+                    }}
+                  />
+                </div>
+                <span
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 600,
+                    textAlign: "center",
+                    color: "black",
+                  }}
+                >
+                  MATERIAL REQUEST
+                </span>
+              </div>
+            </label>
+          </div>
+        </FormPopUp>
+      )}
+
+      {isCreateOpen && (
+        <FormPopUp
+          header={`CREATE ${String(mode).toUpperCase()} REQUEST`}
+          setIsOpen={setIsCreateOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
           <div className="input-row half">
-            {/* <InputItem
-              label={"PURPOSE/REASON"}
-              value={purposeReasonID}
-              type={"select"}
-              placeholder={"SELECT PURPOSE/REASON"}
-              onChange={(e) => setPurposeReasonID(e.target.value)}
-              dbMap={purposeReasonValues.map((pr: any) => (
-                <option key={pr.id} value={pr.id}>
-                  {pr.value}
-                </option>
-              ))}
-              required
-            /> */}
             <SingleSelectDropdown
               label={"PURPOSE/REASON"}
               selectedValue={purposeReasonID}
@@ -154,39 +320,6 @@ export default function NewMrButton() {
               required={purposeReasonID === 1 || purposeReasonID === 2}
               disabled={purposeReasonID === 6}
             />
-
-            {/* <InputItem
-              label={"PROJECT"}
-              value={projectID}
-              type={"select"}
-              placeholder={purposeReasonID === "6" ? "" : "SELECT PROJECT"}
-              onChange={(e) => setProjectID(e.target.value)}
-              dbMap={projects.map((pr: any) => (
-                <option key={pr.id} value={pr.id}>
-                  RAY-{pr.id} - {pr.name}
-                </option>
-              ))}
-              required={purposeReasonID === 1 || purposeReasonID === 2}
-              disabled={purposeReasonID === 6}
-            /> */}
-
-            {/* <SingleSelectDropdown
-              label={"BOQ LINE ID"}
-              selectedValue={boqLineID}
-              onChange={setBoqLineID}
-              placeholder={purposeReasonID === "6" ? "" : "SELECT BOQ LINE ID"}
-              dbData={boqLines}
-              disabled={purposeReasonID === "6"}
-            /> */}
-
-            {/* <MultiSelectDropdown
-              label={"BOQ LINE ID"}
-              selectedValues={boqLineID}
-              onChange={setBoqLineID}
-              placeholder={purposeReasonID === "6" ? "" : "SELECT BOQ LINE ID"}
-              dbData={boqLines}
-              disabled={purposeReasonID === "6"}
-            /> */}
           </div>
 
           <div className="input-row half">

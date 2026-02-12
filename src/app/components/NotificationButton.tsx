@@ -404,13 +404,13 @@ function NotificationToast({
                     headerLower.includes("back")
                   ) {
                     const regex =
-                      /^(Your\s+)?(MR-\d+)\s+was moved to the\s+(.+?)\s+stage$/i;
+                      /^(Your\s+)?((MR|JO)-\d+)\s+was moved to the\s+(.+?)\s+stage$/i;
                     const match = message.match(regex);
 
                     if (match) {
                       const prefix = match[1] || "";
                       const mrId = match[2];
-                      const stageName = match[3];
+                      const stageName = match[4];
 
                       return (
                         <>
@@ -477,11 +477,15 @@ function NotificationToast({
 
                   const renderText = (text: string, makeBlack = false) => {
                     const parts = text.split(
-                      /(MR-\d+|LPO-\d+|\([^)]*AED[^)]*\))/g,
+                      /(MR-\d+|JO-\d+|LPO-\d+|\([^)]*AED[^)]*\))/g,
                     );
 
                     return parts.map((part, index) => {
-                      if (part.startsWith("MR-") || part.startsWith("LPO-")) {
+                      if (
+                        part.startsWith("MR-") ||
+                        part.startsWith("JO-") ||
+                        part.startsWith("LPO-")
+                      ) {
                         return (
                           <span key={index} style={{ color: "#000000" }}>
                             {part}
@@ -589,6 +593,8 @@ export default function NotificationDropdown() {
   const paymentCrossIcon = "/icons/notification-payment-cross.svg";
 
   const deliveryIcon = "/icons/notification-delivery.svg";
+  const deliveryExclamationIcon =
+    "/icons/notification-delivery-exclamation.svg";
 
   const stockIcon = "/icons/notification-stock.svg";
   const stockTransferIcon = "/icons/notification-stock-transfer.svg";
@@ -1063,6 +1069,14 @@ export default function NotificationDropdown() {
       };
     }
 
+    if (headerLower.includes("delivery") && headerLower.includes("overdue")) {
+      return {
+        icon: deliveryExclamationIcon,
+        headerColor: "rgba(248, 77, 77, 1)", // red
+        dotColor: "rgba(248, 77, 77, 1)", // red dot
+      };
+    }
+
     // Default styling
     return {
       icon: mrCheckIcon,
@@ -1093,6 +1107,11 @@ export default function NotificationDropdown() {
     // ✅ Check if notification is stock-related
     if (headerLower.includes("stock") || headerLower.includes("inventory")) {
       return `/inventory/${notification.inventory_item_id}`;
+    }
+
+    // ✅ If notification has lpo_id, redirect to LPO detail page
+    if (notification.lpo_id && notification.mr_header_id) {
+      return `/mr/${notification.mr_header_id}/lpo/${notification.lpo_id}`;
     }
 
     // ✅ Default to MR page
@@ -1624,13 +1643,13 @@ export default function NotificationDropdown() {
                                   headerLower.includes("back")
                                 ) {
                                   const regex =
-                                    /^(Your\s+)?(MR-\d+)\s+was moved to the\s+(.+?)\s+stage$/i;
+                                    /^(Your\s+)?((MR|JO)-\d+)\s+was moved to the\s+(.+?)\s+stage$/i;
                                   const match = message.match(regex);
 
                                   if (match) {
                                     const prefix = match[1] || "";
                                     const mrId = match[2];
-                                    const stageName = match[3];
+                                    const stageName = match[4];
 
                                     return (
                                       <>
@@ -1735,12 +1754,13 @@ export default function NotificationDropdown() {
                                   makeBlack = false,
                                 ) => {
                                   const parts = text.split(
-                                    /(MR-\d+|LPO-\d+|\([^)]*AED[^)]*\))/g,
+                                    /(MR-\d+|JO-\d+|LPO-\d+|\([^)]*AED[^)]*\))/g,
                                   );
 
                                   return parts.map((part, index) => {
                                     if (
                                       part.startsWith("MR-") ||
+                                      part.startsWith("JO-") ||
                                       part.startsWith("LPO-")
                                     ) {
                                       return (

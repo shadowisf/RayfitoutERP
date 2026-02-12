@@ -1,8 +1,10 @@
 import Button from "@/app/components/Button";
 import CreateMrLineClient from "./components/CreateMrLine";
+import CreateJoLineClient from "./components/CreateJoLine";
 import DeleteMrHeaderButton from "./components/department/_DeleteMrHeaderButton";
 import EditMrHeaderButton from "./components/department/_EditMrHeaderButton";
 import MrLinesView from "./components/MrLinesView";
+import JoLinesView from "./components/JoLinesView";
 import { MrHeader } from "./types/mrHeader";
 import CancelMaterialRequestButton from "./components/_CancelMaterialRequest";
 
@@ -31,19 +33,43 @@ export default async function MrWithID({
       return {} as MrHeader;
     });
 
-  const mrLines = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMrLinesByMrHeaderID`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    },
-  )
+  const isJobOrder = mrHeader.type === "job";
+
+  // Fetch both MR lines and JO lines — we'll decide which to show
+  const mrLines = isJobOrder
+    ? {}
+    : await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMrLinesByMrHeaderID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        },
+      )
+        .then((res) => res.json())
+        .catch((err) => {
+          console.error(err);
+          return {};
+        });
+
+  // Always try to fetch JO lines (handles case where type column isn't set yet)
+  const joLines = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "getJoLinesByMrHeaderID",
+      mr_header_id: id,
+    }),
+  })
     .then((res) => res.json())
     .catch((err) => {
       console.error(err);
-      return {};
+      return [];
     });
+
+  // If JO lines exist, treat as job order even if type field isn't set
+  const hasJoLines = Array.isArray(joLines) && joLines.length > 0;
+  const effectiveIsJobOrder = isJobOrder || hasJoLines;
 
   const deliveryDates = await fetch(
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getDeliveryDatesByMrHeaderID`,
@@ -283,7 +309,8 @@ export default async function MrWithID({
         }}
       >
         <h1>
-          <a href="/mr">MATERIAL REQUISITIONS</a> &gt; MR-
+          <a href="/mr">REQUISITIONS</a> &gt;{" "}
+          {mrHeader.type.toLowerCase().includes("material") ? "MR-" : "JO-"}
           {String(mrHeader.id).padStart(5, "0")}
         </h1>
 
@@ -313,8 +340,18 @@ export default async function MrWithID({
           >
             <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
               <div>
-                <small>MR ID</small>
-                <h2>MR-{String(id).padStart(5, "0")}</h2>
+                <small>
+                  {mrHeader.type.toLowerCase().includes("material")
+                    ? "MR"
+                    : "JO"}{" "}
+                  ID
+                </small>
+                <h2>
+                  {mrHeader.type.toLowerCase().includes("material")
+                    ? "MR-"
+                    : "JO-"}
+                  {String(mrHeader.id).padStart(5, "0")}
+                </h2>
               </div>
 
               <div style={{ display: "flex", gap: "10px" }}>
@@ -526,7 +563,16 @@ export default async function MrWithID({
       <br />
       <br />
 
-      {mrLines && Object.keys(mrLines).length > 0 ? (
+      {effectiveIsJobOrder ? (
+        hasJoLines ? (
+          <JoLinesView joLines={joLines} mrHeader={mrHeader} />
+        ) : (
+          <CreateJoLineClient
+            mrHeaderID={mrHeader.id}
+            projectID={mrHeader.project_id}
+          />
+        )
+      ) : mrLines && Object.keys(mrLines).length > 0 ? (
         <MrLinesView mrLines={mrLines} mrHeader={mrHeader} />
       ) : (
         <CreateMrLineClient

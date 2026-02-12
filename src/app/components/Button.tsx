@@ -15,6 +15,9 @@ type ButtonProps = {
   className?: string;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  onDragOver?: (e: any) => void;
+  onDragLeave?: (e: any) => void;
+  onDrop?: (e: any) => void;
 };
 
 export default function Button({
@@ -32,6 +35,9 @@ export default function Button({
   disabled,
   onMouseEnter,
   onMouseLeave,
+  onDragOver,
+  onDragLeave,
+  onDrop,
 }: ButtonProps) {
   if (componentType === "button") {
     return (
@@ -49,6 +55,9 @@ export default function Button({
         disabled={disabled}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
       >
         {children}
       </button>
@@ -67,6 +76,11 @@ export default function Button({
           ...style,
           pointerEvents: disabled ? "none" : "auto",
         }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
       >
         {children}
       </div>
@@ -88,6 +102,11 @@ export default function Button({
         }}
         href={href}
         target={target}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
       >
         {children}
       </a>
