@@ -223,18 +223,6 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true });
     }
 
-    if (body.action === "submitForPaymentOrDelivery") {
-      const query = `
-    UPDATE lpo
-    SET progress_id = ?
-    WHERE id = ?
-  `;
-
-      await db.query(query, [Number(body.progress_id), Number(body.lpo_id)]);
-
-      return NextResponse.json({ success: true });
-    }
-
     if (body.action === "submitLpoForPayment") {
       await db.query(`UPDATE lpo SET progress_id = 14 WHERE id = ?`, [
         Number(body.lpo_id),
@@ -273,16 +261,18 @@ export async function PUT(req: Request) {
         [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
       );
 
-      /*       await db.query(
-        `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
-        [
-          Number(body.mr_header_id),
-          Number(body.lpo_id),
-          10,
-          "Payment Successful",
-          `A payment (AED ${body.payment_value}) was made against LPO-${String(body.lpo_id).padStart(5, "0")}`,
-        ],
-      ); */
+      if (!body.skip_to_delivery || body.skip_to_delivery === false) {
+        await db.query(
+          `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
+          [
+            Number(body.mr_header_id),
+            Number(body.lpo_id),
+            10,
+            "Payment Successful",
+            `A payment (AED ${body.payment_value}) was made against LPO-${String(body.lpo_id).padStart(5, "0")}`,
+          ],
+        );
+      }
 
       const deptIds = [8, 9, 11, 16];
       if (body.department_id && !deptIds.includes(Number(body.department_id))) {

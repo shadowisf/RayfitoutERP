@@ -47,9 +47,8 @@ export default async function LpoWithID({
     return (
       <div className="dashboard">
         <h1>
-          <a href="/mr">MATERIAL REQUISITIONS</a> &gt;{" "}
-          <a href={`/mr/${id}`}>MR-{String(id).padStart(5, "0")}</a> &gt; LPO
-          Not Found
+          <a href="/mr">MATERIAL REQUISITIONS</a> &gt; MR-
+          {String(id).padStart(5, "0")} &gt; LPO Not Found
         </h1>
         <br />
         <p>This LPO could not be found.</p>
@@ -288,8 +287,8 @@ export default async function LpoWithID({
         }}
       >
         <h1>
-          <a href="/mr">MATERIAL REQUISITIONS</a> &gt;{" "}
-          <a href={`/mr/${id}`}>MR-{String(id).padStart(5, "0")}</a> &gt; LPO-
+          <a href="/mr">REQUISITIONS</a> &gt; MR-
+          {String(id).padStart(5, "0")} &gt; LPO-
           {String(lpoId).padStart(5, "0")}
         </h1>
       </div>

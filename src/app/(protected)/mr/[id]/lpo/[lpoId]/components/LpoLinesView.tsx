@@ -815,7 +815,8 @@ export default function LpoLinesView({
             <SubmitForPaymentButton
               paymentValue={totalInvoiceAmount}
               mrHeaderID={mrHeader.id}
-              lpoId={lpoId}
+              lpoID={lpoId}
+              mode="single"
               disabled={!hasLpoWithInvoiceAndSignedFile()}
               style={{
                 opacity: !hasLpoWithInvoiceAndSignedFile() ? "0.5" : "1",
