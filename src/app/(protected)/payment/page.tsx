@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Button from "@/app/components/Button";
+import { useAuth } from "@/app/context/AuthContext";
 
 type PaymentRow = {
   id: number;
@@ -16,6 +17,8 @@ type PaymentRow = {
 };
 
 export default function Payments() {
+  const { userInfo } = useAuth();
+
   const searchIcon = "/icons/search.svg";
   const externalLinkIcon = "/icons/external-link.svg";
 
@@ -24,6 +27,9 @@ export default function Payments() {
   const [sortBy, setSortBy] = useState<
     "" | "name" | "type" | "amount" | "status"
   >("");
+
+  const canSeePrices =
+    userInfo?.departmentID === 8 || userInfo?.departmentID === 10;
 
   async function fetchPayments() {
     try {
@@ -207,10 +213,10 @@ export default function Payments() {
             <th>#</th>
             <th>NAME</th>
             <th>TYPE</th>
-            <th>TOTAL AMOUNT</th>
+            {canSeePrices && <th>TOTAL AMOUNT</th>}
             {/* <th>DUE DATE</th> */}
             <th>STATUS</th>
-            <th></th>
+            {canSeePrices && <th></th>}
           </tr>
         </thead>
         <tbody>
@@ -234,7 +240,7 @@ export default function Payments() {
                     {row.type}
                   </div>
                 </td>
-                <td>AED {row.total_amount.toFixed(2)}</td>
+                {canSeePrices && <td>AED {row.total_amount.toFixed(2)}</td>}
                 {/* <td>
                   {row.due_date
                     ? new Date(row.due_date).toLocaleDateString("en-GB")
@@ -253,20 +259,22 @@ export default function Payments() {
                       : `${row.unpaid_count} UNPAID INVOICE${row.unpaid_count > 1 ? "S" : ""}`}
                   </div>
                 </td>
-                <td>
-                  <Button
-                    componentType={"link"}
-                    bgColor={"rgba(239, 239, 239, 1)"}
-                    borderColor={"rgba(223, 223, 223, 1)"}
-                    textColor={"black"}
-                    href={`/payment/${row.entity}/${row.id}`}
-                    style={{
-                      padding: "7px 7px",
-                    }}
-                  >
-                    <img src={externalLinkIcon} alt="external link" />
-                  </Button>
-                </td>
+                {canSeePrices && (
+                  <td>
+                    <Button
+                      componentType={"link"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"rgba(223, 223, 223, 1)"}
+                      textColor={"black"}
+                      href={`/payment/${row.entity}/${row.id}`}
+                      style={{
+                        padding: "7px 7px",
+                      }}
+                    >
+                      <img src={externalLinkIcon} alt="external link" />
+                    </Button>
+                  </td>
+                )}
               </tr>
             );
           })}
