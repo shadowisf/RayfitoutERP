@@ -11,7 +11,6 @@ import { useAuth } from "@/app/context/AuthContext";
 import { LpoHeader } from "../../types/lpoHeader";
 import { MrHeader } from "../../types/mrHeader";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
-import { Line } from "recharts";
 
 type CreateGRNButtonProps = {
   mrHeader: MrHeader;
@@ -24,7 +23,7 @@ type GRNLineItem = {
   received_quantity: string;
   notes: string;
   attachment: string;
-  attachmentFile?: File | null; // Store the file temporarily
+  attachmentFile?: File | null;
 };
 
 type GRN = {
@@ -41,7 +40,6 @@ export default function CreateGRNButton({
   progress_id,
 }: CreateGRNButtonProps) {
   const router = useRouter();
-
   const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
@@ -55,34 +53,47 @@ export default function CreateGRNButton({
   const [isOpen, setIsOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isUploadAttachmentOpen, setIsUploadAttachmentOpen] = useState(false);
-
   const [currentNoteIndex, setCurrentNoteIndex] = useState<number | null>(null);
   const [currentAttachmentIndex, setCurrentAttachmentIndex] = useState<
     number | null
   >(null);
-
   const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
   const [lpo, setLpo] = useState<LpoHeader | null>(null);
   const [lpoMrLines, setLpoMrLines] = useState<any[]>([]);
-
   const [existingGrn, setExistingGrn] = useState<GRN | null>(null);
-
   const [isEditMode, setIsEditMode] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-
   const [receivedDate, setReceivedDate] = useState(
-    new Date().toLocaleDateString("en-CA")
+    new Date().toLocaleDateString("en-CA"),
   );
-
-  // State for GRN line items
   const [grnLines, setGrnLines] = useState<{ [key: number]: GRNLineItem }>({});
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
-
-  // State for QC accepted quantities
   const [qcAcceptedQuantities, setQcAcceptedQuantities] = useState<{
     [key: number]: number | null;
   }>({});
+
+  // Helper function to format quantity
+  const formatQuantity = (
+    quantity: number | string | undefined | null,
+  ): string => {
+    if (quantity === undefined || quantity === null || quantity === "")
+      return "0";
+    const num = typeof quantity === "string" ? parseFloat(quantity) : quantity;
+    if (isNaN(num)) return "0";
+    if (Number.isInteger(num)) return num.toString();
+    return parseFloat(num.toFixed(10)).toString();
+  };
+
+  // Helper to parse quantity for comparison
+  const parseQuantity = (
+    quantity: number | string | undefined | null,
+  ): number => {
+    if (quantity === undefined || quantity === null || quantity === "")
+      return 0;
+    const num = typeof quantity === "string" ? parseFloat(quantity) : quantity;
+    return isNaN(num) ? 0 : num;
+  };
 
   useEffect(() => {
     if (mrLines.length > 0 && mrLines[0]?.approved_supplier_id) {
@@ -90,7 +101,6 @@ export default function CreateGRNButton({
     }
   }, [mrHeader.id, mrLines]);
 
-  // Check if we should be in view mode based on progress_id
   useEffect(() => {
     if (mrHeader.progress_id >= 21 || mrHeader.progress_id === 16) {
       setIsViewMode(true);
@@ -102,7 +112,6 @@ export default function CreateGRNButton({
   async function checkExistingLpo() {
     try {
       const supplierId = mrLines[0]?.approved_supplier_id;
-
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
         {
@@ -112,13 +121,11 @@ export default function CreateGRNButton({
             mr_header_id: mrHeader.id,
             supplier_id: supplierId,
           }),
-        }
+        },
       );
       const data = await res.json();
-
       if (data.success && data.data && data.data.length > 0) {
-        const lpoData: LpoHeader = data.data[0];
-        setExistingLpoId(lpoData.id);
+        setExistingLpoId(data.data[0].id);
       } else {
         setExistingLpoId(null);
       }
@@ -130,7 +137,6 @@ export default function CreateGRNButton({
   useEffect(() => {
     async function fetchLpo() {
       if (!existingLpoId) return;
-
       try {
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPODetails`,
@@ -138,17 +144,13 @@ export default function CreateGRNButton({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lpo_id: existingLpoId }),
-          }
+          },
         );
         const data = await response.json();
         if (data.success && data.data) {
           setLpo(data.data);
-
-          // Fetch LPO MR Lines
           if (data.data.lpo_mr_lines) {
             setLpoMrLines(data.data.lpo_mr_lines);
-
-            // Initialize GRN lines state
             const initialGrnLines: { [key: number]: GRNLineItem } = {};
             data.data.lpo_mr_lines.forEach((line: any, index: number) => {
               initialGrnLines[index] = {
@@ -168,50 +170,38 @@ export default function CreateGRNButton({
     fetchLpo();
   }, [existingLpoId]);
 
-  // Fetch QC accepted quantities
   useEffect(() => {
     async function fetchQcAcceptedQuantities() {
       if (!existingLpoId || lpoMrLines.length === 0) return;
-
       try {
         const qcQuantities: { [key: number]: number | null } = {};
-
-        // Fetch QC data for each lpo_mr_line
         for (let index = 0; index < lpoMrLines.length; index++) {
           const lpoMrLineId = lpoMrLines[index].id;
-
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getQCByLPOMrLineID`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                lpo_mr_line_id: lpoMrLineId,
-              }),
-            }
+              body: JSON.stringify({ lpo_mr_line_id: lpoMrLineId }),
+            },
           );
-
           const data = await response.json();
-
           if (data.success && data.data && data.data.accepted_quantity) {
             qcQuantities[index] = data.data.accepted_quantity;
           } else {
             qcQuantities[index] = null;
           }
         }
-
         setQcAcceptedQuantities(qcQuantities);
       } catch (error) {
         console.error("Error fetching QC accepted quantities:", error);
       }
     }
-
     fetchQcAcceptedQuantities();
   }, [existingLpoId, lpoMrLines, isOpen]);
 
   async function checkExistingGrn() {
     if (!existingLpoId) return;
-
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/grn/getGRNDetailsByLPOID`,
@@ -219,16 +209,12 @@ export default function CreateGRNButton({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lpo_id: existingLpoId }),
-        }
+        },
       );
       const data = await response.json();
-
       if (data.success && data.data && data.data.id) {
         setExistingGrn(data.data);
-        // Only set edit mode if not in view mode
-        if (!isViewMode) {
-          setIsEditMode(true);
-        }
+        if (!isViewMode) setIsEditMode(true);
       } else {
         setExistingGrn(null);
         setIsEditMode(false);
@@ -240,18 +226,14 @@ export default function CreateGRNButton({
     }
   }
 
-  // Check for existing GRN
   useEffect(() => {
     checkExistingGrn();
   }, [existingLpoId]);
 
-  // Load existing GRN data when editing OR when opening the modal
   useEffect(() => {
     if (existingGrn && existingGrn.id && lpoMrLines.length > 0 && isOpen) {
-      // Fix timezone issue by creating a date without timezone conversion
       if (existingGrn.received_date) {
         const date = new Date(existingGrn.received_date);
-        // Get the date in local timezone without conversion
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
         const day = String(date.getDate()).padStart(2, "0");
@@ -260,32 +242,23 @@ export default function CreateGRNButton({
         setReceivedDate("");
       }
 
-      // Map existing GRN lines to the form
       const mappedGrnLines: { [key: number]: GRNLineItem } = {};
-
       lpoMrLines.forEach((lpoLine: any, index: number) => {
-        // Find matching GRN line
         const grnLine = existingGrn.grn_lines?.find(
-          (gl: any) => gl.lpo_mr_line_id === lpoLine.id
+          (gl: any) => gl.lpo_mr_line_id === lpoLine.id,
         );
-
         if (grnLine) {
-          // Parse attachment if it's a JSON string
           let attachmentUrl = "";
           if (grnLine.attachment) {
             try {
-              // If it's a JSON string, parse it
-              if (typeof grnLine.attachment === "string") {
-                attachmentUrl = JSON.parse(grnLine.attachment);
-              } else {
-                attachmentUrl = grnLine.attachment;
-              }
+              attachmentUrl =
+                typeof grnLine.attachment === "string"
+                  ? JSON.parse(grnLine.attachment)
+                  : grnLine.attachment;
             } catch (e) {
-              // If parsing fails, use as is
               attachmentUrl = grnLine.attachment;
             }
           }
-
           mappedGrnLines[index] = {
             lpo_mr_line_id: lpoLine.id,
             received_quantity: grnLine.received_quantity?.toString() || "",
@@ -303,20 +276,15 @@ export default function CreateGRNButton({
           };
         }
       });
-
       setGrnLines(mappedGrnLines);
     }
   }, [existingGrn, lpoMrLines, isOpen]);
 
   const handleReceivedQuantityChange = (index: number, value: string) => {
     if (isViewMode) return;
-
     setGrnLines((prev) => ({
       ...prev,
-      [index]: {
-        ...prev[index],
-        received_quantity: value,
-      },
+      [index]: { ...prev[index], received_quantity: value },
     }));
   };
 
@@ -340,30 +308,21 @@ export default function CreateGRNButton({
 
   const handleNotesChange = (value: string) => {
     if (isViewMode) return;
-
     if (currentNoteIndex !== null) {
       setGrnLines((prev) => ({
         ...prev,
-        [currentNoteIndex]: {
-          ...prev[currentNoteIndex],
-          notes: value,
-        },
+        [currentNoteIndex]: { ...prev[currentNoteIndex], notes: value },
       }));
     }
   };
 
-  // Handle attachment selection (just store the file, don't upload yet)
   function handleAttachmentSubmit(e: React.FormEvent) {
     e.preventDefault();
-
     if (currentAttachmentIndex === null) return;
-
     if (!attachmentFile) {
       toast("Please select a file to upload", "error");
       return;
     }
-
-    // Just store the file, don't upload to S3 yet
     setGrnLines((prev) => ({
       ...prev,
       [currentAttachmentIndex]: {
@@ -371,47 +330,30 @@ export default function CreateGRNButton({
         attachmentFile: attachmentFile,
       },
     }));
-
     setIsUploadAttachmentOpen(false);
     setAttachmentFile(null);
     setCurrentAttachmentIndex(null);
   }
 
-  // Handle removing attachment (before upload)
   function handleRemoveAttachmentFile(index: number) {
     if (isViewMode) return;
-
     setGrnLines((prev) => ({
       ...prev,
-      [index]: {
-        ...prev[index],
-        attachmentFile: null,
-      },
+      [index]: { ...prev[index], attachmentFile: null },
     }));
   }
 
-  // Handle removing attachment (after upload, from S3)
   async function handleRemoveAttachment(index: number) {
     if (isViewMode) return;
-
     const attachmentUrl = grnLines[index]?.attachment;
     if (!attachmentUrl) return;
-
     setIsUploading(true);
-
     try {
-      // Delete from S3
       await deleteFileFromS3(attachmentUrl);
-
-      // Update state
       setGrnLines((prev) => ({
         ...prev,
-        [index]: {
-          ...prev[index],
-          attachment: "",
-        },
+        [index]: { ...prev[index], attachment: "" },
       }));
-
       toast("Attachment removed successfully", "success");
     } catch (error) {
       console.error("Error removing attachment:", error);
@@ -421,67 +363,48 @@ export default function CreateGRNButton({
     }
   }
 
-  // Upload file to S3
   async function uploadFileToS3(file: File): Promise<string> {
     const formData = new FormData();
     formData.append("folder", "grn-attachments");
     formData.append("files", file);
-
     const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`, {
       method: "POST",
       body: formData,
     });
-
-    if (!response.ok) {
-      throw new Error("Upload failed");
-    }
-
+    if (!response.ok) throw new Error("Upload failed");
     const data = await response.json();
     return data.urls[0];
   }
 
-  // Delete file from S3
   async function deleteFileFromS3(url: string): Promise<void> {
     const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "delete",
-        url: url,
-      }),
+      body: JSON.stringify({ action: "delete", url: url }),
     });
-
-    if (!response.ok) {
-      throw new Error("Failed to delete file from S3");
-    }
+    if (!response.ok) throw new Error("Failed to delete file from S3");
   }
 
-  // Function to check if received quantity matches ordered quantity
+  // FIXED: Proper quantity comparison with epsilon for floating point
   const checkQuantityMatch = (index: number) => {
-    const receivedQty = parseFloat(grnLines[index]?.received_quantity || "0");
-    const orderedQty = mrLines[index]?.quantity || 0;
+    const receivedQty = parseQuantity(grnLines[index]?.received_quantity);
+    const orderedQty = parseQuantity(mrLines[index]?.quantity);
 
-    if (!grnLines[index]?.received_quantity) {
-      return null;
-    }
+    if (!grnLines[index]?.received_quantity) return null;
 
-    return receivedQty === orderedQty;
+    const epsilon = 0.0001;
+    return Math.abs(receivedQty - orderedQty) < epsilon;
   };
 
-  // Function to check if there are any mismatched quantities
   const hasQuantityMismatch = () => {
     return Object.keys(grnLines).some((key) => {
       const index = parseInt(key);
-      const match = checkQuantityMatch(index);
-      return match === false;
+      return checkQuantityMatch(index) === false;
     });
   };
 
-  // Function to reset all form fields
   const resetForm = () => {
     setReceivedDate("");
-
-    // Reset GRN lines to initial empty state
     if (lpoMrLines.length > 0) {
       const initialGrnLines: { [key: number]: GRNLineItem } = {};
       lpoMrLines.forEach((line: any, index: number) => {
@@ -497,57 +420,45 @@ export default function CreateGRNButton({
     }
   };
 
-  // Handle form submission (create or update)
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    // In view mode, just close the modal
     if (isViewMode) {
       setIsOpen(false);
       return;
     }
 
     const allLinesValid = Object.values(grnLines).every(
-      (line) => line.received_quantity
+      (line) => line.received_quantity,
     );
-
     if (!allLinesValid) {
       toast("Please fill in all received quantities", "error");
       return;
     }
 
     const allLinesHaveAttachments = Object.values(grnLines).every(
-      (line) => line.attachmentFile || line.attachment
+      (line) => line.attachmentFile || line.attachment,
     );
-
     if (!allLinesHaveAttachments) {
       toast("Please upload an attachment for all items", "error");
       return;
     }
 
     setIsUploading(true);
-
     try {
-      // First, upload all new attachment files to S3
       const uploadPromises = Object.entries(grnLines).map(
         async ([index, line]) => {
           if (line.attachmentFile) {
-            // If replacing existing attachment in edit mode, delete the old one first
             if (isEditMode && line.attachment) {
               await deleteFileFromS3(line.attachment);
             }
-
-            // Upload new file
             const uploadedUrl = await uploadFileToS3(line.attachmentFile);
             return { index: parseInt(index), url: uploadedUrl };
           }
           return null;
-        }
+        },
       );
 
       const uploadResults = await Promise.all(uploadPromises);
-
-      // Update grnLines with uploaded URLs
       const updatedGrnLines = { ...grnLines };
       uploadResults.forEach((result) => {
         if (result) {
@@ -565,10 +476,8 @@ export default function CreateGRNButton({
         attachment: line.attachment || null,
       }));
 
-      // Determine if we're creating or updating
       const action = isEditMode ? "updateGRN" : "createGRN";
       const method = isEditMode ? "PUT" : "POST";
-
       const requestBody: any = {
         action,
         lpo_id: existingLpoId,
@@ -576,11 +485,7 @@ export default function CreateGRNButton({
         received_by: userInfo?.name,
         grn_lines: grnLinesArray,
       };
-
-      // Include GRN ID if updating
-      if (isEditMode && existingGrn?.id) {
-        requestBody.grn_id = existingGrn.id;
-      }
+      if (isEditMode && existingGrn?.id) requestBody.grn_id = existingGrn.id;
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/grn`, {
         method: method,
@@ -593,35 +498,23 @@ export default function CreateGRNButton({
           isEditMode
             ? `Good received note updated for ${mrLines[0].approved_supplier_name}`
             : `Good received note created for ${mrLines[0].approved_supplier_name}`,
-          "success"
+          "success",
         );
-
-        // Close modal first
         setIsOpen(false);
-
-        // Reset form if creating new
-        if (!isEditMode) {
-          resetForm();
-        }
-
-        // Force re-check of existing GRN status
+        if (!isEditMode) resetForm();
         await checkExistingGrn();
-
-        // Then refresh router
-        setTimeout(() => {
-          router.refresh();
-        }, 100);
+        setTimeout(() => router.refresh(), 100);
       } else {
         toast(
           isEditMode ? "Failed to update GRN" : "Failed to create GRN",
-          "error"
+          "error",
         );
       }
     } catch (error) {
       console.error("Error submitting GRN:", error);
       toast(
         isEditMode ? "Failed to update GRN" : "Failed to create GRN",
-        "error"
+        "error",
       );
     } finally {
       setIsUploading(false);
@@ -675,8 +568,8 @@ export default function CreateGRNButton({
             isViewMode
               ? "VIEW GOOD RECEIVED NOTE"
               : isEditMode
-              ? "UPDATE GOOD RECEIVED NOTE"
-              : "CREATE GOOD RECEIVED NOTE"
+                ? "UPDATE GOOD RECEIVED NOTE"
+                : "CREATE GOOD RECEIVED NOTE"
           }
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
@@ -748,10 +641,11 @@ export default function CreateGRNButton({
             <tbody>
               {mrLines.map((mrLine, index) => {
                 const quantityMatch = checkQuantityMatch(index);
-                const receivedQty = parseFloat(
-                  grnLines[index]?.received_quantity || "0"
+                // FIXED: Use parseQuantity helper for both
+                const receivedQty = parseQuantity(
+                  grnLines[index]?.received_quantity,
                 );
-                const orderedQty = mrLine.quantity;
+                const orderedQty = parseQuantity(mrLine.quantity);
                 const acceptedQty = qcAcceptedQuantities[index];
                 const hasAttachment = grnLines[index]?.attachment;
                 const hasAttachmentFile = grnLines[index]?.attachmentFile;
@@ -761,13 +655,11 @@ export default function CreateGRNButton({
                     <td>{index + 1}</td>
                     <td>{mrLine.material_description}</td>
                     <td>
-                      {mrLine.quantity} {mrLine.unit}
+                      {formatQuantity(mrLine.quantity)} {mrLine.unit}
                     </td>
                     <td>
                       {isViewMode ? (
-                        `${grnLines[index]?.received_quantity || "0"} ${
-                          mrLine.unit
-                        }`
+                        `${formatQuantity(grnLines[index]?.received_quantity)} ${mrLine.unit}`
                       ) : (
                         <div
                           style={{
@@ -792,13 +684,10 @@ export default function CreateGRNButton({
                               onChange={(e) =>
                                 handleReceivedQuantityChange(
                                   index,
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
-                              style={{
-                                minWidth: "200px",
-                                marginBottom: "0px",
-                              }}
+                              style={{ minWidth: "200px", marginBottom: "0px" }}
                               disabled={isViewMode}
                             />
                             {quantityMatch !== null && (
@@ -813,17 +702,13 @@ export default function CreateGRNButton({
                                   <img
                                     src={checkGreenIcon}
                                     alt="match"
-                                    style={{
-                                      width: "32px",
-                                    }}
+                                    style={{ width: "32px" }}
                                   />
                                 ) : (
                                   <img
                                     src={warningIcon}
                                     alt="warning"
-                                    style={{
-                                      width: "32px",
-                                    }}
+                                    style={{ width: "32px" }}
                                   />
                                 )}
                               </div>
@@ -849,7 +734,7 @@ export default function CreateGRNButton({
                     {progress_id >= 21 && (
                       <td>
                         {acceptedQty !== null && acceptedQty !== undefined ? (
-                          `${acceptedQty} ${mrLine.unit}`
+                          `${formatQuantity(acceptedQty)} ${mrLine.unit}`
                         ) : (
                           <span style={{ color: "rgba(150, 150, 150, 1)" }}>
                             -
@@ -865,10 +750,7 @@ export default function CreateGRNButton({
                             bgColor={"rgba(239, 239, 239, 1)"}
                             borderColor={"rgba(223, 223, 223, 1)"}
                             textColor={"black"}
-                            style={{
-                              borderRadius: "5px",
-                              padding: "7px 7px",
-                            }}
+                            style={{ borderRadius: "5px", padding: "7px 7px" }}
                             onClick={(e) => {
                               e.preventDefault();
                               openNotesModal(index);
@@ -914,7 +796,6 @@ export default function CreateGRNButton({
                           }}
                         >
                           {hasAttachment ? (
-                            // Show external link button for uploaded files
                             <Button
                               componentType={"link"}
                               bgColor={"rgba(239, 239, 239, 1)"}
@@ -927,7 +808,6 @@ export default function CreateGRNButton({
                               <img src={externalLinkIcon} alt="view" />
                             </Button>
                           ) : hasAttachmentFile ? (
-                            // Show preview button for selected but not yet uploaded files
                             <Button
                               componentType={"button"}
                               bgColor={"rgba(239, 239, 239, 1)"}
@@ -937,7 +817,7 @@ export default function CreateGRNButton({
                               onClick={(e) => {
                                 e.preventDefault();
                                 const fileUrl = URL.createObjectURL(
-                                  grnLines[index].attachmentFile!
+                                  grnLines[index].attachmentFile!,
                                 );
                                 window.open(fileUrl, "_blank");
                               }}
@@ -962,12 +842,10 @@ export default function CreateGRNButton({
                           )}
                         </div>
                       ) : isViewMode ? (
-                        // Show dash in view mode when no attachment
                         <span style={{ color: "rgba(150, 150, 150, 1)" }}>
                           -
                         </span>
                       ) : (
-                        // Show plus button in edit/create mode when no attachment
                         <Button
                           componentType={"button"}
                           bgColor={"rgba(239, 239, 239, 1)"}
@@ -1010,17 +888,10 @@ export default function CreateGRNButton({
               <img
                 src={warningIcon}
                 alt="warning"
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  flexShrink: 0,
-                }}
+                style={{ width: "28px", height: "28px", flexShrink: 0 }}
               />
               <span
-                style={{
-                  color: "rgba(248, 77, 77, 1)",
-                  fontStyle: "italic",
-                }}
+                style={{ color: "rgba(248, 77, 77, 1)", fontStyle: "italic" }}
               >
                 Items that do not match the request will be returned to
                 procurement

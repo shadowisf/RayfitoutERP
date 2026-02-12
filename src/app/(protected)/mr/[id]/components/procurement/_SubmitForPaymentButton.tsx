@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
@@ -12,22 +12,28 @@ export type SupplierInfo = {
   lpoId: number;
   supplierType: string;
   supplierName: string;
-  paymentValue: number;
+  paymentValue?: number; // Optional for backward compatibility
 };
 
-type SubitForPaymentButtonProps = {
+type SubmitForPaymentButtonProps = {
   mrHeaderID: number;
+  lpoID?: number; // For single LPO mode (LpoLinesView)
+  paymentValue?: number; // Total amount for single LPO
   style?: React.CSSProperties;
   disabled?: boolean;
-  suppliers: SupplierInfo[]; // Array of all suppliers with their LPOs
+  suppliers?: SupplierInfo[]; // For multi-supplier mode (MrLinesView)
+  mode?: "single" | "multi"; // Explicit mode selection
 };
 
 export default function SubmitForPaymentButton({
   mrHeaderID,
+  lpoID,
+  paymentValue = 0,
   style,
   disabled,
-  suppliers,
-}: SubitForPaymentButtonProps) {
+  suppliers = [],
+  mode = "single",
+}: SubmitForPaymentButtonProps) {
   const router = useRouter();
   const { userInfo } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -37,11 +43,27 @@ export default function SubmitForPaymentButton({
     total: number;
   } | null>(null);
 
+  // Determine which suppliers to process
+  const suppliersToProcess =
+    mode === "multi"
+      ? suppliers
+      : lpoID
+        ? [
+            {
+              supplierId: 0,
+              lpoId: lpoID,
+              supplierType: "",
+              supplierName: "",
+              paymentValue: paymentValue,
+            },
+          ]
+        : [];
+
   // Categorize suppliers
-  const creditSuppliers = suppliers.filter((s) =>
+  const creditSuppliers = suppliersToProcess.filter((s) =>
     s.supplierType.toLowerCase().includes("credit"),
   );
-  const cashSuppliers = suppliers.filter(
+  const cashSuppliers = suppliersToProcess.filter(
     (s) => !s.supplierType.toLowerCase().includes("credit"),
   );
 
@@ -52,33 +74,61 @@ export default function SubmitForPaymentButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
-    setProgress({ current: 0, total: allSuppliers.length });
 
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "submitForLPOSegregation",
-          id: mrHeaderID,
-        }),
-      });
-    } catch (error) {
-      console.error("Error fetching MR:", error);
+    console.log("=== SUBMIT FOR PAYMENT/DELIVERY ===");
+    console.log("Mode:", mode);
+    console.log("MR Header ID:", mrHeaderID);
+    console.log("Suppliers to process:", allSuppliers.length);
+
+    // Step 1: Submit for LPO Segregation (only in multi mode with multiple suppliers)
+    if (mode === "multi" && allSuppliers.length > 1) {
+      try {
+        console.log("Step 1: Calling submitForLPOSegregation...");
+
+        const segregateRes = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "submitForLPOSegregation",
+              id: mrHeaderID,
+              changed_by: userInfo?.name,
+            }),
+          },
+        );
+
+        if (!segregateRes.ok) {
+          const errorData = await segregateRes.json().catch(() => ({}));
+          throw new Error(
+            `Segregation failed: ${errorData.error || segregateRes.statusText}`,
+          );
+        }
+
+        console.log("✓ Segregation successful");
+      } catch (error) {
+        console.error("✗ Segregation failed:", error);
+        toast("Failed to segregate LPOs", "error");
+        setIsLoading(false);
+        return;
+      }
     }
+
+    // Step 2: Process each supplier
+    setProgress({ current: 0, total: allSuppliers.length });
 
     const results = {
       success: [] as SupplierInfo[],
       failed: [] as SupplierInfo[],
     };
 
-    // Process each supplier sequentially (or use Promise.all for parallel)
     for (let i = 0; i < allSuppliers.length; i++) {
       const supplier = allSuppliers[i];
       setProgress({ current: i + 1, total: allSuppliers.length });
 
       const isCredit = supplier.supplierType.toLowerCase().includes("credit");
       const action = isCredit ? "submitLpoForDelivery" : "submitLpoForPayment";
+      const supplierPaymentValue = supplier.paymentValue || paymentValue || 0;
 
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`, {
@@ -86,25 +136,28 @@ export default function SubmitForPaymentButton({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: action,
-            lpo_id: supplier.lpoId,
+            lpo_id: supplier.lpoId || lpoID,
             mr_header_id: mrHeaderID,
             changed_by: userInfo?.name,
-            payment_value: Number(supplier.paymentValue).toFixed(2),
+            payment_value: Number(supplierPaymentValue).toFixed(2),
             skip_to_delivery: isCredit,
-            supplier_id: supplier.supplierId,
+            supplier_id: supplier.supplierId || 0,
           }),
         });
 
         if (res.ok) {
           results.success.push(supplier);
+          console.log(`✓ Supplier ${supplier.supplierId || i} success`);
         } else {
+          const errorData = await res.json().catch(() => ({}));
+          console.error(
+            `✗ Supplier ${supplier.supplierId || i} failed:`,
+            errorData,
+          );
           results.failed.push(supplier);
         }
       } catch (error) {
-        console.error(
-          `Error processing supplier ${supplier.supplierId}:`,
-          error,
-        );
+        console.error(`✗ Supplier ${supplier.supplierId || i} error:`, error);
         results.failed.push(supplier);
       }
     }
@@ -114,26 +167,58 @@ export default function SubmitForPaymentButton({
 
     // Show results
     if (results.failed.length === 0) {
-      toast("Material request submitted", "success");
+      const creditCount = results.success.filter((s) =>
+        s.supplierType.toLowerCase().includes("credit"),
+      ).length;
+      const cashCount = results.success.length - creditCount;
+
+      let message = "Material request submitted successfully";
+      if (hasMixedSuppliers) {
+        message = `Submitted: ${creditCount} credit (→ delivery), ${cashCount} cash (→ payment)`;
+      } else if (creditCount > 0) {
+        message = "Submitted for delivery (credit supplier)";
+      } else {
+        message = "Submitted for payment (cash supplier)";
+      }
+
+      toast(message, "success");
       setIsOpen(false);
       router.refresh();
       router.replace(`/mr/`);
     } else {
-      toast(`${results.failed.length} supplier(s) failed to submit`, "error");
-      console.error("Failed suppliers:", results.failed);
+      toast(`${results.failed.length} supplier(s) failed`, "error");
+      console.error("Failed:", results.failed);
     }
   }
 
   // Determine button text
   const getButtonText = () => {
-    if (hasMixedSuppliers) {
-      return "SUBMIT FOR PAYMENT & DELIVERY";
-    } else if (creditSuppliers.length > 0) {
-      return "SUBMIT FOR DELIVERY";
-    } else {
+    if (isLoading && progress) {
+      return `PROCESSING ${progress.current}/${progress.total}...`;
+    }
+
+    if (mode === "multi") {
+      if (hasMixedSuppliers) return "SUBMIT FOR PAYMENT & DELIVERY";
+      if (creditSuppliers.length > 0) return "SUBMIT FOR DELIVERY";
       return "SUBMIT FOR PAYMENT";
     }
+
+    // Single mode - check if we can determine type from suppliers array
+    if (suppliers.length === 1) {
+      const isCredit = suppliers[0].supplierType
+        .toLowerCase()
+        .includes("credit");
+      return isCredit ? "SUBMIT FOR DELIVERY" : "SUBMIT FOR PAYMENT";
+    }
+
+    return "SUBMIT FOR PAYMENT";
   };
+
+  const isDisabled =
+    disabled ||
+    isLoading ||
+    (mode === "multi" && suppliers.length === 0) ||
+    (mode === "single" && !lpoID);
 
   return (
     <>
@@ -144,7 +229,7 @@ export default function SubmitForPaymentButton({
         textColor={"black"}
         onClick={() => setIsOpen(true)}
         style={{ padding: "7px 20px", ...style }}
-        disabled={disabled || isLoading || suppliers.length === 0}
+        disabled={isDisabled}
       >
         {getButtonText()}
       </Button>
@@ -158,6 +243,58 @@ export default function SubmitForPaymentButton({
         >
           <div style={{ maxHeight: "300px", overflowY: "auto" }}>
             <p>Are you sure you want to submit this material request?</p>
+
+         {/*    <br />
+            <br /> */}
+
+            {/* {mode === "multi" && suppliers.length > 0 && (
+              <table style={{ width: "100%" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #ccc" }}>
+                    <th style={{ textAlign: "left", padding: "5px" }}>
+                      Supplier
+                    </th>
+                    <th style={{ textAlign: "left", padding: "5px" }}>Type</th>
+                    <th style={{ textAlign: "left", padding: "5px" }}>Route</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allSuppliers.map((s) => {
+                    const isCredit = s.supplierType
+                      .toLowerCase()
+                      .includes("credit");
+                    return (
+                      <tr
+                        key={s.supplierId + s.supplierName}
+                        style={{ borderBottom: "1px solid #eee" }}
+                      >
+                        <td style={{ padding: "5px" }}>{s.supplierName}</td>
+                        <td style={{ padding: "5px" }}>
+                          <span
+                            style={{
+                              padding: "2px 6px",
+                              borderRadius: "10px",
+                              fontSize: "10px",
+                              backgroundColor: isCredit
+                                ? "rgba(87, 244, 176, 0.3)"
+                                : "rgba(255, 181, 181, 0.3)",
+                              color: isCredit
+                                ? "rgba(31, 101, 71, 1)"
+                                : "rgba(248, 77, 77, 1)",
+                            }}
+                          >
+                            {s.supplierType || "Unknown"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "5px", fontSize: "11px" }}>
+                          {isCredit ? "→ Delivery" : "→ Payment"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )} */}
           </div>
         </FormPopUp>
       )}

@@ -376,6 +376,35 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     fetchLpoPerSupplier();
   }, [mrLines, mrHeader.progress_id, mrHeader.id]);
 
+  // Add this useEffect after your other useEffects in MrLinesView.tsx
+  useEffect(() => {
+    // Calculate total invoice amount from lpoLinePrices
+    let total = 0;
+
+    // Sum up all LPO line prices
+    Object.values(lpoLinePrices).forEach((price) => {
+      total += price.totalPrice || 0;
+    });
+
+    // If no LPO prices yet, calculate from mrLines using approved prices
+    if (total === 0 && mrHeader.progress_id >= 10) {
+      for (const category in mrLines) {
+        for (const subCategory in mrLines[category]) {
+          for (const supplier in mrLines[category][subCategory]) {
+            const items = mrLines[category][subCategory][supplier];
+            items.forEach((item) => {
+              const unitPrice = Number(item.approved_unit_price) || 0;
+              const quantity = Number(item.quantity) || 0;
+              total += unitPrice * quantity;
+            });
+          }
+        }
+      }
+    }
+
+    setTotalInvoiceAmount(Number(total.toFixed(2)));
+  }, [lpoLinePrices, mrLines, mrHeader.progress_id]);
+
   // Regroup mrLines based on progress_id
   useEffect(() => {
     // For progress_id < 12, regroup mrLines to combine all suppliers under one group
@@ -4053,7 +4082,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                         lpoId: lpoInfo.lpoId,
                         supplierType: lpoStatus.supplierType || "unknown",
                         supplierName: supplierName,
-                        paymentValue: calculateItemsTotal(items),
                       });
                     }
                   }
@@ -4069,6 +4097,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   !allSuppliersHaveLpoWithInvoicesAndSignedFiles() ||
                   suppliersArray.length === 0
                 }
+                mode="multi"
+                paymentValue={totalInvoiceAmount}
                 style={{
                   opacity: !allSuppliersHaveLpoWithInvoicesAndSignedFiles()
                     ? "0.5"
