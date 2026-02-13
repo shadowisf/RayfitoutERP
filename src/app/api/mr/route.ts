@@ -983,10 +983,17 @@ export async function DELETE(req: Request) {
     }
 
     if (body.action === "deleteMrHeader") {
-      // ✅ Cascading deletes will handle mr_lines and junction tables automatically
-      const query = "DELETE FROM mr_headers WHERE id = ?";
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          null,
+          8,
+          `MR Deleted`,
+          `MR-${String(body.id).padStart(5, "0")} has been deleted by ${body.deleted_by}.`,
+        ],
+      );
 
-      await db.query(query, [Number(body.id)]);
+      await db.query("DELETE FROM mr_headers WHERE id = ?", [Number(body.id)]);
 
       return NextResponse.json({ success: true });
     }

@@ -92,32 +92,33 @@ export default function EditMrHeaderButton({
     }
   }
 
-  if (userInfo?.departmentID !== mrHeader.department_id) {
-    return null;
-  }
-
-  return (
-    <>
-      <Button
-        componentType={"button"}
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(223, 223, 223, 1)"}
-        textColor={"black"}
-        onClick={() => setIsOpen(true)}
-        style={{ borderRadius: "5px", padding: "7px 7px" }}
-      >
-        <img src={pencilIcon} alt="edit" />
-      </Button>
-
-      {isOpen && (
-        <FormPopUp
-          header={"UPDATE REQUEST"}
-          setIsOpen={setIsOpen}
-          handleSubmit={handleSubmit}
-          addButtonLabel={"CONFIRM"}
+  if (
+    userInfo?.departmentID === mrHeader.department_id ||
+    userInfo?.departmentID === 8 ||
+    userInfo?.departmentID === 9
+  ) {
+    return (
+      <>
+        <Button
+          componentType={"button"}
+          bgColor={"rgba(239, 239, 239, 1)"}
+          borderColor={"rgba(223, 223, 223, 1)"}
+          textColor={"black"}
+          onClick={() => setIsOpen(true)}
+          style={{ borderRadius: "5px", padding: "7px 7px" }}
         >
-          <div className="input-row half">
-            {/* <InputItem
+          <img src={pencilIcon} alt="edit" />
+        </Button>
+
+        {isOpen && (
+          <FormPopUp
+            header={"UPDATE REQUEST"}
+            setIsOpen={setIsOpen}
+            handleSubmit={handleSubmit}
+            addButtonLabel={"CONFIRM"}
+          >
+            <div className="input-row half">
+              {/* <InputItem
               label={"PURPOSE/REASON"}
               value={purposeReasonID}
               type={"select"}
@@ -130,53 +131,56 @@ export default function EditMrHeaderButton({
               ))}
               required
             /> */}
-            <SingleSelectDropdown
-              label={"PURPOSE/REASON"}
-              selectedValue={purposeReasonID}
-              onChange={setPurposeReasonID}
-              placeholder={"SELECT PURPOSE/REASON"}
-              dbData={purposeReasonValues}
-              idField="id"
-              labelField="value"
-              tooltipField="tooltip"
-              required
-            />
+              <SingleSelectDropdown
+                label={"PURPOSE/REASON"}
+                selectedValue={purposeReasonID}
+                onChange={setPurposeReasonID}
+                placeholder={"SELECT PURPOSE/REASON"}
+                dbData={purposeReasonValues}
+                idField="id"
+                labelField="value"
+                tooltipField="tooltip"
+                required
+              />
 
-            <SingleSelectDropdown
-              label={"PROJECT"}
-              selectedValue={projectID}
-              onChange={setProjectID}
-              placeholder={"SELECT PROJECT"}
-              dbData={[...projects]}
-              idField="id"
-              labelField="name"
-              required={purposeReasonID === 1 || purposeReasonID === 2}
-              disabled={purposeReasonID === 6}
-            />
-          </div>
+              <SingleSelectDropdown
+                label={"PROJECT"}
+                selectedValue={projectID}
+                onChange={setProjectID}
+                placeholder={"SELECT PROJECT"}
+                dbData={[...projects]}
+                idField="id"
+                labelField="name"
+                required={purposeReasonID === 1 || purposeReasonID === 2}
+                disabled={purposeReasonID === 6}
+              />
+            </div>
 
-          <div className="input-row half">
-            <InputItem
-              label={"REQUESTED BY"}
-              value={mrHeader.requested_by}
-              type={"text"}
-              placeholder={"ENTER NAME"}
-              onChange={() => {}}
-              required
-              disabled
-            />
+            <div className="input-row half">
+              <InputItem
+                label={"REQUESTED BY"}
+                value={mrHeader.requested_by}
+                type={"text"}
+                placeholder={"ENTER NAME"}
+                onChange={() => {}}
+                required
+                disabled
+              />
 
-            <InputItem
-              label={"REQUIRED DATE"}
-              value={neededBy}
-              type={"date"}
-              placeholder={"ENTER DATE"}
-              onChange={(e) => setNeededBy(e.target.value)}
-              required
-            />
-          </div>
-        </FormPopUp>
-      )}
-    </>
-  );
+              <InputItem
+                label={"REQUIRED DATE"}
+                value={neededBy}
+                type={"date"}
+                placeholder={"ENTER DATE"}
+                onChange={(e) => setNeededBy(e.target.value)}
+                required
+              />
+            </div>
+          </FormPopUp>
+        )}
+      </>
+    );
+  } else {
+    return null;
+  }
 }

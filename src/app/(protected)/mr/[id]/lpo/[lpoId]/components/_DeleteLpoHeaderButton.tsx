@@ -5,16 +5,16 @@ import FormPopUp from "@/app/components/FormPopup";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { MrHeader } from "../../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
+import { LpoHeader } from "../../../types/lpoHeader";
+import { MrHeader } from "../../../types/mrHeader";
 
-type DeleteMrHeaderButtonProps = {
+type props = {
   mrHeader: MrHeader;
+  LpoHeader: LpoHeader;
 };
 
-export default function DeleteMrHeaderButton({
-  mrHeader,
-}: DeleteMrHeaderButtonProps) {
+export default function DeleteLpoHeaderButton({ mrHeader, LpoHeader }: props) {
   const router = useRouter();
 
   const { userInfo } = useAuth();
@@ -26,22 +26,23 @@ export default function DeleteMrHeaderButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "deleteMrHeader",
-        id: mrHeader.id,
+        action: "deleteLpoHeader",
+        lpo_id: LpoHeader.id,
+        mr_header_id: mrHeader.id,
         deleted_by: userInfo?.name,
       }),
     });
 
     if (res.ok) {
-      toast("Material request deleted", "success");
+      toast("Local purchase order deleted", "success");
       setIsOpen(false);
       router.push("/mr");
     } else {
-      toast("Failed to delete material request", "error");
+      toast("Failed to delete Local purchase order", "error");
     }
   }
 
@@ -65,12 +66,12 @@ export default function DeleteMrHeaderButton({
 
         {isOpen && (
           <FormPopUp
-            header={"DELETE MATERIAL REQUEST"}
+            header={"DELETE LOCAL PURCHASE ORDER"}
             setIsOpen={setIsOpen}
             handleSubmit={handleSubmit}
             addButtonLabel={"CONFIRM"}
           >
-            Are you sure you want to delete this material request?
+            Are you sure you want to delete this local purchase order?
           </FormPopUp>
         )}
       </>

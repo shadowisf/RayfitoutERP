@@ -466,6 +466,74 @@ function NotificationToast({
                     );
                   }
 
+                  // ✅ Special handling for "MR Deleted" notifications
+                  if (
+                    headerLower.includes("mr") &&
+                    headerLower.includes("deleted")
+                  ) {
+                    const regex = /^(MR-\d+)\s+has been deleted by\s+(.+)$/i;
+                    const match = message.match(regex);
+
+                    if (match) {
+                      const mrId = match[1];
+                      const deletedBy = match[2];
+
+                      return (
+                        <>
+                          <span style={{ color: "#000000" }}>{mrId}</span>
+                          <span style={{ color: "rgba(107, 114, 128, 1)" }}>
+                            {" "}
+                            has been deleted by{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>{deletedBy}</span>
+                        </>
+                      );
+                    }
+
+                    return (
+                      <span style={{ color: "rgba(107, 114, 128, 1)" }}>
+                        {message}
+                      </span>
+                    );
+                  }
+
+                  // ✅ Special handling for "LPO Deleted" notifications
+                  if (
+                    headerLower.includes("lpo") &&
+                    headerLower.includes("deleted")
+                  ) {
+                    const regex =
+                      /^(LPO-\d+)\s+\((MR-\d+)\)\s+has been deleted by\s+(.+)\.?$/i;
+                    const match = message.match(regex);
+
+                    if (match) {
+                      const lpoId = match[1];
+                      const mrId = match[2];
+                      const deletedBy = match[3];
+
+                      return (
+                        <>
+                          <span style={{ color: "#000000" }}>{lpoId}</span>
+                          <span style={{ color: "rgba(107, 114, 128, 1)" }}>
+                            {" "}
+                            (
+                          </span>
+                          <span style={{ color: "#000000" }}>{mrId}</span>
+                          <span style={{ color: "rgba(107, 114, 128, 1)" }}>
+                            ) has been deleted by{" "}
+                          </span>
+                          <span style={{ color: "#000000" }}>{deletedBy}</span>
+                        </>
+                      );
+                    }
+
+                    return (
+                      <span style={{ color: "rgba(107, 114, 128, 1)" }}>
+                        {message}
+                      </span>
+                    );
+                  }
+
                   // ✅ Original handling for other notifications
                   const byIndex = message.toLowerCase().indexOf(" by ");
 
@@ -921,6 +989,24 @@ export default function NotificationDropdown() {
   function getNotificationStyle(header: string, message: string) {
     const headerLower = header.toLowerCase();
     const messageLower = message.toLowerCase();
+
+    // ✅ Check for LPO deleted
+    if (headerLower.includes("lpo") && headerLower.includes("deleted")) {
+      return {
+        icon: mrExcalamationIcon,
+        headerColor: "rgba(248, 77, 77, 1)",
+        dotColor: "rgba(248, 77, 77, 1)",
+      };
+    }
+
+    // ✅ Check for MR deleted
+    if (headerLower.includes("mr") && headerLower.includes("deleted")) {
+      return {
+        icon: mrExcalamationIcon,
+        headerColor: "rgba(248, 77, 77, 1)",
+        dotColor: "rgba(248, 77, 77, 1)",
+      };
+    }
 
     // ✅ Check for payment rejected (MUST come before general "rejected" check)
     if (headerLower.includes("payment") && headerLower.includes("rejected")) {
@@ -1734,6 +1820,105 @@ export default function NotificationDropdown() {
                                   );
                                 }
 
+                                // ✅ Special handling for "MR Deleted" notifications
+                                if (
+                                  headerLower.includes("mr") &&
+                                  headerLower.includes("deleted")
+                                ) {
+                                  const regex =
+                                    /^(MR-\d+)\s+has been deleted by\s+(.+)$/i;
+                                  const match = message.match(regex);
+
+                                  if (match) {
+                                    const mrId = match[1];
+                                    const deletedBy = match[2];
+
+                                    return (
+                                      <>
+                                        <span style={{ color: "#000000" }}>
+                                          {mrId}
+                                        </span>
+                                        <span
+                                          style={{
+                                            color: "rgba(107, 114, 128, 1)",
+                                          }}
+                                        >
+                                          {" "}
+                                          has been deleted by{" "}
+                                        </span>
+                                        <span style={{ color: "#000000" }}>
+                                          {deletedBy}
+                                        </span>
+                                      </>
+                                    );
+                                  }
+
+                                  return (
+                                    <span
+                                      style={{
+                                        color: "rgba(107, 114, 128, 1)",
+                                      }}
+                                    >
+                                      {message}
+                                    </span>
+                                  );
+                                }
+
+                                // ✅ Special handling for "LPO Deleted" notifications
+                                if (
+                                  headerLower.includes("lpo") &&
+                                  headerLower.includes("deleted")
+                                ) {
+                                  const regex =
+                                    /^(LPO-\d+)\s+\((MR-\d+)\)\s+has been deleted by\s+(.+)\.?$/i;
+                                  const match = message.match(regex);
+
+                                  if (match) {
+                                    const lpoId = match[1];
+                                    const mrId = match[2];
+                                    const deletedBy = match[3];
+
+                                    return (
+                                      <>
+                                        <span style={{ color: "#000000" }}>
+                                          {lpoId}
+                                        </span>
+                                        <span
+                                          style={{
+                                            color: "rgba(107, 114, 128, 1)",
+                                          }}
+                                        >
+                                          {" "}
+                                          (
+                                        </span>
+                                        <span style={{ color: "#000000" }}>
+                                          {mrId}
+                                        </span>
+                                        <span
+                                          style={{
+                                            color: "rgba(107, 114, 128, 1)",
+                                          }}
+                                        >
+                                          ) has been deleted by{" "}
+                                        </span>
+                                        <span style={{ color: "#000000" }}>
+                                          {deletedBy}
+                                        </span>
+                                      </>
+                                    );
+                                  }
+
+                                  return (
+                                    <span
+                                      style={{
+                                        color: "rgba(107, 114, 128, 1)",
+                                      }}
+                                    >
+                                      {message}
+                                    </span>
+                                  );
+                                }
+
                                 // ✅ Original handling for other notifications
                                 const byIndex = message
                                   .toLowerCase()
@@ -1827,22 +2012,29 @@ export default function NotificationDropdown() {
                                 alignItems: "center",
                               }}
                             >
-                              <Button
-                                componentType={"button"}
-                                bgColor={"black"}
-                                borderColor={"black"}
-                                textColor={"white"}
-                                style={{
-                                  borderRadius: "5px",
-                                  padding: "7px 20px",
-                                  fontSize: "12px",
-                                }}
-                                onClick={(e) =>
-                                  handleNotificationOpen(e, notification)
-                                }
-                              >
-                                OPEN
-                              </Button>
+                              {!notification.header
+                                .toLowerCase()
+                                .includes("mr deleted") &&
+                                !notification.header
+                                  .toLowerCase()
+                                  .includes("lpo deleted") && (
+                                  <Button
+                                    componentType={"button"}
+                                    bgColor={"black"}
+                                    borderColor={"black"}
+                                    textColor={"white"}
+                                    style={{
+                                      borderRadius: "5px",
+                                      padding: "7px 20px",
+                                      fontSize: "12px",
+                                    }}
+                                    onClick={(e) =>
+                                      handleNotificationOpen(e, notification)
+                                    }
+                                  >
+                                    OPEN
+                                  </Button>
+                                )}
 
                               <Button
                                 componentType={"button"}
