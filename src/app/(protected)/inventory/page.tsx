@@ -12,8 +12,11 @@ import StockLocationHoverPopup from "./components/_StockLocationHoverPopup";
 import ArchiveInventoryItemButton from "./[id]/components/_ArchiveInventoryItemButton";
 import DeleteTransactionButton from "./[id]/components/_DeleteTransactionButton";
 import EditTransactionButton from "./components/_EditTransactionButton";
+import { useAuth } from "@/app/context/AuthContext";
 
 export default function Inventory() {
+  const { userInfo } = useAuth();
+
   const externalLinkIcon = "/icons/external-link.svg";
   const searchIcon = "/icons/search.svg";
   const warningIcon = "/icons/warning.svg";
@@ -1599,7 +1602,8 @@ export default function Inventory() {
                     <th style={{ minWidth: "500px" }}>MATERIAL(S)</th>
                     <th>TYPE</th>
                     <th>STATUS</th>
-                    <th></th>
+                    {(userInfo?.departmentID === 8 ||
+                      userInfo?.departmentID === 16) && <th></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -1701,18 +1705,21 @@ export default function Inventory() {
                             </div>
                           </div>
                         </td>
-                        <td>
-                          <div style={{ display: "flex", gap: "10px" }}>
-                            <EditTransactionButton
-                              transaction={transaction}
-                              onSuccess={() => fetchAllTransactions()}
-                            />
-                            <DeleteTransactionButton
-                              transferID={transaction.id}
-                              onSuccess={() => fetchAllTransactions()}
-                            />
-                          </div>
-                        </td>
+                        {(userInfo?.departmentID === 8 ||
+                          userInfo?.departmentID === 16) && (
+                          <td>
+                            <div style={{ display: "flex", gap: "10px" }}>
+                              <EditTransactionButton
+                                transaction={transaction}
+                                onSuccess={() => fetchAllTransactions()}
+                              />
+                              <DeleteTransactionButton
+                                transferID={transaction.id}
+                                onSuccess={() => fetchAllTransactions()}
+                              />
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

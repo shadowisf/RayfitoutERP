@@ -880,6 +880,10 @@ label {
     tbody tr:nth-child(even) td {
       background-color: rgba(246, 246, 246, 1);
     }
+
+    tbody tr:nth-child(odd) td {
+      background-color: white;
+    }
   }
 
   &.popup-hover {

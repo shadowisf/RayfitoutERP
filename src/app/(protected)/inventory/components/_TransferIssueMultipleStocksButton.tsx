@@ -869,9 +869,13 @@ export default function TransferIssueMultipleStocks({
                                 : "SEND"}
                           </th>
                           <th>SERIAL/MODEL NUMBER</th>
-                          <th>LENGTH</th>
-                          <th>WIDTH</th>
-                          <th>HEIGHT</th>
+                          {packingList && (
+                            <>
+                              <th>LENGTH</th>
+                              <th>WIDTH</th>
+                              <th>HEIGHT</th>
+                            </>
+                          )}
                           <th>PROOF/ATTACHMENTS</th>
                           <th>ACTION</th>
                         </tr>
@@ -970,51 +974,56 @@ export default function TransferIssueMultipleStocks({
                                 }}
                               />
                             </td>
-                            <td>
-                              <InputItem
-                                label=""
-                                placeholder="ENTER LENGTH"
-                                noOptionalLabel={true}
-                                value={item.length || ""}
-                                type={"text"}
-                                onChange={(e) => {
-                                  handleLengthChange(
-                                    item.inventory_item_id,
-                                    e.target.value,
-                                  );
-                                }}
-                              />
-                            </td>
-                            <td>
-                              <InputItem
-                                label=""
-                                placeholder="ENTER WIDTH"
-                                noOptionalLabel={true}
-                                value={item.width || ""}
-                                type={"text"}
-                                onChange={(e) => {
-                                  handleWidthChange(
-                                    item.inventory_item_id,
-                                    e.target.value,
-                                  );
-                                }}
-                              />
-                            </td>
-                            <td>
-                              <InputItem
-                                label=""
-                                placeholder="ENTER HEIGHT"
-                                noOptionalLabel={true}
-                                value={item.height || ""}
-                                type={"text"}
-                                onChange={(e) => {
-                                  handleHeightChange(
-                                    item.inventory_item_id,
-                                    e.target.value,
-                                  );
-                                }}
-                              />
-                            </td>
+                            {packingList && (
+                              <>
+                                <td>
+                                  <InputItem
+                                    label=""
+                                    placeholder="ENTER LENGTH"
+                                    noOptionalLabel={true}
+                                    value={item.length || ""}
+                                    type={"text"}
+                                    onChange={(e) => {
+                                      handleLengthChange(
+                                        item.inventory_item_id,
+                                        e.target.value,
+                                      );
+                                    }}
+                                  />
+                                </td>
+                                <td>
+                                  <InputItem
+                                    label=""
+                                    placeholder="ENTER WIDTH"
+                                    noOptionalLabel={true}
+                                    value={item.width || ""}
+                                    type={"text"}
+                                    onChange={(e) => {
+                                      handleWidthChange(
+                                        item.inventory_item_id,
+                                        e.target.value,
+                                      );
+                                    }}
+                                  />
+                                </td>
+                                <td>
+                                  <InputItem
+                                    label=""
+                                    placeholder="ENTER HEIGHT"
+                                    noOptionalLabel={true}
+                                    value={item.height || ""}
+                                    type={"text"}
+                                    onChange={(e) => {
+                                      handleHeightChange(
+                                        item.inventory_item_id,
+                                        e.target.value,
+                                      );
+                                    }}
+                                  />
+                                </td>
+                              </>
+                            )}
+
                             <td>
                               {item.attachment ? (
                                 <div

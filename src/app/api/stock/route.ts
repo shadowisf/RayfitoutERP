@@ -645,7 +645,9 @@ export async function PUT(request: NextRequest) {
             await db.query(updateItemQuery, [
               item.quantity,
               item.serial_number || null,
-              item.attachment || null,
+              item.attachment
+                ? JSON.stringify([item.attachment])
+                : JSON.stringify([]),
               item.length || null,
               item.width || null,
               item.height || null,
@@ -665,7 +667,9 @@ export async function PUT(request: NextRequest) {
               item.inventory_item_id,
               item.quantity,
               item.serial_number || null,
-              item.attachment || null,
+              item.attachment
+                ? JSON.stringify([item.attachment])
+                : JSON.stringify([]),
               item.length || null,
               item.width || null,
               item.height || null,

@@ -19,7 +19,7 @@ type TransactionItem = {
   unit: string;
   quantity: number | string;
   serial_number?: string;
-  attachment?: string | null;
+  attachment: string | null;
   image?: string;
   available_qty?: number;
   length?: string;
@@ -63,12 +63,12 @@ export default function EditTransactionButton({
   const [currentItemForAttachment, setCurrentItemForAttachment] = useState<
     number | null
   >(null);
-  const [tempAttachment, setTempAttachment] = useState<File | null>(null);
-  const [existingAttachmentUrl, setExistingAttachmentUrl] = useState<
+  const [originalAttachmentUrl, setOriginalAttachmentUrl] = useState<
     string | null
   >(null);
+  const [newAttachmentFile, setNewAttachmentFile] = useState<File | null>(null);
 
-  // Form states - pre-populated from transaction
+  // Form states
   const [type, setType] = useState(transaction.type || "");
   const [from, setFrom] = useState<string | number>(
     transaction.from_location || "",
@@ -98,32 +98,26 @@ export default function EditTransactionButton({
   const [toValues, setToValues] = useState<any>([]);
   const [projectValues, setProjectValues] = useState<any>([]);
 
-  // Items state - enriched with images and available quantities
   const [selectedItems, setSelectedItems] = useState<TransactionItem[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
 
-  // Helper to format quantity for input (whole number if no decimal)
   function formatQuantityInput(
     qty: number | string | undefined | null,
   ): string {
     if (qty == null || qty === "") return "";
     const num = Number(qty);
     if (isNaN(num)) return "";
-    // If it's a whole number, return as integer string, else return as-is
     return Number.isInteger(num) ? num.toString() : num.toString();
   }
 
-  // Handle BOQ selection
   const handleBoqSelection = (boqIDs: number[]) => {
     setBoqLineIDs(boqIDs);
   };
 
-  // Fetch enriched item data when modal opens
   useEffect(() => {
     if (isOpen && transaction.items.length > 0) {
       setIsLoadingItems(true);
 
-      // Fetch details for each item including image and available quantity
       Promise.all(
         transaction.items.map(async (item) => {
           try {
@@ -135,6 +129,7 @@ export default function EditTransactionButton({
                 body: JSON.stringify({
                   inventory_item_id: item.inventory_item_id,
                   from_location: transaction.from_location,
+                  transaction_id: transaction.id,
                 }),
               },
             );
@@ -148,7 +143,7 @@ export default function EditTransactionButton({
                   unit: data.data.unit,
                   image: data.data.image,
                   available_qty: data.data.available_qty,
-                  // Format quantity to whole number if no decimal
+                  attachment: data.data.attachment || null,
                   quantity: formatQuantityInput(item.quantity),
                 };
               }
@@ -156,6 +151,7 @@ export default function EditTransactionButton({
             return {
               ...item,
               quantity: formatQuantityInput(item.quantity),
+              attachment: item.attachment || null,
             };
           } catch (error) {
             console.error(
@@ -165,6 +161,7 @@ export default function EditTransactionButton({
             return {
               ...item,
               quantity: formatQuantityInput(item.quantity),
+              attachment: item.attachment || null,
             };
           }
         }),
@@ -173,22 +170,16 @@ export default function EditTransactionButton({
         setIsLoadingItems(false);
       });
 
-      // Fetch locations
       fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getAvailableLocations`,
-        {
-          method: "GET",
-        },
+        { method: "GET" },
       )
         .then((res) => res.json())
         .then((data) => {
-          if (data.success && data.locations) {
-            setFromValues(data.locations);
-          }
+          if (data.success && data.locations) setFromValues(data.locations);
         })
         .catch((err) => console.error("Error fetching locations:", err));
 
-      // Fetch projects
       fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
         method: "GET",
       })
@@ -206,52 +197,13 @@ export default function EditTransactionButton({
     }
   }, [isOpen, transaction]);
 
-  // Refresh available quantities when "from" location changes
   useEffect(() => {
-    if (isOpen && from && selectedItems.length > 0) {
-      setIsLoadingItems(true);
-
-      Promise.all(
-        selectedItems.map(async (item) => {
-          try {
-            const res = await fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getTransactionItemDetails`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  inventory_item_id: item.inventory_item_id,
-                  from_location: from,
-                }),
-              },
-            );
-
-            if (res.ok) {
-              const data = await res.json();
-              if (data.success) {
-                return {
-                  ...item,
-                  available_qty: data.data.available_qty,
-                };
-              }
-            }
-            return item;
-          } catch (error) {
-            console.error(
-              `Error fetching quantity for item ${item.inventory_item_id}:`,
-              error,
-            );
-            return item;
-          }
-        }),
-      ).then((updatedItems) => {
-        setSelectedItems(updatedItems);
-        setIsLoadingItems(false);
-      });
+    if (isOpen && from && from !== transaction.from_location) {
+      setSelectedItems([]);
     }
-  }, [from, isOpen]);
+  }, [from, isOpen, transaction.from_location]);
 
-  function handleQuantityChange(inventoryItemId: number, quantity: string) {
+  const handleQuantityChange = (inventoryItemId: number, quantity: string) => {
     setSelectedItems(
       selectedItems.map((item) =>
         item.inventory_item_id === inventoryItemId
@@ -259,12 +211,12 @@ export default function EditTransactionButton({
           : item,
       ),
     );
-  }
+  };
 
-  function handleSerialNumberChange(
+  const handleSerialNumberChange = (
     inventoryItemId: number,
     serialNumber: string,
-  ) {
+  ) => {
     setSelectedItems(
       selectedItems.map((item) =>
         item.inventory_item_id === inventoryItemId
@@ -272,68 +224,81 @@ export default function EditTransactionButton({
           : item,
       ),
     );
-  }
+  };
 
-  function handleLengthChange(inventoryItemId: number, length: string) {
+  const handleDimensionChange = (
+    inventoryItemId: number,
+    field: "length" | "width" | "height",
+    value: string,
+  ) => {
     setSelectedItems(
       selectedItems.map((item) =>
-        item.inventory_item_id === inventoryItemId ? { ...item, length } : item,
+        item.inventory_item_id === inventoryItemId
+          ? { ...item, [field]: value }
+          : item,
       ),
     );
-  }
+  };
 
-  function handleWidthChange(inventoryItemId: number, width: string) {
-    setSelectedItems(
-      selectedItems.map((item) =>
-        item.inventory_item_id === inventoryItemId ? { ...item, width } : item,
-      ),
-    );
-  }
-
-  function handleHeightChange(inventoryItemId: number, height: string) {
-    setSelectedItems(
-      selectedItems.map((item) =>
-        item.inventory_item_id === inventoryItemId ? { ...item, height } : item,
-      ),
-    );
-  }
-
-  function handleRemoveItem(inventoryItemId: number) {
+  const handleRemoveItem = (inventoryItemId: number) => {
     setSelectedItems(
       selectedItems.filter(
         (item) => item.inventory_item_id !== inventoryItemId,
       ),
     );
-  }
+  };
 
-  function handleOpenAttachmentModal(inventoryItemId: number) {
+  const handleOpenAttachmentModal = (inventoryItemId: number) => {
     const item = selectedItems.find(
       (i) => i.inventory_item_id === inventoryItemId,
     );
-    setCurrentItemForAttachment(inventoryItemId);
-    setExistingAttachmentUrl(item?.attachment || null);
-    setTempAttachment(null);
-    setIsAttachmentModalOpen(true);
-  }
+    if (!item) return;
 
-  function handleSaveAttachment(e: React.FormEvent) {
+    setCurrentItemForAttachment(inventoryItemId);
+    setOriginalAttachmentUrl(item.attachment);
+    setNewAttachmentFile(null);
+    setIsAttachmentModalOpen(true);
+  };
+
+  const handleSaveAttachment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentItemForAttachment !== null && tempAttachment) {
-      setSelectedItems(
-        selectedItems.map((item) =>
-          item.inventory_item_id === currentItemForAttachment
-            ? { ...item, attachment: URL.createObjectURL(tempAttachment) }
-            : item,
-        ),
-      );
+
+    if (currentItemForAttachment === null) {
+      setIsAttachmentModalOpen(false);
+      return;
     }
+
+    setSelectedItems(
+      selectedItems.map((item) => {
+        if (item.inventory_item_id !== currentItemForAttachment) return item;
+
+        if (newAttachmentFile) {
+          return {
+            ...item,
+            attachment: URL.createObjectURL(newAttachmentFile),
+          };
+        }
+        return { ...item, attachment: originalAttachmentUrl };
+      }),
+    );
+
     setIsAttachmentModalOpen(false);
     setCurrentItemForAttachment(null);
-    setTempAttachment(null);
-    setExistingAttachmentUrl(null);
-  }
+    setNewAttachmentFile(null);
+    setOriginalAttachmentUrl(null);
+  };
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleClearAttachment = (inventoryItemId: number) => {
+    setSelectedItems(
+      selectedItems.map((item) =>
+        item.inventory_item_id === inventoryItemId
+          ? { ...item, attachment: null }
+          : item,
+      ),
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (selectedItems.length === 0) {
@@ -341,24 +306,20 @@ export default function EditTransactionButton({
       return;
     }
 
-    // Validate quantities against available quantities
     for (const item of selectedItems) {
       const qty = parseFloat(String(item.quantity));
-      const availableQty = item.available_qty || 0;
-
       if (!item.quantity || isNaN(qty) || qty <= 0) {
         toast(`Please enter a valid quantity for ${item.description}`, "error");
         return;
       }
 
-      // For new quantities, check against available (add back the original quantity)
       const originalItem = transaction.items.find(
         (i) => i.inventory_item_id === item.inventory_item_id,
       );
       const originalQty = originalItem
         ? parseFloat(String(originalItem.quantity)) || 0
         : 0;
-      const netAvailable = availableQty + originalQty;
+      const netAvailable = (item.available_qty || 0) + originalQty;
 
       if (qty > netAvailable) {
         toast(
@@ -370,13 +331,13 @@ export default function EditTransactionButton({
     }
 
     try {
-      // Upload new attachments if any
       const itemsForBackend = await Promise.all(
         selectedItems.map(async (item) => {
-          let attachmentUrl = item.attachment;
+          let finalAttachment: string | null = null;
+          const isNewFile =
+            item.attachment && item.attachment.startsWith("blob:");
 
-          // If attachment is a blob URL (new file), upload it
-          if (item.attachment && item.attachment.startsWith("blob:")) {
+          if (isNewFile && item.attachment) {
             const response = await fetch(item.attachment);
             const blob = await response.blob();
             const file = new File([blob], "attachment.jpg", {
@@ -397,14 +358,16 @@ export default function EditTransactionButton({
             }
 
             const uploadResult = await uploadResponse.json();
-            attachmentUrl = uploadResult.urls[0];
+            finalAttachment = uploadResult.urls[0];
+          } else if (item.attachment && !item.attachment.startsWith("blob:")) {
+            finalAttachment = item.attachment;
           }
 
           return {
             inventory_item_id: item.inventory_item_id,
             quantity: item.quantity,
             serial_number: item.serial_number || null,
-            attachment: attachmentUrl,
+            attachment: finalAttachment,
             length: item.length,
             width: item.width,
             height: item.height,
@@ -445,24 +408,24 @@ export default function EditTransactionButton({
       console.error("Error updating transaction:", error);
       toast("Failed to update transaction", "error");
     }
-  }
+  };
 
-  function formatQuantity(qty: number | string | undefined | null) {
+  const formatQuantity = (qty: number | string | undefined | null) => {
     if (qty == null) return "0";
     const num = Number(qty);
     if (isNaN(num)) return "0";
     return Number.isInteger(num)
       ? num.toString()
       : num.toFixed(3).replace(/\.?0+$/, "");
-  }
+  };
 
   return (
     <>
       <Button
-        componentType={"button"}
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(223, 223, 223, 1)"}
-        textColor={"black"}
+        componentType="button"
+        bgColor="rgba(239, 239, 239, 1)"
+        borderColor="rgba(223, 223, 223, 1)"
+        textColor="black"
         onClick={() => setIsOpen(true)}
         style={{ padding: "7px 7px" }}
       >
@@ -474,15 +437,15 @@ export default function EditTransactionButton({
           header={`EDIT TRANSACTION - TA-${String(transaction.id).padStart(5, "0")}`}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"UPDATE"}
+          addButtonLabel="CONFIRM"
           style={{ minWidth: "1800px" }}
         >
           <FormContextHeader>TRANSFER CONTEXT</FormContextHeader>
           <div className="input-row half">
             <InputItem
-              label={"TYPE"}
+              label="TYPE"
               value={type}
-              type={"select"}
+              type="select"
               required
               onChange={(e) => setType(e.target.value)}
               selectOptions={[
@@ -501,7 +464,7 @@ export default function EditTransactionButton({
                     : "PURPOSE OF SENDING"
               }
               value={purpose}
-              type={"select"}
+              type="select"
               required
               onChange={(e) => setPurpose(e.target.value)}
               selectOptions={
@@ -573,8 +536,8 @@ export default function EditTransactionButton({
                     : "SEND FROM"
               }
               value={from}
-              type={"select"}
-              placeholder={"SELECT LOCATION"}
+              type="select"
+              placeholder="SELECT LOCATION"
               required
               onChange={(e) => setFrom(e.target.value)}
               selectOptions={fromValues.filter((val: string) => val !== to)}
@@ -582,10 +545,10 @@ export default function EditTransactionButton({
 
             {type.toLowerCase().includes("transfer") ? (
               <InputItem
-                label={"TRANSFER TO"}
+                label="TRANSFER TO"
                 value={to}
-                type={"select"}
-                placeholder={"SELECT TRANSFER TO"}
+                type="select"
+                placeholder="SELECT TRANSFER TO"
                 required
                 onChange={(e) => setTo(e.target.value)}
                 selectOptions={toValues.filter((val: string) => val !== from)}
@@ -608,9 +571,9 @@ export default function EditTransactionButton({
           {type.toLowerCase().includes("transfer") && (
             <div className="input-row half">
               <InputItem
-                label={"FULL NAME OF SITE RECIPIENT"}
+                label="FULL NAME OF SITE RECIPIENT"
                 value={receiverName}
-                type={"text"}
+                type="text"
                 onChange={(e) => setReceiverName(e.target.value)}
                 required
               />
@@ -619,61 +582,59 @@ export default function EditTransactionButton({
 
           {(type.toLowerCase().includes("transfer") ||
             type.toLowerCase().includes("send")) && (
-            <>
-              <div className="input-row half">
+            <div className="input-row half">
+              <div
+                className="input-item"
+                style={{ flexDirection: "row", alignItems: "center" }}
+              >
                 <div
-                  className="input-item"
-                  style={{ flexDirection: "row", alignItems: "center" }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    height: "100%",
+                  }}
                 >
                   <div
+                    onClick={() => setThirdParty(!thirdParty)}
                     style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "5px",
+                      border: thirdParty ? "none" : "2px solid #d1d5db",
+                      backgroundColor: thirdParty ? "#10b981" : "transparent",
                       display: "flex",
                       alignItems: "center",
-                      gap: "10px",
-                      height: "100%",
+                      justifyContent: "center",
+                      cursor: "pointer",
                     }}
                   >
-                    <div
-                      onClick={() => setThirdParty(!thirdParty)}
-                      style={{
-                        width: "32px",
-                        height: "32px",
-                        borderRadius: "5px",
-                        border: thirdParty ? "none" : "2px solid #d1d5db",
-                        backgroundColor: thirdParty ? "#10b981" : "transparent",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {thirdParty && (
-                        <svg
-                          width="24"
-                          height="24"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg "
-                        >
-                          <path
-                            d="M16.6667 5L7.50004 14.1667L3.33337 10"
-                            stroke="white"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </div>
+                    {thirdParty && (
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M16.6667 5L7.50004 14.1667L3.33337 10"
+                          stroke="white"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
                   </div>
-                  <label
-                    style={{ maxWidth: "500px", textTransform: "uppercase" }}
-                  >
-                    3RD PARTY TRANSPORT INVOLVED?
-                  </label>
                 </div>
+                <label
+                  style={{ maxWidth: "500px", textTransform: "uppercase" }}
+                >
+                  3RD PARTY TRANSPORT INVOLVED?
+                </label>
               </div>
-            </>
+            </div>
           )}
 
           {type.toLowerCase().includes("transfer") && (
@@ -713,7 +674,7 @@ export default function EditTransactionButton({
                           height="24"
                           viewBox="0 0 20 20"
                           fill="none"
-                          xmlns="http://www.w3.org/2000/svg "
+                          xmlns="http://www.w3.org/2000/svg"
                         >
                           <path
                             d="M16.6667 5L7.50004 14.1667L3.33337 10"
@@ -736,9 +697,9 @@ export default function EditTransactionButton({
 
               <div className="input-row half">
                 <InputItem
-                  label={"CONTAINER NUMBER / VEHICLE REFERENCE NUMBER"}
+                  label="CONTAINER NUMBER / VEHICLE REFERENCE NUMBER"
                   value={containerNumber}
-                  type={"text"}
+                  type="text"
                   onChange={(e) => setContainerNumber(e.target.value)}
                   required
                 />
@@ -771,9 +732,13 @@ export default function EditTransactionButton({
                         : "SEND"}
                   </th>
                   <th>SERIAL/MODEL NUMBER</th>
-                  <th>LENGTH</th>
-                  <th>WIDTH</th>
-                  <th>HEIGHT</th>
+                  {packingList && (
+                    <>
+                      <th>LENGTH</th>
+                      <th>WIDTH</th>
+                      <th>HEIGHT</th>
+                    </>
+                  )}
                   <th>PROOF/ATTACHMENTS</th>
                   <th>ACTION</th>
                 </tr>
@@ -805,7 +770,7 @@ export default function EditTransactionButton({
                           ) : (
                             <img
                               src={noImageIcon}
-                              alt="reference image"
+                              alt="no image"
                               width={50}
                               style={{
                                 aspectRatio: "1/1",
@@ -830,12 +795,11 @@ export default function EditTransactionButton({
                       <InputItem
                         label=""
                         placeholder="ENTER QUANTITY"
-                        noOptionalLabel={true}
+                        noOptionalLabel
                         value={String(item.quantity) || ""}
-                        type={"text"}
+                        type="text"
                         onChange={(e) => {
-                          let val = e.target.value;
-                          val = val.replace(/,/g, "");
+                          let val = e.target.value.replace(/,/g, "");
                           if (val === "") {
                             handleQuantityChange(item.inventory_item_id, "");
                             return;
@@ -850,9 +814,9 @@ export default function EditTransactionButton({
                       <InputItem
                         label=""
                         placeholder="ENTER MODEL/SERIAL NUMBER"
-                        noOptionalLabel={true}
+                        noOptionalLabel
                         value={item.serial_number || ""}
-                        type={"text"}
+                        type="text"
                         onChange={(e) =>
                           handleSerialNumberChange(
                             item.inventory_item_id,
@@ -861,51 +825,58 @@ export default function EditTransactionButton({
                         }
                       />
                     </td>
-                    <td>
-                      <InputItem
-                        label=""
-                        placeholder="ENTER LENGTH"
-                        noOptionalLabel={true}
-                        value={item.length || ""}
-                        type={"text"}
-                        onChange={(e) =>
-                          handleLengthChange(
-                            item.inventory_item_id,
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </td>
-                    <td>
-                      <InputItem
-                        label=""
-                        placeholder="ENTER WIDTH"
-                        noOptionalLabel={true}
-                        value={item.width || ""}
-                        type={"text"}
-                        onChange={(e) =>
-                          handleWidthChange(
-                            item.inventory_item_id,
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </td>
-                    <td>
-                      <InputItem
-                        label=""
-                        placeholder="ENTER HEIGHT"
-                        noOptionalLabel={true}
-                        value={item.height || ""}
-                        type={"text"}
-                        onChange={(e) =>
-                          handleHeightChange(
-                            item.inventory_item_id,
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </td>
+                    {packingList && (
+                      <>
+                        <td>
+                          <InputItem
+                            label=""
+                            placeholder="ENTER LENGTH"
+                            noOptionalLabel
+                            value={item.length || ""}
+                            type="text"
+                            onChange={(e) =>
+                              handleDimensionChange(
+                                item.inventory_item_id,
+                                "length",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </td>
+                        <td>
+                          <InputItem
+                            label=""
+                            placeholder="ENTER WIDTH"
+                            noOptionalLabel
+                            value={item.width || ""}
+                            type="text"
+                            onChange={(e) =>
+                              handleDimensionChange(
+                                item.inventory_item_id,
+                                "width",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </td>
+                        <td>
+                          <InputItem
+                            label=""
+                            placeholder="ENTER HEIGHT"
+                            noOptionalLabel
+                            value={item.height || ""}
+                            type="text"
+                            onChange={(e) =>
+                              handleDimensionChange(
+                                item.inventory_item_id,
+                                "height",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </td>
+                      </>
+                    )}
                     <td>
                       {item.attachment ? (
                         <div
@@ -926,11 +897,11 @@ export default function EditTransactionButton({
                               border: "1px solid #ddd",
                             }}
                           />
-                          <Button
-                            componentType={"button"}
-                            bgColor={"rgba(239, 239, 239, 1)"}
-                            borderColor={"rgba(223, 223, 223, 1)"}
-                            textColor={"black"}
+                          {/* <Button
+                            componentType="button"
+                            bgColor="rgba(239, 239, 239, 1)"
+                            borderColor="rgba(223, 223, 223, 1)"
+                            textColor="black"
                             onClick={(e) => {
                               e.preventDefault();
                               handleOpenAttachmentModal(item.inventory_item_id);
@@ -938,33 +909,27 @@ export default function EditTransactionButton({
                             style={{ padding: "7px 7px" }}
                           >
                             <img src={pencilIcon} alt="edit" />
-                          </Button>
+                          </Button> */}
                           <Button
-                            componentType={"button"}
-                            bgColor={"rgba(239, 239, 239, 1)"}
-                            borderColor={"rgba(223, 223, 223, 1)"}
-                            textColor={"black"}
+                            componentType="button"
+                            bgColor="rgba(239, 239, 239, 1)"
+                            borderColor="rgba(223, 223, 223, 1)"
+                            textColor="black"
                             onClick={(e) => {
                               e.preventDefault();
-                              setSelectedItems(
-                                selectedItems.map((i) =>
-                                  i.inventory_item_id === item.inventory_item_id
-                                    ? { ...i, attachment: null }
-                                    : i,
-                                ),
-                              );
+                              handleClearAttachment(item.inventory_item_id);
                             }}
                             style={{ padding: "7px 7px" }}
                           >
-                            <img src={crossIcon} alt="Remove" />
+                            <img src={crossIcon} alt="remove" />
                           </Button>
                         </div>
                       ) : (
                         <Button
-                          componentType={"button"}
-                          bgColor={"rgba(239, 239, 239, 1)"}
-                          borderColor={"rgba(223, 223, 223, 1)"}
-                          textColor={"black"}
+                          componentType="button"
+                          bgColor="rgba(239, 239, 239, 1)"
+                          borderColor="rgba(223, 223, 223, 1)"
+                          textColor="black"
                           onClick={(e) => {
                             e.preventDefault();
                             handleOpenAttachmentModal(item.inventory_item_id);
@@ -974,16 +939,17 @@ export default function EditTransactionButton({
                           <img
                             src={uploadIcon}
                             style={{ filter: "invert(1)" }}
+                            alt="upload"
                           />
                         </Button>
                       )}
                     </td>
                     <td>
                       <Button
-                        componentType={"button"}
-                        bgColor={"rgba(239, 239, 239, 1)"}
-                        borderColor={"rgba(223, 223, 223, 1)"}
-                        textColor={"black"}
+                        componentType="button"
+                        bgColor="rgba(239, 239, 239, 1)"
+                        borderColor="rgba(223, 223, 223, 1)"
+                        textColor="black"
                         onClick={() => handleRemoveItem(item.inventory_item_id)}
                         style={{ padding: "7px 7px" }}
                       >
@@ -1010,22 +976,21 @@ export default function EditTransactionButton({
         </FormPopUp>
       )}
 
-      {/* Attachment Modal */}
       {isAttachmentModalOpen && (
         <FormPopUp
-          header={"UPLOAD FILE"}
+          header="UPLOAD FILE"
           setIsOpen={setIsAttachmentModalOpen}
           handleSubmit={handleSaveAttachment}
-          addButtonLabel={"CONFIRM"}
+          addButtonLabel="CONFIRM"
         >
           <div className="input-row full">
             <SingleUploadFileBox
-              fileState={tempAttachment}
-              setFileState={setTempAttachment}
-              existingFileUrl={existingAttachmentUrl || undefined}
-              label={"IMAGE OF MATERIAL / EQUIPMENT"}
-              acceptedFileTypes={".png,.jpg,.jpeg"}
-              required
+              fileState={newAttachmentFile}
+              setFileState={setNewAttachmentFile}
+              existingFileUrl={originalAttachmentUrl || undefined}
+              label="IMAGE OF MATERIAL / EQUIPMENT"
+              acceptedFileTypes=".png,.jpg,.jpeg"
+              required={false}
             />
           </div>
         </FormPopUp>

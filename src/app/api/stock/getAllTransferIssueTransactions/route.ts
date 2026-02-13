@@ -18,6 +18,7 @@ export async function GET() {
         sti.receiver_name,
         sti.received,
         sti.third_party_involved,
+        sti.container_number,
         
         -- Get project name
         p.name as project_name,
@@ -56,6 +57,7 @@ export async function GET() {
           receiver_name: row.receiver_name,
           received: row.received,
           third_party_involved: row.third_party_involved,
+          container_number: row.container_number,
           items: [],
         });
       }
