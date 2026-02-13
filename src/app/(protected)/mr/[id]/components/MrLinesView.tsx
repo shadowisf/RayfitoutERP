@@ -2544,25 +2544,18 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                   unitPrice =
                                                     lpoLinePrices[item.id]
                                                       .unitPrice;
-                                                  vatRate =
-                                                    lpoLinePrices[item.id]
-                                                      .vatRate;
+                                                  //vatRate = lpoLinePrices[item.id].vatRate;
                                                 } else {
                                                   // Use quotation prices
                                                   unitPrice =
                                                     Number(
                                                       item.approved_unit_price,
                                                     ) || 0;
-                                                  vatRate =
-                                                    Number(
-                                                      item.approved_vat_rate,
-                                                    ) || 0;
+                                                  //vatRate = Number(item.approved_vat_rate) || 0;
                                                 }
 
-                                                const priceWithVat =
-                                                  unitPrice *
-                                                  (1 + vatRate / 100);
-                                                return `AED ${priceWithVat.toFixed(2)}`;
+                                                //const priceWithVat = unitPrice * (1 + vatRate / 100);
+                                                return `AED ${unitPrice.toFixed(2)}`;
                                               })()}
                                             </td>
                                           )}
@@ -2582,25 +2575,18 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                   totalPrice =
                                                     lpoLinePrices[item.id]
                                                       .totalPrice;
-                                                  vatRate =
-                                                    lpoLinePrices[item.id]
-                                                      .vatRate;
+                                                  /* vatRate = lpoLinePrices[item.id].vatRate; */
                                                 } else {
                                                   // Use quotation prices
                                                   totalPrice =
                                                     Number(
                                                       item.approved_total_price,
                                                     ) || 0;
-                                                  vatRate =
-                                                    Number(
-                                                      item.approved_vat_rate,
-                                                    ) || 0;
+                                                  /* vatRate = Number(item.approved_vat_rate) || 0; */
                                                 }
 
-                                                const priceWithVat =
-                                                  totalPrice *
-                                                  (1 + vatRate / 100);
-                                                return `AED ${priceWithVat.toFixed(2)}`;
+                                                /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
+                                                return `AED ${totalPrice.toFixed(2)}`;
                                               })()}
                                             </td>
                                           )}
@@ -3169,23 +3155,18 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                               unitPrice =
                                                 lpoLinePrices[item.id]
                                                   .unitPrice;
-                                              vatRate =
-                                                lpoLinePrices[item.id].vatRate;
+                                              //vatRate = lpoLinePrices[item.id].vatRate;
                                             } else {
                                               // Use quotation prices
                                               unitPrice =
                                                 Number(
                                                   item.approved_unit_price,
                                                 ) || 0;
-                                              vatRate =
-                                                Number(
-                                                  item.approved_vat_rate,
-                                                ) || 0;
+                                              //vatRate = Number(item.approved_vat_rate) || 0;
                                             }
 
-                                            const priceWithVat =
-                                              unitPrice * (1 + vatRate / 100);
-                                            return `AED ${priceWithVat.toFixed(2)}`;
+                                            //const priceWithVat = unitPrice * (1 + vatRate / 100);
+                                            return `AED ${unitPrice.toFixed(2)}`;
                                           })()}
                                         </td>
                                       )}
@@ -3205,23 +3186,18 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                               totalPrice =
                                                 lpoLinePrices[item.id]
                                                   .totalPrice;
-                                              vatRate =
-                                                lpoLinePrices[item.id].vatRate;
+                                              /* vatRate = lpoLinePrices[item.id].vatRate; */
                                             } else {
                                               // Use quotation prices
                                               totalPrice =
                                                 Number(
                                                   item.approved_total_price,
                                                 ) || 0;
-                                              vatRate =
-                                                Number(
-                                                  item.approved_vat_rate,
-                                                ) || 0;
+                                              /* vatRate = Number(item.approved_vat_rate) || 0; */
                                             }
 
-                                            const priceWithVat =
-                                              totalPrice * (1 + vatRate / 100);
-                                            return `AED ${priceWithVat.toFixed(2)}`;
+                                            /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
+                                            return `AED ${totalPrice.toFixed(2)}`;
                                           })()}
                                         </td>
                                       )}

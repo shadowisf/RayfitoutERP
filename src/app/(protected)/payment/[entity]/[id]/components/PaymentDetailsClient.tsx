@@ -8,6 +8,9 @@ import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReferencePopUp";
+import DownloadLPOButton from "@/app/(protected)/mr/[id]/components/procurement/_DownloadLPOButton";
+import RejectCommentPopUp from "@/app/(protected)/mr/[id]/components/manager/RejectCommentPopUp";
+import { useAuth } from "@/app/context/AuthContext";
 
 type EntityType = "supplier" | "subcontractor";
 
@@ -20,6 +23,7 @@ type SupplierLpoRow = {
   signed_lpo_files: string[];
   payment_receipts: string[];
   payment_status: string | null;
+  payment_reject_comment: string | null;
   has_grn: boolean;
 };
 
@@ -69,7 +73,6 @@ type GrnData = {
   }[];
 };
 
-// Type for items to support boq_line_ids and other fields
 type LpoItem = {
   id: number;
   material_description: string;
@@ -100,7 +103,9 @@ type JoItem = {
 export default function PaymentDetailsClient({
   initialData,
   entity,
+  id,
 }: PaymentDetailsClientProps) {
+  const { userInfo } = useAuth();
   const [data, setData] = useState<SupplierDetails | SubcontractorDetails>(
     initialData,
   );
@@ -119,6 +124,8 @@ export default function PaymentDetailsClient({
 
   const downloadIcon = "/icons/download.svg";
   const externalLinkIcon = "/icons/external-link.svg";
+  const uploadIcon = "/icons/upload.svg";
+  const closeIcon = "/icons/cross-small.svg";
 
   const formatCurrency = (value: number) =>
     `AED ${Number(value || 0).toFixed(2)}`;
@@ -140,22 +147,17 @@ export default function PaymentDetailsClient({
       body: formData,
     });
 
-    if (!response.ok) {
-      throw new Error("Upload failed");
-    }
-
+    if (!response.ok) throw new Error("Upload failed");
     const resData = await response.json();
     return resData.urls[0];
   }
 
   async function handleConfirmLpoPayment(e: React.FormEvent) {
     e.preventDefault();
-
     if (!selectedLpo) {
       toast("No LPO selected", "error");
       return;
     }
-
     if (!lpoPaymentFile) {
       toast("Please upload a payment receipt", "error");
       return;
@@ -163,7 +165,6 @@ export default function PaymentDetailsClient({
 
     try {
       const uploadedUrl = await uploadFileToS3(lpoPaymentFile, "lpo-payments");
-
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`,
         {
@@ -177,9 +178,7 @@ export default function PaymentDetailsClient({
         },
       );
 
-      if (!updateRes.ok) {
-        throw new Error("Failed to update LPO payment");
-      }
+      if (!updateRes.ok) throw new Error("Failed to update LPO payment");
 
       toast(
         `Payment for LPO-${String(selectedLpo.lpo_id).padStart(5, "0")} approved`,
@@ -190,7 +189,15 @@ export default function PaymentDetailsClient({
         if (!prev || prev.entity !== "supplier") return prev;
         return {
           ...prev,
-          lpos: prev.lpos.filter((l) => l.lpo_id !== selectedLpo.lpo_id),
+          lpos: prev.lpos.map((l) =>
+            l.lpo_id === selectedLpo.lpo_id
+              ? {
+                  ...l,
+                  payment_status: "approved",
+                  payment_receipts: [uploadedUrl],
+                }
+              : l,
+          ),
         };
       });
 
@@ -205,12 +212,10 @@ export default function PaymentDetailsClient({
 
   async function handleRejectLpoPayment(e: React.FormEvent) {
     e.preventDefault();
-
     if (!selectedLpo) {
       toast("No LPO selected", "error");
       return;
     }
-
     if (!lpoRejectComment.trim()) {
       toast("Please enter a reason for rejection", "error");
       return;
@@ -227,14 +232,28 @@ export default function PaymentDetailsClient({
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to reject payment");
-      }
+      if (!res.ok) throw new Error("Failed to reject payment");
 
       toast(
         `Payment for LPO-${String(selectedLpo.lpo_id).padStart(5, "0")} rejected`,
         "success",
       );
+
+      setData((prev) => {
+        if (!prev || prev.entity !== "supplier") return prev;
+        return {
+          ...prev,
+          lpos: prev.lpos.map((l) =>
+            l.lpo_id === selectedLpo.lpo_id
+              ? {
+                  ...l,
+                  payment_status: "rejected",
+                  payment_reject_comment: lpoRejectComment,
+                }
+              : l,
+          ),
+        };
+      });
 
       setIsLpoRejectOpen(false);
       setLpoRejectComment("");
@@ -247,12 +266,10 @@ export default function PaymentDetailsClient({
 
   async function handleConfirmJoPayment(e: React.FormEvent) {
     e.preventDefault();
-
     if (!selectedJo) {
       toast("No JO selected", "error");
       return;
     }
-
     if (!joPaymentFile) {
       toast("Please upload a payment receipt", "error");
       return;
@@ -260,7 +277,6 @@ export default function PaymentDetailsClient({
 
     try {
       const uploadedUrl = await uploadFileToS3(joPaymentFile, "jo-payments");
-
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
         {
@@ -274,9 +290,7 @@ export default function PaymentDetailsClient({
         },
       );
 
-      if (!updateRes.ok) {
-        throw new Error("Failed to proceed JO payment");
-      }
+      if (!updateRes.ok) throw new Error("Failed to proceed JO payment");
 
       toast(
         `Payment receipt approved for JO-${String(selectedJo.jo_id).padStart(5, "0")}`,
@@ -348,6 +362,307 @@ export default function PaymentDetailsClient({
     }
   }
 
+  // Upload handlers for LPO
+  async function handleUploadInvoice(lpo: SupplierLpoRow, file: File) {
+    try {
+      const uploadedUrl = await uploadFileToS3(file, "lpo-invoices");
+      const updatedFiles = [...lpo.invoice_files, uploadedUrl];
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updateLPOInvoice",
+          lpo_id: lpo.lpo_id,
+          invoice_files: JSON.stringify(updatedFiles),
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update invoice");
+
+      toast("Invoice uploaded successfully", "success");
+
+      setData((prev) => {
+        if (!prev || prev.entity !== "supplier") return prev;
+        return {
+          ...prev,
+          lpos: prev.lpos.map((l) =>
+            l.lpo_id === lpo.lpo_id ? { ...l, invoice_files: updatedFiles } : l,
+          ),
+        };
+      });
+    } catch (error) {
+      console.error("Error uploading invoice:", error);
+      toast("Failed to upload invoice", "error");
+    }
+  }
+
+  async function handleUploadSignedLpo(lpo: SupplierLpoRow, file: File) {
+    try {
+      const uploadedUrl = await uploadFileToS3(file, "lpo-signed");
+      const updatedFiles = [...lpo.signed_lpo_files, uploadedUrl];
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updateLPOSignedLpo",
+          lpo_id: lpo.lpo_id,
+          signed_lpo_files: JSON.stringify(updatedFiles),
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update signed LPO");
+
+      toast("Signed LPO uploaded successfully", "success");
+
+      setData((prev) => {
+        if (!prev || prev.entity !== "supplier") return prev;
+        return {
+          ...prev,
+          lpos: prev.lpos.map((l) =>
+            l.lpo_id === lpo.lpo_id
+              ? { ...l, signed_lpo_files: updatedFiles }
+              : l,
+          ),
+        };
+      });
+    } catch (error) {
+      console.error("Error uploading signed LPO:", error);
+      toast("Failed to upload signed LPO", "error");
+    }
+  }
+
+  async function handleDeleteInvoice(lpo: SupplierLpoRow, url: string) {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", url }),
+      });
+
+      const updatedFiles = lpo.invoice_files.filter((f) => f !== url);
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updateLPOInvoice",
+          lpo_id: lpo.lpo_id,
+          invoice_files: JSON.stringify(updatedFiles),
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to delete invoice");
+
+      toast("Invoice deleted", "success");
+
+      setData((prev) => {
+        if (!prev || prev.entity !== "supplier") return prev;
+        return {
+          ...prev,
+          lpos: prev.lpos.map((l) =>
+            l.lpo_id === lpo.lpo_id ? { ...l, invoice_files: updatedFiles } : l,
+          ),
+        };
+      });
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      toast("Failed to delete invoice", "error");
+    }
+  }
+
+  async function handleDeleteSignedLpo(lpo: SupplierLpoRow, url: string) {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", url }),
+      });
+
+      const updatedFiles = lpo.signed_lpo_files.filter((f) => f !== url);
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updateLPOSignedLpo",
+          lpo_id: lpo.lpo_id,
+          signed_lpo_files: JSON.stringify(updatedFiles),
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to delete signed LPO");
+
+      toast("Signed LPO deleted", "success");
+
+      setData((prev) => {
+        if (!prev || prev.entity !== "supplier") return prev;
+        return {
+          ...prev,
+          lpos: prev.lpos.map((l) =>
+            l.lpo_id === lpo.lpo_id
+              ? { ...l, signed_lpo_files: updatedFiles }
+              : l,
+          ),
+        };
+      });
+    } catch (error) {
+      console.error("Error deleting signed LPO:", error);
+      toast("Failed to delete signed LPO", "error");
+    }
+  }
+
+  // Reset payment status back to pending
+  async function handleResetPayment(lpo: SupplierLpoRow) {
+    try {
+      // Delete payment receipt from S3 if exists
+      if (lpo.payment_receipts?.length > 0) {
+        for (const url of lpo.payment_receipts) {
+          await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "delete", url }),
+          });
+        }
+      }
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "resetPayment",
+          lpo_id: lpo.lpo_id,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to reset payment");
+
+      toast(
+        `Payment for LPO-${String(lpo.lpo_id).padStart(5, "0")} reset to pending`,
+        "success",
+      );
+
+      setData((prev) => {
+        if (!prev || prev.entity !== "supplier") return prev;
+        return {
+          ...prev,
+          lpos: prev.lpos.map((l) =>
+            l.lpo_id === lpo.lpo_id
+              ? {
+                  ...l,
+                  payment_status: null,
+                  payment_reject_comment: null,
+                  payment_receipts: [],
+                }
+              : l,
+          ),
+        };
+      });
+    } catch (error) {
+      console.error("Error resetting payment:", error);
+      toast("Failed to reset payment", "error");
+    }
+  }
+
+  // Helper to get payment status display
+  const getPaymentStatusDisplay = (lpo: SupplierLpoRow) => {
+    const status = lpo.payment_status?.toLowerCase();
+    const canReset =
+      userInfo?.departmentID === 10 || userInfo?.departmentID === 8; // Only finance can reset
+
+    if (status === "approved") {
+      return (
+        <div
+          className="approval-pill"
+          style={{
+            backgroundColor: "rgba(34, 150, 100, 1)",
+            color: "white",
+            padding: "7px 20px",
+            borderRadius: "25px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "14px",
+          }}
+        >
+          <span>Paid</span>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            {lpo.payment_receipts?.length > 0 && (
+              <img
+                src={downloadIcon}
+                alt="download"
+                onClick={() =>
+                  handleInvoiceDownload(
+                    lpo.payment_receipts[0],
+                    lpo.lpo_id,
+                    "Receipt",
+                  )
+                }
+                style={{
+                  cursor: "pointer",
+                  width: "12px",
+                  filter: "invert(1)",
+                }}
+              />
+            )}
+            {canReset && (
+              <img
+                src={closeIcon}
+                alt="reset"
+                onClick={() => handleResetPayment(lpo)}
+                style={{
+                  cursor: "pointer",
+                  width: "12px",
+                  filter: "invert(1)",
+                }}
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (status === "rejected") {
+      return (
+        <div
+          className="approval-pill"
+          style={{
+            backgroundColor: "rgba(185, 28, 28, 1)",
+            color: "white",
+            padding: "7px 20px",
+            borderRadius: "25px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            fontSize: "14px",
+          }}
+        >
+          <span>Rejected</span>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <RejectCommentPopUp
+              text={lpo.payment_reject_comment || "No comment provided"}
+            />
+            {canReset && (
+              <img
+                src={closeIcon}
+                alt="reset"
+                onClick={() => handleResetPayment(lpo)}
+                style={{
+                  cursor: "pointer",
+                  width: "12px",
+                  filter: "invert(1)",
+                }}
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return null; // pending - show action buttons
+  };
+
   const renderSupplierView = (details: SupplierDetails) => {
     return (
       <>
@@ -372,112 +687,249 @@ export default function PaymentDetailsClient({
             <p style={{ padding: "10px 0" }}>No pending LPO payments.</p>
           )}
 
-          {details.lpos.map((row) => (
-            <div key={row.lpo_id} className="subcategory-section">
-              <div className="subcategory-header">
-                <div
-                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
-                >
-                  <h2>{`LPO-${String(row.lpo_id).padStart(5, "0")}`}</h2>
-                  <Button
-                    componentType={"link"}
-                    bgColor={"rgba(239, 239, 239, 1)"}
-                    borderColor={"rgba(223, 223, 223, 1)"}
-                    textColor={"black"}
-                    style={{ padding: "7px 7px" }}
-                    href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
+          {details.lpos.map((row) => {
+            const paymentStatus = row.payment_status?.toLowerCase();
+            const isRejected = paymentStatus === "rejected";
+            const isApproved = paymentStatus === "approved";
+            const isPending = !paymentStatus || paymentStatus === "pending";
+
+            return (
+              <div key={row.lpo_id} className="subcategory-section">
+                <div className="subcategory-header">
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      alignItems: "center",
+                    }}
                   >
-                    <img src={externalLinkIcon} alt="external link" />
-                  </Button>
+                    <h2>{`LPO-${String(row.lpo_id).padStart(5, "0")}`}</h2>
+                    <Button
+                      componentType={"link"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"rgba(223, 223, 223, 1)"}
+                      textColor={"black"}
+                      style={{ padding: "7px 7px" }}
+                      href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
+                    >
+                      <img src={externalLinkIcon} alt="external link" />
+                    </Button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                    }}
+                  >
+                    {/* Download LPO Button */}
+                    <Button
+                      componentType={"none"}
+                      bgColor={"white"}
+                      borderColor={"rgba(207, 207, 207, 1)"}
+                      textColor={"black"}
+                      style={{ borderRadius: "25px", padding: "7px 20px" }}
+                    >
+                      LPO
+                      <DownloadLPOButton lpoID={row.lpo_id} />
+                    </Button>
+
+                    {/* Upload Signed LPO Button - Only show if not rejected */}
+                    {!isRejected && (
+                      <>
+                        {row.signed_lpo_files?.length > 0 ? (
+                          row.signed_lpo_files.map((url, idx) => (
+                            <Button
+                              key={idx}
+                              componentType="none"
+                              bgColor="white"
+                              borderColor="rgba(207, 207, 207, 1)"
+                              textColor="black"
+                              style={{
+                                borderRadius: "25px",
+                                padding: "7px 20px",
+                              }}
+                            >
+                              Signed LPO
+                              <img
+                                src={downloadIcon}
+                                alt="download"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSignedLpoDownload(url, row.lpo_id);
+                                }}
+                              />
+                              <img
+                                src={closeIcon}
+                                alt="remove"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSignedLpo(row, url);
+                                }}
+                                style={{
+                                  cursor: "pointer",
+                                }}
+                              />
+                            </Button>
+                          ))
+                        ) : (
+                          <label
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              padding: "7px 20px",
+                              borderRadius: "25px",
+                              backgroundColor: "black",
+                              color: "white",
+                              border: "1px solid black",
+                              cursor: "pointer",
+                              fontSize: "14px",
+                            }}
+                          >
+                            Upload Signed LPO
+                            <img src={uploadIcon} alt="upload" />
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              style={{ display: "none" }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleUploadSignedLpo(row, file);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        )}
+                      </>
+                    )}
+
+                    {/* Upload Invoice Button - Only show if not rejected */}
+                    {!isRejected && (
+                      <>
+                        {row.invoice_files?.length > 0 ? (
+                          row.invoice_files.map((url, idx) => (
+                            <Button
+                              key={idx}
+                              componentType="none"
+                              bgColor="white"
+                              borderColor="rgba(207, 207, 207, 1)"
+                              textColor="black"
+                              style={{
+                                borderRadius: "25px",
+                                padding: "7px 20px",
+                              }}
+                            >
+                              Invoice
+                              <img
+                                src={downloadIcon}
+                                alt="download"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleInvoiceDownload(url, row.lpo_id);
+                                }}
+                              />
+                              <img
+                                src={closeIcon}
+                                alt="remove"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteInvoice(row, url);
+                                }}
+                                style={{
+                                  cursor: "pointer",
+                                }}
+                              />
+                            </Button>
+                          ))
+                        ) : (
+                          <label
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              padding: "7px 20px",
+                              borderRadius: "25px",
+                              backgroundColor: "black",
+                              color: "white",
+                              border: "1px solid black",
+                              cursor: "pointer",
+                              fontSize: "14px",
+                            }}
+                          >
+                            Upload Invoice
+                            <img src={uploadIcon} alt="upload" />
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              style={{ display: "none" }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleUploadInvoice(row, file);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        )}
+                      </>
+                    )}
+
+                    {/* Payment Status or Action Buttons */}
+                    {isApproved || isRejected ? (
+                      getPaymentStatusDisplay(row)
+                    ) : isPending ? (
+                      <>
+                        <Button
+                          componentType={"button"}
+                          bgColor={"rgba(34, 150, 100, 1)"}
+                          borderColor={"rgba(34, 150, 100, 1)"}
+                          textColor={"white"}
+                          style={{
+                            borderRadius: "25px",
+                            padding: "7px 20px",
+                            textWrap: "nowrap" as any,
+                          }}
+                          onClick={() => {
+                            setSelectedLpo(row);
+                            setIsLpoProceedOpen(true);
+                          }}
+                        >
+                          Proceed to Payment
+                        </Button>
+                        {/* <Button
+                          componentType={"button"}
+                          bgColor={"rgba(185, 28, 28, 1)"}
+                          borderColor={"rgba(185, 28, 28, 1)"}
+                          textColor={"white"}
+                          style={{
+                            borderRadius: "25px",
+                            padding: "7px 20px",
+                            textWrap: "nowrap" as any,
+                          }}
+                          onClick={() => {
+                            setSelectedLpo(row);
+                            setIsLpoRejectOpen(true);
+                          }}
+                        >
+                          Reject Payment
+                        </Button> */}
+                      </>
+                    ) : null}
+                  </div>
                 </div>
 
-                <div style={{ display: "flex", gap: "10px" }}>
-                  {/* Signed LPO Download */}
-                  {row.signed_lpo_files?.length > 0 && (
-                    <Button
-                      componentType="button"
-                      bgColor="white"
-                      borderColor="rgba(207, 207, 207, 1)"
-                      textColor="black"
-                      style={{ borderRadius: "25px", padding: "7px 20px" }}
-                      onClick={() =>
-                        handleSignedLpoDownload(
-                          row.signed_lpo_files[0],
-                          row.lpo_id,
-                        )
-                      }
-                    >
-                      Signed LPO
-                      <img src={downloadIcon} alt="download" />
-                    </Button>
-                  )}
-
-                  {/* Invoice Download */}
-                  {row.invoice_files?.length > 0 && (
-                    <Button
-                      componentType="button"
-                      bgColor="white"
-                      borderColor="rgba(207, 207, 207, 1)"
-                      textColor="black"
-                      style={{ borderRadius: "25px", padding: "7px 20px" }}
-                      onClick={() =>
-                        handleInvoiceDownload(row.invoice_files[0], row.lpo_id)
-                      }
-                    >
-                      Invoice
-                      <img src={downloadIcon} alt="download" />
-                    </Button>
-                  )}
-
-                  {/* Proceed / Reject */}
-                  <Button
-                    componentType={"button"}
-                    bgColor={"rgba(34, 150, 100, 1)"}
-                    borderColor={"rgba(34, 150, 100, 1)"}
-                    textColor={"white"}
-                    style={{
-                      borderRadius: "25px",
-                      padding: "7px 20px",
-                      textWrap: "nowrap" as any,
-                    }}
-                    onClick={() => {
-                      setSelectedLpo(row);
-                      setIsLpoProceedOpen(true);
-                    }}
-                  >
-                    Proceed to Payment
-                  </Button>
-                  <Button
-                    componentType={"button"}
-                    bgColor={"rgba(185, 28, 28, 1)"}
-                    borderColor={"rgba(185, 28, 28, 1)"}
-                    textColor={"white"}
-                    style={{
-                      borderRadius: "25px",
-                      padding: "7px 20px",
-                      textWrap: "nowrap" as any,
-                    }}
-                    onClick={() => {
-                      setSelectedLpo(row);
-                      setIsLpoRejectOpen(true);
-                    }}
-                  >
-                    Reject Payment
-                  </Button>
-                </div>
+                <br />
+                <SupplierLpoItemsTable
+                  lpoId={row.lpo_id}
+                  mrHeaderId={row.mr_header_id}
+                />
+                <br />
+                <br />
               </div>
-
-              <br />
-
-              <SupplierLpoItemsTable
-                lpoId={row.lpo_id}
-                mrHeaderId={row.mr_header_id}
-              />
-
-              <br />
-              <br />
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {isLpoProceedOpen && (
@@ -609,9 +1061,7 @@ export default function PaymentDetailsClient({
               </div>
 
               <br />
-
               <JobOrderItemsTable joId={row.jo_id} projectId={row.project_id} />
-
               <br />
               <br />
             </div>
@@ -648,7 +1098,7 @@ export default function PaymentDetailsClient({
   );
 }
 
-// Helper function to calculate total (similar to MrLinesView)
+// Helper function to calculate total
 function calculateItemsTotal(
   items: Array<{
     unit_price?: number | string;
@@ -657,10 +1107,8 @@ function calculateItemsTotal(
   }>,
 ): number {
   let total = 0;
-
   items.forEach((item) => {
     let itemTotal = 0;
-
     if (typeof item.total_price === "number") {
       itemTotal = item.total_price;
     } else if (typeof item.total_price === "string" && item.total_price) {
@@ -677,14 +1125,11 @@ function calculateItemsTotal(
     ) {
       itemTotal = (parseFloat(item.unit_price) || 0) * item.quantity;
     }
-
     total += itemTotal;
   });
-
   return Number(total.toFixed(2));
 }
 
-// Format number helper
 const formatNumber = (value: unknown): string => {
   const num = Number(value);
   if (isNaN(num)) return "";
@@ -692,11 +1137,7 @@ const formatNumber = (value: unknown): string => {
   return parseFloat(num.toFixed(3)).toString();
 };
 
-// Reusable JO items table - matching JoLinesView structure with approved_total_price subtotal
-type JobOrderItemsTableProps = {
-  joId: number;
-  projectId?: number | null;
-};
+type JobOrderItemsTableProps = { joId: number; projectId?: number | null };
 
 function JobOrderItemsTable({ joId, projectId }: JobOrderItemsTableProps) {
   const [items, setItems] = useState<JoItem[]>([]);
@@ -716,21 +1157,17 @@ function JobOrderItemsTable({ joId, projectId }: JobOrderItemsTableProps) {
           }),
         });
 
-        if (!res.ok) {
-          throw new Error("Failed to fetch JO details");
-        }
-
+        if (!res.ok) throw new Error("Failed to fetch JO details");
         const json = await res.json();
 
         if (Array.isArray(json)) {
           setItems(json);
-        } else if (json.success && json.data && json.data.jo_lines) {
+        } else if (json.success && json.data?.jo_lines) {
           setItems(json.data.jo_lines);
         } else {
           setItems([]);
         }
 
-        // Fetch MR Header for BOQ reference popup
         if (projectId) {
           try {
             const mrRes = await fetch(
@@ -743,7 +1180,7 @@ function JobOrderItemsTable({ joId, projectId }: JobOrderItemsTableProps) {
             );
             if (mrRes.ok) {
               const mrData = await mrRes.json();
-              if (mrData.success && mrData.data && mrData.data.length > 0) {
+              if (mrData.success && mrData.data?.length > 0) {
                 setMrHeader(mrData.data[0]);
               }
             }
@@ -759,30 +1196,21 @@ function JobOrderItemsTable({ joId, projectId }: JobOrderItemsTableProps) {
       }
     }
 
-    if (joId) {
-      fetchItems();
-    }
+    if (joId) fetchItems();
   }, [joId, projectId]);
 
-  if (isLoading) {
-    return <p style={{ padding: "10px 0" }}>Loading items...</p>;
-  }
-
-  if (!items.length) {
+  if (isLoading) return <p style={{ padding: "10px 0" }}>Loading items...</p>;
+  if (!items.length)
     return (
       <p style={{ padding: "10px 0", color: "rgba(150,150,150,1)" }}>
         No items found for this JO.
       </p>
     );
-  }
 
-  // Calculate total using approved_total_price (matching JoLinesView pattern)
   const totalApprovedPrice = items.reduce(
     (sum, item) => sum + (Number(item.approved_total_price) || 0),
     0,
   );
-
-  // Check if any item has approved price to show/hide total row
   const hasAnyApprovedPrice = items.some(
     (item) =>
       item.approved_total_price != null &&
@@ -862,8 +1290,6 @@ function JobOrderItemsTable({ joId, projectId }: JobOrderItemsTableProps) {
           </tr>
         ))}
       </tbody>
-
-      {/* Subtotal Footer - Using approved_total_price like JoLinesView */}
       {hasAnyApprovedPrice && (
         <tfoot style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}>
           <tr>
@@ -880,11 +1306,7 @@ function JobOrderItemsTable({ joId, projectId }: JobOrderItemsTableProps) {
   );
 }
 
-// Reusable LPO items table with all columns matching JoLinesView style
-type SupplierLpoItemsTableProps = {
-  lpoId: number;
-  mrHeaderId?: number | null;
-};
+type SupplierLpoItemsTableProps = { lpoId: number; mrHeaderId?: number | null };
 
 function SupplierLpoItemsTable({
   lpoId,
@@ -907,18 +1329,14 @@ function SupplierLpoItemsTable({
           },
         );
 
-        if (!res.ok) {
-          throw new Error("Failed to fetch LPO details");
-        }
-
+        if (!res.ok) throw new Error("Failed to fetch LPO details");
         const json = await res.json();
-        if (json.success && json.data && json.data.lpo_mr_lines) {
+        if (json.success && json.data?.lpo_mr_lines) {
           setItems(json.data.lpo_mr_lines);
         } else {
           setItems([]);
         }
 
-        // Fetch MR Header for BOQ reference popup
         if (mrHeaderId) {
           try {
             const mrRes = await fetch(
@@ -946,21 +1364,16 @@ function SupplierLpoItemsTable({
         setIsLoading(false);
       }
     }
-
     fetchItems();
   }, [lpoId, mrHeaderId]);
 
-  if (isLoading) {
-    return <p style={{ padding: "10px 0" }}>Loading items...</p>;
-  }
-
-  if (!items.length) {
+  if (isLoading) return <p style={{ padding: "10px 0" }}>Loading items...</p>;
+  if (!items.length)
     return (
       <p style={{ padding: "10px 0", color: "rgba(150,150,150,1)" }}>
         No items found for this LPO.
       </p>
     );
-  }
 
   const total = calculateItemsTotal(items);
 
@@ -1045,8 +1458,6 @@ function SupplierLpoItemsTable({
           </tr>
         ))}
       </tbody>
-
-      {/* Subtotal Footer - Matching JoLinesView/MrLinesView style */}
       <tfoot style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}>
         <tr>
           <td colSpan={7} style={{ fontWeight: "600", padding: "15px 20px" }}>

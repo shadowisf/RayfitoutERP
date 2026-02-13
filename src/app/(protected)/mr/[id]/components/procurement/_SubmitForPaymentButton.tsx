@@ -75,43 +75,24 @@ export default function SubmitForPaymentButton({
     e.preventDefault();
     setIsLoading(true);
 
-    console.log("=== SUBMIT FOR PAYMENT/DELIVERY ===");
-    console.log("Mode:", mode);
-    console.log("MR Header ID:", mrHeaderID);
-    console.log("Suppliers to process:", allSuppliers.length);
+    const segregateRes = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "submitForLPOSegregation",
+          id: mrHeaderID,
+          changed_by: userInfo?.name,
+        }),
+      },
+    );
 
-    // Step 1: Submit for LPO Segregation (only in multi mode with multiple suppliers)
-    if (mode === "multi" && allSuppliers.length > 1) {
-      try {
-        console.log("Step 1: Calling submitForLPOSegregation...");
-
-        const segregateRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "submitForLPOSegregation",
-              id: mrHeaderID,
-              changed_by: userInfo?.name,
-            }),
-          },
-        );
-
-        if (!segregateRes.ok) {
-          const errorData = await segregateRes.json().catch(() => ({}));
-          throw new Error(
-            `Segregation failed: ${errorData.error || segregateRes.statusText}`,
-          );
-        }
-
-        console.log("✓ Segregation successful");
-      } catch (error) {
-        console.error("✗ Segregation failed:", error);
-        toast("Failed to segregate LPOs", "error");
-        setIsLoading(false);
-        return;
-      }
+    if (!segregateRes.ok) {
+      const errorData = await segregateRes.json().catch(() => ({}));
+      throw new Error(
+        `Segregation failed: ${errorData.error || segregateRes.statusText}`,
+      );
     }
 
     // Step 2: Process each supplier
@@ -167,21 +148,7 @@ export default function SubmitForPaymentButton({
 
     // Show results
     if (results.failed.length === 0) {
-      const creditCount = results.success.filter((s) =>
-        s.supplierType.toLowerCase().includes("credit"),
-      ).length;
-      const cashCount = results.success.length - creditCount;
-
-      let message = "Material request submitted successfully";
-      if (hasMixedSuppliers) {
-        message = `Submitted: ${creditCount} credit (→ delivery), ${cashCount} cash (→ payment)`;
-      } else if (creditCount > 0) {
-        message = "Submitted for delivery (credit supplier)";
-      } else {
-        message = "Submitted for payment (cash supplier)";
-      }
-
-      toast(message, "success");
+      toast("Material request submitted", "success");
       setIsOpen(false);
       router.refresh();
       router.replace(`/mr/`);
@@ -244,7 +211,7 @@ export default function SubmitForPaymentButton({
           <div style={{ maxHeight: "300px", overflowY: "auto" }}>
             <p>Are you sure you want to submit this material request?</p>
 
-         {/*    <br />
+            {/*    <br />
             <br /> */}
 
             {/* {mode === "multi" && suppliers.length > 0 && (

@@ -11,6 +11,7 @@ import InventoryFilterButton from "./[id]/components/_InventoryFilterButton";
 import StockLocationHoverPopup from "./components/_StockLocationHoverPopup";
 import ArchiveInventoryItemButton from "./[id]/components/_ArchiveInventoryItemButton";
 import DeleteTransactionButton from "./[id]/components/_DeleteTransactionButton";
+import EditTransactionButton from "./components/_EditTransactionButton";
 
 export default function Inventory() {
   const externalLinkIcon = "/icons/external-link.svg";
@@ -1592,11 +1593,11 @@ export default function Inventory() {
               <table className="items-table two-toned">
                 <thead>
                   <tr>
-                    <th>DATE & TIME</th>
+                    <th>DATE</th>
                     <th></th>
-                    <th style={{ paddingLeft: "5px" }}>TRANSACTION ID</th>
-                    <th style={{ minWidth: "500px" }}>MATERIAL</th>
-                    <th>TRANSFER TYPE</th>
+                    <th style={{ paddingLeft: "5px" }}>ID</th>
+                    <th style={{ minWidth: "500px" }}>MATERIAL(S)</th>
+                    <th>TYPE</th>
                     <th>STATUS</th>
                     <th></th>
                   </tr>
@@ -1693,6 +1694,7 @@ export default function Inventory() {
                                 backgroundColor: status.bgColor,
                                 color: status.textColor,
                                 textTransform: "uppercase",
+                                fontWeight: "normal",
                               }}
                             >
                               {status.label}
@@ -1700,10 +1702,16 @@ export default function Inventory() {
                           </div>
                         </td>
                         <td>
-                          <DeleteTransactionButton
-                            transferID={transaction.id}
-                            onSuccess={() => fetchAllTransactions()}
-                          />
+                          <div style={{ display: "flex", gap: "10px" }}>
+                            <EditTransactionButton
+                              transaction={transaction}
+                              onSuccess={() => fetchAllTransactions()}
+                            />
+                            <DeleteTransactionButton
+                              transferID={transaction.id}
+                              onSuccess={() => fetchAllTransactions()}
+                            />
+                          </div>
                         </td>
                       </tr>
                     );

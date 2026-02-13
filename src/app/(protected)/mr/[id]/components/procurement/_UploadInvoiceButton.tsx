@@ -36,7 +36,9 @@ export default function UploadInvoiceButton({
   const downloadIcon = "/icons/download.svg";
   const uploadIcon = "/icons/upload.svg";
 
-  function handleUploadClick() {}
+  function handleUploadClick() {
+    fileInputRef.current?.click();
+  }
 
   async function handleDownload(url: string, event: React.MouseEvent) {
     event.stopPropagation();
@@ -245,7 +247,6 @@ export default function UploadInvoiceButton({
               bgColor={"white"}
               borderColor={"rgba(207, 207, 207, 1)"}
               textColor={"black"}
-              onClick={() => {}}
               componentType="none"
               style={{ padding: "7px 20px", borderRadius: "25px" }}
               key={fileUrl}

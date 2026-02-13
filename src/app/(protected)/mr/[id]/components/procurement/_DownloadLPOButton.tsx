@@ -28,7 +28,7 @@ export default function DownloadLPOButton({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lpo_id: lpoID }),
-          }
+          },
         );
         const data = await response.json();
         if (data.success && data.data) {
