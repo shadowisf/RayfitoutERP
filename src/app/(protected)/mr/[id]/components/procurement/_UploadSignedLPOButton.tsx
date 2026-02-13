@@ -32,7 +32,6 @@ export default function UploadSignedLPOButton({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const closeIcon = "/icons/cross-small.svg";
@@ -40,9 +39,7 @@ export default function UploadSignedLPOButton({
   const downloadIcon = "/icons/download.svg";
 
   function handleUploadClick() {
-    if (!isUploading) {
-      fileInputRef.current?.click();
-    }
+    fileInputRef.current?.click();
   }
 
   async function handleDownload(url: string, event: React.MouseEvent) {
@@ -73,8 +70,6 @@ export default function UploadSignedLPOButton({
   }
 
   async function uploadFile(file: File) {
-    setIsUploading(true);
-
     try {
       // Upload to S3
       const formData = new FormData();
@@ -129,8 +124,6 @@ export default function UploadSignedLPOButton({
     } catch (error) {
       console.error("Error uploading signed LPO:", error);
       toast("Failed to upload signed local purchase order", "error");
-    } finally {
-      setIsUploading(false);
     }
   }
 
@@ -188,7 +181,6 @@ export default function UploadSignedLPOButton({
 
   async function handleRemoveFile(url: string, event: React.MouseEvent) {
     event.stopPropagation();
-    setIsUploading(true);
 
     try {
       // Delete from S3
@@ -243,8 +235,6 @@ export default function UploadSignedLPOButton({
     } catch (error) {
       console.error("Error deleting signed LPO:", error);
       toast("Failed to delete signed local purchase order", "error");
-    } finally {
-      setIsUploading(false);
     }
   }
 
@@ -271,7 +261,6 @@ export default function UploadSignedLPOButton({
               bgColor={"white"}
               borderColor={"rgba(207, 207, 207, 1)"}
               textColor={"black"}
-              onClick={() => {}}
               componentType="none"
               style={{ padding: "7px 20px", borderRadius: "25px" }}
               key={fileUrl}
@@ -312,12 +301,10 @@ export default function UploadSignedLPOButton({
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            cursor: isUploading ? "not-allowed" : "pointer",
             backgroundColor: isDragOver ? "rgba(169, 255, 218, 1)" : "black",
             color: isDragOver ? "rgba(34, 150, 100, 1)" : "white",
             borderStyle: isDragOver ? "dashed" : "solid",
           }}
-          disabled={isUploading}
         >
           {isDragOver ? (
             "DROP HERE"

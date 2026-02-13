@@ -541,6 +541,172 @@ export async function PUT(request: NextRequest) {
         success: true,
       });
     }
+
+    if (body.action === "updateTransferIssueTransaction") {
+      try {
+        const {
+          transaction_id,
+          items,
+          project_id,
+          boq_line_ids,
+          type,
+          from,
+          to,
+          purpose,
+          receiver_name,
+          third_party_involved,
+          packing_list_required,
+          container_number,
+        } = body;
+
+        // Validate required fields
+        if (!transaction_id) {
+          return NextResponse.json(
+            { error: "Missing transaction ID", success: false },
+            { status: 400 },
+          );
+        }
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+          return NextResponse.json(
+            { error: "At least one item is required", success: false },
+            { status: 400 },
+          );
+        }
+
+        // Update the transfer/issue header
+        const updateHeaderQuery = `
+      UPDATE stocks_transfer_issue 
+      SET 
+        project_id = ?,
+        type = ?,
+        from_location = ?,
+        to_location = ?,
+        purpose = ?,
+        receiver_name = ?,
+        third_party_involved = ?,
+        packing_list_required = ?,
+        container_number = ?
+      WHERE id = ?
+    `;
+
+        await db.query(updateHeaderQuery, [
+          Number(project_id) || null,
+          type,
+          from,
+          to || null,
+          purpose,
+          receiver_name || null,
+          third_party_involved,
+          packing_list_required,
+          container_number || null,
+          Number(transaction_id),
+        ]);
+
+        // Get existing items to compare
+        const [existingItems] = await db.query<RowDataPacket[]>(
+          `SELECT inventory_item_id FROM jt_stocks_transfer_issue_inventory_item WHERE stocks_transfer_issue_id = ?`,
+          [Number(transaction_id)],
+        );
+
+        const existingItemIds = new Set(
+          existingItems.map((item) => item.inventory_item_id),
+        );
+        const newItemIds = new Set(items.map((item) => item.inventory_item_id));
+
+        // Delete items that are no longer in the transaction
+        const itemsToDelete = [...existingItemIds].filter(
+          (id) => !newItemIds.has(id),
+        );
+        if (itemsToDelete.length > 0) {
+          await db.query(
+            `DELETE FROM jt_stocks_transfer_issue_inventory_item 
+         WHERE stocks_transfer_issue_id = ? AND inventory_item_id IN (?)`,
+            [Number(transaction_id), itemsToDelete],
+          );
+        }
+
+        // Update existing items and insert new ones
+        for (const item of items) {
+          if (existingItemIds.has(item.inventory_item_id)) {
+            // Update existing item
+            const updateItemQuery = `
+          UPDATE jt_stocks_transfer_issue_inventory_item 
+          SET 
+            quantity = ?,
+            serial_number = ?,
+            attachment = ?,
+            length = ?,
+            width = ?,
+            height = ?
+          WHERE stocks_transfer_issue_id = ? AND inventory_item_id = ?
+        `;
+
+            await db.query(updateItemQuery, [
+              item.quantity,
+              item.serial_number || null,
+              item.attachment || null,
+              item.length || null,
+              item.width || null,
+              item.height || null,
+              Number(transaction_id),
+              item.inventory_item_id,
+            ]);
+          } else {
+            // Insert new item
+            const insertItemQuery = `
+          INSERT INTO jt_stocks_transfer_issue_inventory_item 
+          (stocks_transfer_issue_id, inventory_item_id, quantity, serial_number, attachment, length, width, height) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+            await db.query(insertItemQuery, [
+              Number(transaction_id),
+              item.inventory_item_id,
+              item.quantity,
+              item.serial_number || null,
+              item.attachment || null,
+              item.length || null,
+              item.width || null,
+              item.height || null,
+            ]);
+          }
+        }
+
+        // Update BOQ line associations - delete existing and insert new
+        await db.query(
+          `DELETE FROM jt_stocks_transfer_issue_boq_lines WHERE stocks_transfer_issue_id = ?`,
+          [Number(transaction_id)],
+        );
+
+        const boqLineIdsArray = Array.isArray(boq_line_ids)
+          ? boq_line_ids
+          : boq_line_ids
+            ? [boq_line_ids]
+            : [];
+
+        const validBoqLineIds = boqLineIdsArray
+          .filter((id: any) => id && !isNaN(Number(id)))
+          .map((id: any) => Number(id));
+
+        if (validBoqLineIds.length > 0) {
+          const boqJunctionQuery = `INSERT INTO jt_stocks_transfer_issue_boq_lines (stocks_transfer_issue_id, boq_line_id) VALUES ?`;
+          const boqJunctionValues = validBoqLineIds.map((boqId: number) => [
+            Number(transaction_id),
+            boqId,
+          ]);
+          await db.query(boqJunctionQuery, [boqJunctionValues]);
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: "Transaction updated successfully",
+          transaction_id: Number(transaction_id),
+        });
+      } catch (error) {
+        throw error;
+      }
+    }
   } catch (error: any) {
     console.error("Error updating stock:", error);
     return NextResponse.json(
