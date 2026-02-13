@@ -676,7 +676,8 @@ export default function PaymentDetailsClient({
             }}
           >
             <h1>
-              <a href="/payment">PAYMENTS</a> &gt; {details.name}
+              <a href="/payment">PAYMENTS</a> &gt;{" "}
+              {String(details.name).toUpperCase()}
             </h1>
           </div>
 

@@ -9,30 +9,50 @@ export async function GET() {
         s.id,
         s.name,
         s.type,
-        SUM(l.total) as total_amount,
+        SUM(CASE 
+          WHEN (l.payment_file IS NULL OR l.payment_file = '' OR l.payment_file = '[]')
+          THEN lpo_lines.lpo_total 
+          ELSE 0 
+        END) as total_amount,
         MAX(l.delivery_date) as due_date,
-        COUNT(l.id) as total_lpos,
+        COUNT(DISTINCT l.id) as total_lpos,
         SUM(CASE WHEN l.payment_status = 'Approved' THEN 1 ELSE 0 END) as paid_lpos,
-        SUM(CASE WHEN l.payment_status != 'Approved' OR l.payment_status IS NULL THEN 1 ELSE 0 END) as unpaid_lpos
+        COUNT(DISTINCT CASE 
+          WHEN (l.payment_file IS NULL OR l.payment_file = '' OR l.payment_file = '[]')
+          THEN l.id 
+          ELSE NULL 
+        END) as unpaid_lpos
       FROM suppliers s
       JOIN lpo l ON s.id = l.supplier_id
+      JOIN (
+        SELECT lpo_id, SUM(total_price) as lpo_total
+        FROM lpo_mr_line
+        GROUP BY lpo_id
+      ) lpo_lines ON l.id = lpo_lines.lpo_id
       WHERE l.progress_id >= 14
       GROUP BY s.id, s.name, s.type
       ORDER BY s.name ASC
     `);
 
     // Get subcontractor payment data from approved quotations
-    // Unpaid = completed (progress_id 25) + has jo_invoice_file + no jo_payment_receipt
     const [subcontractorRows]: any = await db.query(`
       SELECT
         sc.id,
         sc.name,
         'Subcontractor' as type,
-        SUM(sq.total_price) as total_amount,
+        SUM(CASE 
+          WHEN (mh.jo_payment_receipt IS NULL OR mh.jo_payment_receipt = '' OR mh.jo_payment_receipt = '[]')
+          THEN sq.total_price 
+          ELSE 0 
+        END) as total_amount,
         MAX(mh.required_date) as due_date,
         COUNT(sq.id) as total_quotations,
-        SUM(CASE WHEN mh.progress_id = 25 AND (mh.jo_payment_receipt IS NOT NULL AND mh.jo_payment_receipt != '' AND mh.jo_payment_receipt != '[]') THEN 1 ELSE 0 END) as paid_quotations,
-        SUM(CASE WHEN mh.progress_id = 25 AND (mh.jo_invoice_file IS NOT NULL AND mh.jo_invoice_file != '' AND mh.jo_invoice_file != '[]') AND (mh.jo_payment_receipt IS NULL OR mh.jo_payment_receipt = '' OR mh.jo_payment_receipt = '[]') THEN 1 ELSE 0 END) as unpaid_quotations
+        SUM(CASE WHEN mh.jo_payment_receipt IS NOT NULL AND mh.jo_payment_receipt != '' AND mh.jo_payment_receipt != '[]' THEN 1 ELSE 0 END) as paid_quotations,
+        SUM(CASE 
+          WHEN (mh.jo_payment_receipt IS NULL OR mh.jo_payment_receipt = '' OR mh.jo_payment_receipt = '[]')
+          THEN 1 
+          ELSE 0 
+        END) as unpaid_quotations
       FROM subcontractors sc
       JOIN jo_line_subcontractor_quotation sq ON sc.id = sq.subcontractor_id
       JOIN jo_lines jl ON sq.jo_line_id = jl.id
