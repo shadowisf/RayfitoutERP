@@ -1,6 +1,7 @@
 import Button from "@/app/components/Button";
 import LpoLinesView from "./components/LpoLinesView";
 import { MrHeader } from "../../types/mrHeader";
+import DeleteLpoHeaderButton from "./components/_DeleteLpoHeaderButton";
 
 export default async function LpoWithID({
   params,
@@ -304,55 +305,69 @@ export default async function LpoWithID({
               alignItems: "flex-start",
             }}
           >
-            <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
-              <div>
-                <small>MR ID</small>
-                <h2 style={{ textWrap: "nowrap" }}>
-                  MR-{String(id).padStart(5, "0")}
-                </h2>
-              </div>
-
-              <div>
-                <small>LPO ID</small>
-                <h2>LPO-{String(lpoId).padStart(5, "0")}</h2>
-              </div>
-
-              <div style={{ display: "flex", gap: "10px" }}>
-                <p
-                  className="approval-pill normal-text"
-                  style={{ ...progressStyle, textTransform: "uppercase" }}
-                >
-                  {lpo.progress_name}
-                </p>
-              </div>
-
-              {!isCompleted && (
-                <div
-                  className="approval-pill normal-text centered"
-                  style={{
-                    backgroundColor: "white",
-                    color: darkerTextColor,
-                    border: "1px solid rgba(207, 207, 207, 1)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
-                  <svg
-                    width="13"
-                    height="15"
-                    viewBox="0 0 15 17"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
-                      fill={priorityColor}
-                    />
-                  </svg>
-                  <span>PRIORITY: {priorityLabel}</span>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                width: "100%",
+              }}
+            >
+              <div
+                style={{ display: "flex", gap: "25px", alignItems: "center" }}
+              >
+                <div>
+                  <small>MR ID</small>
+                  <h2 style={{ textWrap: "nowrap" }}>
+                    MR-{String(id).padStart(5, "0")}
+                  </h2>
                 </div>
-              )}
+
+                <div>
+                  <small>LPO ID</small>
+                  <h2>LPO-{String(lpoId).padStart(5, "0")}</h2>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <p
+                    className="approval-pill normal-text"
+                    style={{ ...progressStyle, textTransform: "uppercase" }}
+                  >
+                    {lpo.progress_name}
+                  </p>
+                </div>
+
+                {!isCompleted && (
+                  <div
+                    className="approval-pill normal-text centered"
+                    style={{
+                      backgroundColor: "white",
+                      color: darkerTextColor,
+                      border: "1px solid rgba(207, 207, 207, 1)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <svg
+                      width="13"
+                      height="15"
+                      viewBox="0 0 15 17"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
+                        fill={priorityColor}
+                      />
+                    </svg>
+                    <span>PRIORITY: {priorityLabel}</span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <DeleteLpoHeaderButton mrHeader={mrHeader} LpoHeader={lpo} />
+              </div>
             </div>
           </div>
         </div>

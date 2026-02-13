@@ -424,3 +424,43 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const body = await req.json();
+    if (body.action === "deleteLpoHeader") {
+      // First, get all mr_line_ids associated with this LPO
+      const [mrLineIds] = (await db.query(
+        `SELECT mr_line_id FROM lpo_mr_line WHERE lpo_id = ?`,
+        [Number(body.lpo_id)],
+      )) as any; // Type assertion to bypass the issue
+
+      // Create notification
+      await db.query(
+        `INSERT INTO notification (lpo_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          null,
+          8,
+          `LPO Deleted`,
+          `LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) has been deleted by ${body.deleted_by}.`,
+        ],
+      );
+
+      // Delete the mr_lines associated with this LPO
+      if (Array.isArray(mrLineIds) && mrLineIds.length > 0) {
+        const mrLineIdsToDelete = mrLineIds.map((row: any) => row.mr_line_id);
+        await db.query(`DELETE FROM mr_lines WHERE id IN (?)`, [
+          mrLineIdsToDelete,
+        ]);
+      }
+
+      // Delete the LPO (this will cascade delete lpo_mr_line entries)
+      await db.query("DELETE FROM lpo WHERE id = ?", [Number(body.lpo_id)]);
+
+      return NextResponse.json({ success: true });
+    }
+  } catch (err: any) {
+    console.error(err.sqlMessage);
+    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+  }
+}

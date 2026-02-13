@@ -183,144 +183,148 @@ export default function CancelMaterialRequestButton({
     }
   }
 
-  if (userInfo?.departmentID !== 8) {
-    return null;
-  }
-
-  return (
-    <>
-      <Button
-        componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
-        onClick={handleOpen}
-        style={{ padding: "7px 20px" }}
-      >
-        {children}
-      </Button>
-
-      {isOpen && (
-        <FormPopUp
-          header={"ROLL BACK MATERIAL REQUEST"}
-          setIsOpen={setIsOpen}
-          handleSubmit={handleSubmit}
-          addButtonLabel={"CONFIRM"}
-          style={{ width: "600px" }}
+  if (userInfo?.departmentID === 8 || userInfo?.departmentID === 9) {
+    return (
+      <>
+        <Button
+          componentType="button"
+          bgColor={bgColor}
+          borderColor={borderColor}
+          textColor={textColor}
+          onClick={handleOpen}
+          style={{ padding: "7px 20px" }}
         >
-          {/* Roll Back To Stage Section */}
-          <div>
-            {availableStages.length === 0 ? (
-              <div>
-                <p style={{ color: "rgba(107, 114, 128, 1)", margin: 0 }}>
-                  No previous stages available for rollback.
-                </p>
-              </div>
-            ) : (
-              <>
-                <div>
-                  <div style={{ maxHeight: "400px", overflowY: "auto" }}>
-                    {availableStages.map((stage) => {
-                      const departmentStyle = getDepartmentStyle(
-                        stage.departmentId,
-                      );
+          {children}
+        </Button>
 
-                      return (
-                        <div key={stage.id} style={{ marginBottom: "5px" }}>
-                          <label
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: "10px",
-                              cursor: "pointer",
-                              padding: "10px",
-                              borderRadius: "10px",
-                              backgroundColor:
-                                selectedStage === stage.id
-                                  ? "rgba(168, 238, 208, 1)"
-                                  : "rgba(245, 240, 240, 1)",
-                            }}
-                          >
-                            <div
+        {isOpen && (
+          <FormPopUp
+            header={"ROLL BACK MATERIAL REQUEST"}
+            setIsOpen={setIsOpen}
+            handleSubmit={handleSubmit}
+            addButtonLabel={"CONFIRM"}
+            style={{ width: "600px" }}
+          >
+            {/* Roll Back To Stage Section */}
+            <div>
+              {availableStages.length === 0 ? (
+                <div>
+                  <p style={{ color: "rgba(107, 114, 128, 1)", margin: 0 }}>
+                    No previous stages available for rollback.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                      {availableStages.map((stage) => {
+                        const departmentStyle = getDepartmentStyle(
+                          stage.departmentId,
+                        );
+
+                        return (
+                          <div key={stage.id} style={{ marginBottom: "5px" }}>
+                            <label
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                gap: "5px",
-                                flex: 1,
+                                justifyContent: "space-between",
+                                gap: "10px",
+                                cursor: "pointer",
+                                padding: "10px",
+                                borderRadius: "10px",
+                                backgroundColor:
+                                  selectedStage === stage.id
+                                    ? "rgba(168, 238, 208, 1)"
+                                    : "rgba(245, 240, 240, 1)",
                               }}
                             >
-                              <input
-                                type="radio"
-                                name="rollbackStage"
-                                value={stage.id}
-                                checked={selectedStage === stage.id}
-                                onChange={() => setSelectedStage(stage.id)}
+                              <div
                                 style={{
-                                  width: "18px",
-                                  height: "18px",
-                                  cursor: "pointer",
-                                  accentColor: "black",
-                                  marginRight: "10px",
-                                  flexShrink: 0,
-                                }}
-                              />
-                              <h4
-                                style={{
-                                  margin: 0,
-                                  textTransform: "uppercase",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "5px",
                                   flex: 1,
                                 }}
                               >
-                                {stage.name}
-                              </h4>
-                            </div>
+                                <input
+                                  type="radio"
+                                  name="rollbackStage"
+                                  value={stage.id}
+                                  checked={selectedStage === stage.id}
+                                  onChange={() => setSelectedStage(stage.id)}
+                                  style={{
+                                    width: "18px",
+                                    height: "18px",
+                                    cursor: "pointer",
+                                    accentColor: "black",
+                                    marginRight: "10px",
+                                    flexShrink: 0,
+                                  }}
+                                />
+                                <h4
+                                  style={{
+                                    margin: 0,
+                                    textTransform: "uppercase",
+                                    flex: 1,
+                                  }}
+                                >
+                                  {stage.name}
+                                </h4>
+                              </div>
 
-                            {stage.department && (
-                              <small
-                                style={{
-                                  backgroundColor:
-                                    departmentStyle.backgroundColor,
-                                  color: departmentStyle.color,
-                                  textTransform: "uppercase",
-                                  padding: "5px 12px",
-                                  borderRadius: "50px",
-                                  fontSize: "10px",
-                                  fontWeight: "600",
-                                  whiteSpace: "nowrap",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "6px",
-                                }}
-                              >
-                                <span style={{ scale: 2.5 }}>•</span>
-                                {stage.department}
-                              </small>
-                            )}
-                          </label>
-                        </div>
-                      );
-                    })}
+                              {stage.department && (
+                                <small
+                                  style={{
+                                    backgroundColor:
+                                      departmentStyle.backgroundColor,
+                                    color: departmentStyle.color,
+                                    textTransform: "uppercase",
+                                    padding: "5px 12px",
+                                    borderRadius: "50px",
+                                    fontSize: "10px",
+                                    fontWeight: "600",
+                                    whiteSpace: "nowrap",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                  }}
+                                >
+                                  <span style={{ scale: 2.5 }}>•</span>
+                                  {stage.department}
+                                </small>
+                              )}
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
 
-                <br />
-                <br />
+                  <br />
+                  <br />
 
-                <div
-                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
-                >
-                  <img src={warningIcon} alt="warning" />
-                  <p style={{ color: "red" }}>
-                    This action cannot be undone and will update the current
-                    workflow status.
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-        </FormPopUp>
-      )}
-    </>
-  );
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      alignItems: "center",
+                    }}
+                  >
+                    <img src={warningIcon} alt="warning" />
+                    <p style={{ color: "red" }}>
+                      This action cannot be undone and will update the current
+                      workflow status.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </FormPopUp>
+        )}
+      </>
+    );
+  } else {
+    return null;
+  }
 }
