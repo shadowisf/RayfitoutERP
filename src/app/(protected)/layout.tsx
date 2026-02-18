@@ -27,9 +27,10 @@ export default function ProtectedLayout({
             paddingBottom: "50px",
             paddingLeft: "40px",
             paddingRight: "40px",
-            marginLeft: sidebarOpen ? "275px" : "0px",
+            marginLeft: sidebarOpen ? "300px" : "0px",
             transition: "margin-left 0.3s ease",
             width: "100%",
+            minWidth: 0,
           }}
         >
           <GlobalToast />

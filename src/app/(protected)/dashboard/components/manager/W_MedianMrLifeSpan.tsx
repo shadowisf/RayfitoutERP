@@ -8,7 +8,7 @@ export default function MedianMRLifespanWidget() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const [filter, setFilter] = useState(7);
+  const [filter, setFilter] = useState(0);
 
   useEffect(() => {
     setError(null);

@@ -194,7 +194,12 @@ export async function PUT(req: Request) {
         `INSERT INTO mr_header_progress_log
    (mr_header_id, progress_id, from_progress_id, changed_by)
    VALUES (?, ?, ?, ?)`,
-        [body.id, body.rollback_progress_id, body.current_progress_id || null, `${body.changed_by} (ROLLBACK)`],
+        [
+          body.id,
+          body.rollback_progress_id,
+          body.current_progress_id || null,
+          `${body.changed_by} (ROLLBACK)`,
+        ],
       );
 
       await db.query(
@@ -775,7 +780,7 @@ export async function PUT(req: Request) {
 
     if (body.action === "updateJoPaymentReceipt") {
       await db.query(
-        `UPDATE mr_headers SET jo_payment_receipt = ? WHERE id = ?`,
+        `UPDATE mr_headers SET jo_payment_receipt = ?, jo_paid_at = NOW() WHERE id = ?`,
         [body.jo_payment_receipt, body.id],
       );
 

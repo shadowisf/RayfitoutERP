@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch LPO header with supplier info
+    // Fetch LPO header with supplier info + MR header details
     const lpoQuery = `
       SELECT
         l.*,
@@ -25,10 +25,20 @@ export async function POST(request: NextRequest) {
         s.contact_person_name as supplier_contact_person,
         s.phone as supplier_phone,
         s.email as supplier_email_address,
-        pr.value as progress_name
+        pr.value as progress_name,
+        mh.required_date,
+        mh.id,
+        p.name as project_name,
+        pur.value as purpose_name,
+        mh.requested_by,
+        dept.value as department_name
       FROM lpo l
       LEFT JOIN suppliers s ON l.supplier_id = s.id
       LEFT JOIN lut_mr_headers_progress pr ON l.progress_id = pr.id
+      LEFT JOIN mr_headers mh ON l.mr_header_id = mh.id
+      LEFT JOIN projects p ON mh.project_id = p.id
+      LEFT JOIN lut_mr_headers_purpose pur ON mh.purpose_id = pur.id
+      LEFT JOIN lut_mr_headers_departments dept ON mh.department_id = dept.id
       WHERE l.id = ?
     `;
 

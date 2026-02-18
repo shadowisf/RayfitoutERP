@@ -2671,6 +2671,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       >
                                         <tbody>
                                           <tr>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
                                             <td
                                               style={{
                                                 fontWeight: "600",
@@ -2679,15 +2688,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             >
                                               SUBTOTAL
                                             </td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
                                             <td
                                               style={{
                                                 padding: "15px 20px",
@@ -3306,6 +3306,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   >
                                     <tbody>
                                       <tr>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
                                         <td
                                           style={{
                                             fontWeight: "600",
@@ -3314,15 +3323,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         >
                                           SUBTOTAL
                                         </td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
                                         <td
                                           style={{
                                             padding: "15px 20px",
@@ -3622,12 +3622,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                           text={
                             <>
                               <small>BRAND</small>
-                              <h2>{item.brand}</h2>
+                              <h2>{item.brand || "-"}</h2>
 
                               <br />
 
                               <small>SPECIFICATION</small>
-                              <h2>{item.specification}</h2>
+                              <h2>{item.specification || "-"}</h2>
                             </>
                           }
                           header="BRAND & SPECIFICATION"
@@ -3780,6 +3780,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       >
                         <tbody>
                           <tr>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
                             <td
                               style={{
                                 fontWeight: "600",
@@ -3788,14 +3796,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             >
                               SUBTOTAL
                             </td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
                             <td
                               style={{
                                 padding: "15px 20px",

@@ -92,17 +92,16 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       count: mrActionCount,
     },
     { label: "Projects", path: "/project", icon: "/icons/projects.svg" },
-    { label: "Vendors", path: "/vendor", icon: "/icons/vendors.svg" },
     {
-      label: "Subcontractors",
-      path: "/subcontractor",
+      label: "Vendors & Subcontractors",
+      path: "/vendor",
       icon: "/icons/vendors.svg",
     },
-    {
+    /* {
       label: "Payments",
       path: "/payment",
       icon: "/icons/payment-black.svg",
-    },
+    }, */
     {
       label: "Inventory",
       path: "/inventory",
@@ -129,7 +128,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
           left: 0,
           top: "55px",
           height: "calc(100vh - 55px)",
-          width: isOpen ? "275px" : "0px",
+          width: isOpen ? "300px" : "0px",
           overflow: "hidden",
           transition: "width 0.3s ease, background-color 0.3s ease",
           backgroundColor: isOpen ? "white" : "transparent",
@@ -155,6 +154,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
                 key={item.label}
                 className={isActive(item.path) ? "nav-active" : ""}
                 onClick={() => router.push(item.path)}
+                style={{ textWrap: "nowrap" }}
               >
                 <img src={item.icon} alt="icon" />
                 {item.label}
@@ -189,7 +189,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
         onClick={() => setIsOpen(!isOpen)}
         style={{
           position: "fixed",
-          left: isOpen ? "275px" : "0px",
+          left: isOpen ? "300px" : "0px",
           top: "65px",
           width: "32px",
           height: "32px",

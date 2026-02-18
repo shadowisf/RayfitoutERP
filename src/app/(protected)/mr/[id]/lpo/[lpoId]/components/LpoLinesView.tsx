@@ -543,6 +543,22 @@ export default function LpoLinesView({
     delivery_date: lpo.delivery_date,
   };
 
+  // Add this helper function before the return statement
+  function getVATRate(): number {
+    // Get VAT rate from LPO, default to 0.05 (5%) if not set
+    const vatRate = lpo?.vat_rate;
+    if (vatRate === null || vatRate === undefined) {
+      return 0.05; // Default 5% VAT for UAE
+    }
+    return Number(vatRate) / 100; // Convert percentage (e.g., 5) to decimal (0.05)
+  }
+
+  function calculateTotalWithVAT(subtotal: number): number {
+    const vatRate = getVATRate();
+    const vatAmount = subtotal * vatRate;
+    return subtotal + vatAmount;
+  }
+
   return (
     <>
       {/* Supplier header */}
@@ -688,12 +704,12 @@ export default function LpoLinesView({
                         text={
                           <>
                             <small>BRAND</small>
-                            <h2>{item.brand}</h2>
+                            <h2>{item.brand || "-"}</h2>
 
                             <br />
 
                             <small>SPECIFICATION</small>
-                            <h2>{item.specification}</h2>
+                            <h2>{item.specification || "-"}</h2>
                           </>
                         }
                         header="BRAND & SPECIFICATION"
@@ -753,6 +769,7 @@ export default function LpoLinesView({
                 borderTop: "1px solid rgba(239, 239, 239, 1)",
               }}
             >
+              {/* Subtotal Row */}
               <tr>
                 <td
                   colSpan={100}
@@ -768,22 +785,22 @@ export default function LpoLinesView({
                   >
                     <tbody>
                       <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
                         <td
                           style={{
                             fontWeight: "600",
                             padding: "15px 20px",
                           }}
                         >
-                          TOTAL
+                          SUBTOTAL
                         </td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
                         <td
                           style={{
                             padding: "15px 20px",
@@ -792,6 +809,56 @@ export default function LpoLinesView({
                           }}
                         >
                           AED {calculateItemsTotal(allItems).toFixed(2)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+
+              {/* Total with VAT Row - UPDATED with dynamic rate */}
+              <tr>
+                <td
+                  colSpan={100}
+                  style={{
+                    padding: "0",
+                  }}
+                >
+                  <table
+                    style={{
+                      width: "100%",
+                      tableLayout: "fixed",
+                    }}
+                  >
+                    <tbody>
+                      <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td
+                          style={{
+                            fontWeight: "600",
+                            padding: "15px 20px",
+                          }}
+                        >
+                          TOTAL WITH VAT
+                        </td>
+                        <td
+                          style={{
+                            padding: "15px 20px",
+                            fontWeight: "600",
+                            borderRadius: "50px",
+                          }}
+                        >
+                          AED{" "}
+                          {calculateTotalWithVAT(
+                            calculateItemsTotal(allItems),
+                          ).toFixed(2)}
                         </td>
                       </tr>
                     </tbody>
