@@ -2,43 +2,97 @@
 
 import { useEffect, useState } from "react";
 import { Supplier } from "./types/supplier";
-import SupplierDetailsPopUp from "../mr/[id]/components/SupplierDetailsPopUp";
 import CreateSupplierButton from "./components/_CreateSupplierButton";
 import { useAuth } from "@/app/context/AuthContext";
 import ThreeDotsMenuButton from "@/app/components/_ThreeButtonsMenuButton";
 import EditSupplierButton from "./components/_EditSupplierButton";
 import DeleteSupplierButton from "./components/_DeleteSupplierButton";
+import CreateSubcontractorButton from "../subcontractor/components/_CreateSubcontractorButton";
+import EditSubcontractorButton from "../subcontractor/components/_EditSubcontractorButton";
+import DeleteSubcontractorButton from "../subcontractor/components/_DeleteSubcontractorButton";
+import Button from "@/app/components/Button";
+import { useRouter } from "next/navigation";
 
-export default function Vendor() {
+type Subcontractor = {
+  id: number;
+  name: string;
+  trn_number: string;
+  trn_certificate: string;
+  contract: string;
+  trade_license: string;
+  other_docs: string;
+  contact_person_name: string;
+  phone: string;
+  email: string;
+  address: string;
+  website: string;
+  bank_name: string;
+  account_number: string;
+  notes: string;
+  material_categories: string;
+  material_category_ids: string;
+};
+
+export default function VendorManagement() {
   const { userInfo } = useAuth();
+  const router = useRouter();
 
   const externalLinkIcon = "/icons/external-link.svg";
   const searchIcon = "/icons/search.svg";
 
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"" | "name" | "id" | "type">("");
+  const [activeTab, setActiveTab] = useState<"vendors" | "subcontractors">(
+    "vendors",
+  );
 
+  // ─── Vendor state ───
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [vendorSearchQuery, setVendorSearchQuery] = useState("");
+  const [vendorSortBy, setVendorSortBy] = useState<"" | "name" | "id" | "type">(
+    "",
+  );
+
+  // ─── Subcontractor state ───
+  const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
+  const [subSearchQuery, setSubSearchQuery] = useState("");
+  const [subSortBy, setSubSortBy] = useState<"" | "name" | "id">("");
+
+  // ─── Check URL params on mount ───
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get("tab");
+    if (tab === "subcontractors") {
+      setActiveTab("subcontractors");
+    }
+  }, []);
+
+  // ─── Fetch suppliers ───
   async function fetchSuppliers() {
     await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     })
       .then((res) => res.json())
-      .then((data) => {
-        setSuppliers(data);
-      });
+      .then((data) => setSuppliers(data));
+  }
+
+  // ─── Fetch subcontractors ───
+  async function fetchSubcontractors() {
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((res) => res.json())
+      .then((data) => setSubcontractors(data));
   }
 
   useEffect(() => {
     fetchSuppliers();
+    fetchSubcontractors();
   }, []);
 
-  // Filter suppliers based on search query
+  // ─── Vendor filter & sort ───
   const filteredSuppliers = suppliers.filter((supplier) => {
-    const query = searchQuery.toLowerCase();
+    const query = vendorSearchQuery.toLowerCase();
     return (
       supplier.name?.toLowerCase().includes(query) ||
       supplier.type?.toLowerCase().includes(query) ||
@@ -51,9 +105,8 @@ export default function Vendor() {
     );
   });
 
-  // Sort filtered suppliers
   const sortedSuppliers = [...filteredSuppliers].sort((a, b) => {
-    switch (sortBy) {
+    switch (vendorSortBy) {
       case "name":
         return (a.name || "").localeCompare(b.name || "");
       case "id":
@@ -65,10 +118,34 @@ export default function Vendor() {
     }
   });
 
-  // Get supplier type colors
+  // ─── Subcontractor filter & sort ───
+  const filteredSubcontractors = subcontractors.filter((subcontractor) => {
+    const query = subSearchQuery.toLowerCase();
+    return (
+      subcontractor.name?.toLowerCase().includes(query) ||
+      subcontractor.material_categories?.toLowerCase().includes(query) ||
+      subcontractor.trn_number?.toLowerCase().includes(query) ||
+      subcontractor.contact_person_name?.toLowerCase().includes(query) ||
+      `SUB-${String(subcontractor.id).padStart(5, "0")}`
+        .toLowerCase()
+        .includes(query)
+    );
+  });
+
+  const sortedSubcontractors = [...filteredSubcontractors].sort((a, b) => {
+    switch (subSortBy) {
+      case "name":
+        return (a.name || "").localeCompare(b.name || "");
+      case "id":
+        return a.id - b.id;
+      default:
+        return 0;
+    }
+  });
+
+  // ─── Supplier type colors ───
   const getSupplierTypeStyle = (type: string) => {
     const normalizedType = type.toLowerCase();
-
     if (normalizedType === "cash") {
       return {
         backgroundColor: "rgba(87, 244, 176, 1)",
@@ -85,12 +162,7 @@ export default function Vendor() {
         color: "rgba(15, 86, 125, 1)",
       };
     }
-
-    // Default style if type doesn't match
-    return {
-      backgroundColor: "rgba(231, 231, 231, 1)",
-      color: "black",
-    };
+    return { backgroundColor: "rgba(231, 231, 231, 1)", color: "black" };
   };
 
   return (
@@ -103,14 +175,15 @@ export default function Vendor() {
           gap: "20px",
         }}
       >
-        <h1>VENDORS</h1>
+        <h1>VENDORS & SUBCONTRACTORS</h1>
 
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {/* Sort dropdown */}
+          {activeTab === "vendors" ? (
             <select
-              value={sortBy}
+              value={vendorSortBy}
               onChange={(e) =>
-                setSortBy(e.target.value as "name" | "id" | "type")
+                setVendorSortBy(e.target.value as "name" | "id" | "type")
               }
               style={{
                 padding: "10px 15px",
@@ -129,12 +202,39 @@ export default function Vendor() {
               <option value="id">Vendor ID</option>
               <option value="type">Vendor Type</option>
             </select>
-          </div>
-
-          {(userInfo?.departmentID === 8 || userInfo?.departmentID === 9) && (
-            <CreateSupplierButton onSuccess={() => fetchSuppliers()} />
+          ) : (
+            <select
+              value={subSortBy}
+              onChange={(e) => setSubSortBy(e.target.value as "name" | "id")}
+              style={{
+                padding: "10px 15px",
+                borderRadius: "8px",
+                border: "1px solid rgba(223, 223, 223, 1)",
+                fontSize: "14px",
+                backgroundColor: "white",
+                cursor: "pointer",
+                minWidth: "150px",
+              }}
+            >
+              <option value="" disabled>
+                SORT BY
+              </option>
+              <option value="name">Name</option>
+              <option value="id">ID</option>
+            </select>
           )}
 
+          {/* Create button */}
+          {(userInfo?.departmentID === 8 || userInfo?.departmentID === 9) &&
+            (activeTab === "vendors" ? (
+              <CreateSupplierButton onSuccess={() => fetchSuppliers()} />
+            ) : (
+              <CreateSubcontractorButton
+                onSuccess={() => fetchSubcontractors()}
+              />
+            ))}
+
+          {/* Search */}
           <div
             style={{
               position: "relative",
@@ -146,8 +246,14 @@ export default function Vendor() {
             <input
               type="text"
               placeholder="SEARCH"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={
+                activeTab === "vendors" ? vendorSearchQuery : subSearchQuery
+              }
+              onChange={(e) =>
+                activeTab === "vendors"
+                  ? setVendorSearchQuery(e.target.value)
+                  : setSubSearchQuery(e.target.value)
+              }
               style={{
                 width: "400px",
                 padding: "10px 40px 10px 15px",
@@ -174,86 +280,184 @@ export default function Vendor() {
       </div>
 
       <br />
+
+      {/* Tab buttons */}
+      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        <Button
+          componentType={"button"}
+          bgColor={activeTab === "vendors" ? "black" : "transparent"}
+          borderColor={"black"}
+          textColor={activeTab === "vendors" ? "white" : "black"}
+          onClick={() => setActiveTab("vendors")}
+          style={{ padding: "7px 20px", borderRadius: "25px" }}
+        >
+          VENDORS
+        </Button>
+
+        <Button
+          componentType={"button"}
+          bgColor={activeTab === "subcontractors" ? "black" : "transparent"}
+          borderColor={"black"}
+          textColor={activeTab === "subcontractors" ? "white" : "black"}
+          onClick={() => setActiveTab("subcontractors")}
+          style={{ padding: "7px 20px", borderRadius: "25px" }}
+        >
+          SUBCONTRACTORS
+        </Button>
+      </div>
+
       <br />
 
-      <table className="items-table two-toned">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>ID</th>
-            <th>NAME</th>
-            <th>TYPE</th>
-            <th>MATERIAL CATEGORIES</th>
-            <th>MATERIAL SUBCATEGORIES</th>
-            <th>TRN</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedSuppliers.map((supplier, index) => {
-            const typeStyle = getSupplierTypeStyle(supplier.type);
+      {/* ─── VENDORS TABLE ─── */}
+      {activeTab === "vendors" && (
+        <table className="items-table two-toned">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>ID</th>
+              <th>NAME</th>
+              <th>TYPE</th>
+              <th>MATERIAL CATEGORIES</th>
+              <th>MATERIAL SUBCATEGORIES</th>
+              <th>TRN</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedSuppliers.map((supplier, index) => {
+              const typeStyle = getSupplierTypeStyle(supplier.type);
 
-            return (
-              <tr key={supplier.id}>
-                <td>{index + 1}</td>
-                <td style={{ textWrap: "nowrap" }}>
-                  VEN-{String(supplier.id).padStart(5, "0")}
-                </td>
-                <td>{supplier.name}</td>
-                <td>
-                  <div
-                    className="approval-pill normal-text centered"
-                    style={{
-                      backgroundColor: typeStyle.backgroundColor,
-                      color: typeStyle.color,
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {supplier.type}
-                  </div>
-                </td>
-                <td>{supplier.material_categories || "-"}</td>
-                <td>{supplier.material_subcategories || "-"}</td>
-                <td>{supplier.trn_number || "-"}</td>
-
-                <td>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "10px",
-                      alignItems: "center",
-                    }}
-                  >
-                    <SupplierDetailsPopUp
-                      item={supplier}
-                      style={{ padding: "7px 7px" }}
-                      bgColor="rgba(239, 239, 239, 1)"
-                      borderColor="rgba(223, 223, 223, 1)"
-                      textColor="black"
+              return (
+                <tr key={supplier.id}>
+                  <td>{index + 1}</td>
+                  <td style={{ textWrap: "nowrap" }}>
+                    VEN-{String(supplier.id).padStart(5, "0")}
+                  </td>
+                  <td>{supplier.name}</td>
+                  <td>
+                    <div
+                      className="approval-pill normal-text centered"
+                      style={{
+                        backgroundColor: typeStyle.backgroundColor,
+                        color: typeStyle.color,
+                        textTransform: "uppercase",
+                      }}
                     >
-                      <img src={externalLinkIcon} />
-                    </SupplierDetailsPopUp>
+                      {supplier.type}
+                    </div>
+                  </td>
+                  <td>{supplier.material_categories || "-"}</td>
+                  <td>{supplier.material_subcategories || "-"}</td>
+                  <td>{supplier.trn_number || "-"}</td>
 
-                    {(userInfo?.departmentID === 8 ||
-                      userInfo?.departmentID === 9) && (
-                      <ThreeDotsMenuButton>
-                        <EditSupplierButton
-                          supplier={supplier}
-                          onSuccess={() => fetchSuppliers()}
-                        />
-                        <DeleteSupplierButton
-                          supplier={supplier}
-                          onSuccess={() => fetchSuppliers()}
-                        />
-                      </ThreeDotsMenuButton>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  <td>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Button
+                        componentType={"link"}
+                        bgColor={"rgba(239, 239, 239, 1)"}
+                        borderColor={"rgba(223, 223, 223, 1)"}
+                        textColor={"black"}
+                        style={{ padding: "7px 7px" }}
+                        href={`/vendor/${supplier.id}`}
+                      >
+                        <img src={externalLinkIcon} alt="view" />
+                      </Button>
+
+                      {(userInfo?.departmentID === 8 ||
+                        userInfo?.departmentID === 9) && (
+                        <ThreeDotsMenuButton>
+                          <EditSupplierButton
+                            supplier={supplier}
+                            onSuccess={() => fetchSuppliers()}
+                          />
+                          <DeleteSupplierButton
+                            supplier={supplier}
+                            onSuccess={() => fetchSuppliers()}
+                          />
+                        </ThreeDotsMenuButton>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+
+      {/* ─── SUBCONTRACTORS TABLE ─── */}
+      {activeTab === "subcontractors" && (
+        <table className="items-table two-toned">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>ID</th>
+              <th>NAME</th>
+              <th>MATERIAL CATEGORIES</th>
+              <th>TRN</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedSubcontractors.map((subcontractor, index) => {
+              return (
+                <tr key={subcontractor.id}>
+                  <td>{index + 1}</td>
+                  <td style={{ textWrap: "nowrap" }}>
+                    SUB-{String(subcontractor.id).padStart(5, "0")}
+                  </td>
+                  <td>{subcontractor.name}</td>
+                  <td>{subcontractor.material_categories || "-"}</td>
+                  <td>{subcontractor.trn_number || "-"}</td>
+
+                  <td>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Button
+                        style={{
+                          padding: "7px 7px",
+                        }}
+                        componentType={"link"}
+                        bgColor={"rgba(239, 239, 239, 1)"}
+                        borderColor={"rgba(223, 223, 223, 1)"}
+                        textColor={"black"}
+                        href={`/vendor/${subcontractor.id}?type=subcontractor`}
+                      >
+                        <img src={externalLinkIcon} alt="view" />
+                      </Button>
+
+                      {(userInfo?.departmentID === 8 ||
+                        userInfo?.departmentID === 9) && (
+                        <ThreeDotsMenuButton>
+                          <EditSubcontractorButton
+                            subcontractor={subcontractor}
+                            onSuccess={() => fetchSubcontractors()}
+                          />
+                          <DeleteSubcontractorButton
+                            subcontractor={subcontractor}
+                            onSuccess={() => fetchSubcontractors()}
+                          />
+                        </ThreeDotsMenuButton>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

@@ -78,7 +78,7 @@ export async function PUT(req: Request) {
     if (body.action === "resetPayment") {
       const query = `
     UPDATE lpo 
-    SET payment_status = NULL, payment_reject_comment = NULL, payment_file = NULL
+    SET payment_status = NULL, payment_reject_comment = NULL, payment_file = NULL, paid_at = NULL
     WHERE id = ?
   `;
 
@@ -90,7 +90,7 @@ export async function PUT(req: Request) {
     if (body.action === "approvePayment") {
       const query = `
     UPDATE lpo 
-    SET payment_status = 'Approved', payment_reject_comment = NULL, payment_file = ?
+    SET payment_status = 'Approved', payment_reject_comment = NULL, payment_file = ?, paid_at = NOW()
     WHERE id = ?
   `;
 
@@ -258,7 +258,12 @@ export async function PUT(req: Request) {
         `INSERT INTO mr_header_progress_log
          (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
          VALUES (?, 17, ?, ?, ?)`,
-        [Number(body.mr_header_id), body.skip_to_delivery ? 12 : 14, body.changed_by, Number(body.lpo_id)],
+        [
+          Number(body.mr_header_id),
+          body.skip_to_delivery ? 12 : 14,
+          body.changed_by,
+          Number(body.lpo_id),
+        ],
       );
 
       if (!body.skip_to_delivery || body.skip_to_delivery === false) {
@@ -345,7 +350,12 @@ export async function PUT(req: Request) {
         `INSERT INTO mr_header_progress_log
          (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
          VALUES (?, 24, ?, ?, ?)`,
-        [Number(body.mr_header_id), body.from_progress_id || 21, body.changed_by, Number(body.lpo_id)],
+        [
+          Number(body.mr_header_id),
+          body.from_progress_id || 21,
+          body.changed_by,
+          Number(body.lpo_id),
+        ],
       );
 
       return NextResponse.json({ success: true });

@@ -80,8 +80,8 @@ export async function POST(req: Request) {
         body.contact_person_name,
         body.phone || null,
         body.email || null,
-        body.address || null,
         body.website || null,
+        body.address || null,
         body.notes || null,
       ];
 
