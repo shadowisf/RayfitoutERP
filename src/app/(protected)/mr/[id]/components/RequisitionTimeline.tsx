@@ -75,9 +75,7 @@ type TimelineStage = {
   label: string;
   isRejection: boolean;
   isRollback: boolean;
-  // The log entry that says "moved TO this stage"
   arrivedEntry: ProgressLogEntry | null;
-  // The log entry that says "moved FROM this stage" (i.e. who completed this stage)
   departedEntry: ProgressLogEntry | null;
 };
 
@@ -134,7 +132,6 @@ export default function RequisitionTimeline({
     return <div>Loading timeline...</div>;
   }
 
-  // Determine base stage IDs
   let baseStageIds: number[];
   if (lpoId) {
     baseStageIds = hasBoqReference ? FULL_LPO_STAGES : BASE_LPO_STAGES;
@@ -144,36 +141,17 @@ export default function RequisitionTimeline({
     baseStageIds = hasBoqReference ? FULL_MR_STAGES : BASE_MR_STAGES;
   }
 
-  // === BUILD CHRONOLOGICAL TIMELINE ===
-  //
-  // Strategy: Walk the sorted log entries to reconstruct the flow path.
-  // Each log entry represents a transition: from_progress_id → progress_id.
-  // We build a sequence of stages visited, including re-visits after
-  // rejections/rollbacks, so stages can appear multiple times.
-
-  // Sort log entries chronologically by id
   const sortedLog = [...progressLog].sort((a, b) => a.id - b.id);
 
-  // Build the visited-stages sequence from the log.
-  // Each entry tells us: "someone moved from `from_progress_id` to `progress_id`"
-  // The sequence of progress_ids in the log IS the flow path.
-  // We also need from_progress_id to know who completed each stage.
-
-  // visitedSequence: chronological list of {stageId, arrivedEntry, departedEntry}
   type VisitRecord = {
     stageId: number;
     arrivedEntry: ProgressLogEntry | null;
-    // departedEntry: the log entry that moved AWAY from this stage (set later)
     departedEntry: ProgressLogEntry | null;
     isRejection: boolean;
     isRollback: boolean;
   };
 
   const visitedSequence: VisitRecord[] = [];
-
-  // The first stage (Draft) might not have a log entry — it's synthetic.
-  // Add it from the first log entry's existence or the synthetic entry from API.
-  // The API already adds a synthetic "Draft" entry as the first log entry.
 
   for (const entry of sortedLog) {
     const isRb = isRollback(entry);
@@ -188,23 +166,14 @@ export default function RequisitionTimeline({
     });
   }
 
-  // Now set departedEntry for each visit: the NEXT entry in the sequence
-  // is the one that moved away from the current stage.
-  // departedEntry for visit[i] = visit[i+1].arrivedEntry (the entry that left stage[i])
   for (let i = 0; i < visitedSequence.length - 1; i++) {
     visitedSequence[i].departedEntry = visitedSequence[i + 1].arrivedEntry;
   }
 
-  // Now convert visitedSequence into TimelineStage format,
-  // but also add "future" base stages that haven't been visited yet.
-
   const timelineStages: TimelineStage[] = [];
-
-  // Track which base stages have been visited
   const visitedStageIds = new Set(visitedSequence.map((v) => v.stageId));
-
-  // Find the highest base stage index that was visited (to know where future stages start)
   let highestVisitedBaseIndex = -1;
+
   for (const v of visitedSequence) {
     const idx = baseStageIds.indexOf(v.stageId);
     if (idx > highestVisitedBaseIndex) {
@@ -212,7 +181,6 @@ export default function RequisitionTimeline({
     }
   }
 
-  // Add visited stages from the sequence
   for (const visit of visitedSequence) {
     const cleanChangedBy = visit.isRollback
       ? visit.arrivedEntry?.changed_by?.replace(" (ROLLBACK)", "") || ""
@@ -240,7 +208,6 @@ export default function RequisitionTimeline({
     });
   }
 
-  // Add future base stages (not yet visited) after the last visited stage
   for (let i = highestVisitedBaseIndex + 1; i < baseStageIds.length; i++) {
     const stageId = baseStageIds[i];
     if (!visitedStageIds.has(stageId)) {
@@ -255,7 +222,6 @@ export default function RequisitionTimeline({
     }
   }
 
-  // === RENDER ===
   return (
     <div className="mr-with-id">
       <div className="subcategory-header">
@@ -272,6 +238,7 @@ export default function RequisitionTimeline({
           position: "relative",
           padding: "0 20px",
           overflowX: "auto",
+          isolation: "isolate", // Creates new stacking context
         }}
       >
         {timelineStages.map((stage, index) => {
@@ -279,8 +246,6 @@ export default function RequisitionTimeline({
           const hasArrived = !!stage.arrivedEntry;
           const hasDeparted = !!stage.departedEntry;
 
-          // "Current" = the LAST occurrence of currentProgressId in the timeline
-          // that isn't a rejection/rollback, AND doesn't have a departure yet.
           const isLastOccurrence =
             stage.id === currentProgressId &&
             !stage.isRejection &&
@@ -288,9 +253,6 @@ export default function RequisitionTimeline({
             !hasDeparted;
           const isCurrent = isLastOccurrence;
 
-          // Determine visual state
-          // A stage is "completed" if it has arrived AND departed (someone moved past it)
-          // OR if it's a rejection/rollback (always shows as completed with special icon)
           const isCompleted =
             stage.isRejection || stage.isRollback
               ? true
@@ -301,8 +263,6 @@ export default function RequisitionTimeline({
           const isYellow = isCurrent && !isCompleted;
           const isFuture = !isCompleted && !isCurrent;
 
-          // Use departedEntry for details (who completed this stage and when)
-          // Fall back to arrivedEntry for current stage (who moved it here)
           const detailEntry =
             stage.departedEntry || (isCurrent ? stage.arrivedEntry : null);
 
@@ -322,19 +282,17 @@ export default function RequisitionTimeline({
             });
           }
 
-          // Determine circle color
           let circleColor = "white";
           if (stage.isRejection) {
-            circleColor = "rgba(248, 77, 77, 1)"; // Red
+            circleColor = "rgba(248, 77, 77, 1)";
           } else if (stage.isRollback) {
-            circleColor = "rgba(255, 153, 36, 1)"; // Orange
+            circleColor = "rgba(255, 153, 36, 1)";
           } else if (isCompleted) {
-            circleColor = "rgba(26, 216, 135, 1)"; // Green
+            circleColor = "rgba(26, 216, 135, 1)";
           } else if (isYellow) {
-            circleColor = "rgba(216, 213, 26, 1)"; // Yellow
+            circleColor = "rgba(216, 213, 26, 1)";
           }
 
-          // Determine label color
           let labelColor = "black";
           if (stage.isRejection) {
             labelColor = "rgba(248, 77, 77, 1)";
@@ -356,7 +314,7 @@ export default function RequisitionTimeline({
                 position: "relative",
               }}
             >
-              {/* Connector line */}
+              {/* Connector line - zIndex 0 so it goes behind circle */}
               {index > 0 && (
                 <div
                   style={{
@@ -372,7 +330,7 @@ export default function RequisitionTimeline({
                 />
               )}
 
-              {/* Circle */}
+              {/* Circle - zIndex 1 to appear above line, but contained by isolation */}
               <div
                 style={{
                   width: "25px",
@@ -386,10 +344,9 @@ export default function RequisitionTimeline({
                     ? "2px solid rgba(220, 220, 220, 1)"
                     : "none",
                   flexShrink: 0,
-                  zIndex: 1,
+                  zIndex: 1, // Above the line, but contained by parent's isolation
                 }}
               >
-                {/* Cross icon for rejection / rollback */}
                 {(stage.isRejection || stage.isRollback) && (
                   <svg
                     width="12"
@@ -407,7 +364,6 @@ export default function RequisitionTimeline({
                   </svg>
                 )}
 
-                {/* Checkmark for completed (non-rejection, non-rollback) */}
                 {isCompleted && !stage.isRejection && !stage.isRollback && (
                   <svg
                     width="14"
@@ -427,7 +383,6 @@ export default function RequisitionTimeline({
                 )}
               </div>
 
-              {/* Stage label */}
               <p
                 style={{
                   fontSize: "10px",
@@ -444,7 +399,6 @@ export default function RequisitionTimeline({
                 {stage.label}
               </p>
 
-              {/* Date & time */}
               {detailEntry?.changed_at && (
                 <p
                   style={{
@@ -479,7 +433,6 @@ export default function RequisitionTimeline({
                 </p>
               )}
 
-              {/* Submitted by */}
               {detailEntry?.changed_by && (
                 <div
                   style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
