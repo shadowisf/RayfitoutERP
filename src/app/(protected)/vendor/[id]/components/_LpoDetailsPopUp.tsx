@@ -42,6 +42,11 @@ export default function LpoDetailsPopUp({
   const uploadIcon = "/icons/upload.svg";
   const externalLinkIcon = "/icons/external-link.svg";
 
+  const canUpload =
+    userInfo?.departmentID === 10 ||
+    userInfo?.departmentID === 8 ||
+    userInfo?.departmentID === 9;
+
   useEffect(() => {
     async function fetchLpoDetails() {
       try {
@@ -320,7 +325,7 @@ export default function LpoDetailsPopUp({
                     }
                   />
                 </Button>
-              ) : (
+              ) : canUpload ? (
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "5px" }}
                 >
@@ -355,7 +360,7 @@ export default function LpoDetailsPopUp({
                     />
                   </label>
                 </div>
-              )}
+              ) : null}
 
               {/* Invoice: download or upload */}
               {invoiceUrl ? (
@@ -378,7 +383,7 @@ export default function LpoDetailsPopUp({
                     }
                   />
                 </Button>
-              ) : (
+              ) : canUpload ? (
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "5px" }}
                 >
@@ -413,7 +418,7 @@ export default function LpoDetailsPopUp({
                     />
                   </label>
                 </div>
-              )}
+              ) : null}
 
               {/* Payment Receipt: download or upload (proceed payment) */}
               {isPaid && paymentUrl ? (
@@ -436,7 +441,7 @@ export default function LpoDetailsPopUp({
                     }
                   />
                 </Button>
-              ) : (
+              ) : canUpload ? (
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "5px" }}
                 >
@@ -470,7 +475,7 @@ export default function LpoDetailsPopUp({
                     />
                   </label>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </>

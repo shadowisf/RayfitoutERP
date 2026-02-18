@@ -7,7 +7,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import { toast } from "@/app/components/Toast";
 
 type JoDetailsPopUpProps = {
-  joId: number; // This is the mr_header_id
+  joId: number;
   mrNumber: string;
   joPaymentReceipt: string | null;
   joInvoiceFile: string | null;
@@ -40,8 +40,12 @@ export default function JoDetailsPopUp({
   const uploadIcon = "/icons/upload.svg";
   const externalLinkIcon = "/icons/external-link.svg";
 
+  const canUpload =
+    userInfo?.departmentID === 10 ||
+    userInfo?.departmentID === 8 ||
+    userInfo?.departmentID === 9;
+
   useEffect(() => {
-    // Parse initial file URLs
     setInvoiceFileLocal(parseFileUrl(joInvoiceFile));
     setPaymentReceiptLocal(parseFileUrl(joPaymentReceipt));
   }, [joInvoiceFile, joPaymentReceipt]);
@@ -49,7 +53,6 @@ export default function JoDetailsPopUp({
   useEffect(() => {
     async function fetchData() {
       try {
-        // Fetch JO lines and MR header in parallel
         const [linesRes, headerRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`, {
             method: "POST",
@@ -59,14 +62,11 @@ export default function JoDetailsPopUp({
               mr_header_id: joId,
             }),
           }),
-          fetch(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMrHeaderByID`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: joId }),
-            },
-          ),
+          fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMrHeaderByID`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: joId }),
+          }),
         ]);
 
         const linesData = await linesRes.json();
@@ -181,10 +181,7 @@ export default function JoDetailsPopUp({
         }),
       });
       if (!res.ok) throw new Error("Failed to approve payment");
-      toast(
-        `Payment receipt for ${mrNumber} uploaded`,
-        "success",
-      );
+      toast(`Payment receipt for ${mrNumber} uploaded`, "success");
       setPaymentReceiptLocal(uploadedUrl);
       onPaymentComplete();
     } catch (error) {
@@ -209,18 +206,10 @@ export default function JoDetailsPopUp({
         <>
           <div
             style={{
-              display: "inline-grid",
-              gridTemplateColumns:
-                "repeat(auto-fill, minmax(150px, max-content))",
-              columnGap: "40px",
-              rowGap: "15px",
-              marginBottom: "10px",
+              display: "flex",
+              gap: "20px",
             }}
           >
-            <div>
-              <small>DUE DATE</small>
-              <h2>{formatDate(mrHeader.required_date)}</h2>
-            </div>
             <div>
               <small>PROJECT</small>
               <h2>{mrHeader.project_name || "-"}</h2>
@@ -241,133 +230,156 @@ export default function JoDetailsPopUp({
               <small>REQUIRED DATE</small>
               <h2>{formatDate(mrHeader.required_date)}</h2>
             </div>
+            <div>
+              <small>DELIVERY DATE</small>
+              <h2>{formatDate(mrHeader.delivery_date)}</h2>
+            </div>
           </div>
 
+          <br />
           <br />
         </>
       )}
 
       {/* ─── File Actions Row ─── */}
-      <div
-        style={{
-          display: "flex",
-          gap: "15px",
-          alignItems: "center",
-          flexWrap: "wrap",
-          marginBottom: "10px",
-        }}
-      >
-        {/* Invoice: download or upload */}
-        {invoiceFileLocal ? (
-          <Button
-            componentType={"button"}
-            bgColor={"transparent"}
-            borderColor={"rgb(207, 207, 207)"}
-            textColor={"black"}
-            style={{ padding: "7px 20px", borderRadius: "50px" }}
-            onClick={() =>
-              handleDownloadFile(
-                invoiceFileLocal,
-                `Invoice-${mrNumber}.pdf`,
-              )
-            }
-          >
-            INVOICE
-            <img src={downloadIcon} alt="download" style={{ width: "14px" }} />
-          </Button>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-            <label
-              style={{
-                padding: "7px 20px",
-                borderRadius: "50px",
-                border: "1px solid rgb(207, 207, 207)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "14px",
-              }}
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div></div>
+        <div
+          style={{
+            display: "flex",
+            gap: "5px",
+            alignItems: "center",
+          }}
+        >
+          {/* Invoice: download or upload */}
+          {invoiceFileLocal ? (
+            <Button
+              componentType={"none"}
+              bgColor={"transparent"}
+              borderColor={"rgb(207, 207, 207)"}
+              textColor={"black"}
+              style={{ padding: "7px 20px", borderRadius: "50px" }}
             >
-              <img src={uploadIcon} alt="upload" style={{ width: "14px" }} />
-              UPLOAD INVOICE
-              <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                style={{ display: "none" }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleUploadInvoice(file);
-                }}
-              />
-            </label>
-            {isUploadingInvoice && (
-              <span style={{ fontSize: "12px" }}>Uploading...</span>
-            )}
-          </div>
-        )}
-
-        {/* Payment Receipt: download or upload */}
-        {paymentReceiptLocal ? (
-          <Button
-            componentType={"button"}
-            bgColor={"rgba(34, 150, 100, 1)"}
-            borderColor={"rgba(34, 150, 100, 1)"}
-            textColor={"white"}
-            style={{ padding: "7px 20px", borderRadius: "50px" }}
-            onClick={() =>
-              handleDownloadFile(
-                paymentReceiptLocal,
-                `Receipt-${mrNumber}.pdf`,
-              )
-            }
-          >
-            PAYMENT RECEIPT
-            <img
-              src={downloadIcon}
-              alt="download"
-              style={{ width: "14px", filter: "invert(1)" }}
-            />
-          </Button>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-            <label
-              style={{
-                padding: "7px 20px",
-                borderRadius: "50px",
-                border: "1px solid black",
-                backgroundColor: "black",
-                color: "white",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "14px",
-              }}
-            >
+              Invoice
               <img
-                src={uploadIcon}
-                alt="upload"
-                style={{ width: "14px", filter: "invert(1)" }}
+                src={downloadIcon}
+                alt="download"
+                onClick={() =>
+                  handleDownloadFile(
+                    invoiceFileLocal,
+                    `Invoice-${mrNumber}.pdf`,
+                  )
+                }
               />
-              PROCEED PAYMENT
-              <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                style={{ display: "none" }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleUploadPaymentReceipt(file);
+            </Button>
+          ) : canUpload ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              <label
+                style={{
+                  padding: "7px 20px",
+                  borderRadius: "50px",
+                  border: "1px solid black",
+                  backgroundColor: "black",
+                  color: "white",
+                  cursor: isUploadingInvoice ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  fontSize: "14px",
+                  opacity: isUploadingInvoice ? 0.6 : 1,
                 }}
+              >
+                {isUploadingInvoice ? (
+                  <>
+                    Uploading...
+                    <span style={{ fontSize: "12px" }}>⏳</span>
+                  </>
+                ) : (
+                  <>
+                    Upload Invoice
+                    <img src={uploadIcon} alt="upload" />
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  style={{ display: "none" }}
+                  disabled={isUploadingInvoice}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleUploadInvoice(file);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+          ) : null}
+
+          {/* Payment Receipt: download or upload */}
+          {paymentReceiptLocal ? (
+            <Button
+              componentType={"none"}
+              bgColor={"transparent"}
+              borderColor={"rgb(207, 207, 207)"}
+              textColor={"black"}
+              style={{ padding: "7px 20px", borderRadius: "50px" }}
+            >
+              Payment Receipt
+              <img
+                src={downloadIcon}
+                alt="download"
+                onClick={() =>
+                  handleDownloadFile(
+                    paymentReceiptLocal,
+                    `Receipt-${mrNumber}.pdf`,
+                  )
+                }
               />
-            </label>
-            {isUploadingPayment && (
-              <span style={{ fontSize: "12px", color: "white" }}>
-                Uploading...
-              </span>
-            )}
-          </div>
-        )}
+            </Button>
+          ) : canUpload ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              <label
+                style={{
+                  padding: "7px 20px",
+                  borderRadius: "50px",
+                  border: "1px solid rgba(34, 150, 100, 1)",
+                  backgroundColor: "rgba(34, 150, 100, 1)",
+                  color: "white",
+                  cursor: isUploadingPayment ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  fontSize: "14px",
+                  opacity: isUploadingPayment ? 0.6 : 1,
+                }}
+              >
+                {isUploadingPayment ? (
+                  <>
+                    Uploading...
+                    <span style={{ fontSize: "12px" }}>⏳</span>
+                  </>
+                ) : (
+                  <>
+                    Proceed to Payment
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      style={{ display: "none" }}
+                      disabled={isUploadingPayment}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleUploadPaymentReceipt(file);
+                        }
+                      }}
+                    />
+                  </>
+                )}
+              </label>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <br />
@@ -395,7 +407,6 @@ export default function JoDetailsPopUp({
             </tr>
           ) : (
             joLines.map((line: any, index: number) => {
-              // Parse attachment
               let attachmentUrl: string | null = null;
               if (line.attachment) {
                 try {
@@ -403,9 +414,7 @@ export default function JoDetailsPopUp({
                     typeof line.attachment === "string"
                       ? JSON.parse(line.attachment)
                       : line.attachment;
-                  attachmentUrl = Array.isArray(parsed)
-                    ? parsed[0]
-                    : parsed;
+                  attachmentUrl = Array.isArray(parsed) ? parsed[0] : parsed;
                 } catch {
                   attachmentUrl = line.attachment;
                 }
@@ -455,10 +464,7 @@ export default function JoDetailsPopUp({
         {joLines.length > 0 && (
           <tfoot>
             <tr>
-              <td
-                colSpan={5}
-                style={{ textAlign: "right", fontWeight: "600" }}
-              >
+              <td colSpan={5} style={{ textAlign: "right", fontWeight: "600" }}>
                 TOTAL
               </td>
               <td style={{ fontWeight: "600" }}>
