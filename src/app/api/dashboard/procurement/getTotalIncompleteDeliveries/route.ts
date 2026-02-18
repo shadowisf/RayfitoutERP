@@ -6,12 +6,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { filter } = body;
 
-    // Validate filter parameter
-    if (!filter || typeof filter !== "number" || filter <= 0) {
+    // Validate filter parameter (0 = all time, positive = days)
+    if (filter === undefined || filter === null || typeof filter !== "number" || filter < 0) {
       return NextResponse.json(
-        { error: "Invalid 'filter' parameter. Must be a positive number." },
+        { error: "Invalid 'filter' parameter. Must be a non-negative number." },
         { status: 400 },
       );
+    }
+
+    if (filter === 0) {
+      const [rows]: any = await db.query(
+        `SELECT COUNT(*) AS this_period FROM lpo WHERE delivery_date < CURDATE() AND progress_id != 25`
+      );
+      return NextResponse.json({ this_week: rows[0].this_period || 0, last_week: 0 }, { status: 200 });
     }
 
     const [rows]: any = await db.query(

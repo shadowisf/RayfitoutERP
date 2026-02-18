@@ -6,12 +6,39 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { filter } = body;
 
-    // Validate filter parameter
-    if (!filter || typeof filter !== "number" || filter <= 0) {
+    // Validate filter parameter (0 = all time, positive = days)
+    if (filter === undefined || filter === null || typeof filter !== "number" || filter < 0) {
       return NextResponse.json(
-        { error: "Invalid 'filter' parameter. Must be a positive number." },
+        { error: "Invalid 'filter' parameter. Must be a non-negative number." },
         { status: 400 }
       );
+    }
+
+    if (filter === 0) {
+      // All time — no date restriction
+      const [rows]: any = await db.query(`
+        SELECT
+          AVG(TIMESTAMPDIFF(MINUTE, payment_start.changed_at, payment_end.changed_at)) AS avg_payment_minutes,
+          COUNT(DISTINCT payment_start.mr_header_id) AS mr_count
+        FROM mr_header_progress_log payment_start
+        INNER JOIN mr_header_progress_log payment_end
+          ON payment_start.mr_header_id = payment_end.mr_header_id
+          AND payment_end.id = (
+            SELECT MIN(id) FROM mr_header_progress_log
+            WHERE mr_header_id = payment_start.mr_header_id AND id > payment_start.id AND progress_id != 14
+          )
+        WHERE payment_start.progress_id = 14 AND payment_end.changed_at IS NOT NULL
+      `);
+
+      if (!rows || rows.length === 0 || !rows[0].avg_payment_minutes) {
+        return NextResponse.json({ this_week: 0, last_week: 0, this_week_unit: "hrs", last_week_unit: "hrs" }, { status: 200 });
+      }
+
+      const minutes = Math.round(rows[0].avg_payment_minutes || 0);
+      const hours = Math.round(minutes / 60);
+      const value = hours >= 1 ? hours : minutes;
+      const unit = hours >= 1 ? "hrs" : "mins";
+      return NextResponse.json({ this_week: value, last_week: 0, this_week_unit: unit, last_week_unit: "hrs" }, { status: 200 });
     }
 
     const query = `

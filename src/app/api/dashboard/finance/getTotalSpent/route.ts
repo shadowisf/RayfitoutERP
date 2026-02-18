@@ -6,12 +6,25 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { filter } = body;
 
-    // Validate filter parameter
-    if (!filter || typeof filter !== "number" || filter <= 0) {
+    // Validate filter parameter (0 = all time, positive = days)
+    if (filter === undefined || filter === null || typeof filter !== "number" || filter < 0) {
       return NextResponse.json(
-        { error: "Invalid 'filter' parameter. Must be a positive number." },
+        { error: "Invalid 'filter' parameter. Must be a non-negative number." },
         { status: 400 }
       );
+    }
+
+    if (filter === 0) {
+      // All time — no date restriction
+      const [projectRows] = await db.query(
+        "SELECT COALESCE(SUM(allocated_budget), 0) AS project_allocated FROM projects"
+      );
+      const [lpoRows] = await db.query(
+        "SELECT COALESCE(SUM(total), 0) AS lpo_total FROM lpo WHERE payment_status = 'Approved'"
+      );
+      const total = Number((projectRows as any[])[0]?.project_allocated ?? 0) +
+        Number((lpoRows as any[])[0]?.lpo_total ?? 0);
+      return NextResponse.json({ this_week: total, last_week: 0 }, { status: 200 });
     }
 
     // 1️⃣ Get current period: sum of allocated_budget from projects + approved LPO totals

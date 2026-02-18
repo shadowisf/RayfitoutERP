@@ -32,7 +32,7 @@ export default function Dashboard() {
   const { userInfo } = useAuth();
 
   const [projects, setProjects] = useState<any[]>([]);
-  const [overviewFilter, setOverviewFilter] = useState(7);
+  const [overviewFilter, setOverviewFilter] = useState(0);
 
   const DEPARTMENT_IDS = [1, 2, 3, 4, 5, 6, 7, 13, 14, 16];
 
@@ -135,6 +135,7 @@ export default function Dashboard() {
                 borderRadius: "50px",
               }}
             >
+              <option value={0}>All Time</option>
               <option value={7}>Last 7 Days</option>
               <option value={14}>Last 14 Days</option>
               <option value={30}>Last month</option>
@@ -215,6 +216,7 @@ export default function Dashboard() {
                 borderRadius: "50px",
               }}
             >
+              <option value={0}>All Time</option>
               <option value={7}>Last 7 Days</option>
               <option value={14}>Last 14 Days</option>
               <option value={30}>Last month</option>
@@ -284,6 +286,7 @@ export default function Dashboard() {
                 borderRadius: "50px",
               }}
             >
+              <option value={0}>All Time</option>
               <option value={7}>Last 7 Days</option>
               <option value={14}>Last 14 Days</option>
               <option value={30}>Last month</option>
@@ -356,6 +359,7 @@ export default function Dashboard() {
                 borderRadius: "50px",
               }}
             >
+              <option value={0}>All Time</option>
               <option value={7}>Last 7 Days</option>
               <option value={14}>Last 14 Days</option>
               <option value={30}>Last month</option>

@@ -26,6 +26,7 @@ export default function CancelMaterialRequestButton({
   children,
 }: CancelMaterialRequestButtonProps) {
   const router = useRouter();
+
   const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -170,6 +171,8 @@ export default function CancelMaterialRequestButton({
         rollback_progress_id: selectedStage,
         rollback_progress_name: allProgressStages[selectedStage],
         department_id: mrHeader.department_id,
+        current_progress_id: currentProgressId,
+        changed_by: userInfo?.name,
       }),
     });
 

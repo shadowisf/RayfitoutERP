@@ -12,12 +12,14 @@ type SubitForInitialApprovalButtonProps = {
   mrHeader: MrHeader;
   disabled?: boolean;
   style?: React.CSSProperties;
+  progressId?: number;
 };
 
 export default function SubmitForInitialApprovalButton({
   mrHeader,
   disabled,
   style,
+  progressId,
 }: SubitForInitialApprovalButtonProps) {
   const router = useRouter();
 
@@ -36,6 +38,7 @@ export default function SubmitForInitialApprovalButton({
         id: mrHeader.id,
         changed_by: userInfo?.name,
         department_id: mrHeader.department_id,
+        from_progress_id: progressId || mrHeader.progress_id,
       }),
     });
 

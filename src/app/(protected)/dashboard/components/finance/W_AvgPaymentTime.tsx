@@ -86,9 +86,12 @@ export default function AvgPaymentTimeWidget({ filterDays = 7 }: props) {
   const arrow = isIncrease ? upArrow : downArrow;
 
   // ✅ Updated text to be more generic
-  const periodLabel = filterDays === 7 ? "week" : `${filterDays} days`;
+  const isAllTime = filterDays === 0;
+  const periodLabel = isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
   const changeText = hasNoPaymentTime
     ? "No payments completed yet"
+    : isAllTime
+    ? "Average payment time across all time"
     : isIncrease
     ? `${changeMagnitude} increase from last ${periodLabel}`
     : `${changeMagnitude} decrease from last ${periodLabel}`;
@@ -104,7 +107,7 @@ export default function AvgPaymentTimeWidget({ filterDays = 7 }: props) {
           <p className="number">
             {isLoading ? "..." : `${thisWeek} ${thisWeekUnit}`}
           </p>
-          {!hasNoPaymentTime && !isLoading && (
+          {!hasNoPaymentTime && !isLoading && !isAllTime && (
             <div
               className="data-pill"
               style={{ backgroundColor: pillBackgroundColor }}

@@ -7,6 +7,7 @@ import MrLinesView from "./components/MrLinesView";
 import JoLinesView from "./components/JoLinesView";
 import { MrHeader } from "./types/mrHeader";
 import CancelMaterialRequestButton from "./components/_CancelMaterialRequest";
+import RequisitionTimeline from "./components/RequisitionTimeline";
 
 export default async function MrWithID({
   params,
@@ -406,9 +407,7 @@ export default async function MrWithID({
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <div>
               <small>PROJECT</small>
-              <h2 style={{ textWrap: "nowrap" }}>
-                {mrHeader.project_name || "-"}
-              </h2>
+              <h2>{mrHeader.project_name || "-"}</h2>
             </div>
 
             {mrHeader.project_name && (
@@ -427,14 +426,12 @@ export default async function MrWithID({
 
           <div>
             <small>PURPOSE</small>
-            <h2 style={{ textWrap: "nowrap" }}>{mrHeader.purpose_name}</h2>
+            <h2>{mrHeader.purpose_name}</h2>
           </div>
 
           <div>
-            <small style={{ textWrap: "nowrap" }}>REQUESTED BY</small>
-            <h2 style={{ textWrap: "nowrap" }}>
-              {mrHeader.requested_by || ""}
-            </h2>
+            <small>REQUESTED BY</small>
+            <h2>{mrHeader.requested_by || ""}</h2>
           </div>
 
           <div>
@@ -444,9 +441,9 @@ export default async function MrWithID({
 
           <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
             <div>
-              <small style={{ textWrap: "nowrap" }}>REQUIRED DATE</small>
+              <small>REQUIRED DATE</small>
               <h2>
-                {new Date(mrHeader.required_date).toLocaleDateString("en-US")}
+                {new Date(mrHeader.required_date).toLocaleDateString("en-GB")}
               </h2>
             </div>
 
@@ -527,13 +524,13 @@ export default async function MrWithID({
                     return (
                       <div key={index} style={{ display: "flex", gap: "10px" }}>
                         <div>
-                          <small style={{ textWrap: "nowrap" }}>
+                          <small>
                             {delivery.supplier_name.toUpperCase()} DELIVERY DATE
                           </small>
                           <h2>
                             {new Date(
                               delivery.delivery_date,
-                            ).toLocaleDateString("en-US")}
+                            ).toLocaleDateString("en-GB")}
                           </h2>
                         </div>
                         {!isCompleted && (
@@ -559,6 +556,15 @@ export default async function MrWithID({
           </>
         )}
       </div>
+
+      <br />
+      <br />
+
+      <RequisitionTimeline
+        mrHeaderId={mrHeader.id}
+        currentProgressId={mrHeader.progress_id}
+        type={effectiveIsJobOrder ? "job" : "material"}
+      />
 
       <br />
       <br />

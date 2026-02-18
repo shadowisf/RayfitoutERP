@@ -89,8 +89,8 @@ export default function Subcontractor() {
               <option value="" disabled>
                 SORT BY
               </option>
-              <option value="name">Subcontractor Name</option>
-              <option value="id">Subcontractor ID</option>
+              <option value="name">Name</option>
+              <option value="id">ID</option>
             </select>
           </div>
 

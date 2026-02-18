@@ -897,7 +897,7 @@ export default function BoqLinesView({
       <br />
 
       <div className="category-grid">
-        <div style={{ position: "relative", flex: 1, maxWidth: "825px" }}>
+        <div style={{ position: "relative", flex: 1, maxWidth: "625px" }}>
           {showLeftArrow && (
             <div
               style={{

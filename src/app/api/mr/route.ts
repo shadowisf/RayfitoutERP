@@ -191,10 +191,10 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log 
-   (mr_header_id, progress_id, changed_by) 
-   VALUES (?, ?, ?)`,
-        [body.id, body.rollback_progress_id, `${body.changed_by} (ROLLBACK)`],
+        `INSERT INTO mr_header_progress_log
+   (mr_header_id, progress_id, from_progress_id, changed_by)
+   VALUES (?, ?, ?, ?)`,
+        [body.id, body.rollback_progress_id, body.current_progress_id || null, `${body.changed_by} (ROLLBACK)`],
       );
 
       await db.query(
@@ -226,7 +226,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 9, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 9, 7, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -257,7 +257,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 2, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 2, 1, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -290,7 +290,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 12, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 12, 10, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -313,7 +313,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 11, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 11, 10, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -336,7 +336,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 21, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 21, 17, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -349,7 +349,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 24, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 24, 21, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -362,8 +362,8 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 3, ?)`,
-        [body.id, body.changed_by],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 3, ?, ?)`,
+        [body.id, body.from_progress_id || 1, body.changed_by],
       );
 
       await db.query(
@@ -449,7 +449,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 5, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 5, 3, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -472,8 +472,8 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 7, ?)`,
-        [body.id, body.changed_by],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 7, ?, ?)`,
+        [body.id, body.from_progress_id || 3, body.changed_by],
       );
 
       await db.query(
@@ -505,8 +505,8 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 10, ?)`,
-        [body.id, body.changed_by],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 10, ?, ?)`,
+        [body.id, body.from_progress_id || 7, body.changed_by],
       );
 
       await db.query(
@@ -528,7 +528,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 14, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 14, 12, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -551,7 +551,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 17, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 17, 14, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -614,7 +614,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 13, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 13, 14, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -637,7 +637,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 16, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 16, 17, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -650,7 +650,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 23, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 23, 21, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -663,7 +663,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 25, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 25, 24, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -747,7 +747,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 12, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 12, 10, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -788,7 +788,7 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, changed_by) VALUES (?, 25, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 25, 12, ?)`,
         [body.id, body.changed_by],
       );
 

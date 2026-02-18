@@ -32,6 +32,9 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
   const [trnCertificateFile, setTrnCertificateFile] = useState<File | null>(
     null,
   );
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [tradeLicenseFile, setTradeLicenseFile] = useState<File | null>(null);
+  const [otherDocsFile, setOtherDocsFile] = useState<File | null>(null);
   const [contactPersonName, setContactPersonName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -56,6 +59,9 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
     setMaterialCategoryID([]);
     setTrn("");
     setTrnCertificateFile(null);
+    setContractFile(null);
+    setTradeLicenseFile(null);
+    setOtherDocsFile(null);
     setContactPersonName("");
     setPhone("");
     setEmail("");
@@ -66,30 +72,93 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
     setNotes("");
   }
 
+  // Helper function to upload a single file to S3
+  async function uploadFileToS3(file: File, folder: string): Promise<string> {
+    const formData = new FormData();
+    formData.append("files", file);
+    formData.append("folder", folder);
+
+    const response = await fetch("/api/s3", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to upload file to ${folder}`);
+    }
+
+    const result = await response.json();
+    return result.urls[0];
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     e.stopPropagation();
 
     try {
-      let trnCertificateUrl = null;
+      // Upload all files concurrently
+      const uploadPromises: Promise<{ type: string; url: string }>[] = [];
 
       if (trnCertificateFile) {
-        const trnFormData = new FormData();
-        trnFormData.append("files", trnCertificateFile);
-        trnFormData.append("folder", "subcontractor-trn-certificates");
-
-        const trnUploadResponse = await fetch("/api/s3", {
-          method: "POST",
-          body: trnFormData,
-        });
-
-        if (!trnUploadResponse.ok) {
-          throw new Error("Failed to upload TRN certificate");
-        }
-
-        const trnUploadResult = await trnUploadResponse.json();
-        trnCertificateUrl = trnUploadResult.urls[0];
+        uploadPromises.push(
+          uploadFileToS3(
+            trnCertificateFile,
+            "subcontractor-trn-certificates",
+          ).then((url) => ({ type: "trn", url })),
+        );
       }
+
+      if (contractFile) {
+        uploadPromises.push(
+          uploadFileToS3(contractFile, "subcontractor-contracts").then(
+            (url) => ({ type: "contract", url }),
+          ),
+        );
+      }
+
+      if (tradeLicenseFile) {
+        uploadPromises.push(
+          uploadFileToS3(tradeLicenseFile, "subcontractor-trade-licenses").then(
+            (url) => ({ type: "tradeLicense", url }),
+          ),
+        );
+      }
+
+      if (otherDocsFile) {
+        uploadPromises.push(
+          uploadFileToS3(otherDocsFile, "subcontractor-other-docs").then(
+            (url) => ({ type: "otherDocs", url }),
+          ),
+        );
+      }
+
+      // Wait for all uploads to complete
+      const uploadedFiles = await Promise.all(uploadPromises);
+
+      // Build file URLs object
+      const fileUrls: {
+        trn_certificate?: string;
+        contract?: string;
+        trade_license?: string;
+        other_docs?: string;
+      } = {};
+
+      uploadedFiles.forEach((file) => {
+        switch (file.type) {
+          case "trn":
+            fileUrls.trn_certificate = file.url;
+            break;
+          case "contract":
+            fileUrls.contract = file.url;
+            break;
+          case "tradeLicense":
+            fileUrls.trade_license = file.url;
+            break;
+          case "otherDocs":
+            fileUrls.other_docs = file.url;
+            break;
+        }
+      });
 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`,
@@ -100,18 +169,19 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
             action: "createSubcontractor",
             name,
             material_categories: materialCategoryID,
-            trn_number: trn || null,
-            trn_certificate: trnCertificateUrl
-              ? JSON.stringify(trnCertificateUrl)
-              : null,
-            contact_person_name: contactPersonName || null,
-            phone: phone || null,
-            email: email || null,
-            address: address || null,
-            website: website || null,
-            bank_name: bankName || null,
-            account_number: accountNumber || null,
-            notes: notes || null,
+            trn_number: trn,
+            trn_certificate: fileUrls.trn_certificate || null,
+            contract: fileUrls.contract || null,
+            trade_license: fileUrls.trade_license || null,
+            other_docs: fileUrls.other_docs || null,
+            contact_person_name: contactPersonName,
+            phone,
+            email,
+            address,
+            website,
+            bank_name: bankName,
+            account_number: accountNumber,
+            notes,
           }),
         },
       );
@@ -126,7 +196,8 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
 
         router.refresh();
       } else {
-        toast("Failed to create subcontractor", "error");
+        const errorData = await res.json();
+        toast(errorData.error || "Failed to create subcontractor", "error");
       }
     } catch (error: any) {
       console.error("Error creating subcontractor:", error);
@@ -196,6 +267,29 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
               label={"TRN CERTIFICATE"}
               acceptedFileTypes={".pdf,.jpeg,.jpg,.png"}
               required
+            />
+            <UploadFileBox
+              fileState={contractFile}
+              setFileState={setContractFile}
+              label={"CONTRACT"}
+              acceptedFileTypes={".pdf,.jpeg,.jpg,.png"}
+              required
+            />
+          </div>
+
+          <div className="input-row half">
+            <UploadFileBox
+              fileState={tradeLicenseFile}
+              setFileState={setTradeLicenseFile}
+              label={"TRADE LICENSE"}
+              acceptedFileTypes={".pdf,.jpeg,.jpg,.png"}
+              required
+            />
+            <UploadFileBox
+              fileState={otherDocsFile}
+              setFileState={setOtherDocsFile}
+              label={"OTHER DOCUMENTS"}
+              acceptedFileTypes={".pdf,.jpeg,.jpg,.png"}
             />
           </div>
 

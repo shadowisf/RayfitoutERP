@@ -2274,6 +2274,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     mrHeader.progress_id === 23 && (
                                       <th>RESOLUTION</th>
                                     )}
+                                  {(mrHeader.progress_id === 9 ||
+                                    mrHeader.progress_id === 10) &&
+                                    (userInfo?.departmentID === 8 ||
+                                      userInfo?.departmentID === 16) && (
+                                      <th>ACTIONS</th>
+                                    )}
                                 </tr>
                               </thead>
                               <tbody>
@@ -2591,6 +2597,25 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             </td>
                                           )}
 
+                                        {(mrHeader.progress_id === 9 ||
+                                          mrHeader.progress_id === 10) &&
+                                          (userInfo?.departmentID === 8 ||
+                                            userInfo?.departmentID === 16) && (
+                                            <td>
+                                              <DeleteMrItemButton
+                                                item={item}
+                                                bgColor="rgba(239, 239, 239, 1)"
+                                                borderColor="rgba(223, 223, 223, 1)"
+                                                textColor="black"
+                                              >
+                                                <img
+                                                  src={trashIcon}
+                                                  alt="trash icon"
+                                                />
+                                              </DeleteMrItemButton>
+                                            </td>
+                                          )}
+
                                         {userInfo?.departmentID === 12 &&
                                           mrHeader.progress_id === 21 && (
                                             <td>
@@ -2662,6 +2687,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             <td></td>
                                             <td></td>
                                             <td></td>
+                                            <td></td>
                                             <td
                                               style={{
                                                 padding: "15px 20px",
@@ -2676,6 +2702,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                 ),
                                               ).toFixed(2)}
                                             </td>
+                                            <td></td>
                                           </tr>
                                         </tbody>
                                       </table>
@@ -2898,6 +2925,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                               {userInfo?.departmentID === 9 &&
                                 mrHeader.progress_id === 23 && (
                                   <th>RESOLUTION</th>
+                                )}
+                              {(mrHeader.progress_id === 9 ||
+                                mrHeader.progress_id === 10) &&
+                                (userInfo?.departmentID === 8 ||
+                                  userInfo?.departmentID === 16) && (
+                                  <th>ACTIONS</th>
                                 )}
                             </tr>
                           </thead>
@@ -3202,6 +3235,25 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         </td>
                                       )}
 
+                                    {(mrHeader.progress_id === 9 ||
+                                      mrHeader.progress_id === 10) &&
+                                      (userInfo?.departmentID === 8 ||
+                                        userInfo?.departmentID === 16) && (
+                                        <td>
+                                          <DeleteMrItemButton
+                                            item={item}
+                                            bgColor="rgba(239, 239, 239, 1)"
+                                            borderColor="rgba(223, 223, 223, 1)"
+                                            textColor="black"
+                                          >
+                                            <img
+                                              src={trashIcon}
+                                              alt="trash icon"
+                                            />
+                                          </DeleteMrItemButton>
+                                        </td>
+                                      )}
+
                                     {userInfo?.departmentID === 12 &&
                                       mrHeader.progress_id === 21 && (
                                         <td>
@@ -3270,6 +3322,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         <td></td>
                                         <td></td>
                                         <td></td>
+                                        <td></td>
                                         <td
                                           style={{
                                             padding: "15px 20px",
@@ -3282,6 +3335,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             getAllItemsInSubCategory(suppliers),
                                           ).toFixed(2)}
                                         </td>
+                                        <td></td>
                                       </tr>
                                     </tbody>
                                   </table>
@@ -3828,6 +3882,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               // If no items have BOQ → Submit directly to Manager Approval
               <SubmitForInitialApprovalButton
                 mrHeader={mrHeader}
+                progressId={mrHeader.progress_id}
                 disabled={hasAnyRejectedItems()}
                 style={{
                   opacity: hasAnyRejectedItems() ? "0.5" : "1",
@@ -3873,6 +3928,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           ) : (
             <SubmitForQuotationsButton
               mrHeader={mrHeader}
+              progressId={mrHeader.progress_id}
               disabled={!allItemsApproved()}
               style={{
                 opacity: !allItemsApproved() ? "0.5" : "1",
@@ -3902,6 +3958,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           ) : (
             <SubmitForInitialApprovalButton
               mrHeader={mrHeader}
+              progressId={mrHeader.progress_id}
               disabled={!allItemsQSApproved()} // Changed this line
               style={{
                 opacity: !allItemsQSApproved() ? "0.5" : "1", // Changed this line
@@ -3954,6 +4011,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               // If no items have BOQ → Submit directly to Manager Price Approval
               <SubmitForPricingApprovalButton
                 mrHeaderID={mrHeader.id}
+                progressId={mrHeader.progress_id}
                 disabled={
                   !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
                 }
@@ -4019,6 +4077,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
           ) : (
             <SubmitForPricingApprovalButton
               mrHeaderID={mrHeader.id}
+              progressId={mrHeader.progress_id}
               disabled={!allSuppliersQSApproved()}
               style={{
                 opacity: !allSuppliersQSApproved() ? "0.5" : "1",

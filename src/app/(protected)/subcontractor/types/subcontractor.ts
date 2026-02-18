@@ -3,6 +3,9 @@ type Subcontractor = {
   name: string;
   trn_number: string;
   trn_certificate: string;
+  contract: string;
+  trade_license: string;
+  other_docs: string;
   contact_person_name: string;
   phone: string;
   email: string;

@@ -117,6 +117,7 @@ export default function TopVendorsByVolumeWidget({ filterDays }: Props) {
                 MozAppearance: "none",
               }}
             >
+              <option value={0}>All Time</option>
               <option value={7}>Last 7 Days</option>
               <option value={14}>Last 14 Days</option>
               <option value={30}>Last Month</option>
@@ -177,6 +178,7 @@ export default function TopVendorsByVolumeWidget({ filterDays }: Props) {
                 MozAppearance: "none",
               }}
             >
+              <option value={0}>All Time</option>
               <option value={7}>Last 7 Days</option>
               <option value={14}>Last 14 Days</option>
               <option value={30}>Last Month</option>

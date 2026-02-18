@@ -29,21 +29,24 @@ export async function POST(req: Request) {
     if (body.action === "createSubcontractor") {
       const query = `
         INSERT INTO subcontractors
-        (name, trn_number, trn_certificate, contact_person_name, phone, email, address, website, bank_name, account_number, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (name, trn_number, trn_certificate, contract, trade_license, other_docs, contact_person_name, phone, email, address, website, bank_name, account_number, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
         body.name,
-        body.trn_number || null,
-        body.trn_certificate || null,
-        body.contact_person_name || null,
+        body.trn_number,
+        body.trn_certificate,
+        body.contract,
+        body.trade_licens,
+        body.other_docs || null,
+        body.contact_person_name,
         body.phone || null,
         body.email || null,
         body.address || null,
-        body.website || null,
-        body.bank_name || null,
-        body.account_number || null,
+        body.website,
+        body.bank_name,
+        body.account_number,
         body.notes || null,
       ];
 
@@ -110,6 +113,9 @@ export async function PUT(req: Request) {
           name = ?,
           trn_number = ?,
           trn_certificate = ?,
+          contract = ?,
+          trade_license = ?,
+          other_docs = ?,
           contact_person_name = ?,
           phone = ?,
           email = ?,
@@ -123,15 +129,18 @@ export async function PUT(req: Request) {
 
       await db.query(query, [
         body.name,
-        body.trn_number || null,
-        body.trn_certificate || null,
-        body.contact_person_name || null,
+        body.trn_number,
+        body.trn_certificate,
+        body.contract,
+        body.trade_license,
+        body.other_docs || null,
+        body.contact_person_name,
         body.phone || null,
         body.email || null,
         body.address || null,
-        body.website || null,
-        body.bank_name || null,
-        body.account_number || null,
+        body.website,
+        body.bank_name,
+        body.account_number,
         body.notes || null,
         body.id,
       ]);

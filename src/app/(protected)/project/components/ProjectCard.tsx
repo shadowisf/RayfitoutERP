@@ -79,53 +79,42 @@ export default function ProjectCard({ project, onSuccess }: props) {
 
   return (
     <div className="item" key={project.id}>
-      {/* <span
-        className="status"
-        style={
-          project.status === "Completed"
-            ? {
-                backgroundColor: "rgba(134,241,181,1)",
-                color: "rgba(52,100,73,1)",
-              }
-            : {
-                backgroundColor: "rgba(255, 250, 189, 1)",
-                color: "rgba(134, 83, 47, 1)",
-              }
-        }
-      >
-        {project.status}
-      </span> */}
-
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <span></span>
-
-        {project.type.toLowerCase().includes("signed") ? (
-          <span
-            className="approval-pill normal-text"
-            style={
-              project.status.toLowerCase().includes("completed")
-                ? {
-                    backgroundColor: "rgba(134,241,181,1)",
-                    color: "rgba(52,100,73,1)",
-                  }
-                : {
-                    backgroundColor: "rgba(255, 250, 189, 1)",
-                    color: "rgba(134, 83, 47, 1)",
-                  }
-            }
-          >
-            {project.status}
-          </span>
-        ) : (
-          (userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
-            <DeleteProjectButton project={project} onSuccess={onSuccess} />
-          )
-        )}
-      </div>
-
       <div>
-        <small>NAME</small>
-        <h2>{project.name}</h2>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <small>NAME</small>
+            <h2>{project.name}</h2>
+          </div>
+
+          {project.type.toLowerCase().includes("signed") ? (
+            <div
+              className="approval-pill normal-text"
+              style={
+                project.status.toLowerCase().includes("completed")
+                  ? {
+                      backgroundColor: "rgba(134,241,181,1)",
+                      color: "rgba(52,100,73,1)",
+                    }
+                  : {
+                      backgroundColor: "rgba(255, 250, 189, 1)",
+                      color: "rgba(134, 83, 47, 1)",
+                    }
+              }
+            >
+              {project.status}
+            </div>
+          ) : (
+            (userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
+              <DeleteProjectButton project={project} onSuccess={onSuccess} />
+            )
+          )}
+        </div>
 
         <br />
 

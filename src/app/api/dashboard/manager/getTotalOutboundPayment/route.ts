@@ -6,12 +6,21 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { filter } = body;
 
-    // Validate filter parameter
-    if (!filter || typeof filter !== "number" || filter <= 0) {
+    // Validate filter parameter (0 = all time, positive = days)
+    if (filter === undefined || filter === null || typeof filter !== "number" || filter < 0) {
       return NextResponse.json(
-        { error: "Invalid 'filter' parameter. Must be a positive number." },
+        { error: "Invalid 'filter' parameter. Must be a non-negative number." },
         { status: 400 }
       );
+    }
+
+    if (filter === 0) {
+      const [rows]: any = await db.query(
+        `SELECT COALESCE(SUM(lpo.total), 0) AS this_week_total, 0 AS last_week_total
+         FROM lpo JOIN mr_headers h ON lpo.mr_header_id = h.id
+         WHERE lpo.payment_status = 'Approved'`
+      );
+      return NextResponse.json(rows[0], { status: 200 });
     }
 
     const [rows]: any = await db.query(

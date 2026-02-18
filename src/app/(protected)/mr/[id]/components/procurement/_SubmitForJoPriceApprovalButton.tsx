@@ -11,12 +11,14 @@ type SubmitForJoPriceApprovalButtonProps = {
   mrHeaderID: number;
   disabled?: boolean;
   style?: React.CSSProperties;
+  progressId?: number;
 };
 
 export default function SubmitForJoPriceApprovalButton({
   mrHeaderID,
   disabled,
   style,
+  progressId,
 }: SubmitForJoPriceApprovalButtonProps) {
   const router = useRouter();
 
@@ -34,6 +36,7 @@ export default function SubmitForJoPriceApprovalButton({
         action: "submitForPricingApproval",
         id: mrHeaderID,
         changed_by: userInfo?.name,
+        from_progress_id: progressId,
       }),
     });
 

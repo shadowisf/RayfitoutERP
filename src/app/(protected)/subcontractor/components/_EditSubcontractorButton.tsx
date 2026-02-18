@@ -39,9 +39,15 @@ export default function EditSubcontractorButton({
     (string | number)[]
   >(parseCategoryIds(subcontractor?.material_category_ids));
   const [trn, setTrn] = useState(subcontractor?.trn_number || "");
+
+  // New file states (for newly uploaded files)
   const [trnCertificateFile, setTrnCertificateFile] = useState<File | null>(
     null,
   );
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [tradeLicenseFile, setTradeLicenseFile] = useState<File | null>(null);
+  const [otherDocsFile, setOtherDocsFile] = useState<File | null>(null);
+
   const [contactPersonName, setContactPersonName] = useState(
     subcontractor?.contact_person_name || "",
   );
@@ -55,20 +61,42 @@ export default function EditSubcontractorButton({
   );
   const [notes, setNotes] = useState(subcontractor?.notes || "");
 
-  // State to track existing file URL
+  // State to track existing file URLs
   const [existingTrnCertificate, setExistingTrnCertificate] = useState<
     string | null
   >(null);
+  const [existingContract, setExistingContract] = useState<string | null>(null);
+  const [existingTradeLicense, setExistingTradeLicense] = useState<
+    string | null
+  >(null);
+  const [existingOtherDocs, setExistingOtherDocs] = useState<string | null>(
+    null,
+  );
 
-  // Parse JSON string to get URL
+  // Helper to parse file URL (handles both JSON string and plain string)
+  const parseFileUrl = (value: string | null): string | null => {
+    if (!value) return null;
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch (e) {
+      return value;
+    }
+  };
+
+  // Parse existing file URLs on mount
   useEffect(() => {
     if (subcontractor?.trn_certificate) {
-      try {
-        const parsed = JSON.parse(subcontractor.trn_certificate);
-        setExistingTrnCertificate(parsed);
-      } catch (e) {
-        setExistingTrnCertificate(subcontractor.trn_certificate);
-      }
+      setExistingTrnCertificate(parseFileUrl(subcontractor.trn_certificate));
+    }
+    if (subcontractor?.contract) {
+      setExistingContract(parseFileUrl(subcontractor.contract));
+    }
+    if (subcontractor?.trade_license) {
+      setExistingTradeLicense(parseFileUrl(subcontractor.trade_license));
+    }
+    if (subcontractor?.other_docs) {
+      setExistingOtherDocs(parseFileUrl(subcontractor.other_docs));
     }
   }, [subcontractor]);
 
@@ -95,34 +123,111 @@ export default function EditSubcontractorButton({
     }
   };
 
+  // Helper function to upload a single file to S3
+  async function uploadFileToS3(file: File, folder: string): Promise<string> {
+    const formData = new FormData();
+    formData.append("files", file);
+    formData.append("folder", folder);
+
+    const response = await fetch("/api/s3", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to upload file to ${folder}`);
+    }
+
+    const result = await response.json();
+    return result.urls[0];
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     e.stopPropagation();
 
     try {
-      let trnCertificateUrl = subcontractor.trn_certificate;
+      // Track which files need to be uploaded and which old files need deletion
+      const uploadPromises: Promise<{ type: string; url: string }>[] = [];
+      const filesToDelete: string[] = [];
 
-      // If new TRN certificate file uploaded, delete old one and upload new
+      // TRN Certificate
+      let trnCertificateUrl = existingTrnCertificate;
       if (trnCertificateFile) {
         if (existingTrnCertificate) {
-          await deleteS3File(existingTrnCertificate);
+          filesToDelete.push(existingTrnCertificate);
         }
+        uploadPromises.push(
+          uploadFileToS3(
+            trnCertificateFile,
+            "subcontractor-trn-certificates",
+          ).then((url) => ({ type: "trn", url })),
+        );
+      }
 
-        const trnFormData = new FormData();
-        trnFormData.append("files", trnCertificateFile);
-        trnFormData.append("folder", "subcontractor-trn-certificates");
-
-        const trnUploadResponse = await fetch("/api/s3", {
-          method: "POST",
-          body: trnFormData,
-        });
-
-        if (!trnUploadResponse.ok) {
-          throw new Error("Failed to upload TRN certificate");
+      // Contract
+      let contractUrl = existingContract;
+      if (contractFile) {
+        if (existingContract) {
+          filesToDelete.push(existingContract);
         }
+        uploadPromises.push(
+          uploadFileToS3(contractFile, "subcontractor-contracts").then(
+            (url) => ({ type: "contract", url }),
+          ),
+        );
+      }
 
-        const trnUploadResult = await trnUploadResponse.json();
-        trnCertificateUrl = JSON.stringify(trnUploadResult.urls[0]);
+      // Trade License
+      let tradeLicenseUrl = existingTradeLicense;
+      if (tradeLicenseFile) {
+        if (existingTradeLicense) {
+          filesToDelete.push(existingTradeLicense);
+        }
+        uploadPromises.push(
+          uploadFileToS3(tradeLicenseFile, "subcontractor-trade-licenses").then(
+            (url) => ({ type: "tradeLicense", url }),
+          ),
+        );
+      }
+
+      // Other Documents
+      let otherDocsUrl = existingOtherDocs;
+      if (otherDocsFile) {
+        if (existingOtherDocs) {
+          filesToDelete.push(existingOtherDocs);
+        }
+        uploadPromises.push(
+          uploadFileToS3(otherDocsFile, "subcontractor-other-docs").then(
+            (url) => ({ type: "otherDocs", url }),
+          ),
+        );
+      }
+
+      // Upload all new files concurrently
+      const uploadedFiles = await Promise.all(uploadPromises);
+
+      // Map uploaded URLs to their respective fields
+      uploadedFiles.forEach((file) => {
+        switch (file.type) {
+          case "trn":
+            trnCertificateUrl = file.url;
+            break;
+          case "contract":
+            contractUrl = file.url;
+            break;
+          case "tradeLicense":
+            tradeLicenseUrl = file.url;
+            break;
+          case "otherDocs":
+            otherDocsUrl = file.url;
+            break;
+        }
+      });
+
+      // Delete old files from S3 after successful upload
+      for (const url of filesToDelete) {
+        await deleteS3File(url);
       }
 
       const res = await fetch(
@@ -135,15 +240,18 @@ export default function EditSubcontractorButton({
             id: subcontractor.id,
             name,
             material_categories: materialCategoryID,
-            trn_number: trn || null,
-            trn_certificate: trnCertificateUrl || null,
-            contact_person_name: contactPersonName || null,
+            trn_number: trn,
+            trn_certificate: trnCertificateUrl,
+            contract: contractUrl,
+            trade_license: tradeLicenseUrl,
+            other_docs: otherDocsUrl || null,
+            contact_person_name: contactPersonName,
             phone: phone || null,
             email: email || null,
             address: address || null,
             website: website || null,
-            bank_name: bankName || null,
-            account_number: accountNumber || null,
+            bank_name: bankName,
+            account_number: accountNumber,
             notes: notes || null,
           }),
         },
@@ -155,7 +263,8 @@ export default function EditSubcontractorButton({
         onSuccess && onSuccess();
         router.refresh();
       } else {
-        toast("Failed to update subcontractor", "error");
+        const errorData = await res.json();
+        toast(errorData.error || "Failed to update subcontractor", "error");
       }
     } catch (error: any) {
       console.error("Error updating subcontractor:", error);
@@ -225,8 +334,34 @@ export default function EditSubcontractorButton({
               setFileState={setTrnCertificateFile}
               label={"TRN CERTIFICATE"}
               acceptedFileTypes={".pdf,.jpeg,.jpg,.png"}
-              required={false}
+              required
               existingFileUrl={existingTrnCertificate}
+            />
+            <UploadFileBox
+              fileState={contractFile}
+              setFileState={setContractFile}
+              label={"CONTRACT"}
+              acceptedFileTypes={".pdf,.jpeg,.jpg,.png"}
+              required
+              existingFileUrl={existingContract}
+            />
+          </div>
+
+          <div className="input-row half">
+            <UploadFileBox
+              fileState={tradeLicenseFile}
+              setFileState={setTradeLicenseFile}
+              label={"TRADE LICENSE"}
+              acceptedFileTypes={".pdf,.jpeg,.jpg,.png"}
+              required
+              existingFileUrl={existingTradeLicense}
+            />
+            <UploadFileBox
+              fileState={otherDocsFile}
+              setFileState={setOtherDocsFile}
+              label={"OTHER DOCUMENTS"}
+              acceptedFileTypes={".pdf,.jpeg,.jpg,.png"}
+              existingFileUrl={existingOtherDocs}
             />
           </div>
 
