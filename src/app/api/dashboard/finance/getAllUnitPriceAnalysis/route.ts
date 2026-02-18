@@ -6,19 +6,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { filter } = body;
 
-    // Validate filter parameter
-    if (!filter || typeof filter !== "number" || filter <= 0) {
+    // Validate filter parameter (0 = all time, positive = days)
+    if (filter === undefined || filter === null || typeof filter !== "number" || filter < 0) {
       return NextResponse.json(
-        { error: "Invalid 'filter' parameter. Must be a positive number." },
+        { error: "Invalid 'filter' parameter. Must be a non-negative number." },
         { status: 400 }
       );
     }
+
+    const dateFilter = filter > 0 ? `WHERE s.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)` : "";
+    const dateParams = filter > 0 ? [filter] : [];
 
     // Query to get price trends for inventory items
     // This query handles both manual entries (unit_price from stocks)
     // and MR-based entries (unit_price from lpo_mr_line)
     const query = `
-      SELECT 
+      SELECT
         ii.id AS inventory_item_id,
         ii.description,
         ii.specification,
@@ -27,20 +30,20 @@ export async function POST(request: NextRequest) {
         s.created_at AS stock_date,
         CASE
           WHEN s.mr_header_id IS NOT NULL AND s.mr_line_id IS NOT NULL THEN
-            (SELECT lml.unit_price 
-             FROM lpo_mr_line lml 
-             WHERE lml.mr_line_id = s.mr_line_id 
+            (SELECT lml.unit_price
+             FROM lpo_mr_line lml
+             WHERE lml.mr_line_id = s.mr_line_id
              LIMIT 1)
           ELSE s.unit_price
         END AS current_price
       FROM stocks s
       INNER JOIN inventory ii ON s.inventory_item_id = ii.id
-      WHERE s.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+      ${dateFilter}
       HAVING current_price IS NOT NULL AND current_price > 0
       ORDER BY ii.id, s.created_at DESC
     `;
 
-    const [rows]: any = await db.query(query, [filter]);
+    const [rows]: any = await db.query(query, dateParams);
 
     if (!rows || rows.length === 0) {
       return NextResponse.json([], { status: 200 });

@@ -91,9 +91,12 @@ export default function DraftMrsWidget({ filterDays }: props) {
   const arrow = isIncrease ? upArrow : downArrow;
 
   // ✅ Dynamic period label
-  const periodLabel = filterDays === 7 ? "week" : `${filterDays} days`;
+  const isAllTime = filterDays === 0;
+  const periodLabel = isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
   const changeText = hasNoDraftMrs
     ? "No draft MRs"
+    : isAllTime
+    ? "Total draft MRs across all time"
     : isIncrease
     ? `${changeMagnitude} increase from last ${periodLabel}`
     : `${changeMagnitude} decrease from last ${periodLabel}`;
@@ -107,7 +110,7 @@ export default function DraftMrsWidget({ filterDays }: props) {
       <div>
         <div className="bottom">
           <p className="number">{isLoading ? "..." : thisWeek}</p>
-          {!hasNoDraftMrs && !isLoading && (
+          {!hasNoDraftMrs && !isLoading && !isAllTime && (
             <div className="data-pill">
               <span style={{ color: textColor }}>
                 {isIncrease ? "+" : "-"}

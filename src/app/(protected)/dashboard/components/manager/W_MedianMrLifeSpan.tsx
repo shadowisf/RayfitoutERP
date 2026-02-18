@@ -99,8 +99,10 @@ export default function MedianMRLifespanWidget() {
   const hasData = data.chartData.some((d: any) => d.median > 0);
 
   // Dynamic label for time period
-  const periodLabel =
-    filter === 7
+  const isAllTime = filter === 0;
+  const periodLabel = isAllTime
+    ? "all time"
+    : filter === 7
       ? "last 7 days"
       : filter === 14
         ? "last 14 days"
@@ -144,6 +146,7 @@ export default function MedianMRLifespanWidget() {
               borderRadius: "50px",
             }}
           >
+            <option value={0}>All Time</option>
             <option value={7}>7 days</option>
             <option value={14}>14 days</option>
             <option value={30}>1 month</option>
@@ -154,7 +157,11 @@ export default function MedianMRLifespanWidget() {
         <h1 style={{ fontSize: "32px", fontWeight: "900" }}>
           {formatHours(data.currentMedian)}
         </h1>
-        {data.previousMedian > 0 ? (
+        {isAllTime ? (
+          <span style={{ color: "#888", fontWeight: "600" }}>
+            MEDIAN ACROSS ALL TIME
+          </span>
+        ) : data.previousMedian > 0 ? (
           <span
             style={{
               margin: 0,

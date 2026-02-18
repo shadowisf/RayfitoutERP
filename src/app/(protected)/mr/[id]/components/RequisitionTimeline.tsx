@@ -1,0 +1,473 @@
+"use client";
+
+import { useState, useEffect } from "react";
+
+type ProgressLogEntry = {
+  id: number;
+  mr_header_id: number;
+  lpo_id: number | null;
+  progress_id: number;
+  from_progress_id: number | null;
+  changed_by: string;
+  changed_at: string;
+  progress_name: string;
+  from_progress_name: string | null;
+};
+
+type RequisitionTimelineProps = {
+  mrHeaderId: number;
+  currentProgressId: number;
+  lpoId?: number;
+  type?: "material" | "job";
+};
+
+// Rejection progress IDs
+const REJECTION_IDS = new Set([5, 11, 13, 16, 23]);
+
+// Rollback detection: changed_by contains "(ROLLBACK)"
+const isRollback = (entry: ProgressLogEntry) =>
+  entry.changed_by?.includes("(ROLLBACK)");
+
+// Labels for rejection stages
+const REJECTION_LABELS: { [key: number]: string } = {
+  5: "REQUEST REJECTED",
+  11: "PRICE REJECTED",
+  13: "PAYMENT REJECTED",
+  16: "GRN FAILED",
+  23: "FAILED QC",
+};
+
+// All known stage labels
+const STAGE_LABELS: { [key: number]: string } = {
+  1: "REQUEST CREATED",
+  2: "QS REVIEW",
+  3: "MANAGER APPROVAL",
+  5: "REQUEST REJECTED",
+  7: "QUOTATIONS",
+  9: "QS PRICE CHECK",
+  10: "MANAGER PRICE APPROVAL",
+  11: "PRICE REJECTED",
+  12: "LPO & INVOICE",
+  13: "PAYMENT REJECTED",
+  14: "PAYMENT",
+  16: "GRN FAILED",
+  17: "AWAITING DELIVERY",
+  21: "QC CHECK",
+  23: "FAILED QC",
+  24: "STOCK ENTRY",
+  25: "COMPLETED",
+  26: "SEGREGATED",
+};
+
+// Base MR stages (no QS)
+const BASE_MR_STAGES = [1, 3, 7, 10, 12, 14, 17, 25];
+// Full MR stages (with QS)
+const FULL_MR_STAGES = [1, 2, 3, 7, 9, 10, 12, 14, 17, 25];
+// JO stages
+const JO_STAGES_IDS = [1, 2, 3, 7, 10, 12, 25];
+// Base LPO stages (no QS)
+const BASE_LPO_STAGES = [1, 3, 7, 10, 12, 14, 17, 24, 25];
+// Full LPO stages (with QS)
+const FULL_LPO_STAGES = [1, 2, 3, 7, 9, 10, 12, 14, 17, 24, 25];
+
+type TimelineStage = {
+  id: number;
+  label: string;
+  isRejection: boolean;
+  isRollback: boolean;
+  arrivedEntry: ProgressLogEntry | null;
+  departedEntry: ProgressLogEntry | null;
+};
+
+export default function RequisitionTimeline({
+  mrHeaderId,
+  currentProgressId,
+  lpoId,
+  type = "material",
+}: RequisitionTimelineProps) {
+  const [progressLog, setProgressLog] = useState<ProgressLogEntry[]>([]);
+  const [hasBoqReference, setHasBoqReference] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [logRes, boqRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getProgressLog`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mr_header_id: mrHeaderId,
+              lpo_id: lpoId || null,
+            }),
+          }),
+          fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/checkBoqReference`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ mr_header_id: mrHeaderId }),
+            },
+          ),
+        ]);
+
+        if (logRes.ok) {
+          setProgressLog(await logRes.json());
+        }
+        if (boqRes.ok) {
+          const boqData = await boqRes.json();
+          setHasBoqReference(boqData.hasBoqReference || false);
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [mrHeaderId, lpoId]);
+
+  if (isLoading) {
+    return <div>Loading timeline...</div>;
+  }
+
+  let baseStageIds: number[];
+  if (lpoId) {
+    baseStageIds = hasBoqReference ? FULL_LPO_STAGES : BASE_LPO_STAGES;
+  } else if (type === "job") {
+    baseStageIds = JO_STAGES_IDS;
+  } else {
+    baseStageIds = hasBoqReference ? FULL_MR_STAGES : BASE_MR_STAGES;
+  }
+
+  const sortedLog = [...progressLog].sort((a, b) => a.id - b.id);
+
+  type VisitRecord = {
+    stageId: number;
+    arrivedEntry: ProgressLogEntry | null;
+    departedEntry: ProgressLogEntry | null;
+    isRejection: boolean;
+    isRollback: boolean;
+  };
+
+  const visitedSequence: VisitRecord[] = [];
+
+  for (const entry of sortedLog) {
+    const isRb = isRollback(entry);
+    const isRej = REJECTION_IDS.has(entry.progress_id) && !isRb;
+
+    visitedSequence.push({
+      stageId: entry.progress_id,
+      arrivedEntry: entry,
+      departedEntry: null,
+      isRejection: isRej,
+      isRollback: isRb,
+    });
+  }
+
+  for (let i = 0; i < visitedSequence.length - 1; i++) {
+    visitedSequence[i].departedEntry = visitedSequence[i + 1].arrivedEntry;
+  }
+
+  const timelineStages: TimelineStage[] = [];
+  const visitedStageIds = new Set(visitedSequence.map((v) => v.stageId));
+  let highestVisitedBaseIndex = -1;
+
+  for (const v of visitedSequence) {
+    const idx = baseStageIds.indexOf(v.stageId);
+    if (idx > highestVisitedBaseIndex) {
+      highestVisitedBaseIndex = idx;
+    }
+  }
+
+  for (const visit of visitedSequence) {
+    const cleanChangedBy = visit.isRollback
+      ? visit.arrivedEntry?.changed_by?.replace(" (ROLLBACK)", "") || ""
+      : visit.arrivedEntry?.changed_by || "";
+
+    timelineStages.push({
+      id: visit.stageId,
+      label: visit.isRollback
+        ? "ROLLED BACK"
+        : visit.isRejection
+          ? REJECTION_LABELS[visit.stageId] ||
+            STAGE_LABELS[visit.stageId] ||
+            "REJECTED"
+          : STAGE_LABELS[visit.stageId] || `Stage ${visit.stageId}`,
+      isRejection: visit.isRejection,
+      isRollback: visit.isRollback,
+      arrivedEntry: visit.isRollback
+        ? { ...visit.arrivedEntry!, changed_by: cleanChangedBy }
+        : visit.arrivedEntry,
+      departedEntry: visit.isRollback
+        ? visit.departedEntry
+          ? { ...visit.departedEntry, changed_by: cleanChangedBy }
+          : null
+        : visit.departedEntry,
+    });
+  }
+
+  for (let i = highestVisitedBaseIndex + 1; i < baseStageIds.length; i++) {
+    const stageId = baseStageIds[i];
+    if (!visitedStageIds.has(stageId)) {
+      timelineStages.push({
+        id: stageId,
+        label: STAGE_LABELS[stageId] || `Stage ${stageId}`,
+        isRejection: false,
+        isRollback: false,
+        arrivedEntry: null,
+        departedEntry: null,
+      });
+    }
+  }
+
+  return (
+    <div className="mr-with-id">
+      <div className="subcategory-header">
+        <h2>REQUISITION TIMELINE</h2>
+      </div>
+
+      <br />
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          position: "relative",
+          padding: "0 20px",
+          overflowX: "auto",
+          isolation: "isolate", // Creates new stacking context
+        }}
+      >
+        {timelineStages.map((stage, index) => {
+          const isCompletedStage = stage.id === 25;
+          const hasArrived = !!stage.arrivedEntry;
+          const hasDeparted = !!stage.departedEntry;
+
+          const isLastOccurrence =
+            stage.id === currentProgressId &&
+            !stage.isRejection &&
+            !stage.isRollback &&
+            !hasDeparted;
+          const isCurrent = isLastOccurrence;
+
+          const isCompleted =
+            stage.isRejection || stage.isRollback
+              ? true
+              : isCompletedStage
+                ? hasArrived
+                : hasArrived && hasDeparted;
+
+          const isYellow = isCurrent && !isCompleted;
+          const isFuture = !isCompleted && !isCurrent;
+
+          const detailEntry =
+            stage.departedEntry || (isCurrent ? stage.arrivedEntry : null);
+
+          let dateStr = "";
+          let timeStr = "";
+          if (detailEntry?.changed_at) {
+            const d = new Date(detailEntry.changed_at);
+            dateStr = d.toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            });
+            timeStr = d.toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            });
+          }
+
+          let circleColor = "white";
+          if (stage.isRejection) {
+            circleColor = "rgba(248, 77, 77, 1)";
+          } else if (stage.isRollback) {
+            circleColor = "rgba(255, 153, 36, 1)";
+          } else if (isCompleted) {
+            circleColor = "rgba(26, 216, 135, 1)";
+          } else if (isYellow) {
+            circleColor = "rgba(216, 213, 26, 1)";
+          }
+
+          let labelColor = "black";
+          if (stage.isRejection) {
+            labelColor = "rgba(248, 77, 77, 1)";
+          } else if (stage.isRollback) {
+            labelColor = "rgba(255, 153, 36, 1)";
+          } else if (isFuture) {
+            labelColor = "rgba(217, 217, 217, 1)";
+          }
+
+          return (
+            <div
+              key={`${stage.id}-${index}`}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                flex: 1,
+                minWidth: "130px",
+                position: "relative",
+              }}
+            >
+              {/* Connector line - zIndex 0 so it goes behind circle */}
+              {index > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "12px",
+                    left: "-100%",
+                    marginLeft: "12.5px",
+                    width: "100%",
+                    height: "2px",
+                    backgroundColor: "rgba(217, 217, 217, 1)",
+                    zIndex: 0,
+                  }}
+                />
+              )}
+
+              {/* Circle - zIndex 1 to appear above line, but contained by isolation */}
+              <div
+                style={{
+                  width: "25px",
+                  height: "25px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: circleColor,
+                  border: isFuture
+                    ? "2px solid rgba(220, 220, 220, 1)"
+                    : "none",
+                  flexShrink: 0,
+                  zIndex: 1, // Above the line, but contained by parent's isolation
+                }}
+              >
+                {(stage.isRejection || stage.isRollback) && (
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M3 3L9 9M9 3L3 9"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                )}
+
+                {isCompleted && !stage.isRejection && !stage.isRollback && (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M2.5 7L5.5 10L11.5 4"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </div>
+
+              <p
+                style={{
+                  fontSize: "10px",
+                  fontWeight: "600",
+                  color: labelColor,
+                  marginTop: "15px",
+                  marginBottom: "2px",
+                  textAlign: "left",
+                  textTransform: "uppercase",
+                  maxWidth: "120px",
+                  width: "100%",
+                }}
+              >
+                {stage.label}
+              </p>
+
+              {detailEntry?.changed_at && (
+                <p
+                  style={{
+                    fontSize: "10px",
+                    color: "rgba(85, 80, 80, 1)",
+                    marginBottom: "4px",
+                    textAlign: "left",
+                    display: "flex",
+                    gap: "4px",
+                    flexWrap: "wrap",
+                    width: "100%",
+                  }}
+                >
+                  <span
+                    style={{
+                      padding: "2px 10px",
+                      borderRadius: "50px",
+                      backgroundColor: "rgba(228, 228, 228, 1)",
+                    }}
+                  >
+                    {dateStr}
+                  </span>
+                  <span
+                    style={{
+                      padding: "2px 10px",
+                      borderRadius: "50px",
+                      backgroundColor: "rgba(228, 228, 228, 1)",
+                    }}
+                  >
+                    {timeStr}
+                  </span>
+                </p>
+              )}
+
+              {detailEntry?.changed_by && (
+                <div
+                  style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
+                >
+                  <p
+                    style={{
+                      fontSize: "9px",
+                      color: "rgba(85, 80, 80, 1)",
+                      textTransform: "uppercase",
+                      fontWeight: "600",
+                      letterSpacing: "0.5px",
+                      textAlign: "left",
+                    }}
+                  >
+                    SUBMITTED BY
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "10px",
+                      color: "black",
+                      fontWeight: "500",
+                      maxWidth: "120px",
+                      wordBreak: "break-word",
+                      textAlign: "left",
+                    }}
+                  >
+                    {detailEntry.changed_by}
+                  </p>
+                </div>
+              )}
+              <br />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

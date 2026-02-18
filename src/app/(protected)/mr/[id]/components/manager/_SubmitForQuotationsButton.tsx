@@ -12,12 +12,14 @@ type SubmitForQuotationsButtonProps = {
   mrHeader: MrHeader;
   disabled?: boolean;
   style?: React.CSSProperties;
+  progressId?: number;
 };
 
 export default function SubmitForQuotationsButton({
   mrHeader,
   style,
   disabled,
+  progressId,
 }: SubmitForQuotationsButtonProps) {
   const router = useRouter();
 
@@ -36,6 +38,7 @@ export default function SubmitForQuotationsButton({
         id: mrHeader.id,
         changed_by: userInfo?.name,
         department_id: mrHeader.department_id,
+        from_progress_id: progressId || mrHeader.progress_id,
       }),
     });
 

@@ -54,6 +54,8 @@ export default function PriceTrendSignalsWidget() {
   // Get filter label
   const getFilterLabel = () => {
     switch (filter) {
+      case 0:
+        return "All Time";
       case 1:
         return "24h";
       case 7:
@@ -111,6 +113,7 @@ export default function PriceTrendSignalsWidget() {
                 fontWeight: "600",
               }}
             >
+              <option value={0}>All Time</option>
               <option value={1}>24h</option>
               <option value={7}>7d</option>
               <option value={30}>30d</option>

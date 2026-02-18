@@ -230,8 +230,8 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log
-         (mr_header_id, progress_id, changed_by, lpo_id)
-         VALUES (?, 14, ?, ?)`,
+         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
+         VALUES (?, 14, 12, ?, ?)`,
         [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
       );
 
@@ -256,9 +256,9 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log
-         (mr_header_id, progress_id, changed_by, lpo_id)
-         VALUES (?, 17, ?, ?)`,
-        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
+         VALUES (?, 17, ?, ?, ?)`,
+        [Number(body.mr_header_id), body.skip_to_delivery ? 12 : 14, body.changed_by, Number(body.lpo_id)],
       );
 
       if (!body.skip_to_delivery || body.skip_to_delivery === false) {
@@ -302,8 +302,8 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log
-         (mr_header_id, progress_id, changed_by, lpo_id)
-         VALUES (?, 13, ?, ?)`,
+         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
+         VALUES (?, 13, 14, ?, ?)`,
         [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
       );
 
@@ -328,8 +328,8 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log
-         (mr_header_id, progress_id, changed_by, lpo_id)
-         VALUES (?, 16, ?, ?)`,
+         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
+         VALUES (?, 16, 17, ?, ?)`,
         [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
       );
 
@@ -343,9 +343,9 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log
-         (mr_header_id, progress_id, changed_by, lpo_id)
-         VALUES (?, 24, ?, ?)`,
-        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
+         VALUES (?, 24, ?, ?, ?)`,
+        [Number(body.mr_header_id), body.from_progress_id || 21, body.changed_by, Number(body.lpo_id)],
       );
 
       return NextResponse.json({ success: true });
@@ -358,8 +358,8 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log
-         (mr_header_id, progress_id, changed_by, lpo_id)
-         VALUES (?, 25, ?, ?)`,
+         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
+         VALUES (?, 25, 24, ?, ?)`,
         [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
       );
 
@@ -412,8 +412,8 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log
-         (mr_header_id, progress_id, changed_by, lpo_id)
-         VALUES (?, 23, ?, ?)`,
+         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
+         VALUES (?, 23, 21, ?, ?)`,
         [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
       );
 

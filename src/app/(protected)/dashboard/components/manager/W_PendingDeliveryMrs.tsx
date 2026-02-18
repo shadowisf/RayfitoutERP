@@ -82,12 +82,15 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
   const arrow = isIncrease ? upArrow : downArrow;
 
   // ✅ Updated text to be more generic
-  const periodLabel = filterDays === 7 ? "week" : `${filterDays} days`;
+  const isAllTime = filterDays === 0;
+  const periodLabel = isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
   const changeText = hasNoPendingDeliveries
     ? "No pending deliveries"
-    : isIncrease
-      ? `${changeMagnitude} increase from last ${periodLabel}`
-      : `${changeMagnitude} decrease from last ${periodLabel}`;
+    : isAllTime
+      ? "Total pending deliveries across all time"
+      : isIncrease
+        ? `${changeMagnitude} increase from last ${periodLabel}`
+        : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
     <div className="item">

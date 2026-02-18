@@ -526,7 +526,7 @@ export function BoqPDF({
           </View>
         )}
 
-        {showPrices && (
+        {showPrices && boqHeader.discount && (
           <View style={styles.totalRowAlt}>
             <Text style={styles.totalLabel}>SPECIAL DISCOUNT</Text>
             <Text style={styles.totalValue}>

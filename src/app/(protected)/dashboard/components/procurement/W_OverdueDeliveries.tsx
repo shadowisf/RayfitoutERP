@@ -82,12 +82,15 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
   const arrow = isIncrease ? upArrow : downArrow;
 
   // ✅ Dynamic period label
-  const periodLabel = filterDays === 7 ? "week" : `${filterDays} days`;
+  const isAllTime = filterDays === 0;
+  const periodLabel = isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
   const changeText = hasNoIncompleteDeliveries
     ? "No incomplete deliveries"
-    : isIncrease
-      ? `${changeMagnitude} increase from last ${periodLabel}`
-      : `${changeMagnitude} decrease from last ${periodLabel}`;
+    : isAllTime
+      ? "Total overdue deliveries across all time"
+      : isIncrease
+        ? `${changeMagnitude} increase from last ${periodLabel}`
+        : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
     <div className="item">
@@ -98,7 +101,7 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
       <div>
         <div className="bottom">
           <p className="number">{isLoading ? "..." : thisWeek}</p>
-          {!hasNoIncompleteDeliveries && !isLoading && (
+          {!hasNoIncompleteDeliveries && !isLoading && !isAllTime && (
             <div
               className="data-pill"
               style={{ backgroundColor: pillBackgroundColor }}

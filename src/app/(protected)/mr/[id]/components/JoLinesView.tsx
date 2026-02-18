@@ -430,6 +430,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             <div></div>
             <SubmitForInitialApprovalButton
               mrHeader={mrHeader}
+              progressId={mrHeader.progress_id}
               disabled={hasRejectedItems}
               style={{
                 opacity: hasRejectedItems ? "0.5" : "1",
@@ -449,7 +450,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             {hasRejectedItems ? (
               <SubmitForResubmissionButton mrHeader={mrHeader} />
             ) : (
-              <SubmitForQuotationsButton mrHeader={mrHeader} />
+              <SubmitForQuotationsButton mrHeader={mrHeader} progressId={mrHeader.progress_id} />
             )}
           </div>
         )}
@@ -462,6 +463,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             <div></div>
             <SubmitForJoPriceApprovalButton
               mrHeaderID={mrHeader.id}
+              progressId={mrHeader.progress_id}
               disabled={hasAnyRejectedQuotation || !allLinesHaveQuotations}
               style={{
                 opacity:
@@ -521,6 +523,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             <div></div>
             <SubmitForJoPriceApprovalButton
               mrHeaderID={mrHeader.id}
+              progressId={mrHeader.progress_id}
               disabled={hasAnyRejectedQuotation || !allLinesHaveQuotations}
               style={{
                 opacity:

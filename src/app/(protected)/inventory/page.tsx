@@ -1437,7 +1437,7 @@ export default function Inventory() {
                     <tr>
                       <th>#</th>
                       <th>ID</th>
-                      <th style={{ minWidth: "600px" }}>MATERIAL</th>
+                      <th>MATERIAL</th>
                       <th>TOTAL QTY</th>
                       <th>STATUS</th>
                       <th>ACTION</th>

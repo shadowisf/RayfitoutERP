@@ -83,12 +83,15 @@ export default function TotalSpentWidget({ filterDays }: props) {
   const arrow = isIncrease ? upArrow : downArrow;
 
   // ✅ Dynamic period label
-  const periodLabel = filterDays === 7 ? "week" : `${filterDays} days`;
+  const isAllTime = filterDays === 0;
+  const periodLabel = isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
   const changeText = hasNoTotalSpent
     ? "Nothing spent yet"
-    : isIncrease
-      ? `${changeMagnitude} increase from last ${periodLabel}`
-      : `${changeMagnitude} decrease from last ${periodLabel}`;
+    : isAllTime
+      ? "Total spend across all time"
+      : isIncrease
+        ? `${changeMagnitude} increase from last ${periodLabel}`
+        : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
     <div className="item" style={{ backgroundColor, color: "white" }}>
@@ -99,7 +102,7 @@ export default function TotalSpentWidget({ filterDays }: props) {
       <div>
         <div className="bottom">
           <p className="number">AED {isLoading ? "..." : thisWeek}</p>
-          {!hasNoTotalSpent && !isLoading && (
+          {!hasNoTotalSpent && !isLoading && !isAllTime && (
             <div className="data-pill">
               <span style={{ color: textColor }}>
                 {isIncrease ? "+" : "-"}

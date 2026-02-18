@@ -6,16 +6,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { filter } = body;
 
-    // Validate filter parameter
-    if (!filter || typeof filter !== "number" || filter <= 0) {
+    // Validate filter parameter (0 = all time, positive = days)
+    if (filter === undefined || filter === null || typeof filter !== "number" || filter < 0) {
       return NextResponse.json(
-        { error: "Invalid 'filter' parameter. Must be a positive number." },
+        { error: "Invalid 'filter' parameter. Must be a non-negative number." },
         { status: 400 },
       );
     }
 
+    const dateFilter = filter > 0 ? `AND lpo.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)` : "";
+    const dateParams = filter > 0 ? [filter] : [];
+
     const query = `
-      SELECT 
+      SELECT
         lpo.supplier_id,
         s.name AS supplier_name,
         SUM(mr_lines.quantity) AS total_quantity,
@@ -25,14 +28,14 @@ export async function POST(request: NextRequest) {
       INNER JOIN lpo ON lpo_mr_line.lpo_id = lpo.id
       LEFT JOIN suppliers s ON lpo.supplier_id = s.id
       WHERE lpo.payment_status = 'Approved'
-        AND lpo.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+        ${dateFilter}
       GROUP BY lpo.supplier_id, s.name
       HAVING total_quantity > 0
       ORDER BY total_quantity DESC
       LIMIT 3
     `;
 
-    const [rows] = await db.query(query, [filter]);
+    const [rows] = await db.query(query, dateParams);
 
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {

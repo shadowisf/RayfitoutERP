@@ -6,10 +6,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { filter } = body;
 
-    // Validate filter parameter
-    if (!filter || typeof filter !== "number" || filter <= 0) {
+    // Validate filter parameter (0 = all time, positive = days)
+    if (filter === undefined || filter === null || typeof filter !== "number" || filter < 0) {
       return NextResponse.json(
-        { error: "Invalid 'filter' parameter. Must be a positive number." },
+        { error: "Invalid 'filter' parameter. Must be a non-negative number." },
         { status: 400 },
       );
     }
@@ -17,31 +17,36 @@ export async function POST(request: Request) {
     const days = filter;
 
     // ✅ Get only the completion records (progress_id = 25) for the specified period
+    const dateFilter = days > 0 ? `AND changed_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)` : "";
+    const dateParams = days > 0 ? [days] : [];
+
     const [completedMRs]: any = await db.query(
       `
-      SELECT 
+      SELECT
         mr_header_id,
         DATE(changed_at) as completed_date,
         changed_at as completed_at
       FROM mr_header_progress_log
       WHERE progress_id = 25
-        AND changed_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+        ${dateFilter}
       ORDER BY changed_at DESC
       `,
-      [days],
+      dateParams,
     );
 
     if (completedMRs.length === 0) {
       // Return empty chart data
       const emptyChartData = [];
-      for (let i = days - 1; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        emptyChartData.push({
-          date: date.toISOString().split("T")[0],
-          median: 0,
-          count: 0,
-        });
+      if (days > 0) {
+        for (let i = days - 1; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          emptyChartData.push({
+            date: date.toISOString().split("T")[0],
+            median: 0,
+            count: 0,
+          });
+        }
       }
 
       return NextResponse.json(
@@ -93,10 +98,12 @@ export async function POST(request: Request) {
       };
     });
 
-    // ✅ Get previous period data
+    // ✅ Get previous period data (skip for all time)
+    let prevMedian = 0;
+    if (days > 0) {
     const [prevCompletedMRs]: any = await db.query(
       `
-      SELECT 
+      SELECT
         mr_header_id
       FROM mr_header_progress_log
       WHERE progress_id = 25
@@ -106,7 +113,6 @@ export async function POST(request: Request) {
       [days * 2, days],
     );
 
-    let prevMedian = 0;
     if (prevCompletedMRs.length > 0) {
       const prevMrIds = prevCompletedMRs.map((mr: any) => mr.mr_header_id);
 
@@ -130,6 +136,7 @@ export async function POST(request: Request) {
           ? prevLifespans[Math.floor(prevLifespans.length / 2)]
           : 0;
     }
+    } // end if (days > 0)
 
     // Calculate current median
     const lifespans = completedMRsWithLifespan
@@ -171,19 +178,21 @@ export async function POST(request: Request) {
 
     // ✅ Group by completion date (one entry per day)
     const dailyData: any = {};
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split("T")[0];
-      dailyData[dateStr] = [];
+    if (days > 0) {
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split("T")[0];
+        dailyData[dateStr] = [];
+      }
     }
 
     completedMRsWithLifespan.forEach((mr: any) => {
       const dateStr = mr.completed_date;
-
-      if (dailyData[dateStr] !== undefined) {
-        dailyData[dateStr].push(mr.lifespan_hours);
+      if (!dailyData[dateStr]) {
+        dailyData[dateStr] = [];
       }
+      dailyData[dateStr].push(mr.lifespan_hours);
     });
 
     const chartData = Object.keys(dailyData)

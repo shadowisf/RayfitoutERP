@@ -2,6 +2,7 @@ import Button from "@/app/components/Button";
 import LpoLinesView from "./components/LpoLinesView";
 import { MrHeader } from "../../types/mrHeader";
 import DeleteLpoHeaderButton from "./components/_DeleteLpoHeaderButton";
+import RequisitionTimeline from "../../components/RequisitionTimeline";
 
 export default async function LpoWithID({
   params,
@@ -318,9 +319,7 @@ export default async function LpoWithID({
               >
                 <div>
                   <small>MR ID</small>
-                  <h2 style={{ textWrap: "nowrap" }}>
-                    MR-{String(id).padStart(5, "0")}
-                  </h2>
+                  <h2>MR-{String(id).padStart(5, "0")}</h2>
                 </div>
 
                 <div>
@@ -379,9 +378,7 @@ export default async function LpoWithID({
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <div>
               <small>PROJECT</small>
-              <h2 style={{ textWrap: "nowrap" }}>
-                {mrHeader.project_name || "-"}
-              </h2>
+              <h2>{mrHeader.project_name || "-"}</h2>
             </div>
 
             {mrHeader.project_name && (
@@ -400,14 +397,12 @@ export default async function LpoWithID({
 
           <div>
             <small>PURPOSE</small>
-            <h2 style={{ textWrap: "nowrap" }}>{mrHeader.purpose_name}</h2>
+            <h2>{mrHeader.purpose_name}</h2>
           </div>
 
           <div>
-            <small style={{ textWrap: "nowrap" }}>REQUESTED BY</small>
-            <h2 style={{ textWrap: "nowrap" }}>
-              {mrHeader.requested_by || ""}
-            </h2>
+            <small>REQUESTED BY</small>
+            <h2>{mrHeader.requested_by || ""}</h2>
           </div>
 
           <div>
@@ -420,9 +415,9 @@ export default async function LpoWithID({
               style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}
             >
               <div>
-                <small style={{ textWrap: "nowrap" }}>REQUIRED DATE</small>
+                <small>REQUIRED DATE</small>
                 <h2>
-                  {new Date(mrHeader.required_date).toLocaleDateString("en-US")}
+                  {new Date(mrHeader.required_date).toLocaleDateString("en-GB")}
                 </h2>
               </div>
 
@@ -446,36 +441,37 @@ export default async function LpoWithID({
             </div>
           )}
 
-          {lpo.delivery_date && (
-            <div
-              style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}
-            >
-              <div>
-                <small style={{ textWrap: "nowrap" }}>DELIVERY DATE</small>
-                <h2>
-                  {new Date(lpo.delivery_date).toLocaleDateString("en-US")}
-                </h2>
-              </div>
-
-              {!isCompleted && (
+          {lpo.delivery_date &&
+            (mrHeader.progress_id === 17 || lpo.progress_id === 17) && (
+              <div
+                style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}
+              >
                 <div>
-                  <h2
-                    className="approval-pill normal-text"
-                    style={{
-                      ...deliveryDaysLeftStyle,
-                      padding: "4px 10px",
-                      borderRadius: "50px",
-                      fontSize: "11px",
-                      fontWeight: "600",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {deliveryDaysLeftText}
+                  <small>DELIVERY DATE</small>
+                  <h2>
+                    {new Date(lpo.delivery_date).toLocaleDateString("en-GB")}
                   </h2>
                 </div>
-              )}
-            </div>
-          )}
+
+                {!isCompleted && (
+                  <div>
+                    <h2
+                      className="approval-pill normal-text"
+                      style={{
+                        ...deliveryDaysLeftStyle,
+                        padding: "4px 10px",
+                        borderRadius: "50px",
+                        fontSize: "11px",
+                        fontWeight: "600",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {deliveryDaysLeftText}
+                    </h2>
+                  </div>
+                )}
+              </div>
+            )}
 
           {!isCompleted && (
             <div>
@@ -521,6 +517,15 @@ export default async function LpoWithID({
           )}
         </div>
       </div>
+
+      <br />
+      <br />
+
+      <RequisitionTimeline
+        mrHeaderId={Number(id)}
+        currentProgressId={lpo.progress_id}
+        lpoId={Number(lpoId)}
+      />
 
       <br />
       <br />
