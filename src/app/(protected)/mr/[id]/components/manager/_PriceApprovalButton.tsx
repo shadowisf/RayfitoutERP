@@ -21,7 +21,6 @@ type PriceApprovalButtonProps = {
   full?: boolean;
   style?: React.CSSProperties;
   onTotalPriceChange?: (mrLineId: number, totalPrice: number) => void;
-  // ✅ New props for Smart Select All
   isSmartSelectPortal?: boolean;
   allMrLines?: any;
   portalTargetId?: string;
@@ -36,7 +35,6 @@ export default function PriceApprovalButton({
   full,
   style,
   onTotalPriceChange,
-  // ✅ New props
   isSmartSelectPortal = false,
   allMrLines,
   portalTargetId = "smart-select-portal",
@@ -51,29 +49,25 @@ export default function PriceApprovalButton({
   const [supplierQuotations, setSupplierQuotations] = useState<
     SupplierQuotation[]
   >([]);
-  const [selectedSupplierID, setSelectedSupplierID] = useState("");
+  const [selectedQuotationID, setSelectedQuotationID] = useState("");
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [rejectText, setRejectText] = useState("");
 
-  // Manager Approval states
   const [approvedQuotation, setApprovedQuotation] =
     useState<SupplierQuotation | null>(null);
   const [allRejected, setAllRejected] = useState(false);
   const [allPending, setAllPending] = useState(false);
 
-  // QS Approval states
   const [qsApprovedQuotation, setQsApprovedQuotation] =
     useState<SupplierQuotation | null>(null);
   const [allQsRejected, setAllQsRejected] = useState(false);
   const [allQsPending, setAllQsPending] = useState(false);
 
-  // ✅ Smart Select All states
   const [isProcessing, setIsProcessing] = useState(false);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null,
   );
 
-  // ✅ Find portal container
   useEffect(() => {
     if (isSmartSelectPortal) {
       const container = document.getElementById(portalTargetId);
@@ -81,8 +75,30 @@ export default function PriceApprovalButton({
     }
   }, [isSmartSelectPortal, portalTargetId]);
 
+  // Helper function to format currency with 2 decimal places
+  const formatCurrency = (
+    value: number | string | null | undefined,
+  ): string => {
+    if (value === null || value === undefined || value === "") return "0.00";
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "0.00";
+    return num.toFixed(2);
+  };
+
+  // Helper function to format quantity (no trailing zeros unless decimal)
+  const formatQuantity = (
+    value: number | string | null | undefined,
+  ): string => {
+    if (value === null || value === undefined || value === "") return "0";
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "0";
+    if (Number.isInteger(num)) {
+      return num.toString();
+    }
+    return parseFloat(num.toFixed(3)).toString();
+  };
+
   const fetchQuotations = () => {
-    // ✅ Don't fetch if this is the portal button
     if (isSmartSelectPortal || !mrLine?.id) {
       return;
     }
@@ -96,7 +112,6 @@ export default function PriceApprovalButton({
       .then((data) => {
         console.log(`Fetched quotations for MR Line ${mrLine.id}:`, data);
 
-        // ✅ Check if data is an array before using array methods
         if (!Array.isArray(data)) {
           console.error("Invalid data format:", data);
           setSupplierQuotations([]);
@@ -105,7 +120,6 @@ export default function PriceApprovalButton({
 
         setSupplierQuotations(data);
 
-        // Manager Approval Status
         const approved = data.find(
           (q: SupplierQuotation) => q.approval_status === "Approved",
         );
@@ -128,7 +142,6 @@ export default function PriceApprovalButton({
         );
         setAllPending(pending && data.length > 0);
 
-        // QS Approval Status
         const qsApproved = data.find(
           (q: SupplierQuotation) => q.qs_approval_status === "Approved",
         );
@@ -151,14 +164,11 @@ export default function PriceApprovalButton({
       });
   };
 
-  // ✅ SINGLE useEffect - removed duplicate
   useEffect(() => {
-    // ✅ Only fetch if NOT portal button and has valid mrLine
     if (!isSmartSelectPortal && mrLine?.id) {
       fetchQuotations();
     }
 
-    // ✅ Listen for custom event
     const handleQuotationsUpdated = () => {
       console.log("Quotations updated event received, refetching...");
       if (!isSmartSelectPortal && mrLine?.id) {
@@ -173,7 +183,6 @@ export default function PriceApprovalButton({
     };
   }, [mrLine?.id, isSmartSelectPortal]);
 
-  // ✅ Smart Select All handler
   async function handleSmartSelectAll() {
     if (!allMrLines) {
       toast("No MR lines available", "error");
@@ -184,7 +193,6 @@ export default function PriceApprovalButton({
 
     const allItems: any[] = [];
 
-    // Collect all MR line IDs
     for (const category in allMrLines) {
       for (const subCategory in allMrLines[category]) {
         for (const supplier in allMrLines[category][subCategory]) {
@@ -199,7 +207,6 @@ export default function PriceApprovalButton({
     let successful = 0;
     let failed = 0;
 
-    // Process each item
     for (const item of allItems) {
       try {
         const quotationsResponse = await fetch(
@@ -272,7 +279,6 @@ export default function PriceApprovalButton({
       toast("Smart Select failed: No vendors approved", "error");
     }
 
-    // ✅ Trigger refresh
     window.dispatchEvent(new CustomEvent("quotationsUpdated"));
     router.refresh();
   }
@@ -281,7 +287,7 @@ export default function PriceApprovalButton({
     e.preventDefault();
 
     const selectedQuotation = supplierQuotations.find(
-      (q) => q.supplier_id === Number(selectedSupplierID),
+      (q) => q.id === Number(selectedQuotationID),
     );
 
     if (!selectedQuotation) {
@@ -292,7 +298,7 @@ export default function PriceApprovalButton({
     console.log("📝 Approving quotation:", {
       quotation_id: selectedQuotation.id,
       mr_line_id: mrLine.id,
-      supplier_id: selectedSupplierID,
+      supplier_id: selectedQuotation.supplier_id,
     });
 
     const res = await fetch(
@@ -304,7 +310,7 @@ export default function PriceApprovalButton({
           action: "approveSupplierAndQuotation",
           quotation_id: selectedQuotation.id,
           mr_line_id: mrLine.id,
-          supplier_id: selectedSupplierID,
+          supplier_id: selectedQuotation.supplier_id,
         }),
       },
     );
@@ -378,7 +384,6 @@ export default function PriceApprovalButton({
     }
   }
 
-  // ✅ Render Smart Select Portal Button
   if (isSmartSelectPortal && portalContainer) {
     return createPortal(
       <Button
@@ -402,7 +407,6 @@ export default function PriceApprovalButton({
     );
   }
 
-  // RENDER STATUS PILLS (for progressID === 11 or 9)
   if (progressID === 11 || progressID === 9) {
     return (
       <div
@@ -413,7 +417,6 @@ export default function PriceApprovalButton({
           gap: "10px",
         }}
       >
-        {/* Manager Approval Status Row */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {approvedQuotation && (
             <div
@@ -479,7 +482,6 @@ export default function PriceApprovalButton({
           )}
         </div>
 
-        {/* QS Approval Status Row */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {allQsRejected && (
             <div
@@ -542,7 +544,6 @@ export default function PriceApprovalButton({
     );
   }
 
-  // RENDER ACTION BUTTONS (for progressID === 10)
   if (progressID === 10) {
     if (approvedQuotation) {
       return (
@@ -653,68 +654,89 @@ export default function PriceApprovalButton({
                   <th></th>
                   <th>VENDOR</th>
                   <th>QUOTATION</th>
+                  <th>QTY FOR USE</th>
+                  <th>QTY FOR STOCKS</th>
                   <th>UNIT PRICE</th>
                   <th>TOTAL PRICE</th>
                 </tr>
               </thead>
               <tbody>
                 {supplierQuotations.map(
-                  (quotation: SupplierQuotation, index: number) => (
-                    <tr key={index}>
-                      <td>
-                        <input
-                          type="radio"
-                          name="supplier"
-                          value={quotation.supplier_id}
-                          onChange={(e) =>
-                            setSelectedSupplierID(e.target.value)
-                          }
-                          required
-                        />
-                      </td>
-                      <td>
-                        <SupplierDetailsPopUp
-                          item={quotation}
-                          style={{
-                            padding: "7px 20px",
-                            textWrap: "nowrap",
-                            minWidth: "300px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            borderRadius: "25px",
-                          }}
-                        >
-                          {quotation.supplier_name}
-                          <img
-                            src="/icons/external-link.svg"
-                            alt="external link icon"
+                  (quotation: SupplierQuotation, index: number) => {
+                    const requestedQty = Number(mrLine.quantity) || 0;
+                    const proposedQty =
+                      Number(quotation.proposed_quantity) || 0;
+                    const totalQty =
+                      proposedQty > 0 ? proposedQty : requestedQty;
+                    const stockQty =
+                      proposedQty > requestedQty
+                        ? proposedQty - requestedQty
+                        : 0;
+                    return (
+                      <tr key={index}>
+                        <td>
+                          <input
+                            type="radio"
+                            name="supplier"
+                            value={quotation.id}
+                            onChange={(e) =>
+                              setSelectedQuotationID(e.target.value)
+                            }
+                            required
                           />
-                        </SupplierDetailsPopUp>
-                      </td>
-                      <td>
-                        <Button
-                          componentType={"link"}
-                          bgColor={"white"}
-                          borderColor={"rgba(207, 207, 207, 1)"}
-                          textColor={"black"}
-                          href={quotation.quotation_file[0]}
-                          target="_blank"
-                          style={{
-                            padding: "7px 20px",
-                            borderRadius: "25px",
-                          }}
-                        >
-                          Quotation
-                          <img
-                            src="/icons/external-link.svg"
-                            alt="external link icon"
-                          />
-                        </Button>
-                      </td>
-                      <td>{quotation.unit_price} AED</td>
-                      <td>{quotation.total_price} AED</td>
-                    </tr>
-                  ),
+                        </td>
+                        <td>
+                          <SupplierDetailsPopUp
+                            item={quotation}
+                            style={{
+                              padding: "7px 20px",
+                              textWrap: "nowrap",
+                              minWidth: "300px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              borderRadius: "25px",
+                            }}
+                          >
+                            {quotation.supplier_name}
+                            <img
+                              src="/icons/external-link.svg"
+                              alt="external link icon"
+                            />
+                          </SupplierDetailsPopUp>
+                        </td>
+                        <td>
+                          <Button
+                            componentType={"link"}
+                            bgColor={"white"}
+                            borderColor={"rgba(207, 207, 207, 1)"}
+                            textColor={"black"}
+                            href={quotation.quotation_file[0]}
+                            target="_blank"
+                            style={{
+                              padding: "7px 20px",
+                              borderRadius: "25px",
+                            }}
+                          >
+                            Quotation
+                            <img
+                              src="/icons/external-link.svg"
+                              alt="external link icon"
+                            />
+                          </Button>
+                        </td>
+                        <td>
+                          {formatQuantity(requestedQty)} {mrLine.unit}
+                        </td>
+                        <td>
+                          {stockQty > 0
+                            ? `${formatQuantity(stockQty)} ${mrLine.unit}`
+                            : "-"}
+                        </td>
+                        <td>{formatCurrency(quotation.unit_price)} AED</td>
+                        <td>{formatCurrency(quotation.total_price)} AED</td>
+                      </tr>
+                    );
+                  },
                 )}
               </tbody>
             </table>

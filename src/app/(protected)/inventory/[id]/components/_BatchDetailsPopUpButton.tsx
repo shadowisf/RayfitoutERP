@@ -23,12 +23,11 @@ type BoqItem = {
   boq_total_cost: number;
   boq_header_id: number;
   boq_project_id: number;
-  item_number?: string; // ✅ Add item_number field
+  item_number?: string;
 };
 
 type MRBatchDetails = {
   type: "mr";
-  // Stock Entry Details
   stock_id: number;
   batch_id: number;
   stock_quantity: number;
@@ -37,8 +36,6 @@ type MRBatchDetails = {
   entry_date: string;
   reason_for_entry: string | null;
   stock_notes: string | null;
-
-  // Material Request Header
   mr_header_id: number;
   date_requested: string;
   required_date: string;
@@ -46,30 +43,21 @@ type MRBatchDetails = {
   purpose: string;
   progress: string;
   department: string;
-
-  // Material Request Line
   mr_line_id: number;
   requested_quantity: number;
+  approved_proposed_quantity: number;
   material_description: string;
   material_unit: string;
   material_category: string;
   material_subcategory: string;
-
-  // Project Details
   project_id: number | null;
   project_name: string | null;
-
-  // BOQ Details
   boq_items?: BoqItem[];
-
-  // Supplier Details
   supplier_id: number | null;
   supplier_name: string | null;
   supplier_contact: string | null;
   supplier_email: string | null;
   supplier_phone: string | null;
-
-  // LPO Details
   lpo_id: number | null;
   lpo_code: string | null;
   delivery_date: string | null;
@@ -82,21 +70,15 @@ type MRBatchDetails = {
   payment_status: string | null;
   invoice_file: string[] | null;
   lpo_signed_file: string[] | null;
-
-  // GRN Details
   grn_id: number | null;
   grn_date: string | null;
   grn_received_by: string | null;
   received_quantity: number | null;
   grn_notes: string | null;
-
-  // QC Details
   qc_id: number | null;
   qc_checked_by: string | null;
   qc_accepted_quantity: number | null;
   qc_status: string | null;
-
-  // QC Resolution
   qc_resolution_id: number | null;
   resolution_type: string | null;
 };
@@ -117,15 +99,9 @@ type ManualStockDetails = {
   lpo_file: string[] | null;
   dn_file: string[] | null;
   unit_price: number;
-
-  // Project Details
   project_id: number | null;
   project_name: string | null;
-
-  // BOQ Details
   boq_items?: BoqItem[];
-
-  // Supplier Details
   supplier_id: number | null;
   supplier_name: string | null;
   supplier_contact: string | null;
@@ -145,7 +121,7 @@ export default function BatchDetailsPopUpButton({
   const [isOpen, setIsOpen] = useState(false);
   const [batchDetails, setBatchDetails] = useState<BatchDetails | null>(null);
   const [allStocks, setAllStocks] = useState<any[]>([]);
-  const [boqItemNumbers, setBoqItemNumbers] = useState<string[]>([]); // ✅ Store item numbers
+  const [boqItemNumbers, setBoqItemNumbers] = useState<string[]>([]);
 
   // Price analytics state
   const [priceAnalytics, setPriceAnalytics] = useState<{
@@ -157,22 +133,35 @@ export default function BatchDetailsPopUpButton({
   const externalLinkIcon = "/icons/external-link.svg";
   const downloadIcon = "/icons/download.svg";
 
-  const formatNumber = (value: number | null | undefined): string | number => {
-    // Handle null, undefined, or non-numeric values
+  // Format number for quantities - no trailing zeros
+  const formatNumber = (value: number | null | undefined): string => {
     if (value === null || value === undefined || isNaN(Number(value))) {
       return "-";
     }
 
     const num = Number(value);
 
-    // Check if the number has decimal places
-    if (num % 1 === 0) {
-      // No decimal places, return as integer
-      return Math.round(num);
+    if (Number.isInteger(num)) {
+      return num.toString();
     } else {
-      // Has decimal places, format to remove trailing zeros
-      return parseFloat(num.toFixed(3));
+      return parseFloat(num.toFixed(3)).toString();
     }
+  };
+
+  // Format price to exactly 2 decimal places
+  const formatPrice = (value: number | null | undefined): string => {
+    if (value === null || value === undefined || isNaN(Number(value))) {
+      return "-";
+    }
+    return Number(value).toFixed(2);
+  };
+
+  // Format currency with AED prefix and 2 decimal places
+  const formatCurrency = (amount: number | null | undefined): string => {
+    if (amount === null || amount === undefined || isNaN(Number(amount))) {
+      return "-";
+    }
+    return `AED ${Number(amount).toFixed(2)}`;
   };
 
   // Fetch all stocks for this inventory item
@@ -191,7 +180,6 @@ export default function BatchDetailsPopUpButton({
 
       const data = await response.json();
 
-      // Filter stocks for this specific inventory item
       const filteredStocks = data.filter(
         (stock: any) => stock.inventory_item_id === inventoryItem.id,
       );
@@ -225,7 +213,6 @@ export default function BatchDetailsPopUpButton({
       const data = await response.json();
       setBatchDetails(data);
 
-      // ✅ Fetch BOQ item numbers if boq_items exist
       if (data.boq_items && data.boq_items.length > 0 && data.project_id) {
         fetchBoqItemNumbers(data.project_id, data.boq_items);
       }
@@ -234,7 +221,6 @@ export default function BatchDetailsPopUpButton({
     }
   };
 
-  // ✅ Fetch BOQ item numbers using the boq route
   const fetchBoqItemNumbers = async (
     projectId: number,
     boqItems: BoqItem[],
@@ -252,7 +238,6 @@ export default function BatchDetailsPopUpButton({
       if (response.ok) {
         const allBoqLines = await response.json();
 
-        // Map boq_line_id to item_number
         const itemNumbers = boqItems
           .map((boqItem) => {
             const matchingLine = allBoqLines.find(
@@ -277,14 +262,12 @@ export default function BatchDetailsPopUpButton({
       );
 
       if (stocksWithPrice.length > 0) {
-        // Calculate average
         const totalPrice = stocksWithPrice.reduce(
           (sum, stock) => sum + parseFloat(stock.unit_price),
           0,
         );
         const avg = totalPrice / stocksWithPrice.length;
 
-        // Get current price from batch details
         const currentPrice =
           batchDetails.type === "mr"
             ? parseFloat(batchDetails.unit_price?.toString() || "0")
@@ -318,11 +301,6 @@ export default function BatchDetailsPopUpButton({
       month: "2-digit",
       year: "numeric",
     });
-  };
-
-  const formatCurrency = (amount: number | null) => {
-    if (amount === null || amount === undefined) return "-";
-    return `AED ${amount.toLocaleString()}`;
   };
 
   const getLeadTime = () => {
@@ -418,16 +396,7 @@ export default function BatchDetailsPopUpButton({
           </div>
           <div>
             <small>BATCH SOURCE</small>
-            <Button
-              componentType={"link"}
-              bgColor={"transparent"}
-              borderColor={"transparent"}
-              textColor={"black"}
-              style={{ padding: "0px", textDecoration: "underline" }}
-              href={`/mr/${details.mr_header_id}`}
-            >
-              MR-{String(details.mr_header_id).padStart(5, "0")}
-            </Button>
+            <h3>MR-{String(details.mr_header_id).padStart(5, "0")}</h3>
           </div>
           <div>
             <small>PURPOSE</small>
@@ -496,19 +465,8 @@ export default function BatchDetailsPopUpButton({
           }}
         >
           <div>
-            <small>MATERIAL REQUEST ID</small>
-            <h3>
-              <Button
-                componentType={"link"}
-                bgColor={"transparent"}
-                borderColor={"transparent"}
-                textColor={"black"}
-                style={{ padding: "0px", textDecoration: "underline" }}
-                href={`/mr/${details.mr_header_id}`}
-              >
-                MR-{String(details.mr_header_id).padStart(5, "0")}
-              </Button>
-            </h3>
+            <small>MR NUMBER</small>
+            <h3>MR-{String(details.mr_header_id).padStart(5, "0")}</h3>
           </div>
           <div>
             <small>PURPOSE</small>
@@ -533,7 +491,6 @@ export default function BatchDetailsPopUpButton({
               )}
             </h3>
           </div>
-          {/* ✅ Display BOQ item numbers as comma-separated list */}
           {boqItemNumbers.length > 0 && (
             <div>
               <small>BILL OF QUANTITY ITEM(S)</small>
@@ -614,8 +571,19 @@ export default function BatchDetailsPopUpButton({
             }}
           >
             <div>
-              <small>LPO ID</small>
-              <h3>LPO-{String(details.lpo_id).padStart(5, "0")}</h3>
+              <small>LPO NUMBER</small>
+              <h3>
+                <Button
+                  componentType={"link"}
+                  bgColor={"transparent"}
+                  borderColor={"transparent"}
+                  textColor={"black"}
+                  style={{ padding: "0px", textDecoration: "underline" }}
+                  href={`/mr/${details.mr_header_id}/lpo/${details.lpo_id}`}
+                >
+                  LPO-{String(details.lpo_id).padStart(5, "0")}
+                </Button>
+              </h3>
             </div>
             <div>
               <small>TOTAL PRICE</small>
@@ -820,7 +788,6 @@ export default function BatchDetailsPopUpButton({
 
   // Render manual stock details
   const renderManualStockDetails = (details: ManualStockDetails) => {
-    // Helper function to download file
     const handleDownload = async (url: string, fileName: string) => {
       try {
         const response = await fetch(url);
@@ -1015,7 +982,7 @@ export default function BatchDetailsPopUpButton({
         <br />
         <br />
 
-        {/* ✅ BOQ DETAILS - Condensed version */}
+        {/* BOQ DETAILS */}
         {boqItemNumbers.length > 0 && (
           <>
             <div
@@ -1111,7 +1078,6 @@ export default function BatchDetailsPopUpButton({
                   gap: "15px",
                 }}
               >
-                {/* GRN Files */}
                 {details.grn_file &&
                   details.grn_file.map((url, index) => (
                     <Button
@@ -1136,7 +1102,6 @@ export default function BatchDetailsPopUpButton({
                     </Button>
                   ))}
 
-                {/* QC Report Files */}
                 {details.qc_report_file &&
                   details.qc_report_file.map((url, index) => (
                     <Button
@@ -1164,7 +1129,6 @@ export default function BatchDetailsPopUpButton({
                     </Button>
                   ))}
 
-                {/* LPO Files */}
                 {details.lpo_file &&
                   details.lpo_file.map((url, index) => (
                     <Button
@@ -1189,7 +1153,6 @@ export default function BatchDetailsPopUpButton({
                     </Button>
                   ))}
 
-                {/* DN Files */}
                 {details.dn_file &&
                   details.dn_file.map((url, index) => (
                     <Button

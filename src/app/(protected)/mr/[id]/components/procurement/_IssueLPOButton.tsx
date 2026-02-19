@@ -31,6 +31,7 @@ export default function IssueLPOButton({
 
   const [isOpen, setIsOpen] = useState(false);
   const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
+  const [existingLpoData, setExistingLpoData] = useState<any>(null);
 
   // Invoice file states
   const [invoiceFiles, setInvoiceFiles] = useState<string[]>([]);
@@ -51,18 +52,13 @@ export default function IssueLPOButton({
   );
   const [deliveryTerms, setDeliveryTerms] =
     useState(`• Delivery will be made to Street 34, Al Qusais 5, Dubai, UAE
-- Any deviations or damages will be responsibility of the supplier which he/she will rectify without any additional charges`);
+• Any deviations or damages will be responsibility of the supplier which he/she will rectify without any additional charges`);
   const [discount, setDiscount] = useState("0");
   const [vatRate, setVatRate] = useState("5");
   const [shippingHandling, setShippingHandling] = useState("0");
 
   const [unitPrices, setUnitPrices] = useState<{ [key: number]: string }>({});
   const [totalPrices, setTotalPrices] = useState<{ [key: number]: string }>({});
-
-  const timeoutRefs = useRef<{ [key: number]: NodeJS.Timeout }>({});
-  const vatRateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const discountTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const shippingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const subtotal = Object.values(totalPrices).reduce(
     (sum, price) => sum + parseFloat(price || "0"),
@@ -98,39 +94,126 @@ export default function IssueLPOButton({
     }
   }, [mrLines]);
 
+  // Helper function to format number without trailing zeros
+  const formatNumberWithoutTrailingZeros = (value: number | string): string => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "";
+    if (Number.isInteger(num)) {
+      return num.toString();
+    }
+    return parseFloat(num.toFixed(3)).toString();
+  };
+
+  // Helper function to format to 2 decimal places (for initial load only)
+  const formatToTwoDecimals = (value: number | string): string => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "";
+    return num.toFixed(2);
+  };
+
+  // Helper function to format S&H, discount, VAT rate without trailing zeros
+  const formatFieldValue = (value: number | string): string => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "0";
+    if (Number.isInteger(num)) {
+      return num.toString();
+    }
+    // Remove trailing zeros for display
+    return parseFloat(num.toFixed(3)).toString();
+  };
+
   useEffect(() => {
-    const initialUnitPrices: { [key: number]: string } = {};
-    const initialTotalPrices: { [key: number]: string } = {};
+    // If we have existing LPO data, use it; otherwise use mrLines data
+    if (existingLpoData && existingLpoData.lpo_mr_lines) {
+      const initialUnitPrices: { [key: number]: string } = {};
+      const initialTotalPrices: { [key: number]: string } = {};
 
-    mrLines.forEach((mrLine, index) => {
-      initialUnitPrices[index] = mrLine.approved_unit_price?.toString() || "";
+      mrLines.forEach((mrLine, index) => {
+        // Find matching LPO line
+        const lpoLine = existingLpoData.lpo_mr_lines.find(
+          (line: any) => line.mr_line_id === mrLine.id,
+        );
 
-      const quantity = mrLine.quantity;
-      const unitPrice = parseFloat(
-        mrLine.approved_unit_price?.toString() || "0",
-      );
-      const total = quantity * unitPrice;
+        if (lpoLine) {
+          // Use existing LPO values, formatted to 2 decimals for initial display
+          initialUnitPrices[index] = formatToTwoDecimals(
+            lpoLine.unit_price || "0",
+          );
+          initialTotalPrices[index] = formatToTwoDecimals(
+            lpoLine.total_price || "0",
+          );
+        } else {
+          // Fallback to mrLine data
+          initialUnitPrices[index] = formatToTwoDecimals(
+            mrLine.approved_unit_price || "",
+          );
 
-      const formattedTotal =
-        total % 1 === 0 ? total.toString() : total.toFixed(2);
-
-      initialTotalPrices[index] = formattedTotal;
-    });
-
-    setUnitPrices(initialUnitPrices);
-    setTotalPrices(initialTotalPrices);
-  }, [mrLines]);
-
-  useEffect(() => {
-    return () => {
-      Object.values(timeoutRefs.current).forEach((timeout) => {
-        clearTimeout(timeout);
+          const proposedQty = Number(mrLine.approved_proposed_quantity) || 0;
+          const quantity = proposedQty > 0 ? proposedQty : mrLine.quantity;
+          const unitPrice = parseFloat(
+            mrLine.approved_unit_price?.toString() || "0",
+          );
+          const total = quantity * unitPrice;
+          initialTotalPrices[index] = total.toFixed(2);
+        }
       });
-      if (vatRateTimeoutRef.current) clearTimeout(vatRateTimeoutRef.current);
-      if (discountTimeoutRef.current) clearTimeout(discountTimeoutRef.current);
-      if (shippingTimeoutRef.current) clearTimeout(shippingTimeoutRef.current);
-    };
-  }, []);
+
+      setUnitPrices(initialUnitPrices);
+      setTotalPrices(initialTotalPrices);
+
+      // Also set other LPO fields with proper formatting
+      setQuotation(existingLpoData.quotation_code || "");
+      setSupplierContactPersonName(
+        existingLpoData.supplier_contact_person_name ||
+          mrLines[0].approved_supplier_contact_person,
+      );
+      setSupplierEmail(
+        existingLpoData.supplier_email || mrLines[0].approved_supplier_email,
+      );
+      setDeliveryDate(
+        existingLpoData.delivery_date
+          ? existingLpoData.delivery_date.split("T")[0]
+          : "",
+      );
+      setPaymentTerms(
+        existingLpoData.payment_terms ||
+          "Net 30 Days via Bank Transfer / Cheque",
+      );
+      setDeliveryTerms(
+        existingLpoData.delivery_terms ||
+          `• Delivery will be made to Street 34, Al Qusais 5, Dubai, UAE\n• Any deviations or damages will be responsibility of the supplier which he/she will rectify without any additional charges`,
+      );
+
+      // Format these fields without trailing zeros
+      setDiscount(formatFieldValue(existingLpoData.discount || "0"));
+      setVatRate(formatFieldValue(existingLpoData.vat_rate || "5"));
+      setShippingHandling(
+        formatFieldValue(existingLpoData.shipping_and_handling || "0"),
+      );
+    } else {
+      // No existing LPO data, use mrLines data
+      const initialUnitPrices: { [key: number]: string } = {};
+      const initialTotalPrices: { [key: number]: string } = {};
+
+      mrLines.forEach((mrLine, index) => {
+        initialUnitPrices[index] = formatToTwoDecimals(
+          mrLine.approved_unit_price || "",
+        );
+
+        const proposedQty = Number(mrLine.approved_proposed_quantity) || 0;
+        const quantity = proposedQty > 0 ? proposedQty : mrLine.quantity;
+        const unitPrice = parseFloat(
+          mrLine.approved_unit_price?.toString() || "0",
+        );
+        const total = quantity * unitPrice;
+
+        initialTotalPrices[index] = total.toFixed(2);
+      });
+
+      setUnitPrices(initialUnitPrices);
+      setTotalPrices(initialTotalPrices);
+    }
+  }, [mrLines, existingLpoData]);
 
   async function checkExistingLpo() {
     try {
@@ -153,6 +236,23 @@ export default function IssueLPOButton({
         const lpoData: LpoHeader = data.data[0];
 
         setExistingLpoId(lpoData.id);
+
+        // Fetch full LPO details including lpo_mr_lines
+        const detailsRes = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPODetails`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lpo_id: lpoData.id }),
+          },
+        );
+
+        if (detailsRes.ok) {
+          const detailsData = await detailsRes.json();
+          if (detailsData.success) {
+            setExistingLpoData(detailsData.data);
+          }
+        }
 
         // Load existing invoice files
         if (lpoData.invoice_file) {
@@ -183,6 +283,7 @@ export default function IssueLPOButton({
         }
       } else {
         setExistingLpoId(null);
+        setExistingLpoData(null);
         setInvoiceFiles([]);
         setSignedLpoFiles([]);
       }
@@ -199,98 +300,34 @@ export default function IssueLPOButton({
   const handleUnitPriceChange = (index: number, value: string) => {
     if (!isValidNumber(value)) return;
 
-    if (timeoutRefs.current[index]) {
-      clearTimeout(timeoutRefs.current[index]);
-    }
+    // Store raw value while typing — no reformatting, no timeout replacement
+    setUnitPrices((prev) => ({ ...prev, [index]: value }));
 
-    setUnitPrices((prev) => ({
-      ...prev,
-      [index]: value,
-    }));
-
-    const quantity = mrLines[index].quantity;
+    // Recalculate total live
+    const proposedQty = Number(mrLines[index].approved_proposed_quantity) || 0;
+    const quantity = proposedQty > 0 ? proposedQty : mrLines[index].quantity;
     const unitPrice = parseFloat(value) || 0;
     const total = quantity * unitPrice;
 
-    const formattedTotal =
-      total % 1 === 0 ? total.toString() : total.toFixed(2);
-
     setTotalPrices((prev) => ({
       ...prev,
-      [index]: formattedTotal,
+      [index]: total.toFixed(2),
     }));
-
-    if (value === "" || value === null) {
-      timeoutRefs.current[index] = setTimeout(() => {
-        const approvedPrice =
-          mrLines[index].approved_unit_price?.toString() || "";
-
-        setUnitPrices((prev) => ({
-          ...prev,
-          [index]: approvedPrice,
-        }));
-
-        const quantity = mrLines[index].quantity;
-        const unitPrice = parseFloat(approvedPrice || "0");
-        const total = quantity * unitPrice;
-
-        const formattedTotal =
-          total % 1 === 0 ? total.toString() : total.toFixed(2);
-
-        setTotalPrices((prev) => ({
-          ...prev,
-          [index]: formattedTotal,
-        }));
-      }, 2000);
-    }
   };
 
   const handleVatRateChange = (value: string) => {
     if (!isValidNumber(value)) return;
-
-    if (vatRateTimeoutRef.current) {
-      clearTimeout(vatRateTimeoutRef.current);
-    }
-
     setVatRate(value);
-
-    if (value === "" || value === null) {
-      vatRateTimeoutRef.current = setTimeout(() => {
-        setVatRate("5");
-      }, 2000);
-    }
   };
 
   const handleDiscountChange = (value: string) => {
     if (!isValidNumber(value)) return;
-
-    if (discountTimeoutRef.current) {
-      clearTimeout(discountTimeoutRef.current);
-    }
-
     setDiscount(value);
-
-    if (value === "" || value === null) {
-      discountTimeoutRef.current = setTimeout(() => {
-        setDiscount("0");
-      }, 2000);
-    }
   };
 
   const handleShippingChange = (value: string) => {
     if (!isValidNumber(value)) return;
-
-    if (shippingTimeoutRef.current) {
-      clearTimeout(shippingTimeoutRef.current);
-    }
-
     setShippingHandling(value);
-
-    if (value === "" || value === null) {
-      shippingTimeoutRef.current = setTimeout(() => {
-        setShippingHandling("0");
-      }, 2000);
-    }
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -302,11 +339,15 @@ export default function IssueLPOButton({
       total_price: parseFloat(totalPrices[index] || "0"),
     }));
 
+    const action = existingLpoId ? "updateLPO" : "createLPO";
+    const lpoIdParam = existingLpoId ? { lpo_id: existingLpoId } : {};
+
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "createLPO",
+        action,
+        ...lpoIdParam,
         project_id: mrHeader.project_id,
         mr_header_id: mrHeader.id,
         supplier_id: mrLines[0].approved_supplier_id,
@@ -317,10 +358,10 @@ export default function IssueLPOButton({
         payment_terms: paymentTerms,
         delivery_terms: deliveryTerms,
         subtotal,
-        discount,
-        vat_rate: vatRate,
+        discount: parseFloat(discount || "0"),
+        vat_rate: parseFloat(vatRate || "0"),
         vat: vatAmount,
-        shipping_and_handling: shippingHandling,
+        shipping_and_handling: parseFloat(shippingHandling || "0"),
         total,
         lpo_mr_lines: lpoMrLines,
       }),
@@ -328,22 +369,25 @@ export default function IssueLPOButton({
 
     if (res.ok) {
       toast(
-        `Local purchase order created for ${mrLines[0].approved_supplier_name}`,
+        `Local purchase order ${existingLpoId ? "updated" : "created"} for ${mrLines[0].approved_supplier_name}`,
         "success",
       );
       setIsOpen(false);
       await checkExistingLpo();
       router.refresh();
     } else {
-      toast("Failed to create local purchase order", "error");
+      toast(
+        `Failed to ${existingLpoId ? "update" : "create"} local purchase order`,
+        "error",
+      );
     }
   }
 
   const formatNumber = (num: number) => {
-    return num % 1 === 0 ? num.toString() : num.toFixed(2);
+    return num.toFixed(2);
   };
 
-  if (existingLpoId) {
+  if (existingLpoId && !isOpen) {
     const supplierId = mrLines[0]?.approved_supplier_id;
     const supplierType = mrLines[0]?.approved_supplier_type;
     const canDelete =
@@ -400,25 +444,31 @@ export default function IssueLPOButton({
     );
   }
 
-  // Otherwise show "Issue LPO" button
+  // Show "Issue LPO" button or Edit form
   return (
     <>
-      {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
-        <Button
-          componentType={"button"}
-          bgColor="black"
-          borderColor="black"
-          textColor="white"
-          onClick={() => setIsOpen(true)}
-          style={{ padding: "7px 20px", borderRadius: "25px" }}
-        >
-          Issue LPO +
-        </Button>
-      )}
+      {!existingLpoId &&
+        userInfo?.departmentID === 9 &&
+        mrHeader.progress_id === 12 && (
+          <Button
+            componentType={"button"}
+            bgColor="black"
+            borderColor="black"
+            textColor="white"
+            onClick={() => setIsOpen(true)}
+            style={{ padding: "7px 20px", borderRadius: "25px" }}
+          >
+            Issue LPO +
+          </Button>
+        )}
 
       {isOpen && (
         <FormPopUp
-          header={"CREATE LOCAL PURCHASE ORDER"}
+          header={
+            existingLpoId
+              ? "UPDATE LOCAL PURCHASE ORDER"
+              : "CREATE LOCAL PURCHASE ORDER"
+          }
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
@@ -498,34 +548,48 @@ export default function IssueLPOButton({
                 <th>#</th>
                 <th>DESCRIPTION</th>
                 <th>QUANTITY</th>
-                <th>UNIT PRICE</th>
+                <th style={{ minWidth: "250px" }}>UNIT PRICE</th>
                 <th>TOTAL PRICE</th>
               </tr>
             </thead>
             <tbody>
-              {mrLines.map((mrLine, index) => (
-                <tr key={mrLine.id || index}>
-                  <td>{index + 1}</td>
-                  <td>{mrLine.material_description}</td>
-                  <td>
-                    {mrLine.quantity} {mrLine.unit}
-                  </td>
-                  <td>
-                    <div className="input-prefix right">
-                      <span>AED</span>
-                      <input
-                        type="text"
-                        placeholder="ENTER UNIT PRICE"
-                        value={unitPrices[index] || ""}
-                        onChange={(e) =>
-                          handleUnitPriceChange(index, e.target.value)
-                        }
-                      />
-                    </div>
-                  </td>
-                  <td>{totalPrices[index] || "0"} AED</td>
-                </tr>
-              ))}
+              {mrLines.map((mrLine, index) => {
+                const proposedQty =
+                  Number(mrLine.approved_proposed_quantity) || 0;
+                const displayQty =
+                  proposedQty > 0
+                    ? proposedQty
+                    : mrLine.approved_proposed_quantity;
+                // Format quantity without trailing zeros
+                const formattedQty =
+                  formatNumberWithoutTrailingZeros(displayQty);
+
+                return (
+                  <tr key={mrLine.id || index}>
+                    <td>{index + 1}</td>
+                    <td>{mrLine.material_description}</td>
+                    <td>
+                      {formattedQty} {mrLine.unit}
+                    </td>
+                    <td>
+                      <div className="input-prefix right">
+                        <span>AED</span>
+                        <input
+                          type="text"
+                          placeholder="ENTER UNIT PRICE"
+                          value={unitPrices[index] || ""}
+                          onChange={(e) =>
+                            handleUnitPriceChange(index, e.target.value)
+                          }
+                        />
+                      </div>
+                    </td>
+                    <td>
+                      {parseFloat(totalPrices[index] || "0").toFixed(2)} AED
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 

@@ -41,10 +41,10 @@ export async function POST(request: NextRequest) {
         lml.unit_price,
         lml.total_price,
         ml.material_description,
-        ml.quantity,
+        ml.approved_proposed_quantity,
         ml.unit
       FROM lpo_mr_line lml
-      LEFT JOIN mr_lines ml ON lml.mr_line_id = ml.id
+      LEFT JOIN vw_mr_lines ml ON lml.mr_line_id = ml.id
       WHERE lml.lpo_id = ?
     `;
 

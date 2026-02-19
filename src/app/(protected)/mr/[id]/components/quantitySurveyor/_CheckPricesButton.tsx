@@ -47,6 +47,29 @@ export default function CheckPricesButton({
     useState<SupplierQuotation | null>(null);
   const [isRejected, setIsRejected] = useState(false);
 
+  // Helper function to format currency with 2 decimal places
+  const formatCurrency = (
+    value: number | string | null | undefined,
+  ): string => {
+    if (value === null || value === undefined || value === "") return "0.00";
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "0.00";
+    return num.toFixed(2);
+  };
+
+  // Helper function to format quantity (no trailing zeros unless decimal)
+  const formatQuantity = (
+    value: number | string | null | undefined,
+  ): string => {
+    if (value === null || value === undefined || value === "") return "0";
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "0";
+    if (Number.isInteger(num)) {
+      return num.toString();
+    }
+    return parseFloat(num.toFixed(3)).toString();
+  };
+
   const fetchQuotations = () => {
     fetch("/api/supplier/getAllSupplierAndQuotationByMrLineID", {
       method: "POST",
@@ -261,54 +284,78 @@ export default function CheckPricesButton({
                 <tr>
                   <th>SUPPLIER</th>
                   <th>QUOTATION</th>
+                  <th>QTY FOR USE</th>
+                  <th>QTY FOR STOCKS</th>
                   <th>UNIT PRICE</th>
                   <th>TOTAL PRICE</th>
                 </tr>
               </thead>
               <tbody>
                 {supplierQuotations.map(
-                  (quotation: SupplierQuotation, index: number) => (
-                    <tr key={index}>
-                      <td>
-                        <SupplierDetailsPopUp
-                          item={quotation}
-                          style={{
-                            padding: "7px 20px",
-                            textWrap: "nowrap",
-                            minWidth: "300px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            borderRadius: "25px",
-                          }}
-                        >
-                          {quotation.supplier_name}
-                          <img
-                            src="/icons/external-link.svg"
-                            alt="external link icon"
-                          />
-                        </SupplierDetailsPopUp>
-                      </td>
-                      <td>
-                        <Button
-                          componentType={"link"}
-                          bgColor={"white"}
-                          borderColor={"rgba(207, 207, 207, 1)"}
-                          textColor={"black"}
-                          href={quotation.quotation_file[0]}
-                          target="_blank"
-                          style={{ padding: "7px 20px", borderRadius: "25px" }}
-                        >
-                          Quotation
-                          <img
-                            src="/icons/external-link.svg"
-                            alt="external link icon"
-                          />
-                        </Button>
-                      </td>
-                      <td>{quotation.unit_price} AED</td>
-                      <td>{quotation.total_price} AED</td>
-                    </tr>
-                  ),
+                  (quotation: SupplierQuotation, index: number) => {
+                    const requestedQty = Number(mrLine.quantity) || 0;
+                    const proposedQty =
+                      Number(quotation.proposed_quantity) || 0;
+                    const totalQty =
+                      proposedQty > 0 ? proposedQty : requestedQty;
+                    const stockQty =
+                      proposedQty > requestedQty
+                        ? proposedQty - requestedQty
+                        : 0;
+                    return (
+                      <tr key={index}>
+                        <td>
+                          <SupplierDetailsPopUp
+                            item={quotation}
+                            style={{
+                              padding: "7px 20px",
+                              textWrap: "nowrap",
+                              minWidth: "300px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              borderRadius: "25px",
+                            }}
+                          >
+                            {quotation.supplier_name}
+                            <img
+                              src="/icons/external-link.svg"
+                              alt="external link icon"
+                            />
+                          </SupplierDetailsPopUp>
+                        </td>
+                        <td>
+                          <Button
+                            componentType={"link"}
+                            bgColor={"white"}
+                            borderColor={"rgba(207, 207, 207, 1)"}
+                            textColor={"black"}
+                            href={quotation.quotation_file[0]}
+                            target="_blank"
+                            style={{
+                              padding: "7px 20px",
+                              borderRadius: "25px",
+                            }}
+                          >
+                            Quotation
+                            <img
+                              src="/icons/external-link.svg"
+                              alt="external link icon"
+                            />
+                          </Button>
+                        </td>
+                        <td>
+                          {formatQuantity(requestedQty)} {mrLine.unit}
+                        </td>
+                        <td>
+                          {stockQty > 0
+                            ? `${formatQuantity(stockQty)} ${mrLine.unit}`
+                            : "-"}
+                        </td>
+                        <td>{formatCurrency(quotation.unit_price)} AED</td>
+                        <td>{formatCurrency(quotation.total_price)} AED</td>
+                      </tr>
+                    );
+                  },
                 )}
               </tbody>
             </table>

@@ -22,10 +22,11 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr auto",
+          gap: "20px",
         }}
       >
         <div>
-          <small>BOQ ID</small>
+          <small>BOQ NUMBER</small>
           <h2>BOQ-{String(boqHeader?.id).padStart(5, "0")}</h2>
         </div>
 
@@ -34,28 +35,21 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
           <h2>{boqHeader?.name || "-"}</h2>
         </div>
 
-        <ThreeDotsMenuButton>
-          <EditBoqHeaderButton
-            boqHeader={boqHeader}
-            threeDotsMenu
-            onSuccess={onSuccess}
-          />
-          <DeleteBoqHeaderButton
-            boqHeader={boqHeader}
-            threeDotsMenu
-            onSuccess={onSuccess}
-          />
-        </ThreeDotsMenuButton>
-      </div>
+        <div>
+          <ThreeDotsMenuButton>
+            <EditBoqHeaderButton
+              boqHeader={boqHeader}
+              threeDotsMenu
+              onSuccess={onSuccess}
+            />
+            <DeleteBoqHeaderButton
+              boqHeader={boqHeader}
+              threeDotsMenu
+              onSuccess={onSuccess}
+            />
+          </ThreeDotsMenuButton>
+        </div>
 
-      <br />
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr auto",
-        }}
-      >
         <div>
           <small>LOCATION</small>
           <h2>{boqHeader?.location}</h2>
@@ -71,16 +65,7 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
         </div>
 
         <div></div>
-      </div>
 
-      <br />
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr auto",
-        }}
-      >
         <div>
           <small>CLIENT NAME</small>
           <h2>{boqHeader?.client_name || "-"}</h2>
@@ -118,7 +103,7 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
         }}
         full
       >
-        VIEW <p style={{ marginLeft: "10px" }}>&gt;</p>
+        VIEW &gt;
       </Button>
     </div>
   );

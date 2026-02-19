@@ -438,7 +438,9 @@ export default function CreateGRNButton({
   // FIXED: Updated epsilon to match decimal(10,3) precision
   const checkQuantityMatch = (index: number) => {
     const receivedQty = parseQuantity(grnLines[index]?.received_quantity);
-    const orderedQty = parseQuantity(mrLines[index]?.quantity);
+    const orderedQty = parseQuantity(
+      mrLines[index]?.approved_proposed_quantity,
+    );
 
     if (!grnLines[index]?.received_quantity) return null;
 
@@ -681,9 +683,9 @@ export default function CreateGRNButton({
               <tr>
                 <th>#</th>
                 <th>DESCRIPTION</th>
-                <th>ORDERED QUANTITY</th>
-                <th>RECEIVED QUANTITY</th>
-                {progress_id >= 21 && <th>ACCEPTED QUANTITY</th>}
+                <th>TOTAL QTY</th>
+                <th>RECEIVED QTY</th>
+                {progress_id >= 21 && <th>ACCEPTED QTY</th>}
                 <th>NOTES</th>
                 <th>ATTACHMENT</th>
               </tr>
@@ -704,7 +706,8 @@ export default function CreateGRNButton({
                     <td>{index + 1}</td>
                     <td>{mrLine.material_description}</td>
                     <td>
-                      {formatQuantity(mrLine.quantity)} {mrLine.unit}
+                      {formatQuantity(mrLine.approved_proposed_quantity)}{" "}
+                      {mrLine.unit}
                     </td>
                     <td>
                       {isViewMode ? (

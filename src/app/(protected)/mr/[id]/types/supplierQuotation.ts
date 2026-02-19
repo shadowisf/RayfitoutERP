@@ -6,6 +6,7 @@ export type SupplierQuotation = {
   quotation_rating: number;
   unit_price: number;
   total_price: number;
+  proposed_quantity: number;
   approval_status: string;
   reject_comment: string;
   qs_approval_status: string;

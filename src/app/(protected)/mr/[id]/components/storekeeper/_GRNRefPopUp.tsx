@@ -52,13 +52,13 @@ export default function GRNRefPopUp({
 
   const [existingGrn, setExistingGrn] = useState<GRN | null>(null);
   const [grnLineForItem, setGrnLineForItem] = useState<GRNLineItem | null>(
-    null
+    null,
   );
   const [isLoadingGrn, setIsLoadingGrn] = useState(false);
 
   // State for QC accepted quantity
   const [qcAcceptedQuantity, setQcAcceptedQuantity] = useState<number | null>(
-    null
+    null,
   );
 
   // Fetch LPO when component mounts
@@ -101,7 +101,7 @@ export default function GRNRefPopUp({
             mr_header_id: mrLine.mr_header_id,
             supplier_id: mrLine.approved_supplier_id,
           }),
-        }
+        },
       );
       const data = await res.json();
 
@@ -125,7 +125,7 @@ export default function GRNRefPopUp({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lpo_id: existingLpoId }),
-        }
+        },
       );
       const data = await response.json();
 
@@ -135,7 +135,7 @@ export default function GRNRefPopUp({
         // Find the lpo_mr_line that matches this mrLine
         if (data.data.lpo_mr_lines) {
           const foundLpoMrLine = data.data.lpo_mr_lines.find(
-            (line: any) => line.mr_line_id === mrLine.id
+            (line: any) => line.mr_line_id === mrLine.id,
           );
           setLpoMrLine(foundLpoMrLine);
         }
@@ -156,7 +156,7 @@ export default function GRNRefPopUp({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lpo_id: existingLpoId }),
-        }
+        },
       );
       const data = await response.json();
 
@@ -185,7 +185,7 @@ export default function GRNRefPopUp({
           body: JSON.stringify({
             lpo_mr_line_id: lpoMrLine.id,
           }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -205,7 +205,7 @@ export default function GRNRefPopUp({
 
     // Find the GRN line that matches this lpo_mr_line_id
     const grnLine = existingGrn.grn_lines.find(
-      (gl: any) => gl.lpo_mr_line_id === lpoMrLine.id
+      (gl: any) => gl.lpo_mr_line_id === lpoMrLine.id,
     );
 
     if (grnLine) {
@@ -242,23 +242,67 @@ export default function GRNRefPopUp({
     return `${year}-${month}-${day}`;
   };
 
+  // Helper function to format quantity without trailing zeros
+  const formatQuantity = (value: number | string): string => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "0";
+    if (Number.isInteger(num)) {
+      return num.toString();
+    }
+    // Remove trailing zeros, keep up to 3 decimal precision then trim
+    return parseFloat(num.toFixed(3)).toString();
+  };
+
   // Function to check if received quantity matches ordered quantity
   const checkQuantityMatch = () => {
     if (!grnLineForItem) return null;
 
     const receivedQty = parseFloat(grnLineForItem.received_quantity || "0");
-    const orderedQty = mrLine.quantity || 0;
+    // Parse orderedQty from mrLine.quantity to handle both string and number types
+    const orderedQty =
+      typeof mrLine.quantity === "string"
+        ? parseFloat(mrLine.quantity)
+        : mrLine.quantity || 0;
 
-    if (!grnLineForItem.received_quantity) {
+    // Handle case where received_quantity is empty/null/undefined
+    if (
+      !grnLineForItem.received_quantity ||
+      grnLineForItem.received_quantity === ""
+    ) {
       return null;
     }
 
-    return receivedQty === orderedQty;
+    // Use tolerance comparison to handle floating point precision issues
+    // Round both to 3 decimal places for comparison
+    const receivedRounded = Math.round(receivedQty * 1000) / 1000;
+    const orderedRounded = Math.round(orderedQty * 1000) / 1000;
+
+    return receivedRounded === orderedRounded;
   };
 
   const quantityMatch = checkQuantityMatch();
+
+  // Debug logging (remove after fixing)
+  useEffect(() => {
+    if (grnLineForItem) {
+      console.log("Quantity Check Debug:", {
+        receivedQty: grnLineForItem.received_quantity,
+        receivedQtyParsed: parseFloat(grnLineForItem.received_quantity || "0"),
+        orderedQty: mrLine.quantity,
+        orderedQtyParsed:
+          typeof mrLine.quantity === "string"
+            ? parseFloat(mrLine.quantity)
+            : mrLine.quantity,
+        quantityMatch: checkQuantityMatch(),
+      });
+    }
+  }, [grnLineForItem, mrLine.quantity]);
+
   const receivedQty = parseFloat(grnLineForItem?.received_quantity || "0");
-  const orderedQty = mrLine.quantity;
+  const orderedQty =
+    typeof mrLine.quantity === "string"
+      ? parseFloat(mrLine.quantity)
+      : mrLine.quantity || 0;
 
   // Determine if QC column should be shown (if progress_id >= 21)
   const showQcColumn = qcAcceptedQuantity !== null;
@@ -329,8 +373,8 @@ export default function GRNRefPopUp({
               <tr>
                 <th>#</th>
                 <th>DESCRIPTION</th>
-                <th>ORDERED QUANTITY</th>
-                <th>RECEIVED QUANTITY</th>
+                <th>TOTAL QTY</th>
+                <th>RECEIVED QTY</th>
                 {showQcColumn && <th>ACCEPTED QUANTITY</th>}
                 <th>NOTES</th>
                 <th>ATTACHMENT</th>
@@ -341,16 +385,16 @@ export default function GRNRefPopUp({
                 <td>1</td>
                 <td>{mrLine.material_description}</td>
                 <td>
-                  {mrLine.quantity} {mrLine.unit}
+                  {formatQuantity(mrLine.quantity)} {mrLine.unit}
                 </td>
                 <td>
-                  {`${grnLineForItem?.received_quantity || "0"} ${mrLine.unit}`}
+                  {`${formatQuantity(grnLineForItem?.received_quantity || "0")} ${mrLine.unit}`}
                 </td>
                 {showQcColumn && (
                   <td>
                     {qcAcceptedQuantity !== null &&
                     qcAcceptedQuantity !== undefined ? (
-                      `${qcAcceptedQuantity} ${mrLine.unit}`
+                      `${formatQuantity(qcAcceptedQuantity)} ${mrLine.unit}`
                     ) : (
                       <span style={{ color: "rgba(150, 150, 150, 1)" }}>-</span>
                     )}
