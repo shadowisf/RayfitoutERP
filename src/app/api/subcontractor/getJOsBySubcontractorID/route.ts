@@ -17,8 +17,6 @@ export async function POST(req: Request) {
       `
       SELECT
         mh.id AS jo_id,
-        mh.id AS mr_header_id,
-        mh.id,
         mh.required_date AS due_date,
         mh.jo_invoice_file,
         mh.jo_payment_receipt,
@@ -36,7 +34,7 @@ export async function POST(req: Request) {
       JOIN mr_headers mh ON jl.mr_header_id = mh.id
       WHERE sq.subcontractor_id = ?
         AND sq.approval_status = 'Approved'
-      GROUP BY mh.id, mh.id, mh.required_date, mh.jo_invoice_file, mh.jo_payment_receipt
+      GROUP BY mh.id, mh.required_date, mh.jo_invoice_file, mh.jo_payment_receipt
       ORDER BY mh.required_date DESC
       `,
       [subcontractorId],

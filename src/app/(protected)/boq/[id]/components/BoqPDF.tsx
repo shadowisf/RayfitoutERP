@@ -444,9 +444,14 @@ export function BoqPDF({
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>CLIENT</Text>
-            <Text style={styles.infoValue}>
-              {boqHeader.client_name || "N/A"}
-            </Text>
+            <Text style={styles.infoValue}>{boqHeader.client_name || "-"}</Text>
+          </View>
+        </View>
+
+        <View style={styles.infoRow}>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>BOQ NAME</Text>
+            <Text style={styles.infoValue}>{boqHeader.name || "-"}</Text>
           </View>
         </View>
 
@@ -552,7 +557,7 @@ export function BoqPDF({
           <View style={styles.termsSection}>
             <Text style={styles.termsTitle}>PAYMENT TERMS</Text>
             <Text style={styles.termsText}>
-              {boqHeader.payment_terms || "N/A"}
+              {boqHeader.payment_terms || "-"}
             </Text>
           </View>
 
@@ -560,34 +565,32 @@ export function BoqPDF({
           <View style={styles.termsSection}>
             <Text style={styles.termsTitle}>VALIDITY TERMS</Text>
             <Text style={styles.termsText}>
-              {boqHeader.validity_terms || "N/A"}
+              {boqHeader.validity_terms || "-"}
             </Text>
           </View>
 
           <View style={styles.termsSection}>
             <Text style={styles.termsTitle}>WARRANTY</Text>
-            <Text style={styles.termsText}>{boqHeader.warranty || "N/A"}</Text>
+            <Text style={styles.termsText}>{boqHeader.warranty || "-"}</Text>
           </View>
 
           {/* Completion */}
           <View style={styles.termsSection}>
             <Text style={styles.termsTitle}>COMPLETION</Text>
-            <Text style={styles.termsText}>
-              {boqHeader.completion || "N/A"}
-            </Text>
+            <Text style={styles.termsText}>{boqHeader.completion || "-"}</Text>
           </View>
 
           {/* Exclusion */}
           <View style={styles.termsSection}>
             <Text style={styles.termsTitle}>EXCLUSIONS</Text>
-            <Text style={styles.termsText}>{boqHeader.exclusion || "N/A"}</Text>
+            <Text style={styles.termsText}>{boqHeader.exclusion || "-"}</Text>
           </View>
 
           {/* Terms and Conditions */}
           <View style={styles.termsSection}>
             <Text style={styles.termsTitle}>TERMS & CONDITIONS</Text>
             <Text style={styles.termsText}>
-              {boqHeader.terms_and_conditions || "N/A"}
+              {boqHeader.terms_and_conditions || "-"}
             </Text>
           </View>
         </View>

@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     if (!lpo_id) {
       return NextResponse.json(
         { error: "LPO ID is required", success: false },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     console.error("Error fetching GRN:", error);
     return NextResponse.json(
       { error: "Failed to fetch GRN", success: false },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

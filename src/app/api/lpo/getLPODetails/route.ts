@@ -8,15 +8,17 @@ export async function POST(request: NextRequest) {
     const { lpo_id } = body;
 
     const lpoQuery = `
-      SELECT 
-        l.*,
-        s.name as supplier_name,
-        s.address as supplier_address,
-        s.trn_number as supplier_trn_number
-      FROM lpo l
-      LEFT JOIN suppliers s ON l.supplier_id = s.id
-      WHERE l.id = ?
-    `;
+  SELECT 
+    l.*,
+    s.name as supplier_name,
+    s.address as supplier_address,
+    s.trn_number as supplier_trn_number,
+    p.name as project_name
+  FROM lpo l
+  LEFT JOIN suppliers s ON l.supplier_id = s.id
+  LEFT JOIN projects p ON l.project_id = p.id
+  WHERE l.id = ?
+`;
 
     const [lpoRows] = await db.query<RowDataPacket[]>(lpoQuery, [
       Number(lpo_id),

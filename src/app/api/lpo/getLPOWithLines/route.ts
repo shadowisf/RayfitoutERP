@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
         s.email as supplier_email_address,
         pr.value as progress_name,
         mh.required_date,
-        mh.id,
+        mh.id as mr_header_id,
         p.name as project_name,
         pur.value as purpose_name,
         mh.requested_by,

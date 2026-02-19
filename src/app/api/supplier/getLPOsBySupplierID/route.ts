@@ -26,7 +26,7 @@ export async function POST(req: Request) {
         l.created_at,
         l.delivery_date,
         l.paid_at,
-        mh.id,
+        mh.id AS mr_header_id,
         CASE
           WHEN l.payment_status = 'Approved' THEN l.total
           ELSE 0
