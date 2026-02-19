@@ -5,7 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MrLine } from "../../types/mrLine";
 import { useAuth } from "@/app/context/AuthContext";
 import { LpoHeader } from "../../types/lpoHeader";
@@ -78,31 +78,27 @@ export default function CreateGRNButton({
   }>({});
 
   // Helper function to format quantity - removes trailing zeros unless necessary
-  const formatQuantity = (
-    quantity: number | string | undefined | null,
-  ): string => {
-    if (quantity === undefined || quantity === null || quantity === "")
-      return "0";
+  const formatQuantity = useCallback(
+    (quantity: number | string | undefined | null): string => {
+      if (quantity === undefined || quantity === null || quantity === "")
+        return "";
 
-    const num = typeof quantity === "string" ? parseFloat(quantity) : quantity;
-    if (isNaN(num)) return "0";
+      const num =
+        typeof quantity === "string" ? parseFloat(quantity) : quantity;
+      if (isNaN(num)) return "";
 
-    // If it's an integer, return as string without decimals
-    if (Number.isInteger(num)) return num.toString();
+      // If it's an integer, return as string without decimals
+      if (Number.isInteger(num)) return num.toString();
 
-    // Convert to string with max precision, then remove trailing zeros
-    // Use toFixed(10) first to handle any floating point issues, then trim
-    const withFixed = num.toFixed(10);
+      // Convert to string with max precision, then remove trailing zeros
+      const withFixed = num.toFixed(10);
+      const trimmed = withFixed.replace(/\.?0+$/, "");
 
-    // Remove trailing zeros after decimal point
-    const trimmed = withFixed.replace(/\.?0+$/, "");
-
-    // If we ended up with just an integer (e.g., "10"), return that
-    if (!trimmed.includes(".")) return trimmed;
-
-    // Otherwise return the trimmed decimal (e.g., "10.5", "10.25", "10.125")
-    return trimmed;
-  };
+      if (!trimmed.includes(".")) return trimmed;
+      return trimmed;
+    },
+    [],
+  );
 
   // Helper to parse quantity for comparison
   const parseQuantity = (
@@ -278,9 +274,14 @@ export default function CreateGRNButton({
               attachmentUrl = grnLine.attachment;
             }
           }
+
+          // ✅ FORMAT the received_quantity immediately when loading existing data
+          const rawQuantity = grnLine.received_quantity?.toString() || "";
+          const formattedQuantity = formatQuantity(rawQuantity);
+
           mappedGrnLines[index] = {
             lpo_mr_line_id: lpoLine.id,
-            received_quantity: grnLine.received_quantity?.toString() || "",
+            received_quantity: formattedQuantity, // Use formatted value
             notes: grnLine.notes || "",
             attachment: attachmentUrl || "",
             attachmentFile: null,
@@ -297,13 +298,43 @@ export default function CreateGRNButton({
       });
       setGrnLines(mappedGrnLines);
     }
-  }, [existingGrn, lpoMrLines, isOpen]);
+  }, [existingGrn, lpoMrLines, isOpen, formatQuantity]);
 
+  // FIXED: Handle received quantity change with immediate formatting
   const handleReceivedQuantityChange = (index: number, value: string) => {
     if (isViewMode) return;
+
+    // Allow empty value
+    if (value === "") {
+      setGrnLines((prev) => ({
+        ...prev,
+        [index]: { ...prev[index], received_quantity: "" },
+      }));
+      return;
+    }
+
+    // Allow only numbers and single decimal point during typing
+    let sanitized = value.replace(/[^\d.]/g, "");
+
+    // Ensure only one decimal point
+    const parts = sanitized.split(".");
+    if (parts.length > 2) {
+      sanitized = parts[0] + "." + parts.slice(1).join("");
+    }
+
+    // Limit to 3 decimal places while typing
+    if (parts.length === 2 && parts[1].length > 3) {
+      sanitized = parts[0] + "." + parts[1].slice(0, 3);
+    }
+
+    // ✅ Format immediately to remove trailing zeros (unless user is typing a decimal)
+    // Don't format if the last character is a decimal point (user is still typing)
+    const shouldFormat = !sanitized.endsWith(".");
+    const finalValue = shouldFormat ? formatQuantity(sanitized) : sanitized;
+
     setGrnLines((prev) => ({
       ...prev,
-      [index]: { ...prev[index], received_quantity: value },
+      [index]: { ...prev[index], received_quantity: finalValue },
     }));
   };
 
@@ -695,11 +726,7 @@ export default function CreateGRNButton({
                           >
                             <InputItem
                               label={""}
-                              value={
-                                formatQuantity(
-                                  grnLines[index]?.received_quantity,
-                                ) || ""
-                              }
+                              value={grnLines[index]?.received_quantity || ""}
                               type={"text"}
                               placeholder={"ENTER RECEIVED QUANTITY"}
                               required

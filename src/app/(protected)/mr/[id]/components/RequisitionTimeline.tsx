@@ -238,7 +238,7 @@ export default function RequisitionTimeline({
           position: "relative",
           padding: "0 20px",
           overflowX: "auto",
-          isolation: "isolate", // Creates new stacking context
+          isolation: "isolate",
         }}
       >
         {timelineStages.map((stage, index) => {
@@ -246,13 +246,19 @@ export default function RequisitionTimeline({
           const hasArrived = !!stage.arrivedEntry;
           const hasDeparted = !!stage.departedEntry;
 
-          const isLastOccurrence =
-            stage.id === currentProgressId &&
+          // FIXED: Current stage is the one that has arrived but not departed
+          // and matches the current progress ID
+          const isCurrent = 
+            stage.id === currentProgressId && 
+            hasArrived && 
+            !hasDeparted &&
             !stage.isRejection &&
-            !stage.isRollback &&
-            !hasDeparted;
-          const isCurrent = isLastOccurrence;
+            !stage.isRollback;
 
+          // A stage is completed if:
+          // - It's a rejection/rollback (these are terminal states)
+          // - It's the final completed stage (25) and has arrived
+          // - It has both arrived AND departed (we've moved on from it)
           const isCompleted =
             stage.isRejection || stage.isRollback
               ? true
@@ -263,8 +269,19 @@ export default function RequisitionTimeline({
           const isYellow = isCurrent && !isCompleted;
           const isFuture = !isCompleted && !isCurrent;
 
-          const detailEntry =
-            stage.departedEntry || (isCurrent ? stage.arrivedEntry : null);
+          // FIXED: Only show details for completed stages (stages we've departed from)
+          // OR for rejection/rollback stages (show arrival details)
+          // Current stage should NOT show details
+          let detailEntry: ProgressLogEntry | null = null;
+          
+          if (stage.isRejection || stage.isRollback) {
+            // For rejections/rollbacks, show arrival details
+            detailEntry = stage.arrivedEntry;
+          } else if (isCompleted && !isCurrent) {
+            // For completed normal stages, show departure details (when we left)
+            detailEntry = stage.departedEntry;
+          }
+          // For current stage, detailEntry remains null - no details shown
 
           let dateStr = "";
           let timeStr = "";
@@ -314,7 +331,7 @@ export default function RequisitionTimeline({
                 position: "relative",
               }}
             >
-              {/* Connector line - zIndex 0 so it goes behind circle */}
+              {/* Connector line */}
               {index > 0 && (
                 <div
                   style={{
@@ -330,7 +347,7 @@ export default function RequisitionTimeline({
                 />
               )}
 
-              {/* Circle - zIndex 1 to appear above line, but contained by isolation */}
+              {/* Circle */}
               <div
                 style={{
                   width: "25px",
@@ -344,7 +361,7 @@ export default function RequisitionTimeline({
                     ? "2px solid rgba(220, 220, 220, 1)"
                     : "none",
                   flexShrink: 0,
-                  zIndex: 1, // Above the line, but contained by parent's isolation
+                  zIndex: 1,
                 }}
               >
                 {(stage.isRejection || stage.isRollback) && (
@@ -399,6 +416,7 @@ export default function RequisitionTimeline({
                 {stage.label}
               </p>
 
+              {/* FIXED: Only show details if detailEntry exists (not for current stage) */}
               {detailEntry?.changed_at && (
                 <p
                   style={{
@@ -433,6 +451,7 @@ export default function RequisitionTimeline({
                 </p>
               )}
 
+              {/* FIXED: Only show submitted by if detailEntry exists */}
               {detailEntry?.changed_by && (
                 <div
                   style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
