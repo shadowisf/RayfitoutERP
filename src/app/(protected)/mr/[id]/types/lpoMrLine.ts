@@ -7,4 +7,5 @@ export type LPOMrLine = {
   unit: string;
   unit_price: number;
   total_price: number;
+  approved_proposed_quantity: number;
 };

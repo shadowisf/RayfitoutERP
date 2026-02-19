@@ -39,6 +39,7 @@ export type MrLine = {
   approved_supplier_name: string;
   approved_unit_price: number;
   approved_total_price: number;
+  approved_proposed_quantity: number;
   approved_supplier_material_categories: string;
   approved_supplier_material_subcategories: string;
   approved_supplier_avg_lead_time: string;

@@ -60,9 +60,9 @@ const STAGE_LABELS: { [key: number]: string } = {
 };
 
 // Base MR stages (no QS)
-const BASE_MR_STAGES = [1, 3, 7, 10, 12, 14, 17, 25];
+const BASE_MR_STAGES = [1, 3, 7, 10, 12, 26];
 // Full MR stages (with QS)
-const FULL_MR_STAGES = [1, 2, 3, 7, 9, 10, 12, 14, 17, 25];
+const FULL_MR_STAGES = [1, 2, 3, 7, 9, 10, 12, 26];
 // JO stages
 const JO_STAGES_IDS = [1, 2, 3, 7, 10, 12, 25];
 // Base LPO stages (no QS)
@@ -229,6 +229,7 @@ export default function RequisitionTimeline({
       </div>
 
       <br />
+      <br />
 
       <div
         style={{
@@ -236,9 +237,9 @@ export default function RequisitionTimeline({
           alignItems: "flex-start",
           justifyContent: "space-between",
           position: "relative",
-          padding: "0 20px",
           overflowX: "auto",
           isolation: "isolate",
+          gap: "25px",
         }}
       >
         {timelineStages.map((stage, index) => {
@@ -248,9 +249,9 @@ export default function RequisitionTimeline({
 
           // FIXED: Current stage is the one that has arrived but not departed
           // and matches the current progress ID
-          const isCurrent = 
-            stage.id === currentProgressId && 
-            hasArrived && 
+          const isCurrent =
+            stage.id === currentProgressId &&
+            hasArrived &&
             !hasDeparted &&
             !stage.isRejection &&
             !stage.isRollback;
@@ -273,7 +274,7 @@ export default function RequisitionTimeline({
           // OR for rejection/rollback stages (show arrival details)
           // Current stage should NOT show details
           let detailEntry: ProgressLogEntry | null = null;
-          
+
           if (stage.isRejection || stage.isRollback) {
             // For rejections/rollbacks, show arrival details
             detailEntry = stage.arrivedEntry;
@@ -338,7 +339,6 @@ export default function RequisitionTimeline({
                     position: "absolute",
                     top: "12px",
                     left: "-100%",
-                    marginLeft: "12.5px",
                     width: "100%",
                     height: "2px",
                     backgroundColor: "rgba(217, 217, 217, 1)",

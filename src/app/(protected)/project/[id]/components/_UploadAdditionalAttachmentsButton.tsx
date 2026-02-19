@@ -14,7 +14,7 @@ type props = {
   onUploadSuccess?: () => void;
 };
 
-export function UploadAdditionalAttachmentsButton({
+export default function UploadAdditionalAttachmentsButton({
   project,
   onUploadSuccess,
 }: props) {
@@ -110,9 +110,9 @@ export function UploadAdditionalAttachmentsButton({
         borderColor={"black"}
         textColor={"white"}
         onClick={() => setIsOpen(true)}
-        style={{ borderRadius: "25px" }}
+        style={{ borderRadius: "50px" }}
       >
-        New Attachment +
+        NEW ATTACHMENT +
       </Button>
 
       {isOpen && (

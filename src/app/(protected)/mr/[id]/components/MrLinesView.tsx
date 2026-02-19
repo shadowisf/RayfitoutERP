@@ -252,7 +252,8 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       lpoDetailsData.data.lpo_mr_lines.forEach(
                         (lpoLine: any) => {
                           const unitPrice = Number(lpoLine.unit_price) || 0;
-                          const quantity = Number(lpoLine.quantity) || 0;
+                          const quantity =
+                            Number(lpoLine.approved_proposed_quantity) || 0;
                           const vatRate = Number(lpo.vat_rate) || 0;
 
                           pricesMap[lpoLine.mr_line_id] = {
@@ -394,7 +395,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
             const items = mrLines[category][subCategory][supplier];
             items.forEach((item) => {
               const unitPrice = Number(item.approved_unit_price) || 0;
-              const quantity = Number(item.quantity) || 0;
+              // Use proposed quantity if available, otherwise requested quantity
+              const proposedQty = Number(item.approved_proposed_quantity) || 0;
+              const quantity =
+                proposedQty > 0 ? proposedQty : Number(item.quantity) || 0;
               total += unitPrice * quantity;
             });
           }
@@ -643,17 +647,18 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     items.forEach((item: MrLine) => {
       let unitPrice: number;
       let quantity: number;
-      let vatRate: number;
 
       if (mrHeader.progress_id >= 12 && lpoLinePrices[item.id]) {
         // Use LPO prices
         unitPrice = lpoLinePrices[item.id].unitPrice;
-        quantity = Number(item.quantity) || 0;
+        // Use proposed quantity if available, otherwise requested quantity
+        const proposedQty = Number(item.approved_proposed_quantity) || 0;
+        quantity = proposedQty > 0 ? proposedQty : Number(item.quantity) || 0;
         /* vatRate = lpoLinePrices[item.id].vatRate; */
       } else {
         // Use quotation prices
         unitPrice = Number(item.approved_unit_price) || 0;
-        quantity = Number(item.quantity) || 0;
+        quantity = Number(item.approved_proposed_quantity) || 0;
         /* vatRate = Number(item.approved_vat_rate) || 0; */
       }
 
@@ -2192,7 +2197,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 <tr>
                                   <th>#</th>
                                   <th>ITEM</th>
-                                  <th>QTY</th>
+                                  {mrHeader.progress_id >= 9 ? (
+                                    <>
+                                      <th>QTY FOR USE</th>
+                                      <th>QTY FOR STOCKS</th>
+                                      <th>TOTAL QTY</th>
+                                    </>
+                                  ) : (
+                                    <th>REQUESTED QTY</th>
+                                  )}
                                   <th>BOQ REF.</th>
                                   <th>BRAND & SPECS</th>
                                   <th>ATTACHMENT</th>
@@ -2289,10 +2302,42 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       <tr key={item.id}>
                                         <td>{itemIndex + 1}</td>
                                         <td>{item.material_description}</td>
-                                        <td>
-                                          {formatNumber(item?.quantity)}{" "}
-                                          {item.unit}
-                                        </td>
+                                        {mrHeader.progress_id >= 9 ? (
+                                          <>
+                                            <td>
+                                              {formatNumber(item?.quantity)}{" "}
+                                              {item.unit}
+                                            </td>
+                                            <td>
+                                              {(() => {
+                                                const proposedQty =
+                                                  Number(
+                                                    item.approved_proposed_quantity,
+                                                  ) || 0;
+                                                const requestedQty =
+                                                  Number(item.quantity) || 0;
+                                                const stockQty =
+                                                  proposedQty > requestedQty
+                                                    ? proposedQty - requestedQty
+                                                    : 0;
+                                                return stockQty > 0
+                                                  ? `${formatNumber(stockQty)} ${item.unit}`
+                                                  : "-";
+                                              })()}
+                                            </td>
+                                            <td>
+                                              {formatNumber(
+                                                item?.approved_proposed_quantity,
+                                              )}{" "}
+                                              {item.unit}
+                                            </td>
+                                          </>
+                                        ) : (
+                                          <td>
+                                            {formatNumber(item?.quantity)}{" "}
+                                            {item.unit}
+                                          </td>
+                                        )}
                                         <td>
                                           {item.boq_line_ids ? (
                                             <BoqReferencePopUp
@@ -2680,6 +2725,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             <td></td>
                                             <td></td>
                                             <td></td>
+                                            <td></td>
                                             <td
                                               style={{
                                                 fontWeight: "600",
@@ -2702,7 +2748,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                 ),
                                               ).toFixed(2)}
                                             </td>
-                                            <td></td>
                                           </tr>
                                         </tbody>
                                       </table>
@@ -2846,7 +2891,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                             <tr>
                               <th>#</th>
                               <th>ITEM</th>
-                              <th>QTY</th>
+                              {mrHeader.progress_id >= 9 ? (
+                                <>
+                                  <th>QTY FOR USE</th>
+                                  <th>QTY FOR STOCKS</th>
+                                  <th>TOTAL QTY</th>
+                                </>
+                              ) : (
+                                <th>REQUESTED QTY</th>
+                              )}
                               <th>BOQ REF.</th>
                               <th>BRAND & SPECS</th>
                               <th>ATTACHMENT</th>
@@ -2941,9 +2994,42 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   <tr key={item.id}>
                                     <td>{itemIndex + 1}</td>
                                     <td>{item.material_description}</td>
-                                    <td>
-                                      {formatNumber(item?.quantity)} {item.unit}
-                                    </td>
+                                    {mrHeader.progress_id >= 9 ? (
+                                      <>
+                                        <td>
+                                          {formatNumber(item?.quantity)}{" "}
+                                          {item.unit}
+                                        </td>
+                                        <td>
+                                          {(() => {
+                                            const proposedQty =
+                                              Number(
+                                                item.approved_proposed_quantity,
+                                              ) || 0;
+                                            const requestedQty =
+                                              Number(item.quantity) || 0;
+                                            const stockQty =
+                                              proposedQty > requestedQty
+                                                ? proposedQty - requestedQty
+                                                : 0;
+                                            return stockQty > 0
+                                              ? `${formatNumber(stockQty)} ${item.unit}`
+                                              : "-";
+                                          })()}
+                                        </td>
+                                        <td>
+                                          {formatNumber(
+                                            item?.approved_proposed_quantity,
+                                          )}{" "}
+                                          {item.unit}
+                                        </td>
+                                      </>
+                                    ) : (
+                                      <td>
+                                        {formatNumber(item?.quantity)}{" "}
+                                        {item.unit}
+                                      </td>
+                                    )}
                                     <td>
                                       {item.boq_line_ids ? (
                                         <BoqReferencePopUp
@@ -3315,6 +3401,7 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                         <td></td>
                                         <td></td>
                                         <td></td>
+                                        <td></td>
                                         <td
                                           style={{
                                             fontWeight: "600",
@@ -3335,7 +3422,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             getAllItemsInSubCategory(suppliers),
                                           ).toFixed(2)}
                                         </td>
-                                        <td></td>
                                       </tr>
                                     </tbody>
                                   </table>
@@ -3580,7 +3666,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                   <th>CATEGORY</th>
                   <th>SUBCATEGORY</th>
                   <th>ITEM</th>
-                  <th>QTY</th>
+                  {mrHeader.progress_id >= 9 ? (
+                    <>
+                      <th>QTY FOR USE</th>
+                      <th>QTY FOR STOCKS</th>
+                      <th>TOTAL QTY</th>
+                    </>
+                  ) : (
+                    <th>REQUESTED QTY</th>
+                  )}
                   <th>BOQ REF.</th>
                   <th>BRAND & SPECS</th>
                   {/* {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>} */}
@@ -3606,9 +3700,35 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     <td>{item.material_category}</td>
                     <td>{item.material_subcategory}</td>
                     <td>{item.material_description}</td>
-                    <td>
-                      {formatNumber(item?.quantity)} {item.unit}
-                    </td>
+                    {mrHeader.progress_id >= 9 ? (
+                      <>
+                        <td>
+                          {formatNumber(item?.quantity)} {item.unit}
+                        </td>
+                        <td>
+                          {(() => {
+                            const proposedQty =
+                              Number(item.approved_proposed_quantity) || 0;
+                            const requestedQty = Number(item.quantity) || 0;
+                            const stockQty =
+                              proposedQty > requestedQty
+                                ? proposedQty - requestedQty
+                                : 0;
+                            return stockQty > 0
+                              ? `${formatNumber(stockQty)} ${item.unit}`
+                              : "-";
+                          })()}
+                        </td>
+                        <td>
+                          {formatNumber(item?.approved_proposed_quantity)}{" "}
+                          {item.unit}
+                        </td>
+                      </>
+                    ) : (
+                      <td>
+                        {formatNumber(item?.quantity)} {item.unit}
+                      </td>
+                    )}
                     <td>
                       {item.boq_line_ids ? (
                         <BoqReferencePopUp item={item} mrHeader={mrHeader} />
@@ -3689,7 +3809,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       <td>
                         {(() => {
                           let unitPrice: number;
-                          let vatRate: number;
 
                           if (
                             mrHeader.progress_id >= 12 &&
@@ -3714,7 +3833,6 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       <td>
                         {(() => {
                           let totalPrice: number;
-                          let vatRate: number;
 
                           if (
                             mrHeader.progress_id >= 12 &&
@@ -3780,6 +3898,9 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                       >
                         <tbody>
                           <tr>
+                            <td></td>
+                            <td></td>
+                            <td></td>
                             <td></td>
                             <td></td>
                             <td></td>

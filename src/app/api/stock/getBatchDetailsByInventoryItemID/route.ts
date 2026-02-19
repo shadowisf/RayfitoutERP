@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
             
             -- Material Request Line
             mrl.id as mr_line_id,
-            mrl.quantity as requested_quantity,
+            mrl.approved_proposed_quantity as requested_quantity,
             mrl.material_description,
             mrl.unit as material_unit,
             mrl.specification,
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
         INNER JOIN lut_mr_headers_departments dept ON mrh.department_id = dept.id
         
         -- Join MR Line
-        INNER JOIN mr_lines mrl ON s.mr_line_id = mrl.id
+        INNER JOIN vw_mr_lines mrl ON s.mr_line_id = mrl.id
         INNER JOIN lut_material_categories mc ON mrl.material_category_id = mc.id
         
         -- Join Project (may be null for non-project MRs)

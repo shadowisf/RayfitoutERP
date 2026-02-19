@@ -21,9 +21,9 @@ export async function POST(req: Request) {
       const { mr_line_id, quotations } = body;
 
       const insertQuery = `
-        INSERT INTO mr_line_supplier_quotation 
-        (supplier_id, mr_line_id, quotation_file, rating, unit_price, total_price, created_by) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO mr_line_supplier_quotation
+        (supplier_id, mr_line_id, quotation_file, rating, unit_price, total_price, proposed_quantity, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const insertedIds = [];
@@ -35,6 +35,7 @@ export async function POST(req: Request) {
           rating,
           unit_price,
           total_price,
+          proposed_quantity,
           created_by,
         } = quotation;
 
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
           rating || null,
           unit_price,
           total_price,
+          proposed_quantity || null,
           created_by,
         ]);
 
@@ -325,12 +327,13 @@ export async function PUT(req: Request) {
         if (quotation.id && existingIds.includes(quotation.id)) {
           // Update existing quotation
           await db.query(
-            `UPDATE mr_line_supplier_quotation 
-          SET supplier_id = ?, 
-              quotation_file = ?, 
-              rating = ?, 
-              unit_price = ?, 
+            `UPDATE mr_line_supplier_quotation
+          SET supplier_id = ?,
+              quotation_file = ?,
+              rating = ?,
+              unit_price = ?,
               total_price = ?,
+              proposed_quantity = ?,
               approval_status = NULL,
               reject_comment = NULL,
               qs_approval_status = NULL,
@@ -343,6 +346,7 @@ export async function PUT(req: Request) {
               quotation.rating,
               quotation.unit_price,
               quotation.total_price,
+              quotation.proposed_quantity || null,
               quotation.created_by,
               quotation.id,
             ],
@@ -351,9 +355,9 @@ export async function PUT(req: Request) {
         } else {
           // Insert new quotation
           const [result] = await db.query<ResultSetHeader>(
-            `INSERT INTO mr_line_supplier_quotation 
-          (supplier_id, mr_line_id, quotation_file, rating, unit_price, total_price, created_by) 
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO mr_line_supplier_quotation
+          (supplier_id, mr_line_id, quotation_file, rating, unit_price, total_price, proposed_quantity, created_by)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               quotation.supplier_id,
               mr_line_id,
@@ -361,6 +365,7 @@ export async function PUT(req: Request) {
               quotation.rating,
               quotation.unit_price,
               quotation.total_price,
+              quotation.proposed_quantity || null,
               quotation.created_by,
             ],
           );

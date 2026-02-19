@@ -110,7 +110,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
         style={style}
         onClick={() => setIsOpen(true)}
       >
-        CREATE BOQ +
+        NEW BOQ +
       </Button>
 
       {isOpen && (

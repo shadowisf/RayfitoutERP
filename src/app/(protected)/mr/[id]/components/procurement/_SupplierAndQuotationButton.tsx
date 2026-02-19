@@ -12,6 +12,7 @@ import { MrHeader } from "../../types/mrHeader";
 import { MrLine } from "../../types/mrLine";
 import CreateSupplierButton from "../../../../vendor/components/_CreateSupplierButton";
 import { useAuth } from "@/app/context/AuthContext";
+import InputItem from "@/app/components/InputItem";
 
 type SupplierQuotation = {
   id?: number;
@@ -21,13 +22,14 @@ type SupplierQuotation = {
   rating: string;
   unit_price: string;
   total_price: string;
+  proposed_quantity: string;
   approval_status?: string;
   reject_comment?: string;
   supplier_name?: string;
   qs_approval_status?: string;
   qs_reject_comment?: string;
   created_by: string;
-  isModified?: boolean; // ✅ Add this flag
+  isModified?: boolean;
 };
 
 type SupplierAndQuotationButtonProps = {
@@ -40,17 +42,14 @@ export default function SupplierAndQuotationButton({
   mrLine,
 }: SupplierAndQuotationButtonProps) {
   const router = useRouter();
-
   const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
   const plusIcon = "/icons/plus.svg";
   const trashIcon = "/icons/trash.svg";
-  const externalLinkIcon = "/icons/external-link.svg";
   const closeIcon = "/icons/cross-small.svg";
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
-
   const [mode, setMode] = useState<"add" | "edit">("add");
   const [allSuppliersRejected, setAllSuppliersRejected] =
     useState<boolean>(false);
@@ -60,7 +59,6 @@ export default function SupplierAndQuotationButton({
     useState<boolean>(false);
   const [approvedSupplierName, setApprovedSupplierName] = useState<string>("");
 
-  // QS approval states
   const [allSuppliersQSRejected, setAllSuppliersQSRejected] =
     useState<boolean>(false);
   const [allSuppliersQSPending, setAllSuppliersQSPending] =
@@ -84,12 +82,22 @@ export default function SupplierAndQuotationButton({
       rating: "",
       unit_price: "",
       total_price: "",
+      proposed_quantity: "",
       created_by: "",
-      isModified: false, // ✅ Initialize flag
+      isModified: false,
     },
   ]);
 
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
+
+  const formatNumber = (value: unknown): string => {
+    const num = Number(value);
+    if (isNaN(num)) return "";
+    if (Number.isInteger(num)) {
+      return num.toString();
+    }
+    return parseFloat(num.toFixed(3)).toString();
+  };
 
   async function fetchSuppliers() {
     await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
@@ -130,7 +138,6 @@ export default function SupplierAndQuotationButton({
       if (data && data.length > 0) {
         setMode("edit");
 
-        // Manager approval status
         const allRejected = data.every(
           (q: SupplierQuotation) => q.approval_status === "Rejected",
         );
@@ -165,7 +172,6 @@ export default function SupplierAndQuotationButton({
           );
         }
 
-        // QS approval status
         const allQSRejected = data.every(
           (q: SupplierQuotation) => q.qs_approval_status === "Rejected",
         );
@@ -248,15 +254,16 @@ export default function SupplierAndQuotationButton({
             ? item.quotation_file[0]
             : item.quotation_file,
           rating: item.rating || "",
-          unit_price: item.unit_price || "",
-          total_price: item.total_price || "",
+          unit_price: formatNumber(item.unit_price) || "",
+          total_price: formatNumber(item.total_price) || "",
+          proposed_quantity: formatNumber(item.proposed_quantity) || "",
           approval_status: item.approval_status,
           reject_comment: item.reject_comment,
           supplier_name: item.supplier_name,
           qs_approval_status: item.qs_approval_status,
           qs_reject_comment: item.qs_reject_comment,
           created_by: item.created_by,
-          isModified: false, // ✅ Initialize as not modified
+          isModified: false,
         }));
 
         setSupplierQuotations(formattedQuotations);
@@ -280,8 +287,9 @@ export default function SupplierAndQuotationButton({
             rating: "",
             unit_price: "",
             total_price: "",
+            proposed_quantity: "",
             created_by: userInfo?.name || "",
-            isModified: true, // ✅ New quotations are always modified
+            isModified: true,
           },
         ]);
       }
@@ -304,8 +312,9 @@ export default function SupplierAndQuotationButton({
         rating: "",
         unit_price: "",
         total_price: "",
+        proposed_quantity: "",
         created_by: userInfo?.name || "",
-        isModified: true, // ✅ New rows are always modified
+        isModified: true,
       },
     ]);
   }
@@ -317,7 +326,7 @@ export default function SupplierAndQuotationButton({
     }
 
     const newQuotations = supplierQuotations.filter(
-      (_: SupplierQuotation, i: number) => i !== index,
+      (_, i: number) => i !== index,
     );
     setSupplierQuotations(newQuotations);
   }
@@ -331,27 +340,47 @@ export default function SupplierAndQuotationButton({
     newQuotations[index] = {
       ...newQuotations[index],
       [field]: value,
-      isModified: true, // ✅ Mark as modified when any field changes
+      isModified: true,
     };
 
-    // Automatically calculate total price when unit_price changes (without decimals)
-    if (field === "unit_price") {
-      const unitPrice = parseFloat(value as string);
-      const quantity = parseFloat(mrLine.quantity as any) || 0;
+    if (field === "unit_price" || field === "proposed_quantity") {
+      const unitPrice = parseFloat(newQuotations[index].unit_price || "0");
+      const proposedQty = parseFloat(
+        newQuotations[index].proposed_quantity || "0",
+      );
 
-      const total = unitPrice * quantity;
+      const total = unitPrice * proposedQty;
 
-      if (isNaN(total)) {
+      if (isNaN(total) || total === 0) {
         newQuotations[index].total_price = "";
       } else {
-        newQuotations[index].total_price = Number.isInteger(total)
-          ? total.toString() // whole number
-          : total.toFixed(3).replace(/\.?0+$/, ""); // decimal only if needed
+        newQuotations[index].total_price = formatNumber(total);
       }
     }
 
     setSupplierQuotations(newQuotations);
   }
+
+  const handleNumericInput = (
+    index: number,
+    field: "unit_price" | "proposed_quantity",
+    value: string,
+  ) => {
+    if (value === "") {
+      updateQuotation(index, field, "");
+      return;
+    }
+
+    if (!/^\d*\.?\d*$/.test(value)) {
+      return;
+    }
+
+    if ((value.match(/\./g) || []).length > 1) {
+      return;
+    }
+
+    updateQuotation(index, field, value);
+  };
 
   function handleFileSelection(index: number, file: File) {
     updateQuotation(index, "quotation_file", file);
@@ -370,7 +399,7 @@ export default function SupplierAndQuotationButton({
       ...newQuotations[index],
       quotation_file: null,
       quotation_url: "",
-      isModified: true, // ✅ Mark as modified when file is removed
+      isModified: true,
     };
     setSupplierQuotations(newQuotations);
   }
@@ -465,7 +494,6 @@ export default function SupplierAndQuotationButton({
       (q: SupplierQuotation) => q.supplier_id !== "",
     );
 
-    // Check if any quotation has total price >= 900
     const hasHighValueQuotation = validQuotations.some(
       (q: { total_price: string }) => {
         const totalPrice = parseFloat(q.total_price);
@@ -473,7 +501,6 @@ export default function SupplierAndQuotationButton({
       },
     );
 
-    // If any quotation is >= 900 AED, require minimum 3 vendors
     if (hasHighValueQuotation && validQuotations.length < 3) {
       toast(
         "Minimum 3 vendors required for quotations with total price greater than or equal to 900 AED",
@@ -504,6 +531,14 @@ export default function SupplierAndQuotationButton({
         toast(`Please enter total price`, "error");
         return;
       }
+
+      if (Number(quotation.proposed_quantity) < mrLine.quantity) {
+        toast(
+          `Please enter proposed quantity greater than or equal to ${mrLine.quantity}`,
+          "error",
+        );
+        return;
+      }
     }
 
     try {
@@ -524,9 +559,9 @@ export default function SupplierAndQuotationButton({
                 supplier_id: q.supplier_id,
                 quotation_file: q.quotation_url,
                 rating: q.rating || null,
-                unit_price: q.unit_price,
-                total_price: q.total_price,
-                // ✅ Only update created_by if the quotation was modified
+                unit_price: formatNumber(q.unit_price),
+                total_price: formatNumber(q.total_price),
+                proposed_quantity: formatNumber(q.proposed_quantity),
                 created_by: q.isModified ? userInfo?.name || "" : q.created_by,
               })),
             }
@@ -537,8 +572,9 @@ export default function SupplierAndQuotationButton({
                 supplier_id: q.supplier_id,
                 quotation_file: q.quotation_url,
                 rating: q.rating || null,
-                unit_price: q.unit_price,
-                total_price: q.total_price,
+                unit_price: formatNumber(q.unit_price),
+                total_price: formatNumber(q.total_price),
+                proposed_quantity: formatNumber(q.proposed_quantity),
                 created_by: userInfo?.name || "",
               })),
             };
@@ -569,6 +605,7 @@ export default function SupplierAndQuotationButton({
             rating: "",
             unit_price: "",
             total_price: "",
+            proposed_quantity: "",
             created_by: "",
             isModified: false,
           },
@@ -597,7 +634,6 @@ export default function SupplierAndQuotationButton({
 
   return (
     <>
-      {/* ... rest of your JSX remains the same ... */}
       <div
         style={{
           display: "flex",
@@ -606,7 +642,6 @@ export default function SupplierAndQuotationButton({
           gap: "10px",
         }}
       >
-        {/* Manager Approval Status Row */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {mrHeader.progress_id === 11 && allSuppliersRejected && (
             <div
@@ -695,7 +730,6 @@ export default function SupplierAndQuotationButton({
             ))}
         </div>
 
-        {/* QS Approval Status Row */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {mrHeader.progress_id === 11 && allSuppliersQSRejected && (
             <div
@@ -766,7 +800,7 @@ export default function SupplierAndQuotationButton({
           setIsOpen={setIsOpen}
           handleSubmit={handleSupplierAndQuotationSubmit}
           addButtonLabel={"CONFIRM"}
-          style={{ minWidth: "1600px" }}
+          style={{ minWidth: "1875px" }}
         >
           <>
             <table className="items-table">
@@ -775,6 +809,8 @@ export default function SupplierAndQuotationButton({
                   <th>#</th>
                   <th>VENDOR</th>
                   <th>QUOTATION</th>
+                  <th>REQUESTED QTY</th>
+                  <th>PROPOSED QTY</th>
                   <th>UNIT PRICE</th>
                   <th>TOTAL PRICE</th>
                   <th>QUOTED BY</th>
@@ -786,7 +822,7 @@ export default function SupplierAndQuotationButton({
                   (quotation: SupplierQuotation, index: number) => (
                     <tr key={index}>
                       <td>{index + 1}</td>
-                      <td style={{ minWidth: "400px" }}>
+                      <td style={{ minWidth: "300px" }}>
                         <SingleSelectDropdown
                           label={"VENDOR"}
                           selectedValue={quotation.supplier_id}
@@ -822,13 +858,6 @@ export default function SupplierAndQuotationButton({
                             }}
                           >
                             Quotation
-                            {/* <a
-                              href={quotation.quotation_url}
-                              target="_blank"
-                              style={{ display: "flex" }}
-                            >
-                              <img src={externalLinkIcon} alt="view" />
-                            </a> */}
                             <img
                               src={closeIcon}
                               alt="remove"
@@ -850,6 +879,27 @@ export default function SupplierAndQuotationButton({
                           )}
                       </td>
                       <td>
+                        {formatNumber(mrLine.quantity)} {mrLine.unit}
+                      </td>
+                      <td style={{ minWidth: "275px" }}>
+                        <div>
+                          <InputItem
+                            label={""}
+                            value={quotation.proposed_quantity}
+                            type={"text"}
+                            placeholder="ENTER PROPOSED QUANTITY"
+                            onChange={(e) => {
+                              handleNumericInput(
+                                index,
+                                "proposed_quantity",
+                                e.target.value,
+                              );
+                            }}
+                            required
+                          />
+                        </div>
+                      </td>
+                      <td style={{ minWidth: "250px" }}>
                         <div className="input-prefix right">
                           <span>AED</span>
                           <input
@@ -858,24 +908,7 @@ export default function SupplierAndQuotationButton({
                             placeholder="ENTER UNIT PRICE"
                             value={quotation.unit_price}
                             onChange={(e) => {
-                              let val = e.target.value;
-
-                              // Remove any commas
-                              val = val.replace(/,/g, "");
-
-                              // Clear input if empty
-                              if (val === "") {
-                                updateQuotation(index, "unit_price", "");
-                                return;
-                              }
-
-                              // Allow only numbers and a single decimal point
-                              if (!/^\d*\.?\d*$/.test(val)) {
-                                return;
-                              }
-
-                              // Set the value as-is (with decimal if present)
-                              updateQuotation(
+                              handleNumericInput(
                                 index,
                                 "unit_price",
                                 e.target.value,
@@ -885,7 +918,7 @@ export default function SupplierAndQuotationButton({
                           />
                         </div>
                       </td>
-                      <td>
+                      <td style={{ minWidth: "225px" }}>
                         <div className="input-prefix right">
                           <span>AED</span>
                           <input
@@ -900,7 +933,6 @@ export default function SupplierAndQuotationButton({
 
                       <td>{quotation.created_by || "-"}</td>
 
-                      {/* Show remove button only if: more than 1 row AND not the first row */}
                       {supplierQuotations.length > 1 && index > 0 && (
                         <td>
                           <Button
@@ -919,7 +951,6 @@ export default function SupplierAndQuotationButton({
                         </td>
                       )}
 
-                      {/* Empty cell for rows that don't have trash button */}
                       {(supplierQuotations.length === 1 || index === 0) && (
                         <td></td>
                       )}
@@ -948,7 +979,6 @@ export default function SupplierAndQuotationButton({
 
             <br />
 
-            {/* Visual indicator for minimum vendor requirement */}
             {(() => {
               const validQuotations = supplierQuotations.filter(
                 (q: SupplierQuotation) => q.supplier_id !== "",

@@ -42,9 +42,18 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
   const [inventoryItemValues, setInventoryItemValues] = useState<any>([]);
   const [locationValues, setLocationValues] = useState<any[]>([]);
 
+  // For project use location
   const [location, setLocation] = useState("");
+  // For stocks location (defaults to Headquarters)
+  const [stocksLocation, setStocksLocation] = useState("Headquarters");
   const [notes, setNotes] = useState("");
   const [inventoryItemID, setInventoryItemID] = useState<string | number>("");
+
+  // Calculate proposed vs requested quantities
+  const proposedQty = Number(mrLine.approved_proposed_quantity) || 0;
+  const requestedQty = Number(mrLine.quantity) || 0;
+  const hasStockQty = proposedQty > requestedQty;
+  const stockQty = hasStockQty ? proposedQty - requestedQty : 0;
 
   useEffect(() => {
     fetchInventoryItems();
@@ -148,45 +157,85 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
         toast("Failed to update stock", "error");
       }
     } else {
-      // Add new stock
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "addStock",
-          mr_header_id: mrLine.mr_header_id,
-          mr_line_id: mrLine.id,
-          inventory_item_id: inventoryItemID,
-          supplier_id: mrLine.approved_supplier_id,
-          received_by: userInfo?.name,
-          unit_price: mrLine.approved_unit_price,
-          quantity: mrLine.quantity,
-          location,
-          notes,
-          inventory_item_unit: mrLine.unit,
-          inventory_item_description: mrLine.material_description,
-          manually_add: false,
-        }),
-      });
+      // Add new stock - FOR PROJECT USE
+      const resProjectUse = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "addStock",
+            mr_header_id: mrLine.mr_header_id,
+            mr_line_id: mrLine.id,
+            inventory_item_id: inventoryItemID,
+            supplier_id: mrLine.approved_supplier_id,
+            received_by: userInfo?.name,
+            unit_price: mrLine.approved_unit_price,
+            quantity: requestedQty,
+            location,
+            notes,
+            inventory_item_unit: mrLine.unit,
+            inventory_item_description: mrLine.material_description,
+            manually_add: false,
+          }),
+        },
+      );
 
-      if (res.ok) {
-        toast("Added to stock", "success");
-
-        setLocation("");
-        setNotes("");
-        setInventoryItemID("");
-
-        // Refetch to check if stock now exists
-        await checkExistingStock();
-
-        router.refresh();
-
-        setIsOpen(false);
-      } else {
-        toast("Failed to add to stock", "error");
+      if (!resProjectUse.ok) {
+        toast("Failed to add project use stock", "error");
+        return;
       }
+
+      // Add new stock - FOR STOCKS (only if proposed > requested)
+      if (hasStockQty) {
+        const resStocks = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "addStock",
+              mr_header_id: mrLine.mr_header_id,
+              mr_line_id: mrLine.id,
+              inventory_item_id: inventoryItemID,
+              supplier_id: mrLine.approved_supplier_id,
+              received_by: userInfo?.name,
+              unit_price: mrLine.approved_unit_price,
+              quantity: stockQty,
+              location: stocksLocation,
+              notes: notes ? `[FOR STOCKS] ${notes}` : "[FOR STOCKS]",
+              inventory_item_unit: mrLine.unit,
+              inventory_item_description: mrLine.material_description,
+              manually_add: false,
+            }),
+          },
+        );
+
+        if (!resStocks.ok) {
+          toast("Failed to add stocks entry", "error");
+          return;
+        }
+      }
+
+      toast("Added to stock", "success");
+
+      setLocation("");
+      setStocksLocation("Headquarters");
+      setNotes("");
+      setInventoryItemID("");
+
+      // Refetch to check if stock now exists
+      await checkExistingStock();
+
+      router.refresh();
+
+      setIsOpen(false);
     }
   }
+
+  const formatQty = (qty: number) => {
+    return qty % 1 === 0 ? qty.toFixed(0) : qty.toString();
+  };
 
   return (
     <>
@@ -264,31 +313,16 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
               dbData={inventoryItemValues}
               required
               idField="id"
-              /* labelField="description" */
               formatOptionLabel={(item) =>
                 `INV-${String(item.id).padStart(5, "0")} - ${item.description}`
               }
-              /* createButtonLabel="NEW INVENTORY ITEM +"
-              showCreateButton */
               style={{ width: "300px" }}
-              /* onCreateClick={() => setIsCreateInventoryItemOpen(true)} */
               bottomButtonComponent={
                 <CreateInventoryItemButton
                   style={{ width: "100%" }}
                   onSuccess={() => fetchInventoryItems()}
                 />
               }
-            />
-            <InputItem
-              label={"QUANTITY"}
-              value={
-                +mrLine.quantity % 1 === 0 ? +mrLine.quantity : +mrLine.quantity
-              }
-              type={"text"}
-              placeholder={""}
-              required
-              onChange={() => {}}
-              disabled
             />
             <InputItem
               label={"UNIT"}
@@ -299,25 +333,98 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
               disabled
               onChange={() => {}}
             />
+            <div></div>
           </div>
 
-          <div className="input-row half">
-            <InputItem
-              label={"STOCK LOCATION"}
-              value={location}
-              type={"select"}
-              placeholder={"SELECT LOCATION"}
-              required
-              onChange={(e) => {
-                setLocation(e.target.value);
-              }}
-              selectOptions={[
-                "Headquarters",
-                "Umm Al Quwain Warehouse",
-                ...locationValues,
-              ]}
-            />
-          </div>
+          {/* Quantity Allocation Section */}
+          {hasStockQty ? (
+            <>
+              <br />
+              <h3 style={{ marginBottom: "10px" }}>FOR PROJECT USE</h3>
+              <div className="input-row half">
+                <InputItem
+                  label={"QTY FOR USE"}
+                  value={formatQty(requestedQty)}
+                  type={"text"}
+                  placeholder={""}
+                  required
+                  onChange={() => {}}
+                  disabled
+                />
+                <InputItem
+                  label={"STOCK LOCATION"}
+                  value={location}
+                  type={"select"}
+                  placeholder={"SELECT LOCATION"}
+                  required
+                  onChange={(e) => {
+                    setLocation(e.target.value);
+                  }}
+                  selectOptions={[
+                    "Headquarters",
+                    "Umm Al Quwain Warehouse",
+                    ...locationValues,
+                  ]}
+                />
+              </div>
+
+              <br />
+              <h3 style={{ marginBottom: "10px" }}>FOR STOCKS</h3>
+              <div className="input-row half">
+                <InputItem
+                  label={"QTY FOR STOCKS"}
+                  value={formatQty(stockQty)}
+                  type={"text"}
+                  placeholder={""}
+                  required
+                  onChange={() => {}}
+                  disabled
+                />
+                <InputItem
+                  label={"STOCK LOCATION"}
+                  value={stocksLocation}
+                  type={"select"}
+                  placeholder={"SELECT LOCATION"}
+                  required
+                  onChange={(e) => {
+                    setStocksLocation(e.target.value);
+                  }}
+                  selectOptions={[
+                    "Headquarters",
+                    "Umm Al Quwain Warehouse",
+                    ...locationValues,
+                  ]}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="input-row half">
+              <InputItem
+                label={"QUANTITY"}
+                value={formatQty(requestedQty)}
+                type={"text"}
+                placeholder={""}
+                required
+                onChange={() => {}}
+                disabled
+              />
+              <InputItem
+                label={"STOCK LOCATION"}
+                value={location}
+                type={"select"}
+                placeholder={"SELECT LOCATION"}
+                required
+                onChange={(e) => {
+                  setLocation(e.target.value);
+                }}
+                selectOptions={[
+                  "Headquarters",
+                  "Umm Al Quwain Warehouse",
+                  ...locationValues,
+                ]}
+              />
+            </div>
+          )}
 
           <div className="input-row full">
             <InputItem

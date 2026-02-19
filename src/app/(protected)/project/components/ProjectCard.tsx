@@ -100,10 +100,12 @@ export default function ProjectCard({ project, onSuccess }: props) {
                   ? {
                       backgroundColor: "rgba(134,241,181,1)",
                       color: "rgba(52,100,73,1)",
+                      textTransform: "uppercase",
                     }
                   : {
                       backgroundColor: "rgba(255, 250, 189, 1)",
                       color: "rgba(134, 83, 47, 1)",
+                      textTransform: "uppercase",
                     }
               }
             >
@@ -292,14 +294,10 @@ export default function ProjectCard({ project, onSuccess }: props) {
           textColor={"white"}
           href={`project/${project.id}`}
           style={{
-            width: "125px",
-            display: "flex",
-            justifyContent: "space-between",
             borderRadius: "50px",
           }}
         >
-          <p>VIEW</p>
-          <p>&gt;</p>
+          VIEW &gt;
         </Button>
       </div>
     </div>

@@ -5,7 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { LpoHeader } from "../../types/lpoHeader";
 
 type EditLPOButtonProps = {
@@ -14,7 +14,6 @@ type EditLPOButtonProps = {
 
 export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
   const pencilIcon = "/icons/pencil.svg";
-
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -34,12 +33,8 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
   const [unitPrices, setUnitPrices] = useState<{ [key: number]: string }>({});
   const [totalPrices, setTotalPrices] = useState<{ [key: number]: string }>({});
 
-  const timeoutRefs = useRef<{ [key: number]: NodeJS.Timeout }>({});
-  const vatRateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const discountTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const shippingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // ─── Calculated totals ────────────────────────────────────────────────────
 
-  // Calculate totals
   const subtotal = Object.values(totalPrices).reduce(
     (sum, price) => sum + parseFloat(price || "0"),
     0,
@@ -50,7 +45,25 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
   const shAmount = parseFloat(shippingHandling || "0");
   const total = amountAfterDiscount + vatAmount + shAmount;
 
-  // Fetch LPO details when modal opens
+  // ─── Formatting helpers ───────────────────────────────────────────────────
+
+  /** Format to exactly 2 decimal places for unit/total prices on load */
+  const formatToTwoDecimals = (value: number | string): string => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "0.00";
+    return num.toFixed(2);
+  };
+
+  /** Format without trailing zeros for discount, vat rate, s&h on load */
+  const formatFieldValue = (value: number | string): string => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "0";
+    if (Number.isInteger(num)) return num.toString();
+    return parseFloat(num.toFixed(3)).toString();
+  };
+
+  // ─── Effects ──────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (isOpen && !lpoData) {
       fetchLpoDetails();
@@ -80,36 +93,34 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
     }
   }
 
-  // Initialize form when lpoData is loaded
+  // Initialize form when lpoData is loaded — format nicely on load only
   useEffect(() => {
     if (lpoData) {
       setQuotation(lpoData.quotation_code || "");
       setSupplierContactPersonName(lpoData.supplier_contact_person_name || "");
       setSupplierEmail(lpoData.supplier_email || "");
 
-      // Format date for input type="date" (YYYY-MM-DD)
       if (lpoData.delivery_date) {
-        const date = new Date(lpoData.delivery_date);
-        const formattedDate = date.toISOString().split("T")[0];
-        setDeliveryDate(formattedDate);
+        setDeliveryDate(
+          new Date(lpoData.delivery_date).toISOString().split("T")[0],
+        );
       }
 
       setPaymentTerms(lpoData.payment_terms || "");
       setDeliveryTerms(lpoData.delivery_terms || "");
-      setDiscount(lpoData.discount?.toString() || "0");
-      setVatRate(lpoData.vat_rate?.toString() || "5");
-      setShippingHandling(lpoData.shipping_and_handling?.toString() || "0");
 
-      // Initialize unit prices and total prices
+      // Format field values the same way as IssueLPOButton
+      setDiscount(formatFieldValue(lpoData.discount || 0));
+      setVatRate(formatFieldValue(lpoData.vat_rate || 5));
+      setShippingHandling(formatFieldValue(lpoData.shipping_and_handling || 0));
+
+      // Format unit/total prices to 2 decimals on load
       const initialUnitPrices: { [key: number]: string } = {};
       const initialTotalPrices: { [key: number]: string } = {};
 
       lpoData.lpo_mr_lines.forEach((line, index) => {
-        const unitPrice = line.unit_price?.toString() || "";
-        const totalPrice = line.total_price?.toString() || "";
-
-        initialUnitPrices[index] = unitPrice;
-        initialTotalPrices[index] = totalPrice;
+        initialUnitPrices[index] = formatToTwoDecimals(line.unit_price || 0);
+        initialTotalPrices[index] = formatToTwoDecimals(line.total_price || 0);
       });
 
       setUnitPrices(initialUnitPrices);
@@ -117,16 +128,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
     }
   }, [lpoData]);
 
-  useEffect(() => {
-    return () => {
-      Object.values(timeoutRefs.current).forEach((timeout) => {
-        clearTimeout(timeout);
-      });
-      if (vatRateTimeoutRef.current) clearTimeout(vatRateTimeoutRef.current);
-      if (discountTimeoutRef.current) clearTimeout(discountTimeoutRef.current);
-      if (shippingTimeoutRef.current) clearTimeout(shippingTimeoutRef.current);
-    };
-  }, []);
+  // ─── Input handlers ───────────────────────────────────────────────────────
 
   const isValidNumber = (value: string): boolean => {
     if (value === "" || value === null) return true;
@@ -137,103 +139,37 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
     if (!lpoData) return;
     if (!isValidNumber(value)) return;
 
-    if (timeoutRefs.current[index]) {
-      clearTimeout(timeoutRefs.current[index]);
-    }
+    // Store raw value while typing — no reformatting
+    setUnitPrices((prev) => ({ ...prev, [index]: value }));
 
-    setUnitPrices((prev) => ({
-      ...prev,
-      [index]: value,
-    }));
-
+    // Recalculate total live
     const quantity = lpoData.lpo_mr_lines[index].quantity;
     const unitPrice = parseFloat(value) || 0;
-    const total = quantity * unitPrice;
-
-    const formattedTotal =
-      total % 1 === 0 ? total.toString() : total.toFixed(2);
-
     setTotalPrices((prev) => ({
       ...prev,
-      [index]: formattedTotal,
+      [index]: (quantity * unitPrice).toFixed(2),
     }));
-
-    if (value === "" || value === null) {
-      timeoutRefs.current[index] = setTimeout(() => {
-        const originalPrice =
-          lpoData.lpo_mr_lines[index].unit_price?.toString() || "";
-
-        setUnitPrices((prev) => ({
-          ...prev,
-          [index]: originalPrice,
-        }));
-
-        const quantity = lpoData.lpo_mr_lines[index].quantity;
-        const unitPrice = parseFloat(originalPrice || "0");
-        const total = quantity * unitPrice;
-
-        const formattedTotal =
-          total % 1 === 0 ? total.toString() : total.toFixed(2);
-
-        setTotalPrices((prev) => ({
-          ...prev,
-          [index]: formattedTotal,
-        }));
-      }, 2000);
-    }
   };
 
   const handleVatRateChange = (value: string) => {
     if (!isValidNumber(value)) return;
-
-    if (vatRateTimeoutRef.current) {
-      clearTimeout(vatRateTimeoutRef.current);
-    }
-
     setVatRate(value);
-
-    if (value === "" || value === null) {
-      vatRateTimeoutRef.current = setTimeout(() => {
-        setVatRate("5");
-      }, 2000);
-    }
   };
 
   const handleDiscountChange = (value: string) => {
     if (!isValidNumber(value)) return;
-
-    if (discountTimeoutRef.current) {
-      clearTimeout(discountTimeoutRef.current);
-    }
-
     setDiscount(value);
-
-    if (value === "" || value === null) {
-      discountTimeoutRef.current = setTimeout(() => {
-        setDiscount("0");
-      }, 2000);
-    }
   };
 
   const handleShippingChange = (value: string) => {
     if (!isValidNumber(value)) return;
-
-    if (shippingTimeoutRef.current) {
-      clearTimeout(shippingTimeoutRef.current);
-    }
-
     setShippingHandling(value);
-
-    if (value === "" || value === null) {
-      shippingTimeoutRef.current = setTimeout(() => {
-        setShippingHandling("0");
-      }, 2000);
-    }
   };
+
+  // ─── Submit ───────────────────────────────────────────────────────────────
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
     if (!lpoData) return;
 
     try {
@@ -257,10 +193,10 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
           payment_terms: paymentTerms,
           delivery_terms: deliveryTerms,
           subtotal,
-          discount,
-          vat_rate: vatRate,
+          discount: parseFloat(discount || "0"),
+          vat_rate: parseFloat(vatRate || "0"),
           vat: vatAmount,
-          shipping_and_handling: shippingHandling,
+          shipping_and_handling: parseFloat(shippingHandling || "0"),
           total,
           lpo_mr_lines: updatedLpoMrLines,
         }),
@@ -269,11 +205,9 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
       if (res.ok) {
         toast("Local purchase order updated", "success");
         setIsOpen(false);
-        setLpoData(null); // Reset data so it fetches fresh next time
+        setLpoData(null);
         router.refresh();
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+        setTimeout(() => window.location.reload(), 1500);
       } else {
         toast("Failed to update local purchase order", "error");
       }
@@ -282,9 +216,16 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
     }
   }
 
-  const formatNumber = (num: number) => {
-    return num % 1 === 0 ? num.toString() : num.toFixed(2);
+  const formatNumberWithoutTrailingZeros = (value: number | string): string => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "";
+    if (Number.isInteger(num)) {
+      return num.toString();
+    }
+    return parseFloat(num.toFixed(3)).toString();
   };
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -307,7 +248,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
           addButtonLabel={"CONFIRM"}
           style={{ width: "1000px" }}
         >
-          {lpoData && (
+          {lpoData ? (
             <>
               <div className="input-row three-col">
                 <InputItem
@@ -376,34 +317,42 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                     <th>#</th>
                     <th>DESCRIPTION</th>
                     <th>QUANTITY</th>
-                    <th>UNIT PRICE</th>
+                    <th style={{ minWidth: "250px" }}>UNIT PRICE</th>
                     <th>TOTAL PRICE</th>
                   </tr>
                 </thead>
                 <tbody style={{ fontWeight: "normal" }}>
-                  {lpoData.lpo_mr_lines.map((line, index) => (
-                    <tr key={line.id || index}>
-                      <td>{index + 1}</td>
-                      <td>{line.material_description}</td>
-                      <td>
-                        {line.quantity} {line.unit}
-                      </td>
-                      <td>
-                        <div className="input-prefix right">
-                          <span>AED</span>
-                          <input
-                            type="text"
-                            placeholder="ENTER UNIT PRICE"
-                            value={unitPrices[index] || ""}
-                            onChange={(e) =>
-                              handleUnitPriceChange(index, e.target.value)
-                            }
-                          />
-                        </div>
-                      </td>
-                      <td>{totalPrices[index] || "0"} AED</td>
-                    </tr>
-                  ))}
+                  {lpoData.lpo_mr_lines.map((line, index) => {
+                    const formattedQty = formatNumberWithoutTrailingZeros(
+                      line.approved_proposed_quantity,
+                    );
+
+                    return (
+                      <tr key={line.id || index}>
+                        <td>{index + 1}</td>
+                        <td>{line.material_description}</td>
+                        <td>
+                          {formattedQty} {line.unit}
+                        </td>
+                        <td>
+                          <div className="input-prefix right">
+                            <span>AED</span>
+                            <input
+                              type="text"
+                              placeholder="ENTER UNIT PRICE"
+                              value={unitPrices[index] ?? ""}
+                              onChange={(e) =>
+                                handleUnitPriceChange(index, e.target.value)
+                              }
+                            />
+                          </div>
+                        </td>
+                        <td>
+                          {parseFloat(totalPrices[index] || "0").toFixed(2)} AED
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 
@@ -443,9 +392,8 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                   <div className="input-row full">
                     <InputItem
                       label={"SUB TOTAL"}
-                      value={formatNumber(subtotal)}
+                      value={subtotal.toFixed(2)}
                       type={"text"}
-                      placeholder={""}
                       required
                       onChange={() => {}}
                       sideLabel={true}
@@ -488,9 +436,8 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                   <div className="input-row full">
                     <InputItem
                       label={"VAT"}
-                      value={formatNumber(vatAmount)}
+                      value={vatAmount.toFixed(2)}
                       type={"text"}
-                      placeholder={""}
                       required
                       onChange={() => {}}
                       sideLabel={true}
@@ -500,9 +447,8 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                   <div className="input-row full">
                     <InputItem
                       label={"TOTAL"}
-                      value={`${formatNumber(total)} AED`}
+                      value={`${total.toFixed(2)} AED`}
                       type={"text"}
-                      placeholder={""}
                       required={true}
                       onChange={() => {}}
                       sideLabel={true}
@@ -512,6 +458,8 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                 </div>
               </div>
             </>
+          ) : (
+            <p>Loading...</p>
           )}
         </FormPopUp>
       )}

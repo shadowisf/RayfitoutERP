@@ -125,16 +125,22 @@ export default function LpoLinesView({
     }
   }
 
-  // Calculate total from flatLines (LPO prices)
+  // Calculate total from flatLines (LPO prices) using proposed quantity when available
   useEffect(() => {
     let total = 0;
     flatLines.forEach((line: any) => {
       const unitPrice = Number(line.lpo_unit_price) || 0;
-      const quantity = Number(line.quantity) || 0;
-      total += unitPrice * quantity;
+      // Find the corresponding MrLine item to get proposed quantity
+      const mrLineItem = allItems.find((item) => item.id === line.id);
+      const proposedQty = mrLineItem
+        ? Number(mrLineItem.approved_proposed_quantity) || 0
+        : 0;
+      const requestedQty = Number(line.quantity) || 0;
+      const totalQty = proposedQty > 0 ? proposedQty : requestedQty;
+      total += unitPrice * totalQty;
     });
     setTotalInvoiceAmount(Number(total.toFixed(2)));
-  }, [flatLines]);
+  }, [flatLines, allItems.length]);
 
   // Check LPO invoice status
   useEffect(() => {
@@ -346,7 +352,11 @@ export default function LpoLinesView({
 
                       if (correspondingMrLine) {
                         const orderedQty =
-                          parseFloat(String(correspondingMrLine.quantity)) || 0;
+                          parseFloat(
+                            String(
+                              correspondingMrLine.approved_proposed_quantity,
+                            ),
+                          ) || 0;
                         const receivedQty =
                           parseFloat(String(grnLine.received_quantity)) || 0;
                         return orderedQty !== receivedQty;
@@ -533,8 +543,10 @@ export default function LpoLinesView({
       const flatLine = flatLines.find((fl: any) => fl.id === item.id);
       if (flatLine) {
         const unitPrice = Number(flatLine.lpo_unit_price) || 0;
-        const quantity = Number(item.quantity) || 0;
-        total += unitPrice * quantity;
+        const proposedQty = Number(item.approved_proposed_quantity) || 0;
+        const requestedQty = Number(item.quantity) || 0;
+        const totalQty = proposedQty > 0 ? proposedQty : requestedQty;
+        total += unitPrice * totalQty;
       }
     });
     return Number(total.toFixed(2));
@@ -662,7 +674,9 @@ export default function LpoLinesView({
               <th>CATEGORY</th>
               <th>SUBCATEGORY</th>
               <th>ITEM</th>
-              <th>QTY</th>
+              <th>QTY FOR USE</th>
+              <th>QTY FOR STOCKS</th>
+              <th>TOTAL QTY</th>
               <th>BOQ REF.</th>
               <th>BRAND & SPECS</th>
               <th>ATTACHMENT</th>
@@ -685,7 +699,12 @@ export default function LpoLinesView({
               const unitPrice = flatLine
                 ? Number(flatLine.lpo_unit_price) || 0
                 : Number(item.approved_unit_price) || 0;
-              const totalPrice = unitPrice * (Number(item.quantity) || 0);
+              const proposedQty = Number(item.approved_proposed_quantity) || 0;
+              const requestedQty = Number(item.quantity) || 0;
+              const qtyForStocks =
+                proposedQty > 0 ? proposedQty - requestedQty : 0;
+              const totalQty = proposedQty > 0 ? proposedQty : requestedQty;
+              const totalPrice = unitPrice * totalQty;
 
               return (
                 <tr key={item.id}>
@@ -695,6 +714,14 @@ export default function LpoLinesView({
                   <td>{item.material_description}</td>
                   <td>
                     {formatNumber(item?.quantity)} {item.unit}
+                  </td>
+                  <td>
+                    {qtyForStocks > 0
+                      ? `${formatNumber(qtyForStocks)} ${item.unit}`
+                      : "-"}
+                  </td>
+                  <td>
+                    {formatNumber(totalQty)} {item.unit}
                   </td>
                   <td>
                     {item.boq_line_ids ? (
@@ -798,6 +825,8 @@ export default function LpoLinesView({
                         <td></td>
                         <td></td>
                         <td></td>
+                        <td></td>
+                        <td></td>
                         <td
                           style={{
                             fontWeight: "600",
@@ -837,6 +866,8 @@ export default function LpoLinesView({
                   >
                     <tbody>
                       <tr>
+                        <td></td>
+                        <td></td>
                         <td></td>
                         <td></td>
                         <td></td>

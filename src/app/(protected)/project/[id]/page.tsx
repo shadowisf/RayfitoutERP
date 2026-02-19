@@ -11,8 +11,16 @@ import { BoqHeader } from "../../boq/[id]/types/boqHeader";
 import { MrHeader } from "../../mr/[id]/types/mrHeader";
 import CreateBoqHeaderButton from "../../boq/[id]/components/manager/_CreateBoqHeaderButton";
 import BoqCard from "../../boq/[id]/components/BoqCard";
-import { UploadAdditionalAttachmentsButton } from "./components/_UploadAdditionalAttachmentsButton";
+import UploadAdditionalAttachmentsButton from "./components/_UploadAdditionalAttachmentsButton";
 import AttachmentsList from "./components/AttachmentList";
+
+// Extended MrHeader type with LPO details
+type MrHeaderWithLpo = MrHeader & {
+  lpo_id?: number | null;
+  lpo_progress_id?: number | null;
+  lpo_progress_name?: string | null;
+  display_progress_name?: string;
+};
 
 export default function ProjectWithID() {
   const externalLinkIcon = "/icons/external-link.svg";
@@ -22,7 +30,7 @@ export default function ProjectWithID() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [boqs, setBoqs] = useState<BoqHeader[] | null>(null);
-  const [mrs, setMrs] = useState<MrHeader[] | null>(null);
+  const [mrs, setMrs] = useState<MrHeaderWithLpo[] | null>(null);
 
   async function fetchProjectByID() {
     await fetch(
@@ -60,8 +68,8 @@ export default function ProjectWithID() {
       });
   }
 
-  useEffect(() => {
-    fetch(
+  async function fetchAllMrsByProjectID() {
+    await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getAllMrsByProjectID`,
       {
         method: "POST",
@@ -71,16 +79,48 @@ export default function ProjectWithID() {
     )
       .then((res) => res.json())
       .then((data) => {
+        console.log(data.data);
         setMrs(data.data);
       })
       .catch((err) => {
         console.error(err);
       });
+  }
 
+  useEffect(() => {
+    fetchAllMrsByProjectID();
     fetchAllBoqsByProjectID();
-
     fetchProjectByID();
   }, []);
+
+  // Helper function to get approval pill style based on progress name
+  const getApprovalPillStyle = (progressName: string) => {
+    const lowerProgress = progressName?.toLowerCase() || "";
+    const isRejected = ["reject", "fail"].some((word) =>
+      lowerProgress.includes(word),
+    );
+    const isCompleted = ["completed", "done", "finished"].some((word) =>
+      lowerProgress.includes(word),
+    );
+
+    if (isRejected) {
+      return {
+        backgroundColor: "rgba(255, 181, 181, 1)",
+        color: "rgba(248, 77, 77, 1)",
+      };
+    } else if (isCompleted) {
+      return {
+        backgroundColor: "rgba(87, 244, 176, 1)",
+        color: "rgba(31, 101, 71, 1)",
+      };
+    } else {
+      // Default/pending style
+      return {
+        backgroundColor: "rgba(255, 250, 189, 1)",
+        color: "rgba(134, 83, 47, 1)",
+      };
+    }
+  };
 
   return (
     <div className="dashboard">
@@ -141,7 +181,7 @@ export default function ProjectWithID() {
           }}
         >
           <div>
-            <small>PROJECT ID</small>
+            <small>PROJECT NUMBER</small>
             <h2>RAY-{String(project?.id).padStart(5, "0")}</h2>
           </div>
 
@@ -153,7 +193,7 @@ export default function ProjectWithID() {
           <div>
             <small>STATUS</small>
             <div
-              className="approval-pill normal-text"
+              className="approval-pill normal-text centered"
               style={{
                 background: project?.status.toLowerCase().includes("completed")
                   ? "rgba(134,241,181,1)"
@@ -324,54 +364,75 @@ export default function ProjectWithID() {
         <table className="items-table two-toned">
           <thead>
             <tr>
-              <th>ID</th>
+              <th>MR NUMBER</th>
+              <th>LPO NUMBER</th>
+              <th>PURPOSE</th>
               <th>REQUESTED BY</th>
               <th>DEPARTMENT</th>
               <th>REQUIRED DATE</th>
-              <th>PURPOSE</th>
               <th>STATUS</th>
-              <th>ACTION</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            {mrs?.map((item: MrHeader, index: number) => (
-              <tr key={index}>
-                <td>MR-{String(item.id).padStart(5, "0")}</td>
-                <td>{item.requested_by ? item.requested_by : "-"}</td>
-                <td>{item.department_name ? item.department_name : "-"}</td>
-                <td>
-                  {item.required_date
-                    ? new Date(item.required_date).toLocaleDateString("en-US")
-                    : "-"}
-                </td>
-                <td>{item.purpose_name ? item.purpose_name : "-"}</td>
-                <td>{item.progress_name}</td>
-                <td>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "5px",
-                    }}
-                  >
-                    {userInfo?.departmentID === item.department_id ? (
-                      <Button
-                        componentType={"link"}
-                        bgColor={"rgba(239, 239, 239, 1)"}
-                        borderColor={"rgba(223, 223, 223, 1)"}
-                        textColor={"black"}
-                        style={{ padding: "7px 7px" }}
-                        href={`/mr/${item.id}`}
-                      >
-                        <img src={externalLinkIcon} alt="external link" />
-                      </Button>
-                    ) : (
-                      "-"
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {mrs?.map((item: MrHeaderWithLpo, index: number) => {
+              const progressStyle = getApprovalPillStyle(
+                item.display_progress_name || item.progress_name,
+              );
+
+              return (
+                <tr key={index}>
+                  <td>MR-{String(item.id).padStart(5, "0")}</td>
+                  <td>
+                    {item.lpo_id
+                      ? `LPO-${String(item.lpo_id).padStart(5, "0")}`
+                      : "-"}
+                  </td>
+                  <td>{item.purpose_name || "-"}</td>
+                  <td>{item.requested_by || "-"}</td>
+                  <td>{item.department_name || "-"}</td>
+                  <td>
+                    {item.required_date
+                      ? new Date(item.required_date).toLocaleDateString("en-US")
+                      : "-"}
+                  </td>
+                  <td>
+                    <span
+                      className="approval-pill normal-text centered"
+                      style={{
+                        ...progressStyle,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {item.display_progress_name || item.progress_name}
+                    </span>
+                  </td>
+                  <td>
+                    <div>
+                      {userInfo?.departmentID === item.department_id ||
+                      userInfo?.departmentID === 8 ? (
+                        <Button
+                          componentType={"link"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"rgba(223, 223, 223, 1)"}
+                          textColor={"black"}
+                          style={{ padding: "7px 7px" }}
+                          href={
+                            item.lpo_id
+                              ? `/mr/${item.id}/lpo/${item.lpo_id}`
+                              : `/mr/${item.id}`
+                          }
+                        >
+                          <img src={externalLinkIcon} alt="external link" />
+                        </Button>
+                      ) : (
+                        "-"
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
