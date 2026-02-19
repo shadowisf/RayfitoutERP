@@ -356,6 +356,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
               PO-{String(lpo.id).padStart(5, "0")}
             </Text>
           </View>
+
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Quotation Reference</Text>
             <Text style={styles.infoValue}>
@@ -412,15 +413,23 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
         </View>
 
         {/* Delivery Date */}
-        <View style={styles.deliveryDate}>
-          <Text style={styles.infoLabel}>Delivery Date</Text>
-          <Text style={styles.infoValue}>
-            {new Date(lpo.delivery_date).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </Text>
+
+        <View style={styles.infoRow}>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Delivery Date</Text>
+            <Text style={styles.infoValue}>
+              {new Date(lpo.delivery_date).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </Text>
+          </View>
+
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Project</Text>
+            <Text style={styles.infoValue}>{lpo.project_name}</Text>
+          </View>
         </View>
 
         {/* Items Table */}

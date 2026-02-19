@@ -48,8 +48,7 @@ export default function Navbar() {
           <NotificationDropdown />
 
           <span style={{ textTransform: "uppercase", color: "white" }}>
-            {userInfo?.name?.split(" ")[0]} - {userInfo?.role} (
-            {userInfo?.departmentID})
+            {userInfo?.name?.split(" ")[0]} - {userInfo?.role}
           </span>
 
           <Button

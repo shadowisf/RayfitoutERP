@@ -34,6 +34,10 @@ type GRN = {
   grn_lines: any[];
 };
 
+// Constants for decimal precision (matching database decimal(10,3))
+const DECIMAL_PRECISION = 3;
+const QUANTITY_EPSILON = Math.pow(10, -DECIMAL_PRECISION); // 0.001
+
 export default function CreateGRNButton({
   mrHeader,
   mrLines,
@@ -73,16 +77,31 @@ export default function CreateGRNButton({
     [key: number]: number | null;
   }>({});
 
-  // Helper function to format quantity
+  // Helper function to format quantity - removes trailing zeros unless necessary
   const formatQuantity = (
     quantity: number | string | undefined | null,
   ): string => {
     if (quantity === undefined || quantity === null || quantity === "")
       return "0";
+
     const num = typeof quantity === "string" ? parseFloat(quantity) : quantity;
     if (isNaN(num)) return "0";
+
+    // If it's an integer, return as string without decimals
     if (Number.isInteger(num)) return num.toString();
-    return parseFloat(num.toFixed(10)).toString();
+
+    // Convert to string with max precision, then remove trailing zeros
+    // Use toFixed(10) first to handle any floating point issues, then trim
+    const withFixed = num.toFixed(10);
+
+    // Remove trailing zeros after decimal point
+    const trimmed = withFixed.replace(/\.?0+$/, "");
+
+    // If we ended up with just an integer (e.g., "10"), return that
+    if (!trimmed.includes(".")) return trimmed;
+
+    // Otherwise return the trimmed decimal (e.g., "10.5", "10.25", "10.125")
+    return trimmed;
   };
 
   // Helper to parse quantity for comparison
@@ -385,15 +404,15 @@ export default function CreateGRNButton({
     if (!response.ok) throw new Error("Failed to delete file from S3");
   }
 
-  // FIXED: Proper quantity comparison with epsilon for floating point
+  // FIXED: Updated epsilon to match decimal(10,3) precision
   const checkQuantityMatch = (index: number) => {
     const receivedQty = parseQuantity(grnLines[index]?.received_quantity);
     const orderedQty = parseQuantity(mrLines[index]?.quantity);
 
     if (!grnLines[index]?.received_quantity) return null;
 
-    const epsilon = 0.0001;
-    return Math.abs(receivedQty - orderedQty) < epsilon;
+    // Use epsilon that matches database decimal(10,3) precision
+    return Math.abs(receivedQty - orderedQty) < QUANTITY_EPSILON;
   };
 
   const hasQuantityMismatch = () => {
@@ -641,7 +660,6 @@ export default function CreateGRNButton({
             <tbody>
               {mrLines.map((mrLine, index) => {
                 const quantityMatch = checkQuantityMatch(index);
-                // FIXED: Use parseQuantity helper for both
                 const receivedQty = parseQuantity(
                   grnLines[index]?.received_quantity,
                 );
@@ -677,7 +695,11 @@ export default function CreateGRNButton({
                           >
                             <InputItem
                               label={""}
-                              value={grnLines[index]?.received_quantity || ""}
+                              value={
+                                formatQuantity(
+                                  grnLines[index]?.received_quantity,
+                                ) || ""
+                              }
                               type={"text"}
                               placeholder={"ENTER RECEIVED QUANTITY"}
                               required

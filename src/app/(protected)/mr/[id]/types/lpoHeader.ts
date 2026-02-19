@@ -3,6 +3,7 @@ import { LPOMrLine } from "./lpoMrLine";
 export type LpoHeader = {
   id: number;
   project_id: number;
+  project_name: string;
   mr_header_id: number;
   supplier_id: number;
   quotation_code: string;

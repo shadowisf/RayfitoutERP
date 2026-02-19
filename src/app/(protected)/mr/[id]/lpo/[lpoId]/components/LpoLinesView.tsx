@@ -260,6 +260,8 @@ export default function LpoLinesView({
         return;
       }
 
+      console.log(lpoId);
+
       setIsCheckingGrn(true);
 
       try {
@@ -274,6 +276,9 @@ export default function LpoLinesView({
 
         if (grnResponse.ok) {
           const grnData = await grnResponse.json();
+
+          console.log(grnData);
+
           setHasGrn(!!(grnData.success && grnData.data && grnData.data.id));
         }
       } catch (error) {
