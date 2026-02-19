@@ -157,14 +157,21 @@ export default function BatchDetailsPopUpButton({
   const externalLinkIcon = "/icons/external-link.svg";
   const downloadIcon = "/icons/download.svg";
 
-  const formatNumber = (value: number): string | number => {
+  const formatNumber = (value: number | null | undefined): string | number => {
+    // Handle null, undefined, or non-numeric values
+    if (value === null || value === undefined || isNaN(Number(value))) {
+      return "-";
+    }
+
+    const num = Number(value);
+
     // Check if the number has decimal places
-    if (value % 1 === 0) {
+    if (num % 1 === 0) {
       // No decimal places, return as integer
-      return Math.round(value);
+      return Math.round(num);
     } else {
       // Has decimal places, format to remove trailing zeros
-      return parseFloat(value.toFixed(3));
+      return parseFloat(num.toFixed(3));
     }
   };
 
