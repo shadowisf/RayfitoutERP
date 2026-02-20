@@ -7,7 +7,6 @@ import TransferIssueStocksButton from "./components/_TransferIssueStockButton";
 import StockLocationChart from "./components/StockLocationChart";
 import QrCodePrintButton from "./components/_QrCodePrintButton";
 import EditInventoryItemButton from "../components/_EditInventoryItemButton";
-import DeleteInventoryItemButton from "./components/_DeleteInventoryItemButton";
 import TopSuppliersChart from "./components/TopSuppliersChart";
 import ReservedStocksChart from "./components/ReservedStocksChart";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";

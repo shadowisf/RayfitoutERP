@@ -31,7 +31,7 @@ export default function Navbar() {
           <form>
             <input
               type="text"
-              placeholder="Search MR / Item / Project"
+              placeholder="SEARCH"
               onChange={(e) => handleSearch(e.target.value)}
             />
             <img src={searchIcon} alt="search" />
