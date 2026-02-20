@@ -3,6 +3,8 @@ import LpoLinesView from "./components/LpoLinesView";
 import { MrHeader } from "../../types/mrHeader";
 import DeleteLpoHeaderButton from "./components/_DeleteLpoHeaderButton";
 import RequisitionTimeline from "../../components/RequisitionTimeline";
+import DownloadMrDetailPDFButton from "./components/_DownloadMrDetailPDFButton";
+import { userInfo } from "os";
 
 export default async function LpoWithID({
   params,
@@ -293,6 +295,14 @@ export default async function LpoWithID({
           {String(id).padStart(5, "0")} &gt; LPO-
           {String(lpoId).padStart(5, "0")}
         </h1>
+
+        {lpo.progress_id === 25 && (
+          <DownloadMrDetailPDFButton
+            mrHeader={mrHeader}
+            lpo={lpo}
+            flatLines={lpoData.flatLines}
+          />
+        )}
       </div>
 
       <br />
