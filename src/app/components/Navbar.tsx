@@ -6,17 +6,13 @@ import NewMrButton from "./_NewMaterialRequestButton";
 import NewProjectButton from "./_NewProjectButton";
 import Button from "./Button";
 import NotificationDropdown from "./NotificationButton";
+import SearchBar from "./SearchBar";
 
 export default function Navbar() {
   const { userInfo, logout } = useAuth();
 
   const logoIcon = "/icons/logo.svg";
-  const searchIcon = "/icons/search.svg";
   const logoutIcon = "/icons/logout.svg";
-
-  const handleSearch = (e: string) => {
-    /* insert search query here */
-  };
 
   return (
     <>
@@ -28,14 +24,7 @@ export default function Navbar() {
 
           <span style={{ color: "white" }}>PROCUREMENT MANAGEMENT</span>
 
-          <form>
-            <input
-              type="text"
-              placeholder="SEARCH"
-              onChange={(e) => handleSearch(e.target.value)}
-            />
-            <img src={searchIcon} alt="search" />
-          </form>
+          <SearchBar />
         </div>
 
         <div className="right">
