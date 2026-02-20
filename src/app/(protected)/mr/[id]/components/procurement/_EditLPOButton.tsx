@@ -207,7 +207,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
         setIsOpen(false);
         setLpoData(null);
         router.refresh();
-        setTimeout(() => window.location.reload(), 1500);
+        /* setTimeout(() => window.location.reload(), 1500); */
       } else {
         toast("Failed to update local purchase order", "error");
       }
