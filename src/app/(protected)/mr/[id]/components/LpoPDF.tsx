@@ -310,7 +310,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
   // ✅ Calculate subtotal from all line items (without VAT)
   const subtotal = lpo.lpo_mr_lines.reduce((sum, item) => {
     const unitPrice = Number(item.unit_price) || 0;
-    const quantity = Number(item.quantity) || 0;
+    const quantity = Number(item.approved_proposed_quantity) || 0;
     return sum + unitPrice * quantity;
   }, 0);
 
@@ -442,7 +442,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
           </View>
           {lpo.lpo_mr_lines.map((item, index) => {
             const unitPrice = Number(item.unit_price) || 0;
-            const quantity = Number(item.quantity) || 0;
+            const quantity = Number(item.approved_proposed_quantity) || 0;
             const lineTotal = unitPrice * quantity;
 
             return (
