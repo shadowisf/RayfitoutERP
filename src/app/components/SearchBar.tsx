@@ -29,6 +29,12 @@ interface SearchResult {
   type_of_work?: string;
   currency?: string;
   quoted_budget?: number;
+  // Inventory fields
+  description?: string;
+  // Document fields
+  display_name?: string;
+  doc_type?: string;
+  file_name?: string;
 }
 
 interface SearchResults {
@@ -36,6 +42,8 @@ interface SearchResults {
   lpos: SearchResult[];
   boqs: SearchResult[];
   projects: SearchResult[];
+  inventory: SearchResult[];
+  documents: SearchResult[];
 }
 
 const SEARCH_HISTORY_KEY = "rayfitout_search_history";
@@ -59,7 +67,7 @@ function saveSearchHistory(history: string[]) {
 function addToHistory(query: string) {
   const history = getSearchHistory();
   const filtered = history.filter(
-    (h) => h.toLowerCase() !== query.toLowerCase()
+    (h) => h.toLowerCase() !== query.toLowerCase(),
   );
   filtered.unshift(query);
   saveSearchHistory(filtered.slice(0, MAX_HISTORY));
@@ -70,7 +78,7 @@ function clearHistory() {
   localStorage.removeItem(SEARCH_HISTORY_KEY);
 }
 
-function getCategoryIcon(category: string): string {
+/* function getCategoryIcon(category: string): string {
   switch (category) {
     case "MATERIAL REQUEST":
       return "/icons/mr.svg";
@@ -83,9 +91,9 @@ function getCategoryIcon(category: string): string {
     default:
       return "/icons/search.svg";
   }
-}
+} */
 
-function getCategoryColor(category: string): string {
+/* function getCategoryColor(category: string): string {
   switch (category) {
     case "MATERIAL REQUEST":
       return "rgba(59, 130, 246, 1)";
@@ -95,6 +103,10 @@ function getCategoryColor(category: string): string {
       return "rgba(245, 158, 11, 1)";
     case "PROJECT":
       return "rgba(16, 185, 129, 1)";
+    case "INVENTORY":
+      return "rgba(234, 88, 12, 1)";
+    case "DOCUMENT":
+      return "rgba(220, 38, 38, 1)";
     default:
       return "rgba(107, 114, 128, 1)";
   }
@@ -110,21 +122,31 @@ function getCategoryBg(category: string): string {
       return "rgba(245, 158, 11, 0.08)";
     case "PROJECT":
       return "rgba(16, 185, 129, 0.08)";
+    case "INVENTORY":
+      return "rgba(234, 88, 12, 0.08)";
+    case "DOCUMENT":
+      return "rgba(220, 38, 38, 0.08)";
     default:
       return "rgba(107, 114, 128, 0.08)";
   }
-}
+} */
 
 function getSubtitle(item: SearchResult): string {
   switch (item.category) {
     case "MATERIAL REQUEST":
-      return [item.project_name, item.requested_by].filter(Boolean).join(" - ");
+      return [item.requested_by, item.project_name].filter(Boolean).join(" - ");
     case "LPO":
-      return [item.supplier_name, item.project_name].filter(Boolean).join(" - ");
+      return [item.supplier_name, item.project_name]
+        .filter(Boolean)
+        .join(" - ");
     case "BOQ":
       return [item.name, item.project_name].filter(Boolean).join(" - ");
     case "PROJECT":
-      return [item.type_of_work, item.status].filter(Boolean).join(" - ");
+      return [item.name].filter(Boolean).join(" - ");
+    case "DOCUMENT":
+      return [item.supplier_name].filter(Boolean).join(" - ");
+    case "INVENTORY":
+      return [item.description].filter(Boolean).join(" - ");
     default:
       return "";
   }
@@ -189,7 +211,7 @@ export default function SearchBar() {
     setIsLoading(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/search?q=${encodeURIComponent(searchQuery.trim())}`
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/search?q=${encodeURIComponent(searchQuery.trim())}`,
       );
       if (res.ok) {
         const data = await res.json();
@@ -226,7 +248,11 @@ export default function SearchBar() {
     setIsOpen(false);
     setQuery("");
     setResults(null);
-    router.push(item.url);
+    if (item.category === "DOCUMENT" && item.file_name) {
+      window.open(item.file_name, "_blank");
+    } else {
+      router.push(item.url);
+    }
   };
 
   const handleHistoryClick = (term: string) => {
@@ -260,13 +286,17 @@ export default function SearchBar() {
     (results.materialRequests.length > 0 ||
       results.lpos.length > 0 ||
       results.boqs.length > 0 ||
-      results.projects.length > 0);
+      results.projects.length > 0 ||
+      (results.inventory?.length || 0) > 0 ||
+      (results.documents?.length || 0) > 0);
 
   const totalResults = results
     ? results.materialRequests.length +
       results.lpos.length +
       results.boqs.length +
-      results.projects.length
+      results.projects.length +
+      (results.inventory?.length || 0) +
+      (results.documents?.length || 0)
     : 0;
 
   const showHistory = !query.trim() && history.length > 0;
@@ -292,6 +322,18 @@ export default function SearchBar() {
         items: results.projects,
       });
     }
+    if (results.inventory?.length > 0) {
+      categorizedResults.push({
+        category: "INVENTORY",
+        items: results.inventory,
+      });
+    }
+    if (results.documents?.length > 0) {
+      categorizedResults.push({
+        category: "DOCUMENT",
+        items: results.documents,
+      });
+    }
   }
 
   return (
@@ -301,13 +343,13 @@ export default function SearchBar() {
         <input
           ref={inputRef}
           type="text"
-          placeholder="Search MR, LPO, BOQ, Project..."
+          placeholder="SEARCH"
           value={query}
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={() => setIsOpen(true)}
           className="search-bar-input"
         />
-        {query && (
+        {/* {query && (
           <button
             type="button"
             className="search-bar-clear"
@@ -319,18 +361,12 @@ export default function SearchBar() {
           >
             <img src="/icons/cross-small.svg" alt="clear" />
           </button>
-        )}
-        <span className="search-bar-shortcut">
-          {navigator?.platform?.includes("Mac") ? "\u2318" : "Ctrl"}K
-        </span>
+        )} */}
       </form>
 
       {/* Overlay */}
       {isOpen && (
-        <div
-          className="search-overlay"
-          onClick={() => setIsOpen(false)}
-        />
+        <div className="search-overlay" onClick={() => setIsOpen(false)} />
       )}
 
       {/* Dropdown */}
@@ -340,7 +376,7 @@ export default function SearchBar() {
           {isLoading && query.trim() && (
             <div className="search-loading">
               <div className="search-loading-spinner" />
-              <span>Searching...</span>
+              <span>SEARCHING...</span>
             </div>
           )}
 
@@ -348,7 +384,7 @@ export default function SearchBar() {
           {showHistory && (
             <>
               <div className="search-section-header">
-                <span>Recent Searches</span>
+                <span>RECENT SEARCHES</span>
               </div>
               <div className="search-history-list">
                 {history.map((term, i) => (
@@ -367,7 +403,7 @@ export default function SearchBar() {
                   className="search-clear-history"
                   onClick={handleClearHistory}
                 >
-                  Clear All
+                  CLEAR ALL
                 </button>
               </div>
             </>
@@ -376,8 +412,12 @@ export default function SearchBar() {
           {/* No query, no history */}
           {!query.trim() && history.length === 0 && (
             <div className="search-empty">
-              <img src="/icons/search.svg" alt="search" style={{ opacity: 0.3, width: 24 }} />
-              <span>Search by MR number, project name, supplier, BOQ...</span>
+              <img
+                src="/icons/search.svg"
+                alt="search"
+                style={{ opacity: 0.3, width: 24 }}
+              />
+              <span>SEARCH</span>
             </div>
           )}
 
@@ -387,25 +427,6 @@ export default function SearchBar() {
               <div className="search-results-list">
                 {categorizedResults.map((section) => (
                   <div key={section.category} className="search-result-section">
-                    <div className="search-section-header">
-                      <span
-                        className="search-category-badge"
-                        style={{
-                          backgroundColor: getCategoryBg(section.category),
-                          color: getCategoryColor(section.category),
-                        }}
-                      >
-                        <img
-                          src={getCategoryIcon(section.category)}
-                          alt={section.category}
-                          style={{ width: 12, height: 12 }}
-                        />
-                        {section.category}
-                      </span>
-                      <span className="search-result-count">
-                        {section.items.length}
-                      </span>
-                    </div>
                     {section.items.map((item) => (
                       <button
                         key={`${item.category}-${item.id}`}
@@ -414,17 +435,19 @@ export default function SearchBar() {
                       >
                         <div className="search-result-main">
                           <span className="search-result-id">
-                            {item.display_id}
+                            {item.category === "DOCUMENT"
+                              ? item.display_name || item.display_id
+                              : item.display_id}
+
+                            <span className="search-result-subtitle">
+                              {" "}
+                              • {item.category}
+                            </span>
                           </span>
                           <span className="search-result-subtitle">
                             {getSubtitle(item)}
                           </span>
                         </div>
-                        <img
-                          src="/icons/arrow-right.svg"
-                          alt="go"
-                          className="search-result-arrow"
-                        />
                       </button>
                     ))}
                   </div>
@@ -434,9 +457,8 @@ export default function SearchBar() {
               {/* View All Results footer */}
               <div className="search-dropdown-footer">
                 <button className="search-view-all" onClick={handleViewAll}>
-                  View All Results
+                  VIEW ALL
                   <span className="search-view-all-count">{totalResults}</span>
-                  <img src="/icons/arrow-right.svg" alt="go" style={{ width: 10 }} />
                 </button>
               </div>
             </>

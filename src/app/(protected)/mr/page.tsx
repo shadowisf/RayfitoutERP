@@ -1254,7 +1254,7 @@ export default function MR() {
                                     </div>
 
                                     <div>
-                                      <small>SUPPLIER</small>
+                                      <small>VENDOR</small>
                                       <h3>{lpoCard.supplier_name || "-"}</h3>
                                     </div>
 
@@ -1579,7 +1579,7 @@ export default function MR() {
                                   </div>
 
                                   <div>
-                                    <small>SUPPLIER</small>
+                                    <small>VENDOR</small>
                                     <h3>{lpoCard.supplier_name || "-"}</h3>
                                   </div>
 
@@ -1867,10 +1867,7 @@ export default function MR() {
                                     style={{ borderRadius: "50px" }}
                                     disabled={!canViewMR(mr, filterRelevant)}
                                   >
-                                    VIEW{" "}
-                                    <span style={{ marginLeft: "10px" }}>
-                                      &gt;
-                                    </span>
+                                    VIEW &gt;
                                   </Button>
                                 </div>
                               );

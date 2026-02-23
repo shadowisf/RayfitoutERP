@@ -554,45 +554,60 @@ export function BoqPDF({
         {/* Bottom Section - Terms */}
         <View style={styles.bottomSection}>
           {/* Payment Terms */}
-          <View style={styles.termsSection}>
-            <Text style={styles.termsTitle}>PAYMENT TERMS</Text>
-            <Text style={styles.termsText}>
-              {boqHeader.payment_terms || "-"}
-            </Text>
-          </View>
+          {boqHeader.payment_terms && (
+            <View style={styles.termsSection}>
+              <Text style={styles.termsTitle}>PAYMENT TERMS</Text>
+              <Text style={styles.termsText}>
+                {boqHeader.payment_terms || "-"}
+              </Text>
+            </View>
+          )}
 
           {/* Validity */}
-          <View style={styles.termsSection}>
-            <Text style={styles.termsTitle}>VALIDITY TERMS</Text>
-            <Text style={styles.termsText}>
-              {boqHeader.validity_terms || "-"}
-            </Text>
-          </View>
+          {boqHeader.validity_terms && (
+            <View style={styles.termsSection}>
+              <Text style={styles.termsTitle}>VALIDITY TERMS</Text>
+              <Text style={styles.termsText}>
+                {boqHeader.validity_terms || "-"}
+              </Text>
+            </View>
+          )}
 
-          <View style={styles.termsSection}>
-            <Text style={styles.termsTitle}>WARRANTY</Text>
-            <Text style={styles.termsText}>{boqHeader.warranty || "-"}</Text>
-          </View>
+          {/* Warranty */}
+          {boqHeader.warranty && (
+            <View style={styles.termsSection}>
+              <Text style={styles.termsTitle}>WARRANTY</Text>
+              <Text style={styles.termsText}>{boqHeader.warranty || "-"}</Text>
+            </View>
+          )}
 
           {/* Completion */}
-          <View style={styles.termsSection}>
-            <Text style={styles.termsTitle}>COMPLETION</Text>
-            <Text style={styles.termsText}>{boqHeader.completion || "-"}</Text>
-          </View>
+          {boqHeader.completion && (
+            <View style={styles.termsSection}>
+              <Text style={styles.termsTitle}>COMPLETION</Text>
+              <Text style={styles.termsText}>
+                {boqHeader.completion || "-"}
+              </Text>
+            </View>
+          )}
 
           {/* Exclusion */}
-          <View style={styles.termsSection}>
-            <Text style={styles.termsTitle}>EXCLUSIONS</Text>
-            <Text style={styles.termsText}>{boqHeader.exclusion || "-"}</Text>
-          </View>
+          {boqHeader.exclusion && (
+            <View style={styles.termsSection}>
+              <Text style={styles.termsTitle}>EXCLUSIONS</Text>
+              <Text style={styles.termsText}>{boqHeader.exclusion || "-"}</Text>
+            </View>
+          )}
 
           {/* Terms and Conditions */}
-          <View style={styles.termsSection}>
-            <Text style={styles.termsTitle}>TERMS & CONDITIONS</Text>
-            <Text style={styles.termsText}>
-              {boqHeader.terms_and_conditions || "-"}
-            </Text>
-          </View>
+          {boqHeader.terms_and_conditions && (
+            <View style={styles.termsSection}>
+              <Text style={styles.termsTitle}>TERMS & CONDITIONS</Text>
+              <Text style={styles.termsText}>
+                {boqHeader.terms_and_conditions || "-"}
+              </Text>
+            </View>
+          )}
         </View>
 
         <Text

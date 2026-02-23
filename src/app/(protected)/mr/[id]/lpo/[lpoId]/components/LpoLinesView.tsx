@@ -570,10 +570,28 @@ export default function LpoLinesView({
     return Number(vatRate) / 100; // Convert percentage (e.g., 5) to decimal (0.05)
   }
 
+  function getDiscountRate(): number {
+    const discount = lpo?.discount;
+    if (discount === null || discount === undefined) return 0;
+    return Number(discount);
+  }
+
+  function getShippingAndHandling(): number {
+    const shipping = lpo?.shipping_and_handling;
+    if (shipping === null || shipping === undefined) return 0;
+    return Number(shipping);
+  }
+
   function calculateTotalWithVAT(subtotal: number): number {
+    const discountRate = getDiscountRate();
+    const shipping = getShippingAndHandling();
     const vatRate = getVATRate();
-    const vatAmount = subtotal * vatRate;
-    return subtotal + vatAmount;
+
+    const discountAmount = subtotal * (discountRate / 100);
+    const subtotalAfterDiscount = subtotal - discountAmount;
+    const subtotalWithShipping = subtotalAfterDiscount + shipping;
+    const vatAmount = subtotalWithShipping * vatRate;
+    return subtotalWithShipping + vatAmount;
   }
 
   return (
@@ -849,6 +867,110 @@ export default function LpoLinesView({
                   </table>
                 </td>
               </tr>
+
+              {/* Discount Row */}
+              {getDiscountRate() > 0 && (
+                <tr>
+                  <td
+                    colSpan={100}
+                    style={{
+                      padding: "0",
+                    }}
+                  >
+                    <table
+                      style={{
+                        width: "100%",
+                        tableLayout: "fixed",
+                      }}
+                    >
+                      <tbody>
+                        <tr>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td
+                            style={{
+                              fontWeight: "600",
+                              padding: "15px 20px",
+                            }}
+                          >
+                            DISCOUNT ({getDiscountRate()}%)
+                          </td>
+                          <td
+                            style={{
+                              padding: "15px 20px",
+                              fontWeight: "600",
+                            }}
+                          >
+                            - AED{" "}
+                            {(
+                              calculateItemsTotal(allItems) *
+                              (getDiscountRate() / 100)
+                            ).toFixed(2)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              )}
+
+              {/* Shipping & Handling Row */}
+              {getShippingAndHandling() > 0 && (
+                <tr>
+                  <td
+                    colSpan={100}
+                    style={{
+                      padding: "0",
+                    }}
+                  >
+                    <table
+                      style={{
+                        width: "100%",
+                        tableLayout: "fixed",
+                      }}
+                    >
+                      <tbody>
+                        <tr>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td
+                            style={{
+                              fontWeight: "600",
+                              padding: "15px 20px",
+                            }}
+                          >
+                            SHIPPING & HANDLING
+                          </td>
+                          <td
+                            style={{
+                              padding: "15px 20px",
+                              fontWeight: "600",
+                            }}
+                          >
+                            AED {getShippingAndHandling().toFixed(2)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              )}
 
               {/* Total with VAT Row - UPDATED with dynamic rate */}
               <tr>

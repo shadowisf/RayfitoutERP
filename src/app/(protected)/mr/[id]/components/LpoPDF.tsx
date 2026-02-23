@@ -435,7 +435,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
         {/* Items Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.tableColDescription}>MATERIAL DESCRIPTION</Text>
+            <Text style={styles.tableColDescription}>ITEM</Text>
             <Text style={styles.tableColQty}>QTY</Text>
             <Text style={styles.tableColUnitPrice}>UNIT PRICE</Text>
             <Text style={styles.tableColTotalPrice}>TOTAL PRICE</Text>

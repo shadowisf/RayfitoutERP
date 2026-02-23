@@ -234,8 +234,6 @@ export default async function MrWithID({
   };
 
   if (diffDays < 0) {
-    daysLeftStyle = { backgroundColor: "rgba(175, 61, 61, 1)", color: "white" };
-  } else if (diffDays <= 1) {
     daysLeftStyle = {
       backgroundColor: "rgba(255, 181, 181, 1)",
       color: "rgba(248, 77, 77, 1)",
