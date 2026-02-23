@@ -101,11 +101,13 @@ export default function ProjectCard({ project, onSuccess }: props) {
                       backgroundColor: "rgba(134,241,181,1)",
                       color: "rgba(52,100,73,1)",
                       textTransform: "uppercase",
+                      fontSize: "10px",
                     }
                   : {
                       backgroundColor: "rgba(255, 250, 189, 1)",
                       color: "rgba(134, 83, 47, 1)",
                       textTransform: "uppercase",
+                      fontSize: "10px",
                     }
               }
             >
@@ -120,21 +122,20 @@ export default function ProjectCard({ project, onSuccess }: props) {
 
         <br />
 
-        <small>BUDGET</small>
-        <h2>
-          {project.currency}{" "}
-          {quotedBudget.toLocaleString("en-US", {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-          })}
-        </h2>
-
-        <br />
-
         {shouldShowProgress && (
           <>
-            <small>PROGRESS</small>
+            <small>BUDGET</small>
+            <h2>
+              {project.currency}{" "}
+              {quotedBudget.toLocaleString("en-US", {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              })}
+            </h2>
 
+            <br />
+
+            <small>PROGRESS</small>
             <div style={{ marginTop: "10px", position: "relative" }}>
               <div
                 style={{
