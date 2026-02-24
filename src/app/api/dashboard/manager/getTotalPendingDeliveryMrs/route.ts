@@ -23,8 +23,24 @@ export async function POST(request: Request) {
       const [rows]: any = await db.query(
         `SELECT COUNT(*) AS this_week FROM vw_mr_headers WHERE progress_id = 17`,
       );
+
+      // Fetch items for hover popup
+      const [itemRows]: any = await db.query(
+        `SELECT id, type, project_name
+         FROM vw_mr_headers
+         WHERE progress_id = 17
+         ORDER BY date_requested DESC
+         LIMIT 20`
+      );
+
+      const items = itemRows.map((mr: any) => ({
+        display_id: `${mr.type === "job" ? "JO" : "MR"}-${String(mr.id).padStart(5, "0")}`,
+        detail: mr.project_name || "-",
+      }));
+
+      const count = rows[0].this_week || 0;
       return NextResponse.json(
-        { this_week: rows[0].this_week || 0, last_week: 0 },
+        { this_week: count, last_week: 0, items, total_count: count },
         { status: 200 },
       );
     }
@@ -45,7 +61,24 @@ export async function POST(request: Request) {
       [filter, filter * 2, filter],
     );
 
-    return NextResponse.json(rows[0], { status: 200 });
+    // Fetch items for hover popup
+    const [itemRows]: any = await db.query(
+      `SELECT id, type, project_name
+       FROM vw_mr_headers
+       WHERE progress_id = 17
+         AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       ORDER BY date_requested DESC
+       LIMIT 20`,
+      [filter]
+    );
+
+    const items = itemRows.map((mr: any) => ({
+      display_id: `${mr.type === "job" ? "JO" : "MR"}-${String(mr.id).padStart(5, "0")}`,
+      detail: mr.project_name || "-",
+    }));
+
+    const thisWeek = rows[0].this_week || 0;
+    return NextResponse.json({ ...rows[0], items, total_count: thisWeek }, { status: 200 });
   } catch (err: any) {
     console.error(err.sqlMessage || err.message);
     return NextResponse.json(

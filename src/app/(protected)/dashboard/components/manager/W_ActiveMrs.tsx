@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import OverviewHoverPopup from "../OverviewHoverPopup";
 
 type props = {
   filterDays?: number;
@@ -16,6 +17,13 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   const [percentageChange, setPercentageChange] = useState<number>(0);
   const [isIncrease, setIsIncrease] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [items, setItems] = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+
+  // Hover popup state
+  const [showPopup, setShowPopup] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const hoverTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -37,10 +45,11 @@ export default function ActiveMrsWidget({ filterDays }: props) {
 
         setThisWeek(thisWeekCount);
         setLastWeek(lastWeekCount);
+        setItems(data.items || []);
+        setTotalCount(data.total_count || 0);
 
         // Calculate percentage change
         if (lastWeekCount === 0) {
-          // If last week was 0, cap at 100% increase
           if (thisWeekCount > 0) {
             setPercentageChange(100);
             setIsIncrease(true);
@@ -51,7 +60,6 @@ export default function ActiveMrsWidget({ filterDays }: props) {
         } else {
           const change =
             ((thisWeekCount - lastWeekCount) / lastWeekCount) * 100;
-          // Cap percentage at 100% to avoid infinity display
           setPercentageChange(Math.min(Math.abs(change), 100));
           setIsIncrease(change >= 0);
         }
@@ -64,23 +72,30 @@ export default function ActiveMrsWidget({ filterDays }: props) {
       });
   }, [filterDays]);
 
-  // Check if there are no active MRs
+  // Hover handlers
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    setMousePosition({ x: e.clientX, y: e.clientY });
+    hoverTimer.current = setTimeout(() => {
+      setShowPopup(true);
+    }, 2000);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setMousePosition({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setShowPopup(false);
+  };
+
   const hasNoActiveMRs = thisWeek === 0;
 
-  // Determine if change is substantial (>=10%) or slight (<10%)
   const isSubstantial = percentageChange >= 10;
   const changeMagnitude = isSubstantial ? "Substantial" : "Slight";
-
-  // Determine styling based on increase/decrease or no active MRs
-  /* const backgroundColor = hasNoActiveMRs
-    ? "rgba(156, 156, 156, 1)"
-    : isIncrease
-      ? "rgba(12, 143, 87, 1)"
-      : "rgba(248, 77, 77, 1)";
-  const textColor = isIncrease
-    ? "rgba(1, 184, 105, 1)"
-    : "rgba(255, 255, 255, 1)";
-  const arrow = isIncrease ? upArrow : downArrow; */
 
   const backgroundColor = hasNoActiveMRs
     ? "rgba(255, 255, 255, 1)"
@@ -90,9 +105,12 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   const textColor = isIncrease ? "black" : "black";
   const arrow = isIncrease ? upArrow : downArrow;
 
-  // ✅ Updated text to be more generic
   const isAllTime = filterDays === 0;
-  const periodLabel = isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
+  const periodLabel = isAllTime
+    ? "all time"
+    : filterDays === 7
+      ? "week"
+      : `${filterDays} days`;
   const changeText = hasNoActiveMRs
     ? "No active MRs"
     : isAllTime
@@ -102,7 +120,13 @@ export default function ActiveMrsWidget({ filterDays }: props) {
         : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
-    <div className="item" style={{ backgroundColor /* color: "white" */ }}>
+    <div
+      className="item"
+      style={{ backgroundColor }}
+      onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
       <div className="top">
         <span>Active MRs</span>
         <img src={fileIcon} alt="file icon" />
@@ -110,19 +134,21 @@ export default function ActiveMrsWidget({ filterDays }: props) {
       <div>
         <div className="bottom">
           <p className="number">{isLoading ? "..." : thisWeek}</p>
-          {/*  {!hasNoActiveMRs && !isLoading && (
-            <div className="data-pill">
-              <span style={{ color: textColor }}>
-                {isIncrease ? "+" : "-"}
-                {percentageChange.toFixed(percentageChange >= 10 ? 0 : 1)}%
-              </span>
-              <img src={arrow} alt="trend arrow" />
-            </div>
-          )} */}
         </div>
         <br />
         <span>{isLoading ? "Loading..." : changeText}</span>
       </div>
+
+      {showPopup && items.length > 0 && (
+        <OverviewHoverPopup
+          mouseX={mousePosition.x}
+          mouseY={mousePosition.y}
+          items={items}
+          totalCount={totalCount}
+          columns={[{ key: "display_id", label: "MR/LPO NUMBER" }]}
+          emptyMessage="No active MRs"
+        />
+      )}
     </div>
   );
 }

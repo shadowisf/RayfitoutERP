@@ -221,19 +221,19 @@ type ProgressLogEntry = {
   from_progress_name: string | null;
 };
 
-type MrDetailPDFProps = {
+type props = {
   mrHeader: MrHeader;
   lpo: any;
   flatLines: any[];
   progressLog: ProgressLogEntry[];
 };
 
-export function MrDetailPDF({
+export function CompletedMrLpoPDF({
   mrHeader,
   lpo,
   flatLines,
   progressLog,
-}: MrDetailPDFProps) {
+}: props) {
   const logo = "/icons/logo.jpg";
 
   const formatQuantity = (value: number | string): string => {

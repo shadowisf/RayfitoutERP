@@ -8,6 +8,7 @@ import JoLinesView from "./components/JoLinesView";
 import { MrHeader } from "./types/mrHeader";
 import CancelMaterialRequestButton from "./components/_CancelMaterialRequest";
 import RequisitionTimeline from "./components/RequisitionTimeline";
+import DownloadMrPDFButton from "./components/_DownloadMrPDFButton";
 
 export default async function MrWithID({
   params,
@@ -313,17 +314,21 @@ export default async function MrWithID({
           {String(mrHeader.id).padStart(5, "0")}
         </h1>
 
-        {mrHeader?.progress_id !== 1 && mrHeader.progress_id !== 25 && (
-          <CancelMaterialRequestButton
-            mrHeader={mrHeader}
-            bgColor="rgba(248, 77, 77, 1)"
-            borderColor="rgba(248, 77, 77, 1)"
-            textColor="white"
-            currentProgressId={mrHeader.progress_id}
-          >
-            ROLL BACK MATERIAL REQUEST <img src={uTurnIcon} alt="u-turn" />
-          </CancelMaterialRequestButton>
-        )}
+        <div style={{ display: "flex", gap: "10px" }}>
+          {mrHeader?.progress_id !== 1 && mrHeader.progress_id !== 25 && (
+            <CancelMaterialRequestButton
+              mrHeader={mrHeader}
+              bgColor="rgba(248, 77, 77, 1)"
+              borderColor="rgba(248, 77, 77, 1)"
+              textColor="white"
+              currentProgressId={mrHeader.progress_id}
+            >
+              ROLL BACK MATERIAL REQUEST <img src={uTurnIcon} alt="u-turn" />
+            </CancelMaterialRequestButton>
+          )}
+
+          <DownloadMrPDFButton mrHeader={mrHeader} mrLines={mrLines} />
+        </div>
       </div>
 
       <br />

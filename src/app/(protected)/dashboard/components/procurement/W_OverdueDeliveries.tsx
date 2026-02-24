@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import OverviewHoverPopup from "../OverviewHoverPopup";
 
 type props = {
   filterDays?: number;
@@ -16,6 +17,13 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
   const [percentageChange, setPercentageChange] = useState<number>(0);
   const [isIncrease, setIsIncrease] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [items, setItems] = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+
+  // Hover popup state
+  const [showPopup, setShowPopup] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const hoverTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -37,8 +45,9 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
 
         setThisWeek(thisWeekCount);
         setLastWeek(lastWeekCount);
+        setItems(data.items || []);
+        setTotalCount(data.total_count || 0);
 
-        // Calculate percentage change
         if (lastWeekCount === 0) {
           if (thisWeekCount > 0) {
             setPercentageChange(100);
@@ -62,15 +71,31 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
       });
   }, [filterDays]);
 
-  // Check if there are no overdue deliveries
+  // Hover handlers
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    setMousePosition({ x: e.clientX, y: e.clientY });
+    hoverTimer.current = setTimeout(() => {
+      setShowPopup(true);
+    }, 2000);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setMousePosition({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setShowPopup(false);
+  };
+
   const hasNoIncompleteDeliveries = thisWeek === 0;
 
-  // Determine if change is substantial (>=10%) or slight (<10%)
   const isSubstantial = percentageChange >= 10;
   const changeMagnitude = isSubstantial ? "Substantial" : "Slight";
 
-  // Determine styling based on increase/decrease
-  // Increase = bad (red), Decrease = good (green) for overdue deliveries
   const pillBackgroundColor = hasNoIncompleteDeliveries
     ? "rgba(156, 156, 156, 1)"
     : isIncrease
@@ -81,7 +106,6 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
 
   const arrow = isIncrease ? upArrow : downArrow;
 
-  // ✅ Dynamic period label
   const isAllTime = filterDays === 0;
   const periodLabel = isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
   const changeText = hasNoIncompleteDeliveries
@@ -93,7 +117,12 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
         : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
-    <div className="item">
+    <div
+      className="item"
+      onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
       <div className="top">
         <span>Overdue Deliveries</span>
         <img src={deliveriesIcon} alt="deliveries icon" />
@@ -117,6 +146,21 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
         <br />
         <span>{isLoading ? "Loading..." : changeText}</span>
       </div>
+
+      {showPopup && items.length > 0 && (
+        <OverviewHoverPopup
+          mouseX={mousePosition.x}
+          mouseY={mousePosition.y}
+          items={items}
+          totalCount={totalCount}
+          columns={[
+            { key: "display_id", label: "LPO" },
+            { key: "detail", label: "VENDOR" },
+            { key: "extra", label: "DUE DATE" },
+          ]}
+          emptyMessage="No overdue deliveries"
+        />
+      )}
     </div>
   );
 }

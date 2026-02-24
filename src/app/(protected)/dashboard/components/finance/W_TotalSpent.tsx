@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import OverviewHoverPopup from "../OverviewHoverPopup";
 
 type props = {
   filterDays?: number;
@@ -16,6 +17,13 @@ export default function TotalSpentWidget({ filterDays }: props) {
   const [percentageChange, setPercentageChange] = useState<number>(0);
   const [isIncrease, setIsIncrease] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [items, setItems] = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+
+  // Hover popup state
+  const [showPopup, setShowPopup] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const hoverTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -37,10 +45,10 @@ export default function TotalSpentWidget({ filterDays }: props) {
 
         setThisWeek(thisWeekCount);
         setLastWeek(lastWeekCount);
+        setItems(data.items || []);
+        setTotalCount(data.total_count || 0);
 
-        // Calculate percentage change
         if (lastWeekCount === 0) {
-          // If last week was 0, cap at 100% increase
           if (thisWeekCount > 0) {
             setPercentageChange(100);
             setIsIncrease(true);
@@ -51,7 +59,6 @@ export default function TotalSpentWidget({ filterDays }: props) {
         } else {
           const change =
             ((thisWeekCount - lastWeekCount) / lastWeekCount) * 100;
-          // Cap percentage at 100% to avoid infinity display
           setPercentageChange(Math.min(Math.abs(change), 100));
           setIsIncrease(change >= 0);
         }
@@ -64,14 +71,31 @@ export default function TotalSpentWidget({ filterDays }: props) {
       });
   }, [filterDays]);
 
-  // Check if there are no active MRs
+  // Hover handlers
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    setMousePosition({ x: e.clientX, y: e.clientY });
+    hoverTimer.current = setTimeout(() => {
+      setShowPopup(true);
+    }, 2000);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setMousePosition({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setShowPopup(false);
+  };
+
   const hasNoTotalSpent = thisWeek === 0;
 
-  // Determine if change is substantial (>=10%) or slight (<10%)
   const isSubstantial = percentageChange >= 10;
   const changeMagnitude = isSubstantial ? "Substantial" : "Slight";
 
-  // Determine styling based on increase/decrease or no active MRs
   const backgroundColor = hasNoTotalSpent
     ? "rgba(156, 156, 156, 1)"
     : isIncrease
@@ -82,7 +106,6 @@ export default function TotalSpentWidget({ filterDays }: props) {
     : "rgba(255, 255, 255, 1)";
   const arrow = isIncrease ? upArrow : downArrow;
 
-  // ✅ Dynamic period label
   const isAllTime = filterDays === 0;
   const periodLabel = isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
   const changeText = hasNoTotalSpent
@@ -94,14 +117,20 @@ export default function TotalSpentWidget({ filterDays }: props) {
         : `${changeMagnitude} decrease from last ${periodLabel}`;
 
   return (
-    <div className="item" style={{ backgroundColor, color: "white" }}>
+    <div
+      className="item"
+      style={{ backgroundColor, color: "white" }}
+      onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
       <div className="top">
         <span>Spend</span>
         <img src={totalSpentIcon} alt="spent icon" />
       </div>
       <div>
         <div className="bottom">
-          <p className="number">AED {isLoading ? "..." : thisWeek}</p>
+          <p className="number">AED {isLoading ? "..." : thisWeek.toLocaleString("en-US")}</p>
           {!hasNoTotalSpent && !isLoading && !isAllTime && (
             <div className="data-pill">
               <span style={{ color: textColor }}>
@@ -115,6 +144,25 @@ export default function TotalSpentWidget({ filterDays }: props) {
         <br />
         <span>{isLoading ? "Loading..." : changeText}</span>
       </div>
+
+      {showPopup && items.length > 0 && (
+        <OverviewHoverPopup
+          mouseX={mousePosition.x}
+          mouseY={mousePosition.y}
+          items={items}
+          totalCount={totalCount}
+          columns={[
+            { key: "display_id", label: "LPO" },
+            { key: "detail", label: "VENDOR" },
+            {
+              key: "amount",
+              label: "AMOUNT",
+              format: (val: number) => `AED ${val.toLocaleString("en-US")}`,
+            },
+          ]}
+          emptyMessage="No spend data"
+        />
+      )}
     </div>
   );
 }
