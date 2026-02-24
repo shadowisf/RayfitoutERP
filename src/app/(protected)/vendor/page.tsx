@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Supplier } from "./types/supplier";
-import CreateSupplierButton from "./components/_CreateSupplierButton";
 import { useAuth } from "@/app/context/AuthContext";
 import ThreeDotsMenuButton from "@/app/components/_ThreeButtonsMenuButton";
-import EditSupplierButton from "./components/_EditSupplierButton";
-import DeleteSupplierButton from "./components/_DeleteSupplierButton";
 import CreateSubcontractorButton from "../subcontractor/components/_CreateSubcontractorButton";
 import EditSubcontractorButton from "../subcontractor/components/_EditSubcontractorButton";
 import DeleteSubcontractorButton from "../subcontractor/components/_DeleteSubcontractorButton";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
+import CreateSupplierButton from "../vendor/components/_CreateSupplierButton";
+import DeleteSupplierButton from "../vendor/components/_DeleteSupplierButton";
+import EditSupplierButton from "../vendor/components/_EditSupplierButton";
+import { Supplier } from "../vendor/types/supplier";
 
 type Subcontractor = {
   id: number;
@@ -47,14 +47,16 @@ export default function VendorManagement() {
   // ─── Vendor state ───
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [vendorSearchQuery, setVendorSearchQuery] = useState("");
-  const [vendorSortBy, setVendorSortBy] = useState<"" | "name" | "id" | "type">(
-    "",
+  // Default to "name" for alphabetical sorting by supplier name
+  const [vendorSortBy, setVendorSortBy] = useState<"name" | "id" | "type">(
+    "name",
   );
 
   // ─── Subcontractor state ───
   const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
   const [subSearchQuery, setSubSearchQuery] = useState("");
-  const [subSortBy, setSubSortBy] = useState<"" | "name" | "id">("");
+  // Default to "name" for alphabetical sorting by subcontractor name
+  const [subSortBy, setSubSortBy] = useState<"name" | "id">("name");
 
   // ─── Check URL params on mount ───
   useEffect(() => {
@@ -105,16 +107,30 @@ export default function VendorManagement() {
     );
   });
 
+  // Fixed sorting: always apply a sort, defaulting to name
   const sortedSuppliers = [...filteredSuppliers].sort((a, b) => {
+    const nameA = (a.name || "").toLowerCase().trim();
+    const nameB = (b.name || "").toLowerCase().trim();
+
     switch (vendorSortBy) {
       case "name":
-        return (a.name || "").localeCompare(b.name || "");
+        // Primary sort by name, secondary by ID if names are equal
+        if (nameA !== nameB) {
+          return nameA.localeCompare(nameB);
+        }
+        return a.id - b.id;
       case "id":
         return a.id - b.id;
       case "type":
-        return (a.type || "").localeCompare(b.type || "");
+        const typeA = (a.type || "").toLowerCase();
+        const typeB = (b.type || "").toLowerCase();
+        if (typeA !== typeB) {
+          return typeA.localeCompare(typeB);
+        }
+        // Secondary sort by name if types are equal
+        return nameA.localeCompare(nameB);
       default:
-        return 0;
+        return nameA.localeCompare(nameB);
     }
   });
 
@@ -132,14 +148,22 @@ export default function VendorManagement() {
     );
   });
 
+  // Fixed sorting: always apply a sort, defaulting to name
   const sortedSubcontractors = [...filteredSubcontractors].sort((a, b) => {
+    const nameA = (a.name || "").toLowerCase().trim();
+    const nameB = (b.name || "").toLowerCase().trim();
+
     switch (subSortBy) {
       case "name":
-        return (a.name || "").localeCompare(b.name || "");
+        // Primary sort by name, secondary by ID if names are equal
+        if (nameA !== nameB) {
+          return nameA.localeCompare(nameB);
+        }
+        return a.id - b.id;
       case "id":
         return a.id - b.id;
       default:
-        return 0;
+        return nameA.localeCompare(nameB);
     }
   });
 
@@ -195,12 +219,9 @@ export default function VendorManagement() {
                 minWidth: "150px",
               }}
             >
-              <option value="" disabled>
-                SORT BY
-              </option>
-              <option value="name">Vendor Name</option>
-              <option value="id">Vendor ID</option>
-              <option value="type">Vendor Type</option>
+              <option value="name">SORT BY VENDOR NAME</option>
+              <option value="id">SORT BY VENDOR NUMBER</option>
+              <option value="type">SORT BY VENDOR TYPE</option>
             </select>
           ) : (
             <select
@@ -216,11 +237,8 @@ export default function VendorManagement() {
                 minWidth: "150px",
               }}
             >
-              <option value="" disabled>
-                SORT BY
-              </option>
-              <option value="name">Name</option>
-              <option value="id">ID</option>
+              <option value="name">SORT BY SUBCONTRACTOR NAME</option>
+              <option value="id">SORT BY SUBCONTRACTOR NUMBER</option>
             </select>
           )}
 
@@ -314,7 +332,7 @@ export default function VendorManagement() {
           <thead>
             <tr>
               <th>#</th>
-              <th>ID</th>
+              <th>VENDOR NUMBER</th>
               <th>NAME</th>
               <th>TYPE</th>
               <th>MATERIAL CATEGORIES</th>

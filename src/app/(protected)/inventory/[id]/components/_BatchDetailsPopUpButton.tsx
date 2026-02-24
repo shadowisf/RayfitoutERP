@@ -511,7 +511,7 @@ export default function BatchDetailsPopUpButton({
                           textDecoration: "underline",
                           display: "inline",
                         }}
-                        href={`/boq/${boqItem?.boq_header_id}`}
+                        href={`/project/${boqItem?.boq_project_id}/boq/boq/${boqItem?.boq_header_id}`}
                       >
                         {itemNumber}
                       </Button>
@@ -1040,7 +1040,7 @@ export default function BatchDetailsPopUpButton({
                               textDecoration: "underline",
                               display: "inline",
                             }}
-                            href={`/boq/${boqItem?.boq_header_id}`}
+                            href={`/project/${details.project_id}/boq/${boqItem?.boq_header_id}`}
                           >
                             {itemNumber}
                           </Button>

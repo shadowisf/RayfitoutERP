@@ -137,7 +137,7 @@ const TransactionCard = ({
         };
       case "STOCK_ISSUED":
         return {
-          label: "STOCK ISSUED",
+          label: transaction.received === 1 ? "STOCK ISSUED" : "PENDING",
           bg:
             transaction.received === 1
               ? "rgba(255, 186, 187, 1)"
@@ -149,7 +149,7 @@ const TransactionCard = ({
         };
       case "STOCK_TRANSFERRED":
         return {
-          label: "STOCK TRANSFERRED",
+          label: transaction.received === 1 ? "STOCK TRANSFERRED" : "PENDING",
           bg:
             transaction.received === 1
               ? "rgba(255, 186, 187, 1)"
@@ -161,7 +161,10 @@ const TransactionCard = ({
         };
       case "STOCK_SENT":
         return {
-          label: "STOCK UNDER PROCESSING",
+          label:
+            transaction.received === 1
+              ? "STOCK SENT FOR PROCESSING"
+              : "PENDING",
           bg:
             transaction.received === 1
               ? "rgba(255, 186, 187, 1)"

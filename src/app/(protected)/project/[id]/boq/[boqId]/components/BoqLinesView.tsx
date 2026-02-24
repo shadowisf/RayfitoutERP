@@ -29,7 +29,6 @@ import { BoqHeader } from "../types/boqHeader";
 import DownloadBoqButton from "./manager/_DownloadBoqButton";
 import EditBoqCategoryButton from "./manager/_EditBoqCategoryButton";
 import DeleteBoqCategoryButton from "./manager/_DeleteBoqCategoryButton";
-import { DeleteBoqHeaderButton } from "@/app/(protected)/boq/[id]/components/manager/_DeleteBoqHeaderButton";
 import EditBoqHeaderButton from "./manager/_EditBoqHeaderButton";
 import { DraggableCategory } from "./DraggableCategory";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
@@ -39,6 +38,7 @@ import DeleteBoqItemButton from "./manager/_DeleteBoqItemButton";
 import DuplicateBoqItemButton from "./manager/_DuplicateBoqItemButton";
 import EditBoqItemButton from "./manager/_EditBoqItemButton";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
+import { DeleteBoqHeaderButton } from "./manager/_DeleteBoqHeaderButton";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -577,6 +577,7 @@ export default function BoqLinesView({
               <thead>
                 <tr>
                   <th>#</th>
+                  <th>DN NUMBER & DATE</th>
                   <th style={{ minWidth: "600px" }}>ITEM</th>
                   <th>QUANTITY</th>
                   {canSeePrice && (
@@ -586,6 +587,7 @@ export default function BoqLinesView({
                     </>
                   )}
                   <th>ATTACHMENTS</th>
+                  <th>REMARKS</th>
                   {canManage && <th></th>}
                 </tr>
               </thead>
@@ -606,6 +608,8 @@ export default function BoqLinesView({
                         subCategoryIndex={item.originalSubCategoryIndex}
                         itemIndex={item.originalItemIndex}
                       >
+                        <td>{item.dn_number_and_date || "-"}</td>
+
                         <td>
                           <div
                             style={{
@@ -678,6 +682,8 @@ export default function BoqLinesView({
                           </div>
                         </td>
 
+                        <td>{item.remarks || "-"}</td>
+
                         {canManage && (
                           <td>
                             <ThreeDotsMenuButton>
@@ -699,6 +705,7 @@ export default function BoqLinesView({
                 >
                   <tr>
                     <td></td>
+                    <td></td>
                     <td>
                       <h3>SUBTOTAL</h3>
                     </td>
@@ -709,7 +716,7 @@ export default function BoqLinesView({
                         {calculateSubtotal(items).toLocaleString()}
                       </h3>
                     </td>
-                    <td colSpan={canManage ? 2 : 1}></td>
+                    <td colSpan={canManage ? 3 : 1}></td>
                   </tr>
                 </tfoot>
               )}
@@ -719,7 +726,7 @@ export default function BoqLinesView({
                   style={{ borderTop: "1px solid rgba(232, 223, 223, 1)" }}
                 >
                   <tr>
-                    <td colSpan={7}>
+                    <td colSpan={9}>
                       <AddBoqItemButton
                         boqHeaderID={boqHeader.id}
                         bgColor="rgba(239, 239, 239, 1)"
@@ -729,6 +736,7 @@ export default function BoqLinesView({
                         autoCategory={category}
                         autoSubCategory={subCategory}
                         style={{ padding: "20px 0px" }}
+                        currency={boqHeader.currency}
                       >
                         ADD ITEM +
                       </AddBoqItemButton>
@@ -775,13 +783,13 @@ export default function BoqLinesView({
 
   return (
     <div className="dashboard">
-      <h2>
+      <h1>
         <a href="/project">PROJECTS</a> &gt;{" "}
         <a href={`/project/${boqHeader?.project_id}`}>
           {boqHeader?.project_name.toUpperCase()}
         </a>{" "}
         &gt; BOQ-{String(boqHeader?.id).padStart(5, "0")}
-      </h2>
+      </h1>
 
       <br />
       <br />
@@ -803,7 +811,7 @@ export default function BoqLinesView({
             }}
           >
             <div>
-              <small>BOQ ID</small>
+              <small>BOQ NUMBER</small>
               <h2>BOQ-{String(boqHeader?.id).padStart(5, "0")}</h2>
             </div>
             <div>
@@ -838,7 +846,7 @@ export default function BoqLinesView({
         <br />
 
         <div
-          style={{ display: "flex", gap: "25px", textTransform: "uppercase" }}
+          style={{ display: "flex", gap: "10px", textTransform: "uppercase" }}
         >
           <InfoPopUpButton
             text={boqHeader.payment_terms}
@@ -1105,6 +1113,7 @@ export default function BoqLinesView({
               bgColor="black"
               borderColor="black"
               textColor="white"
+              currency={boqHeader.currency}
             >
               ADD CATEGORY & ITEM +
             </AddBoqItemButton>
@@ -1235,6 +1244,7 @@ export default function BoqLinesView({
             textColor="black"
             full
             autoCategory={activeCategory}
+            currency={boqHeader.currency}
             style={{ padding: "40px 0px", backgroundColor: "white" }}
           >
             ADD SUBCATEGORY & ITEM +

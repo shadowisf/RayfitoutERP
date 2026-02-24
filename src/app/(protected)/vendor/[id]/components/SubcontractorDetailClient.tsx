@@ -132,12 +132,12 @@ export default function SubcontractorDetailClient({
             }}
           >
             <div>
-              <small>SUBCONTRACTOR NAME</small>
-              <h2>{subcontractor.name}</h2>
+              <small>SUBCONTRACTOR NUMBER</small>
+              <h2>SUB-{subcontractor?.id.toString().padStart(5, "0")}</h2>
             </div>
             <div>
-              <small>SUBCONTRACTOR ID</small>
-              <h2>SUB-{subcontractor?.id.toString().padStart(5, "0")}</h2>
+              <small> NAME</small>
+              <h2>{subcontractor.name}</h2>
             </div>
             <div></div>
             <div>

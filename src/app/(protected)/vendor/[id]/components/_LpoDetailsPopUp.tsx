@@ -204,6 +204,7 @@ export default function LpoDetailsPopUp({
           action: "approvePayment",
           lpo_id: lpoId,
           payment_file: JSON.stringify(uploadedUrl),
+          payment_value: lpoData.total,
         }),
       });
       if (!res.ok) throw new Error("Failed to approve payment");
@@ -225,12 +226,45 @@ export default function LpoDetailsPopUp({
     }
   }
 
+  // ─── S&H / Discount / VAT helpers ───
+  function getDiscountRate(): number {
+    const discount = lpoData?.discount;
+    if (discount === null || discount === undefined) return 0;
+    return Number(discount);
+  }
+
+  function getShippingAndHandling(): number {
+    const shipping = lpoData?.shipping_and_handling;
+    if (shipping === null || shipping === undefined) return 0;
+    return Number(shipping);
+  }
+
+  function getVATRate(): number {
+    const vatRate = lpoData?.vat_rate;
+    if (vatRate === null || vatRate === undefined) return 0.05;
+    return Number(vatRate) / 100;
+  }
+
+  function calculateTotalWithVAT(subtotal: number): number {
+    const discountRate = getDiscountRate();
+    const shipping = getShippingAndHandling();
+    const vatRate = getVATRate();
+    const discountAmount = subtotal * (discountRate / 100);
+    const subtotalAfterDiscount = subtotal - discountAmount;
+    const subtotalWithShipping = subtotalAfterDiscount + shipping;
+    const vatAmount = subtotalWithShipping * vatRate;
+    return subtotalWithShipping + vatAmount;
+  }
+
   // ─── Computed ───
   const invoiceUrl = lpoData ? parseFileUrl(lpoData.invoice_file) : null;
   const signedUrl = lpoData ? parseFileUrl(lpoData.signed_file) : null;
   const paymentUrl = lpoData ? parseFileUrl(lpoData.payment_file) : null;
   const isPaid =
     lpoData?.payment_status?.toLowerCase() === "approved" || !!paymentUrl;
+  const isMarketplaceOrInvoice =
+    lpoData?.supplier_type?.toLowerCase().includes("marketplace") ||
+    lpoData?.supplier_type?.toLowerCase().includes("invoice");
 
   return (
     <FormPopUp
@@ -304,63 +338,67 @@ export default function LpoDetailsPopUp({
                 <DownloadLPOButton lpoID={lpoId} />
               </Button>
 
-              {/* Signed LPO: download or upload */}
-              {signedUrl ? (
-                <Button
-                  componentType={"none"}
-                  bgColor={"transparent"}
-                  borderColor={"rgb(207, 207, 207)"}
-                  textColor={"black"}
-                  style={{ padding: "7px 20px", borderRadius: "50px" }}
-                >
-                  Signed LPO
-                  <img
-                    src={downloadIcon}
-                    alt="download"
-                    onClick={() =>
-                      handleDownloadFile(
-                        signedUrl,
-                        `Signed-LPO-${String(lpoId).padStart(5, "0")}.pdf`,
-                      )
-                    }
-                  />
-                </Button>
-              ) : canUpload ? (
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "5px" }}
-                >
-                  <label
-                    style={{
-                      padding: "7px 20px",
-                      borderRadius: "50px",
-                      backgroundColor: "black",
-                      color: "white",
-                      border: "1px solid black",
-                      cursor: isUploadingSignedLpo ? "not-allowed" : "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      fontSize: "14px",
-                      opacity: isUploadingSignedLpo ? 0.6 : 1,
-                    }}
-                  >
-                    Upload Signed LPO
-                    <img src={uploadIcon} alt="upload" />
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      style={{ display: "none" }}
-                      disabled={isUploadingSignedLpo}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleUploadSignedLpo(file);
+              {/* Signed LPO: download or upload (hidden for marketplace/invoice) */}
+              {!isMarketplaceOrInvoice && (
+                <>
+                  {signedUrl ? (
+                    <Button
+                      componentType={"none"}
+                      bgColor={"transparent"}
+                      borderColor={"rgb(207, 207, 207)"}
+                      textColor={"black"}
+                      style={{ padding: "7px 20px", borderRadius: "50px" }}
+                    >
+                      Signed LPO
+                      <img
+                        src={downloadIcon}
+                        alt="download"
+                        onClick={() =>
+                          handleDownloadFile(
+                            signedUrl,
+                            `Signed-LPO-${String(lpoId).padStart(5, "0")}.pdf`,
+                          )
                         }
-                      }}
-                    />
-                  </label>
-                </div>
-              ) : null}
+                      />
+                    </Button>
+                  ) : canUpload ? (
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: "5px" }}
+                    >
+                      <label
+                        style={{
+                          padding: "7px 20px",
+                          borderRadius: "50px",
+                          backgroundColor: "black",
+                          color: "white",
+                          border: "1px solid black",
+                          cursor: isUploadingSignedLpo ? "not-allowed" : "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          fontSize: "14px",
+                          opacity: isUploadingSignedLpo ? 0.6 : 1,
+                        }}
+                      >
+                        Upload Signed LPO
+                        <img src={uploadIcon} alt="upload" />
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          style={{ display: "none" }}
+                          disabled={isUploadingSignedLpo}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleUploadSignedLpo(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+                </>
+              )}
 
               {/* Invoice: download or upload */}
               {invoiceUrl ? (
@@ -436,7 +474,7 @@ export default function LpoDetailsPopUp({
                     onClick={() =>
                       handleDownloadFile(
                         paymentUrl,
-                        `Receipt-LPO-${String(lpoId).padStart(5, "0")}.pdf`,
+                        `PR-${String(lpoId).padStart(5, "0")}`,
                       )
                     }
                   />
@@ -569,15 +607,11 @@ export default function LpoDetailsPopUp({
                         bgColor="rgba(239, 239, 239, 1)"
                         borderColor="rgba(223, 223, 223, 1)"
                         textColor="black"
-                        style={{ padding: "5px 5px" }}
+                        style={{ padding: "7px 7px" }}
                         href={attachmentUrl}
                         target="_blank"
                       >
-                        <img
-                          src={externalLinkIcon}
-                          alt="view"
-                          style={{ width: "14px" }}
-                        />
+                        <img src={externalLinkIcon} alt="view" />
                       </Button>
                     ) : (
                       "-"
@@ -591,32 +625,58 @@ export default function LpoDetailsPopUp({
             })
           )}
         </tbody>
-        {flatLines.length > 0 && lpoData && (
-          <tfoot>
-            <tr>
-              <td colSpan={9} style={{ textAlign: "right", fontWeight: "600" }}>
-                SUBTOTAL
-              </td>
-              <td style={{ fontWeight: "600" }}>
-                {formatCurrency(
-                  flatLines.reduce(
-                    (sum: number, l: any) =>
-                      sum + Number(l.lpo_total_price || 0),
-                    0,
-                  ),
-                )}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={9} style={{ textAlign: "right", fontWeight: "600" }}>
-                TOTAL WITH VAT
-              </td>
-              <td style={{ fontWeight: "600" }}>
-                {formatCurrency(lpoData.total)}
-              </td>
-            </tr>
-          </tfoot>
-        )}
+        {flatLines.length > 0 && lpoData && (() => {
+          const subtotal = flatLines.reduce(
+            (sum: number, l: any) => sum + Number(l.lpo_total_price || 0),
+            0,
+          );
+          const discountRate = getDiscountRate();
+          const shipping = getShippingAndHandling();
+          const discountAmount = subtotal * (discountRate / 100);
+
+          return (
+            <tfoot>
+              <tr>
+                <td colSpan={9} style={{ textAlign: "right", fontWeight: "600" }}>
+                  SUBTOTAL
+                </td>
+                <td style={{ fontWeight: "600" }}>
+                  {formatCurrency(subtotal)}
+                </td>
+              </tr>
+              {discountRate > 0 && (
+                <tr>
+                  <td colSpan={9} style={{ textAlign: "right", fontWeight: "600" }}>
+                    DISCOUNT ({discountRate}%)
+                  </td>
+                  <td style={{ fontWeight: "600" }}>
+                    - {formatCurrency(discountAmount)}
+                  </td>
+                </tr>
+              )}
+              {shipping > 0 && (
+                <tr>
+                  <td colSpan={9} style={{ textAlign: "right", fontWeight: "600" }}>
+                    SHIPPING & HANDLING
+                  </td>
+                  <td style={{ fontWeight: "600" }}>
+                    {formatCurrency(shipping)}
+                  </td>
+                </tr>
+              )}
+              <tr>
+                <td colSpan={9} style={{ textAlign: "right", fontWeight: "600" }}>
+                  TOTAL WITH VAT
+                </td>
+                <td style={{ fontWeight: "600" }}>
+                  {formatCurrency(
+                    lpoData.total || calculateTotalWithVAT(subtotal),
+                  )}
+                </td>
+              </tr>
+            </tfoot>
+          );
+        })()}
       </table>
     </FormPopUp>
   );

@@ -8,6 +8,7 @@ export type BoqHeader = {
   boq_date: string;
   discount: number;
   total_value: number;
+  total_items: number;
   payment_terms: string;
   validity_terms: string;
   warranty: string;
@@ -25,4 +26,5 @@ export type BoqHeader = {
   project_end_date: string;
   project_created_at: string;
   project_currency: string;
+  is_draft: boolean;
 };

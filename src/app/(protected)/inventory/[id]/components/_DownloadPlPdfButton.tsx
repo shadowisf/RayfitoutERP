@@ -68,16 +68,15 @@ export default function DownloadPlPdfButton({ transactionID }: props) {
 
   return (
     <Button
-      componentType={"button"}
+      componentType={"none"}
       bgColor={"rgba(255, 255, 255, 1)"}
       borderColor={"rgba(207, 207, 207, 1)"}
       textColor={"black"}
       style={{ padding: "7px 20px", borderRadius: "25px" }}
-      onClick={handleDownload}
       disabled={isProcessing}
     >
       PACKING LIST
-      <img src={downloadIcon} alt="download" />
+      <img src={downloadIcon} alt="download" onClick={handleDownload} />
     </Button>
   );
 }

@@ -6,7 +6,7 @@ import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Project } from "../../../../project/[id]/types/project";
+import { Project } from "../../../../types/project";
 
 type props = {
   bgColor?: string;
@@ -48,6 +48,7 @@ v. Any delay in taking decisions/ approval from the clients side will not be our
 vi. Payments for the variations shall be issued on prorate basis as per the main payment terms.
 vii. Contractor reserve the right to request for an extension of time for reasons beyond its control.`);
   const [discount, setDiscount] = useState("");
+  const [isDraft, setIsDraft] = useState(true);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,6 +72,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
         exclusion,
         terms_and_conditions: termsAndConditions,
         project_name: project?.name,
+        is_draft: isDraft,
       }),
     });
 
@@ -147,6 +149,53 @@ vii. Contractor reserve the right to request for an extension of time for reason
                 setClientName(e.target.value);
               }}
             />
+          </div>
+
+          <div className="input-row full">
+            <div className="input-item">
+              <label>DRAFT</label>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  height: "100%",
+                }}
+              >
+                <div
+                  onClick={() => setIsDraft(!isDraft)}
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "5px",
+                    border: isDraft ? "none" : "2px solid #d1d5db",
+                    backgroundColor: isDraft ? "#10b981" : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  {isDraft && (
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M16.6667 5L7.50004 14.1667L3.33337 10"
+                        stroke="white"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="input-row half">

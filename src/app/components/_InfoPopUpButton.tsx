@@ -6,7 +6,7 @@ import Button from "@/app/components/Button";
 
 type InfoPopUpButtonProps = {
   text: React.ReactNode;
-  header: string;
+  header: React.ReactNode;
   children?: React.ReactNode;
   bgColor?: string;
   borderColor?: string;

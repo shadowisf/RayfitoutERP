@@ -62,6 +62,8 @@ export default function EditBoqItemButton({
     null,
   );
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
+  const [dnNumberAndDate, setDnNumberAndDate] = useState("");
+  const [remarks, setRemarks] = useState("");
 
   const [isMounted, setIsMounted] = useState(true);
 
@@ -246,6 +248,8 @@ export default function EditBoqItemButton({
           total_cost: Number(totalCost),
           item_description: itemDescription,
           attachments: JSON.stringify(allAttachments),
+          dn_number_and_date: dnNumberAndDate,
+          remarks,
         }),
       });
 
@@ -324,6 +328,17 @@ export default function EditBoqItemButton({
               placeholder={"ENTER NAME"}
               onChange={(e) => setItemName(e.target.value)}
               required
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"DN NUMBER & DATE"}
+              value={dnNumberAndDate}
+              type={"text"}
+              onChange={(e) => {
+                setDnNumberAndDate(e.target.value);
+              }}
             />
           </div>
 
@@ -439,6 +454,18 @@ export default function EditBoqItemButton({
               type={"textarea"}
               placeholder={"ENTER DESCRIPTION"}
               onChange={(e) => setItemDescription(e.target.value)}
+              required={false}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"REMARKS"}
+              value={remarks}
+              type={"textarea"}
+              onChange={(e) => {
+                setRemarks(e.target.value);
+              }}
               required={false}
             />
           </div>

@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import Button from "../../../components/Button";
 import { useAuth } from "@/app/context/AuthContext";
-import CreateBoqHeaderButton from "../../boq/[id]/components/manager/_CreateBoqHeaderButton";
 import { Project } from "../[id]/types/project";
 import { DeleteProjectButton } from "../[id]/components/_DeleteProjectButton";
+import CreateBoqHeaderButton from "../[id]/boq/[boqId]/components/manager/_CreateBoqHeaderButton";
 
 type props = {
   project: Project;

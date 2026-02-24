@@ -96,6 +96,17 @@ export async function PUT(req: Request) {
 
       await db.query(query, [body.payment_file || null, Number(body.lpo_id)]);
 
+      await db.query(
+        `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
+        [
+          Number(body.mr_header_id),
+          Number(body.lpo_id),
+          10,
+          "Payment Successful",
+          `A payment (AED ${body.payment_value}) was made against LPO-${String(body.lpo_id).padStart(5, "0")}`,
+        ],
+      );
+
       return NextResponse.json({ success: true });
     }
 

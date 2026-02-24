@@ -86,12 +86,22 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
   const menuItems = [
     { label: "Dashboard", path: "/dashboard", icon: "/icons/dashboard.svg" },
     {
-      label: "Requisitions",
+      label: "Procurement Tracker",
       path: "/mr",
       icon: "/icons/mr.svg",
       count: mrActionCount,
     },
     { label: "Projects", path: "/project", icon: "/icons/projects.svg" },
+    {
+      label: "Local Purchase Orders",
+      path: "/lpo",
+      icon: "/icons/lpo.svg",
+    },
+    {
+      label: "Bill of Quantities",
+      path: "/boq",
+      icon: "/icons/boq.svg",
+    },
     {
       label: "Vendors & Subcontractors",
       path: "/vendor",
@@ -113,14 +123,15 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
   const isActive = (path: string) => {
     if (pathname === path) return true;
     if (pathname.startsWith(path + "/")) return true;
-    if (path === "/boq" && pathname.startsWith("/boq")) return true;
-    if (path === "/project" && pathname.startsWith("/boq")) return true;
     return false;
   };
 
+  const collapsedWidth = "60px";
+  const expandedWidth = "300px";
+
   return (
     <>
-      {/* Sidebar - Fixed position overlay */}
+      {/* Sidebar - Fixed position */}
       <div
         className="side-bar"
         style={{
@@ -128,23 +139,28 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
           left: 0,
           top: "55px",
           height: "calc(100vh - 55px)",
-          width: isOpen ? "300px" : "0px",
+          width: isOpen ? expandedWidth : collapsedWidth,
           overflow: "hidden",
           transition: "width 0.3s ease, background-color 0.3s ease",
-          backgroundColor: isOpen ? "white" : "transparent",
+          backgroundColor: "white",
           zIndex: 100,
-          borderRight: isOpen ? "1px solid #e0e0e0" : "none",
+          borderRight: "1px solid #e0e0e0",
         }}
       >
-        {/* Sidebar Content */}
+        {/* Expanded Sidebar Content */}
         <div
           style={{
             opacity: isOpen ? 1 : 0,
             transition: "opacity 0.2s ease",
-            padding: "20px",
+            padding: "60px 20px 0px 20px",
+            pointerEvents: isOpen ? "auto" : "none",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: expandedWidth,
           }}
         >
-          <h2>MENU</h2>
+          <h4 style={{ color: "rgba(92, 92, 92, 1)" }}>MENU</h4>
 
           <br />
 
@@ -182,6 +198,72 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
             ))}
           </div>
         </div>
+
+        {/* Collapsed Icon Strip */}
+        <div
+          style={{
+            opacity: isOpen ? 0 : 1,
+            transition: "opacity 0.2s ease",
+            pointerEvents: isOpen ? "none" : "auto",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            paddingTop: "90px",
+            gap: "7px",
+          }}
+        >
+          {menuItems.map((item) => (
+            <button
+              key={item.label}
+              onClick={() => router.push(item.path)}
+              title={item.label}
+              style={{
+                position: "relative",
+                width: "42px",
+                height: "42px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: isActive(item.path) ? "black" : "none",
+                border: "none",
+                borderRadius: "10px",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              <img
+                src={item.icon}
+                alt="icon"
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  filter: isActive(item.path) ? "invert(1)" : "none",
+                }}
+              />
+              {item.count !== undefined && item.count > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "2px",
+                    right: "2px",
+                    backgroundColor: "rgb(248, 77, 77)",
+                    color: "white",
+                    borderRadius: "50%",
+                    width: "18px",
+                    height: "18px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "10px",
+                    fontWeight: "600",
+                  }}
+                >
+                  {item.count > 99 ? "99+" : item.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Toggle Button - Fixed position, moves with sidebar state */}
@@ -189,12 +271,12 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
         onClick={() => setIsOpen(!isOpen)}
         style={{
           position: "fixed",
-          left: isOpen ? "300px" : "0px",
-          top: "65px",
-          width: "32px",
-          height: "32px",
-          backgroundColor: "white",
-          border: "1px solid rgba(217, 217, 217, 1)",
+          /* left: isOpen ? expandedWidth : collapsedWidth, */
+          left: isOpen ? "260px" : "20px",
+          top: "75px",
+          /* width: "32px",
+          height: "32px", */
+          backgroundColor: "transparent",
           borderLeft: "none",
           borderRadius: "0 6px 6px 0",
           cursor: "pointer",
@@ -203,26 +285,16 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
           justifyContent: "center",
           zIndex: 101,
           transition: "left 0.3s ease",
-          boxShadow: "2px 2px 5px rgba(0,0,0,0.1)",
         }}
       >
-        {/* <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="rgba(85, 80, 80, 1)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+        <img
           style={{
-            transform: isOpen ? "rotate(0deg)" : "rotate(180deg)",
-            transition: "transform 0.3s ease",
+            width: "18px",
+            height: "18px",
           }}
-        >
-          <polyline points="15 18 9 12 15 6" />
-        </svg> */}
-        <img src={collapseMenuIcon} alt="collapse menu" />
+          src={collapseMenuIcon}
+          alt="collapse menu"
+        />
       </button>
     </>
   );

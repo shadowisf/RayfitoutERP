@@ -9,8 +9,8 @@ export async function POST(req: Request) {
     if (body.action === "createBoqHeader") {
       const query = `
       INSERT INTO boq_headers 
-      (project_id, name, company_name, client_name, location, date, discount, payment_terms, validity_terms, warranty, completion, exclusion, terms_and_conditions)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (project_id, name, company_name, client_name, location, date, discount, payment_terms, validity_terms, warranty, completion, exclusion, terms_and_conditions, is_draft)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const values = [
@@ -27,6 +27,7 @@ export async function POST(req: Request) {
         body.completion,
         body.exclusion,
         body.terms_and_conditions,
+        body.is_draft,
       ];
 
       const [result] = await db.query<ResultSetHeader>(query, values);
@@ -90,8 +91,8 @@ export async function POST(req: Request) {
         // Rest of the code remains the same...
         const query = `
       INSERT INTO boq_lines 
-      (boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments, category_order, subcategory_order, item_order)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments, category_order, subcategory_order, item_order, dn_number_and_date, remarks)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
         const values = [
@@ -111,6 +112,8 @@ export async function POST(req: Request) {
           nextCategoryOrder,
           nextSubcategoryOrder,
           nextItemOrder,
+          body.dn_number_and_date,
+          body.remarks,
         ];
 
         const [result] = await db.query<ResultSetHeader>(query, values);
@@ -228,7 +231,7 @@ export async function PUT(req: Request) {
     if (body.action === "updateBoqHeader") {
       const query = `
         UPDATE boq_headers 
-        SET project_id = ?, name = ?, company_name = ?, client_name = ?, location = ?, date = ?, discount = ?, payment_terms = ?, validity_terms = ?, warranty = ?, completion = ?, exclusion = ?, terms_and_conditions = ?
+        SET project_id = ?, name = ?, company_name = ?, client_name = ?, location = ?, date = ?, discount = ?, payment_terms = ?, validity_terms = ?, warranty = ?, completion = ?, exclusion = ?, terms_and_conditions = ?, is_draft = ?
         WHERE id = ?
       `;
 
@@ -246,28 +249,31 @@ export async function PUT(req: Request) {
         body.completion,
         body.exclusion,
         body.terms_and_conditions,
+        body.is_draft,
         Number(body.id),
       ];
 
       await db.query(query, values);
 
-      await db.query(
-        `INSERT INTO notification (boq_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
-        [
-          body.id,
-          8,
-          "BOQ Updated",
-          `${body.name} was updated for ${body.project_name} by ${body.updated_by} at ${new Date().toLocaleTimeString(
-            "en-GB",
-            {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-              timeZone: "Asia/Dubai",
-            },
-          )}`,
-        ],
-      );
+      if (body.is_draft === true) {
+        await db.query(
+          `INSERT INTO notification (boq_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            8,
+            "BOQ Updated",
+            `${body.name} was updated for ${body.project_name} by ${body.updated_by} at ${new Date().toLocaleTimeString(
+              "en-GB",
+              {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+                timeZone: "Asia/Dubai",
+              },
+            )}`,
+          ],
+        );
+      }
 
       await db.query(
         `INSERT INTO notification (boq_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
@@ -295,7 +301,7 @@ export async function PUT(req: Request) {
         // Update BOQ line without location_id (deprecated field)
         const query = `
           UPDATE boq_lines 
-          SET item_name = ?, category = ?, sub_category = ?, scope_of_work = ?, quantity = ?, unit = ?, rate_per_quantity = ?, total_cost = ?, item_description = ?, attachments = ?
+          SET item_name = ?, category = ?, sub_category = ?, scope_of_work = ?, quantity = ?, unit = ?, rate_per_quantity = ?, total_cost = ?, item_description = ?, attachments = ?, dn_number_and_date = ?, remarks = ?
           WHERE id = ?
         `;
 
@@ -312,6 +318,8 @@ export async function PUT(req: Request) {
           body.attachments && body.attachments.length > 0
             ? JSON.stringify(body.attachments)
             : null,
+          body.dn_number_and_date,
+          body.remarks,
           Number(body.id),
         ];
 

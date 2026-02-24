@@ -442,15 +442,11 @@ export default function JoDetailsPopUp({
                         bgColor="rgba(239, 239, 239, 1)"
                         borderColor="rgba(223, 223, 223, 1)"
                         textColor="black"
-                        style={{ padding: "5px 5px" }}
+                        style={{ padding: "7px 7px" }}
                         href={attachmentUrl}
                         target="_blank"
                       >
-                        <img
-                          src={externalLinkIcon}
-                          alt="view"
-                          style={{ width: "14px" }}
-                        />
+                        <img src={externalLinkIcon} alt="view" />
                       </Button>
                     ) : (
                       "-"

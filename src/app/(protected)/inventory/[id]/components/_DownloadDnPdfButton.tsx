@@ -109,16 +109,15 @@ export default function DownloadDnPdfButton({ transactionID }: props) {
 
   return (
     <Button
-      componentType={"button"}
+      componentType={"none"}
       bgColor={"rgba(255, 255, 255, 1)"}
       borderColor={"rgba(207, 207, 207, 1)"}
       textColor={"black"}
       style={{ padding: "7px 20px", borderRadius: "25px" }}
       disabled={isProcessing}
-      onClick={handleDownload}
     >
       DN (UNSIGNED)
-      <img src={downloadIcon} alt="download" />
+      <img src={downloadIcon} alt="download" onClick={handleDownload} />
     </Button>
   );
 }

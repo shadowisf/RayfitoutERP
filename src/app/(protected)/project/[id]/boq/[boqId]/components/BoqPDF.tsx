@@ -202,8 +202,8 @@ const styles = StyleSheet.create({
 
   // Bottom Section
   bottomSection: {
-    marginTop: "auto",
-    paddingTop: 20,
+    /* marginTop: "auto", */
+    marginTop: 30,
   },
 
   // Terms
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   detailColCategory: {
-    width: "60%",
+    width: "50%",
     paddingRight: 4,
   },
   detailColCategoryUnpriced: {
@@ -308,6 +308,10 @@ const styles = StyleSheet.create({
   },
   detailColAttachment: {
     width: "17%",
+    paddingRight: 4,
+  },
+  detailColRemarks: {
+    width: "15%",
   },
 
   // Attachment Image
@@ -455,11 +459,10 @@ export function BoqPDF({
           </View>
         </View>
 
-        {/* Summary Title */}
-        <Text style={styles.summaryTitle}>SUMMARY</Text>
-
         {/* Items Table - Summary - Only Categories */}
         <View style={styles.table}>
+          <Text style={styles.summaryTitle}>SUMMARY</Text>
+
           <View style={styles.tableHeader}>
             <Text
               style={
@@ -477,7 +480,7 @@ export function BoqPDF({
                   : styles.tableColDescriptionUnpriced
               }
             >
-              DESCRIPTION
+              CATEGORY
             </Text>
             {showPrices && <Text style={styles.tableColAmount}>AMOUNT</Text>}
           </View>
@@ -665,6 +668,8 @@ export function BoqPDF({
                       <Text style={styles.detailColAttachment}>
                         ATTACHMENT(S)
                       </Text>
+
+                      <Text style={styles.detailColRemarks}>REMARKS</Text>
                     </View>
                   </View>
 
@@ -784,6 +789,10 @@ export function BoqPDF({
                               </View>
                             )}
                         </View>
+
+                        <Text style={styles.detailColRemarks}>
+                          {item.remarks}
+                        </Text>
                       </View>
                     );
                   })}
@@ -805,6 +814,7 @@ export function BoqPDF({
                         {boqHeader.currency} {subCategoryTotal.toLocaleString()}
                       </Text>
                       <Text style={styles.detailColAttachment}></Text>
+                      <Text style={styles.detailColRemarks}></Text>
                     </View>
                   )}
                 </View>

@@ -32,6 +32,8 @@ export default function VendorDetailClient({
   supplier,
   lpos: initialLpos,
 }: VendorDetailClientProps) {
+  const { userInfo } = useAuth();
+
   const [lpos, setLpos] = useState<LpoRow[]>(initialLpos);
   const [mrHeader, setMrHeader] = useState<MrHeader | null>(null);
   const [selectedLpo, setSelectedLpo] = useState<LpoRow | null>(null);
@@ -173,15 +175,17 @@ export default function VendorDetailClient({
             }}
           >
             <div>
-              <small>VENDOR NAME</small>
-              <h2>{supplier.name}</h2>
-            </div>
-            <div>
-              <small>VENDOR ID</small>
+              <small>VENDOR NUMBER</small>
               <h2>VEN-{supplier?.id.toString().padStart(5, "0")}</h2>
             </div>
+
             <div>
-              <small>VENDOR TYPE</small>
+              <small>NAME</small>
+              <h2>{supplier.name}</h2>
+            </div>
+
+            <div>
+              <small>TYPE</small>
               <br />
               <div
                 className="approval-pill normal-text"
@@ -212,39 +216,43 @@ export default function VendorDetailClient({
             </div>
             <div>
               <small>TRN CERTIFICATE</small>
-              {supplier.trn_certificate ? (
-                <Button
-                  componentType={"link"}
-                  bgColor={"rgba(239, 239, 239, 1)"}
-                  borderColor={"rgba(223, 223, 223, 1)"}
-                  textColor={"black"}
-                  style={{ padding: "7px 7px" }}
-                  href={supplier.trn_certificate}
-                  target="_blank"
-                >
-                  <img src={externalLinkIcon} alt="external link" />
-                </Button>
-              ) : (
-                "-"
-              )}
+              <h2>
+                {supplier.trn_certificate ? (
+                  <Button
+                    componentType={"link"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"rgba(223, 223, 223, 1)"}
+                    textColor={"black"}
+                    style={{ padding: "7px 7px" }}
+                    href={supplier.trn_certificate}
+                    target="_blank"
+                  >
+                    <img src={externalLinkIcon} alt="external link" />
+                  </Button>
+                ) : (
+                  "-"
+                )}
+              </h2>
             </div>
             <div>
               <small>TRADE LICENSE</small>
-              {supplier.trade_license ? (
-                <Button
-                  componentType={"link"}
-                  bgColor={"rgba(239, 239, 239, 1)"}
-                  borderColor={"rgba(223, 223, 223, 1)"}
-                  textColor={"black"}
-                  style={{ padding: "7px 7px" }}
-                  href={supplier.trade_license}
-                  target="_blank"
-                >
-                  <img src={externalLinkIcon} alt="external link" />
-                </Button>
-              ) : (
-                "-"
-              )}
+              <h2>
+                {supplier.trade_license ? (
+                  <Button
+                    componentType={"link"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"rgba(223, 223, 223, 1)"}
+                    textColor={"black"}
+                    style={{ padding: "7px 7px" }}
+                    href={supplier.trade_license}
+                    target="_blank"
+                  >
+                    <img src={externalLinkIcon} alt="external link" />
+                  </Button>
+                ) : (
+                  "-"
+                )}
+              </h2>
             </div>
             <div>
               <small>CURRENCY</small>
@@ -293,8 +301,8 @@ export default function VendorDetailClient({
           <tr>
             <th>#</th>
             <th>PAID DATE</th>
-            <th>LPO NUMBER</th>
             <th>MR NUMBER</th>
+            <th>LPO NUMBER</th>
             <th>INVOICE AMOUNT</th>
             <th>TOTAL PAID</th>
             <th></th>
@@ -318,11 +326,31 @@ export default function VendorDetailClient({
                       : "-"}
                   </td>
                   <td style={{ textWrap: "nowrap" }}>
-                    LPO-{String(lpo.lpo_id).padStart(5, "0")}
-                  </td>
-                  <td style={{ textWrap: "nowrap" }}>
                     {lpo.mr_number ||
                       `MR-${String(lpo.mr_header_id).padStart(5, "0")}`}
+                  </td>
+                  <td style={{ textWrap: "nowrap" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        alignItems: "center",
+                      }}
+                    >
+                      LPO-{String(lpo.lpo_id).padStart(5, "0")}
+                      {userInfo?.departmentID === 8 && (
+                        <Button
+                          componentType={"link"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"rgba(223, 223, 223, 1)"}
+                          textColor={"black"}
+                          href={`/mr/${lpo.mr_header_id}/lpo/${lpo.lpo_id}`}
+                          style={{ padding: "7px 7px" }}
+                        >
+                          <img src={externalLinkIcon} alt="view" />
+                        </Button>
+                      )}
+                    </div>
                   </td>
                   <td>{formatCurrency(lpo.invoice_amount)}</td>
                   <td>{formatCurrency(lpo.total_paid)}</td>
