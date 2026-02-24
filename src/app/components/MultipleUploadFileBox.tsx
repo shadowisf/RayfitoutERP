@@ -1,20 +1,29 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Button from "./Button";
 import { toast } from "./Toast";
 
+type FileSetter =
+  | React.Dispatch<React.SetStateAction<File[] | null>>
+  | React.Dispatch<React.SetStateAction<File[]>>
+  | ((files: File[] | null) => void)
+  | ((files: File[]) => void);
+
 type MultipleUploadFileBoxProps = {
   fileState: File[] | null;
-  setFileState: React.Dispatch<React.SetStateAction<File[] | null>>;
+  setFileState: FileSetter;
   label: string;
   required?: boolean;
   placeholder?: string;
   acceptedFileTypes: string;
   buttonLabel?: string;
-  existingFileUrls?: string[] | null; // New prop for existing file URLs
+  existingFileUrls?: string[] | null;
   onExistingFilesChange?: (files: string[]) => void;
 };
+
+// ✅ Create stable empty set outside component
+const EMPTY_SET = new Set<number>();
 
 export default function MultipleUploadFileBox({
   fileState,
@@ -33,16 +42,58 @@ export default function MultipleUploadFileBox({
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [showExisting, setShowExisting] = useState<boolean[]>([]);
+  const [visibleExistingIndices, setVisibleExistingIndices] =
+    useState<Set<number>>(EMPTY_SET);
 
   const InputRef = useRef<HTMLInputElement | null>(null);
 
-  // Initialize showExisting state based on existingFileUrls
-  useEffect(() => {
+  // ✅ Memoize the initial indices calculation
+  const initialIndices = useMemo(() => {
     if (existingFileUrls && existingFileUrls.length > 0) {
-      setShowExisting(existingFileUrls.map(() => true));
+      return new Set(existingFileUrls.map((_, i) => i));
     }
-  }, [existingFileUrls]);
+    return EMPTY_SET;
+  }, [existingFileUrls?.length, existingFileUrls?.join(",")]); // Stable dependencies
+
+  // ✅ Only update state when initialIndices actually changes
+  useEffect(() => {
+    setVisibleExistingIndices((prev) => {
+      // Only update if different size or content
+      if (prev.size !== initialIndices.size) {
+        return initialIndices;
+      }
+      // Check if contents are different
+      for (const idx of initialIndices) {
+        if (!prev.has(idx)) return initialIndices;
+      }
+      for (const idx of prev) {
+        if (!initialIndices.has(idx)) return initialIndices;
+      }
+      return prev; // Same contents, keep previous reference
+    });
+  }, [initialIndices]);
+
+  // ✅ Separate effect for notifying parent - with proper cleanup
+  const prevVisibleFilesRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!onExistingFilesChange || !existingFileUrls) return;
+
+    const visibleFiles = existingFileUrls.filter((_, i) =>
+      visibleExistingIndices.has(i),
+    );
+
+    // Only notify if actually changed
+    const currentJson = JSON.stringify(visibleFiles);
+    if (currentJson !== prevVisibleFilesRef.current) {
+      prevVisibleFilesRef.current = currentJson;
+      onExistingFilesChange(visibleFiles);
+    }
+  }, [visibleExistingIndices, existingFileUrls, onExistingFilesChange]);
+
+  const updateFileState = (files: File[] | null) => {
+    (setFileState as any)(files);
+  };
 
   const handleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -57,8 +108,7 @@ export default function MultipleUploadFileBox({
       }
     }
 
-    setFileState(filesArray);
-    setShowExisting(existingFileUrls?.map(() => false) || []);
+    updateFileState(filesArray);
     generatePreviews(filesArray);
   };
 
@@ -89,7 +139,7 @@ export default function MultipleUploadFileBox({
     if (!fileState) return;
 
     const newFiles = fileState.filter((_, i) => i !== index);
-    setFileState(newFiles.length > 0 ? newFiles : null);
+    updateFileState(newFiles.length > 0 ? newFiles : null);
     generatePreviews(newFiles);
 
     if (InputRef.current) {
@@ -97,24 +147,13 @@ export default function MultipleUploadFileBox({
     }
   };
 
-  /* const removeExistingFile = (index: number) => {
-    const newShowExisting = [...showExisting];
-    newShowExisting[index] = false;
-    setShowExisting(newShowExisting);
-  }; */
-  const removeExistingFile = (index: number) => {
-    const newShowExisting = [...showExisting];
-    newShowExisting[index] = false;
-    setShowExisting(newShowExisting);
-
-    // Update parent component with new list of visible files
-    if (onExistingFilesChange && existingFileUrls) {
-      const newExistingFiles = existingFileUrls.filter((_, i) =>
-        i === index ? false : showExisting[i],
-      );
-      onExistingFilesChange(newExistingFiles);
-    }
-  };
+  const removeExistingFile = useCallback((index: number) => {
+    setVisibleExistingIndices((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(index);
+      return newSet;
+    });
+  }, []);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -150,8 +189,7 @@ export default function MultipleUploadFileBox({
       }
     }
 
-    setFileState(droppedFiles);
-    setShowExisting(existingFileUrls?.map(() => false) || []);
+    updateFileState(droppedFiles);
     generatePreviews(droppedFiles);
   };
 
@@ -179,9 +217,9 @@ export default function MultipleUploadFileBox({
   };
 
   const files = fileState || [];
-  const existingFiles =
-    existingFileUrls?.filter((_, index) => showExisting[index]) || [];
-  const hasContent = files.length > 0 || existingFiles.length > 0;
+  const visibleExistingFiles =
+    existingFileUrls?.filter((_, i) => visibleExistingIndices.has(i)) || [];
+  const hasContent = files.length > 0 || visibleExistingFiles.length > 0;
 
   return (
     <div className="input-item">
@@ -355,10 +393,10 @@ export default function MultipleUploadFileBox({
               })()}
 
             {/* Existing files */}
-            {existingFiles.length > 0 &&
+            {visibleExistingFiles.length > 0 &&
               (() => {
-                const imageUrls = existingFiles.filter(isImageUrl);
-                const nonImageUrls = existingFiles.filter(
+                const imageUrls = visibleExistingFiles.filter(isImageUrl);
+                const nonImageUrls = visibleExistingFiles.filter(
                   (url) => !isImageUrl(url),
                 );
 
@@ -375,8 +413,7 @@ export default function MultipleUploadFileBox({
                         }}
                       >
                         {imageUrls.map((url) => {
-                          const originalIndex =
-                            existingFileUrls?.indexOf(url) || 0;
+                          const originalIndex = existingFileUrls!.indexOf(url);
 
                           return (
                             <div
@@ -422,7 +459,7 @@ export default function MultipleUploadFileBox({
 
                     {/* Existing non-image files stacked vertically */}
                     {nonImageUrls.map((url) => {
-                      const originalIndex = existingFileUrls?.indexOf(url) || 0;
+                      const originalIndex = existingFileUrls!.indexOf(url);
 
                       return (
                         <div
