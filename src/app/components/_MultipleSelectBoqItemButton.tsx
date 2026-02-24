@@ -4,9 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import FormPopUp from "@/app/components/FormPopup";
 import { toast } from "@/app/components/Toast";
-import { BoqLine } from "@/app/(protected)/boq/[id]/types/boqLine";
 import { useAuth } from "@/app/context/AuthContext";
 import Button from "./Button";
+import { BoqLine } from "../(protected)/project/[id]/boq/[boqId]/types/boqLine";
 
 type props = {
   projectID: number;
