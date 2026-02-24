@@ -25,6 +25,8 @@ import AvgPaymentTimeWidget from "./components/finance/W_AvgPaymentTime";
 import RisksAndExceptionFlagsWidget from "./components/finance/W_RisksAndExceptionFlags";
 import TopMaterialsBySpendingChart from "./components/finance/W_TopMaterialsBySpend";
 import PriceTrendSignalsWidget from "./components/finance/W_PriceTrendSignals";
+import QuickInitialApprovalWidget from "./components/manager/W_QuickInitialApproval";
+import QuickPriceApprovalWidget from "./components/manager/W_QuickPriceApproval";
 
 export default function Dashboard() {
   const bannerBackground = "/images/welcome-banner.jpg";
@@ -152,15 +154,21 @@ export default function Dashboard() {
           <br />
           <br />
           <br />
+          <h2>QUICK APPROVALS</h2>
+          <br />
+          <div className="widget-grid overview two-col">
+            <QuickInitialApprovalWidget />
+            <QuickPriceApprovalWidget />
+          </div>
+          <br />
+          <br />
+          <br />
           <div className="widget-grid overview three-col">
             <AlertsAndRiskMrsWidget />
             <AvgTimeSpentPerStageWidget />
             <MedianMRLifespanWidget />
           </div>
-          <br />
-          <br />
-          <br />
-          <div className="widget-grid">{/* <BudgetAllocationGraph /> */}</div>
+
           <br />
           <br />
           <br />

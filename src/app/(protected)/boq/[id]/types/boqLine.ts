@@ -15,4 +15,6 @@ export type BoqLine = {
   item_description: string;
   attachments: string[] | string;
   item_number: string;
+  remarks: string;
+  dn_number_and_date: string;
 };

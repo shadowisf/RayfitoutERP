@@ -179,7 +179,7 @@ export default async function InventoryItemWithID({
                 }}
               >
                 <div>
-                  <small>ID</small>
+                  <small>ITEM NUMBER</small>
                   <h2>INV-{inventoryItem?.id.toString().padStart(5, "0")}</h2>
                 </div>
                 <div>

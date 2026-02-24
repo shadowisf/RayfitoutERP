@@ -44,6 +44,8 @@ export async function POST(req: Request) {
         total_cost: row.total_cost,
         item_description: row.item_description,
         attachments: row.attachments || [],
+        dn_number_and_date: row.dn_number_and_date,
+        remarks: row.remarks,
       });
     });
 

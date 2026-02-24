@@ -13,7 +13,7 @@ export default function AlertsAndRiskMrsWidget() {
 
   useEffect(() => {
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getTotalCriticalMrs`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getTotalCriticalMrs`,
     )
       .then((res) => res.json())
       .then((data) => {
@@ -21,7 +21,7 @@ export default function AlertsAndRiskMrsWidget() {
       });
 
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getTotalLateDeliveries`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/manager/getTotalLateDeliveries`,
     )
       .then((res) => res.json())
       .then((data) => {
@@ -30,13 +30,7 @@ export default function AlertsAndRiskMrsWidget() {
   }, []);
 
   return (
-    <div
-      style={{
-        backgroundColor: "white",
-        padding: "15px",
-        borderRadius: "15px",
-      }}
-    >
+    <div className="widget-container">
       <h3>Alerts & Risks</h3>
       <br />
 

@@ -28,14 +28,14 @@ export default function CreateBoqLineClient({ boqHeader }: props) {
           alignItems: "center",
         }}
       >
-        <h2>
+        <h1>
           <a href="/project">PROJECTS</a> &gt;{" "}
           <a href={`/project/${boqHeader?.project_id}`}>
             {boqHeader?.project_name.toUpperCase()}
           </a>{" "}
           &gt; BOQ-
           {String(boqHeader?.id).padStart(5, "0")}
-        </h2>
+        </h1>
         <div style={{ display: "flex", gap: "5px" }}>
           {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
             <>
@@ -74,6 +74,7 @@ export default function CreateBoqLineClient({ boqHeader }: props) {
             full
             boqHeaderID={boqHeader.id}
             style={{ padding: "20px 0px" }}
+            currency={boqHeader.currency}
           >
             ADD ITEM +
           </AddBoqItemButton>

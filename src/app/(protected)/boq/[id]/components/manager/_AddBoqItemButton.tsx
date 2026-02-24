@@ -10,6 +10,7 @@ import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 import CreateLocationButton from "./_AddLocationButton";
+import { TextInput } from "@react-pdf/renderer";
 
 type AddBoqItemButtonProps = {
   boqHeaderID: number;
@@ -18,6 +19,7 @@ type AddBoqItemButtonProps = {
   borderColor?: string;
   autoCategory?: string;
   autoSubCategory?: string;
+  currency: string;
   children: React.ReactNode;
   full?: boolean;
   style?: React.CSSProperties;
@@ -30,6 +32,7 @@ export default function AddBoqItemButton({
   borderColor = "rgba(239, 239, 239, 1)",
   autoCategory = "",
   autoSubCategory = "",
+  currency,
   children,
   full,
   style,
@@ -51,6 +54,8 @@ export default function AddBoqItemButton({
   const [totalCost, setTotalCost] = useState<string | number>("");
   const [itemDescription, setItemDescription] = useState("");
   const [attachmentFiles, setAttachmentFiles] = useState<File[] | null>(null);
+  const [dnNumberAndDate, setDnNumberAndDate] = useState("");
+  const [remarks, setRemarks] = useState("");
 
   const [isMounted, setIsMounted] = useState(true);
 
@@ -177,6 +182,8 @@ export default function AddBoqItemButton({
           total_cost: totalCost,
           item_description: itemDescription,
           attachments: attachmentUrls, // ✅ Pass array directly, not JSON string
+          dn_number_and_date: dnNumberAndDate,
+          remarks,
         }),
       });
 
@@ -194,6 +201,8 @@ export default function AddBoqItemButton({
         setTotalCost("");
         setItemDescription("");
         setAttachmentFiles([]);
+        setDnNumberAndDate("");
+        setRemarks("");
 
         setIsOpen(false);
 
@@ -262,6 +271,17 @@ export default function AddBoqItemButton({
                 setItemName(e.target.value);
               }}
               required
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"DN NUMBER & DATE"}
+              value={dnNumberAndDate}
+              type={"text"}
+              onChange={(e) => {
+                setDnNumberAndDate(e.target.value);
+              }}
             />
           </div>
 
@@ -355,7 +375,8 @@ export default function AddBoqItemButton({
             <InputItem
               label={"RATE / QUANTITY"}
               value={ratePerQuantity}
-              type={"text"}
+              type={"text postfix"}
+              postfixText={currency}
               placeholder={"ENTER RATE / QUANTITY"}
               onChange={(e) => {
                 const val = e.target.value;
@@ -367,9 +388,10 @@ export default function AddBoqItemButton({
               required
             />
             <InputItem
-              label={"TOTAL COST"}
+              label={"TOTAL PRICE"}
               value={totalCost}
-              type={"text"}
+              type={"text postfix"}
+              postfixText={currency}
               placeholder={"CALCULATING..."}
               onChange={() => {}}
               required
@@ -386,6 +408,18 @@ export default function AddBoqItemButton({
               placeholder={"ENTER DESCRIPTION"}
               onChange={(e) => {
                 setItemDescription(e.target.value);
+              }}
+              required={false}
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"REMARKS"}
+              value={remarks}
+              type={"textarea"}
+              onChange={(e) => {
+                setRemarks(e.target.value);
               }}
               required={false}
             />

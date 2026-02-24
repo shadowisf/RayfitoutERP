@@ -719,7 +719,7 @@ export default function PriceApprovalButton({
                           >
                             Quotation
                             <img
-                              src="/icons/external-link.svg"
+                              src={externalLinkIcon}
                               alt="external link icon"
                             />
                           </Button>

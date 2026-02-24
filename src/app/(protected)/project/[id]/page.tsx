@@ -124,9 +124,9 @@ export default function ProjectWithID() {
 
   return (
     <div className="dashboard">
-      <h2>
+      <h1>
         <a href="/project">PROJECTS</a> &gt; {project?.name.toUpperCase()}
-      </h2>
+      </h1>
 
       <br />
       <br />

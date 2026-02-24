@@ -150,7 +150,10 @@ export async function GET(req: NextRequest) {
         subcategory_name,
         unit,
         brand,
-        type
+        type,
+        specification,
+        country_of_origin,
+        image
       FROM vw_inventory
       WHERE
         is_archived = 0
@@ -201,35 +204,32 @@ export async function GET(req: NextRequest) {
       [searchTerm, searchTerm, searchTerm, numericId || plainNumber || -1],
     );
 
-    // 7. Search Signed Delivery Notes from stocks
+    // 7. Search Signed Delivery Notes from stocks_transfer_issue
     const [dnRows]: any = await db.query(
       `SELECT
-        st.id,
-        CONCAT('DN-', LPAD(st.id, 5, '0')) as display_id,
-        st.dn_file,
-        st.mr_header_id,
-        st.batch_id,
-        s.name as supplier_name,
+        sti.id,
+        CONCAT('DN-', LPAD(sti.id, 5, '0')) as display_id,
+        sti.signed_tsc_file,
+        sti.transferee,
+        sti.receiver_name,
         p.name as project_name,
-        st.created_at
-      FROM stocks st
-      LEFT JOIN suppliers s ON st.supplier_id = s.id
-      LEFT JOIN mr_headers mh ON st.mr_header_id = mh.id
-      LEFT JOIN projects p ON mh.project_id = p.id
+        sti.created_on
+      FROM stocks_transfer_issue sti
+      LEFT JOIN projects p ON sti.project_id = p.id
       WHERE
-        st.dn_file IS NOT NULL
-        AND st.dn_file != ''
-        AND st.dn_file != '[]'
+        sti.signed_tsc_file IS NOT NULL
+        AND sti.signed_tsc_file != 'null'
+        AND sti.signed_tsc_file != '[]'
         AND (
-          CONCAT('DN-', LPAD(st.id, 5, '0')) LIKE ?
-          OR s.name LIKE ?
+          CONCAT('DN-', LPAD(sti.id, 5, '0')) LIKE ?
+          OR sti.transferee LIKE ?
+          OR sti.receiver_name LIKE ?
           OR p.name LIKE ?
-          OR st.id = ?
+          OR sti.id = ?
         )
-      GROUP BY st.id
-      ORDER BY st.created_at DESC
+      ORDER BY sti.created_on DESC
       LIMIT 5`,
-      [searchTerm, searchTerm, searchTerm, numericId || plainNumber || -1],
+      [searchTerm, searchTerm, searchTerm, searchTerm, numericId || plainNumber || -1],
     );
 
     // Parse document rows into individual document entries
@@ -306,22 +306,22 @@ export async function GET(req: NextRequest) {
     // Add delivery notes to documents
     for (const dn of dnRows) {
       const dnId = String(dn.id).padStart(5, "0");
-      const dnFiles = parseFiles(dn.dn_file);
+      const dnFiles = parseFiles(dn.signed_tsc_file);
 
       for (const file of dnFiles) {
         documents.push({
           id: `dn-${dn.id}-${file}`,
           lpo_id: null,
-          mr_header_id: dn.mr_header_id,
+          mr_header_id: null,
           display_id: null,
-          supplier_name: dn.supplier_name,
+          supplier_name: dn.transferee,
           project_name: dn.project_name,
           doc_type: "DELIVERY NOTE",
           display_name: `DN-${dnId}`,
           file_name: file,
           icon: "search-dn",
           category: "DOCUMENT",
-          url: dn.mr_header_id ? `/mr/${dn.mr_header_id}` : `/inventory`,
+          url: file,
         });
       }
     }
@@ -351,7 +351,7 @@ export async function GET(req: NextRequest) {
         inventory: inventoryRows.map((row: any) => ({
           ...row,
           category: "INVENTORY",
-          url: `/inventory`,
+          url: `/inventory/${row.id}`,
         })),
         documents: documents.slice(0, 15),
       },

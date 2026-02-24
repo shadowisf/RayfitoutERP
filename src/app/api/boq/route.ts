@@ -90,8 +90,8 @@ export async function POST(req: Request) {
         // Rest of the code remains the same...
         const query = `
       INSERT INTO boq_lines 
-      (boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments, category_order, subcategory_order, item_order)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (boq_id, item_name, category, sub_category, scope_of_work, quantity, unit, rate_per_quantity, total_cost, item_description, attachments, category_order, subcategory_order, item_order, dn_number_and_date, remarks)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
         const values = [
@@ -111,6 +111,8 @@ export async function POST(req: Request) {
           nextCategoryOrder,
           nextSubcategoryOrder,
           nextItemOrder,
+          body.dn_number_and_date,
+          body.remarks,
         ];
 
         const [result] = await db.query<ResultSetHeader>(query, values);
@@ -295,7 +297,7 @@ export async function PUT(req: Request) {
         // Update BOQ line without location_id (deprecated field)
         const query = `
           UPDATE boq_lines 
-          SET item_name = ?, category = ?, sub_category = ?, scope_of_work = ?, quantity = ?, unit = ?, rate_per_quantity = ?, total_cost = ?, item_description = ?, attachments = ?
+          SET item_name = ?, category = ?, sub_category = ?, scope_of_work = ?, quantity = ?, unit = ?, rate_per_quantity = ?, total_cost = ?, item_description = ?, attachments = ?, dn_number_and_date = ?, remarks = ?
           WHERE id = ?
         `;
 
@@ -312,6 +314,8 @@ export async function PUT(req: Request) {
           body.attachments && body.attachments.length > 0
             ? JSON.stringify(body.attachments)
             : null,
+          body.dn_number_and_date,
+          body.remarks,
           Number(body.id),
         ];
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Button from "../../components/Button";
 import { useAuth } from "@/app/context/AuthContext";
+import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 
 interface SearchResult {
   id: number | string;
@@ -40,6 +41,9 @@ interface SearchResult {
   subcategory_name?: string;
   unit?: string;
   brand?: string;
+  specification?: string;
+  country_of_origin?: string;
+  image?: string;
   // Document fields
   lpo_id?: number;
   lpo_display_id?: string;
@@ -516,9 +520,7 @@ function ProjectCard({
   const { userInfo } = useAuth();
 
   const canSeePrice =
-    userInfo?.departmentID === 8 ||
-    userInfo?.departmentID === 16 ||
-    userInfo?.departmentID === 10;
+    userInfo?.departmentID === 8 || userInfo?.departmentID === 16;
 
   const quotedBudget = budget?.quoted || 0;
   const allocatedBudget = budget?.allocated || 0;
@@ -749,53 +751,89 @@ function ProjectCard({
 function InventoryCard({ item }: { item: SearchResult }) {
   return (
     <div className="search-card">
-      <div className="search-card-top">
-        <div>
-          <small>ITEM NUMBER</small>
-          <h3>{item.display_id}</h3>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr auto",
+          gap: "15px",
+          alignItems: "start",
+        }}
+      >
+        <div
+          style={{
+            display: "inline-grid",
+            gridTemplateColumns: "1fr 1fr",
+            columnGap: "20px",
+            rowGap: "12px",
+          }}
+        >
+          <div>
+            <small>ITEM NUMBER</small>
+            <h3>{item.display_id}</h3>
+          </div>
+          <div>
+            <small>TYPE</small>
+            <h3>{item.type || "-"}</h3>
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <small>NAME</small>
+            <h3>{item.description || "-"}</h3>
+          </div>
+          <div>
+            <small>CATEGORY</small>
+            <h3>{item.category_name || "-"}</h3>
+          </div>
+          <div>
+            <small>SUBCATEGORY</small>
+            <h3>{item.subcategory_name || "-"}</h3>
+          </div>
+          {item.specification && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <small>SPECIFICATION</small>
+              {/* <h3
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                }}
+              >
+                {item.specification}
+              </h3> */}
+
+              <InfoPopUpButton
+                text={item.specification}
+                header={"SPECIFICATION"}
+              />
+            </div>
+          )}
+          <div>
+            <small>ORIGIN</small>
+            <h3>{item.country_of_origin || "-"}</h3>
+          </div>
         </div>
-        {item.type && (
-          <span
-            className="status"
+
+        <div
+          style={{
+            width: "90px",
+            height: "90px",
+            borderRadius: "10px",
+            overflow: "hidden",
+            flexShrink: 0,
+            backgroundColor: "rgba(243, 244, 246, 1)",
+          }}
+        >
+          <img
+            src={item.image || "/icons/no-image.jpg"}
+            alt="item"
             style={{
-              backgroundColor: "rgba(239, 239, 239, 1)",
-              fontSize: "10px",
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
             }}
-          >
-            {item.type}
-          </span>
-        )}
-      </div>
-
-      <div>
-        <small>DESCRIPTION</small>
-        <h3>{item.description || "-"}</h3>
-      </div>
-
-      <div style={{ display: "flex", gap: "20px" }}>
-        <div style={{ flex: 1 }}>
-          <small>CATEGORY</small>
-          <h3>{item.category_name || "-"}</h3>
+          />
         </div>
-        <div style={{ flex: 1 }}>
-          <small>SUBCATEGORY</small>
-          <h3>{item.subcategory_name || "-"}</h3>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: "20px" }}>
-        {item.brand && (
-          <div style={{ flex: 1 }}>
-            <small>BRAND</small>
-            <h3>{item.brand}</h3>
-          </div>
-        )}
-        {item.unit && (
-          <div style={{ flex: 1 }}>
-            <small>UNIT</small>
-            <h3>{item.unit}</h3>
-          </div>
-        )}
       </div>
 
       <Button
@@ -1036,7 +1074,7 @@ export default function SearchResultsPage() {
     if (results.inventory?.length > 0) {
       sections.push({
         category: "INVENTORY",
-        label: "INVENTORY",
+        label: "INVENTORY ITEMS",
         items: results.inventory,
       });
     }
@@ -1147,9 +1185,6 @@ export default function SearchResultsPage() {
             style={{ width: 48, opacity: 0.3, marginBottom: 16 }}
           />
           <h2>No results found</h2>
-          <p style={{ color: "rgba(107, 114, 128, 1)", marginTop: 8 }}>
-            Try searching with different keywords or check the spelling
-          </p>
         </div>
       )}
     </div>
