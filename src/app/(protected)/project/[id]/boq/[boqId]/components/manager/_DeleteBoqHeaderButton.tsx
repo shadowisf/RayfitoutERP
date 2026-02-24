@@ -5,7 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "@/app/components/Toast";
-import { BoqHeader } from "@/app/(protected)/boq/[id]/types/boqHeader";
+import { BoqHeader } from "../../types/boqHeader";
 
 type props = {
   boqHeader: BoqHeader | null;

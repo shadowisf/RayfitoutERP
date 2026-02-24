@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Button from "@/app/components/Button";
-import { BoqHeader } from "./[id]/types/boqHeader";
 import { useAuth } from "@/app/context/AuthContext";
+import { BoqHeader } from "../project/[id]/boq/[boqId]/types/boqHeader";
 
 export default function Boq() {
   const { userInfo } = useAuth();
@@ -258,7 +258,10 @@ export default function Boq() {
               <option value="boq-number">SORT BY BOQ NUMBER</option>
               <option value="project">SORT BY PROJECT</option>
               <option value="total-items">SORT BY TOTAL ITEMS</option>
-              <option value="total-cost">SORT BY TOTAL COST</option>
+              {canSeePrice && (
+                <option value="total-cost">SORT BY TOTAL COST</option>
+              )}
+
               <option value="newest">SORT BY NEWEST TO OLDEST BILLS</option>
               <option value="oldest">SORT BY OLDEST TO NEWEST BILLS</option>
             </select>
@@ -311,7 +314,7 @@ export default function Boq() {
                 <th>PROJECT</th>
                 <th>CLIENT NAME</th>
                 <th>TOTAL ITEMS</th>
-                <th>TOTAL COST</th>
+                {canSeePrice && <th>TOTAL COST</th>}
                 <th>CREATION DATE</th>
                 <th></th>
               </tr>
@@ -322,9 +325,15 @@ export default function Boq() {
                 <tr key={boq.id}>
                   <td>{index + 1}</td>
                   <td>
-                    <div style={{ display: "flex", gap: "10px" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        alignItems: "center",
+                      }}
+                    >
                       BOQ-{String(boq.id).padStart(5, "0")}
-                      {boq.is_draft && (
+                      {boq.is_draft ? (
                         <span
                           style={{
                             padding: "2px 10px",
@@ -337,7 +346,7 @@ export default function Boq() {
                         >
                           DRAFT
                         </span>
-                      )}
+                      ): null}
                     </div>
                   </td>
                   <td>{boq.project_name}</td>
@@ -357,7 +366,7 @@ export default function Boq() {
                       bgColor={"rgba(239, 239, 239, 1)"}
                       borderColor={"rgba(223, 223, 223, 1)"}
                       textColor={"black"}
-                      href={`/boq/${boq.id}`}
+                      href={`/project/${boq.project_id}/boq/${boq.id}`}
                       style={{ padding: "7px 7px" }}
                     >
                       <img src={externalLinkIcon} alt="view" />

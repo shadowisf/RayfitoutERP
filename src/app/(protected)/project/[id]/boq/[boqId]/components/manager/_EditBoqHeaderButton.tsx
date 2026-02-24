@@ -54,6 +54,7 @@ export default function EditBoqHeaderButton({
     boqHeader?.terms_and_conditions || "",
   );
   const [discount, setDiscount] = useState(boqHeader?.discount || "");
+  const [isDraft, setIsDraft] = useState(boqHeader?.is_draft || false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -79,6 +80,7 @@ export default function EditBoqHeaderButton({
         terms_and_conditions: termsAndConditions,
         project_name: boqHeader?.project_name,
         updated_by: userInfo?.name,
+        is_draft: isDraft,
       }),
     });
 
@@ -155,6 +157,53 @@ export default function EditBoqHeaderButton({
                 setClientName(e.target.value);
               }}
             />
+          </div>
+
+          <div className="input-row full">
+            <div className="input-item">
+              <label>DRAFT</label>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  height: "100%",
+                }}
+              >
+                <div
+                  onClick={() => setIsDraft(!isDraft)}
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "5px",
+                    border: isDraft ? "none" : "2px solid #d1d5db",
+                    backgroundColor: isDraft ? "#10b981" : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  {isDraft && (
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M16.6667 5L7.50004 14.1667L3.33337 10"
+                        stroke="white"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="input-row half">

@@ -7,12 +7,12 @@ import { DeleteProjectButton } from "./components/_DeleteProjectButton";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
-import { BoqHeader } from "../../boq/[id]/types/boqHeader";
 import { MrHeader } from "../../mr/[id]/types/mrHeader";
-import CreateBoqHeaderButton from "../../boq/[id]/components/manager/_CreateBoqHeaderButton";
-import BoqCard from "../../boq/[id]/components/BoqCard";
 import UploadAdditionalAttachmentsButton from "./components/_UploadAdditionalAttachmentsButton";
 import AttachmentsList from "./components/AttachmentList";
+import BoqCard from "./boq/[boqId]/components/BoqCard";
+import CreateBoqHeaderButton from "./boq/[boqId]/components/manager/_CreateBoqHeaderButton";
+import { BoqHeader } from "./boq/[boqId]/types/boqHeader";
 
 // Extended MrHeader type with LPO details
 type MrHeaderWithLpo = MrHeader & {

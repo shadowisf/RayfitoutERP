@@ -123,8 +123,6 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
   const isActive = (path: string) => {
     if (pathname === path) return true;
     if (pathname.startsWith(path + "/")) return true;
-    if (path === "/boq" && pathname.startsWith("/boq")) return true;
-    if (path === "/project" && pathname.startsWith("/boq")) return true;
     return false;
   };
 

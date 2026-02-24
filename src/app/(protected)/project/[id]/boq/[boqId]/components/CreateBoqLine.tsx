@@ -3,8 +3,8 @@
 import { useAuth } from "@/app/context/AuthContext";
 import AddBoqItemButton from "./manager/_AddBoqItemButton";
 import { BoqHeader } from "../types/boqHeader";
-import { DeleteBoqHeaderButton } from "@/app/(protected)/boq/[id]/components/manager/_DeleteBoqHeaderButton";
 import EditBoqHeaderButton from "./manager/_EditBoqHeaderButton";
+import { DeleteBoqHeaderButton } from "./manager/_DeleteBoqHeaderButton";
 
 type props = {
   boqHeader: BoqHeader | null;

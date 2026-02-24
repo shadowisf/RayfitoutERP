@@ -25,9 +25,27 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
           gap: "20px",
         }}
       >
-        <div>
-          <small>BOQ NUMBER</small>
-          <h2>BOQ-{String(boqHeader?.id).padStart(5, "0")}</h2>
+        <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
+          <div>
+            <small>BOQ NUMBER</small>
+            <h2>BOQ-{String(boqHeader?.id).padStart(5, "0")}</h2>
+          </div>
+
+          {boqHeader.is_draft ? (
+            <span
+              style={{
+                padding: "2px 10px",
+                backgroundColor: "rgba(234, 234, 234, 1)",
+                color: "rgba(89, 89, 89, 1)",
+                borderRadius: "50px",
+                fontSize: "10px",
+                fontWeight: "800",
+                marginBottom: "5px",
+              }}
+            >
+              DRAFT
+            </span>
+          ) : null}
         </div>
 
         <div>
@@ -97,7 +115,7 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
         bgColor={"black"}
         borderColor={"black"}
         textColor={"white"}
-        href={`/boq/${boqHeader?.id}`}
+        href={`/project/${boqHeader?.project_id}/boq/${boqHeader?.id}`}
         style={{
           borderRadius: "50px",
         }}

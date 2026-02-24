@@ -29,7 +29,6 @@ import { BoqHeader } from "../types/boqHeader";
 import DownloadBoqButton from "./manager/_DownloadBoqButton";
 import EditBoqCategoryButton from "./manager/_EditBoqCategoryButton";
 import DeleteBoqCategoryButton from "./manager/_DeleteBoqCategoryButton";
-import { DeleteBoqHeaderButton } from "@/app/(protected)/boq/[id]/components/manager/_DeleteBoqHeaderButton";
 import EditBoqHeaderButton from "./manager/_EditBoqHeaderButton";
 import { DraggableCategory } from "./DraggableCategory";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
@@ -39,6 +38,7 @@ import DeleteBoqItemButton from "./manager/_DeleteBoqItemButton";
 import DuplicateBoqItemButton from "./manager/_DuplicateBoqItemButton";
 import EditBoqItemButton from "./manager/_EditBoqItemButton";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
+import { DeleteBoqHeaderButton } from "./manager/_DeleteBoqHeaderButton";
 
 type GroupedBoqLines = {
   [category: string]: {
