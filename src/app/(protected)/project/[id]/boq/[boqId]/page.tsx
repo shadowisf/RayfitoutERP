@@ -5,16 +5,16 @@ import { BoqHeader } from "./types/boqHeader";
 export default async function BOQ({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ boqId: string }>;
 }) {
-  const { id } = await params;
+  const { boqId } = await params;
 
   const boqHeader: BoqHeader = await fetch(
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getBoqHeaderByID`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: id }),
+      body: JSON.stringify({ id: boqId }),
       cache: "no-store",
     },
   )
@@ -31,7 +31,7 @@ export default async function BOQ({
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ boq_id: id }),
+      body: JSON.stringify({ boq_id: boqId }),
       cache: "no-store",
     },
   )
