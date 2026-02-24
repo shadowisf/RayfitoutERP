@@ -346,15 +346,18 @@ export default function Boq() {
                         >
                           DRAFT
                         </span>
-                      ): null}
+                      ) : null}
                     </div>
                   </td>
                   <td>{boq.project_name}</td>
                   <td>{boq.client_name || "-"}</td>
                   <td>{boq.total_items || "-"}</td>
-                  <td>
-                    {boq.currency} {Number(boq.total_value).toFixed(2)}
-                  </td>
+                  {canSeePrice && (
+                    <td>
+                      {boq.currency} {Number(boq.total_value).toFixed(2)}
+                    </td>
+                  )}
+
                   <td>
                     {boq.created_on
                       ? new Date(boq.created_on).toLocaleDateString("en-GB")
