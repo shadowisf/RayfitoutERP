@@ -45,6 +45,7 @@ export default function OverviewHoverPopup({
         left,
         top,
         backgroundColor: "white",
+        color: "black",
         border: "1px solid rgba(223,223,223,1)",
         borderRadius: "10px",
         padding: "15px",
