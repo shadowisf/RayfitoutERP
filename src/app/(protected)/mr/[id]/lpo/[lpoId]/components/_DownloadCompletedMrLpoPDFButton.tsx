@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { pdf } from "@react-pdf/renderer";
 import Button from "@/app/components/Button";
-import { MrDetailPDF } from "./MrDetailPDF";
+import { CompletedMrLpoPDF } from "./CompletedMrLpoPDF";
 import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 
 type props = {
@@ -12,7 +12,7 @@ type props = {
   flatLines: any[];
 };
 
-export default function DownloadMrDetailPDFButton({
+export default function DownloadCompletedMrLpoPDFButton({
   mrHeader,
   lpo,
   flatLines,
@@ -41,7 +41,7 @@ export default function DownloadMrDetailPDFButton({
 
       // Generate PDF blob
       const blob = await pdf(
-        <MrDetailPDF
+        <CompletedMrLpoPDF
           mrHeader={mrHeader}
           lpo={lpo}
           flatLines={flatLines}
