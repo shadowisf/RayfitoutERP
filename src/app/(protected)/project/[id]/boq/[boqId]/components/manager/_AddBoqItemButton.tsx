@@ -10,7 +10,6 @@ import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 import CreateLocationButton from "./_AddLocationButton";
-import { TextInput } from "@react-pdf/renderer";
 
 type AddBoqItemButtonProps = {
   boqHeaderID: number;
@@ -40,6 +39,8 @@ export default function AddBoqItemButton({
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [locationValues, setLocationValues] = useState<[]>([]);
 
@@ -53,118 +54,107 @@ export default function AddBoqItemButton({
   const [ratePerQuantity, setRatePerQuantity] = useState<string | number>("");
   const [totalCost, setTotalCost] = useState<string | number>("");
   const [itemDescription, setItemDescription] = useState("");
-  const [attachmentFiles, setAttachmentFiles] = useState<File[] | null>(null);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [dnNumberAndDate, setDnNumberAndDate] = useState("");
   const [remarks, setRemarks] = useState("");
 
-  const [isMounted, setIsMounted] = useState(true);
-
   useEffect(() => {
-    if (!isOpen) return; // Don't fetch unless modal is open
+    if (!isOpen) return;
 
-    setIsMounted(true);
+    let mounted = true;
 
-    fetchLocationValues();
+    const fetchLocations = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (mounted) setLocationValues(data);
+      } catch (err) {
+        console.error("Failed to fetch location values:", err);
+      }
+    };
+
+    fetchLocations();
 
     return () => {
-      setIsMounted(false);
+      mounted = false;
     };
-  }, [isOpen]); // Only fetch when modal opens
+  }, [isOpen]);
 
-  useEffect(
-    function () {
-      if (ratePerQuantity && quantity) {
-        setTotalCost(Number(ratePerQuantity) * Number(quantity));
+  useEffect(() => {
+    if (ratePerQuantity && quantity) {
+      const rate = Number(ratePerQuantity);
+      const qty = Number(quantity);
+      if (!isNaN(rate) && !isNaN(qty)) {
+        setTotalCost(Number((rate * qty).toFixed(2)));
       } else {
         setTotalCost("");
       }
-    },
-    [ratePerQuantity, quantity],
-  );
+    } else {
+      setTotalCost("");
+    }
+  }, [ratePerQuantity, quantity]);
 
-  useEffect(
-    function () {
-      if (isOpen && autoCategory) {
-        setCategory(autoCategory);
-      }
-      if (isOpen && autoSubCategory) {
-        setSubCategory(autoSubCategory);
-      }
-    },
-    [isOpen, autoCategory, autoSubCategory],
-  );
+  useEffect(() => {
+    if (isOpen && autoCategory) {
+      setCategory(autoCategory);
+    }
+    if (isOpen && autoSubCategory) {
+      setSubCategory(autoSubCategory);
+    }
+  }, [isOpen, autoCategory, autoSubCategory]);
 
-  const fetchLocationValues = async () => {
+  const uploadFiles = async (files: File[]): Promise<string[]> => {
+    if (files.length === 0) return [];
+
+    setIsUploading(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
-      );
+      const formData = new FormData();
+      files.forEach((file) => formData.append("files", file));
+
+      const res = await fetch("/api/s3", {
+        method: "POST",
+        body: formData,
+      });
 
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        const error = await res.json();
+        throw new Error(error.error || "Upload failed");
       }
 
       const data = await res.json();
 
-      if (isMounted) {
-        setLocationValues(data);
+      if (data.failedFiles?.length > 0) {
+        toast(`${data.failedFiles.length} file(s) failed to upload`, "warning");
       }
-    } catch (err) {
-      console.error("Failed to fetch location values:", err);
+
+      if (!Array.isArray(data.urls)) {
+        throw new Error("Invalid upload response");
+      }
+
+      if (data.urls.length === 0 && files.length > 0) {
+        throw new Error("All file uploads failed");
+      }
+
+      return data.urls;
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || isUploading) return;
+
+    setIsLoading(true);
 
     try {
-      // Step 1: Upload files to S3 if there are any
-      let attachmentUrls: string[] = [];
+      // Step 1: Upload files
+      const attachmentUrls = await uploadFiles(attachmentFiles);
 
-      if (attachmentFiles && attachmentFiles.length > 0) {
-        const formData = new FormData();
-        attachmentFiles.forEach((file) => {
-          formData.append("files", file);
-        });
-
-        console.log(`Uploading ${attachmentFiles.length} file(s)...`);
-
-        const uploadResponse = await fetch("/api/s3", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json();
-          throw new Error(errorData.error || "Failed to upload files");
-        }
-
-        const uploadData = await uploadResponse.json();
-
-        // ✅ Handle partial success (some files uploaded, some failed)
-        if (uploadData.failedFiles && uploadData.failedFiles.length > 0) {
-          console.warn("Some files failed to upload:", uploadData.failedFiles);
-          toast(
-            `Warning: ${uploadData.failedFiles.length} file(s) failed to upload`,
-            "warning",
-          );
-        }
-
-        attachmentUrls = uploadData.urls || [];
-
-        if (!Array.isArray(attachmentUrls)) {
-          throw new Error("Invalid response from upload API");
-        }
-
-        console.log(`Successfully uploaded ${attachmentUrls.length} file(s)`);
-
-        // ✅ If all files failed, don't proceed
-        if (attachmentUrls.length === 0 && attachmentFiles.length > 0) {
-          throw new Error("All file uploads failed");
-        }
-      }
-
-      // Step 2: Create BOQ item with attachment URLs
+      // Step 2: Create BOQ item
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -174,53 +164,55 @@ export default function AddBoqItemButton({
           item_name: itemName,
           category,
           sub_category: subCategory,
-          scope_of_work: scopeOfWork,
+          scope_of_work: scopeOfWork || null,
           location_ids: locationID,
-          quantity,
+          quantity: Number(quantity) || 0,
           unit,
-          rate_per_quantity: ratePerQuantity,
-          total_cost: totalCost,
-          item_description: itemDescription,
-          attachments: attachmentUrls, // ✅ Pass array directly, not JSON string
-          dn_number_and_date: dnNumberAndDate,
-          remarks,
+          rate_per_quantity: Number(ratePerQuantity) || 0,
+          total_cost: Number(totalCost) || 0,
+          item_description: itemDescription || null,
+          attachments: JSON.stringify(attachmentUrls),
+          dn_number_and_date: dnNumberAndDate || null,
+          remarks: remarks || null,
         }),
       });
 
-      if (res.ok) {
-        toast("Bill of quantity item created", "success");
-
-        setItemName("");
-        setCategory("");
-        setSubCategory("");
-        setScopeOfWork("");
-        setLocationID([]);
-        setQuantity("");
-        setUnit("");
-        setRatePerQuantity("");
-        setTotalCost("");
-        setItemDescription("");
-        setAttachmentFiles([]);
-        setDnNumberAndDate("");
-        setRemarks("");
-
-        setIsOpen(false);
-
-        router.refresh();
-      } else {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to create BOQ item");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to create BOQ item");
       }
+
+      toast("Bill of quantity item created", "success");
+
+      // Reset all states
+      setItemName("");
+      setCategory("");
+      setSubCategory("");
+      setScopeOfWork("");
+      setLocationID([]);
+      setQuantity("");
+      setUnit("");
+      setRatePerQuantity("");
+      setTotalCost("");
+      setItemDescription("");
+      setAttachmentFiles([]);
+      setDnNumberAndDate("");
+      setRemarks("");
+
+      setIsOpen(false);
+      router.refresh();
     } catch (error: any) {
       console.error("Create error:", error);
       toast(error.message || "Failed to create bill of quantity item", "error");
+    } finally {
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <>
       <Button
-        componentType={"button"}
+        componentType="button"
         bgColor={bgColor}
         borderColor={borderColor}
         textColor={textColor}
@@ -233,62 +225,52 @@ export default function AddBoqItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"CREATE BILL OF QUANTITY ITEM"}
+          header="CREATE BILL OF QUANTITY ITEM"
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"CONFIRM"}
+          addButtonLabel={isLoading ? "CREATING..." : "CONFIRM"}
         >
-          {/* 1st row */}
           <div className="input-row three-col">
             <InputItem
-              label={"CATEGORY"}
+              label="CATEGORY"
               value={category}
-              type={"text"}
-              placeholder={"ENTER CATEGORY"}
-              onChange={(e) => {
-                setCategory(e.target.value);
-              }}
+              type="text"
+              placeholder="ENTER CATEGORY"
+              onChange={(e) => setCategory(e.target.value)}
               required
-              disabled={autoCategory ? true : false}
+              disabled={!!autoCategory}
             />
             <InputItem
-              label={"SUBCATEGORY"}
+              label="SUBCATEGORY"
               value={subCategory}
-              type={"text"}
-              placeholder={"ENTER SUB CATEGORY"}
-              onChange={(e) => {
-                setSubCategory(e.target.value);
-              }}
+              type="text"
+              placeholder="ENTER SUB CATEGORY"
+              onChange={(e) => setSubCategory(e.target.value)}
               required
-              disabled={autoSubCategory ? true : false}
+              disabled={!!autoSubCategory}
             />
             <InputItem
-              label={"NAME"}
+              label="NAME"
               value={itemName}
-              type={"text"}
-              placeholder={"ENTER NAME"}
-              onChange={(e) => {
-                setItemName(e.target.value);
-              }}
+              type="text"
+              placeholder="ENTER NAME"
+              onChange={(e) => setItemName(e.target.value)}
               required
             />
           </div>
 
           <div className="input-row full">
             <InputItem
-              label={"DN NUMBER & DATE"}
+              label="DN NUMBER & DATE"
               value={dnNumberAndDate}
-              type={"text"}
-              onChange={(e) => {
-                setDnNumberAndDate(e.target.value);
-              }}
+              type="text"
+              onChange={(e) => setDnNumberAndDate(e.target.value)}
             />
           </div>
 
-          {/* 2nd row */}
           <div className="input-row half">
             <SingleSelectDropdown
-              label={"SCOPE OF WORK"}
+              label="SCOPE OF WORK"
               selectedValue={scopeOfWork}
               onChange={setScopeOfWork}
               selectOptions={[
@@ -299,35 +281,34 @@ export default function AddBoqItemButton({
               ]}
               placeholder="SELECT SCOPE OF WORK"
             />
-
-            {/* <SingleSelectDropdown
-              label={"LOCATION"}
-              selectedValue={locationID}
-              onChange={setLocationID}
-              placeholder={"SELECT LOCATION"}
-              dbData={locationValues}
-            /> */}
             <MultiSelectDropdown
-              label={"LOCATION"}
+              label="LOCATION"
               selectedValues={locationID}
               onChange={setLocationID}
               placeholder="SELECT LOCATION"
               dbData={locationValues}
               bottomButtonComponent={
-                <CreateLocationButton onSuccess={() => fetchLocationValues()} />
+                <CreateLocationButton
+                  onSuccess={() => {
+                    fetch(
+                      `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
+                    )
+                      .then((r) => r.json())
+                      .then((data) => setLocationValues(data))
+                      .catch(console.error);
+                  }}
+                />
               }
             />
           </div>
 
-          {/* 3rd row */}
           <div className="input-row half">
             <InputItem
-              label={"QUANTITY"}
+              label="QUANTITY"
               value={quantity}
-              type={"text"}
+              type="text"
               onChange={(e) => {
                 const val = e.target.value;
-
                 if (val === "" || /^\d*\.?\d*$/.test(val)) {
                   setQuantity(val);
                 }
@@ -335,13 +316,11 @@ export default function AddBoqItemButton({
               required
             />
             <InputItem
-              label={"UNIT"}
+              label="UNIT"
               value={unit}
-              type={"select"}
-              placeholder={"SELECT UNIT"}
-              onChange={(e) => {
-                setUnit(e.target.value);
-              }}
+              type="select"
+              placeholder="SELECT UNIT"
+              onChange={(e) => setUnit(e.target.value)}
               selectOptions={[
                 "ITEM",
                 "NOS",
@@ -370,17 +349,15 @@ export default function AddBoqItemButton({
             />
           </div>
 
-          {/* 4th row */}
           <div className="input-row half">
             <InputItem
-              label={"RATE / QUANTITY"}
+              label="RATE / QUANTITY"
               value={ratePerQuantity}
-              type={"text postfix"}
+              type="text"
               postfixText={currency}
-              placeholder={"ENTER RATE / QUANTITY"}
+              placeholder="ENTER RATE / QUANTITY"
               onChange={(e) => {
                 const val = e.target.value;
-
                 if (val === "" || /^\d*\.?\d*$/.test(val)) {
                   setRatePerQuantity(val);
                 }
@@ -388,59 +365,44 @@ export default function AddBoqItemButton({
               required
             />
             <InputItem
-              label={"TOTAL PRICE"}
+              label="TOTAL PRICE"
               value={totalCost}
-              type={"text postfix"}
+              type="text"
               postfixText={currency}
-              placeholder={"CALCULATING..."}
+              placeholder="CALCULATING..."
               onChange={() => {}}
               required
               disabled
             />
           </div>
 
-          {/* 5th row */}
           <div className="input-row full">
             <InputItem
-              label={"DESCRIPTION"}
+              label="DESCRIPTION"
               value={itemDescription}
-              type={"textarea"}
-              placeholder={"ENTER DESCRIPTION"}
-              onChange={(e) => {
-                setItemDescription(e.target.value);
-              }}
+              type="textarea"
+              placeholder="ENTER DESCRIPTION"
+              onChange={(e) => setItemDescription(e.target.value)}
               required={false}
             />
           </div>
 
           <div className="input-row full">
             <InputItem
-              label={"REMARKS"}
+              label="REMARKS"
               value={remarks}
-              type={"textarea"}
-              onChange={(e) => {
-                setRemarks(e.target.value);
-              }}
+              type="textarea"
+              onChange={(e) => setRemarks(e.target.value)}
               required={false}
             />
           </div>
 
-          {/* 6th row */}
           <div className="input-row full">
-            {/* <div className="input-item">
-              <label>ATTACHMENTS</label>
-
-              <UploadFilesButton
-                onFilesChange={setAttachmentFiles}
-                stageDeletion={true}
-              />
-            </div> */}
-
             <MultipleUploadFileBox
               fileState={attachmentFiles}
               setFileState={setAttachmentFiles}
-              label={"ATTACHMENTS"}
-              acceptedFileTypes={".jpeg,.jpg,.png,.webp"}
+              label="ATTACHMENTS"
+              acceptedFileTypes=".jpeg,.jpg,.png,.webp"
             />
           </div>
         </FormPopUp>

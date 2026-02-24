@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Button from "./Button";
 import { toast } from "./Toast";
 
@@ -12,7 +12,8 @@ type SingleUploadFileBoxProps = {
   placeholder?: string;
   acceptedFileTypes: string;
   buttonLabel?: string;
-  existingFileUrl?: string | null; // New prop for existing file URL
+  existingFileUrl?: string | null;
+  onExistingFileChange?: (url: string | null) => void; // ✅ New callback
 };
 
 export default function SingleUploadFileBox({
@@ -24,6 +25,7 @@ export default function SingleUploadFileBox({
   acceptedFileTypes,
   buttonLabel = "UPLOAD FILE",
   existingFileUrl,
+  onExistingFileChange, // ✅ Use the callback
 }: SingleUploadFileBoxProps) {
   const pdfIcon = "/icons/pdf.svg";
   const uploadIcon = "/icons/upload.svg";
@@ -35,15 +37,41 @@ export default function SingleUploadFileBox({
 
   const InputRef = useRef<HTMLInputElement | null>(null);
 
+  // Initialize showExisting when existingFileUrl changes
+  useEffect(() => {
+    setShowExisting(!!existingFileUrl);
+  }, [existingFileUrl]);
+
   // Set preview if existingFileUrl is an image
   useEffect(() => {
-    if (existingFileUrl && !fileState) {
+    if (existingFileUrl && showExisting && !fileState) {
       const isImage = existingFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i);
       if (isImage) {
         setPreview(existingFileUrl);
+      } else {
+        setPreview(null);
       }
     }
-  }, [existingFileUrl, fileState]);
+  }, [existingFileUrl, showExisting, fileState]);
+
+  // Notify parent when existing file visibility changes
+  useEffect(() => {
+    if (onExistingFileChange) {
+      onExistingFileChange(showExisting ? existingFileUrl || null : null);
+    }
+  }, [showExisting, existingFileUrl, onExistingFileChange]);
+
+  const generatePreview = useCallback((file: File) => {
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setPreview(null);
+    }
+  }, []);
 
   const handleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -56,25 +84,21 @@ export default function SingleUploadFileBox({
 
     setFileState(selectedFile);
     setShowExisting(false);
-
-    if (selectedFile.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(selectedFile);
-    } else {
-      setPreview(null);
-    }
+    generatePreview(selectedFile);
   };
 
   const removeFile = () => {
     setFileState(null);
     setPreview(null);
-    setShowExisting(true);
+    setShowExisting(!!existingFileUrl);
     if (InputRef.current) {
       InputRef.current.value = "";
     }
+  };
+
+  const removeExistingFile = () => {
+    setShowExisting(false);
+    setPreview(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -109,16 +133,7 @@ export default function SingleUploadFileBox({
 
     setFileState(droppedFile);
     setShowExisting(false);
-
-    if (droppedFile.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(droppedFile);
-    } else {
-      setPreview(null);
-    }
+    generatePreview(droppedFile);
   };
 
   const isAcceptedFileType = (file: File) => {
@@ -207,7 +222,10 @@ export default function SingleUploadFileBox({
                         right: "5px",
                         padding: "7px 7px",
                       }}
-                      onClick={removeFile}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeFile();
+                      }}
                     >
                       <img src={trashIcon} alt="trash" />
                     </Button>
@@ -247,7 +265,7 @@ export default function SingleUploadFileBox({
                         >
                           {fileState.name}
                         </div>
-                        {fileState.size && (
+                        {fileState.size > 0 && (
                           <small>{(fileState.size / 1024).toFixed(2)} KB</small>
                         )}
                       </div>
@@ -258,7 +276,10 @@ export default function SingleUploadFileBox({
                       borderColor={"rgba(223, 223, 223, 1)"}
                       textColor={"black"}
                       style={{ padding: "7px 7px", flexShrink: 0 }}
-                      onClick={removeFile}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeFile();
+                      }}
                     >
                       <img src={trashIcon} alt="trash" />
                     </Button>
@@ -300,8 +321,7 @@ export default function SingleUploadFileBox({
                         }}
                         onClick={(e) => {
                           e.preventDefault();
-                          setShowExisting(false);
-                          setPreview(null);
+                          removeExistingFile();
                         }}
                       >
                         <img src={trashIcon} alt="trash" />
@@ -364,8 +384,7 @@ export default function SingleUploadFileBox({
                         style={{ padding: "7px 7px", flexShrink: 0 }}
                         onClick={(e) => {
                           e.preventDefault();
-                          setShowExisting(false);
-                          setPreview(null);
+                          removeExistingFile();
                         }}
                       >
                         <img src={trashIcon} alt="trash" />

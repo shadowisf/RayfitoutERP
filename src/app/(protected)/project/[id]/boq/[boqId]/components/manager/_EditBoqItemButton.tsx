@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, SetStateAction } from "react";
+import { useState, useEffect, useCallback } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import Button from "@/app/components/Button";
-import UploadFilesButton from "./_UploadFilesButton";
 import { useRouter } from "next/navigation";
 import { BoqLine } from "../../types/boqLine";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
@@ -23,214 +22,223 @@ export default function EditBoqItemButton({
   onSuccess,
 }: EditBoqItemButtonProps) {
   const router = useRouter();
-
   const pencilIcon = "/icons/pencil.svg";
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [locationValues, setLocationValues] = useState<[]>([]);
 
+  // Form states
   const [itemName, setItemName] = useState(item.item_name);
   const [category, setCategory] = useState(item.category);
   const [subCategory, setSubCategory] = useState(item.sub_category);
   const [scopeOfWork, setScopeOfWork] = useState<string | number>(
-    item.scope_of_work,
+    item.scope_of_work || "",
   );
-  const [locationID, setLocationID] = useState<(string | number)[]>(
-    Array.isArray(item.location_ids)
+  const [locationID, setLocationID] = useState<(string | number)[]>([]);
+  const [quantity, setQuantity] = useState<string | number>(
+    String(item.quantity ?? ""),
+  );
+  const [unit, setUnit] = useState(item.unit || "");
+  const [ratePerQuantity, setRatePerQuantity] = useState<string | number>(
+    String(item.rate_per_quantity ?? ""),
+  );
+  const [totalCost, setTotalCost] = useState<string | number>(
+    String(item.total_cost ?? ""),
+  );
+  const [itemDescription, setItemDescription] = useState(
+    item.item_description || "",
+  );
+  const [dnNumberAndDate, setDnNumberAndDate] = useState(
+    item.dn_number_and_date || "",
+  );
+  const [remarks, setRemarks] = useState(item.remarks || "");
+
+  // File states
+  const [originalAttachments, setOriginalAttachments] = useState<string[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<string[]>([]);
+  const [newAttachmentFiles, setNewAttachmentFiles] = useState<File[]>([]);
+  const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
+
+  // Parse location_ids safely on mount
+  useEffect(() => {
+    const parsedIds = Array.isArray(item.location_ids)
       ? item.location_ids
-      : typeof item.location_ids === "string"
+      : typeof item.location_ids === "string" && item.location_ids.trim() !== ""
         ? item.location_ids
             .split(",")
             .map((id) => Number(id.trim()))
             .filter((id) => !isNaN(id))
-        : [],
-  );
-  const [quantity, setQuantity] = useState<string | number>(
-    String(item.quantity),
-  );
-  const [unit, setUnit] = useState(item.unit);
-  const [ratePerQuantity, setRatePerQuantity] = useState<string | number>(
-    String(item.rate_per_quantity),
-  );
-  const [totalCost, setTotalCost] = useState<string | number>(item.total_cost);
-  const [itemDescription, setItemDescription] = useState(item.item_description);
+        : [];
+    setLocationID(parsedIds);
+  }, [item.location_ids]);
 
-  const [originalAttachments, setOriginalAttachments] = useState<string[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<string[]>([]);
-  const [newAttachmentFiles, setNewAttachmentFiles] = useState<File[] | null>(
-    null,
-  );
-  const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
-  const [dnNumberAndDate, setDnNumberAndDate] = useState("");
-  const [remarks, setRemarks] = useState("");
-
-  const [isMounted, setIsMounted] = useState(true);
-
-  // EditBoqItemLocationButton.tsx
+  // Fetch locations when modal opens
   useEffect(() => {
-    if (!isOpen) return; // Don't fetch unless modal is open
+    if (!isOpen) return;
 
-    setIsMounted(true);
+    let mounted = true;
 
-    fetchLocationValues();
+    const fetchLocations = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (mounted) setLocationValues(data);
+      } catch (err) {
+        console.error("Failed to fetch locations:", err);
+      }
+    };
+
+    fetchLocations();
 
     return () => {
-      setIsMounted(false);
+      mounted = false;
     };
-  }, [isOpen]); // Only fetch when modal opens
+  }, [isOpen]);
 
+  // Parse attachments when modal opens
   useEffect(() => {
-    if (isOpen) {
-      // Parse existing attachments when modal opens
-      try {
-        if (item.attachments) {
-          let parsed: string[] = [];
+    if (!isOpen) return;
 
-          if (Array.isArray(item.attachments)) {
-            parsed = item.attachments;
-          } else if (
-            typeof item.attachments === "string" &&
-            item.attachments.trim() !== ""
-          ) {
-            const parsedJson = JSON.parse(item.attachments);
-            if (Array.isArray(parsedJson)) {
-              parsed = parsedJson;
-            }
-          }
-
-          setOriginalAttachments(parsed);
-          setExistingAttachments(parsed);
+    try {
+      let parsed: string[] = [];
+      if (item.attachments) {
+        if (Array.isArray(item.attachments)) {
+          parsed = [...item.attachments];
+        } else if (
+          typeof item.attachments === "string" &&
+          item.attachments.trim() !== "" &&
+          item.attachments !== "null" &&
+          item.attachments !== "[]"
+        ) {
+          const parsedJson = JSON.parse(item.attachments);
+          parsed = Array.isArray(parsedJson) ? [...parsedJson] : [];
         }
-      } catch (error) {
-        console.error("Failed to parse existing attachments:", error);
-        setOriginalAttachments([]);
-        setExistingAttachments([]);
       }
-    } else {
-      // Reset all states when modal closes
-      setFilesToDelete([]);
-      setNewAttachmentFiles(null);
+      setOriginalAttachments(parsed);
+      setExistingAttachments(parsed);
+    } catch (error) {
+      console.error("Failed to parse attachments:", error);
+      setOriginalAttachments([]);
+      setExistingAttachments([]);
     }
+
+    setFilesToDelete([]);
+    setNewAttachmentFiles([]);
   }, [isOpen, item.attachments]);
 
-  // Track which existing files were removed
-  useEffect(() => {
-    if (isOpen && originalAttachments.length > 0) {
+  // Track deleted files immediately
+  const handleExistingFilesChange = useCallback(
+    (newFiles: string[]) => {
+      setExistingAttachments(newFiles);
       const removed = originalAttachments.filter(
-        (url) => !existingAttachments.includes(url),
+        (url) => !newFiles.includes(url),
       );
       setFilesToDelete(removed);
-    }
-  }, [existingAttachments, originalAttachments, isOpen]);
+    },
+    [originalAttachments],
+  );
 
+  // Calculate total cost
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (ratePerQuantity !== "" && quantity !== "") {
-        const total = Number(ratePerQuantity) * Number(quantity);
-
-        // ✅ force 2 decimal places
+      const rate = Number(ratePerQuantity);
+      const qty = Number(quantity);
+      if (!isNaN(rate) && !isNaN(qty) && rate > 0 && qty > 0) {
+        const total = rate * qty;
         setTotalCost(Number(total.toFixed(2)));
+      } else {
+        setTotalCost("");
       }
-    }, 500);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [ratePerQuantity, quantity]);
 
-  const fetchLocationValues = async () => {
+  const deleteFilesFromS3 = async (urls: string[]) => {
+    if (urls.length === 0) return;
+
+    const results = await Promise.allSettled(
+      urls.map(async (url) => {
+        const res = await fetch("/api/s3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "delete", url }),
+        });
+        if (!res.ok) throw new Error(`Failed to delete: ${url}`);
+        return url;
+      }),
+    );
+
+    const failed = results
+      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+      .map((r) => r.reason);
+
+    if (failed.length > 0) {
+      console.warn("Some files failed to delete:", failed);
+    }
+
+    return results.filter((r) => r.status === "fulfilled").length;
+  };
+
+  const uploadFiles = async (files: File[]): Promise<string[]> => {
+    if (files.length === 0) return [];
+
+    setIsUploading(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
-      );
+      const formData = new FormData();
+      files.forEach((file) => formData.append("files", file));
+
+      const res = await fetch("/api/s3", {
+        method: "POST",
+        body: formData,
+      });
 
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        const error = await res.json();
+        throw new Error(error.error || "Upload failed");
       }
 
       const data = await res.json();
 
-      if (isMounted) {
-        setLocationValues(data);
+      if (data.failedFiles?.length > 0) {
+        toast(`${data.failedFiles.length} file(s) failed to upload`, "warning");
       }
-    } catch (err) {
-      console.error("Failed to fetch location values:", err);
+
+      if (!Array.isArray(data.urls)) {
+        throw new Error("Invalid upload response");
+      }
+
+      return data.urls;
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  async function deleteFilesFromS3(urls: string[]) {
-    const deletePromises = urls.map(async (url) => {
-      try {
-        const deleteResponse = await fetch("/api/s3", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "delete",
-            url: url,
-          }),
-        });
-
-        if (!deleteResponse.ok) {
-          const errorText = await deleteResponse.text();
-          let errorData;
-          try {
-            errorData = JSON.parse(errorText);
-          } catch {
-            errorData = { error: errorText || "Failed to delete file" };
-          }
-          console.error("Failed to delete file from S3:", errorData);
-          throw new Error(`Failed to delete ${url}`);
-        }
-      } catch (error) {
-        console.error(`Error deleting ${url}:`, error);
-        throw error;
-      }
-    });
-
-    await Promise.all(deletePromises);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || isUploading) return;
+
+    setIsLoading(true);
 
     try {
-      // Step 1: Delete marked files from S3
+      // Step 1: Delete removed files
       if (filesToDelete.length > 0) {
         await deleteFilesFromS3(filesToDelete);
-        console.log(`${filesToDelete.length} file(s) deleted from S3`);
       }
 
-      // Step 2: Upload new files to S3 if there are any
-      let newAttachmentUrls: string[] = [];
+      // Step 2: Upload new files
+      const newUrls = await uploadFiles(newAttachmentFiles);
 
-      if (newAttachmentFiles && newAttachmentFiles.length > 0) {
-        const formData = new FormData();
-        newAttachmentFiles.forEach((file) => {
-          formData.append("files", file);
-        });
+      // Step 3: Combine final attachment list
+      const finalAttachments = [...existingAttachments, ...newUrls];
 
-        const uploadResponse = await fetch("/api/s3", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload files");
-        }
-
-        const uploadData = await uploadResponse.json();
-        console.log("Upload response:", uploadData);
-
-        newAttachmentUrls = uploadData.urls || [];
-
-        if (!Array.isArray(newAttachmentUrls)) {
-          throw new Error("Invalid response from upload API");
-        }
-      }
-
-      // Step 3: Combine existing (not deleted) and new attachments
-      const allAttachments = [...existingAttachments, ...newAttachmentUrls];
-
-      // Step 4: Update BOQ item
+      // Step 4: Update database
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -238,55 +246,67 @@ export default function EditBoqItemButton({
           action: "updateAll",
           id: item.id,
           item_name: itemName,
-          category: category,
+          category,
           sub_category: subCategory,
-          scope_of_work: scopeOfWork,
+          scope_of_work: scopeOfWork || null,
           location_ids: locationID,
-          quantity: Number(quantity),
+          quantity: Number(quantity) || 0,
           unit,
-          rate_per_quantity: Number(ratePerQuantity),
-          total_cost: Number(totalCost),
-          item_description: itemDescription,
-          attachments: JSON.stringify(allAttachments),
-          dn_number_and_date: dnNumberAndDate,
-          remarks,
+          rate_per_quantity: Number(ratePerQuantity) || 0,
+          total_cost: Number(totalCost) || 0,
+          item_description: itemDescription || null,
+          attachments: JSON.stringify(finalAttachments),
+          dn_number_and_date: dnNumberAndDate || null,
+          remarks: remarks || null,
         }),
       });
 
-      if (res.ok) {
-        toast("Bill of quantity item updated", "success");
-
-        setIsOpen(false);
-
-        onSuccess && onSuccess();
-
-        // Reset states
-        setFilesToDelete([]);
-        setNewAttachmentFiles(null);
-
-        router.refresh();
-      } else {
-        toast(
-          "Failed to update bill of quantity item. Something went wrong",
-          "error",
-        );
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Update failed");
       }
+
+      toast("Bill of quantity item updated", "success");
+
+      // Reset all states
+      setIsOpen(false);
+      setFilesToDelete([]);
+      setNewAttachmentFiles([]);
+      setExistingAttachments([]);
+      setOriginalAttachments([]);
+
+      onSuccess?.();
+      router.refresh();
     } catch (error: any) {
       console.error("Update error:", error);
-      toast(
-        "Failed to update bill of quantity item. Something went wrong",
-        "error",
-      );
+      toast(error.message || "Failed to update item", "error");
+    } finally {
+      setIsLoading(false);
     }
-  }
+  };
+
+  // Reset form when item changes
+  useEffect(() => {
+    setItemName(item.item_name);
+    setCategory(item.category);
+    setSubCategory(item.sub_category);
+    setScopeOfWork(item.scope_of_work || "");
+    setQuantity(String(item.quantity ?? ""));
+    setUnit(item.unit || "");
+    setRatePerQuantity(String(item.rate_per_quantity ?? ""));
+    setTotalCost(String(item.total_cost ?? ""));
+    setItemDescription(item.item_description || "");
+    setDnNumberAndDate(item.dn_number_and_date || "");
+    setRemarks(item.remarks || "");
+  }, [item]);
 
   return (
     <>
       <Button
         componentType="button"
-        bgColor={"transparent"}
-        borderColor={"transparent"}
-        textColor={"black"}
+        bgColor="transparent"
+        borderColor="transparent"
+        textColor="black"
         onClick={() => setIsOpen(true)}
         full
         style={{ justifyContent: "flex-start" }}
@@ -296,36 +316,35 @@ export default function EditBoqItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"UPDATE BILL OF QUANTITY ITEM"}
+          header="UPDATE BILL OF QUANTITY ITEM"
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"CONFIRM"}
+          addButtonLabel={isLoading ? "SAVING..." : "CONFIRM"}
         >
-          {/* 1st row */}
           <div className="input-row three-col">
             <InputItem
-              label={"CATEGORY"}
+              label="CATEGORY"
               value={category}
-              type={"text"}
-              placeholder={"ENTER CATEGORY"}
+              type="text"
+              placeholder="ENTER CATEGORY"
               onChange={(e) => setCategory(e.target.value)}
               required
               disabled
             />
             <InputItem
-              label={"SUBCATEGORY"}
+              label="SUBCATEGORY"
               value={subCategory}
-              type={"text"}
-              placeholder={"ENTER SUB CATEGORY"}
+              type="text"
+              placeholder="ENTER SUB CATEGORY"
               onChange={(e) => setSubCategory(e.target.value)}
               required
               disabled
             />
             <InputItem
-              label={"NAME"}
+              label="NAME"
               value={itemName}
-              type={"text"}
-              placeholder={"ENTER NAME"}
+              type="text"
+              placeholder="ENTER NAME"
               onChange={(e) => setItemName(e.target.value)}
               required
             />
@@ -333,19 +352,16 @@ export default function EditBoqItemButton({
 
           <div className="input-row full">
             <InputItem
-              label={"DN NUMBER & DATE"}
+              label="DN NUMBER & DATE"
               value={dnNumberAndDate}
-              type={"text"}
-              onChange={(e) => {
-                setDnNumberAndDate(e.target.value);
-              }}
+              type="text"
+              onChange={(e) => setDnNumberAndDate(e.target.value)}
             />
           </div>
 
-          {/* 2nd row */}
           <div className="input-row half">
             <SingleSelectDropdown
-              label={"SCOPE OF WORK"}
+              label="SCOPE OF WORK"
               selectedValue={scopeOfWork}
               onChange={setScopeOfWork}
               selectOptions={[
@@ -357,27 +373,34 @@ export default function EditBoqItemButton({
               placeholder="SELECT SCOPE OF WORK"
             />
             <MultiSelectDropdown
-              label={"LOCATION"}
+              label="LOCATION"
               selectedValues={locationID}
               onChange={setLocationID}
               placeholder="SELECT LOCATION"
               dbData={locationValues}
               style={{ width: "400px" }}
               bottomButtonComponent={
-                <CreateLocationButton onSuccess={() => fetchLocationValues()} />
+                <CreateLocationButton
+                  onSuccess={() => {
+                    fetch(
+                      `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getLocationValues`,
+                    )
+                      .then((r) => r.json())
+                      .then((data) => setLocationValues(data))
+                      .catch(console.error);
+                  }}
+                />
               }
             />
           </div>
 
-          {/* 3rd row */}
           <div className="input-row half">
             <InputItem
-              label={"QUANTITY"}
+              label="QUANTITY"
               value={quantity}
-              type={"text"}
+              type="text"
               onChange={(e) => {
                 const val = e.target.value;
-
                 if (val === "" || /^\d*\.?\d*$/.test(val)) {
                   setQuantity(val);
                 }
@@ -385,13 +408,11 @@ export default function EditBoqItemButton({
               required
             />
             <InputItem
-              label={"UNIT"}
+              label="UNIT"
               value={unit}
-              type={"select"}
-              placeholder={"SELECT UNIT"}
-              onChange={(e) => {
-                setUnit(e.target.value);
-              }}
+              type="select"
+              placeholder="SELECT UNIT"
+              onChange={(e) => setUnit(e.target.value)}
               selectOptions={[
                 "ITEM",
                 "NOS",
@@ -420,13 +441,12 @@ export default function EditBoqItemButton({
             />
           </div>
 
-          {/* 4th row */}
           <div className="input-row half">
             <InputItem
-              label={"RATE / QUANTITY"}
+              label="RATE / QUANTITY"
               value={ratePerQuantity}
-              type={"text"}
-              placeholder={"ENTER RATE / QUANTITY"}
+              type="text"
+              placeholder="ENTER RATE / QUANTITY"
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === "" || /^\d*\.?\d*$/.test(val)) {
@@ -436,23 +456,22 @@ export default function EditBoqItemButton({
               required
             />
             <InputItem
-              label={"TOTAL COST"}
+              label="TOTAL COST"
               value={totalCost}
-              type={"text"}
-              placeholder={"CALCULATING..."}
+              type="text"
+              placeholder="CALCULATING..."
               onChange={() => {}}
               required
               disabled
             />
           </div>
 
-          {/* 5th row */}
           <div className="input-row full">
             <InputItem
-              label={"DESCRIPTION"}
+              label="DESCRIPTION"
               value={itemDescription || ""}
-              type={"textarea"}
-              placeholder={"ENTER DESCRIPTION"}
+              type="textarea"
+              placeholder="ENTER DESCRIPTION"
               onChange={(e) => setItemDescription(e.target.value)}
               required={false}
             />
@@ -460,25 +479,22 @@ export default function EditBoqItemButton({
 
           <div className="input-row full">
             <InputItem
-              label={"REMARKS"}
+              label="REMARKS"
               value={remarks}
-              type={"textarea"}
-              onChange={(e) => {
-                setRemarks(e.target.value);
-              }}
+              type="textarea"
+              onChange={(e) => setRemarks(e.target.value)}
               required={false}
             />
           </div>
 
-          {/* 6th row - Attachments */}
           <div className="input-row full">
             <MultipleUploadFileBox
               fileState={newAttachmentFiles}
               setFileState={setNewAttachmentFiles}
-              label={"ATTACHMENTS"}
-              acceptedFileTypes={".jpeg,.jpg,.png,.webp"}
+              label="ATTACHMENTS"
+              acceptedFileTypes=".jpeg,.jpg,.png,.webp"
               existingFileUrls={existingAttachments}
-              onExistingFilesChange={setExistingAttachments}
+              onExistingFilesChange={handleExistingFilesChange}
             />
           </div>
         </FormPopUp>
