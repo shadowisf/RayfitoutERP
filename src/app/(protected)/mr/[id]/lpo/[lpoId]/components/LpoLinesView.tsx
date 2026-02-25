@@ -525,11 +525,27 @@ export default function LpoLinesView({
   function hasLpoWithInvoiceAndSignedFile(): boolean {
     if (isCheckingLpoInvoices) return false;
 
-    // If supplier type is "Subcontractor", skip signed file check
-    if (lpoInvoiceStatus.supplierType === "Subcontractor") {
+    const supplierTypeLower = lpoInvoiceStatus.supplierType.toLowerCase();
+
+    // Credit suppliers: no invoice or signed file needed (skip payment, go to delivery)
+    if (supplierTypeLower.includes("credit")) {
+      return lpoInvoiceStatus.hasLpo;
+    }
+
+    // Marketplace/Online suppliers: need invoice but NOT signed file
+    if (
+      supplierTypeLower.includes("marketplace") ||
+      supplierTypeLower.includes("online")
+    ) {
       return lpoInvoiceStatus.hasLpo && lpoInvoiceStatus.hasInvoice;
     }
 
+    // Subcontractor: need invoice but NOT signed file
+    if (supplierTypeLower.includes("subcontractor")) {
+      return lpoInvoiceStatus.hasLpo && lpoInvoiceStatus.hasInvoice;
+    }
+
+    // Cash/Local and other types: need everything
     return (
       lpoInvoiceStatus.hasLpo &&
       lpoInvoiceStatus.hasInvoice &&
@@ -1042,6 +1058,15 @@ export default function LpoLinesView({
               mrHeaderID={mrHeader.id}
               lpoID={lpoId}
               mode="single"
+              suppliers={[
+                {
+                  supplierId: allItems[0]?.approved_supplier_id || 0,
+                  lpoId: lpoId,
+                  supplierType: lpo.supplier_type || "",
+                  supplierName: lpo.supplier_name || "",
+                  paymentValue: totalInvoiceAmount,
+                },
+              ]}
               disabled={!hasLpoWithInvoiceAndSignedFile()}
               style={{
                 opacity: !hasLpoWithInvoiceAndSignedFile() ? "0.5" : "1",

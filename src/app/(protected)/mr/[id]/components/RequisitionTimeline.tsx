@@ -10,6 +10,8 @@ type ProgressLogEntry = {
   from_progress_id: number | null;
   changed_by: string;
   changed_at: string;
+  rollback_reason: string | null;
+  is_rollback: number;
   progress_name: string;
   from_progress_name: string | null;
 };
@@ -24,9 +26,8 @@ type RequisitionTimelineProps = {
 // Rejection progress IDs
 const REJECTION_IDS = new Set([5, 11, 13, 16, 23]);
 
-// Rollback detection: changed_by contains "(ROLLBACK)"
-const isRollback = (entry: ProgressLogEntry) =>
-  entry.changed_by?.includes("(ROLLBACK)");
+// Rollback detection: uses the is_rollback column from the database
+const isRollbackEntry = (entry: ProgressLogEntry) => entry.is_rollback === 1;
 
 // Labels for rejection stages
 const REJECTION_LABELS: { [key: number]: string } = {
@@ -154,7 +155,7 @@ export default function RequisitionTimeline({
   const visitedSequence: VisitRecord[] = [];
 
   for (const entry of sortedLog) {
-    const isRb = isRollback(entry);
+    const isRb = isRollbackEntry(entry);
     const isRej = REJECTION_IDS.has(entry.progress_id) && !isRb;
 
     visitedSequence.push({
@@ -182,10 +183,6 @@ export default function RequisitionTimeline({
   }
 
   for (const visit of visitedSequence) {
-    const cleanChangedBy = visit.isRollback
-      ? visit.arrivedEntry?.changed_by?.replace(" (ROLLBACK)", "") || ""
-      : visit.arrivedEntry?.changed_by || "";
-
     timelineStages.push({
       id: visit.stageId,
       label: visit.isRollback
@@ -197,14 +194,8 @@ export default function RequisitionTimeline({
           : STAGE_LABELS[visit.stageId] || `Stage ${visit.stageId}`,
       isRejection: visit.isRejection,
       isRollback: visit.isRollback,
-      arrivedEntry: visit.isRollback
-        ? { ...visit.arrivedEntry!, changed_by: cleanChangedBy }
-        : visit.arrivedEntry,
-      departedEntry: visit.isRollback
-        ? visit.departedEntry
-          ? { ...visit.departedEntry, changed_by: cleanChangedBy }
-          : null
-        : visit.departedEntry,
+      arrivedEntry: visit.arrivedEntry,
+      departedEntry: visit.departedEntry,
     });
   }
 
@@ -451,7 +442,7 @@ export default function RequisitionTimeline({
                 </p>
               )}
 
-              {/* FIXED: Only show submitted by if detailEntry exists */}
+              {/* Only show submitted by if detailEntry exists */}
               {detailEntry?.changed_by && (
                 <div
                   style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
@@ -466,7 +457,7 @@ export default function RequisitionTimeline({
                       textAlign: "left",
                     }}
                   >
-                    SUBMITTED BY
+                    {stage.isRollback ? "ROLLED BACK BY" : "SUBMITTED BY"}
                   </p>
                   <p
                     style={{
@@ -479,6 +470,38 @@ export default function RequisitionTimeline({
                     }}
                   >
                     {detailEntry.changed_by}
+                  </p>
+                </div>
+              )}
+
+              {/* Show rollback reason if available */}
+              {stage.isRollback && detailEntry?.rollback_reason && (
+                <div
+                  style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
+                >
+                  <p
+                    style={{
+                      fontSize: "9px",
+                      color: "rgba(255, 153, 36, 1)",
+                      textTransform: "uppercase",
+                      fontWeight: "600",
+                      letterSpacing: "0.5px",
+                      textAlign: "left",
+                    }}
+                  >
+                    REASON
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "10px",
+                      color: "rgba(85, 80, 80, 1)",
+                      fontWeight: "400",
+                      maxWidth: "120px",
+                      wordBreak: "break-word",
+                      textAlign: "left",
+                    }}
+                  >
+                    {detailEntry.rollback_reason}
                   </p>
                 </div>
               )}

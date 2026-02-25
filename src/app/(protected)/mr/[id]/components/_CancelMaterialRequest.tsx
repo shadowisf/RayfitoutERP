@@ -7,10 +7,12 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../types/mrHeader";
+import InputItem from "@/app/components/InputItem";
 
 type CancelMaterialRequestButtonProps = {
   mrHeader: MrHeader;
   currentProgressId: number;
+  lpoId?: number;
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
@@ -20,6 +22,7 @@ type CancelMaterialRequestButtonProps = {
 export default function CancelMaterialRequestButton({
   mrHeader,
   currentProgressId,
+  lpoId,
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
@@ -34,6 +37,8 @@ export default function CancelMaterialRequestButton({
   const [availableStages, setAvailableStages] = useState<
     { id: number; name: string; department: string; departmentId: number }[]
   >([]);
+
+  const [reason, setReason] = useState("");
 
   const warningIcon = "/icons/warning.svg";
 
@@ -109,11 +114,18 @@ export default function CancelMaterialRequestButton({
     );
   };
 
-  // Progress flow order
-  const progressFlow = [1, 2, 3, 7, 9, 10, 12, 14, 17, 24];
+  // Progress flow order (MR-level before segregation)
+  const mrProgressFlow = [1, 2, 3, 7, 9, 10, 12];
+  // LPO-level progress flow (after segregation)
+  const lpoProgressFlow = [12, 14, 17, 24];
+  // Combined flow for non-LPO contexts
+  const fullProgressFlow = [1, 2, 3, 7, 9, 10, 12, 14, 17, 24];
 
   useEffect(() => {
     const userDeptId = userInfo?.departmentID;
+
+    // Use LPO flow if lpoId is present, otherwise full flow
+    const progressFlow = lpoId ? lpoProgressFlow : fullProgressFlow;
 
     // Find the current progress index
     const currentIndex = progressFlow.indexOf(currentProgressId);
@@ -123,17 +135,18 @@ export default function CancelMaterialRequestButton({
       return;
     }
 
-    // ✅ Get all previous stages based on user's department
+    // Get all previous stages based on user's department
     let stagesToShow: number[];
 
     if (userDeptId === 8 || userDeptId === 9) {
-      // ✅ Management (8) and Procurement (9) can rollback to ANY previous stage
+      // Management (8) and Procurement (9) can rollback to ANY previous stage
       stagesToShow = progressFlow.slice(0, currentIndex);
     } else {
-      // ✅ All other departments can only rollback to Draft (1)
+      // All other departments can only rollback to the first stage in flow
+      const firstStage = progressFlow[0];
       stagesToShow = progressFlow
         .slice(0, currentIndex)
-        .filter((id) => id === 1);
+        .filter((id) => id === firstStage);
     }
 
     const previousStages = stagesToShow.map((id) => {
@@ -147,7 +160,7 @@ export default function CancelMaterialRequestButton({
     });
 
     setAvailableStages(previousStages);
-  }, [currentProgressId, userInfo]);
+  }, [currentProgressId, userInfo, lpoId]);
 
   const handleOpen = () => {
     setSelectedStage(null);
@@ -168,11 +181,13 @@ export default function CancelMaterialRequestButton({
       body: JSON.stringify({
         action: "cancelMaterialRequest",
         id: mrHeader.id,
+        lpo_id: lpoId || null,
         rollback_progress_id: selectedStage,
         rollback_progress_name: allProgressStages[selectedStage],
         department_id: mrHeader.department_id,
         current_progress_id: currentProgressId,
         changed_by: userInfo?.name,
+        rollback_reason: reason,
       }),
     });
 
@@ -218,90 +233,101 @@ export default function CancelMaterialRequestButton({
                 </div>
               ) : (
                 <>
-                  <div>
-                    <div style={{ maxHeight: "400px", overflowY: "auto" }}>
-                      {availableStages.map((stage) => {
-                        const departmentStyle = getDepartmentStyle(
-                          stage.departmentId,
-                        );
+                  <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                    {availableStages.map((stage) => {
+                      const departmentStyle = getDepartmentStyle(
+                        stage.departmentId,
+                      );
 
-                        return (
-                          <div key={stage.id} style={{ marginBottom: "5px" }}>
-                            <label
+                      return (
+                        <div key={stage.id} style={{ marginBottom: "5px" }}>
+                          <label
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "10px",
+                              cursor: "pointer",
+                              padding: "10px",
+                              borderRadius: "10px",
+                              backgroundColor:
+                                selectedStage === stage.id
+                                  ? "rgba(168, 238, 208, 1)"
+                                  : "rgba(245, 240, 240, 1)",
+                            }}
+                          >
+                            <div
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                justifyContent: "space-between",
-                                gap: "10px",
-                                cursor: "pointer",
-                                padding: "10px",
-                                borderRadius: "10px",
-                                backgroundColor:
-                                  selectedStage === stage.id
-                                    ? "rgba(168, 238, 208, 1)"
-                                    : "rgba(245, 240, 240, 1)",
+                                gap: "5px",
+                                flex: 1,
                               }}
                             >
-                              <div
+                              <input
+                                type="radio"
+                                name="rollbackStage"
+                                value={stage.id}
+                                checked={selectedStage === stage.id}
+                                onChange={() => setSelectedStage(stage.id)}
                                 style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "5px",
+                                  width: "18px",
+                                  height: "18px",
+                                  cursor: "pointer",
+                                  accentColor: "black",
+                                  marginRight: "10px",
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <h4
+                                style={{
+                                  margin: 0,
+                                  textTransform: "uppercase",
                                   flex: 1,
                                 }}
                               >
-                                <input
-                                  type="radio"
-                                  name="rollbackStage"
-                                  value={stage.id}
-                                  checked={selectedStage === stage.id}
-                                  onChange={() => setSelectedStage(stage.id)}
-                                  style={{
-                                    width: "18px",
-                                    height: "18px",
-                                    cursor: "pointer",
-                                    accentColor: "black",
-                                    marginRight: "10px",
-                                    flexShrink: 0,
-                                  }}
-                                />
-                                <h4
-                                  style={{
-                                    margin: 0,
-                                    textTransform: "uppercase",
-                                    flex: 1,
-                                  }}
-                                >
-                                  {stage.name}
-                                </h4>
-                              </div>
+                                {stage.name}
+                              </h4>
+                            </div>
 
-                              {stage.department && (
-                                <small
-                                  style={{
-                                    backgroundColor:
-                                      departmentStyle.backgroundColor,
-                                    color: departmentStyle.color,
-                                    textTransform: "uppercase",
-                                    padding: "5px 12px",
-                                    borderRadius: "50px",
-                                    fontSize: "10px",
-                                    fontWeight: "600",
-                                    whiteSpace: "nowrap",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                  }}
-                                >
-                                  <span style={{ scale: 2.5 }}>•</span>
-                                  {stage.department}
-                                </small>
-                              )}
-                            </label>
-                          </div>
-                        );
-                      })}
-                    </div>
+                            {stage.department && (
+                              <small
+                                style={{
+                                  backgroundColor:
+                                    departmentStyle.backgroundColor,
+                                  color: departmentStyle.color,
+                                  textTransform: "uppercase",
+                                  padding: "5px 12px",
+                                  borderRadius: "50px",
+                                  fontSize: "10px",
+                                  fontWeight: "600",
+                                  whiteSpace: "nowrap",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                }}
+                              >
+                                <span style={{ scale: 2.5 }}>•</span>
+                                {stage.department}
+                              </small>
+                            )}
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <br />
+                  <br />
+
+                  <div className="input-row full">
+                    <InputItem
+                      label={"REASON"}
+                      value={reason}
+                      type={"textarea"}
+                      onChange={(e) => setReason(e.target.value)}
+                      required
+                    />
                   </div>
 
                   <br />

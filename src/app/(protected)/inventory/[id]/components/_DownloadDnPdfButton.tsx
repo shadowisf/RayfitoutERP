@@ -116,7 +116,7 @@ export default function DownloadDnPdfButton({ transactionID }: props) {
       style={{ padding: "7px 20px", borderRadius: "25px" }}
       disabled={isProcessing}
     >
-      DN (UNSIGNED)
+      DN
       <img src={downloadIcon} alt="download" onClick={handleDownload} />
     </Button>
   );

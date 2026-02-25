@@ -242,7 +242,7 @@ export default function UploadSignedDnButton({
               }}
               key={fileUrl}
             >
-              DN (SIGNED)
+              Signed DN
               <img
                 src={downloadIcon}
                 alt="download"
