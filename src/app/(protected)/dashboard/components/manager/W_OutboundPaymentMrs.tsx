@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "../OverviewHoverPopup";
 
 type props = {
@@ -8,6 +9,7 @@ type props = {
 };
 
 export default function OutboundPaymentMrsWidget({ filterDays }: props) {
+  const router = useRouter();
   const outboundPaymentsIcon = "/icons/outbound-payments.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";
@@ -123,6 +125,8 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   return (
     <div
       className="item"
+      style={{ cursor: "pointer" }}
+      onClick={() => router.push("/dashboard/details/outbound-payments")}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -134,7 +138,11 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
       <div>
         <div className="bottom">
           <p className="number">
-            {isLoading ? "..." : <>AED {thisWeek.toLocaleString("en-US")}</>}
+            {isLoading ? (
+              "..."
+            ) : (
+              <>AED {String(Number(thisWeek || 0).toFixed(2))}</>
+            )}
           </p>
         </div>
         <br />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "../OverviewHoverPopup";
 
 type props = {
@@ -8,6 +9,7 @@ type props = {
 };
 
 export default function TotalSpentWidget({ filterDays }: props) {
+  const router = useRouter();
   const totalSpentIcon = "/icons/spent-inverted.svg";
   const upArrow = "/icons/arrow-up-chart-green-big.svg";
   const downArrow = "/icons/arrow-down-chart-red-big.svg";
@@ -119,7 +121,8 @@ export default function TotalSpentWidget({ filterDays }: props) {
   return (
     <div
       className="item"
-      style={{ backgroundColor, color: "white" }}
+      style={{ backgroundColor, color: "white", cursor: "pointer" }}
+      onClick={() => router.push("/dashboard/details/total-spent")}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -152,12 +155,11 @@ export default function TotalSpentWidget({ filterDays }: props) {
           items={items}
           totalCount={totalCount}
           columns={[
-            { key: "display_id", label: "LPO" },
-            { key: "detail", label: "VENDOR" },
+            { key: "display_id", label: "LPO NUMBER" },
             {
               key: "amount",
               label: "AMOUNT",
-              format: (val: number) => `AED ${val.toLocaleString("en-US")}`,
+              format: (val: number) => `+ AED ${val.toLocaleString("en-US")}`,
             },
           ]}
           emptyMessage="No spend data"

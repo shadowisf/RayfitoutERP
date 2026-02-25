@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/app/context/AuthContext";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "../OverviewHoverPopup";
 
 type props = {
@@ -9,6 +10,7 @@ type props = {
 };
 
 export default function DraftMrsWidget({ filterDays }: props) {
+  const router = useRouter();
   const { userInfo } = useAuth();
 
   const fileIcon = "/icons/file.svg";
@@ -127,7 +129,8 @@ export default function DraftMrsWidget({ filterDays }: props) {
   return (
     <div
       className="item"
-      style={{ backgroundColor, color: "white" }}
+      style={{ backgroundColor, color: "white", cursor: "pointer" }}
+      onClick={() => router.push("/dashboard/details/draft-mrs")}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -160,8 +163,8 @@ export default function DraftMrsWidget({ filterDays }: props) {
           items={items}
           totalCount={totalCount}
           columns={[
-            { key: "display_id", label: "ID" },
-            { key: "detail", label: "PROJECT" },
+            { key: "display_id", label: "MR NUMBER" },
+            { key: "item_count", label: "ITEMS", format: (val: number) => `${val} Items` },
           ]}
           emptyMessage="No draft MRs"
         />

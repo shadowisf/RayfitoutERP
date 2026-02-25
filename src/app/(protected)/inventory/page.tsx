@@ -1061,7 +1061,7 @@ export default function Inventory() {
                 onClick={() => scroll("left")}
                 style={{
                   position: "absolute",
-                  left: "10px",
+                  left: "0px",
                   top: "50%",
                   transform: "translateY(-50%)",
                   zIndex: 10,
@@ -1186,7 +1186,7 @@ export default function Inventory() {
                 onClick={() => scroll("right")}
                 style={{
                   position: "absolute",
-                  right: "10px",
+                  right: "0px",
                   top: "50%",
                   transform: "translateY(-50%)",
                   zIndex: 10,
@@ -1471,10 +1471,8 @@ export default function Inventory() {
           {/* Inventory Table */}
           <div style={{ overflowX: "auto" }}>
             {isLoadingAllQuantities ? (
-              <div
-                style={{ textAlign: "center", padding: "40px", color: "#888" }}
-              >
-                Loading quantities...
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                Loading...
               </div>
             ) : currentItems.length > 0 ? (
               <>
@@ -1560,7 +1558,6 @@ export default function Inventory() {
                               style={{
                                 backgroundColor: stockStatus.bgColor,
                                 color: stockStatus.textColor,
-                                fontWeight: "normal",
                               }}
                             >
                               {stockStatus.label}

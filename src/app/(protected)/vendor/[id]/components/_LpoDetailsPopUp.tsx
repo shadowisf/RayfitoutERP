@@ -277,6 +277,7 @@ export default function LpoDetailsPopUp({
         </>
       }
       setIsOpen={onClose}
+      style={{ minWidth: "1600px" }}
     >
       {/* ─── Info Row ─── */}
       {lpoData && (
@@ -363,7 +364,11 @@ export default function LpoDetailsPopUp({
                     </Button>
                   ) : canUpload ? (
                     <div
-                      style={{ display: "flex", alignItems: "center", gap: "5px" }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "5px",
+                      }}
                     >
                       <label
                         style={{
@@ -372,7 +377,9 @@ export default function LpoDetailsPopUp({
                           backgroundColor: "black",
                           color: "white",
                           border: "1px solid black",
-                          cursor: isUploadingSignedLpo ? "not-allowed" : "pointer",
+                          cursor: isUploadingSignedLpo
+                            ? "not-allowed"
+                            : "pointer",
                           display: "flex",
                           alignItems: "center",
                           gap: "10px",
@@ -625,58 +632,72 @@ export default function LpoDetailsPopUp({
             })
           )}
         </tbody>
-        {flatLines.length > 0 && lpoData && (() => {
-          const subtotal = flatLines.reduce(
-            (sum: number, l: any) => sum + Number(l.lpo_total_price || 0),
-            0,
-          );
-          const discountRate = getDiscountRate();
-          const shipping = getShippingAndHandling();
-          const discountAmount = subtotal * (discountRate / 100);
+        {flatLines.length > 0 &&
+          lpoData &&
+          (() => {
+            const subtotal = flatLines.reduce(
+              (sum: number, l: any) => sum + Number(l.lpo_total_price || 0),
+              0,
+            );
+            const discountRate = getDiscountRate();
+            const shipping = getShippingAndHandling();
+            const discountAmount = subtotal * (discountRate / 100);
 
-          return (
-            <tfoot>
-              <tr>
-                <td colSpan={9} style={{ textAlign: "right", fontWeight: "600" }}>
-                  SUBTOTAL
-                </td>
-                <td style={{ fontWeight: "600" }}>
-                  {formatCurrency(subtotal)}
-                </td>
-              </tr>
-              {discountRate > 0 && (
+            return (
+              <tfoot>
                 <tr>
-                  <td colSpan={9} style={{ textAlign: "right", fontWeight: "600" }}>
-                    DISCOUNT ({discountRate}%)
+                  <td
+                    colSpan={9}
+                    style={{ textAlign: "right", fontWeight: "600" }}
+                  >
+                    SUBTOTAL
                   </td>
                   <td style={{ fontWeight: "600" }}>
-                    - {formatCurrency(discountAmount)}
+                    {formatCurrency(subtotal)}
                   </td>
                 </tr>
-              )}
-              {shipping > 0 && (
+                {discountRate > 0 && (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      style={{ textAlign: "right", fontWeight: "600" }}
+                    >
+                      DISCOUNT ({discountRate}%)
+                    </td>
+                    <td style={{ fontWeight: "600" }}>
+                      - {formatCurrency(discountAmount)}
+                    </td>
+                  </tr>
+                )}
+                {shipping > 0 && (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      style={{ textAlign: "right", fontWeight: "600" }}
+                    >
+                      SHIPPING & HANDLING
+                    </td>
+                    <td style={{ fontWeight: "600" }}>
+                      {formatCurrency(shipping)}
+                    </td>
+                  </tr>
+                )}
                 <tr>
-                  <td colSpan={9} style={{ textAlign: "right", fontWeight: "600" }}>
-                    SHIPPING & HANDLING
+                  <td
+                    colSpan={9}
+                    style={{ textAlign: "right", fontWeight: "600" }}
+                  >
+                    TOTAL WITH VAT
                   </td>
                   <td style={{ fontWeight: "600" }}>
-                    {formatCurrency(shipping)}
+                    {formatCurrency(
+                      lpoData.total || calculateTotalWithVAT(subtotal),
+                    )}
                   </td>
                 </tr>
-              )}
-              <tr>
-                <td colSpan={9} style={{ textAlign: "right", fontWeight: "600" }}>
-                  TOTAL WITH VAT
-                </td>
-                <td style={{ fontWeight: "600" }}>
-                  {formatCurrency(
-                    lpoData.total || calculateTotalWithVAT(subtotal),
-                  )}
-                </td>
-              </tr>
-            </tfoot>
-          );
-        })()}
+              </tfoot>
+            );
+          })()}
       </table>
     </FormPopUp>
   );

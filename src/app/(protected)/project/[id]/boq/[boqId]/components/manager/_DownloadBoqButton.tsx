@@ -48,9 +48,9 @@ export default function DownloadBoqButton({
   const [expandedCategories, setExpandedCategories] = useState<{
     [category: string]: boolean;
   }>({});
-  const [priceConfig, setPriceConfig] = useState<"priced" | "unpriced" | "">(
-    "",
-  );
+  const [configMode, setConfigMode] = useState<
+    "priced" | "unpriced" | "dn" | ""
+  >("");
 
   // Initialize selections when opening the modal
   const handleOpen = () => {
@@ -205,8 +205,8 @@ export default function DownloadBoqButton({
       return;
     }
 
-    if (priceConfig === "") {
-      toast("Please select a price configuration", "error");
+    if (configMode === "") {
+      toast("Please select a configuration", "error");
       return;
     }
 
@@ -268,12 +268,15 @@ export default function DownloadBoqButton({
       }
 
       // Generate PDF blob
-      const showPrices = priceConfig === "priced";
+      const showPrices = configMode === "priced";
+      const showDN = configMode === "dn";
+
       const blob = await pdf(
         <BoqPDF
           boqHeader={boqHeader}
           boqLines={processedLines}
           showPrices={showPrices}
+          showDN={showDN}
         />,
       ).toBlob();
 
@@ -283,11 +286,13 @@ export default function DownloadBoqButton({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const priceType = showPrices ? "PRICED" : "UNPRICED";
-      link.download = `BOQ-${priceType}-${String(boqHeader.id).padStart(
-        5,
-        "0",
-      )}.pdf`;
+
+      let fileNameSuffix = "";
+      if (configMode === "priced") fileNameSuffix = "PRICED";
+      else if (configMode === "unpriced") fileNameSuffix = "UNPRICED";
+      else if (configMode === "dn") fileNameSuffix = "DN";
+
+      link.download = `BOQ-${fileNameSuffix}-${String(boqHeader.id).padStart(5, "0")}.pdf`;
 
       // Trigger download
       document.body.appendChild(link);
@@ -481,16 +486,16 @@ export default function DownloadBoqButton({
             </div>
           </div>
 
-          {/* Price Configuration */}
+          {/* Configuration */}
           <div>
             <h3
               style={{
                 marginBottom: "15px",
               }}
             >
-              PRICE CONFIGURATION
+              CONFIGURATION
             </h3>
-            <div style={{ display: "flex", gap: "30px" }}>
+            <div style={{ display: "flex", gap: "30px", flexWrap: "wrap" }}>
               {canSeePrice && (
                 <label
                   style={{
@@ -502,11 +507,13 @@ export default function DownloadBoqButton({
                 >
                   <input
                     type="radio"
-                    name="priceConfig"
+                    name="configMode"
                     value="priced"
-                    checked={priceConfig === "priced"}
+                    checked={configMode === "priced"}
                     onChange={(e) =>
-                      setPriceConfig(e.target.value as "priced" | "unpriced")
+                      setConfigMode(
+                        e.target.value as "priced" | "unpriced" | "dn",
+                      )
                     }
                     style={{ width: "18px", height: "18px", cursor: "pointer" }}
                   />
@@ -524,15 +531,40 @@ export default function DownloadBoqButton({
               >
                 <input
                   type="radio"
-                  name="priceConfig"
+                  name="configMode"
                   value="unpriced"
-                  checked={priceConfig === "unpriced"}
+                  checked={configMode === "unpriced"}
                   onChange={(e) =>
-                    setPriceConfig(e.target.value as "priced" | "unpriced")
+                    setConfigMode(
+                      e.target.value as "priced" | "unpriced" | "dn",
+                    )
                   }
                   style={{ width: "18px", height: "18px", cursor: "pointer" }}
                 />
                 <h4>Unpriced</h4>
+              </label>
+
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="configMode"
+                  value="dn"
+                  checked={configMode === "dn"}
+                  onChange={(e) =>
+                    setConfigMode(
+                      e.target.value as "priced" | "unpriced" | "dn",
+                    )
+                  }
+                  style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                />
+                <h4>DN Number & Date</h4>
               </label>
             </div>
           </div>

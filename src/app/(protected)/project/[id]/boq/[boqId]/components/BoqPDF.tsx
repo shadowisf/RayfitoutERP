@@ -282,6 +282,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     border: "1px solid #f5f5f5",
   },
+
+  // Base column styles
   detailColItemNo: {
     width: "5%",
     paddingRight: 4,
@@ -292,6 +294,22 @@ const styles = StyleSheet.create({
   },
   detailColCategoryUnpriced: {
     width: "60%",
+    paddingRight: 4,
+  },
+  detailColCategoryWithRemarks: {
+    width: "40%",
+    paddingRight: 4,
+  },
+  detailColCategoryUnpricedWithRemarks: {
+    width: "50%",
+    paddingRight: 4,
+  },
+  detailColCategoryWithDN: {
+    width: "35%",
+    paddingRight: 4,
+  },
+  detailColCategoryUnpricedWithDN: {
+    width: "45%",
     paddingRight: 4,
   },
   detailColQty: {
@@ -310,8 +328,24 @@ const styles = StyleSheet.create({
     width: "17%",
     paddingRight: 4,
   },
+  detailColAttachmentWithRemarks: {
+    width: "17%",
+    paddingRight: 4,
+  },
+  detailColAttachmentWithDN: {
+    width: "15%",
+    paddingRight: 4,
+  },
   detailColRemarks: {
     width: "15%",
+  },
+  detailColDNNumber: {
+    width: "17%",
+    paddingRight: 4,
+  },
+  detailColDNDate: {
+    width: "12%",
+    paddingRight: 4,
   },
 
   // Attachment Image
@@ -384,12 +418,14 @@ type BoqPDFProps = {
   boqLines: GroupedBoqLines;
   boqHeader: BoqHeader;
   showPrices?: boolean;
+  showDN?: boolean;
 };
 
 export function BoqPDF({
   boqLines,
   boqHeader,
   showPrices = true,
+  showDN = false,
 }: BoqPDFProps) {
   const logo = "/icons/logo.jpg";
   const locationIcon = "/icons/location-boq.png";
@@ -413,6 +449,66 @@ export function BoqPDF({
   });
 
   const categories = Object.keys(boqLines);
+
+  // Check if any items have remarks across all categories/subcategories
+  const hasAnyRemarks = Object.values(boqLines).some((subCategories) =>
+    Object.values(subCategories).some((items) =>
+      items.some((item) => item.remarks && item.remarks.trim() !== ""),
+    ),
+  );
+
+  // Get dynamic column styles based on configuration
+  const getColStyles = () => {
+    // DN mode - no pricing, show DN columns
+    if (showDN) {
+      return {
+        category: hasAnyRemarks
+          ? styles.detailColCategoryWithRemarks
+          : styles.detailColCategoryWithDN,
+        attachment: hasAnyRemarks
+          ? styles.detailColAttachmentWithRemarks
+          : styles.detailColAttachmentWithDN,
+      };
+    }
+
+    // Normal priced/unpriced mode
+    if (showPrices) {
+      return {
+        category: hasAnyRemarks
+          ? styles.detailColCategoryWithRemarks
+          : styles.detailColCategory,
+        attachment: hasAnyRemarks
+          ? styles.detailColAttachmentWithRemarks
+          : styles.detailColAttachment,
+      };
+    } else {
+      return {
+        category: hasAnyRemarks
+          ? styles.detailColCategoryUnpricedWithRemarks
+          : styles.detailColCategoryUnpriced,
+        attachment: hasAnyRemarks
+          ? styles.detailColAttachmentWithRemarks
+          : styles.detailColAttachment,
+      };
+    }
+  };
+
+  const colStyles = getColStyles();
+
+  // Format date for DN display
+  const formatDNDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return "-";
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch {
+      return "-";
+    }
+  };
 
   return (
     <Document>
@@ -648,28 +744,31 @@ export function BoqPDF({
                     {/* Table Header */}
                     <View style={styles.detailTableHeader}>
                       <Text style={styles.detailColItemNo}>#</Text>
-                      <Text
-                        style={
-                          showPrices
-                            ? styles.detailColCategory
-                            : styles.detailColCategoryUnpriced
-                        }
-                      >
-                        ITEM
-                      </Text>
+
+                      {showDN && (
+                        <Text style={styles.detailColDNNumber}>
+                          DN NUMBER & DATE
+                        </Text>
+                      )}
+
+                      <Text style={colStyles.category}>ITEM</Text>
                       <Text style={styles.detailColQty}>QTY</Text>
-                      {showPrices && (
+
+                      {/* Show pricing columns only if not in DN mode and showPrices is true */}
+                      {showPrices && !showDN && (
                         <>
                           <Text style={styles.detailColRate}>RATE</Text>
                           <Text style={styles.detailColTotal}>TOTAL PRICE</Text>
                         </>
                       )}
 
-                      <Text style={styles.detailColAttachment}>
-                        ATTACHMENT(S)
-                      </Text>
+                      {/* Show DN columns when in DN mode */}
 
-                      <Text style={styles.detailColRemarks}>REMARKS</Text>
+                      <Text style={colStyles.attachment}>ATTACHMENT(S)</Text>
+
+                      {hasAnyRemarks && (
+                        <Text style={styles.detailColRemarks}>REMARKS</Text>
+                      )}
                     </View>
                   </View>
 
@@ -686,13 +785,14 @@ export function BoqPDF({
                           {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
                         </Text>
 
-                        <View
-                          style={
-                            showPrices
-                              ? styles.detailColCategory
-                              : styles.detailColCategoryUnpriced
-                          }
-                        >
+                        {/* Show DN columns when in DN mode */}
+                        {showDN && (
+                          <Text style={styles.detailColDNNumber}>
+                            {item.dn_number_and_date || "-"}
+                          </Text>
+                        )}
+
+                        <View style={colStyles.category}>
                           {/* Item Name */}
                           <Text
                             style={{
@@ -751,19 +851,21 @@ export function BoqPDF({
                         <Text style={styles.detailColQty}>
                           {item.quantity} {item.unit}
                         </Text>
-                        {showPrices && (
-                          <Text style={styles.detailColRate}>
-                            {item.rate_per_quantity?.toLocaleString()}
-                          </Text>
-                        )}
-                        {showPrices && (
-                          <Text style={styles.detailColTotal}>
-                            {boqHeader.currency}{" "}
-                            {item.total_cost?.toLocaleString()}
-                          </Text>
+
+                        {/* Show pricing only if not in DN mode and showPrices is true */}
+                        {showPrices && !showDN && (
+                          <>
+                            <Text style={styles.detailColRate}>
+                              {item.rate_per_quantity?.toLocaleString()}
+                            </Text>
+                            <Text style={styles.detailColTotal}>
+                              {boqHeader.currency}{" "}
+                              {item.total_cost?.toLocaleString()}
+                            </Text>
+                          </>
                         )}
 
-                        <View style={styles.detailColAttachment}>
+                        <View style={colStyles.attachment}>
                           {item.attachments &&
                             Array.isArray(item.attachments) &&
                             item.attachments.length > 0 && (
@@ -790,20 +892,22 @@ export function BoqPDF({
                             )}
                         </View>
 
-                        <Text style={styles.detailColRemarks}>
-                          {item.remarks}
-                        </Text>
+                        {hasAnyRemarks && (
+                          <Text style={styles.detailColRemarks}>
+                            {item.remarks || ""}
+                          </Text>
+                        )}
                       </View>
                     );
                   })}
 
-                  {/* Subtotal Row - Only show if showPrices is true */}
-                  {showPrices && (
+                  {/* Subtotal Row - Only show if showPrices is true and not in DN mode */}
+                  {showPrices && !showDN && (
                     <View style={styles.subtotalRow} wrap={false}>
                       {/* Empty columns to align with table structure */}
                       <Text style={styles.detailColItemNo}></Text>
                       <Text
-                        style={styles.detailColCategory}
+                        style={colStyles.category}
                         hyphenationCallback={(word) => [word]}
                       >
                         SUBTOTAL
@@ -813,8 +917,10 @@ export function BoqPDF({
                       <Text style={styles.detailColTotal}>
                         {boqHeader.currency} {subCategoryTotal.toLocaleString()}
                       </Text>
-                      <Text style={styles.detailColAttachment}></Text>
-                      <Text style={styles.detailColRemarks}></Text>
+                      <Text style={colStyles.attachment}></Text>
+                      {hasAnyRemarks && (
+                        <Text style={styles.detailColRemarks}></Text>
+                      )}
                     </View>
                   )}
                 </View>

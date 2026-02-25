@@ -27,6 +27,19 @@ Font.register({
 
 Font.registerHyphenationCallback((word) => [word]);
 
+// Define style keys type for column widths
+type ColumnWidthKey =
+  | "colNum"
+  | "colItem"
+  | "colItemWide"
+  | "colItemFull"
+  | "colRequestedQty"
+  | "colRequestedQtyWide"
+  | "colCategory"
+  | "colSubCategory"
+  | "colBrandSpecs"
+  | "colAttachment";
+
 const styles = StyleSheet.create({
   page: {
     backgroundColor: "#ffffff",
@@ -124,29 +137,45 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
 
-  // Column widths
+  // Base column widths
   colNum: {
-    width: "5%",
+    width: "4%",
+    paddingRight: 4,
+  },
+  colCategory: {
+    width: "15%",
+    paddingRight: 4,
+  },
+  colSubCategory: {
+    width: "15%",
     paddingRight: 4,
   },
   colItem: {
-    width: "30%",
+    width: "22%",
+    paddingRight: 4,
+  },
+  colItemWide: {
+    width: "32%",
+    paddingRight: 4,
+  },
+  colItemFull: {
+    width: "46%",
     paddingRight: 4,
   },
   colRequestedQty: {
-    width: "15%",
-    paddingRight: 4,
-  },
-  colBoqRef: {
     width: "10%",
     paddingRight: 4,
   },
+  colRequestedQtyWide: {
+    width: "12%",
+    paddingRight: 4,
+  },
   colBrandSpecs: {
-    width: "23%",
+    width: "18%",
     paddingRight: 4,
   },
   colAttachment: {
-    width: "15%",
+    width: "12%",
     paddingRight: 4,
   },
 
@@ -176,7 +205,7 @@ const styles = StyleSheet.create({
     paddingBottom: 5,
     borderRadius: 10,
     alignSelf: "flex-end",
-    width: 250,
+    width: 280,
     marginTop: 20,
   },
   summaryLabel: {
@@ -231,6 +260,42 @@ export function MrPDF({ mrHeader, mrLines }: props) {
       return dateStr || "-";
     }
   };
+
+  // Check if any lines have brand/specs (optional)
+  const hasAnyBrandSpecs = mrLines.some(
+    (line) =>
+      (line.brand && line.brand.trim() !== "") ||
+      (line.specification && line.specification.trim() !== ""),
+  );
+
+  // Check if any lines have attachments (optional)
+  const hasAnyAttachments = mrLines.some(
+    (line) =>
+      line.attachment &&
+      Array.isArray(line.attachment) &&
+      line.attachment.length > 0 &&
+      line.attachment.some((url) => url && url.trim() !== ""),
+  );
+
+  // Count how many optional columns are shown
+  const optionalColumnCount = [hasAnyBrandSpecs, hasAnyAttachments].filter(
+    Boolean,
+  ).length;
+
+  // Determine which column width keys to use based on how many optional columns
+  const getItemColKey = (): ColumnWidthKey => {
+    if (optionalColumnCount === 0) return "colItemFull";
+    if (optionalColumnCount === 1) return "colItemWide";
+    return "colItem";
+  };
+
+  const getQtyColKey = (): ColumnWidthKey => {
+    if (optionalColumnCount === 0) return "colRequestedQtyWide";
+    return "colRequestedQty";
+  };
+
+  const itemColKey = getItemColKey();
+  const qtyColKey = getQtyColKey();
 
   // Calculate totals
   const totalItems = mrLines.length;
@@ -302,11 +367,18 @@ export function MrPDF({ mrHeader, mrLines }: props) {
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <Text style={styles.colNum}>#</Text>
-            <Text style={styles.colItem}>ITEM</Text>
-            <Text style={styles.colRequestedQty}>REQUESTED QTY</Text>
-            <Text style={styles.colBoqRef}>BOQ REF</Text>
-            <Text style={styles.colBrandSpecs}>BRAND & SPECS</Text>
-            <Text style={styles.colAttachment}>ATTACHMENT(S)</Text>
+            <Text style={styles.colCategory}>CATEGORY</Text>
+            <Text style={styles.colSubCategory}>SUBCATEGORY</Text>
+            <Text style={styles[itemColKey]}>ITEM</Text>
+            <Text style={styles[qtyColKey]}>QTY</Text>
+
+            {hasAnyBrandSpecs && (
+              <Text style={styles.colBrandSpecs}>BRAND & SPECS</Text>
+            )}
+
+            {hasAnyAttachments && (
+              <Text style={styles.colAttachment}>ATTACHMENT(S)</Text>
+            )}
           </View>
 
           {mrLines.map((line, index) => {
@@ -317,27 +389,44 @@ export function MrPDF({ mrHeader, mrLines }: props) {
               <View key={line.id} style={rowStyle} wrap={false}>
                 <Text style={styles.colNum}>{index + 1}</Text>
 
+                <Text style={styles.colCategory}>
+                  {line.material_category || "-"}
+                </Text>
+
+                <Text style={styles.colSubCategory}>
+                  {line.material_subcategory || "-"}
+                </Text>
+
                 <Text
-                  style={styles.colItem}
+                  style={styles[itemColKey]}
                   hyphenationCallback={(word) => [word]}
                 >
                   {line.material_description || "-"}
                 </Text>
 
-                <Text style={styles.colRequestedQty}>
+                <Text style={styles[qtyColKey]}>
                   {formatQuantity(line.quantity)} {line.unit || ""}
                 </Text>
 
-                <Text style={styles.colBoqRef}>{line.boq_line_ids || "-"}</Text>
+                {hasAnyBrandSpecs && (
+                  <Text style={styles.colBrandSpecs}>
+                    {line.brand || line.specification ? (
+                      <>
+                        {line.brand && `Brand: ${line.brand}`}
+                        {line.brand && line.specification && ", "}
+                        {line.specification && `Specs: ${line.specification}`}
+                      </>
+                    ) : (
+                      "-"
+                    )}
+                  </Text>
+                )}
 
-                <Text style={styles.colBrandSpecs}>
-                  Brand: {line.brand || "-"}, Specs: {line.specification || "-"}
-                </Text>
-
-                <View style={styles.colAttachment}>
-                  {line.attachment &&
+                {hasAnyAttachments && (
+                  <View style={styles.colAttachment}>
+                    {line.attachment &&
                     Array.isArray(line.attachment) &&
-                    line.attachment.length > 0 && (
+                    line.attachment.length > 0 ? (
                       <View style={styles.attachmentContainer}>
                         {line.attachment.map((base64Url: string, i: number) => {
                           if (!base64Url || base64Url.trim() === "")
@@ -353,11 +442,20 @@ export function MrPDF({ mrHeader, mrLines }: props) {
                           );
                         })}
                       </View>
-                    )}
-                </View>
+                    ) : null}
+                  </View>
+                )}
               </View>
             );
           })}
+        </View>
+
+        {/* Summary */}
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>
+            TOTAL ITEMS: {totalItems} | TOTAL QTY:{" "}
+            {formatQuantity(totalQuantity)}
+          </Text>
         </View>
 
         <Text

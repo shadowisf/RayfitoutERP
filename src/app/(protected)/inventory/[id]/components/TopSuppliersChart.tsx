@@ -45,10 +45,6 @@ const CustomTooltip = ({ active, payload, totalStock, unit }: any) => {
           />
           <strong style={{ fontSize: "12px" }}>{percentage}%</strong>
         </div>
-
-        {/* <div style={{ fontSize: "12px", color: "#737373" }}>
-          {data.value} {unit} ({percentage}%)
-        </div> */}
       </div>
     );
   }
@@ -62,11 +58,11 @@ export default function TopSuppliersChart({
 }: TopSuppliersChartProps) {
   const [isHovered, setIsHovered] = useState(false);
 
-  const formatNumber = (value: number): string | number => {
-    // ✅ Ensure value is a number and handle edge cases
+  const formatNumber = (value: number | string): string | number => {
+    // Convert to number first (handles both string and number inputs)
     const numValue = typeof value === "number" ? value : parseFloat(value);
 
-    // ✅ Check if conversion resulted in NaN
+    // Check if conversion resulted in NaN
     if (isNaN(numValue)) {
       return 0;
     }
@@ -81,6 +77,13 @@ export default function TopSuppliersChart({
     }
   };
 
+  // Helper to ensure quantity is a number
+  const toNumber = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    const num = typeof value === "number" ? value : parseFloat(value);
+    return isNaN(num) ? 0 : num;
+  };
+
   // Calculate net stock by supplier (accounting for issues and transfers)
   const calculateStockBySupplier = () => {
     const supplierMap: { [key: string]: number } = {};
@@ -91,7 +94,9 @@ export default function TopSuppliersChart({
       if (!supplierMap[supplier]) {
         supplierMap[supplier] = 0;
       }
-      supplierMap[supplier] += stock.quantity;
+      // Ensure quantity is treated as a number
+      const quantity = toNumber(stock.quantity);
+      supplierMap[supplier] += quantity;
     });
 
     // Subtract issued/transferred quantities
@@ -106,14 +111,10 @@ export default function TopSuppliersChart({
           const supplier = originalStock?.supplier_name || "Others";
 
           if (supplierMap[supplier]) {
-            supplierMap[supplier] -= transaction.quantity;
+            const quantity = toNumber(transaction.quantity);
+            supplierMap[supplier] -= quantity;
           }
         }
-      } else if (transaction.type.toLowerCase().includes("transfer")) {
-        // For transfers, we don't subtract because stock still exists in system
-        // It's just moved to a different location
-        // If you want to track by original supplier regardless of location,
-        // transfers don't affect supplier totals
       }
     });
 
@@ -145,10 +146,10 @@ export default function TopSuppliersChart({
     "#D3D3D3", // Gray - Others (typically last)
   ];
 
-  // Transform data for the chart
+  // Transform data for the chart - ensure value is number
   const chartData = stockBySupplier.map((item, index) => ({
     name: item.supplier,
-    value: item.quantity,
+    value: item.quantity, // Already a number from toNumber()
     color: COLORS[index % COLORS.length],
   }));
 
@@ -177,7 +178,7 @@ export default function TopSuppliersChart({
       <br />
       <br />
 
-      {stockBySupplier.length > 0 ? (
+      {chartData.length > 0 && totalStock > 0 ? (
         <>
           <div
             style={{ position: "relative", width: "200px", height: "200px" }}
@@ -194,6 +195,7 @@ export default function TopSuppliersChart({
                   outerRadius={90}
                   paddingAngle={2}
                   dataKey="value"
+                  isAnimationActive={true}
                 >
                   {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -231,53 +233,6 @@ export default function TopSuppliersChart({
                 ALL TIME
               </div>
             </div>
-
-            {/* Percentage Badge - Only show on hover */}
-            {/* {isHovered && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "10px",
-                  left: "10px",
-                  backgroundColor: "white",
-                  padding: "10px",
-                  borderRadius: "5px",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                  border: "1px solid #e0e0e0",
-                  pointerEvents: "none",
-                  zIndex: 50,
-                  opacity: 1,
-                  transition: "opacity 0.15s ease-in",
-                }}
-              >
-                <p style={{ margin: 0, fontWeight: "600", fontSize: "12px" }}>
-                  {chartData[0]?.name}
-                </p>
-                <p
-                  style={{
-                    margin: "4px 0 0 0",
-                    fontSize: "12px",
-                    color: "#737373",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: chartData[0]?.color || "#00804C",
-                      display: "inline-block",
-                    }}
-                  />
-                  {topSupplierPercentage}%
-                </p>
-              </div>
-            )} */}
           </div>
 
           {/* Supplier Legend */}
@@ -322,7 +277,7 @@ export default function TopSuppliersChart({
             color: "#737373",
           }}
         >
-          No supplier data available
+          No vendor data available
         </div>
       )}
     </div>
