@@ -367,8 +367,6 @@ export function MrPDF({ mrHeader, mrLines }: props) {
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <Text style={styles.colNum}>#</Text>
-            <Text style={styles.colCategory}>CATEGORY</Text>
-            <Text style={styles.colSubCategory}>SUBCATEGORY</Text>
             <Text style={styles[itemColKey]}>ITEM</Text>
             <Text style={styles[qtyColKey]}>QTY</Text>
 
@@ -388,14 +386,6 @@ export function MrPDF({ mrHeader, mrLines }: props) {
             return (
               <View key={line.id} style={rowStyle} wrap={false}>
                 <Text style={styles.colNum}>{index + 1}</Text>
-
-                <Text style={styles.colCategory}>
-                  {line.material_category || "-"}
-                </Text>
-
-                <Text style={styles.colSubCategory}>
-                  {line.material_subcategory || "-"}
-                </Text>
 
                 <Text
                   style={styles[itemColKey]}
@@ -448,14 +438,6 @@ export function MrPDF({ mrHeader, mrLines }: props) {
               </View>
             );
           })}
-        </View>
-
-        {/* Summary */}
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>
-            TOTAL ITEMS: {totalItems} | TOTAL QTY:{" "}
-            {formatQuantity(totalQuantity)}
-          </Text>
         </View>
 
         <Text
