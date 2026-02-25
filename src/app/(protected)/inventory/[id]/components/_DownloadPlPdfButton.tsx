@@ -3,7 +3,6 @@
 import Button from "@/app/components/Button";
 import { useEffect, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
-import { DnPdf } from "../../components/DnPdf";
 import { PlPdf } from "../../components/PlPdf";
 
 type props = {
@@ -75,7 +74,7 @@ export default function DownloadPlPdfButton({ transactionID }: props) {
       style={{ padding: "7px 20px", borderRadius: "25px" }}
       disabled={isProcessing}
     >
-      PACKING LIST
+      Packing List
       <img src={downloadIcon} alt="download" onClick={handleDownload} />
     </Button>
   );

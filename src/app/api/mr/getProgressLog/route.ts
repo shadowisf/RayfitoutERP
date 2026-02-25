@@ -28,6 +28,8 @@ export async function POST(req: Request) {
           pl.from_progress_id,
           pl.changed_by,
           pl.changed_at,
+          pl.rollback_reason,
+          pl.is_rollback,
           p.value as progress_name,
           fp.value as from_progress_name
         FROM mr_header_progress_log pl
@@ -52,6 +54,8 @@ export async function POST(req: Request) {
           pl.from_progress_id,
           pl.changed_by,
           pl.changed_at,
+          pl.rollback_reason,
+          pl.is_rollback,
           p.value as progress_name,
           fp.value as from_progress_name
         FROM mr_header_progress_log pl
@@ -88,6 +92,8 @@ export async function POST(req: Request) {
         from_progress_id: null,
         changed_by: header.requested_by,
         changed_at: header.date_requested,
+        rollback_reason: null,
+        is_rollback: 0,
         progress_name: "Draft",
         from_progress_name: null,
       };

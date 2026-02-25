@@ -1309,10 +1309,7 @@ export default function MR() {
                                         !canViewLPO(lpoCard, filterRelevant)
                                       }
                                     >
-                                      VIEW{" "}
-                                      <span style={{ marginLeft: "10px" }}>
-                                        &gt;
-                                      </span>
+                                      VIEW &gt;
                                     </Button>
                                   </div>
                                 );
@@ -1424,10 +1421,7 @@ export default function MR() {
                                       style={{ borderRadius: "50px" }}
                                       disabled={!canViewMR(mr, filterRelevant)}
                                     >
-                                      VIEW{" "}
-                                      <span style={{ marginLeft: "10px" }}>
-                                        &gt;
-                                      </span>
+                                      VIEW &gt;
                                     </Button>
                                   </div>
                                 );
@@ -1651,10 +1645,7 @@ export default function MR() {
                                       !canViewLPO(lpoCard, filterRelevant)
                                     }
                                   >
-                                    VIEW{" "}
-                                    <span style={{ marginLeft: "10px" }}>
-                                      &gt;
-                                    </span>
+                                    VIEW &gt;
                                   </Button>
                                 </div>
                               );

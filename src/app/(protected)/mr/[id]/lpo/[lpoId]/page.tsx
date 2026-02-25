@@ -2,6 +2,7 @@ import Button from "@/app/components/Button";
 import LpoLinesView from "./components/LpoLinesView";
 import { MrHeader } from "../../types/mrHeader";
 import DeleteLpoHeaderButton from "./components/_DeleteLpoHeaderButton";
+import CancelMaterialRequestButton from "../../components/_CancelMaterialRequest";
 import RequisitionTimeline from "../../components/RequisitionTimeline";
 import DownloadCompletedMrLpoPDFButton from "./components/_DownloadCompletedMrLpoPDFButton";
 
@@ -373,7 +374,16 @@ export default async function LpoWithID({
                   </div>
                 )}
               </div>
-              <div>
+              <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                {!isCompleted && (
+                  <CancelMaterialRequestButton
+                    mrHeader={mrHeader}
+                    currentProgressId={lpo.progress_id}
+                    lpoId={lpo.id}
+                  >
+                    Roll Back
+                  </CancelMaterialRequestButton>
+                )}
                 <DeleteLpoHeaderButton mrHeader={mrHeader} LpoHeader={lpo} />
               </div>
             </div>

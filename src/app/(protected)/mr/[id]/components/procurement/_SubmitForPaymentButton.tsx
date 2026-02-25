@@ -44,20 +44,23 @@ export default function SubmitForPaymentButton({
   } | null>(null);
 
   // Determine which suppliers to process
+  // In single mode, use suppliers array if explicitly provided (carries supplier type info)
   const suppliersToProcess =
     mode === "multi"
       ? suppliers
-      : lpoID
-        ? [
-            {
-              supplierId: 0,
-              lpoId: lpoID,
-              supplierType: "",
-              supplierName: "",
-              paymentValue: paymentValue,
-            },
-          ]
-        : [];
+      : suppliers.length > 0
+        ? suppliers
+        : lpoID
+          ? [
+              {
+                supplierId: 0,
+                lpoId: lpoID,
+                supplierType: "",
+                supplierName: "",
+                paymentValue: paymentValue,
+              },
+            ]
+          : [];
 
   // Categorize suppliers
   const creditSuppliers = suppliersToProcess.filter((s) =>
@@ -170,9 +173,9 @@ export default function SubmitForPaymentButton({
       return "SUBMIT FOR PAYMENT";
     }
 
-    // Single mode - check if we can determine type from suppliers array
-    if (suppliers.length === 1) {
-      const isCredit = suppliers[0].supplierType
+    // Single mode - check supplier type from suppliersToProcess or suppliers array
+    if (suppliersToProcess.length === 1) {
+      const isCredit = suppliersToProcess[0].supplierType
         .toLowerCase()
         .includes("credit");
       return isCredit ? "SUBMIT FOR DELIVERY" : "SUBMIT FOR PAYMENT";

@@ -73,11 +73,7 @@ export default function TransactionDetailsPopUpButton({
       </Button>
 
       {isOpen && (
-        <FormPopUp
-          header={"TRANSACTION DETAILS"}
-          setIsOpen={setIsOpen}
-          style={{ textTransform: "uppercase" }}
-        >
+        <FormPopUp header={"TRANSACTION DETAILS"} setIsOpen={setIsOpen}>
           <div
             style={{
               backgroundColor: "rgba(243, 243, 243, 1)",
@@ -356,15 +352,15 @@ export default function TransactionDetailsPopUpButton({
 
             <div style={{ maxWidth: "750px" }}>
               <div style={{ display: "flex", gap: "10px" }}>
-                {transaction?.packing_list_required === 1 && (
-                  <DownloadPlPdfButton transactionID={transferID} />
-                )}
-
                 <DownloadDnPdfButton transactionID={transferID} />
                 <UploadSignedDnButton
                   transactionID={transferID}
                   onSuccess={onSuccess}
                 />
+
+                {transaction?.packing_list_required === 1 && (
+                  <DownloadPlPdfButton transactionID={transferID} />
+                )}
               </div>
 
               <br />

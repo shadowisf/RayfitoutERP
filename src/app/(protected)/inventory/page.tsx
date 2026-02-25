@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { InventoryItem } from "./types/inventoryItem";
 import CreateInventoryItemButton from "./components/_CreateInventoryItemButton";
 import Button from "@/app/components/Button";
@@ -26,8 +26,8 @@ export default function Inventory() {
 
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
 
-  // ✅ NEW: Store ALL quantities, not just current page
-  const [allQuantities, setAllQuantities] = useState<{
+  // ✅ CHANGED: Only store quantities for CURRENT PAGE items
+  const [pageQuantities, setPageQuantities] = useState<{
     [itemId: number]: {
       available_quantity: number;
       total_stock: number;
@@ -35,7 +35,7 @@ export default function Inventory() {
     };
   }>({});
 
-  const [isLoadingAllQuantities, setIsLoadingAllQuantities] = useState(false);
+  const [isLoadingPageQuantities, setIsLoadingPageQuantities] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"inventory" | "transfer-log">(
     "inventory",
@@ -84,6 +84,17 @@ export default function Inventory() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // ✅ NEW: Cache for quantities to avoid refetching when going back to previous pages
+  const quantitiesCache = useRef<{
+    [cacheKey: string]: {
+      [itemId: number]: {
+        available_quantity: number;
+        total_stock: number;
+        total_issued: number;
+      };
+    };
+  }>({});
+
   useEffect(() => {
     // Check URL parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -118,46 +129,58 @@ export default function Inventory() {
     }
   }
 
-  // ✅ NEW: Fetch ALL quantities for filtered items (not just current page)
+  // ✅ OPTIMIZED: Only fetch quantities for current page items
   useEffect(() => {
-    async function fetchAllQuantitiesForFilter() {
-      // First apply filters (except quantity-based ones) to get the filtered list
-      let filtered = getFilteredInventoryWithoutQuantities();
+    async function fetchPageQuantities() {
+      // Get current page items first (without quantities)
+      const baseFiltered = getFilteredInventoryWithoutQuantities();
 
-      if (!filtered || filtered.length === 0) {
-        setAllQuantities({});
+      // Apply sorting to get correct order
+      const sortedItems = applySorting(baseFiltered);
+
+      // Get only current page items
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const currentPageItems = sortedItems.slice(startIndex, endIndex);
+
+      if (currentPageItems.length === 0) {
+        setPageQuantities({});
         return;
       }
 
-      setIsLoadingAllQuantities(true);
+      // Create cache key based on current filters that affect quantities
+      const cacheKey = JSON.stringify({
+        selectedProjects: filters.selectedProjects,
+        selectedLocations: filters.selectedLocations,
+        page: currentPage,
+        itemIds: currentPageItems.map((i) => i.id).sort(), // Sort for consistent cache key
+      });
+
+      // Check if we have cached data for this exact scenario
+      if (quantitiesCache.current[cacheKey]) {
+        setPageQuantities(quantitiesCache.current[cacheKey]);
+        return;
+      }
+
+      setIsLoadingPageQuantities(true);
 
       try {
         const hasProjectFilter = filters.selectedProjects.length === 1;
         const hasLocationFilter = filters.selectedLocations.length === 1;
 
-        const allItemIds = filtered.map((item) => item.id);
-        const quantitiesMap: typeof allQuantities = {};
+        const quantitiesMap: typeof pageQuantities = {};
 
-        // Process in batches
-        const batchSize = 25;
+        // Process current page items in smaller batches
+        const batchSize = 10; // Smaller batches for page-level fetching
         const batches = [];
 
-        for (let i = 0; i < allItemIds.length; i += batchSize) {
-          batches.push(allItemIds.slice(i, i + batchSize));
+        for (let i = 0; i < currentPageItems.length; i += batchSize) {
+          batches.push(currentPageItems.slice(i, i + batchSize));
         }
 
         for (const batch of batches) {
-          const quantityPromises = batch.map(async (itemId) => {
-            // Skip if we already have this quantity cached
-            if (
-              allQuantities[itemId] &&
-              !hasProjectFilter &&
-              !hasLocationFilter
-            ) {
-              return { itemId, quantity: allQuantities[itemId], cached: true };
-            }
-
-            const body: any = { inventory_item_id: itemId };
+          const quantityPromises = batch.map(async (item) => {
+            const body: any = { inventory_item_id: item.id };
 
             if (hasProjectFilter) {
               body.project_id = filters.selectedProjects[0];
@@ -180,24 +203,22 @@ export default function Inventory() {
 
             if (data.success && data.data) {
               return {
-                itemId,
+                itemId: item.id,
                 quantity: {
                   available_quantity: data.data.available_quantity || 0,
                   total_stock: data.data.total_stock || 0,
                   total_issued: data.data.total_issued || 0,
                 },
-                cached: false,
               };
             }
 
             return {
-              itemId,
+              itemId: item.id,
               quantity: {
                 available_quantity: 0,
                 total_stock: 0,
                 total_issued: 0,
               },
-              cached: false,
             };
           });
 
@@ -208,19 +229,25 @@ export default function Inventory() {
           });
 
           // Small delay to prevent overwhelming the server
-          await new Promise((resolve) => setTimeout(resolve, 50));
+          await new Promise((resolve) => setTimeout(resolve, 30));
         }
 
-        setAllQuantities(quantitiesMap);
+        // Cache the results
+        quantitiesCache.current[cacheKey] = quantitiesMap;
+        setPageQuantities(quantitiesMap);
       } catch (error) {
-        console.error("Error fetching all quantities:", error);
+        console.error("Error fetching page quantities:", error);
       } finally {
-        setIsLoadingAllQuantities(false);
+        setIsLoadingPageQuantities(false);
       }
     }
 
-    fetchAllQuantitiesForFilter();
+    // Only fetch quantities when on inventory tab
+    if (activeTab === "inventory") {
+      fetchPageQuantities();
+    }
   }, [
+    currentPage,
     inventory,
     activeCategory,
     searchQuery,
@@ -228,14 +255,15 @@ export default function Inventory() {
     filters.selectedLocations,
     filters.selectedProjects,
     filters.stockAddedIn,
-    // Note: we don't include sortOrder here since sorting doesn't change quantities
+    sortOrder,
+    activeTab,
   ]);
 
   useEffect(() => {
     getInventoryItems();
   }, []);
 
-  // Fetch all stocks for filtering
+  // Fetch all stocks for filtering (this is still needed for location/project filters)
   useEffect(() => {
     async function fetchAllStocks() {
       if (!inventory || inventory.length === 0) return;
@@ -444,8 +472,8 @@ export default function Inventory() {
     return inventory.filter((item) => item.category_name === category).length;
   };
 
-  // ✅ NEW: Filter without quantity data (for initial filtering before fetch)
-  const getFilteredInventoryWithoutQuantities = () => {
+  // ✅ Filter without quantity data (for initial filtering before fetch)
+  const getFilteredInventoryWithoutQuantities = useCallback(() => {
     let processed = inventory;
 
     if (filters.selectedCategories.length > 0) {
@@ -524,18 +552,62 @@ export default function Inventory() {
     }
 
     return processed;
-  };
+  }, [
+    inventory,
+    filters.selectedCategories,
+    filters.selectedLocations,
+    filters.selectedProjects,
+    filters.stockAddedIn,
+    activeCategory,
+    searchQuery,
+    stocksByInventoryItem,
+  ]);
 
-  // ✅ FIXED: Sort ALL items first, then paginate
-  const getProcessedInventory = () => {
+  // ✅ NEW: Separate sorting function
+  const applySorting = useCallback(
+    (items: InventoryItem[]) => {
+      if (sortOrder === "none") {
+        // Still sort empty stock to end even when no sort order selected
+        return [...items].sort((a, b) => {
+          // We don't have quantities here, so we can't sort by stock level
+          // Empty stock sorting will happen after quantities are loaded
+          return 0;
+        });
+      }
+
+      return [...items].sort((a, b) => {
+        if (sortOrder === "newest-oldest" || sortOrder === "oldest-newest") {
+          const dateA = new Date(a.created_at).getTime();
+          const dateB = new Date(b.created_at).getTime();
+
+          if (sortOrder === "newest-oldest") {
+            return dateB - dateA;
+          } else {
+            return dateA - dateB;
+          }
+        }
+        return 0;
+      });
+    },
+    [sortOrder],
+  );
+
+  // ✅ FIXED: Get processed inventory for display (only current page has quantities)
+  const getProcessedInventory = useCallback(() => {
     // Start with filtered items (without quantity filters)
     let processed = getFilteredInventoryWithoutQuantities();
 
-    // Apply quantity-based filters using allQuantities
+    // Apply date-based sorting only (quantity sorting happens after fetch)
+    processed = applySorting(processed);
+
+    // Apply quantity-based filters using pageQuantities (only has data for current page)
     if (filters.selectedStockStatuses.length > 0) {
       processed = processed.filter((item) => {
-        const quantityData = allQuantities[item.id];
-        const availableQty = quantityData?.available_quantity ?? 0;
+        const quantityData = pageQuantities[item.id];
+        // If we don't have quantity data yet, include item (will be filtered client-side after load)
+        if (!quantityData) return true;
+
+        const availableQty = quantityData.available_quantity ?? 0;
         const stockStatus = getStockStatus(
           availableQty,
           item.minimum_stock_quantity,
@@ -550,16 +622,18 @@ export default function Inventory() {
       const rawQuery = searchQuery.toLowerCase().trim();
 
       processed = processed.filter((item) => {
-        // Re-check description/ID (already filtered above but safe to recheck)
+        // Re-check description/ID
         const descriptionMatch = item.description
           .toLowerCase()
           .includes(rawQuery);
         const formattedInventoryId = `inv-${item.id.toString().padStart(5, "0")}`;
         const inventoryIdMatch = formattedInventoryId.includes(rawQuery);
 
-        // Check quantity
-        const quantityData = allQuantities[item.id];
-        const availableQty = quantityData?.available_quantity ?? 0;
+        // Check quantity (only if we have loaded it)
+        const quantityData = pageQuantities[item.id];
+        if (!quantityData) return descriptionMatch || inventoryIdMatch;
+
+        const availableQty = quantityData.available_quantity ?? 0;
         const cleanQuantity = parseFloat(availableQty.toString());
         const quantityUnitString = `${cleanQuantity} ${item.unit || ""}`
           .toLowerCase()
@@ -570,39 +644,48 @@ export default function Inventory() {
       });
     }
 
-    // ✅ Apply sort order to ALL items
-    if (sortOrder !== "none") {
-      processed = [...processed].sort((a, b) => {
-        if (sortOrder === "high-low" || sortOrder === "low-high") {
-          const qtyA = allQuantities[a.id]?.available_quantity ?? 0;
-          const qtyB = allQuantities[b.id]?.available_quantity ?? 0;
+    return processed;
+  }, [
+    getFilteredInventoryWithoutQuantities,
+    applySorting,
+    pageQuantities,
+    filters.selectedStockStatuses,
+    searchQuery,
+  ]);
 
-          if (sortOrder === "high-low") {
-            return qtyB - qtyA;
-          } else {
-            return qtyA - qtyB;
-          }
-        } else if (
-          sortOrder === "newest-oldest" ||
-          sortOrder === "oldest-newest"
-        ) {
-          const dateA = new Date(a.created_at).getTime();
-          const dateB = new Date(b.created_at).getTime();
+  // ✅ Use useMemo to prevent recalculation on every render
+  const processedInventory = useMemo(
+    () => getProcessedInventory(),
+    [getProcessedInventory],
+  );
 
-          if (sortOrder === "newest-oldest") {
-            return dateB - dateA;
-          } else {
-            return dateA - dateB;
-          }
+  // ✅ Pagination calculations
+  const totalPages = Math.ceil(processedInventory.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+
+  // ✅ For display, we need to re-sort current page items if sorting by quantity
+  const currentItems = useMemo(() => {
+    let items = processedInventory.slice(startIndex, endIndex);
+
+    // Apply quantity-based sorting to current page items only
+    if (sortOrder === "high-low" || sortOrder === "low-high") {
+      items = [...items].sort((a, b) => {
+        const qtyA = pageQuantities[a.id]?.available_quantity ?? 0;
+        const qtyB = pageQuantities[b.id]?.available_quantity ?? 0;
+
+        if (sortOrder === "high-low") {
+          return qtyB - qtyA;
+        } else {
+          return qtyA - qtyB;
         }
-        return 0;
       });
     }
 
-    // ✅ ALWAYS sort empty stock to the end (preserving previous sort order)
-    processed = [...processed].sort((a, b) => {
-      const qtyA = allQuantities[a.id]?.available_quantity ?? 0;
-      const qtyB = allQuantities[b.id]?.available_quantity ?? 0;
+    // Always sort empty stock to end for current page
+    items = [...items].sort((a, b) => {
+      const qtyA = pageQuantities[a.id]?.available_quantity ?? 0;
+      const qtyB = pageQuantities[b.id]?.available_quantity ?? 0;
 
       const isEmptyA = qtyA === 0;
       const isEmptyB = qtyB === 0;
@@ -612,35 +695,14 @@ export default function Inventory() {
       return -1;
     });
 
-    return processed;
-  };
-
-  // ✅ Use useMemo to prevent recalculation on every render
-  const processedInventory = useMemo(
-    () => getProcessedInventory(),
-    [
-      inventory,
-      allQuantities,
-      activeCategory,
-      searchQuery,
-      sortOrder,
-      filters.selectedCategories,
-      filters.selectedLocations,
-      filters.selectedProjects,
-      filters.stockAddedIn,
-      filters.selectedStockStatuses,
-    ],
-  );
-
-  // ✅ Pagination calculations - NOW WORKS CORRECTLY because we sort ALL first
-  const totalPages = Math.ceil(processedInventory.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentItems = processedInventory.slice(startIndex, endIndex);
+    return items;
+  }, [processedInventory, startIndex, endIndex, sortOrder, pageQuantities]);
 
   // ✅ Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
+    // Clear cache when filters change significantly
+    quantitiesCache.current = {};
   }, [
     activeCategory,
     searchQuery,
@@ -827,6 +889,8 @@ export default function Inventory() {
       stockAddedIn: "all",
       selectedStockStatuses: [],
     });
+    // Clear cache when resetting filters
+    quantitiesCache.current = {};
   };
 
   const hasActiveFilters =
@@ -1470,7 +1534,7 @@ export default function Inventory() {
 
           {/* Inventory Table */}
           <div style={{ overflowX: "auto" }}>
-            {isLoadingAllQuantities ? (
+            {isLoadingPageQuantities && currentItems.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
                 Loading...
               </div>
@@ -1489,7 +1553,7 @@ export default function Inventory() {
                   </thead>
                   <tbody>
                     {currentItems.map((item, index) => {
-                      const quantityData = allQuantities[item.id];
+                      const quantityData = pageQuantities[item.id];
                       const availableQty =
                         quantityData?.available_quantity ?? 0;
 
@@ -1550,18 +1614,34 @@ export default function Inventory() {
                           </td>
 
                           <td style={{ fontWeight: "600" }}>
-                            {`${availableQty} ${item.unit || ""}`}
+                            {isLoadingPageQuantities && !quantityData ? (
+                              <span style={{ color: "#888" }}>Loading...</span>
+                            ) : (
+                              `${availableQty} ${item.unit || ""}`
+                            )}
                           </td>
                           <td>
-                            <div
-                              className="approval-pill normal-text"
-                              style={{
-                                backgroundColor: stockStatus.bgColor,
-                                color: stockStatus.textColor,
-                              }}
-                            >
-                              {stockStatus.label}
-                            </div>
+                            {isLoadingPageQuantities && !quantityData ? (
+                              <div
+                                className="approval-pill normal-text"
+                                style={{
+                                  backgroundColor: "rgba(231, 231, 231, 1)",
+                                  color: "rgba(107, 107, 107, 1)",
+                                }}
+                              >
+                                LOADING...
+                              </div>
+                            ) : (
+                              <div
+                                className="approval-pill normal-text"
+                                style={{
+                                  backgroundColor: stockStatus.bgColor,
+                                  color: stockStatus.textColor,
+                                }}
+                              >
+                                {stockStatus.label}
+                              </div>
+                            )}
                           </td>
                           <td>
                             <div style={{ display: "flex", gap: "10px" }}>

@@ -185,22 +185,52 @@ export async function PUT(req: Request) {
     const formattedId = `${prefix}-${String(body.id).padStart(5, "0")}`;
 
     if (body.action === "cancelMaterialRequest") {
-      await db.query(`UPDATE mr_headers SET progress_id = ? WHERE id = ?`, [
-        body.rollback_progress_id,
-        body.id,
-      ]);
+      const lpoId = body.lpo_id ? Number(body.lpo_id) : null;
 
-      await db.query(
-        `INSERT INTO mr_header_progress_log
-   (mr_header_id, progress_id, from_progress_id, changed_by)
-   VALUES (?, ?, ?, ?)`,
-        [
-          body.id,
+      if (lpoId) {
+        // LPO-level rollback: update the LPO's progress, not the MR header
+        await db.query(`UPDATE lpo SET progress_id = ? WHERE id = ?`, [
           body.rollback_progress_id,
-          body.current_progress_id || null,
-          `${body.changed_by} (ROLLBACK)`,
-        ],
-      );
+          lpoId,
+        ]);
+
+        await db.query(
+          `INSERT INTO mr_header_progress_log
+     (mr_header_id, lpo_id, progress_id, from_progress_id, changed_by, rollback_reason, is_rollback)
+     VALUES (?, ?, ?, ?, ?, ?, 1)`,
+          [
+            body.id,
+            lpoId,
+            body.rollback_progress_id,
+            body.current_progress_id || null,
+            body.changed_by,
+            body.rollback_reason,
+          ],
+        );
+      } else {
+        // MR-level rollback: update the MR header's progress
+        await db.query(`UPDATE mr_headers SET progress_id = ? WHERE id = ?`, [
+          body.rollback_progress_id,
+          body.id,
+        ]);
+
+        await db.query(
+          `INSERT INTO mr_header_progress_log
+     (mr_header_id, progress_id, from_progress_id, changed_by, rollback_reason, is_rollback)
+     VALUES (?, ?, ?, ?, ?, 1)`,
+          [
+            body.id,
+            body.rollback_progress_id,
+            body.current_progress_id || null,
+            body.changed_by,
+            body.rollback_reason,
+          ],
+        );
+      }
+
+      const lpoLabel = lpoId
+        ? ` (LPO-${String(lpoId).padStart(5, "0")})`
+        : "";
 
       await db.query(
         `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
@@ -208,7 +238,7 @@ export async function PUT(req: Request) {
           body.id,
           8,
           `Rolled Back ${prefix}`,
-          `${formattedId} was moved to the ${body.rollback_progress_name} stage`,
+          `${formattedId}${lpoLabel} was moved to the ${body.rollback_progress_name} stage`,
         ],
       );
 
@@ -218,7 +248,7 @@ export async function PUT(req: Request) {
           body.id,
           body.department_id,
           `Rolled Back ${prefix}`,
-          `Your ${formattedId} was moved to the ${body.rollback_progress_name} stage`,
+          `Your ${formattedId}${lpoLabel} was moved to the ${body.rollback_progress_name} stage`,
         ],
       );
 
