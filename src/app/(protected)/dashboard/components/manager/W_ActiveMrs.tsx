@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "../OverviewHoverPopup";
 
 type props = {
@@ -8,6 +9,7 @@ type props = {
 };
 
 export default function ActiveMrsWidget({ filterDays }: props) {
+  const router = useRouter();
   const fileIcon = "/icons/file.svg";
   const upArrow = "/icons/arrow-up-chart-green-big.svg";
   const downArrow = "/icons/arrow-down-chart-red-big.svg";
@@ -122,7 +124,8 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   return (
     <div
       className="item"
-      style={{ backgroundColor }}
+      style={{ backgroundColor, cursor: "pointer" }}
+      onClick={() => router.push("/dashboard/details/active-mrs")}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -145,7 +148,14 @@ export default function ActiveMrsWidget({ filterDays }: props) {
           mouseY={mousePosition.y}
           items={items}
           totalCount={totalCount}
-          columns={[{ key: "display_id", label: "MR/LPO NUMBER" }]}
+          columns={[
+            { key: "display_id", label: "MR/LPO NUMBER" },
+            {
+              key: "item_count",
+              label: "ITEMS",
+              format: (val: number) => `${val} items`,
+            },
+          ]}
           emptyMessage="No active MRs"
         />
       )}

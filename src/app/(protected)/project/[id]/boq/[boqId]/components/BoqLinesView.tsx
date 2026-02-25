@@ -578,7 +578,7 @@ export default function BoqLinesView({
                 <tr>
                   <th>#</th>
                   <th>DN NUMBER & DATE</th>
-                  <th style={{ minWidth: "600px" }}>ITEM</th>
+                  <th>ITEM</th>
                   <th>QUANTITY</th>
                   {canSeePrice && (
                     <>
@@ -904,46 +904,60 @@ export default function BoqLinesView({
       <br />
       <br />
 
-      <div className="category-grid">
-        <div style={{ position: "relative", flex: 1, maxWidth: "625px" }}>
+      <div
+        className="category-grid"
+        style={{ display: "flex", gap: "50px", alignItems: "center" }}
+      >
+        {/* Slider container - now flex: 1 to take remaining space */}
+        <div
+          style={{
+            position: "relative",
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+          }}
+        >
           {showLeftArrow && (
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: "300px",
-                background:
-                  "linear-gradient(to right, #f8f9fb 0%, rgba(255, 255, 255, 0) 100%)",
-                pointerEvents: "none",
-                zIndex: 5,
-              }}
-            />
-          )}
-          {showLeftArrow && (
-            <button
-              onClick={() => scroll("left")}
-              style={{
-                position: "absolute",
-                left: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: 10,
-                backgroundColor: "black",
-                color: "white",
-                border: "none",
-                borderRadius: "10px",
-                width: "40px",
-                height: "40px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <img src={arrowRight} style={{ transform: "rotate(-180deg)" }} />
-            </button>
+            <>
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: "300px",
+                  background:
+                    "linear-gradient(to right, #f8f9fb 0%,  rgba(248, 249, 251, 0) 100%)",
+                  pointerEvents: "none",
+                  zIndex: 5,
+                }}
+              />
+              <button
+                onClick={() => scroll("left")}
+                style={{
+                  position: "absolute",
+                  left: "0px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  backgroundColor: "black",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "10px",
+                  width: "40px",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <img
+                  src={arrowRight}
+                  style={{ transform: "rotate(-180deg)" }}
+                />
+              </button>
+            </>
           )}
 
           <div
@@ -953,6 +967,7 @@ export default function BoqLinesView({
               overflowX: "auto",
               scrollbarWidth: "none",
               msOverflowStyle: "none",
+              width: "100%",
             }}
           >
             <style jsx>{`
@@ -970,7 +985,9 @@ export default function BoqLinesView({
                 items={categories}
                 strategy={horizontalListSortingStrategy}
               >
-                <div style={{ display: "flex", gap: "1px" }}>
+                <div
+                  style={{ display: "flex", gap: "1px", width: "max-content" }}
+                >
                   {canSeePrice && (
                     <div
                       className={`item ${activeCategory === "SUMMARY" ? "active" : ""}`}
@@ -1032,50 +1049,51 @@ export default function BoqLinesView({
           </div>
 
           {showRightArrow && (
-            <div
-              style={{
-                position: "absolute",
-                right: 0,
-                top: 0,
-                bottom: 0,
-                width: "300px",
-                background:
-                  "linear-gradient(to left, #f8f9fb 0%, rgba(255, 255, 255, 0) 100%)",
-                pointerEvents: "none",
-                zIndex: 5,
-              }}
-            />
-          )}
-          {showRightArrow && (
-            <button
-              onClick={() => scroll("right")}
-              style={{
-                position: "absolute",
-                right: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: 10,
-                backgroundColor: "black",
-                borderRadius: "10px",
-                color: "white",
-                border: "none",
-                width: "40px",
-                height: "40px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <img src={arrowRight} />
-            </button>
+            <>
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: "300px",
+                  background:
+                    "linear-gradient(to left, #f8f9fb 0%, rgba(248, 249, 251, 0) 100%)",
+                  pointerEvents: "none",
+                  zIndex: 5,
+                }}
+              />
+              <button
+                onClick={() => scroll("right")}
+                style={{
+                  position: "absolute",
+                  right: "0px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  backgroundColor: "black",
+                  borderRadius: "10px",
+                  color: "white",
+                  border: "none",
+                  width: "40px",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <img src={arrowRight} />
+              </button>
+            </>
           )}
         </div>
 
-        <div style={{ display: "flex", gap: "10px" }}>
+        {/* Right side buttons - fixed width, no shrink */}
+        <div style={{ display: "flex", gap: "10px", flexShrink: 0 }}>
           <div
             style={{
-              maxWidth: "300px",
+              width: "300px",
               backgroundColor: "white",
               position: "relative",
             }}
@@ -1086,11 +1104,12 @@ export default function BoqLinesView({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
-                width: "300px",
+                width: "100%",
                 padding: "10px 40px 10px 15px",
                 borderRadius: "8px",
                 border: "1px solid rgba(223, 223, 223, 1)",
                 fontSize: "14px",
+                boxSizing: "border-box",
               }}
             />
             <img

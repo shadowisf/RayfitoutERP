@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "./OverviewHoverPopup";
 
 type props = {
@@ -8,6 +9,7 @@ type props = {
 };
 
 export default function PendingPaymentMrsWidget({ filterDays }: props) {
+  const router = useRouter();
   const paymentsIcon = "/icons/payments.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";
@@ -123,6 +125,8 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
   return (
     <div
       className="item"
+      style={{ cursor: "pointer" }}
+      onClick={() => router.push("/dashboard/details/pending-payments")}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -150,7 +154,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
             {
               key: "amount",
               label: "AMOUNT",
-              format: (val: number) => `+ AED ${val.toLocaleString("en-US")}`,
+              format: (val: number) => `+ AED ${val.toFixed(2)}`,
             },
           ]}
           emptyMessage="No pending payments"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "./OverviewHoverPopup";
 
 type props = {
@@ -8,6 +9,7 @@ type props = {
 };
 
 export default function PendingApprovalMrsWidget({ filterDays }: props) {
+  const router = useRouter();
   const approvalsIcon = "/icons/approvals.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";
@@ -123,6 +125,8 @@ export default function PendingApprovalMrsWidget({ filterDays }: props) {
   return (
     <div
       className="item"
+      style={{ cursor: "pointer" }}
+      onClick={() => router.push("/dashboard/details/pending-approvals")}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -147,7 +151,11 @@ export default function PendingApprovalMrsWidget({ filterDays }: props) {
           totalCount={totalCount}
           columns={[
             { key: "display_id", label: "MR NUMBER" },
-            { key: "stage", label: "STAGE" },
+            {
+              key: "item_count",
+              label: "ITEMS",
+              format: (val: number) => `${val} items`,
+            },
           ]}
           emptyMessage="No pending approvals"
         />

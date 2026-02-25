@@ -22,6 +22,7 @@ type InputItemProps = {
   onClick?: () => void;
   noOptionalLabel?: boolean;
   postfixText?: string;
+  min?: string; // Add min prop for date inputs
 };
 
 export default function InputItem({
@@ -39,6 +40,7 @@ export default function InputItem({
   onClick,
   noOptionalLabel,
   postfixText,
+  min, // Destructure min prop
 }: InputItemProps) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -61,6 +63,7 @@ export default function InputItem({
             placeholder={placeholder || `SELECT ${label}`}
             required={required}
             disabled={disabled}
+            min={min} // Add min attribute here
             onClick={(e) => {
               e.currentTarget.showPicker?.();
               onClick?.();
@@ -163,6 +166,7 @@ export default function InputItem({
             required={required}
             disabled={disabled}
             onClick={onClick}
+            min={min} // Also useful for number inputs
           />
         </div>
       );

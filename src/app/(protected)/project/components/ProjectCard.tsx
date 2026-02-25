@@ -101,13 +101,11 @@ export default function ProjectCard({ project, onSuccess }: props) {
                       backgroundColor: "rgba(134,241,181,1)",
                       color: "rgba(52,100,73,1)",
                       textTransform: "uppercase",
-                      fontSize: "10px",
                     }
                   : {
                       backgroundColor: "rgba(255, 250, 189, 1)",
                       color: "rgba(134, 83, 47, 1)",
                       textTransform: "uppercase",
-                      fontSize: "10px",
                     }
               }
             >

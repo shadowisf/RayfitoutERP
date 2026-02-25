@@ -194,7 +194,7 @@ export default function Boq() {
   return (
     <>
       <div className="dashboard">
-        <h1>BILL OF QUANTITES</h1>
+        <h1>BILL OF QUANTITIES</h1>
 
         <br />
 
@@ -259,7 +259,7 @@ export default function Boq() {
               <option value="project">SORT BY PROJECT</option>
               <option value="total-items">SORT BY TOTAL ITEMS</option>
               {canSeePrice && (
-                <option value="total-cost">SORT BY TOTAL COST</option>
+                <option value="total-cost">SORT BY TOTAL VALUE</option>
               )}
 
               <option value="newest">SORT BY NEWEST TO OLDEST BILLS</option>
@@ -314,7 +314,7 @@ export default function Boq() {
                 <th>PROJECT</th>
                 <th>CLIENT NAME</th>
                 <th>TOTAL ITEMS</th>
-                {canSeePrice && <th>TOTAL COST</th>}
+                {canSeePrice && <th>TOTAL VALUE</th>}
                 <th>CREATION DATE</th>
                 <th></th>
               </tr>

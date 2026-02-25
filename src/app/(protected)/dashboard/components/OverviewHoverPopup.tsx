@@ -19,13 +19,11 @@ export default function OverviewHoverPopup({
   isLoading,
   emptyMessage = "No items found",
 }: OverviewHoverPopupProps) {
-  // Clamp position so popup doesn't go off-screen
   const popupWidth = 360;
-  const popupMaxHeight = 400;
+  const popupMaxHeight = 350;
   const offsetX = 20;
   const offsetY = 20;
 
-  // Use viewport-aware positioning
   const left =
     mouseX + offsetX + popupWidth > window.innerWidth
       ? mouseX - popupWidth - 10
@@ -48,57 +46,86 @@ export default function OverviewHoverPopup({
         color: "black",
         border: "1px solid rgba(223,223,223,1)",
         borderRadius: "10px",
-        padding: "15px",
+        padding: "0",
         boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
         zIndex: 10000,
         minWidth: "280px",
         maxWidth: `${popupWidth}px`,
-        maxHeight: `${popupMaxHeight}px`,
-        overflowY: "auto",
         pointerEvents: "none",
       }}
     >
       {isLoading ? (
-        <div style={{ textAlign: "center", color: "#888", fontSize: "13px" }}>
+        <div
+          style={{
+            textAlign: "center",
+            color: "#888",
+            fontSize: "13px",
+            padding: "15px",
+          }}
+        >
           Loading...
         </div>
       ) : items.length > 0 ? (
         <>
-          <table className="items-table popup-hover">
-            <thead>
-              <tr>
-                {columns.map((col) => (
-                  <th key={col.key}>{col.label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, idx) => (
-                <tr key={idx}>
+          <div style={{ padding: "12px 12px 0 12px" }}>
+            <table className="items-table popup-hover">
+              <thead>
+                <tr>
                   {columns.map((col) => (
-                    <td key={col.key}>
-                      {col.format ? col.format(item[col.key]) : item[col.key]}
-                    </td>
+                    <th key={col.key}>{col.label}</th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {remaining > 0 && (
-            <div
-              style={{
-                textAlign: "center",
-                fontSize: "12px",
-                color: "#888",
-                marginTop: "8px",
-              }}
-            >
-              and {remaining} more...
-            </div>
-          )}
+              </thead>
+              <tbody>
+                {items.map((item, idx) => (
+                  <tr key={idx}>
+                    {columns.map((col) => (
+                      <td key={col.key}>
+                        {col.format ? col.format(item[col.key]) : item[col.key]}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {remaining > 0 && (
+              <div
+                style={{
+                  textAlign: "center",
+                  fontSize: "11px",
+                  color: "#888",
+                  marginTop: "6px",
+                  paddingBottom: "4px",
+                }}
+              >
+                {remaining} more...
+              </div>
+            )}
+          </div>
+
+          {/* Footer hint */}
+          <div
+            style={{
+              borderTop: "1px solid rgba(223,223,223,1)",
+              padding: "8px 12px",
+              textAlign: "center",
+              fontSize: "11px",
+              fontWeight: 600,
+              color: "#888",
+            }}
+          >
+            CLICK WIDGET TO VIEW DETAILS
+          </div>
         </>
       ) : (
-        <div style={{ textAlign: "center", fontSize: "13px", color: "#888" }}>
+        <div
+          style={{
+            textAlign: "center",
+            fontSize: "13px",
+            color: "#888",
+            padding: "15px",
+          }}
+        >
           {emptyMessage}
         </div>
       )}

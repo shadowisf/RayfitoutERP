@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "../OverviewHoverPopup";
 
 type props = {
@@ -8,6 +9,7 @@ type props = {
 };
 
 export default function PendingDeliveryMrsWidget({ filterDays }: props) {
+  const router = useRouter();
   const deliveriesIcon = "/icons/deliveries.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";
@@ -123,6 +125,8 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
   return (
     <div
       className="item"
+      style={{ cursor: "pointer" }}
+      onClick={() => router.push("/dashboard/details/pending-deliveries")}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -146,8 +150,12 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
           items={items}
           totalCount={totalCount}
           columns={[
-            { key: "display_id", label: "ID" },
-            { key: "detail", label: "PROJECT" },
+            { key: "display_id", label: "LPO NUMBER" },
+            {
+              key: "item_count",
+              label: "ITEMS",
+              format: (val: number) => `${val} items`,
+            },
           ]}
           emptyMessage="No pending deliveries"
         />

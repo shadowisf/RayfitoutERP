@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "../OverviewHoverPopup";
 
 type props = {
@@ -8,6 +9,7 @@ type props = {
 };
 
 export default function OverdueDeliveriesWidget({ filterDays }: props) {
+  const router = useRouter();
   const deliveriesIcon = "/icons/incomplete-deliveries.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
   const downArrow = "/icons/arrow-down-chart-green-big.svg";
@@ -119,6 +121,8 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
   return (
     <div
       className="item"
+      style={{ cursor: "pointer" }}
+      onClick={() => router.push("/dashboard/details/overdue-deliveries")}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -154,9 +158,8 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
           items={items}
           totalCount={totalCount}
           columns={[
-            { key: "display_id", label: "LPO" },
-            { key: "detail", label: "VENDOR" },
-            { key: "extra", label: "DUE DATE" },
+            { key: "display_id", label: "LPO NUMBER" },
+            { key: "item_count", label: "ITEMS", format: (val: number) => `${val} Items` },
           ]}
           emptyMessage="No overdue deliveries"
         />

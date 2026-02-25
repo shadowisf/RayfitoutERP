@@ -14,6 +14,7 @@ export default function NewMrButton() {
 
   const jobIcon = "/icons/job-req.svg";
   const mrIcon = "/icons/material-req.svg";
+  const warningIcon = "/icons/warning.svg";
 
   const router = useRouter();
 
@@ -26,10 +27,57 @@ export default function NewMrButton() {
   const [projects, setProjects] = useState<[]>([]);
 
   const [purposeReasonID, setPurposeReasonID] = useState<string | number>("");
-  /* const [boqLineID, setBoqLineID] = useState<(string | number)[]>([]); */
   const [projectID, setProjectID] = useState<string | number>("");
   const [requestedBy, setRequestedBy] = useState<string | number>("");
   const [neededBy, setNeededBy] = useState("");
+
+  // Check if user is manager (16) or QS (8) - they have no date restrictions
+  const isManagerOrQS =
+    userInfo?.departmentID === 16 || userInfo?.departmentID === 8;
+
+  // Check if selected date is at least 3 days from today
+  const isDateValid = () => {
+    if (!neededBy || isManagerOrQS) return true;
+
+    const selectedDate = new Date(neededBy);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() + 3);
+    minDate.setHours(0, 0, 0, 0);
+
+    return selectedDate >= minDate;
+  };
+
+  // Get days difference for display
+  const getDaysDifference = () => {
+    if (!neededBy) return null;
+
+    const selectedDate = new Date(neededBy);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const diffTime = selectedDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays;
+  };
+
+  // Get warning message
+  const getDateWarning = () => {
+    if (!neededBy || isManagerOrQS || isDateValid()) return null;
+
+    const daysDiff = getDaysDifference();
+
+    if (daysDiff !== null && daysDiff < 3) {
+      return `Minimum 3 days required for required date`;
+    }
+  };
+
+  const dateWarning = getDateWarning();
+  const daysDiff = getDaysDifference();
 
   useEffect(() => {
     if (isOpen && userInfo?.name) {
@@ -61,6 +109,12 @@ export default function NewMrButton() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Validate date before submitting
+    if (!isDateValid()) {
+      toast(getDateWarning() || "Invalid required date", "error");
+      return;
+    }
 
     if (purposeReasonID === 1 || purposeReasonID === 2) {
       if (!projectID) {
@@ -333,15 +387,41 @@ export default function NewMrButton() {
               disabled
             />
 
-            <InputItem
-              label={"REQUIRED DATE"}
-              value={neededBy}
-              type={"date"}
-              placeholder={"ENTER DATE"}
-              onChange={(e) => setNeededBy(e.target.value)}
-              required
-            />
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "5px",
+                flex: 1,
+              }}
+            >
+              <InputItem
+                label={"REQUIRED DATE"}
+                value={neededBy}
+                type={"date"}
+                placeholder={"ENTER DATE"}
+                onChange={(e) => setNeededBy(e.target.value)}
+                required
+                style={dateWarning ? { borderColor: "red" } : undefined}
+              />
+            </div>
           </div>
+
+          <br />
+
+          {/* Date validation warning - shows when date is less than 3 days */}
+          {dateWarning && (
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <img src={warningIcon} alt="warning" />
+              <p
+                style={{
+                  color: "rgba(175, 61, 61, 1)",
+                }}
+              >
+                {dateWarning}
+              </p>
+            </div>
+          )}
         </FormPopUp>
       )}
     </>
