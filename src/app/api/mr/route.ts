@@ -343,13 +343,31 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitForPricingResubmission") {
+      // Auto-query rejected quotations for the reject_reason
+      const [rejectedQuotations]: any = await db.query(
+        `SELECT ml.material_description, sq.reject_comment
+         FROM mr_line_supplier_quotation sq
+         JOIN mr_lines ml ON sq.mr_line_id = ml.id
+         WHERE ml.mr_header_id = ? AND sq.approval_status = 'Rejected'`,
+        [body.id],
+      );
+
+      const rejectReason = rejectedQuotations.length > 0
+        ? JSON.stringify(
+            rejectedQuotations.map((item: any) => ({
+              item: item.material_description,
+              reason: item.reject_comment || "",
+            })),
+          )
+        : null;
+
       await db.query(`UPDATE mr_headers SET progress_id = 11 WHERE id = ?`, [
         body.id,
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 11, 10, ?)`,
-        [body.id, body.changed_by],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason) VALUES (?, 11, 10, ?, ?)`,
+        [body.id, body.changed_by, rejectReason],
       );
 
       await db.query(
@@ -479,13 +497,29 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitForResubmission") {
+      // Auto-query rejected items for the reject_reason
+      const [rejectedItems]: any = await db.query(
+        `SELECT material_description, reject_comment FROM mr_lines
+         WHERE mr_header_id = ? AND approval_status = 'Rejected'`,
+        [body.id],
+      );
+
+      const rejectReason = rejectedItems.length > 0
+        ? JSON.stringify(
+            rejectedItems.map((item: any) => ({
+              item: item.material_description,
+              reason: item.reject_comment || "",
+            })),
+          )
+        : null;
+
       await db.query(`UPDATE mr_headers SET progress_id = 5 WHERE id = ?`, [
         body.id,
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 5, 3, ?)`,
-        [body.id, body.changed_by],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason) VALUES (?, 5, 3, ?, ?)`,
+        [body.id, body.changed_by, rejectReason],
       );
 
       await db.query(
@@ -644,13 +678,29 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitForLPOResubmission") {
+      // Auto-query payment rejection info
+      const [rejectedPayments]: any = await db.query(
+        `SELECT l.id, l.payment_reject_comment
+         FROM lpo l WHERE l.mr_header_id = ? AND l.payment_status = 'Rejected'`,
+        [body.id],
+      );
+
+      const rejectReason = rejectedPayments.length > 0
+        ? JSON.stringify(
+            rejectedPayments.map((lpo: any) => ({
+              item: `LPO-${String(lpo.id).padStart(5, "0")}`,
+              reason: lpo.payment_reject_comment || "",
+            })),
+          )
+        : body.reject_reason || null;
+
       await db.query(`UPDATE mr_headers SET progress_id = 13 WHERE id = ?`, [
         body.id,
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 13, 14, ?)`,
-        [body.id, body.changed_by],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason) VALUES (?, 13, 14, ?, ?)`,
+        [body.id, body.changed_by, rejectReason],
       );
 
       await db.query(
@@ -672,8 +722,8 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 16, 17, ?)`,
-        [body.id, body.changed_by],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason) VALUES (?, 16, 17, ?, ?)`,
+        [body.id, body.changed_by, body.reject_reason || null],
       );
 
       return NextResponse.json({ status: 200 });
@@ -685,8 +735,8 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 23, 21, ?)`,
-        [body.id, body.changed_by],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason) VALUES (?, 23, 21, ?, ?)`,
+        [body.id, body.changed_by, body.reject_reason || null],
       );
 
       return NextResponse.json({ status: 200 });

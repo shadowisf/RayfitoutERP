@@ -312,15 +312,29 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitLpoForLPOResubmission") {
+      // Auto-query payment rejection info for this specific LPO
+      const [rejectedLpo]: any = await db.query(
+        `SELECT l.id, l.payment_reject_comment
+         FROM lpo l WHERE l.id = ? AND l.payment_status = 'Rejected'`,
+        [Number(body.lpo_id)],
+      );
+
+      const rejectReason = rejectedLpo.length > 0
+        ? JSON.stringify([{
+            item: `LPO-${String(body.lpo_id).padStart(5, "0")}`,
+            reason: rejectedLpo[0].payment_reject_comment || "",
+          }])
+        : body.reject_reason || null;
+
       await db.query(`UPDATE lpo SET progress_id = 13 WHERE id = ?`, [
         Number(body.lpo_id),
       ]);
 
       await db.query(
         `INSERT INTO mr_header_progress_log
-         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
-         VALUES (?, 13, 14, ?, ?)`,
-        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id, reject_reason)
+         VALUES (?, 13, 14, ?, ?, ?)`,
+        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id), rejectReason],
       );
 
       await db.query(
@@ -344,9 +358,9 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log
-         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
-         VALUES (?, 16, 17, ?, ?)`,
-        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id, reject_reason)
+         VALUES (?, 16, 17, ?, ?, ?)`,
+        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id), body.reject_reason || null],
       );
 
       return NextResponse.json({ success: true });
@@ -433,9 +447,9 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log
-         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
-         VALUES (?, 23, 21, ?, ?)`,
-        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
+         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id, reject_reason)
+         VALUES (?, 23, 21, ?, ?, ?)`,
+        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id), body.reject_reason || null],
       );
 
       return NextResponse.json({ success: true });
