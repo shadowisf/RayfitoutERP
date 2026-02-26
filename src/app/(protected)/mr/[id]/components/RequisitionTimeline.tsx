@@ -12,6 +12,7 @@ type ProgressLogEntry = {
   changed_at: string;
   rollback_reason: string | null;
   is_rollback: number;
+  reject_reason: string | null;
   progress_name: string;
   from_progress_name: string | null;
 };
@@ -505,6 +506,94 @@ export default function RequisitionTimeline({
                   </p>
                 </div>
               )}
+
+              {/* Show rejection reasons (item name + reason) if available */}
+              {stage.isRejection && detailEntry?.reject_reason && (() => {
+                try {
+                  const reasons: { item: string; reason: string }[] = JSON.parse(detailEntry.reject_reason);
+                  return (
+                    <div
+                      style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
+                    >
+                      <p
+                        style={{
+                          fontSize: "9px",
+                          color: "rgba(248, 77, 77, 1)",
+                          textTransform: "uppercase",
+                          fontWeight: "600",
+                          letterSpacing: "0.5px",
+                          textAlign: "left",
+                        }}
+                      >
+                        REJECTED ITEMS
+                      </p>
+                      {reasons.map((r, i) => (
+                        <div key={i} style={{ marginTop: i > 0 ? "4px" : "2px" }}>
+                          <p
+                            style={{
+                              fontSize: "10px",
+                              color: "black",
+                              fontWeight: "500",
+                              maxWidth: "120px",
+                              wordBreak: "break-word",
+                              textAlign: "left",
+                            }}
+                          >
+                            {r.item}
+                          </p>
+                          {r.reason && (
+                            <p
+                              style={{
+                                fontSize: "9px",
+                                color: "rgba(85, 80, 80, 1)",
+                                fontWeight: "400",
+                                maxWidth: "120px",
+                                wordBreak: "break-word",
+                                textAlign: "left",
+                                fontStyle: "italic",
+                              }}
+                            >
+                              {r.reason}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                } catch {
+                  // Fallback for plain text reject_reason
+                  return (
+                    <div
+                      style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
+                    >
+                      <p
+                        style={{
+                          fontSize: "9px",
+                          color: "rgba(248, 77, 77, 1)",
+                          textTransform: "uppercase",
+                          fontWeight: "600",
+                          letterSpacing: "0.5px",
+                          textAlign: "left",
+                        }}
+                      >
+                        REASON
+                      </p>
+                      <p
+                        style={{
+                          fontSize: "10px",
+                          color: "rgba(85, 80, 80, 1)",
+                          fontWeight: "400",
+                          maxWidth: "120px",
+                          wordBreak: "break-word",
+                          textAlign: "left",
+                        }}
+                      >
+                        {detailEntry.reject_reason}
+                      </p>
+                    </div>
+                  );
+                }
+              })()}
               <br />
             </div>
           );

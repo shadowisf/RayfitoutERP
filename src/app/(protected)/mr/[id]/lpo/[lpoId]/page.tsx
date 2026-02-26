@@ -374,7 +374,9 @@ export default async function LpoWithID({
                   </div>
                 )}
               </div>
-              <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+              <div
+                style={{ display: "flex", gap: "5px", alignItems: "center" }}
+              >
                 {!isCompleted && (
                   <CancelMaterialRequestButton
                     mrHeader={mrHeader}

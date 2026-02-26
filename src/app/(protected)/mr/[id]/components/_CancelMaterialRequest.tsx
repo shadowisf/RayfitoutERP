@@ -45,7 +45,7 @@ export default function CancelMaterialRequestButton({
   // All progress stages with their names
   const allProgressStages: { [key: number]: string } = {
     1: "Draft",
-    2: "QS Check",
+    2: "QS Review",
     3: "Manager Approval",
     7: "Quotations",
     9: "QS Price Check",

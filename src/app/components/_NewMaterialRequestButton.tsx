@@ -31,13 +31,9 @@ export default function NewMrButton() {
   const [requestedBy, setRequestedBy] = useState<string | number>("");
   const [neededBy, setNeededBy] = useState("");
 
-  // Check if user is manager (16) or QS (8) - they have no date restrictions
-  const isManagerOrQS =
-    userInfo?.departmentID === 16 || userInfo?.departmentID === 8;
-
-  // Check if selected date is at least 3 days from today
+  // Check if selected date is at least 3 days from today (applies to ALL users)
   const isDateValid = () => {
-    if (!neededBy || isManagerOrQS) return true;
+    if (!neededBy) return true;
 
     const selectedDate = new Date(neededBy);
     selectedDate.setHours(0, 0, 0, 0);
@@ -67,7 +63,7 @@ export default function NewMrButton() {
 
   // Get warning message
   const getDateWarning = () => {
-    if (!neededBy || isManagerOrQS || isDateValid()) return null;
+    if (!neededBy || isDateValid()) return null;
 
     const daysDiff = getDaysDifference();
 
