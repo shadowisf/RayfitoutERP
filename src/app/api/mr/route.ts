@@ -4,7 +4,14 @@ import { db } from "@/lib/db";
 
 export async function GET() {
   try {
-    const [rows]: any = await db.query(`SELECT * FROM vw_mr_headers`);
+    const [rows]: any = await db.query(`
+      SELECT vw.*,
+        CASE
+          WHEN vw.type = 'job' THEN (SELECT COUNT(*) FROM jo_lines jl WHERE jl.mr_header_id = vw.id)
+          ELSE (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw.id)
+        END AS item_count
+      FROM vw_mr_headers vw
+    `);
 
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {

@@ -450,12 +450,8 @@ export default function QuickInitialApprovalWidget() {
   if (isLoading) {
     return (
       <div className="widget-container">
-        <h3 style={{ color: "rgba(92, 92, 92, 1)", marginBottom: "15px" }}>
-          Initial Approval
-        </h3>
-        <p style={{ color: "gray", textAlign: "center", padding: "40px 0" }}>
-          Loading...
-        </p>
+        <h3 style={{ marginBottom: "15px" }}>Initial Approval</h3>
+        <p style={{ textAlign: "center", padding: "40px 0" }}>Loading...</p>
       </div>
     );
   }
@@ -463,12 +459,9 @@ export default function QuickInitialApprovalWidget() {
   if (mrHeaders.length === 0) {
     return (
       <div className="widget-container">
-        <h3 style={{ color: "rgba(92, 92, 92, 1)", marginBottom: "15px" }}>
-          Initial Approval
-        </h3>
+        <h3 style={{ marginBottom: "15px" }}>Initial Approval</h3>
         <p
           style={{
-            color: "gray",
             textAlign: "center",
             padding: "40px 0",
             fontSize: "14px",
@@ -482,7 +475,22 @@ export default function QuickInitialApprovalWidget() {
 
   return (
     <div className="widget-container">
-      <h3 style={{ color: "rgba(92, 92, 92, 1)" }}>Initial Approval</h3>
+      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        <h3>Initial Approval</h3>
+
+        <span
+          style={{
+            padding: "2px 10px",
+            backgroundColor: "rgba(234, 234, 234, 1)",
+            color: "rgba(89, 89, 89, 1)",
+            borderRadius: "50px",
+            fontSize: "10px",
+            fontWeight: "800",
+          }}
+        >
+          {mrHeaders.length} MRs
+        </span>
+      </div>
 
       <br />
 

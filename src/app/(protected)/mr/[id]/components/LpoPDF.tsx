@@ -5,7 +5,7 @@ import {
   View,
   StyleSheet,
   Font,
-  Image, // ✅ Import Image component
+  Image,
   Svg,
   Line,
 } from "@react-pdf/renderer";
@@ -36,7 +36,6 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   logo: {
-    // ✅ Add logo style
     width: 120,
     height: 40,
     objectFit: "contain",
@@ -55,9 +54,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     gap: 30,
   },
-  infoItem: {
-    /* flex: 1, */
-  },
+  infoItem: {},
   infoLabel: {
     fontSize: 8,
     color: "#666666",
@@ -156,6 +153,10 @@ const styles = StyleSheet.create({
     width: "65%",
     paddingRight: 4,
   },
+  tableColDescriptionWide: {
+    width: "75%",
+    paddingRight: 4,
+  },
   tableColBrandAndSpecs: {
     width: "30%",
     paddingRight: 4,
@@ -178,7 +179,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 30,
     marginBottom: 20,
-    alignItems: "flex-end", // Align terms to bottom
+    alignItems: "flex-end",
   },
 
   // Left Column - Terms
@@ -286,19 +287,16 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
     const num = Number(value);
     if (isNaN(num)) return "0";
 
-    // If it's a whole number (no fractional part), show as integer
     if (Number.isInteger(num)) {
       return num.toLocaleString("en-US");
     }
 
-    // Otherwise show with decimals (up to 3, but you can adjust)
     return num.toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 3,
     });
   };
 
-  // Helper: Always format money with 2 decimal places + commas + trailing .00
   const formatMoney = (value: number | string): string => {
     const num = Number(value);
     if (isNaN(num)) return "0.00";
@@ -313,25 +311,24 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
   const discountRate = Number(lpo.discount) || 0;
   const shipping = Number(lpo.shipping_and_handling) || 0;
 
-  // ✅ Calculate subtotal from all line items (without VAT)
   const subtotal = lpo.lpo_mr_lines.reduce((sum, item) => {
     const unitPrice = Number(item.unit_price) || 0;
     const quantity = Number(item.approved_proposed_quantity) || 0;
     return sum + unitPrice * quantity;
   }, 0);
 
-  // ✅ Apply discount
   const discountAmount = subtotal * (discountRate / 100);
   const subtotalAfterDiscount = subtotal - discountAmount;
-
-  // ✅ Add shipping
   const subtotalWithShipping = subtotalAfterDiscount + shipping;
-
-  // ✅ Calculate VAT on the final amount
   const vatAmount = subtotalWithShipping * (vatRate / 100);
-
-  // ✅ Final total
   const total = subtotalWithShipping + vatAmount;
+
+  // Check if any line has brand or specification
+  const hasAnyBrandOrSpecs = lpo.lpo_mr_lines.some(
+    (item) =>
+      (item.brand && item.brand.trim() !== "") ||
+      (item.specification && item.specification.trim() !== ""),
+  );
 
   return (
     <Document>
@@ -419,7 +416,6 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
         </View>
 
         {/* Delivery Date */}
-
         <View style={styles.infoRow}>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Delivery Date</Text>
@@ -441,8 +437,18 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
         {/* Items Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.tableColDescription}>ITEM</Text>
-            <Text style={styles.tableColBrandAndSpecs}>BRAND & SPECS</Text>
+            <Text
+              style={
+                hasAnyBrandOrSpecs
+                  ? styles.tableColDescription
+                  : styles.tableColDescriptionWide
+              }
+            >
+              ITEM
+            </Text>
+            {hasAnyBrandOrSpecs && (
+              <Text style={styles.tableColBrandAndSpecs}>BRAND & SPECS</Text>
+            )}
             <Text style={styles.tableColQty}>QTY</Text>
             <Text style={styles.tableColUnitPrice}>UNIT PRICE</Text>
             <Text style={styles.tableColTotalPrice}>TOTAL PRICE</Text>
@@ -454,18 +460,26 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
 
             return (
               <View key={index} style={styles.tableRow}>
-                <Text style={styles.tableColDescription}>
+                <Text
+                  style={
+                    hasAnyBrandOrSpecs
+                      ? styles.tableColDescription
+                      : styles.tableColDescriptionWide
+                  }
+                >
                   {item.material_description}
                 </Text>
-                <Text style={styles.tableColBrandAndSpecs}>
-                  {item.brand && item.specification
-                    ? `Brand: ${item.brand}, Specs: ${item.specification}`
-                    : item.brand
-                      ? `Brand: ${item.brand}`
-                      : item.specification
-                        ? `Specification: ${item.specification}`
-                        : "-"}
-                </Text>
+                {hasAnyBrandOrSpecs && (
+                  <Text style={styles.tableColBrandAndSpecs}>
+                    {item.brand && item.specification
+                      ? `Brand: ${item.brand}, Specification: ${item.specification}`
+                      : item.brand
+                        ? `Brand: ${item.brand}`
+                        : item.specification
+                          ? `Specification: ${item.specification}`
+                          : "-"}
+                  </Text>
+                )}
                 <Text style={styles.tableColQty}>
                   {formatQuantity(quantity)} {item.unit}
                 </Text>

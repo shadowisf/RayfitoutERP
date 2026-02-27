@@ -24,13 +24,16 @@ type RequisitionTimelineProps = {
   type?: "material" | "job";
 };
 
-// Rejection progress IDs
+// Rejection progress IDs for MR/LPO
 const REJECTION_IDS = new Set([5, 11, 13, 16, 23]);
+
+// Rejection progress IDs for JO (using same IDs but different context)
+const JO_REJECTION_IDS = new Set([5, 11]); // REQUEST REJECTED, PRICE REJECTED
 
 // Rollback detection: uses the is_rollback column from the database
 const isRollbackEntry = (entry: ProgressLogEntry) => entry.is_rollback === 1;
 
-// Labels for rejection stages
+// Labels for rejection stages (shared)
 const REJECTION_LABELS: { [key: number]: string } = {
   5: "REQUEST REJECTED",
   11: "PRICE REJECTED",
@@ -39,7 +42,7 @@ const REJECTION_LABELS: { [key: number]: string } = {
   23: "FAILED QC",
 };
 
-// All known stage labels
+// MR/LPO Stage Labels
 const STAGE_LABELS: { [key: number]: string } = {
   1: "REQUEST CREATED",
   2: "QS REVIEW",
@@ -61,12 +64,29 @@ const STAGE_LABELS: { [key: number]: string } = {
   26: "SEGREGATED",
 };
 
+// JO Stage Labels (renamed stages for job orders)
+const JO_STAGE_LABELS: { [key: number]: string } = {
+  1: "ORDER CREATED", // Renamed from REQUEST CREATED
+  2: "QS REVIEW", // Same (if needed)
+  3: "MANAGER APPROVAL", // Same
+  5: "REQUEST REJECTED", // Same
+  7: "QUOTATIONS", // Same
+  9: "QS PRICE CHECK", // Same (if needed)
+  10: "MANAGER PRICE APPROVAL", // Same
+  11: "PRICE REJECTED", // Same
+  12: "LPO & INVOICE", // Same context
+  25: "COMPLETED", // Same
+};
+
 // Base MR stages (no QS)
 const BASE_MR_STAGES = [1, 3, 7, 10, 12, 26];
 // Full MR stages (with QS)
 const FULL_MR_STAGES = [1, 2, 3, 7, 9, 10, 12, 26];
-// JO stages
-const JO_STAGES_IDS = [1, 2, 3, 7, 10, 12, 25];
+
+// JO Stages - simplified flow for job orders
+// ORDER CREATED (1) → MANAGER APPROVAL (3) → QUOTATIONS (7) → MANAGER PRICE APPROVAL (10) → COMPLETED (25)
+const JO_STAGES_IDS = [1, 3, 7, 10, 25];
+
 // Base LPO stages (no QS)
 const BASE_LPO_STAGES = [1, 3, 7, 10, 12, 14, 17, 24, 25];
 // Full LPO stages (with QS)
@@ -134,13 +154,26 @@ export default function RequisitionTimeline({
     return <div>Loading timeline...</div>;
   }
 
+  // Determine which stage set and labels to use
   let baseStageIds: number[];
+  let stageLabels: { [key: number]: string };
+  let rejectionIds: Set<number>;
+
   if (lpoId) {
+    // LPO flow
     baseStageIds = hasBoqReference ? FULL_LPO_STAGES : BASE_LPO_STAGES;
+    stageLabels = STAGE_LABELS;
+    rejectionIds = REJECTION_IDS;
   } else if (type === "job") {
+    // JO flow - use JO-specific stages and labels
     baseStageIds = JO_STAGES_IDS;
+    stageLabels = JO_STAGE_LABELS;
+    rejectionIds = JO_REJECTION_IDS;
   } else {
+    // MR flow
     baseStageIds = hasBoqReference ? FULL_MR_STAGES : BASE_MR_STAGES;
+    stageLabels = STAGE_LABELS;
+    rejectionIds = REJECTION_IDS;
   }
 
   const sortedLog = [...progressLog].sort((a, b) => a.id - b.id);
@@ -157,7 +190,8 @@ export default function RequisitionTimeline({
 
   for (const entry of sortedLog) {
     const isRb = isRollbackEntry(entry);
-    const isRej = REJECTION_IDS.has(entry.progress_id) && !isRb;
+    // Use appropriate rejection set based on type
+    const isRej = rejectionIds.has(entry.progress_id) && !isRb;
 
     visitedSequence.push({
       stageId: entry.progress_id,
@@ -190,9 +224,11 @@ export default function RequisitionTimeline({
         ? "ROLLED BACK"
         : visit.isRejection
           ? REJECTION_LABELS[visit.stageId] ||
-            STAGE_LABELS[visit.stageId] ||
+            stageLabels[visit.stageId] ||
             "REJECTED"
-          : STAGE_LABELS[visit.stageId] || `Stage ${visit.stageId}`,
+          : stageLabels[visit.stageId] ||
+            STAGE_LABELS[visit.stageId] ||
+            `Stage ${visit.stageId}`,
       isRejection: visit.isRejection,
       isRollback: visit.isRollback,
       arrivedEntry: visit.arrivedEntry,
@@ -205,7 +241,8 @@ export default function RequisitionTimeline({
     if (!visitedStageIds.has(stageId)) {
       timelineStages.push({
         id: stageId,
-        label: STAGE_LABELS[stageId] || `Stage ${stageId}`,
+        label:
+          stageLabels[stageId] || STAGE_LABELS[stageId] || `Stage ${stageId}`,
         isRejection: false,
         isRollback: false,
         arrivedEntry: null,
@@ -508,92 +545,106 @@ export default function RequisitionTimeline({
               )}
 
               {/* Show rejection reasons (item name + reason) if available */}
-              {stage.isRejection && detailEntry?.reject_reason && (() => {
-                try {
-                  const reasons: { item: string; reason: string }[] = JSON.parse(detailEntry.reject_reason);
-                  return (
-                    <div
-                      style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
-                    >
-                      <p
+              {stage.isRejection &&
+                detailEntry?.reject_reason &&
+                (() => {
+                  try {
+                    const reasons: { item: string; reason: string }[] =
+                      JSON.parse(detailEntry.reject_reason);
+                    return (
+                      <div
                         style={{
-                          fontSize: "9px",
-                          color: "rgba(248, 77, 77, 1)",
-                          textTransform: "uppercase",
-                          fontWeight: "600",
-                          letterSpacing: "0.5px",
+                          marginTop: "4px",
                           textAlign: "left",
+                          width: "100%",
                         }}
                       >
-                        REJECTED ITEMS
-                      </p>
-                      {reasons.map((r, i) => (
-                        <div key={i} style={{ marginTop: i > 0 ? "4px" : "2px" }}>
-                          <p
-                            style={{
-                              fontSize: "10px",
-                              color: "black",
-                              fontWeight: "500",
-                              maxWidth: "120px",
-                              wordBreak: "break-word",
-                              textAlign: "left",
-                            }}
+                        <p
+                          style={{
+                            fontSize: "9px",
+                            color: "rgba(248, 77, 77, 1)",
+                            textTransform: "uppercase",
+                            fontWeight: "600",
+                            letterSpacing: "0.5px",
+                            textAlign: "left",
+                          }}
+                        >
+                          REJECTED ITEMS
+                        </p>
+                        {reasons.map((r, i) => (
+                          <div
+                            key={i}
+                            style={{ marginTop: i > 0 ? "4px" : "2px" }}
                           >
-                            {r.item}
-                          </p>
-                          {r.reason && (
                             <p
                               style={{
-                                fontSize: "9px",
-                                color: "rgba(85, 80, 80, 1)",
-                                fontWeight: "400",
+                                fontSize: "10px",
+                                color: "black",
+                                fontWeight: "500",
                                 maxWidth: "120px",
                                 wordBreak: "break-word",
                                 textAlign: "left",
-                                fontStyle: "italic",
                               }}
                             >
-                              {r.reason}
+                              {r.item}
                             </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                } catch {
-                  // Fallback for plain text reject_reason
-                  return (
-                    <div
-                      style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
-                    >
-                      <p
+                            {r.reason && (
+                              <p
+                                style={{
+                                  fontSize: "9px",
+                                  color: "rgba(85, 80, 80, 1)",
+                                  fontWeight: "400",
+                                  maxWidth: "120px",
+                                  wordBreak: "break-word",
+                                  textAlign: "left",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                {r.reason}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  } catch {
+                    // Fallback for plain text reject_reason
+                    return (
+                      <div
                         style={{
-                          fontSize: "9px",
-                          color: "rgba(248, 77, 77, 1)",
-                          textTransform: "uppercase",
-                          fontWeight: "600",
-                          letterSpacing: "0.5px",
+                          marginTop: "4px",
                           textAlign: "left",
+                          width: "100%",
                         }}
                       >
-                        REASON
-                      </p>
-                      <p
-                        style={{
-                          fontSize: "10px",
-                          color: "rgba(85, 80, 80, 1)",
-                          fontWeight: "400",
-                          maxWidth: "120px",
-                          wordBreak: "break-word",
-                          textAlign: "left",
-                        }}
-                      >
-                        {detailEntry.reject_reason}
-                      </p>
-                    </div>
-                  );
-                }
-              })()}
+                        <p
+                          style={{
+                            fontSize: "9px",
+                            color: "rgba(248, 77, 77, 1)",
+                            textTransform: "uppercase",
+                            fontWeight: "600",
+                            letterSpacing: "0.5px",
+                            textAlign: "left",
+                          }}
+                        >
+                          REASON
+                        </p>
+                        <p
+                          style={{
+                            fontSize: "10px",
+                            color: "rgba(85, 80, 80, 1)",
+                            fontWeight: "400",
+                            maxWidth: "120px",
+                            wordBreak: "break-word",
+                            textAlign: "left",
+                          }}
+                        >
+                          {detailEntry.reject_reason}
+                        </p>
+                      </div>
+                    );
+                  }
+                })()}
               <br />
             </div>
           );

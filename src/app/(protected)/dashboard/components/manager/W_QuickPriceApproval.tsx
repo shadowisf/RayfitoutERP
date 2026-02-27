@@ -745,9 +745,7 @@ export default function QuickPriceApprovalWidget() {
   if (mrHeaders.length === 0) {
     return (
       <div className="widget-container">
-        <h3 style={{ color: "rgba(92, 92, 92, 1)", marginBottom: "15px" }}>
-          Price Approval
-        </h3>
+        <h3 style={{ marginBottom: "15px" }}>Price Approval</h3>
         <p
           style={{
             color: "gray",
@@ -764,7 +762,22 @@ export default function QuickPriceApprovalWidget() {
 
   return (
     <div className="widget-container">
-      <h3 style={{ color: "rgba(92, 92, 92, 1)" }}>Price Approval</h3>
+      <div style={{ display: "flex", gap: "10px" }}>
+        <h3>Price Approval</h3>
+
+        <span
+          style={{
+            padding: "2px 10px",
+            backgroundColor: "rgba(234, 234, 234, 1)",
+            color: "rgba(89, 89, 89, 1)",
+            borderRadius: "50px",
+            fontSize: "10px",
+            fontWeight: "800",
+          }}
+        >
+          {mrHeaders.length} MRs
+        </span>
+      </div>
 
       <br />
 

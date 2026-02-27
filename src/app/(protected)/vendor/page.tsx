@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import ThreeDotsMenuButton from "@/app/components/_ThreeButtonsMenuButton";
 import CreateSubcontractorButton from "../subcontractor/components/_CreateSubcontractorButton";
@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import CreateSupplierButton from "../vendor/components/_CreateSupplierButton";
 import DeleteSupplierButton from "../vendor/components/_DeleteSupplierButton";
 import EditSupplierButton from "../vendor/components/_EditSupplierButton";
+import VendorFilterButton from "../vendor/components/_VendorFilterButton";
 import { Supplier } from "../vendor/types/supplier";
 
 type Subcontractor = {
@@ -51,6 +52,13 @@ export default function VendorManagement() {
   const [vendorSortBy, setVendorSortBy] = useState<"name" | "id" | "type">(
     "name",
   );
+  const [vendorFilters, setVendorFilters] = useState<{
+    selectedTypes: string[];
+    selectedMaterialCategories: string[];
+  }>({
+    selectedTypes: [],
+    selectedMaterialCategories: [],
+  });
 
   // ─── Subcontractor state ───
   const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
@@ -92,19 +100,70 @@ export default function VendorManagement() {
     fetchSubcontractors();
   }, []);
 
+  // ─── Extract unique vendor types and material categories ───
+  const vendorTypes = useMemo(() => {
+    const types = new Set<string>();
+    suppliers.forEach((s) => {
+      if (s.type) types.add(s.type);
+    });
+    return Array.from(types).sort();
+  }, [suppliers]);
+
+  const vendorMaterialCategories = useMemo(() => {
+    const categories = new Set<string>();
+    suppliers.forEach((s) => {
+      if (s.material_categories) {
+        s.material_categories
+          .split(",")
+          .map((c) => c.trim())
+          .filter((c) => c)
+          .forEach((c) => categories.add(c));
+      }
+    });
+    return Array.from(categories).sort();
+  }, [suppliers]);
+
   // ─── Vendor filter & sort ───
   const filteredSuppliers = suppliers.filter((supplier) => {
+    // Apply type filter
+    if (vendorFilters.selectedTypes.length > 0) {
+      if (!vendorFilters.selectedTypes.includes(supplier.type)) {
+        return false;
+      }
+    }
+
+    // Apply material category filter
+    if (vendorFilters.selectedMaterialCategories.length > 0) {
+      const supplierCategories = supplier.material_categories
+        ? supplier.material_categories
+            .split(",")
+            .map((c) => c.trim())
+            .filter((c) => c)
+        : [];
+      const hasMatchingCategory = supplierCategories.some((cat) =>
+        vendorFilters.selectedMaterialCategories.includes(cat),
+      );
+      if (!hasMatchingCategory) {
+        return false;
+      }
+    }
+
+    // Apply search
     const query = vendorSearchQuery.toLowerCase();
-    return (
-      supplier.name?.toLowerCase().includes(query) ||
-      supplier.type?.toLowerCase().includes(query) ||
-      supplier.material_categories?.toLowerCase().includes(query) ||
-      supplier.material_subcategories?.toLowerCase().includes(query) ||
-      supplier.trn_number?.toLowerCase().includes(query) ||
-      `VEN-${String(supplier.id).padStart(5, "0")}`
-        .toLowerCase()
-        .includes(query)
-    );
+    if (query) {
+      return (
+        supplier.name?.toLowerCase().includes(query) ||
+        supplier.type?.toLowerCase().includes(query) ||
+        supplier.material_categories?.toLowerCase().includes(query) ||
+        supplier.material_subcategories?.toLowerCase().includes(query) ||
+        supplier.trn_number?.toLowerCase().includes(query) ||
+        `VEN-${String(supplier.id).padStart(5, "0")}`
+          .toLowerCase()
+          .includes(query)
+      );
+    }
+
+    return true;
   });
 
   // Fixed sorting: always apply a sort, defaulting to name
@@ -187,6 +246,18 @@ export default function VendorManagement() {
       };
     }
     return { backgroundColor: "rgba(231, 231, 231, 1)", color: "black" };
+  };
+
+  // ─── Vendor filter helpers ───
+  const hasActiveVendorFilters =
+    vendorFilters.selectedTypes.length > 0 ||
+    vendorFilters.selectedMaterialCategories.length > 0;
+
+  const resetVendorFilters = () => {
+    setVendorFilters({
+      selectedTypes: [],
+      selectedMaterialCategories: [],
+    });
   };
 
   return (
@@ -325,6 +396,101 @@ export default function VendorManagement() {
       </div>
 
       <br />
+
+      {/* ─── VENDOR FILTER BAR ─── */}
+      {activeTab === "vendors" && (
+        <>
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              paddingBottom: "20px",
+              borderBottom: "1px solid rgba(207, 207, 207, 1)",
+              alignItems: "center",
+            }}
+          >
+            <VendorFilterButton
+              vendorTypes={vendorTypes}
+              materialCategories={vendorMaterialCategories}
+              onApplyFilters={setVendorFilters}
+              currentFilters={vendorFilters}
+            />
+
+            {hasActiveVendorFilters && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  alignItems: "center",
+                }}
+              >
+                {vendorFilters.selectedTypes.length > 0 && (
+                  <Button
+                    style={{
+                      borderRadius: "50px",
+                      fontWeight: 600,
+                    }}
+                    componentType={"none"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                  >
+                    TYPE:{" "}
+                    <span
+                      style={{
+                        color: "rgba(16, 185, 129, 1)",
+                        textWrap: "nowrap",
+                      }}
+                    >
+                      {vendorFilters.selectedTypes[0].toUpperCase()}
+                      {vendorFilters.selectedTypes.length > 1 &&
+                        `, +${vendorFilters.selectedTypes.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
+                {vendorFilters.selectedMaterialCategories.length > 0 && (
+                  <Button
+                    style={{
+                      borderRadius: "50px",
+                      fontWeight: 600,
+                    }}
+                    componentType={"none"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                  >
+                    CATEGORY:{" "}
+                    <span
+                      style={{
+                        color: "rgba(16, 185, 129, 1)",
+                        textWrap: "nowrap",
+                      }}
+                    >
+                      {vendorFilters.selectedMaterialCategories[0].toUpperCase()}
+                      {vendorFilters.selectedMaterialCategories.length > 1 &&
+                        `, +${vendorFilters.selectedMaterialCategories.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
+                <Button
+                  onClick={resetVendorFilters}
+                  componentType={"button"}
+                  bgColor={"transparent"}
+                  borderColor={"transparent"}
+                  textColor={"black"}
+                  style={{ padding: "0px" }}
+                >
+                  RESET FILTER
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <br />
+        </>
+      )}
 
       {/* ─── VENDORS TABLE ─── */}
       {activeTab === "vendors" && (

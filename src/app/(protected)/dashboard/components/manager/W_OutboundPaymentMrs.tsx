@@ -122,6 +122,14 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
         ? `${changeMagnitude} increase from last ${periodLabel}`
         : `${changeMagnitude} decrease from last ${periodLabel}`;
 
+  // Helper function to format numbers with commas and 2 decimal places
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   return (
     <div
       className="item"
@@ -141,7 +149,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
             {isLoading ? (
               "..."
             ) : (
-              <>AED {String(Number(thisWeek || 0).toFixed(2))}</>
+              <>AED {formatCurrency(Number(thisWeek || 0))}</>
             )}
           </p>
         </div>
@@ -160,7 +168,8 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
             {
               key: "amount",
               label: "AMOUNT",
-              format: (val: number) => `+ AED ${val.toFixed(2)}`,
+              format: (val: number) =>
+                `+ AED ${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             },
           ]}
           emptyMessage="No outbound payments"

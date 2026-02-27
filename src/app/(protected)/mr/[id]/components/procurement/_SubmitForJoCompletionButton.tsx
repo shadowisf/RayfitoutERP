@@ -8,7 +8,7 @@ import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../types/mrHeader";
 
-type SubmitForJoCompletionButtonProps = {
+type SubmitForJoFinalCompletionButtonProps = {
   mrHeader: MrHeader;
   disabled?: boolean;
   style?: React.CSSProperties;
@@ -18,7 +18,7 @@ export default function SubmitForJoCompletionButton({
   mrHeader,
   disabled,
   style,
-}: SubmitForJoCompletionButtonProps) {
+}: SubmitForJoFinalCompletionButtonProps) {
   const router = useRouter();
 
   const { userInfo } = useAuth();
@@ -32,7 +32,7 @@ export default function SubmitForJoCompletionButton({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitForJoCompletion",
+        action: "submitJoForFinalCompletion",
         id: mrHeader.id,
         changed_by: userInfo?.name,
         department_id: mrHeader.department_id,
@@ -40,14 +40,14 @@ export default function SubmitForJoCompletionButton({
     });
 
     if (res.ok) {
-      toast("Job order submitted for invoice", "success");
+      toast("Job order completed", "success");
 
       setIsOpen(false);
 
       router.refresh();
       router.replace(`/mr/`);
     } else {
-      toast("Failed to submit job order", "error");
+      toast("Failed to complete job order", "error");
     }
   }
 
@@ -62,17 +62,17 @@ export default function SubmitForJoCompletionButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        SUBMIT FOR INVOICE
+        SUBMIT FOR COMPLETION
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT FOR INVOICE"}
+          header={"COMPLETE JOB ORDER"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this job order for invoice?</p>
+          <p>Are you sure you want to submit this job order for completion?</p>
         </FormPopUp>
       )}
     </>

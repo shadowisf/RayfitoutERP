@@ -13,6 +13,7 @@ type CancelMaterialRequestButtonProps = {
   mrHeader: MrHeader;
   currentProgressId: number;
   lpoId?: number;
+  type?: "material" | "job";
   bgColor?: string;
   textColor?: string;
   borderColor?: string;
@@ -23,6 +24,7 @@ export default function CancelMaterialRequestButton({
   mrHeader,
   currentProgressId,
   lpoId,
+  type = "material",
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
@@ -120,12 +122,18 @@ export default function CancelMaterialRequestButton({
   const lpoProgressFlow = [12, 14, 17, 24];
   // Combined flow for non-LPO contexts
   const fullProgressFlow = [1, 2, 3, 7, 9, 10, 12, 14, 17, 24];
+  // JO flow (no QS stages, no LPO/invoice/delivery)
+  const joProgressFlow = [1, 3, 7, 10];
 
   useEffect(() => {
     const userDeptId = userInfo?.departmentID;
 
-    // Use LPO flow if lpoId is present, otherwise full flow
-    const progressFlow = lpoId ? lpoProgressFlow : fullProgressFlow;
+    // Use appropriate flow based on context
+    const progressFlow = lpoId
+      ? lpoProgressFlow
+      : type === "job"
+        ? joProgressFlow
+        : fullProgressFlow;
 
     // Find the current progress index
     const currentIndex = progressFlow.indexOf(currentProgressId);
@@ -160,7 +168,7 @@ export default function CancelMaterialRequestButton({
     });
 
     setAvailableStages(previousStages);
-  }, [currentProgressId, userInfo, lpoId]);
+  }, [currentProgressId, userInfo, lpoId, type]);
 
   const handleOpen = () => {
     setSelectedStage(null);
@@ -192,12 +200,22 @@ export default function CancelMaterialRequestButton({
     });
 
     if (res.ok) {
-      toast("Material request rolled back", "success");
+      toast(
+        type === "job"
+          ? "Job order rolled back"
+          : "Material request rolled back",
+        "success",
+      );
       setIsOpen(false);
       router.refresh();
       router.replace(`/mr`);
     } else {
-      toast("Failed to roll back material request", "error");
+      toast(
+        type === "job"
+          ? "Failed to roll back job order"
+          : "Failed to roll back material request",
+        "error",
+      );
     }
   }
 
@@ -217,7 +235,11 @@ export default function CancelMaterialRequestButton({
 
         {isOpen && (
           <FormPopUp
-            header={"ROLL BACK MATERIAL REQUEST"}
+            header={
+              type === "job"
+                ? "ROLL BACK JOB ORDER"
+                : "ROLL BACK MATERIAL REQUEST"
+            }
             setIsOpen={setIsOpen}
             handleSubmit={handleSubmit}
             addButtonLabel={"CONFIRM"}

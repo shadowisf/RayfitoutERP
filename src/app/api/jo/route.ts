@@ -109,13 +109,31 @@ export async function POST(req: Request) {
     if (body.action === "createJoLine") {
       const lineQuery = `
         INSERT INTO jo_lines
-        (mr_header_id, job_scope_id, job_description, quantity, unit, budget_estimate, start_date, end_date, attachment)
+        (mr_header_id, job_scope, job_description, quantity, unit, budget_estimate, start_date, end_date, attachment)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
+      // Handle attachment as JSON array or null
+      let attachmentValue = null;
+      if (
+        body.attachment &&
+        Array.isArray(body.attachment) &&
+        body.attachment.length > 0
+      ) {
+        attachmentValue = JSON.stringify(body.attachment); // MySQL will parse this as JSON
+      } else if (body.attachment && typeof body.attachment === "string") {
+        // If already a string, parse it first to validate, then stringify
+        try {
+          const parsed = JSON.parse(body.attachment);
+          attachmentValue = JSON.stringify(parsed);
+        } catch {
+          attachmentValue = JSON.stringify([body.attachment]);
+        }
+      }
+
       const lineValues = [
         Number(body.mr_header_id),
-        Number(body.job_scope_id) || null,
+        body.job_scope,
         body.job_description || "",
         body.quantity && !isNaN(Number(body.quantity))
           ? Number(body.quantity)
@@ -124,7 +142,7 @@ export async function POST(req: Request) {
         Number(body.budget_estimate) || 0,
         body.start_date || null,
         body.end_date || null,
-        body.attachment || null,
+        attachmentValue, // JSON string or null
       ];
 
       const [lineResult] = await db.query<ResultSetHeader>(
@@ -135,14 +153,26 @@ export async function POST(req: Request) {
 
       // Insert BOQ line associations
       if (body.boq_line_ids && body.boq_line_ids.length > 0) {
-        const boqValues = body.boq_line_ids
-          .filter((id: any) => id && !isNaN(Number(id)))
-          .map((boqLineId: number) => [joLineId, Number(boqLineId)]);
+        const validBoqIds = body.boq_line_ids
+          .map((id: any) =>
+            typeof id === "object" && id !== null ? id.id : id,
+          )
+          .filter(
+            (id: any) => id !== null && id !== undefined && !isNaN(Number(id)),
+          )
+          .map((id: any) => Number(id));
 
-        if (boqValues.length > 0) {
+        if (validBoqIds.length > 0) {
+          const boqValues = validBoqIds.map((boqLineId: number) => [
+            joLineId,
+            boqLineId,
+          ]);
+          const placeholders = boqValues.map(() => "(?, ?)").join(", ");
+          const flatValues = boqValues.flat();
+
           await db.query(
-            `INSERT INTO jt_jo_lines_boq_lines (jo_line_id, boq_line_id) VALUES ?`,
-            [boqValues],
+            `INSERT INTO jt_jo_lines_boq_lines (jo_line_id, boq_line_id) VALUES ${placeholders}`,
+            flatValues,
           );
         }
       }

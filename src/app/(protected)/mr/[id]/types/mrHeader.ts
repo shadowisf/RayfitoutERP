@@ -17,4 +17,5 @@ export type MrHeader = {
   delivery_date: string;
   jo_invoice_file: string;
   jo_payment_receipt: string;
+  item_count?: number;
 };
