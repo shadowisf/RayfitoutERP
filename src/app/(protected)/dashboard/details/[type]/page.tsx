@@ -147,6 +147,44 @@ const WIDGET_CONFIGS: Record<string, WidgetConfig> = {
     ],
     linkBuilder: (item) => `/mr/${item.mr_header_id}/lpo/${item.raw_id}`,
   },
+  "critical-mrs": {
+    title: "Critical MRs",
+    apiUrl: "/api/dashboard/manager/getTotalCriticalMrs",
+    bodyBuilder: (_filter) => ({ limit: 100 }),
+    columns: [
+      { key: "display_id", label: "MR/LPO NUMBER" },
+      {
+        key: "overdue_date",
+        label: "OVERDUE",
+        format: (val: string) => {
+          const date = new Date(val);
+          const now = new Date();
+          const days = Math.floor(
+            (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
+          );
+          return `${days}d overdue`;
+        },
+      },
+    ],
+    linkBuilder: (item) =>
+      item.type === "lpo"
+        ? `/mr/${item.mr_header_id}/lpo/${item.raw_id}`
+        : `/mr/${item.raw_id}`,
+  },
+  "late-deliveries": {
+    title: "Late Deliveries",
+    apiUrl: "/api/dashboard/manager/getTotalLateDeliveries",
+    bodyBuilder: (_filter) => ({ limit: 100 }),
+    columns: [
+      { key: "display_id", label: "LPO NUMBER" },
+      {
+        key: "item_count",
+        label: "ITEMS",
+        format: (val: number) => `${val} items`,
+      },
+    ],
+    linkBuilder: (item) => `/mr/${item.mr_header_id}/lpo/${item.raw_id}`,
+  },
 };
 
 export default function WidgetDetailsPage() {
