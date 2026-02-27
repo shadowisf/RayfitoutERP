@@ -7,6 +7,7 @@ import { JoLine } from "../types/joLine";
 import Button from "@/app/components/Button";
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
+import DownloadBoqButton from "@/app/(protected)/project/[id]/boq/[boqId]/components/manager/_DownloadBoqButton";
 
 type BoqReferencePopUpProps = {
   mrHeader: MrHeader;
@@ -22,6 +23,7 @@ type BoqItemDetail = {
   scope_of_work?: string;
   quantity: number;
   unit: string;
+  rate_per_quantity: number;
   total_cost: number;
   attachments?: string;
   boq_header_id: number;
@@ -38,7 +40,7 @@ type GroupedByCategory = {
     boq_header_id: number;
     items: BoqItemDetail[];
     totalPrice: number;
-    subCategories: string[]; // track unique subcategories
+    subCategories: string[];
   };
 };
 
@@ -58,14 +60,64 @@ type GroupedBySubCategory = {
 // Helper function to format quantity without trailing zeroes
 const formatQuantity = (quantity: number): string => {
   if (quantity === null || quantity === undefined) return "-";
-
-  // Check if it's a whole number
-  if (Number.isInteger(quantity)) {
-    return quantity.toString();
-  }
-
-  // Remove trailing zeroes from decimal
+  if (Number.isInteger(quantity)) return quantity.toString();
   return parseFloat(quantity.toString()).toString();
+};
+
+// Transform BoqItemDetail[] to GroupedBoqLines format for DownloadBoqButton
+const transformToGroupedBoqLines = (items: BoqItemDetail[]): any => {
+  const grouped: any = {};
+
+  items.forEach((item) => {
+    if (!grouped[item.category]) {
+      grouped[item.category] = {};
+    }
+    if (!grouped[item.category][item.sub_category]) {
+      grouped[item.category][item.sub_category] = [];
+    }
+
+    // Transform BoqItemDetail to match BoqLine structure expected by DownloadBoqButton
+    const boqLine: any = {
+      id: item.id,
+      item_number: item.item_number,
+      item_name: item.item_name,
+      item_description: item.item_description,
+      location: item.location,
+      scope_of_work: item.scope_of_work,
+      quantity: item.quantity,
+      unit: item.unit,
+      rate_per_quantity: item.rate_per_quantity,
+      total_cost: item.total_cost,
+      attachments: item.attachments,
+      boq_id: item.boq_header_id,
+      category: item.category,
+      sub_category: item.sub_category,
+      category_number: item.category_number,
+      subcategory_number: item.subcategory_number,
+    };
+
+    grouped[item.category][item.sub_category].push(boqLine);
+  });
+
+  return grouped;
+};
+
+// Create a minimal boqHeader from mrHeader and items
+const createBoqHeaderFromData = (
+  mrHeader: MrHeader,
+  items: BoqItemDetail[],
+): any => {
+  if (items.length === 0) return {};
+
+  // Use the first item's boq_header_id to create a minimal header
+  return {
+    id: items[0]?.boq_header_id || 0,
+    project_id: mrHeader.project_id,
+    name: items[0]?.item_name || "BOQ Reference",
+    boq_date: new Date().toISOString(),
+    currency: "AED",
+    project_name: mrHeader.project_name,
+  };
 };
 
 export default function BoqReferencePopUp({
@@ -121,6 +173,7 @@ export default function BoqReferencePopUp({
             scope_of_work: boqLine.scope_of_work,
             quantity: boqLine.quantity,
             unit: boqLine.unit,
+            rate_per_quantity: boqLine.rate_per_quantity,
             total_cost: boqLine.total_cost,
             attachments: boqLine.attachments,
             boq_header_id: boqLine.boq_id,
@@ -159,13 +212,11 @@ export default function BoqReferencePopUp({
       grouped[catKey].items.push(boqItem);
       grouped[catKey].totalPrice += boqItem.total_cost || 0;
 
-      // Track unique subcategories
       if (!grouped[catKey].subCategories.includes(boqItem.sub_category)) {
         grouped[catKey].subCategories.push(boqItem.sub_category);
       }
     });
 
-    // Sort by category number
     return Object.entries(grouped)
       .sort(([, a], [, b]) => a.category_number - b.category_number)
       .reduce((acc, [key, value]) => {
@@ -197,7 +248,6 @@ export default function BoqReferencePopUp({
       grouped[key].totalPrice += boqItem.total_cost || 0;
     });
 
-    // Sort by category number then subcategory number
     return Object.entries(grouped)
       .sort(([, a], [, b]) => {
         if (a.category_number !== b.category_number) {
@@ -328,6 +378,47 @@ export default function BoqReferencePopUp({
     return index % 2 === 0 ? "white" : "rgba(246, 246, 246, 1)";
   };
 
+  // Transform boqItems for DownloadBoqButton - use filtered items based on current view
+  const downloadBoqLines = useMemo(() => {
+    let itemsToDownload: BoqItemDetail[] = [];
+
+    if (activeCategory === "ALL") {
+      // Use all filtered items
+      itemsToDownload = Object.values(filteredBySubCategory).flatMap(
+        (group) => group.items,
+      );
+    } else if (activeCategory === "SUMMARY") {
+      // Use all filtered items from all categories
+      itemsToDownload = Object.values(filteredByCategory).flatMap(
+        (group) => group.items,
+      );
+    } else if (activeCategoryData) {
+      // Use items from selected category
+      itemsToDownload = activeCategoryData.items;
+    }
+
+    return transformToGroupedBoqLines(itemsToDownload);
+  }, [
+    activeCategory,
+    activeCategoryData,
+    filteredByCategory,
+    filteredBySubCategory,
+  ]);
+
+  // Create boqHeader for download
+  const downloadBoqHeader = useMemo(() => {
+    return createBoqHeaderFromData(mrHeader, boqItems);
+  }, [mrHeader, boqItems]);
+
+  // Get item name for download
+  const itemName = useMemo(() => {
+    return (
+      (item as any).material_description ||
+      (item as any).description ||
+      "Unknown"
+    );
+  }, [item]);
+
   return (
     <>
       <Button
@@ -356,42 +447,62 @@ export default function BoqReferencePopUp({
             minHeight: "85dvh",
           }}
         >
-          {/* Search Bar */}
           <div
             style={{
-              position: "relative",
-              flex: 1,
-              maxWidth: "400px",
-              backgroundColor: "white",
-              marginBottom: "20px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            <input
-              type="text"
-              placeholder="SEARCH"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+            {/* Search Bar */}
+            <div
               style={{
-                width: "400px",
-                padding: "10px 40px 10px 15px",
-                borderRadius: "8px",
-                border: "1px solid rgba(223, 223, 223, 1)",
-                fontSize: "14px",
+                position: "relative",
+                flex: 1,
+                maxWidth: "400px",
+                backgroundColor: "white",
+                marginBottom: "20px",
               }}
-            />
-            <img
-              src={searchIcon}
-              alt="search"
-              style={{
-                position: "absolute",
-                right: "15px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: "16px",
-                height: "16px",
-                opacity: 0.5,
-              }}
-            />
+            >
+              <input
+                type="text"
+                placeholder="SEARCH"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: "400px",
+                  padding: "10px 40px 10px 15px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(223, 223, 223, 1)",
+                  fontSize: "14px",
+                }}
+              />
+              <img
+                src={searchIcon}
+                alt="search"
+                style={{
+                  position: "absolute",
+                  right: "15px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "16px",
+                  height: "16px",
+                  opacity: 0.5,
+                }}
+              />
+            </div>
+
+            {/* Download Button - Only show if there are items to download */}
+            {boqItems.length > 0 && (
+              <DownloadBoqButton
+                boqHeader={downloadBoqHeader}
+                boqLines={downloadBoqLines}
+                isReference={true}
+                mrHeader={mrHeader}
+                itemName={itemName}
+                itemId={item.id}
+              />
+            )}
           </div>
 
           {/* Category Grid - Grouped by Category Only */}

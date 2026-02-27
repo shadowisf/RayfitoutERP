@@ -11,6 +11,7 @@ import {
 } from "@react-pdf/renderer";
 import { BoqLine } from "../types/boqLine";
 import { BoqHeader } from "../types/boqHeader";
+import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 
 Font.register({
   family: "Mont",
@@ -60,7 +61,7 @@ const styles = StyleSheet.create({
   // Info Row
   infoRow: {
     flexDirection: "row",
-    marginBottom: 30,
+    marginBottom: 20,
     gap: 25,
   },
   infoItem: {},
@@ -202,7 +203,6 @@ const styles = StyleSheet.create({
 
   // Bottom Section
   bottomSection: {
-    /* marginTop: "auto", */
     marginTop: 30,
   },
 
@@ -350,7 +350,6 @@ const styles = StyleSheet.create({
 
   // Attachment Image
   attachmentImage: {
-    /* width: 35, */
     height: 40,
     objectFit: "contain",
   },
@@ -359,7 +358,6 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   attachmentWrapper: {
-    /* width: 35, */
     height: 40,
   },
 
@@ -419,6 +417,9 @@ type BoqPDFProps = {
   boqHeader: BoqHeader;
   showPrices?: boolean;
   showDN?: boolean;
+  isReference?: boolean;
+  mrHeader?: MrHeader;
+  itemName?: string;
 };
 
 export function BoqPDF({
@@ -426,6 +427,9 @@ export function BoqPDF({
   boqHeader,
   showPrices = true,
   showDN = false,
+  isReference = false,
+  mrHeader,
+  itemName,
 }: BoqPDFProps) {
   const logo = "/icons/logo.jpg";
   const locationIcon = "/icons/location-boq.png";
@@ -518,42 +522,133 @@ export function BoqPDF({
         <View style={styles.header}>
           <Image src={logo} style={styles.logo} />
           <Text style={styles.title}>
-            BILL OF <Text style={styles.titleBold}>QUANTITY</Text>
+            {isReference ? (
+              <>
+                BILL OF QUANTITY <Text style={styles.titleBold}>REFERENCE</Text>
+              </>
+            ) : (
+              <>
+                BILL OF <Text style={styles.titleBold}>QUANTITY</Text>
+              </>
+            )}
           </Text>
         </View>
 
-        {/* Document Info */}
-        <View style={styles.infoRow}>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>BOQ NUMBER</Text>
-            <Text style={styles.infoValue}>
-              BOQ-{String(boqHeader.id).padStart(5, "0")}
-            </Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>DATE</Text>
-            <Text style={styles.infoValue}>
-              {boqHeader.boq_date
-                ? new Date(boqHeader.boq_date).toLocaleDateString("en-GB")
-                : new Date().toLocaleDateString("en-GB")}
-            </Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>PROJECT</Text>
-            <Text style={styles.infoValue}>{boqHeader.project_name}</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>CLIENT</Text>
-            <Text style={styles.infoValue}>{boqHeader.client_name || "-"}</Text>
-          </View>
-        </View>
+        {/* Document Info - Conditional based on isReference */}
+        {isReference && mrHeader ? (
+          // MR Reference Mode - Show MR Header Details
+          <>
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>MR NUMBER</Text>
+                <Text style={styles.infoValue}>
+                  MR-{String(mrHeader.id).padStart(5, "0")}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>BOQ NUMBER</Text>
+                <Text style={styles.infoValue}>
+                  BOQ-{String(boqHeader.id).padStart(5, "0")}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>BOQ NAME</Text>
+                <Text style={styles.infoValue}>{boqHeader.name || "-"}</Text>
+              </View>
+            </View>
 
-        <View style={styles.infoRow}>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>BOQ NAME</Text>
-            <Text style={styles.infoValue}>{boqHeader.name || "-"}</Text>
-          </View>
-        </View>
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>DATE</Text>
+                <Text style={styles.infoValue}>
+                  {mrHeader.date_requested
+                    ? new Date(mrHeader.date_requested).toLocaleDateString(
+                        "en-GB",
+                      )
+                    : new Date().toLocaleDateString("en-GB")}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>PROJECT</Text>
+                <Text style={styles.infoValue}>
+                  {mrHeader.project_name || "-"}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>REQUESTED BY</Text>
+                <Text style={styles.infoValue}>
+                  {mrHeader.requested_by || "-"}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>PURPOSE</Text>
+                <Text style={styles.infoValue}>
+                  {mrHeader.purpose_name || "-"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>DEPARTMENT</Text>
+                <Text style={styles.infoValue}>
+                  {mrHeader.department_name || "-"}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>REQUIRED DATE</Text>
+                <Text style={styles.infoValue}>
+                  {mrHeader.required_date
+                    ? new Date(mrHeader.required_date).toLocaleDateString(
+                        "en-GB",
+                      )
+                    : "-"}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>ITEM</Text>
+                <Text style={styles.infoValue}>{itemName || "-"}</Text>
+              </View>
+            </View>
+          </>
+        ) : (
+          // Standard BOQ Mode - Show BOQ Header Details
+          <>
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>BOQ NUMBER</Text>
+                <Text style={styles.infoValue}>
+                  BOQ-{String(boqHeader.id).padStart(5, "0")}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>DATE</Text>
+                <Text style={styles.infoValue}>
+                  {boqHeader.boq_date
+                    ? new Date(boqHeader.boq_date).toLocaleDateString("en-GB")
+                    : new Date().toLocaleDateString("en-GB")}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>PROJECT</Text>
+                <Text style={styles.infoValue}>{boqHeader.project_name}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>CLIENT</Text>
+                <Text style={styles.infoValue}>
+                  {boqHeader.client_name || "-"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>BOQ NAME</Text>
+                <Text style={styles.infoValue}>{boqHeader.name || "-"}</Text>
+              </View>
+            </View>
+          </>
+        )}
 
         {/* Items Table - Summary - Only Categories */}
         <View style={styles.table}>
@@ -645,69 +740,75 @@ export function BoqPDF({
             <Text style={styles.totalLabel}>GRAND TOTAL</Text>
             <Text style={styles.totalValue}>
               {boqHeader.currency}{" "}
-              {(grandTotal - boqHeader.discount).toLocaleString()}
+              {(grandTotal - (boqHeader.discount || 0)).toLocaleString()}
             </Text>
           </View>
         )}
 
-        {/* Bottom Section - Terms */}
-        <View style={styles.bottomSection}>
-          {/* Payment Terms */}
-          {boqHeader.payment_terms && (
-            <View style={styles.termsSection}>
-              <Text style={styles.termsTitle}>PAYMENT TERMS</Text>
-              <Text style={styles.termsText}>
-                {boqHeader.payment_terms || "-"}
-              </Text>
-            </View>
-          )}
+        {/* Bottom Section - Terms - Only show if NOT in reference mode */}
+        {!isReference && (
+          <View style={styles.bottomSection}>
+            {/* Payment Terms */}
+            {boqHeader.payment_terms && (
+              <View style={styles.termsSection}>
+                <Text style={styles.termsTitle}>PAYMENT TERMS</Text>
+                <Text style={styles.termsText}>
+                  {boqHeader.payment_terms || "-"}
+                </Text>
+              </View>
+            )}
 
-          {/* Validity */}
-          {boqHeader.validity_terms && (
-            <View style={styles.termsSection}>
-              <Text style={styles.termsTitle}>VALIDITY TERMS</Text>
-              <Text style={styles.termsText}>
-                {boqHeader.validity_terms || "-"}
-              </Text>
-            </View>
-          )}
+            {/* Validity */}
+            {boqHeader.validity_terms && (
+              <View style={styles.termsSection}>
+                <Text style={styles.termsTitle}>VALIDITY TERMS</Text>
+                <Text style={styles.termsText}>
+                  {boqHeader.validity_terms || "-"}
+                </Text>
+              </View>
+            )}
 
-          {/* Warranty */}
-          {boqHeader.warranty && (
-            <View style={styles.termsSection}>
-              <Text style={styles.termsTitle}>WARRANTY</Text>
-              <Text style={styles.termsText}>{boqHeader.warranty || "-"}</Text>
-            </View>
-          )}
+            {/* Warranty */}
+            {boqHeader.warranty && (
+              <View style={styles.termsSection}>
+                <Text style={styles.termsTitle}>WARRANTY</Text>
+                <Text style={styles.termsText}>
+                  {boqHeader.warranty || "-"}
+                </Text>
+              </View>
+            )}
 
-          {/* Completion */}
-          {boqHeader.completion && (
-            <View style={styles.termsSection}>
-              <Text style={styles.termsTitle}>COMPLETION</Text>
-              <Text style={styles.termsText}>
-                {boqHeader.completion || "-"}
-              </Text>
-            </View>
-          )}
+            {/* Completion */}
+            {boqHeader.completion && (
+              <View style={styles.termsSection}>
+                <Text style={styles.termsTitle}>COMPLETION</Text>
+                <Text style={styles.termsText}>
+                  {boqHeader.completion || "-"}
+                </Text>
+              </View>
+            )}
 
-          {/* Exclusion */}
-          {boqHeader.exclusion && (
-            <View style={styles.termsSection}>
-              <Text style={styles.termsTitle}>EXCLUSIONS</Text>
-              <Text style={styles.termsText}>{boqHeader.exclusion || "-"}</Text>
-            </View>
-          )}
+            {/* Exclusion */}
+            {boqHeader.exclusion && (
+              <View style={styles.termsSection}>
+                <Text style={styles.termsTitle}>EXCLUSIONS</Text>
+                <Text style={styles.termsText}>
+                  {boqHeader.exclusion || "-"}
+                </Text>
+              </View>
+            )}
 
-          {/* Terms and Conditions */}
-          {boqHeader.terms_and_conditions && (
-            <View style={styles.termsSection}>
-              <Text style={styles.termsTitle}>TERMS & CONDITIONS</Text>
-              <Text style={styles.termsText}>
-                {boqHeader.terms_and_conditions || "-"}
-              </Text>
-            </View>
-          )}
-        </View>
+            {/* Terms and Conditions */}
+            {boqHeader.terms_and_conditions && (
+              <View style={styles.termsSection}>
+                <Text style={styles.termsTitle}>TERMS & CONDITIONS</Text>
+                <Text style={styles.termsText}>
+                  {boqHeader.terms_and_conditions || "-"}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         <Text
           style={styles.pageNumber}
@@ -762,8 +863,6 @@ export function BoqPDF({
                         </>
                       )}
 
-                      {/* Show DN columns when in DN mode */}
-
                       <Text style={colStyles.attachment}>ATTACHMENT(S)</Text>
 
                       {hasAnyRemarks && (
@@ -772,7 +871,7 @@ export function BoqPDF({
                     </View>
                   </View>
 
-                  {/* BOQ Line Items - Added wrap={false} to keep entire row together */}
+                  {/* BOQ Line Items */}
                   {items.map((item, itemIndex) => {
                     const rowStyle =
                       itemIndex % 2 === 0
@@ -904,7 +1003,6 @@ export function BoqPDF({
                   {/* Subtotal Row - Only show if showPrices is true and not in DN mode */}
                   {showPrices && !showDN && (
                     <View style={styles.subtotalRow} wrap={false}>
-                      {/* Empty columns to align with table structure */}
                       <Text style={styles.detailColItemNo}></Text>
                       <Text
                         style={colStyles.category}

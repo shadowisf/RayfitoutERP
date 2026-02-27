@@ -348,7 +348,7 @@ export default async function MrWithID({
                   {mrHeader.type.toLowerCase().includes("material")
                     ? "MR"
                     : "JO"}{" "}
-                  ID
+                  NUMBER
                 </small>
                 <h2>
                   {mrHeader.type.toLowerCase().includes("material")

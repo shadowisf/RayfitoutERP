@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import Button from "@/app/components/Button";
 import { BoqHeader } from "../../types/boqHeader";
 import { BoqLine } from "../../types/boqLine";
+import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import { pdf } from "@react-pdf/renderer";
 import { BoqPDF } from "../BoqPDF";
@@ -19,11 +20,19 @@ type GroupedBoqLines = {
 type DownloadBoqButtonProps = {
   boqHeader: BoqHeader;
   boqLines: GroupedBoqLines;
+  isReference?: boolean;
+  mrHeader?: MrHeader;
+  itemName?: string;
+  itemId?: number;
 };
 
 export default function DownloadBoqButton({
   boqHeader,
   boqLines,
+  isReference = false,
+  mrHeader,
+  itemName,
+  itemId,
 }: DownloadBoqButtonProps) {
   const { userInfo } = useAuth();
 
@@ -277,6 +286,9 @@ export default function DownloadBoqButton({
           boqLines={processedLines}
           showPrices={showPrices}
           showDN={showDN}
+          isReference={isReference}
+          mrHeader={mrHeader}
+          itemName={itemName}
         />,
       ).toBlob();
 
@@ -292,7 +304,19 @@ export default function DownloadBoqButton({
       else if (configMode === "unpriced") fileNameSuffix = "UNPRICED";
       else if (configMode === "dn") fileNameSuffix = "DN";
 
-      link.download = `BOQ-${fileNameSuffix}-${String(boqHeader.id).padStart(5, "0")}.pdf`;
+      // Generate filename based on mode
+      if (isReference && mrHeader && itemName) {
+        // New format: BOQ-MR-{MR ID}-{ITEM NAME}-{PRICED/UNPRICED}.pdf
+        const sanitizedItemName = itemName
+          .replace(/[^a-zA-Z0-9\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .substring(0, 30);
+
+        link.download = `BOQ-MR-${String(mrHeader.id).padStart(5, "0")}-${sanitizedItemName}-${fileNameSuffix}.pdf`;
+      } else {
+        // Original format: BOQ-{PRICED/UNPRICED/DN}-{BOQ ID}.pdf
+        link.download = `BOQ-${fileNameSuffix}-${String(boqHeader.id).padStart(5, "0")}.pdf`;
+      }
 
       // Trigger download
       document.body.appendChild(link);
@@ -319,12 +343,17 @@ export default function DownloadBoqButton({
         textColor={"black"}
         onClick={handleOpen}
       >
-        EXPORT BOQ <img src={downloadIcon} />
+        {isReference ? "EXPORT BOQ REFERENCE" : "EXPORT BOQ"}
+        <img src={downloadIcon} alt="download" />
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"EXPORT BILL OF QUANTITY"}
+          header={
+            isReference
+              ? "EXPORT BILL OF QUANTITY REFERENCE"
+              : "EXPORT BILL OF QUANTITY"
+          }
           setIsOpen={setIsOpen}
           addButtonLabel="CONFIRM"
           handleSubmit={handleDownload}
@@ -488,13 +517,7 @@ export default function DownloadBoqButton({
 
           {/* Configuration */}
           <div>
-            <h3
-              style={{
-                marginBottom: "15px",
-              }}
-            >
-              CONFIGURATION
-            </h3>
+            <h3 style={{ marginBottom: "15px" }}>CONFIGURATION</h3>
             <div style={{ display: "flex", gap: "30px", flexWrap: "wrap" }}>
               {canSeePrice && (
                 <label
@@ -544,6 +567,7 @@ export default function DownloadBoqButton({
                 <h4>Unpriced</h4>
               </label>
 
+              {/* DN option - available for both reference and normal mode */}
               <label
                 style={{
                   display: "flex",
