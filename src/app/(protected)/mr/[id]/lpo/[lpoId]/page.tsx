@@ -328,12 +328,12 @@ export default async function LpoWithID({
                 style={{ display: "flex", gap: "25px", alignItems: "center" }}
               >
                 <div>
-                  <small>MR ID</small>
+                  <small>MR NUMBER</small>
                   <h2>MR-{String(id).padStart(5, "0")}</h2>
                 </div>
 
                 <div>
-                  <small>LPO ID</small>
+                  <small>LPO NUMBER</small>
                   <h2>LPO-{String(lpoId).padStart(5, "0")}</h2>
                 </div>
 

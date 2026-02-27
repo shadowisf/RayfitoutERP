@@ -8,17 +8,17 @@ import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../types/mrHeader";
 
-type SubmitForJoFinalCompletionButtonProps = {
+type SubmitForJoCompletionButtonProps = {
   mrHeader: MrHeader;
   disabled?: boolean;
   style?: React.CSSProperties;
 };
 
-export default function SubmitForJoFinalCompletionButton({
+export default function SubmitForJoInvoiceButton({
   mrHeader,
   disabled,
   style,
-}: SubmitForJoFinalCompletionButtonProps) {
+}: SubmitForJoCompletionButtonProps) {
   const router = useRouter();
 
   const { userInfo } = useAuth();
@@ -32,7 +32,7 @@ export default function SubmitForJoFinalCompletionButton({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitJoForFinalCompletion",
+        action: "submitForJoCompletion",
         id: mrHeader.id,
         changed_by: userInfo?.name,
         department_id: mrHeader.department_id,
@@ -40,14 +40,14 @@ export default function SubmitForJoFinalCompletionButton({
     });
 
     if (res.ok) {
-      toast("Job order completed", "success");
+      toast("Job order submitted for invoice", "success");
 
       setIsOpen(false);
 
       router.refresh();
       router.replace(`/mr/`);
     } else {
-      toast("Failed to complete job order", "error");
+      toast("Failed to submit job order", "error");
     }
   }
 
@@ -62,19 +62,17 @@ export default function SubmitForJoFinalCompletionButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        SUBMIT FOR COMPLETION
+        SUBMIT FOR INVOICE
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"COMPLETE JOB ORDER"}
+          header={"SUBMIT FOR INVOICE"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>
-            Are you sure you want to submit this job order for completion?
-          </p>
+          <p>Are you sure you want to submit this job order for invoice?</p>
         </FormPopUp>
       )}
     </>

@@ -9,6 +9,7 @@ import { MrHeader } from "./types/mrHeader";
 import CancelMaterialRequestButton from "./components/_CancelMaterialRequest";
 import RequisitionTimeline from "./components/RequisitionTimeline";
 import DownloadMrPDFButton from "./components/_DownloadMrPDFButton";
+import DownloadJoPDFButton from "./components/_DownloadJoPDFButton";
 
 export default async function MrWithID({
   params,
@@ -322,12 +323,20 @@ export default async function MrWithID({
               borderColor="rgba(248, 77, 77, 1)"
               textColor="white"
               currentProgressId={mrHeader.progress_id}
+              type={effectiveIsJobOrder ? "job" : "material"}
             >
-              ROLL BACK MATERIAL REQUEST <img src={uTurnIcon} alt="u-turn" />
+              {effectiveIsJobOrder
+                ? "ROLL BACK JOB ORDER"
+                : "ROLL BACK MATERIAL REQUEST"}{" "}
+              <img src={uTurnIcon} alt="u-turn" />
             </CancelMaterialRequestButton>
           )}
 
-          <DownloadMrPDFButton mrHeader={mrHeader} mrLines={mrLines} />
+          {effectiveIsJobOrder ? (
+            <DownloadJoPDFButton mrHeader={mrHeader} joLines={joLines} />
+          ) : (
+            <DownloadMrPDFButton mrHeader={mrHeader} mrLines={mrLines} />
+          )}
         </div>
       </div>
 

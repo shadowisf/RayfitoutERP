@@ -14,30 +14,39 @@ export async function POST(req: Request) {
 
     const projectId = Number(body.project_id);
 
-    // Fetch ALL MR headers for the project
+    // Fetch ALL MR headers for the project.
     const mrQuery = `
       SELECT * FROM vw_mr_headers WHERE project_id = ?
     `;
     const [mrRows]: any = await db.query(mrQuery, [projectId]);
 
-    // Get MR header IDs that are segregated (progress_id = 26)
+    // Separate non-segregated MRs and segregated MRs
+    const nonSegregatedMrs = mrRows.filter(
+      (mr: any) => mr.progress_id !== 26,
+    );
     const segregatedMrIds = mrRows
       .filter((mr: any) => mr.progress_id === 26)
       .map((mr: any) => mr.id);
 
-    let lpoMap: Map<
-      number,
-      { lpo_id: number; progress_id: number; progress_name: string }
-    > = new Map();
+    // Build a map of segregated MR id -> MR data for reference
+    const segregatedMrMap = new Map<number, any>();
+    mrRows
+      .filter((mr: any) => mr.progress_id === 26)
+      .forEach((mr: any) => {
+        segregatedMrMap.set(mr.id, mr);
+      });
 
-    // If there are segregated MRs, fetch their LPOs with progress info
+    // For segregated MRs, fetch all their LPOs with progress info
+    let lpoEntries: any[] = [];
+
     if (segregatedMrIds.length > 0) {
       const placeholders = segregatedMrIds.map(() => "?").join(",");
       const lpoQuery = `
-        SELECT 
+        SELECT
           l.id as lpo_id,
           l.mr_header_id,
           l.progress_id,
+          l.delivery_date,
           p.value as progress_name
         FROM lpo l
         LEFT JOIN lut_mr_headers_progress p ON l.progress_id = p.id
@@ -45,34 +54,35 @@ export async function POST(req: Request) {
       `;
       const [lpoRows]: any = await db.query(lpoQuery, segregatedMrIds);
 
-      // Create map of mr_header_id -> lpo details
-      lpoRows.forEach((lpo: any) => {
-        lpoMap.set(lpo.mr_header_id, {
+      // Create one entry per LPO, carrying forward parent MR details
+      lpoEntries = lpoRows.map((lpo: any) => {
+        const parentMr = segregatedMrMap.get(lpo.mr_header_id);
+        return {
+          ...parentMr,
           lpo_id: lpo.lpo_id,
-          progress_id: lpo.progress_id,
-          progress_name: lpo.progress_name || "Unknown",
-        });
+          lpo_progress_id: lpo.progress_id,
+          lpo_progress_name: lpo.progress_name || "Unknown",
+          display_progress_name: lpo.progress_name || parentMr?.progress_name,
+        };
       });
     }
 
-    // Merge LPO details into MR data
-    const enrichedMrRows = mrRows.map((mr: any) => {
-      const lpoDetails = lpoMap.get(mr.id);
-      return {
-        ...mr,
-        lpo_id: lpoDetails?.lpo_id || null,
-        lpo_progress_id: lpoDetails?.progress_id || null,
-        lpo_progress_name: lpoDetails?.progress_name || null,
-        // If LPO exists, use LPO progress name; otherwise keep original MR progress name
-        display_progress_name: lpoDetails?.progress_name || mr.progress_name,
-      };
-    });
+    // Build result: non-segregated MRs + LPO entries from segregated MRs
+    const nonSegregatedEntries = nonSegregatedMrs.map((mr: any) => ({
+      ...mr,
+      lpo_id: null,
+      lpo_progress_id: null,
+      lpo_progress_name: null,
+      display_progress_name: mr.progress_name,
+    }));
+
+    const enrichedRows = [...nonSegregatedEntries, ...lpoEntries];
 
     return NextResponse.json(
       {
         success: true,
-        count: enrichedMrRows.length,
-        data: enrichedMrRows,
+        count: enrichedRows.length,
+        data: enrichedRows,
       },
       { status: 200 },
     );

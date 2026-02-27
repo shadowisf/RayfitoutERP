@@ -4,7 +4,7 @@ import Button from "@/app/components/Button";
 import { EditProjectButton } from "./components/_EditProjectButton";
 import { Project } from "./types/project";
 import { DeleteProjectButton } from "./components/_DeleteProjectButton";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../mr/[id]/types/mrHeader";
@@ -13,6 +13,7 @@ import AttachmentsList from "./components/AttachmentList";
 import BoqCard from "./boq/[boqId]/components/BoqCard";
 import CreateBoqHeaderButton from "./boq/[boqId]/components/manager/_CreateBoqHeaderButton";
 import { BoqHeader } from "./boq/[boqId]/types/boqHeader";
+import MrStatusFilterButton from "./components/_MrStatusFilterButton";
 
 // Extended MrHeader type with LPO details
 type MrHeaderWithLpo = MrHeader & {
@@ -31,6 +32,9 @@ export default function ProjectWithID() {
   const [project, setProject] = useState<Project | null>(null);
   const [boqs, setBoqs] = useState<BoqHeader[] | null>(null);
   const [mrs, setMrs] = useState<MrHeaderWithLpo[] | null>(null);
+  const [mrStatusFilters, setMrStatusFilters] = useState<{
+    selectedStatuses: string[];
+  }>({ selectedStatuses: [] });
 
   async function fetchProjectByID() {
     await fetch(
@@ -120,6 +124,33 @@ export default function ProjectWithID() {
         color: "rgba(134, 83, 47, 1)",
       };
     }
+  };
+
+  // Extract unique statuses from MR data
+  const mrStatuses = useMemo(() => {
+    if (!mrs) return [];
+    const statuses = new Set<string>();
+    mrs.forEach((mr) => {
+      const status = mr.display_progress_name || mr.progress_name;
+      if (status) statuses.add(status);
+    });
+    return Array.from(statuses).sort();
+  }, [mrs]);
+
+  // Apply status filter
+  const filteredMrs = useMemo(() => {
+    if (!mrs) return null;
+    if (mrStatusFilters.selectedStatuses.length === 0) return mrs;
+    return mrs.filter((mr) => {
+      const status = mr.display_progress_name || mr.progress_name;
+      return mrStatusFilters.selectedStatuses.includes(status);
+    });
+  }, [mrs, mrStatusFilters.selectedStatuses]);
+
+  const hasActiveMrFilters = mrStatusFilters.selectedStatuses.length > 0;
+
+  const resetMrFilters = () => {
+    setMrStatusFilters({ selectedStatuses: [] });
   };
 
   return (
@@ -358,8 +389,78 @@ export default function ProjectWithID() {
 
       <h3>MATERIAL REQUESTS</h3>
       <br />
-      {mrs?.length === 0 ? (
-        <div>No material requests created</div>
+
+      {/* Filter bar */}
+      <div
+        style={{
+          display: "flex",
+          gap: "10px",
+          paddingBottom: "20px",
+          borderBottom: "1px solid rgba(207, 207, 207, 1)",
+          alignItems: "center",
+        }}
+      >
+        <MrStatusFilterButton
+          statuses={mrStatuses}
+          onApplyFilters={setMrStatusFilters}
+          currentFilters={mrStatusFilters}
+        />
+
+        {hasActiveMrFilters && (
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
+            }}
+          >
+            {mrStatusFilters.selectedStatuses.length > 0 && (
+              <Button
+                style={{
+                  borderRadius: "50px",
+                  fontWeight: 600,
+                }}
+                componentType={"none"}
+                bgColor={"rgba(239, 239, 239, 1)"}
+                borderColor={"transparent"}
+                textColor={"black"}
+              >
+                STATUS:{" "}
+                <span
+                  style={{
+                    color: "rgba(16, 185, 129, 1)",
+                    textWrap: "nowrap",
+                  }}
+                >
+                  {mrStatusFilters.selectedStatuses[0].toUpperCase()}
+                  {mrStatusFilters.selectedStatuses.length > 1 &&
+                    `, +${mrStatusFilters.selectedStatuses.length - 1} MORE`}
+                </span>
+              </Button>
+            )}
+
+            <Button
+              onClick={resetMrFilters}
+              componentType={"button"}
+              bgColor={"transparent"}
+              borderColor={"transparent"}
+              textColor={"black"}
+              style={{ padding: "0px" }}
+            >
+              RESET FILTER
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <br />
+
+      {filteredMrs?.length === 0 ? (
+        <div>
+          {hasActiveMrFilters
+            ? "No material requests matching your filters"
+            : "No material requests created"}
+        </div>
       ) : (
         <table className="items-table two-toned">
           <thead>
@@ -375,7 +476,7 @@ export default function ProjectWithID() {
             </tr>
           </thead>
           <tbody>
-            {mrs?.map((item: MrHeaderWithLpo, index: number) => {
+            {filteredMrs?.map((item: MrHeaderWithLpo, index: number) => {
               const progressStyle = getApprovalPillStyle(
                 item.display_progress_name || item.progress_name,
               );

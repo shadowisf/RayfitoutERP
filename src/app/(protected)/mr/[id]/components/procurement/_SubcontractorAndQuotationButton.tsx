@@ -61,9 +61,28 @@ export default function SubcontractorAndQuotationButton({
   const [rejectComments, setRejectComments] = useState<string>("");
   const [subcontractors, setSubcontractors] = useState<any[]>([]);
 
+  // Initialize with 3 empty rows instead of 1
   const [subcontractorQuotations, setSubcontractorQuotations] = useState<
     SubcontractorQuotation[]
   >([
+    {
+      subcontractor_id: "",
+      quotation_file: null,
+      quotation_url: "",
+      rating: "",
+      total_price: "",
+      created_by: "",
+      isModified: false,
+    },
+    {
+      subcontractor_id: "",
+      quotation_file: null,
+      quotation_url: "",
+      rating: "",
+      total_price: "",
+      created_by: "",
+      isModified: false,
+    },
     {
       subcontractor_id: "",
       quotation_file: null,
@@ -213,7 +232,26 @@ export default function SubcontractorAndQuotationButton({
       if (mode === "edit") {
         fetchExistingQuotations();
       } else {
+        // Reset to 3 empty rows in add mode
         setSubcontractorQuotations([
+          {
+            subcontractor_id: "",
+            quotation_file: null,
+            quotation_url: "",
+            rating: "",
+            total_price: "",
+            created_by: userInfo?.name || "",
+            isModified: true,
+          },
+          {
+            subcontractor_id: "",
+            quotation_file: null,
+            quotation_url: "",
+            rating: "",
+            total_price: "",
+            created_by: userInfo?.name || "",
+            isModified: true,
+          },
           {
             subcontractor_id: "",
             quotation_file: null,
@@ -250,8 +288,9 @@ export default function SubcontractorAndQuotationButton({
   }
 
   function handleRemoveRow(index: number) {
-    if (subcontractorQuotations.length <= 1) {
-      toast("You must have at least 1 row", "error");
+    // Always require minimum 3 subcontractors
+    if (subcontractorQuotations.length <= 3) {
+      toast("You must have at least 3 subcontractors", "error");
       return;
     }
 
@@ -384,27 +423,18 @@ export default function SubcontractorAndQuotationButton({
   async function handleSubcontractorAndQuotationSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    // Filter out empty rows (rows without subcontractor selected)
     const validQuotations = subcontractorQuotations.filter(
       (q: SubcontractorQuotation) => q.subcontractor_id !== "",
     );
 
-    // Check if any quotation has total price >= 900
-    const hasHighValueQuotation = validQuotations.some(
-      (q: { total_price: string }) => {
-        const totalPrice = parseFloat(q.total_price);
-        return !isNaN(totalPrice) && totalPrice >= 900;
-      },
-    );
-
-    // If any quotation is >= 900 AED, require minimum 3 subcontractors
-    if (hasHighValueQuotation && validQuotations.length < 3) {
-      toast(
-        "Minimum 3 subcontractors required for quotations with total price ≥ 900 AED",
-        "error",
-      );
+    // ALWAYS require minimum 3 subcontractors
+    if (validQuotations.length < 3) {
+      toast("Minimum 3 subcontractors are required", "error");
       return;
     }
 
+    // Validate all 3+ quotations
     for (let i = 0; i < validQuotations.length; i++) {
       const quotation = validQuotations[i];
 
@@ -418,9 +448,7 @@ export default function SubcontractorAndQuotationButton({
         return;
       }
 
-      // ────────────────────────────────────────────────
-      // FIXED: Safely handle total_price (string or number)
-      // ────────────────────────────────────────────────
+      // Safely handle total_price (string or number)
       const totalPriceValue =
         typeof quotation.total_price === "string"
           ? quotation.total_price.trim()
@@ -431,7 +459,7 @@ export default function SubcontractorAndQuotationButton({
         return;
       }
 
-      // Optional: extra validation (must be valid number)
+      // Extra validation (must be valid number)
       const parsed = parseFloat(totalPriceValue);
       if (isNaN(parsed)) {
         toast(`Total price must be a valid number in row ${i + 1}`, "error");
@@ -447,6 +475,7 @@ export default function SubcontractorAndQuotationButton({
 
       const quotationsWithUrls = await uploadFilesToS3(validQuotations);
 
+      // FIXED: Ensure all required fields are present and properly formatted
       const apiPayload =
         mode === "edit"
           ? {
@@ -454,10 +483,10 @@ export default function SubcontractorAndQuotationButton({
               jo_line_id: joLine.id,
               quotations: quotationsWithUrls.map((q) => ({
                 id: q.id,
-                subcontractor_id: q.subcontractor_id,
-                quotation_file: q.quotation_url,
+                subcontractor_id: Number(q.subcontractor_id), // Ensure number
+                quotation_file: q.quotation_url, // Use the URL from upload
                 rating: q.rating || null,
-                total_price: q.total_price, // already string or number — backend should handle
+                total_price: Number(q.total_price) || 0, // Ensure number
                 created_by: q.isModified ? userInfo?.name || "" : q.created_by,
               })),
             }
@@ -465,10 +494,10 @@ export default function SubcontractorAndQuotationButton({
               action: "addSubcontractorAndQuotation",
               jo_line_id: joLine.id,
               quotations: quotationsWithUrls.map((q) => ({
-                subcontractor_id: q.subcontractor_id,
-                quotation_file: q.quotation_url,
+                subcontractor_id: Number(q.subcontractor_id), // Ensure number
+                quotation_file: q.quotation_url, // Use the URL from upload
                 rating: q.rating || null,
-                total_price: q.total_price,
+                total_price: Number(q.total_price) || 0, // Ensure number
                 created_by: userInfo?.name || "",
               })),
             };
@@ -491,7 +520,26 @@ export default function SubcontractorAndQuotationButton({
         );
         setIsOpen(false);
 
+        // Reset to 3 empty rows
         setSubcontractorQuotations([
+          {
+            subcontractor_id: "",
+            quotation_file: null,
+            quotation_url: "",
+            rating: "",
+            total_price: "",
+            created_by: "",
+            isModified: false,
+          },
+          {
+            subcontractor_id: "",
+            quotation_file: null,
+            quotation_url: "",
+            rating: "",
+            total_price: "",
+            created_by: "",
+            isModified: false,
+          },
           {
             subcontractor_id: "",
             quotation_file: null,
@@ -696,6 +744,7 @@ export default function SubcontractorAndQuotationButton({
                               href={quotation.quotation_url}
                               target="_blank"
                               style={{ display: "flex" }}
+                              rel="noreferrer"
                             >
                               <img src={externalLinkIcon} alt="view" />
                             </a>
@@ -753,8 +802,8 @@ export default function SubcontractorAndQuotationButton({
 
                       <td>{quotation.created_by || "-"}</td>
 
-                      {/* Show remove button only if: more than 1 row AND not the first row */}
-                      {subcontractorQuotations.length > 1 && index > 0 && (
+                      {/* Show remove button only if more than 3 rows */}
+                      {subcontractorQuotations.length > 3 && (
                         <td>
                           <Button
                             componentType={"button"}
@@ -773,8 +822,7 @@ export default function SubcontractorAndQuotationButton({
                       )}
 
                       {/* Empty cell for rows that don't have trash button */}
-                      {(subcontractorQuotations.length === 1 ||
-                        index === 0) && <td></td>}
+                      {subcontractorQuotations.length <= 3 && <td></td>}
                     </tr>
                   ),
                 )}
@@ -801,34 +849,18 @@ export default function SubcontractorAndQuotationButton({
             <br />
 
             {/* Visual indicator for minimum subcontractor requirement */}
-            {(() => {
-              const validQuotations = subcontractorQuotations.filter(
-                (q: SubcontractorQuotation) => q.subcontractor_id !== "",
-              );
-
-              const hasHighValueQuotation = validQuotations.some(
-                (q: { total_price: string }) => {
-                  const totalPrice = parseFloat(q.total_price);
-                  return !isNaN(totalPrice) && totalPrice >= 900;
-                },
-              );
-
-              if (hasHighValueQuotation && validQuotations.length < 3) {
-                return (
-                  <div
-                    style={{
-                      padding: "10px 15px",
-                      color: "rgba(248, 77, 77, 1)",
-                      textAlign: "left",
-                    }}
-                  >
-                    Total price is greater than or equal to 900 AED. Minimum 3
-                    subcontractors required
-                  </div>
-                );
-              }
-              return null;
-            })()}
+            {/* {subcontractorQuotations.filter((q) => q.subcontractor_id !== "")
+              .length < 3 && (
+              <div
+                style={{
+                  padding: "10px 15px",
+                  color: "rgba(248, 77, 77, 1)",
+                  textAlign: "left",
+                }}
+              >
+                Minimum 3 subcontractors are required
+              </div>
+            )} */}
           </>
         </FormPopUp>
       )}

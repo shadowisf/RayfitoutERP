@@ -25,6 +25,7 @@ type LpoCard = {
   project_name: string;
   department_name: string;
   progress_name: string;
+  item_count?: number;
 };
 
 // Progress IDs that use LPO cards instead of MR cards
@@ -54,10 +55,12 @@ export default function MR() {
     itemsRequestedIn: string;
     selectedDepartments: number[];
     selectedProjects: number[];
+    requestType: string;
   }>({
     itemsRequestedIn: "all",
     selectedDepartments: [],
     selectedProjects: [],
+    requestType: "all",
   });
 
   const getFlagColor = (hours: number, progress_id: number): string => {
@@ -563,6 +566,11 @@ export default function MR() {
   const getFilteredLPOs = () => {
     let filtered = lpoCards;
 
+    // Apply request type filter - LPOs are always material requests
+    if (filters.requestType === "job") {
+      return [];
+    }
+
     // Apply relevance filter using the modified canViewLPO
     if (filterRelevant) {
       filtered = filtered.filter((lpoCard) => canViewLPO(lpoCard, true));
@@ -626,6 +634,11 @@ export default function MR() {
 
   const getFilteredMRs = () => {
     let filtered = mrHeaders;
+
+    // Apply request type filter
+    if (filters.requestType !== "all") {
+      filtered = filtered.filter((mr) => mr.type === filters.requestType);
+    }
 
     filtered = filtered.filter((mr) => {
       if (mr.progress_id === 1)
@@ -818,13 +831,15 @@ export default function MR() {
       itemsRequestedIn: "all",
       selectedDepartments: [],
       selectedProjects: [],
+      requestType: "all",
     });
   };
 
   const hasActiveFilters =
     filters.itemsRequestedIn !== "all" ||
     filters.selectedDepartments.length > 0 ||
-    filters.selectedProjects.length > 0;
+    filters.selectedProjects.length > 0 ||
+    filters.requestType !== "all";
 
   return (
     <div className="dashboard">
@@ -929,6 +944,25 @@ export default function MR() {
               flexWrap: "wrap",
             }}
           >
+            {filters.requestType !== "all" && (
+              <Button
+                style={{ borderRadius: "50px", fontWeight: "600" }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
+              >
+                TYPE:{" "}
+                <span
+                  style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}
+                >
+                  {filters.requestType === "material"
+                    ? "MATERIAL REQUEST"
+                    : "JOB ORDER"}
+                </span>
+              </Button>
+            )}
+
             {filters.itemsRequestedIn !== "all" && (
               <Button
                 style={{ borderRadius: "50px", fontWeight: "600" }}
@@ -1220,24 +1254,28 @@ export default function MR() {
                                   >
                                     <div
                                       style={{
-                                        display: "flex",
-                                        alignItems: "flex-start",
-                                        justifyContent: "space-between",
+                                        backgroundColor: "black",
+                                        color: "white",
+                                        padding: "4px 10px",
+                                        borderRadius: "50px",
+                                        fontSize: "11px",
+                                        fontWeight: "600",
+                                        width: "fit-content",
+                                        alignItems: "center",
                                       }}
                                     >
-                                      <div
-                                        style={{ display: "flex", gap: "10px" }}
-                                      >
-                                        <div>
-                                          <small>MR NUMBER</small>
-                                          <h3>
-                                            MR-
-                                            {String(
-                                              lpoCard.mr_header_id,
-                                            ).padStart(5, "0")}
-                                          </h3>
-                                        </div>
-                                      </div>
+                                      MATERIAL REQUEST
+                                    </div>
+
+                                    <div>
+                                      <small>MR NUMBER</small>
+                                      <h3>
+                                        MR-
+                                        {String(lpoCard.mr_header_id).padStart(
+                                          5,
+                                          "0",
+                                        )}
+                                      </h3>
                                     </div>
 
                                     <div>
@@ -1256,6 +1294,11 @@ export default function MR() {
                                     <div>
                                       <small>VENDOR</small>
                                       <h3>{lpoCard.supplier_name || "-"}</h3>
+                                    </div>
+
+                                    <div>
+                                      <small>ITEM COUNT</small>
+                                      <h3>{lpoCard.item_count ?? 0} ITEMS</h3>
                                     </div>
 
                                     <div>
@@ -1329,7 +1372,10 @@ export default function MR() {
                                   <div
                                     key={mr.id}
                                     style={{
-                                      backgroundColor: "white",
+                                      backgroundColor:
+                                        mr.type === "job"
+                                          ? "rgba(255, 253, 227, 1)"
+                                          : "white",
                                       borderRadius: "15px",
                                       padding: "15px",
                                       display: "flex",
@@ -1341,35 +1387,44 @@ export default function MR() {
                                   >
                                     <div
                                       style={{
-                                        display: "flex",
-                                        alignItems: "flex-start",
-                                        justifyContent: "space-between",
+                                        backgroundColor:
+                                          mr.type === "job"
+                                            ? "rgba(209, 182, 34, 1)"
+                                            : "black",
+                                        color: "white",
+                                        padding: "4px 10px",
+                                        borderRadius: "50px",
+                                        fontSize: "11px",
+                                        fontWeight: "600",
+                                        width: "fit-content",
+                                        alignItems: "center",
                                       }}
                                     >
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "flex-end",
-                                          gap: "10px",
-                                        }}
-                                      >
-                                        <div>
-                                          <small>
-                                            {mr.type === "job"
-                                              ? "JO NUMBER"
-                                              : "MR NUMBER"}
-                                          </small>
-                                          <h3>
-                                            {mr.type === "job" ? "JO" : "MR"}-
-                                            {String(mr.id).padStart(5, "0")}
-                                          </h3>
-                                        </div>
-                                      </div>
+                                      {mr.type === "job"
+                                        ? "JOB ORDER"
+                                        : "MATERIAL REQUEST"}
+                                    </div>
+
+                                    <div>
+                                      <small>
+                                        {mr.type === "job"
+                                          ? "JO NUMBER"
+                                          : "MR NUMBER"}
+                                      </small>
+                                      <h3>
+                                        {mr.type === "job" ? "JO" : "MR"}-
+                                        {String(mr.id).padStart(5, "0")}
+                                      </h3>
                                     </div>
 
                                     <div>
                                       <small>PROJECT</small>
                                       <h3>{mr.project_name || "-"}</h3>
+                                    </div>
+
+                                    <div>
+                                      <small>ITEM COUNT</small>
+                                      <h3>{mr.item_count ?? 0} ITEMS</h3>
                                     </div>
 
                                     <div>
@@ -1413,7 +1468,11 @@ export default function MR() {
 
                                     <Button
                                       componentType="link"
-                                      bgColor="rgba(239, 239, 239, 1)"
+                                      bgColor={
+                                        mr.type === "job"
+                                          ? "white"
+                                          : "rgba(239, 239, 239, 1)"
+                                      }
                                       borderColor="rgba(239, 239, 239, 1)"
                                       textColor="black"
                                       href={`/mr/${mr.id}`}
@@ -1463,14 +1522,19 @@ export default function MR() {
                                     <div
                                       style={{ display: "flex", gap: "10px" }}
                                     >
-                                      <div>
-                                        <small>MR NUMBER</small>
-                                        <h3>
-                                          MR-
-                                          {String(
-                                            lpoCard.mr_header_id,
-                                          ).padStart(5, "0")}
-                                        </h3>
+                                      <div
+                                        style={{
+                                          backgroundColor: "black",
+                                          color: "white",
+                                          padding: "4px 10px",
+                                          borderRadius: "50px",
+                                          fontSize: "11px",
+                                          fontWeight: "600",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                        }}
+                                      >
+                                        MATERIAL REQUEST
                                       </div>
 
                                       <div
@@ -1566,6 +1630,17 @@ export default function MR() {
                                   </div>
 
                                   <div>
+                                    <small>MR NUMBER</small>
+                                    <h3>
+                                      MR-
+                                      {String(lpoCard.mr_header_id).padStart(
+                                        5,
+                                        "0",
+                                      )}
+                                    </h3>
+                                  </div>
+
+                                  <div>
                                     <small>LPO NUMBER</small>
                                     <h3>
                                       LPO-{String(lpoCard.id).padStart(5, "0")}
@@ -1580,6 +1655,11 @@ export default function MR() {
                                   <div>
                                     <small>PROJECT</small>
                                     <h3>{lpoCard.project_name || "-"}</h3>
+                                  </div>
+
+                                  <div>
+                                    <small>ITEM COUNT</small>
+                                    <h3>{lpoCard.item_count ?? 0} ITEMS</h3>
                                   </div>
 
                                   <div>
@@ -1667,7 +1747,10 @@ export default function MR() {
                                 <div
                                   key={mr.id}
                                   style={{
-                                    backgroundColor: "white",
+                                    backgroundColor:
+                                      mr.type === "job"
+                                        ? "rgba(255, 253, 227, 1)"
+                                        : "white",
                                     borderRadius: "15px",
                                     padding: "15px",
                                     display: "flex",
@@ -1690,16 +1773,24 @@ export default function MR() {
                                         gap: "10px",
                                       }}
                                     >
-                                      <div>
-                                        <small>
-                                          {mr.type === "job"
-                                            ? "JO NUMBER"
-                                            : "MR NUMBER"}
-                                        </small>
-                                        <h3>
-                                          {mr.type === "job" ? "JO" : "MR"}-
-                                          {String(mr.id).padStart(5, "0")}
-                                        </h3>
+                                      <div
+                                        style={{
+                                          backgroundColor:
+                                            mr.type === "job"
+                                              ? "rgba(209, 182, 34, 1)"
+                                              : "black",
+                                          color: "white",
+                                          padding: "4px 10px",
+                                          borderRadius: "50px",
+                                          fontSize: "11px",
+                                          fontWeight: "600",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                        }}
+                                      >
+                                        {mr.type === "job"
+                                          ? "JOB ORDER"
+                                          : "MATERIAL REQUEST"}
                                       </div>
 
                                       {mr.progress_id !== 25 && (
@@ -1786,8 +1877,25 @@ export default function MR() {
                                   </div>
 
                                   <div>
+                                    <small>
+                                      {mr.type === "job"
+                                        ? "JO NUMBER"
+                                        : "MR NUMBER"}
+                                    </small>
+                                    <h3>
+                                      {mr.type === "job" ? "JO" : "MR"}-
+                                      {String(mr.id).padStart(5, "0")}
+                                    </h3>
+                                  </div>
+
+                                  <div>
                                     <small>PROJECT</small>
                                     <h3>{mr.project_name || "-"}</h3>
+                                  </div>
+
+                                  <div>
+                                    <small>ITEM COUNT</small>
+                                    <h3>{mr.item_count ?? 0} ITEMS</h3>
                                   </div>
 
                                   <div>
@@ -1850,7 +1958,11 @@ export default function MR() {
 
                                   <Button
                                     componentType="link"
-                                    bgColor="rgba(239, 239, 239, 1)"
+                                    bgColor={
+                                      mr.type === "job"
+                                        ? "white"
+                                        : "rgba(239, 239, 239, 1)"
+                                    }
                                     borderColor="rgba(239, 239, 239, 1)"
                                     textColor="black"
                                     href={`/mr/${mr.id}`}

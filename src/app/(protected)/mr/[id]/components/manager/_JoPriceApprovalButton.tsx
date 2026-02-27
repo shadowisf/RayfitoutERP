@@ -240,7 +240,7 @@ export default function JoPriceApprovalButton({
     e.preventDefault();
 
     const selectedQuotation = subcontractorQuotations.find(
-      (q) => q.subcontractor_id === Number(selectedSubcontractorID),
+      (q) => q.id === Number(selectedSubcontractorID),
     );
 
     if (!selectedQuotation) {
@@ -554,7 +554,7 @@ export default function JoPriceApprovalButton({
                         <input
                           type="radio"
                           name="subcontractor"
-                          value={quotation.subcontractor_id}
+                          value={quotation.id}
                           onChange={(e) =>
                             setSelectedSubcontractorID(e.target.value)
                           }

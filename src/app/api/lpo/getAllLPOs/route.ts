@@ -22,7 +22,8 @@ export async function GET() {
         mh.project_id as mr_project_id,
         p.name as project_name,
         d.value as department_name,
-        pr.value as progress_name
+        pr.value as progress_name,
+        (SELECT COUNT(*) FROM lpo_mr_line lml WHERE lml.lpo_id = l.id) AS item_count
       FROM lpo l
       JOIN suppliers s ON l.supplier_id = s.id
       JOIN mr_headers mh ON l.mr_header_id = mh.id

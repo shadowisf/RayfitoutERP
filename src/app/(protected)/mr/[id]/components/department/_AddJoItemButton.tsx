@@ -4,11 +4,10 @@ import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItem
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
-import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
-import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
+import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 type props = {
   mrHeaderID: number;
@@ -33,9 +32,7 @@ export default function AddJoItemButton({
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const [jobScopes, setJobScopes] = useState<any[]>([]);
-
-  const [jobScopeID, setJobScopeID] = useState<string | number>("");
+  const [jobScope, setJobScope] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
   const [quantity, setQuantity] = useState("");
@@ -43,28 +40,22 @@ export default function AddJoItemButton({
   const [budgetEstimate, setBudgetEstimate] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [attachment, setAttachment] = useState<File | null>(null);
-
-  useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "getJobScopes" }),
-    })
-      .then((res) => res.json())
-      .then((data) => setJobScopes(data))
-      .catch(console.error);
-  }, []);
+  const [attachment, setAttachment] = useState<File[] | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    let attachmentUrl = null;
+    let attachmentUrls: string[] = [];
 
-    if (attachment) {
+    // Handle multiple file uploads
+    if (attachment && attachment.length > 0) {
       const formData = new FormData();
       formData.append("folder", "jo-attachments");
-      formData.append("files", attachment);
+
+      // Append all files to formData
+      attachment.forEach((file) => {
+        formData.append("files", file);
+      });
 
       const uploadRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
@@ -75,12 +66,20 @@ export default function AddJoItemButton({
       );
 
       if (!uploadRes.ok) {
-        toast("Failed to upload attachment", "error");
+        toast("Failed to upload attachments", "error");
         return;
       }
 
       const uploadData = await uploadRes.json();
-      attachmentUrl = uploadData.urls[0];
+
+      // Handle both single URL or array of URLs response
+      if (Array.isArray(uploadData.urls)) {
+        attachmentUrls = uploadData.urls;
+      } else if (uploadData.url) {
+        attachmentUrls = [uploadData.url];
+      } else if (uploadData.urls) {
+        attachmentUrls = uploadData.urls;
+      }
     }
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`, {
@@ -89,7 +88,7 @@ export default function AddJoItemButton({
       body: JSON.stringify({
         action: "createJoLine",
         mr_header_id: mrHeaderID,
-        job_scope_id: jobScopeID || null,
+        job_scope: jobScope,
         job_description: jobDescription,
         boq_line_ids: boqLineIDs,
         quantity,
@@ -97,14 +96,16 @@ export default function AddJoItemButton({
         budget_estimate: budgetEstimate,
         start_date: startDate || null,
         end_date: endDate || null,
-        attachment: attachmentUrl,
+        attachment: attachmentUrls.length > 0 ? attachmentUrls : null,
       }),
     });
 
     if (res.ok) {
       toast("Job item added", "success");
       setIsOpen(false);
-      setJobScopeID("");
+
+      // Reset form
+      setJobScope("");
       setJobDescription("");
       setBoqLineIDs([]);
       setQuantity("");
@@ -142,14 +143,11 @@ export default function AddJoItemButton({
           style={{ minWidth: "1000px" }}
         >
           <div className="input-row half">
-            <SingleSelectDropdown
+            <InputItem
               label={"JOB SCOPE"}
-              selectedValue={jobScopeID}
-              onChange={setJobScopeID}
-              placeholder={"SELECT JOB SCOPE"}
-              dbData={jobScopes}
-              idField="id"
-              labelField="value"
+              value={jobScope}
+              type={"text"}
+              onChange={(e) => setJobScope(e.target.value)}
               required
             />
 
@@ -255,11 +253,11 @@ export default function AddJoItemButton({
           </div>
 
           <div className="input-row full">
-            <SingleUploadFileBox
+            <MultipleUploadFileBox
               fileState={attachment}
               setFileState={setAttachment}
               label="ATTACHMENT"
-              acceptedFileTypes=".pdf,.jpeg,.jpg,.png,.webp,.dwg,.dxf"
+              acceptedFileTypes=".pdf,.jpeg,.jpg,.png,.webp"
               placeholder="UPLOAD OR DRAG ATTACHMENT"
               buttonLabel="UPLOAD FILE"
             />

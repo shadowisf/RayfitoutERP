@@ -171,23 +171,6 @@ export default function MultipleSelectBoqItemButton({
 
           setGroupedBoqLines(grouped);
           setFilteredGroupedBoqLines(grouped);
-
-          // Initialize all categories and subcategories as selected
-          const allCategories = new Set(Object.keys(grouped));
-          const allSubCategories = new Set<string>();
-
-          Object.entries(grouped).forEach(([cat, subCats]) => {
-            Object.keys(subCats).forEach((subCat) => {
-              allSubCategories.add(`${cat}::${subCat}`);
-            });
-          });
-
-          setSelectedCategories(allCategories);
-          setSelectedSubCategories(allSubCategories);
-
-          // Select all items by default
-          const allIds = data.map((item: BoqLine) => item.id);
-          setTempSelectedBoqIDs(allIds);
         })
         .catch((err) => {
           console.error("Error fetching BOQ lines:", err);

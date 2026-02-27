@@ -10,11 +10,13 @@ type MrFilterButtonProps = {
     itemsRequestedIn: string;
     selectedDepartments: number[];
     selectedProjects: number[];
+    requestType: string;
   }) => void;
   currentFilters: {
     itemsRequestedIn: string;
     selectedDepartments: number[];
     selectedProjects: number[];
+    requestType: string;
   };
 };
 
@@ -36,12 +38,16 @@ export default function MrFilterButton({
   const [selectedProjects, setSelectedProjects] = useState<number[]>(
     currentFilters.selectedProjects,
   );
+  const [requestType, setRequestType] = useState<string>(
+    currentFilters.requestType,
+  );
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
 
   const handleOpen = () => {
     setItemsRequestedIn(currentFilters.itemsRequestedIn);
     setSelectedDepartments(currentFilters.selectedDepartments);
     setSelectedProjects(currentFilters.selectedProjects);
+    setRequestType(currentFilters.requestType);
     setIsOpen(true);
   };
 
@@ -50,6 +56,7 @@ export default function MrFilterButton({
       itemsRequestedIn,
       selectedDepartments,
       selectedProjects,
+      requestType,
     });
     setIsOpen(false);
   };
@@ -58,6 +65,7 @@ export default function MrFilterButton({
     setItemsRequestedIn("all");
     setSelectedDepartments([]);
     setSelectedProjects([]);
+    setRequestType("all");
     setProjectSearchQuery("");
   };
 
@@ -146,6 +154,50 @@ export default function MrFilterButton({
             </Button>
           }
         >
+          {/* Request Type Section */}
+          <div style={{ marginBottom: "30px" }}>
+            <h3
+              style={{
+                marginBottom: "15px",
+                fontSize: "14px",
+                fontWeight: "600",
+              }}
+            >
+              REQUEST TYPE
+            </h3>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+              {[
+                { value: "all", label: "All" },
+                { value: "material", label: "Material Request" },
+                { value: "job", label: "Job Order" },
+              ].map((option) => (
+                <label
+                  key={option.value}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="requestType"
+                    value={option.value}
+                    checked={requestType === option.value}
+                    onChange={(e) => setRequestType(e.target.value)}
+                    style={{
+                      width: "18px",
+                      height: "18px",
+                      cursor: "pointer",
+                    }}
+                  />
+                  <h4>{option.label}</h4>
+                </label>
+              ))}
+            </div>
+          </div>
+
           {/* Items Requested In Section */}
           <div style={{ marginBottom: "30px" }}>
             <h3
