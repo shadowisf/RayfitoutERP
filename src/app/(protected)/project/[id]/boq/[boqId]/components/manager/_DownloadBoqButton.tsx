@@ -312,7 +312,7 @@ export default function DownloadBoqButton({
           .replace(/\s+/g, "-")
           .substring(0, 30);
 
-        link.download = `BOQ-MR-${String(mrHeader.id).padStart(5, "0")}-${sanitizedItemName}-${fileNameSuffix}.pdf`;
+        link.download = `BOQ-REF-MR-${String(mrHeader.id).padStart(5, "0")}-${sanitizedItemName}-${fileNameSuffix}.pdf`;
       } else {
         // Original format: BOQ-{PRICED/UNPRICED/DN}-{BOQ ID}.pdf
         link.download = `BOQ-${fileNameSuffix}-${String(boqHeader.id).padStart(5, "0")}.pdf`;

@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
         lml.unit_price,
         lml.total_price,
         ml.material_description,
+        ml.brand,
+        ml.specification,
         ml.approved_proposed_quantity,
         ml.unit
       FROM lpo_mr_line lml

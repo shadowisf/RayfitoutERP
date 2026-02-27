@@ -153,18 +153,24 @@ const styles = StyleSheet.create({
     color: "#333333",
   },
   tableColDescription: {
-    width: "75%",
+    width: "65%",
+    paddingRight: 4,
+  },
+  tableColBrandAndSpecs: {
+    width: "30%",
+    paddingRight: 4,
   },
   tableColQty: {
     width: "20%",
+    paddingRight: 4,
   },
   tableColUnitPrice: {
     width: "17.5%",
-    textAlign: "right",
+    paddingRight: 4,
   },
   tableColTotalPrice: {
     width: "17.5%",
-    textAlign: "right",
+    paddingRight: 4,
   },
 
   // Bottom Section - Two columns
@@ -436,6 +442,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <Text style={styles.tableColDescription}>ITEM</Text>
+            <Text style={styles.tableColBrandAndSpecs}>BRAND & SPECS</Text>
             <Text style={styles.tableColQty}>QTY</Text>
             <Text style={styles.tableColUnitPrice}>UNIT PRICE</Text>
             <Text style={styles.tableColTotalPrice}>TOTAL PRICE</Text>
@@ -449,6 +456,15 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
               <View key={index} style={styles.tableRow}>
                 <Text style={styles.tableColDescription}>
                   {item.material_description}
+                </Text>
+                <Text style={styles.tableColBrandAndSpecs}>
+                  {item.brand && item.specification
+                    ? `Brand: ${item.brand}, Specs: ${item.specification}`
+                    : item.brand
+                      ? `Brand: ${item.brand}`
+                      : item.specification
+                        ? `Specification: ${item.specification}`
+                        : "-"}
                 </Text>
                 <Text style={styles.tableColQty}>
                   {formatQuantity(quantity)} {item.unit}
