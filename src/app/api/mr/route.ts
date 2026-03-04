@@ -235,9 +235,7 @@ export async function PUT(req: Request) {
         );
       }
 
-      const lpoLabel = lpoId
-        ? ` (LPO-${String(lpoId).padStart(5, "0")})`
-        : "";
+      const lpoLabel = lpoId ? ` (LPO-${String(lpoId).padStart(5, "0")})` : "";
 
       await db.query(
         `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
@@ -359,14 +357,15 @@ export async function PUT(req: Request) {
         [body.id],
       );
 
-      const rejectReason = rejectedQuotations.length > 0
-        ? JSON.stringify(
-            rejectedQuotations.map((item: any) => ({
-              item: item.material_description,
-              reason: item.reject_comment || "",
-            })),
-          )
-        : null;
+      const rejectReason =
+        rejectedQuotations.length > 0
+          ? JSON.stringify(
+              rejectedQuotations.map((item: any) => ({
+                item: item.material_description,
+                reason: item.reject_comment || "",
+              })),
+            )
+          : null;
 
       await db.query(`UPDATE mr_headers SET progress_id = 11 WHERE id = ?`, [
         body.id,
@@ -511,14 +510,15 @@ export async function PUT(req: Request) {
         [body.id],
       );
 
-      const rejectReason = rejectedItems.length > 0
-        ? JSON.stringify(
-            rejectedItems.map((item: any) => ({
-              item: item.material_description,
-              reason: item.reject_comment || "",
-            })),
-          )
-        : null;
+      const rejectReason =
+        rejectedItems.length > 0
+          ? JSON.stringify(
+              rejectedItems.map((item: any) => ({
+                item: item.material_description,
+                reason: item.reject_comment || "",
+              })),
+            )
+          : null;
 
       await db.query(`UPDATE mr_headers SET progress_id = 5 WHERE id = ?`, [
         body.id,
@@ -692,14 +692,15 @@ export async function PUT(req: Request) {
         [body.id],
       );
 
-      const rejectReason = rejectedPayments.length > 0
-        ? JSON.stringify(
-            rejectedPayments.map((lpo: any) => ({
-              item: `LPO-${String(lpo.id).padStart(5, "0")}`,
-              reason: lpo.payment_reject_comment || "",
-            })),
-          )
-        : body.reject_reason || null;
+      const rejectReason =
+        rejectedPayments.length > 0
+          ? JSON.stringify(
+              rejectedPayments.map((lpo: any) => ({
+                item: `LPO-${String(lpo.id).padStart(5, "0")}`,
+                reason: lpo.payment_reject_comment || "",
+              })),
+            )
+          : body.reject_reason || null;
 
       await db.query(`UPDATE mr_headers SET progress_id = 13 WHERE id = ?`, [
         body.id,

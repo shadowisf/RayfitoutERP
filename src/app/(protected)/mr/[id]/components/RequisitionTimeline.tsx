@@ -88,9 +88,9 @@ const FULL_MR_STAGES = [1, 2, 3, 7, 9, 10, 12, 26];
 const JO_STAGES_IDS = [1, 3, 7, 10, 25];
 
 // Base LPO stages (no QS)
-const BASE_LPO_STAGES = [1, 3, 7, 10, 12, 14, 17, 24, 25];
+const BASE_LPO_STAGES = [1, 3, 7, 10, 12, 14, 17, 21, 24, 25];
 // Full LPO stages (with QS)
-const FULL_LPO_STAGES = [1, 2, 3, 7, 9, 10, 12, 14, 17, 24, 25];
+const FULL_LPO_STAGES = [1, 2, 3, 7, 9, 10, 12, 14, 17, 21, 24, 25];
 
 type TimelineStage = {
   id: number;

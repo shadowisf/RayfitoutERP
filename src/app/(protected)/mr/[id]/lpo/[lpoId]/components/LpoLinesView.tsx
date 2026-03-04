@@ -18,6 +18,7 @@ import SubmitForStockEntryButton from "../../../components/qualityControl/_Submi
 import CompleteMaterialRequestButton from "../../../components/storekeeper/_CompleteMaterialRequestButton";
 import SubmitForProcurementResolutionButton from "../../../components/qualityControl/_SubmitForProcurementResolution";
 import CreateGRNButton from "../../../components/storekeeper/_CreateGRNButton";
+import SubmitForQCButton from "../../../components/storekeeper/_SubmitForQCButton";
 import QCCheckListButton from "../../../components/qualityControl/_QCCheckListButton";
 import AddToInventoryButton from "../../../components/storekeeper/_AddStockButton";
 import QCRecheckButton from "../../../components/procurement/_QCRecheckButton";
@@ -107,6 +108,42 @@ export default function LpoLinesView({
     userInfo?.departmentID === 12 ||
     userInfo?.departmentID === 10 ||
     userInfo?.departmentID === 16;
+
+  // ============================================
+  // DYNAMIC COLUMN CALCULATION FOR ALIGNMENT
+  // ============================================
+
+  // Base columns that are always visible:
+  // #, CATEGORY, SUBCATEGORY, ITEM, QTY FOR USE, QTY FOR STOCKS, TOTAL QTY, BOQ REF, BRAND & SPECS, ATTACHMENT = 10 columns
+  const BASE_COLUMN_COUNT = 10;
+
+  // Price columns visibility
+  const hasPriceColumns = canSeePrice;
+  const priceColumnCount = hasPriceColumns ? 2 : 0; // UNIT PRICE and TOTAL PRICE
+
+  // Action columns (conditional based on progress and department)
+  const hasQcColumn = userInfo?.departmentID === 12 && progressId === 21;
+  const hasStocksColumn = progressId === 24 && userInfo?.departmentID === 11;
+  const hasResolutionColumn = progressId === 23 && userInfo?.departmentID === 9;
+
+  const actionColumnCount = [
+    hasQcColumn,
+    hasStocksColumn,
+    hasResolutionColumn,
+  ].filter(Boolean).length;
+
+  // Total visible columns in the table
+  const totalVisibleColumns =
+    BASE_COLUMN_COUNT + priceColumnCount + actionColumnCount;
+
+  // For summary rows: we need to span across the base columns to align with price columns
+  // If prices are visible, SUBTOTAL label aligns with UNIT PRICE (column 11)
+  // If prices are hidden, we span everything
+  const summaryLabelColSpan = BASE_COLUMN_COUNT;
+  const summaryValueColSpan = 1;
+  const summaryTrailingColSpan = actionColumnCount > 0 ? actionColumnCount : 0;
+
+  // ============================================
 
   const formatNumber = (value: unknown): string => {
     const num = Number(value);
@@ -717,7 +754,7 @@ export default function LpoLinesView({
               {canSeePrice && <th>UNIT PRICE</th>}
               {canSeePrice && <th>TOTAL PRICE</th>}
               {userInfo?.departmentID === 12 && progressId === 21 && (
-                <th>QUALITY CONTROL</th>
+                <th>QC</th>
               )}
               {progressId === 24 && userInfo?.departmentID === 11 && (
                 <th>STOCKS</th>
@@ -837,207 +874,101 @@ export default function LpoLinesView({
             >
               {/* Subtotal Row */}
               <tr>
+                <td colSpan={summaryLabelColSpan} />
                 <td
-                  colSpan={100}
                   style={{
-                    padding: "0",
+                    fontWeight: "600",
                   }}
                 >
-                  <table
-                    style={{
-                      width: "100%",
-                      tableLayout: "fixed",
-                    }}
-                  >
-                    <tbody>
-                      <tr>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td
-                          style={{
-                            fontWeight: "600",
-                            padding: "15px 20px",
-                          }}
-                        >
-                          SUBTOTAL
-                        </td>
-                        <td
-                          style={{
-                            padding: "15px 20px",
-                            fontWeight: "600",
-                            borderRadius: "50px",
-                          }}
-                        >
-                          AED {calculateItemsTotal(allItems).toFixed(2)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  SUBTOTAL
                 </td>
+                <td
+                  style={{
+                    fontWeight: "600",
+                  }}
+                >
+                  AED {calculateItemsTotal(allItems).toFixed(2)}
+                </td>
+                {summaryTrailingColSpan > 0 && (
+                  <td colSpan={summaryTrailingColSpan} />
+                )}
               </tr>
 
               {/* Discount Row */}
               {getDiscountRate() > 0 && (
                 <tr>
+                  <td colSpan={summaryLabelColSpan} />
                   <td
-                    colSpan={100}
                     style={{
-                      padding: "0",
+                      fontWeight: "600",
                     }}
                   >
-                    <table
-                      style={{
-                        width: "100%",
-                        tableLayout: "fixed",
-                      }}
-                    >
-                      <tbody>
-                        <tr>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td
-                            style={{
-                              fontWeight: "600",
-                              padding: "15px 20px",
-                            }}
-                          >
-                            DISCOUNT ({getDiscountRate()}%)
-                          </td>
-                          <td
-                            style={{
-                              padding: "15px 20px",
-                              fontWeight: "600",
-                            }}
-                          >
-                            - AED{" "}
-                            {(
-                              calculateItemsTotal(allItems) *
-                              (getDiscountRate() / 100)
-                            ).toFixed(2)}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    DISCOUNT ({getDiscountRate()}%)
                   </td>
+                  <td
+                    style={{
+                      fontWeight: "600",
+                    }}
+                  >
+                    - AED{" "}
+                    {(
+                      calculateItemsTotal(allItems) *
+                      (getDiscountRate() / 100)
+                    ).toFixed(2)}
+                  </td>
+                  {summaryTrailingColSpan > 0 && (
+                    <td colSpan={summaryTrailingColSpan} />
+                  )}
                 </tr>
               )}
 
               {/* Shipping & Handling Row */}
               {getShippingAndHandling() > 0 && (
                 <tr>
+                  <td colSpan={summaryLabelColSpan} />
                   <td
-                    colSpan={100}
                     style={{
-                      padding: "0",
+                      fontWeight: "600",
                     }}
                   >
-                    <table
-                      style={{
-                        width: "100%",
-                        tableLayout: "fixed",
-                      }}
-                    >
-                      <tbody>
-                        <tr>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td
-                            style={{
-                              fontWeight: "600",
-                              padding: "15px 20px",
-                            }}
-                          >
-                            SHIPPING & HANDLING
-                          </td>
-                          <td
-                            style={{
-                              padding: "15px 20px",
-                              fontWeight: "600",
-                            }}
-                          >
-                            AED {getShippingAndHandling().toFixed(2)}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    SHIPPING & HANDLING
                   </td>
+                  <td
+                    style={{
+                      fontWeight: "600",
+                    }}
+                  >
+                    AED {getShippingAndHandling().toFixed(2)}
+                  </td>
+                  {summaryTrailingColSpan > 0 && (
+                    <td colSpan={summaryTrailingColSpan} />
+                  )}
                 </tr>
               )}
 
-              {/* Total with VAT Row - UPDATED with dynamic rate */}
+              {/* Total with VAT Row */}
               <tr>
+                <td colSpan={summaryLabelColSpan} />
                 <td
-                  colSpan={100}
                   style={{
-                    padding: "0",
+                    fontWeight: "600",
                   }}
                 >
-                  <table
-                    style={{
-                      width: "100%",
-                      tableLayout: "fixed",
-                    }}
-                  >
-                    <tbody>
-                      <tr>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td
-                          style={{
-                            fontWeight: "600",
-                            padding: "15px 20px",
-                          }}
-                        >
-                          TOTAL WITH VAT
-                        </td>
-                        <td
-                          style={{
-                            padding: "15px 20px",
-                            fontWeight: "600",
-                            borderRadius: "50px",
-                          }}
-                        >
-                          AED{" "}
-                          {calculateTotalWithVAT(
-                            calculateItemsTotal(allItems),
-                          ).toFixed(2)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  TOTAL W/ VAT
                 </td>
+                <td
+                  style={{
+                    fontWeight: "600",
+                  }}
+                >
+                  AED{" "}
+                  {calculateTotalWithVAT(calculateItemsTotal(allItems)).toFixed(
+                    2,
+                  )}
+                </td>
+                {summaryTrailingColSpan > 0 && (
+                  <td colSpan={summaryTrailingColSpan} />
+                )}
               </tr>
             </tfoot>
           )}
@@ -1116,7 +1047,7 @@ export default function LpoLinesView({
         </div>
       )}
 
-      {/* Awaiting Delivery (Progress 17) - Storekeeper: GRN then Stock Entry or GRN Fail Resubmission */}
+      {/* Awaiting Delivery (Progress 17) - Storekeeper: GRN then Submit for QC or GRN Fail Resubmission */}
       {userInfo?.departmentID === 11 && progressId === 17 && (
         <div className="bottom-nav">
           <div></div>
@@ -1127,13 +1058,10 @@ export default function LpoLinesView({
                 lpoId={lpoId}
               />
             ) : (
-              <SubmitForStockEntryButton
-                mrHeaderID={mrHeader.id}
-                lpoId={lpoId}
-              />
+              <SubmitForQCButton mrHeaderID={mrHeader.id} lpoId={lpoId} />
             )
           ) : (
-            <SubmitForStockEntryButton
+            <SubmitForQCButton
               mrHeaderID={mrHeader.id}
               lpoId={lpoId}
               disabled={true}

@@ -971,7 +971,7 @@ label {
   color: white;
   padding: 7px 20px;
   border-radius: 25px;
-  width: 200px;
+  min-width: 125px;
   /* font-size: 14.1px; */
 
   &.normal-text {

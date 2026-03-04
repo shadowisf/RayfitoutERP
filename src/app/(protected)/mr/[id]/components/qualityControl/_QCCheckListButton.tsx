@@ -59,6 +59,19 @@ const checkpoints = [
   "Assembly/Functional test",
 ];
 
+// Helper function to format numbers without trailing zeros
+const formatNumberWithoutTrailingZeros = (value: string | number): string => {
+  if (value === null || value === undefined || value === "") return "0";
+
+  const num = typeof value === "string" ? parseFloat(value) : value;
+
+  if (isNaN(num)) return "0";
+
+  // Convert to number and let JavaScript handle trailing zeros
+  // This removes unnecessary decimal places while preserving needed ones
+  return parseFloat(num.toString()).toString();
+};
+
 export default function QCCheckListButton({
   mrHeader,
   item,
@@ -140,7 +153,7 @@ export default function QCCheckListButton({
           body: JSON.stringify({
             lpo_mr_line_id: lpoMrLineId,
           }),
-        }
+        },
       );
       const data = await res.json();
 
@@ -176,7 +189,7 @@ export default function QCCheckListButton({
           body: JSON.stringify({
             lpo_mr_line_id: lpoMrLineId,
           }),
-        }
+        },
       );
       const data = await res.json();
 
@@ -219,7 +232,7 @@ export default function QCCheckListButton({
                   "Error parsing attachments for checkpoint",
                   index,
                   ":",
-                  error
+                  error,
                 );
                 attachmentUrls = [];
               }
@@ -234,7 +247,7 @@ export default function QCCheckListButton({
 
             console.log(
               `Loaded checkpoint ${index} with ${attachmentUrls.length} attachments:`,
-              attachmentUrls
+              attachmentUrls,
             );
           });
 
@@ -261,7 +274,7 @@ export default function QCCheckListButton({
             body: JSON.stringify({
               lpo_mr_line_id: lpoMrLineId,
             }),
-          }
+          },
         );
         const data = await res.json();
 
@@ -290,7 +303,7 @@ export default function QCCheckListButton({
             mr_header_id: mrHeader.id,
             supplier_id: supplierId,
           }),
-        }
+        },
       );
       const data = await res.json();
 
@@ -316,7 +329,7 @@ export default function QCCheckListButton({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lpo_id: existingLpoId }),
-          }
+          },
         );
 
         const data = await response.json();
@@ -345,13 +358,13 @@ export default function QCCheckListButton({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lpo_id: existingLpoId }),
-          }
+          },
         );
         const data = await response.json();
 
         if (data.success && data.data && data.data.lpo_mr_lines) {
           const lpoLine = data.data.lpo_mr_lines.find(
-            (line: any) => line.mr_line_id === item.id
+            (line: any) => line.mr_line_id === item.id,
           );
 
           if (lpoLine) {
@@ -359,12 +372,12 @@ export default function QCCheckListButton({
 
             if (existingGrn.grn_lines) {
               const grnLine = existingGrn.grn_lines.find(
-                (gl: any) => gl.lpo_mr_line_id === lpoLine.id
+                (gl: any) => gl.lpo_mr_line_id === lpoLine.id,
               );
 
               if (grnLine) {
                 setReceivedQuantity(
-                  grnLine.received_quantity?.toString() || "0"
+                  grnLine.received_quantity?.toString() || "0",
                 );
               }
             }
@@ -380,7 +393,7 @@ export default function QCCheckListButton({
 
   const handleResponseChange = (
     index: number,
-    response: CheckpointResponse
+    response: CheckpointResponse,
   ) => {
     setCheckpointData((prev) => ({
       ...prev,
@@ -404,7 +417,7 @@ export default function QCCheckListButton({
   // Handle multiple file selection
   const handleFileSelect = (
     index: number,
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -441,7 +454,7 @@ export default function QCCheckListButton({
       [checkpointIndex]: {
         ...prev[checkpointIndex],
         pendingFiles: prev[checkpointIndex].pendingFiles.filter(
-          (_, idx) => idx !== fileIndex
+          (_, idx) => idx !== fileIndex,
         ),
       },
     }));
@@ -450,7 +463,7 @@ export default function QCCheckListButton({
   // Remove uploaded attachment by index
   const removeAttachment = (
     checkpointIndex: number,
-    attachmentIndex: number
+    attachmentIndex: number,
   ) => {
     const urlToDelete =
       checkpointData[checkpointIndex].attachments[attachmentIndex];
@@ -465,7 +478,7 @@ export default function QCCheckListButton({
         [checkpointIndex]: {
           ...prev[checkpointIndex],
           attachments: prev[checkpointIndex].attachments.filter(
-            (_, idx) => idx !== attachmentIndex
+            (_, idx) => idx !== attachmentIndex,
           ),
         },
       }));
@@ -540,7 +553,7 @@ export default function QCCheckListButton({
         // Map which uploaded URLs belong to which checkpoint
         checkpointFileMap[checkpointIndex] = Array.from(
           { length: endIndex - startIndex },
-          (_, i) => startIndex + i
+          (_, i) => startIndex + i,
         );
       }
     });
@@ -617,7 +630,7 @@ export default function QCCheckListButton({
     }
 
     const unansweredCheckpoints = checkpoints.filter(
-      (_, index) => !checkpointData[index]?.response
+      (_, index) => !checkpointData[index]?.response,
     );
 
     if (unansweredCheckpoints.length > 0) {
@@ -675,7 +688,7 @@ export default function QCCheckListButton({
           method: isUpdate ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(qcData),
-        }
+        },
       );
 
       const result = await response.json();
@@ -685,7 +698,7 @@ export default function QCCheckListButton({
           isUpdate
             ? "Quality control checklist updated"
             : "Quality control checklist created",
-          "success"
+          "success",
         );
         setIsOpen(false);
         setQcStatus(qcStatusSelection);
@@ -698,14 +711,14 @@ export default function QCCheckListButton({
       } else {
         toast(
           result.message || "Failed to create quality control checklist",
-          "error"
+          "error",
         );
       }
     } catch (error) {
       console.error("Error submitting QC checklist:", error);
       toast(
         "An error occurred while creating a quality control checklist",
-        "error"
+        "error",
       );
     }
   }
@@ -1051,7 +1064,7 @@ export default function QCCheckListButton({
               height="20"
               viewBox="0 0 20 20"
               fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+              xmlns="http://www.w3.org/2000/svg "
             >
               <path
                 d="M16.6667 5L7.50004 14.1667L3.33337 10"
@@ -1092,7 +1105,7 @@ export default function QCCheckListButton({
               height="20"
               viewBox="0 0 20 20"
               fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+              xmlns="http://www.w3.org/2000/svg "
             >
               <path
                 d="M15 5L5 15M5 5L15 15"
@@ -1133,7 +1146,7 @@ export default function QCCheckListButton({
               height="20"
               viewBox="0 0 20 20"
               fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+              xmlns="http://www.w3.org/2000/svg "
             >
               <path
                 d="M5 10H15"
@@ -1192,7 +1205,7 @@ export default function QCCheckListButton({
         </thead>
         <tbody>
           {checkpoints.map((checkpoint, index) =>
-            renderCheckpointRow(checkpoint, index)
+            renderCheckpointRow(checkpoint, index),
           )}
         </tbody>
       </table>
@@ -1212,7 +1225,7 @@ export default function QCCheckListButton({
       <div className="input-row four-col">
         <InputItem
           label={"ORDERED QUANTITY"}
-          value={item.quantity}
+          value={formatNumberWithoutTrailingZeros(item.quantity)}
           type={"text"}
           placeholder={""}
           required
@@ -1221,7 +1234,7 @@ export default function QCCheckListButton({
         />
         <InputItem
           label={"RECEIVED QUANTITY"}
-          value={receivedQuantity}
+          value={formatNumberWithoutTrailingZeros(receivedQuantity)}
           type={"text"}
           placeholder={""}
           required
@@ -1301,7 +1314,7 @@ export default function QCCheckListButton({
             color: "white",
           }}
         >
-          PASSED
+          Passed
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <img
               src={pencilIcon}
@@ -1367,7 +1380,7 @@ export default function QCCheckListButton({
             color: "white",
           }}
         >
-          FAILED
+          Failed
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <img
               src={pencilIcon}
@@ -1424,18 +1437,16 @@ export default function QCCheckListButton({
   // If pending, show the edit button
   return (
     <>
-      <div style={{ display: "flex", gap: "10px", width: "200px" }}>
-        <Button
-          componentType={"button"}
-          bgColor={"rgba(239, 239, 239, 1)"}
-          borderColor={"rgba(207, 207, 207, 1)"}
-          textColor={"black"}
-          onClick={() => setIsOpen(true)}
-          style={{ borderRadius: "5px", padding: "7px 7px" }}
-        >
-          <img src={plusIcon} alt="plus" />
-        </Button>
-      </div>
+      <Button
+        componentType={"button"}
+        bgColor={"rgba(239, 239, 239, 1)"}
+        borderColor={"rgba(207, 207, 207, 1)"}
+        textColor={"black"}
+        onClick={() => setIsOpen(true)}
+        style={{ borderRadius: "5px", padding: "7px 7px" }}
+      >
+        <img src={plusIcon} alt="plus" />
+      </Button>
 
       {isOpen && (
         <FormPopUp

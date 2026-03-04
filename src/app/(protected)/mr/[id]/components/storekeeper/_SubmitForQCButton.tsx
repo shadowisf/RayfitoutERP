@@ -9,12 +9,14 @@ import { useAuth } from "@/app/context/AuthContext";
 
 type SubmitForQCProps = {
   mrHeaderID: number;
+  lpoId?: number;
   style?: React.CSSProperties;
   disabled?: boolean;
 };
 
 export default function SubmitForQC({
   mrHeaderID,
+  lpoId,
   style,
   disabled,
 }: SubmitForQCProps) {
@@ -27,14 +29,25 @@ export default function SubmitForQC({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(`/api/mr`, {
+    const apiUrl = lpoId ? `/api/lpo` : `/api/mr`;
+
+    const bodyData = lpoId
+      ? {
+          action: "submitLpoForQC",
+          lpo_id: lpoId,
+          mr_header_id: mrHeaderID,
+          changed_by: userInfo?.name,
+        }
+      : {
+          action: "submitForQC",
+          id: mrHeaderID,
+          changed_by: userInfo?.name,
+        };
+
+    const res = await fetch(apiUrl, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "submitForQC",
-        id: mrHeaderID,
-        changed_by: userInfo?.name,
-      }),
+      body: JSON.stringify(bodyData),
     });
 
     if (res.ok) {

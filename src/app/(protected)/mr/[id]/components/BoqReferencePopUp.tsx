@@ -1418,27 +1418,6 @@ export default function BoqReferencePopUp({
                     </div>
                   );
                 })}
-
-                {/* Category Total */}
-                {canSeePrice && (
-                  <div
-                    style={{
-                      marginTop: "30px",
-                      padding: "20px",
-                      backgroundColor: "rgba(245, 245, 245, 1)",
-                      borderRadius: "10px",
-                      border: "1px solid rgba(223, 223, 223, 1)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <h3 style={{ margin: 0 }}>CATEGORY TOTAL</h3>
-                    <h3 style={{ margin: 0, textWrap: "nowrap" }}>
-                      AED {activeCategoryData.totalPrice.toLocaleString()}
-                    </h3>
-                  </div>
-                )}
               </div>
             ) : null}
           </div>

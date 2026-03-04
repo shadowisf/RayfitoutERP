@@ -366,6 +366,25 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (body.action === "submitLpoForQC") {
+      await db.query(`UPDATE lpo SET progress_id = 21 WHERE id = ?`, [
+        Number(body.lpo_id),
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log
+         (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
+         VALUES (?, 21, 17, ?, ?)`,
+        [
+          Number(body.mr_header_id),
+          body.changed_by,
+          Number(body.lpo_id),
+        ],
+      );
+
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "submitLpoForStockEntry") {
       await db.query(`UPDATE lpo SET progress_id = 24 WHERE id = ?`, [
         Number(body.lpo_id),

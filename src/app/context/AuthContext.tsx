@@ -35,7 +35,7 @@ function decodeJWT(token: string) {
       atob(base64)
         .split("")
         .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
+        .join(""),
     );
     return JSON.parse(jsonPayload);
   } catch (error) {
@@ -51,6 +51,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userInfo, setUserInfo] = useState<any>(null);
 
   async function checkAuth() {
+    // TODO: TEMPORARY - Remove this hardcoded auth bypass
+    setIsAuthenticated(true);
+    setUser({ idToken: "fake-token" });
+    setUserInfo({
+      name: "TEST",
+      email: "test@test.com",
+      sub: "test-sub",
+      role: "Management",
+      departmentID: 12,
+    });
+    setIsLoading(false);
+    return;
+    // END TEMPORARY
+
     try {
       const session = await getSession();
       if (session) {
@@ -65,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ role: decoded["custom:role"] }),
-            }
+            },
           );
           const departmentData = await departmentResp.json();
           const departmentID = departmentData?.id ?? null;

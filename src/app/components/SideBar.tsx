@@ -113,6 +113,12 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       icon: "/icons/payment-black.svg",
     }, */
     {
+      label: "Resolution Center",
+      path: "/resolution",
+      icon: "/icons/resolution-center.svg",
+    },
+
+    {
       label: "Inventory",
       path: "/inventory",
       icon: "/icons/inventory.svg",
