@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { InventoryItem } from "../../types/inventoryItem";
-import DownloadLPOButton from "@/app/(protected)/mr/[id]/components/procurement/_DownloadLPOButton";
-import GRNRefPopUp from "@/app/(protected)/mr/[id]/components/storekeeper/_GRNRefPopUp";
+import DownloadLPOButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadLPOButton";
+import GRNRefPopUp from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/storekeeper/_GRNRefPopUp";
 import { MrLine } from "@/app/(protected)/mr/[id]/types/mrLine";
 
 type BatchDetailsPopUpButtonProps = {

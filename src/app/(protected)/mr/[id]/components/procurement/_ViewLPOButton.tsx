@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Button from "@/app/components/Button";
 import { LpoHeader } from "../../types/lpoHeader";
-import DownloadLPOButton from "./_DownloadLPOButton";
-import { LpoPDF } from "../LpoPDF";
+import DownloadLPOButton from "../../lpo/[lpoId]/components/_DownloadLPOButton";
+import { LpoPDF } from "../../lpo/[lpoId]/components/LpoPDF";
 import { pdf } from "@react-pdf/renderer";
 import EditLPOButton from "./_EditLPOButton";
 import { useAuth } from "@/app/context/AuthContext";
@@ -29,7 +29,7 @@ export default function ViewLPOButton({ lpoID, mrHeader }: ViewLPOButtonProps) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lpo_id: lpoID }),
-          }
+          },
         );
         const data = await response.json();
         setLpo(data.data);

@@ -310,7 +310,7 @@ export default async function MrWithID({
         }}
       >
         <h1>
-          <a href="/mr">REQUISITIONS</a> &gt;{" "}
+          <a href="/mr">PROCUREMENT TRACKER</a> &gt;{" "}
           {mrHeader.type.toLowerCase().includes("material") ? "MR-" : "JO-"}
           {String(mrHeader.id).padStart(5, "0")}
         </h1>

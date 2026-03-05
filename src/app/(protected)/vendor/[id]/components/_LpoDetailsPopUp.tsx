@@ -5,7 +5,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
-import DownloadLPOButton from "@/app/(protected)/mr/[id]/components/procurement/_DownloadLPOButton";
+import DownloadLPOButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadLPOButton";
 import { toast } from "@/app/components/Toast";
 import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReferencePopUp";
 import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";

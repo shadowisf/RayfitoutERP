@@ -24,7 +24,7 @@ export default function ProtectedLayout({
           style={{
             flex: 1,
             paddingTop: "100px",
-            paddingBottom: "50px",
+            paddingBottom: "100px",
             paddingLeft: "40px",
             paddingRight: "40px",
             marginLeft: sidebarOpen ? "300px" : "60px",

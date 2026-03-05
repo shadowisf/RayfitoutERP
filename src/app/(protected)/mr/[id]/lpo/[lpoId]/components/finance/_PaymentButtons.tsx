@@ -5,12 +5,12 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useState, useEffect } from "react";
-import RejectCommentPopUp from "../manager/RejectCommentPopUp";
+import RejectCommentPopUp from "../../../../components/manager/RejectCommentPopUp";
 import { useRouter } from "next/navigation";
-import { LpoHeader } from "../../types/lpoHeader";
+import { LpoHeader } from "../../../../types/lpoHeader";
 import UploadFileBox from "@/app/components/SingleUploadFileBox";
-import { MrLine } from "../../types/mrLine";
-import { MrHeader } from "../../types/mrHeader";
+import { MrLine } from "../../../../types/mrLine";
+import { MrHeader } from "../../../../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 
 type PaymentButtonsProps = {

@@ -6,10 +6,10 @@ import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
-import { MrLine } from "../../types/mrLine";
+import { MrLine } from "../../../../types/mrLine";
 import { useAuth } from "@/app/context/AuthContext";
-import { LpoHeader } from "../../types/lpoHeader";
-import { MrHeader } from "../../types/mrHeader";
+import { LpoHeader } from "../../../../types/lpoHeader";
+import { MrHeader } from "../../../../types/mrHeader";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 
 type CreateGRNButtonProps = {

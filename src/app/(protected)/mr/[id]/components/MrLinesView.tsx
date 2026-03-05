@@ -25,10 +25,10 @@ import IssueLPOButton from "./procurement/_IssueLPOButton";
 import SubmitForPaymentButton, {
   SupplierInfo,
 } from "./procurement/_SubmitForPaymentButton";
-import PaymentButtons from "./finance/_PaymentButtons";
-import CreateGRNButton from "./storekeeper/_CreateGRNButton";
-import QCCheckListButton from "./qualityControl/_QCCheckListButton";
-import AddToInventoryButton from "./storekeeper/_AddStockButton";
+import PaymentButtons from "../lpo/[lpoId]/components/finance/_PaymentButtons";
+import CreateGRNButton from "../lpo/[lpoId]/components/storekeeper/_CreateGRNButton";
+import QCCheckListButton from "../lpo/[lpoId]/components/qualityControl/_QCCheckListButton";
+import AddToInventoryButton from "../lpo/[lpoId]/components/storekeeper/_AddStockButton";
 import QCRecheckButton from "./procurement/_QCRecheckButton";
 import ResolutionButton from "./procurement/_AddResolutionButton";
 import QSInitialApprovalButtons from "./quantitySurveyor/_InitialApprovalButton";

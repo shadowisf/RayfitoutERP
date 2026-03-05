@@ -9,20 +9,17 @@ import BoqReferencePopUp from "../../../components/BoqReferencePopUp";
 import SupplierDetailsPopUp from "../../../components/SupplierDetailsPopUp";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import IssueLPOButton from "../../../components/procurement/_IssueLPOButton";
-import PaymentButtons from "../../../components/finance/_PaymentButtons";
+import PaymentButtons from "./finance/_PaymentButtons";
 import SubmitForPaymentButton from "../../../components/procurement/_SubmitForPaymentButton";
-import SubmitForDeliveryButton from "../../../components/finance/_SubmitForDeliveryButton";
-import SubmitForLPOResubmissionButton from "../../../components/finance/_SubmitForLPOResubmission";
-import SubmitForLPOResubmissionGRNFailButton from "../../../components/storekeeper/_SubmitForLPOResubmissionGRNFail";
-import SubmitForStockEntryButton from "../../../components/qualityControl/_SubmitForStockEntry";
-import CompleteMaterialRequestButton from "../../../components/storekeeper/_CompleteMaterialRequestButton";
-import SubmitForProcurementResolutionButton from "../../../components/qualityControl/_SubmitForProcurementResolution";
-import CreateGRNButton from "../../../components/storekeeper/_CreateGRNButton";
-import SubmitForQCButton from "../../../components/storekeeper/_SubmitForQCButton";
-import QCCheckListButton from "../../../components/qualityControl/_QCCheckListButton";
-import AddToInventoryButton from "../../../components/storekeeper/_AddStockButton";
-import QCRecheckButton from "../../../components/procurement/_QCRecheckButton";
-import ResolutionButton from "../../../components/procurement/_AddResolutionButton";
+import SubmitForDeliveryButton from "./finance/_SubmitForDeliveryButton";
+import SubmitForLPOResubmissionButton from "./finance/_SubmitForLPOResubmission";
+import SubmitForLPOResubmissionGRNFailButton from "./storekeeper/_SubmitForLPOResubmissionGRNFail";
+import SubmitForStockEntryButton from "./qualityControl/_SubmitForStockEntry";
+import CompleteMaterialRequestButton from "./storekeeper/_CompleteMaterialRequestButton";
+import CreateGRNButton from "./storekeeper/_CreateGRNButton";
+import SubmitForQCButton from "./storekeeper/_SubmitForQCButton";
+import QCCheckListButton from "./qualityControl/_QCCheckListButton";
+import AddToInventoryButton from "./storekeeper/_AddStockButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -124,13 +121,9 @@ export default function LpoLinesView({
   // Action columns (conditional based on progress and department)
   const hasQcColumn = userInfo?.departmentID === 12 && progressId === 21;
   const hasStocksColumn = progressId === 24 && userInfo?.departmentID === 11;
-  const hasResolutionColumn = progressId === 23 && userInfo?.departmentID === 9;
-
-  const actionColumnCount = [
-    hasQcColumn,
-    hasStocksColumn,
-    hasResolutionColumn,
-  ].filter(Boolean).length;
+  const actionColumnCount = [hasQcColumn, hasStocksColumn].filter(
+    Boolean,
+  ).length;
 
   // Total visible columns in the table
   const totalVisibleColumns =
@@ -161,6 +154,12 @@ export default function LpoLinesView({
       }
     }
   }
+
+  // Filter out failed QC items at stock entry stage and beyond
+  const displayItems: MrLine[] =
+    progressId >= 24 && !isCheckingQc
+      ? allItems.filter((item) => qcStatus[item.id] !== "failed")
+      : allItems;
 
   // Calculate total from flatLines (LPO prices) using proposed quantity when available
   useEffect(() => {
@@ -418,10 +417,10 @@ export default function LpoLinesView({
     checkGrnQuantityMismatch();
   }, [progressId, lpoId, allItems.length, refreshKey]);
 
-  // Check QC statuses
+  // Check QC statuses (also at progress 24+ to filter out failed items)
   useEffect(() => {
     async function checkQcStatuses() {
-      if (progressId !== 21) {
+      if (progressId !== 21 && progressId < 24) {
         setIsCheckingQc(false);
         return;
       }
@@ -553,10 +552,16 @@ export default function LpoLinesView({
     );
   }
 
+  function allItemsFailedQc(): boolean {
+    if (isCheckingQc) return false;
+    if (allItems.length === 0) return false;
+    return allItems.every((item) => qcStatus[item.id] === "failed");
+  }
+
   function allItemsHaveStock(): boolean {
     if (isCheckingInventory) return false;
-    if (allItems.length === 0) return false;
-    return allItems.every((item) => inventoryStatus[item.id] === true);
+    if (displayItems.length === 0) return false;
+    return displayItems.every((item) => inventoryStatus[item.id] === true);
   }
 
   function hasLpoWithInvoiceAndSignedFile(): boolean {
@@ -683,10 +688,6 @@ export default function LpoLinesView({
           </div>
 
           <div className="right">
-            {progressId === 23 && userInfo?.departmentID === 9 && (
-              <QCRecheckButton mrHeader={lpoAsMrHeader} />
-            )}
-
             {progressId >= 12 && (
               <IssueLPOButton mrHeader={lpoAsMrHeader} mrLines={allItems} />
             )}
@@ -759,13 +760,10 @@ export default function LpoLinesView({
               {progressId === 24 && userInfo?.departmentID === 11 && (
                 <th>STOCKS</th>
               )}
-              {progressId === 23 && userInfo?.departmentID === 9 && (
-                <th>RESOLUTION</th>
-              )}
             </tr>
           </thead>
           <tbody>
-            {allItems.map((item: MrLine, itemIndex: number) => {
+            {displayItems.map((item: MrLine, itemIndex: number) => {
               const flatLine = flatLines.find((fl: any) => fl.id === item.id);
               const unitPrice = flatLine
                 ? Number(flatLine.lpo_unit_price) || 0
@@ -855,12 +853,6 @@ export default function LpoLinesView({
                       <AddToInventoryButton mrLine={item} />
                     </td>
                   )}
-
-                  {progressId === 23 && userInfo?.departmentID === 9 && (
-                    <td>
-                      <ResolutionButton mrHeader={lpoAsMrHeader} item={item} />
-                    </td>
-                  )}
                 </tr>
               );
             })}
@@ -887,7 +879,7 @@ export default function LpoLinesView({
                     fontWeight: "600",
                   }}
                 >
-                  AED {calculateItemsTotal(allItems).toFixed(2)}
+                  AED {calculateItemsTotal(displayItems).toFixed(2)}
                 </td>
                 {summaryTrailingColSpan > 0 && (
                   <td colSpan={summaryTrailingColSpan} />
@@ -912,7 +904,7 @@ export default function LpoLinesView({
                   >
                     - AED{" "}
                     {(
-                      calculateItemsTotal(allItems) *
+                      calculateItemsTotal(displayItems) *
                       (getDiscountRate() / 100)
                     ).toFixed(2)}
                   </td>
@@ -962,9 +954,9 @@ export default function LpoLinesView({
                   }}
                 >
                   AED{" "}
-                  {calculateTotalWithVAT(calculateItemsTotal(allItems)).toFixed(
-                    2,
-                  )}
+                  {calculateTotalWithVAT(
+                    calculateItemsTotal(displayItems),
+                  ).toFixed(2)}
                 </td>
                 {summaryTrailingColSpan > 0 && (
                   <td colSpan={summaryTrailingColSpan} />
@@ -1075,27 +1067,27 @@ export default function LpoLinesView({
         </div>
       )}
 
-      {/* Awaiting QC Check (Progress 21) - QC Submit for Stock Entry or Return for Resolution */}
+      {/* Awaiting QC Check (Progress 21) - QC Submit for Stock Entry (with or without resolution) */}
       {userInfo?.departmentID === 12 && progressId === 21 && (
         <div className="bottom-nav">
           <div></div>
-          {!allItemsPassedQc() && !isCheckingQc && hasAllItemsCompletedQc() ? (
-            <SubmitForProcurementResolutionButton
-              mrHeaderID={mrHeader.id}
-              lpoId={lpoId}
-            />
-          ) : (
-            <SubmitForStockEntryButton
-              mrHeaderID={mrHeader.id}
-              lpoId={lpoId}
-              disabled={!allItemsPassedQc()}
-              style={{
-                opacity: !allItemsPassedQc() ? "0.5" : "1",
-                cursor: !allItemsPassedQc() ? "not-allowed" : "pointer",
-                pointerEvents: !allItemsPassedQc() ? "none" : "auto",
-              }}
-            />
-          )}
+          <SubmitForStockEntryButton
+            mrHeaderID={mrHeader.id}
+            lpoId={lpoId}
+            label={
+              hasAllItemsCompletedQc() && !allItemsPassedQc()
+                ? allItemsFailedQc()
+                  ? "SUBMIT FOR RESOLUTION"
+                  : "SUBMIT FOR STOCK ENTRY AND RESOLUTION"
+                : "SUBMIT FOR STOCK ENTRY"
+            }
+            disabled={!hasAllItemsCompletedQc()}
+            style={{
+              opacity: !hasAllItemsCompletedQc() ? "0.5" : "1",
+              cursor: !hasAllItemsCompletedQc() ? "not-allowed" : "pointer",
+              pointerEvents: !hasAllItemsCompletedQc() ? "none" : "auto",
+            }}
+          />
         </div>
       )}
 

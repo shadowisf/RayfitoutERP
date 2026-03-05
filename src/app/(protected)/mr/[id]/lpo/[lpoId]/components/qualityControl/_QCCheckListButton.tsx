@@ -8,9 +8,9 @@ import { toast } from "@/app/components/Toast";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
-import { MrLine } from "../../types/mrLine";
-import { MrHeader } from "../../types/mrHeader";
-import { LpoHeader } from "../../types/lpoHeader";
+import { MrLine } from "../../../../types/mrLine";
+import { MrHeader } from "../../../../types/mrHeader";
+import { LpoHeader } from "../../../../types/lpoHeader";
 
 type QCCheckListButtonProps = {
   mrHeader: MrHeader;

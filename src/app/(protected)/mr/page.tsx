@@ -29,7 +29,7 @@ type LpoCard = {
 };
 
 // Progress IDs that use LPO cards instead of MR cards
-const LPO_STAGE_IDS = [13, 14, 15, 16, 17, 21, 23, 24, 25];
+const LPO_STAGE_IDS = [13, 14, 15, 16, 17, 21, 24, 25];
 
 export default function MR() {
   const { userInfo } = useAuth();
@@ -478,7 +478,6 @@ export default function MR() {
         { name: "Price Approval Rejected", progress_id: 11 },
         { name: "Payment Rejected", progress_id: 13 },
         { name: "GRN Failed", progress_id: 16 },
-        { name: "Failed QC", progress_id: 23 },
       ],
     },
     { name: "Completed", statuses: [{ name: "Completed", progress_id: 25 }] },
@@ -850,7 +849,7 @@ export default function MR() {
           justifyContent: "space-between",
         }}
       >
-        <h1>REQUISITIONS</h1>
+        <h1>PROCUREMENT TRACKER</h1>
 
         <div
           style={{
@@ -888,7 +887,6 @@ export default function MR() {
         </div>
       </div>
 
-      <br />
       <br />
 
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>

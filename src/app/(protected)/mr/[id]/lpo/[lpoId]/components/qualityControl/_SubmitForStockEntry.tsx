@@ -12,6 +12,7 @@ type SubmitForStockEntryProps = {
   lpoId?: number;
   style?: React.CSSProperties;
   disabled?: boolean;
+  label?: string;
 };
 
 export default function SubmitForStockEntryButton({
@@ -19,6 +20,7 @@ export default function SubmitForStockEntryButton({
   lpoId,
   style,
   disabled,
+  label = "SUBMIT FOR STOCK ENTRY",
 }: SubmitForStockEntryProps) {
   const router = useRouter();
 
@@ -75,7 +77,7 @@ export default function SubmitForStockEntryButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        SUBMIT FOR STOCK ENTRY
+        {label}
       </Button>
 
       {isOpen && (

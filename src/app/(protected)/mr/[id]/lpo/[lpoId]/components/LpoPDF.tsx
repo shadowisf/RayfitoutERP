@@ -346,17 +346,13 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Date</Text>
             <Text style={styles.infoValue}>
-              {new Date(lpo.created_at).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
+              {new Date(lpo.created_at).toLocaleDateString("en-GB")}
             </Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>LPO Number</Text>
             <Text style={styles.infoValue}>
-              PO-{String(lpo.id).padStart(5, "0")}
+              LPO-{String(lpo.id).padStart(5, "0")}
             </Text>
           </View>
 

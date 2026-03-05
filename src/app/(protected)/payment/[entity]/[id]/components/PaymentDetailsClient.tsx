@@ -8,7 +8,7 @@ import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReferencePopUp";
-import DownloadLPOButton from "@/app/(protected)/mr/[id]/components/procurement/_DownloadLPOButton";
+import DownloadLPOButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadLPOButton";
 import RejectCommentPopUp from "@/app/(protected)/mr/[id]/components/manager/RejectCommentPopUp";
 import { useAuth } from "@/app/context/AuthContext";
 
