@@ -34,8 +34,10 @@ export async function GET() {
       LEFT JOIN grn g ON g.lpo_id = qc.lpo_id
       LEFT JOIN grn_mr_line gl ON gl.grn_id = g.id AND gl.lpo_mr_line_id = qc.lpo_mr_line_id
       LEFT JOIN qc_resolution_return_refund rr ON rr.qc_mr_line_id = qc.id
+      LEFT JOIN qc_resolution_replace rep ON rep.qc_mr_line_id = qc.id
       WHERE qc.qc_status = 'failed'
         AND rr.id IS NULL
+        AND rep.id IS NULL
       ORDER BY qc.id DESC
     `;
 

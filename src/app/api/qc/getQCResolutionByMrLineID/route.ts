@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { RowDataPacket } from "mysql2";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -7,60 +8,69 @@ export async function POST(request: Request) {
   try {
     const { mr_header_id, mr_line_id } = body;
 
-    // Get resolution
-    const [resolutions] = await db.query<any[]>(
-      `SELECT 
-        r.id as resolution_id,
-        r.resolution_type
-      FROM qc_resolutions r
-      WHERE r.mr_header_id = ? AND r.mr_line_id = ?
-      LIMIT 1`,
-      [mr_header_id, mr_line_id]
+    // Find the qc_mr_line record for this MR line via lpo_mr_line
+    const [qcRows] = await db.query<RowDataPacket[]>(
+      `SELECT qc.id as qc_mr_line_id
+       FROM qc_mr_line qc
+       INNER JOIN lpo_mr_line lml ON qc.lpo_mr_line_id = lml.id
+       WHERE lml.mr_line_id = ?
+       LIMIT 1`,
+      [mr_line_id]
     );
 
-    if (resolutions.length === 0) {
+    if (qcRows.length === 0) {
       return NextResponse.json({
         success: false,
-        message: "No resolution found",
+        message: "No QC record found for this MR line",
       });
     }
 
-    const resolution = resolutions[0];
-    let detailData = {};
+    const qcMrLineId = qcRows[0].qc_mr_line_id;
 
-    // Get type-specific details
-    if (resolution.resolution_type === "Return/refund") {
-      const [details] = await db.query<any[]>(
-        `SELECT * FROM qc_resolution_return_refund WHERE resolution_id = ?`,
-        [resolution.resolution_id]
-      );
-      if (details.length > 0) detailData = details[0];
-    } else if (resolution.resolution_type === "Replace") {
-      const [details] = await db.query<any[]>(
-        `SELECT * FROM qc_resolution_replace WHERE resolution_id = ?`,
-        [resolution.resolution_id]
-      );
-      if (details.length > 0) detailData = details[0];
-    } else if (resolution.resolution_type === "Conditionally accepted") {
-      const [details] = await db.query<any[]>(
-        `SELECT * FROM qc_resolution_conditionally_accepted WHERE resolution_id = ?`,
-        [resolution.resolution_id]
-      );
-      if (details.length > 0) detailData = details[0];
-    } else if (resolution.resolution_type === "Reject/scrap") {
-      const [details] = await db.query<any[]>(
-        `SELECT * FROM qc_resolution_reject_scrap WHERE resolution_id = ?`,
-        [resolution.resolution_id]
-      );
-      if (details.length > 0) detailData = details[0];
+    // Check qc_resolution_return_refund
+    const [returnRefundRows] = await db.query<RowDataPacket[]>(
+      `SELECT *, 'Return/Refund' as resolution_type
+       FROM qc_resolution_return_refund
+       WHERE qc_mr_line_id = ?
+       LIMIT 1`,
+      [qcMrLineId]
+    );
+
+    if (returnRefundRows.length > 0) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          resolution_id: returnRefundRows[0].id,
+          resolution_type: "Return/Refund",
+          ...returnRefundRows[0],
+        },
+      });
     }
 
+    // Check qc_resolution_replace
+    const [replaceRows] = await db.query<RowDataPacket[]>(
+      `SELECT *, 'Replace from Vendor' as resolution_type
+       FROM qc_resolution_replace
+       WHERE qc_mr_line_id = ?
+       LIMIT 1`,
+      [qcMrLineId]
+    );
+
+    if (replaceRows.length > 0) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          resolution_id: replaceRows[0].id,
+          resolution_type: "Replace from Vendor",
+          ...replaceRows[0],
+        },
+      });
+    }
+
+    // No resolution found
     return NextResponse.json({
-      success: true,
-      data: {
-        ...resolution,
-        ...detailData,
-      },
+      success: false,
+      message: "No resolution found",
     });
   } catch (error: any) {
     console.error("Error fetching resolution:", error);

@@ -11,6 +11,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { LpoHeader } from "../../../../types/lpoHeader";
 import { MrHeader } from "../../../../types/mrHeader";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
+import DownloadGRNButton from "@/app/(protected)/resolution/components/_DownloadGRNButton";
 
 type CreateGRNButtonProps = {
   mrHeader: MrHeader;
@@ -575,7 +576,13 @@ export default function CreateGRNButton({
 
   return (
     <>
-      {!isViewMode && !isEditMode ? (
+      {existingGrn ? (
+        <DownloadGRNButton
+          grnId={existingGrn.id}
+          bgColor="white"
+          style={{ padding: "5px 10px", borderRadius: "25px" }}
+        />
+      ) : (
         <Button
           componentType={"button"}
           bgColor={"black"}
@@ -586,31 +593,6 @@ export default function CreateGRNButton({
           disabled={isUploading}
         >
           Create GRN +
-        </Button>
-      ) : (
-        <Button
-          componentType={"none"}
-          bgColor={"white"}
-          borderColor={"rgba(207, 207, 207, 1)"}
-          textColor={"black"}
-          onClick={() => {}}
-          style={{ padding: "5px 20px", borderRadius: "25px" }}
-        >
-          GRN
-          {isViewMode && (
-            <img
-              src={externalLinkIcon}
-              alt="external link"
-              onClick={() => setIsOpen(true)}
-            />
-          )}
-          {isEditMode && (
-            <img
-              src={pencilIcon}
-              alt="pencil"
-              onClick={() => setIsOpen(true)}
-            />
-          )}
         </Button>
       )}
 

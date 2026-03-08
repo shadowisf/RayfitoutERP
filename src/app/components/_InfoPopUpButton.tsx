@@ -49,7 +49,7 @@ export default function InfoPopUpButton({
           setIsOpen={setIsOpen}
           style={{ whiteSpace: "pre-wrap" }}
         >
-          {text}
+        <p>{text}</p>
         </FormPopUp>
       )}
     </>

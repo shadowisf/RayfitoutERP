@@ -10,7 +10,6 @@ import { MrLine } from "../mr/[id]/types/mrLine";
 import { MrHeader } from "../mr/[id]/types/mrHeader";
 import CreateResolutionButton from "./components/_CreateResolutionButton";
 import DownloadNCRButton from "./components/_DownloadNCRButton";
-import Link from "next/link";
 
 type FailedQCItem = {
   qc_id: number;
@@ -78,7 +77,11 @@ const RESOLUTION_GROUPS = [
     name: "Replace from Vendor",
     type: "replace_vendor",
     prefix: "QC-RV",
-    stages: [{ name: "Pending", progress_id: 1, dept: null }],
+    stages: [
+      { name: "Awaiting Delivery", progress_id: 1, dept: "Storekeeper" },
+      { name: "Stock Entry", progress_id: 2, dept: "Storekeeper" },
+      { name: "Completed", progress_id: 3, dept: null },
+    ],
     route: "replace-vendor",
   },
   {
@@ -147,27 +150,27 @@ export default function ResolutionCenter() {
     return parseFloat(num.toFixed(3)).toString();
   };
 
-  useEffect(() => {
-    async function fetchFailedQCItems() {
-      setIsLoading(true);
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getFailedQCItems`,
-        );
+  async function fetchFailedQCItems() {
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getFailedQCItems`,
+      );
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setFailedQCItems(data.data);
-          }
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setFailedQCItems(data.data);
         }
-      } catch (error) {
-        console.error("Error fetching failed QC items:", error);
-      } finally {
-        setIsLoading(false);
       }
+    } catch (error) {
+      console.error("Error fetching failed QC items:", error);
+    } finally {
+      setIsLoading(false);
     }
+  }
 
+  useEffect(() => {
     fetchFailedQCItems();
   }, []);
 
@@ -361,7 +364,10 @@ export default function ResolutionCenter() {
                       </DownloadNCRButton>
                     </td>
                     <td>
-                      <CreateResolutionButton item={item} />
+                      <CreateResolutionButton
+                        item={item}
+                        onSuccess={() => fetchFailedQCItems()}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -527,7 +533,7 @@ export default function ResolutionCenter() {
                             >
                               {cards.map((card) => (
                                 <div
-                                  key={card.id}
+                                  key={`${card.resolution_type}-${card.id}`}
                                   style={{
                                     backgroundColor: "white",
                                     borderRadius: "15px",

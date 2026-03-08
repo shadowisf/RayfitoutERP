@@ -310,30 +310,28 @@ export default function ReturnRefundDetailPage() {
 
         <br />
 
-        <div>
-          <small>RETURN REQUIRED?</small>
-          <h2>{detail.return_required || "-"}</h2>
+        <div style={{ display: "flex", gap: "40px" }}>
+          <div>
+            <small>RETURN REQUIRED?</small>
+            <h2>{detail.return_required || "-"}</h2>
+          </div>
+
+          {detail.return_required === "Yes" && detail.pickup_type && (
+            <div>
+              <small>PICKUP TYPE</small>
+              <h2>{detail.pickup_type}</h2>
+            </div>
+          )}
+
+          {detail.eta_delivery_date && (
+            <div>
+              <small>EXPECTED RETURN DATE</small>
+              <h2>
+                {new Date(detail.eta_delivery_date).toLocaleDateString("en-GB")}
+              </h2>
+            </div>
+          )}
         </div>
-
-        <br />
-
-        {detail.return_required === "Yes" && detail.pickup_type && (
-          <div>
-            <small>PICKUP TYPE</small>
-            <h2>{detail.pickup_type}</h2>
-          </div>
-        )}
-
-        <br />
-
-        {detail.eta_delivery_date && (
-          <div>
-            <small>EXPECTED RETURN DATE</small>
-            <h2>
-              {new Date(detail.eta_delivery_date).toLocaleDateString("en-GB")}
-            </h2>
-          </div>
-        )}
       </div>
 
       <br />

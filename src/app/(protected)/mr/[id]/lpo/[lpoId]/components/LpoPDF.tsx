@@ -337,7 +337,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
         <View style={styles.header}>
           <Image src={logo} style={styles.logo} />
           <Text style={styles.title}>
-            PURCHASE <Text style={styles.titleBold}>ORDER</Text>
+            LOCAL PURCHASE <Text style={styles.titleBold}>ORDER</Text>
           </Text>
         </View>
 
@@ -416,11 +416,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Delivery Date</Text>
             <Text style={styles.infoValue}>
-              {new Date(lpo.delivery_date).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
+              {new Date(lpo.delivery_date).toLocaleDateString("en-GB")}
             </Text>
           </View>
 
