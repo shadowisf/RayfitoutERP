@@ -290,7 +290,9 @@ export async function POST(request: NextRequest) {
             -- QC Resolutions (from actual tables)
             rr_res.id as return_refund_resolution_id,
             rep_res.id as replace_resolution_id,
-            rep_res.replacement_grn_id as replacement_grn_id
+            rep_res.replacement_grn_id as replacement_grn_id,
+            sd_res.id as scrap_resolution_id,
+            ca_res.id as conditionally_accepted_resolution_id
 
         FROM stocks s
 
@@ -327,6 +329,8 @@ export async function POST(request: NextRequest) {
         -- Join QC Resolutions (actual tables via qc_mr_line)
         LEFT JOIN qc_resolution_return_refund rr_res ON qc.id = rr_res.qc_mr_line_id
         LEFT JOIN qc_resolution_replace rep_res ON qc.id = rep_res.qc_mr_line_id
+        LEFT JOIN qc_resolution_reject_scrap sd_res ON qc.id = sd_res.qc_mr_line_id
+        LEFT JOIN qc_resolution_conditionally_accepted ca_res ON qc.id = ca_res.qc_mr_line_id
 
         WHERE s.mr_header_id = ? AND s.mr_line_id = ?
         ORDER BY s.created_at DESC
@@ -358,6 +362,12 @@ export async function POST(request: NextRequest) {
         } else if (batchDetails.replace_resolution_id) {
           resolutionType = "Replace from Vendor";
           qcResolutionId = batchDetails.replace_resolution_id;
+        } else if (batchDetails.scrap_resolution_id) {
+          resolutionType = "Scrap/Discard";
+          qcResolutionId = batchDetails.scrap_resolution_id;
+        } else if (batchDetails.conditionally_accepted_resolution_id) {
+          resolutionType = "Accept Conditionally";
+          qcResolutionId = batchDetails.conditionally_accepted_resolution_id;
         }
 
         // For replace resolutions, fetch the replacement GRN data

@@ -11,7 +11,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { LpoHeader } from "../../../../types/lpoHeader";
 import { MrHeader } from "../../../../types/mrHeader";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
-import DownloadGRNButton from "@/app/(protected)/resolution/components/_DownloadGRNButton";
+import DownloadGRNButton from "../_DownloadGRNButton";
 
 type CreateGRNButtonProps = {
   mrHeader: MrHeader;
@@ -580,7 +580,7 @@ export default function CreateGRNButton({
         <DownloadGRNButton
           grnId={existingGrn.id}
           bgColor="white"
-          style={{ padding: "5px 10px", borderRadius: "25px" }}
+          style={{ padding: "7px 20px", borderRadius: "25px" }}
         />
       ) : (
         <Button

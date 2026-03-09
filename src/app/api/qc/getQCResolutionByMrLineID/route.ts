@@ -67,6 +67,46 @@ export async function POST(request: Request) {
       });
     }
 
+    // Check qc_resolution_reject_scrap
+    const [scrapRows] = await db.query<RowDataPacket[]>(
+      `SELECT *, 'Scrap/Discard' as resolution_type
+       FROM qc_resolution_reject_scrap
+       WHERE qc_mr_line_id = ?
+       LIMIT 1`,
+      [qcMrLineId]
+    );
+
+    if (scrapRows.length > 0) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          resolution_id: scrapRows[0].id,
+          resolution_type: "Scrap/Discard",
+          ...scrapRows[0],
+        },
+      });
+    }
+
+    // Check qc_resolution_conditionally_accepted
+    const [caRows] = await db.query<RowDataPacket[]>(
+      `SELECT *, 'Accept Conditionally' as resolution_type
+       FROM qc_resolution_conditionally_accepted
+       WHERE qc_mr_line_id = ?
+       LIMIT 1`,
+      [qcMrLineId]
+    );
+
+    if (caRows.length > 0) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          resolution_id: caRows[0].id,
+          resolution_type: "Accept Conditionally",
+          ...caRows[0],
+        },
+      });
+    }
+
     // No resolution found
     return NextResponse.json({
       success: false,

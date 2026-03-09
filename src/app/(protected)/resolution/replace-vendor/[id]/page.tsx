@@ -96,6 +96,7 @@ export default function ReplaceVendorDetailPage() {
 
   const [detail, setDetail] = useState<ReplaceDetail | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [hasStock, setHasStock] = useState(false);
 
   function parseFileUrl(raw: any): string | null {
     if (!raw) return null;
@@ -134,6 +135,28 @@ export default function ReplaceVendorDetailPage() {
   useEffect(() => {
     fetchDetail();
   }, [resolutionId]);
+
+  // Check if stock exists for this mr_line
+  useEffect(() => {
+    if (!detail?.mr_line_id) return;
+    async function checkStock() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getStockByMrLineID`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mr_line_id: detail!.mr_line_id }),
+          },
+        );
+        const data = await res.json();
+        setHasStock(!!(data.success && data.data));
+      } catch {
+        setHasStock(false);
+      }
+    }
+    checkStock();
+  }, [detail?.mr_line_id, detail?.progress_id]);
 
   async function handleProgressSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -543,6 +566,11 @@ export default function ReplaceVendorDetailPage() {
             textColor={"black"}
             onClick={() => setIsConfirmOpen(true)}
             disabled={!detail.replacement_grn_id}
+            style={{
+              opacity: !detail.replacement_grn_id ? "0.5" : "1",
+              cursor: !detail.replacement_grn_id ? "not-allowed" : "pointer",
+              pointerEvents: !detail.replacement_grn_id ? "none" : "auto",
+            }}
           >
             SUBMIT FOR STOCK ENTRY
           </Button>
@@ -558,6 +586,12 @@ export default function ReplaceVendorDetailPage() {
             borderColor={"white"}
             textColor={"black"}
             onClick={() => setIsConfirmOpen(true)}
+            disabled={!hasStock}
+            style={{
+              opacity: !hasStock ? "0.5" : "1",
+              cursor: !hasStock ? "not-allowed" : "pointer",
+              pointerEvents: !hasStock ? "none" : "auto",
+            }}
           >
             SUBMIT FOR COMPLETION
           </Button>

@@ -59,9 +59,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     gap: 30,
   },
-  infoItem: {
-    /* flex: 1, */
-  },
+  infoItem: {},
   infoLabel: {
     fontSize: 8,
     color: "#666666",
@@ -80,7 +78,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 5,
   },
-  statusDot: {
+  statusDotCompliant: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#2E7D32",
+    marginBottom: 7,
+  },
+  statusDotNonCompliant: {
     width: 10,
     height: 10,
     borderRadius: 5,
@@ -161,39 +166,75 @@ const styles = StyleSheet.create({
     color: "#333333",
     minHeight: 50,
   },
-  colMaterial: {
-    width: "30%",
+
+  // CR table columns
+  colItem: {
+    width: "20%",
     paddingRight: 4,
   },
   colQtyDelivered: {
-    width: "16%",
+    width: "11%",
     paddingRight: 4,
   },
-  colQtyFailed: {
-    width: "16%",
+  colAcceptedQty: {
+    width: "11%",
     paddingRight: 4,
   },
-  colFailedReason: {
-    width: "35%",
+  colQcCode: {
+    width: "11%",
+    paddingRight: 4,
+  },
+  colStatus: {
+    width: "10%",
+    paddingRight: 4,
+  },
+  colNotes: {
+    width: "22%",
     paddingRight: 4,
   },
   colAttachment: {
-    width: "18%",
+    width: "15%",
     alignItems: "center",
     justifyContent: "center",
   },
 
-  // Failed reason item
-  reasonItem: {
-    marginBottom: 4,
+  // Status badges
+  statusBadgePassed: {
+    backgroundColor: "#E8F5E9",
+    color: "#2E7D32",
+    fontSize: 8,
+    fontFamily: "Mont-SemiBold",
+    paddingTop: 3,
+    paddingBottom: 2,
+    paddingLeft: 8,
+    paddingRight: 8,
+    borderRadius: 10,
+    textAlign: "center",
+  },
+  statusBadgeFailed: {
+    backgroundColor: "#FFEBEE",
+    color: "#D32F2F",
+    fontSize: 8,
+    fontFamily: "Mont-SemiBold",
+    paddingTop: 3,
+    paddingBottom: 2,
+    paddingLeft: 8,
+    paddingRight: 8,
+    borderRadius: 10,
+    textAlign: "center",
+  },
+
+  // Notes
+  noteItem: {
+    marginBottom: 3,
     fontSize: 8,
     lineHeight: 1.4,
   },
-  reasonLabel: {
+  noteLabel: {
     fontFamily: "Mont-SemiBold",
     fontSize: 8,
   },
-  reasonNotes: {
+  noteText: {
     fontSize: 8,
     color: "#333333",
   },
@@ -207,19 +248,19 @@ const styles = StyleSheet.create({
   },
 });
 
-// Map checkpoint names to friendly failure reason names
-const FAILURE_REASON_MAP: { [key: string]: string } = {
-  "Item matches purchase specifications": "Wrong Specification",
-  "Dimensions as per approved drawings": "Dimension Issues",
-  "Material grade confirmed": "Material Grade Issues",
-  "Visual inspection - no damage": "Physical Damage",
-  "Finishing quality acceptable": "Finishing Issues",
-  "No corrosion / scratches": "Quality Issues",
-  "Color matches approved sample": "Color Mismatch",
-  "Assembly/Functional test": "Functional Failure",
+// Map checkpoint names to short codes
+const CHECKPOINT_CODE_MAP: { [key: string]: string } = {
+  "Item matches purchase specifications": "SPEC",
+  "Dimensions as per approved drawings": "DIM",
+  "Material grade confirmed": "GRADE",
+  "Visual inspection - no damage": "VISUAL",
+  "Finishing quality acceptable": "FINISH",
+  "No corrosion / scratches": "SURFACE",
+  "Color matches approved sample": "COLOR",
+  "Assembly/Functional test": "FUNC",
 };
 
-export type NcrData = {
+export type CrData = {
   qc_id: number;
   qc_date: string;
   lpo_id: number;
@@ -230,7 +271,7 @@ export type NcrData = {
   unit: string;
   received_quantity: number;
   accepted_quantity: number;
-  failed_quantity: number;
+  qc_status: "passed" | "failed";
   checked_by: string;
   supplier: {
     id: number;
@@ -239,20 +280,21 @@ export type NcrData = {
     address: string;
     email: string;
   };
-  failed_checkpoints: {
+  checkpoints: {
     checkpoint_number: number;
     checkpoint_name: string;
+    response: string;
     notes: string;
     attachments: any;
   }[];
 };
 
-type NcrPDFProps = {
-  data: NcrData;
+type CrPDFProps = {
+  data: CrData;
   attachmentImages: { [key: number]: string }; // checkpoint_number -> base64 image
 };
 
-export function NcrPDF({ data, attachmentImages }: NcrPDFProps) {
+export function CrPDF({ data, attachmentImages }: CrPDFProps) {
   const logo = "/icons/logo.jpg";
 
   const formatDate = (dateStr: string) => {
@@ -271,9 +313,26 @@ export function NcrPDF({ data, attachmentImages }: NcrPDFProps) {
     });
   };
 
-  // Get the first valid attachment image across all failed checkpoints
+  const isCompliant = data.qc_status === "passed";
+
+  // Build notes from checkpoints that have notes
+  const getNotesContent = () => {
+    const failedCheckpoints = data.checkpoints.filter(
+      (cp) => cp.response === "no",
+    );
+
+    if (failedCheckpoints.length === 0) {
+      return null;
+    }
+
+    return failedCheckpoints;
+  };
+
+  const notesCheckpoints = getNotesContent();
+
+  // Get first available attachment image
   const getFirstAttachmentImage = (): string | null => {
-    for (const cp of data.failed_checkpoints) {
+    for (const cp of data.checkpoints) {
       if (attachmentImages[cp.checkpoint_number]) {
         return attachmentImages[cp.checkpoint_number];
       }
@@ -290,7 +349,7 @@ export function NcrPDF({ data, attachmentImages }: NcrPDFProps) {
         <View style={styles.header}>
           <Image src={logo} style={styles.logo} />
           <Text style={styles.title}>
-            NON-COMPLIANCE <Text style={styles.titleBold}>REPORT</Text>{" "}
+            COMPLIANCE <Text style={styles.titleBold}>REPORT</Text>{" "}
           </Text>
         </View>
 
@@ -301,10 +360,9 @@ export function NcrPDF({ data, attachmentImages }: NcrPDFProps) {
             <Text style={styles.infoValue}>{formatDate(data.qc_date)}</Text>
           </View>
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>NCR NUMBER</Text>
+            <Text style={styles.infoLabel}>CR NUMBER</Text>
             <Text style={styles.infoValue}>
-              NCR-
-              {String(data.qc_id).padStart(5, "0")}
+              CR-{String(data.qc_id).padStart(5, "0")}
             </Text>
           </View>
           <View style={styles.infoItem}>
@@ -322,8 +380,16 @@ export function NcrPDF({ data, attachmentImages }: NcrPDFProps) {
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Status</Text>
             <View style={styles.statusContainer}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>NON COMPLIANT</Text>
+              <View
+                style={
+                  isCompliant
+                    ? styles.statusDotCompliant
+                    : styles.statusDotNonCompliant
+                }
+              />
+              <Text style={styles.statusText}>
+                {isCompliant ? "COMPLIANT" : "NON COMPLIANT"}
+              </Text>
             </View>
           </View>
         </View>
@@ -355,34 +421,55 @@ export function NcrPDF({ data, attachmentImages }: NcrPDFProps) {
         {/* Items Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.colMaterial}>ITEM</Text>
-            <Text style={styles.colQtyDelivered}>DELIVERED QTY</Text>
-            <Text style={styles.colQtyFailed}>FAILED QTY</Text>
-            <Text style={styles.colFailedReason}>FAILED REASON(S)</Text>
-            <Text style={styles.colAttachment}>ATTACHEMENT(S)</Text>
+            <Text style={styles.colItem}>ITEM</Text>
+            <Text style={styles.colQtyDelivered}>QTY DELIVERED</Text>
+            <Text style={styles.colAcceptedQty}>ACCEPTED QTY</Text>
+            <Text style={styles.colQcCode}>QC CODE</Text>
+            <Text style={styles.colStatus}>STATUS</Text>
+            <Text style={styles.colNotes}>NOTES</Text>
+            <Text style={styles.colAttachment}>ATTACHMENT(S)</Text>
           </View>
 
           <View style={styles.tableRow}>
-            <Text style={styles.colMaterial}>{data.material_description}</Text>
+            <Text style={styles.colItem}>{data.material_description}</Text>
             <Text style={styles.colQtyDelivered}>
               {formatQuantity(data.received_quantity)} {data.unit}
             </Text>
-            <Text style={styles.colQtyFailed}>
-              {formatQuantity(data.failed_quantity)} {data.unit}
+            <Text style={styles.colAcceptedQty}>
+              {formatQuantity(data.accepted_quantity)} {data.unit}
             </Text>
-            <View style={styles.colFailedReason}>
-              {data.failed_checkpoints.map((cp) => {
-                const friendlyName =
-                  FAILURE_REASON_MAP[cp.checkpoint_name] || cp.checkpoint_name;
-                return (
-                  <View key={cp.checkpoint_number} style={styles.reasonItem}>
-                    <Text>
-                      <Text style={styles.reasonLabel}>{friendlyName}:</Text>{" "}
-                      <Text style={styles.reasonNotes}>{cp.notes || "-"}</Text>
-                    </Text>
-                  </View>
-                );
-              })}
+            <Text style={styles.colQcCode}>
+              CR-{String(data.qc_id).padStart(5, "0")}
+            </Text>
+            <View style={styles.colStatus}>
+              <Text
+                style={
+                  isCompliant
+                    ? styles.statusBadgePassed
+                    : styles.statusBadgeFailed
+                }
+              >
+                {isCompliant ? "PASSED" : "FAILED"}
+              </Text>
+            </View>
+            <View style={styles.colNotes}>
+              {notesCheckpoints && notesCheckpoints.length > 0 ? (
+                notesCheckpoints.map((cp) => {
+                  const code =
+                    CHECKPOINT_CODE_MAP[cp.checkpoint_name] ||
+                    cp.checkpoint_name;
+                  return (
+                    <View key={cp.checkpoint_number} style={styles.noteItem}>
+                      <Text>
+                        <Text style={styles.noteLabel}>{code}:</Text>{" "}
+                        <Text style={styles.noteText}>{cp.notes || "-"}</Text>
+                      </Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <Text style={styles.noteText}>All checkpoints passed</Text>
+              )}
             </View>
             <View style={styles.colAttachment}>
               {firstImage ? (

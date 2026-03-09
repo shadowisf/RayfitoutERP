@@ -38,6 +38,7 @@ type ResolutionItem = {
   qc_mr_line_id: number;
   progress_id: number;
   resolution_type: string;
+  reason: string | null;
   material_description: string;
   failed_quantity: number;
   supplier_name: string;
@@ -70,7 +71,15 @@ const RESOLUTION_GROUPS = [
     name: "Scrap/Discard",
     type: "scrap_discard",
     prefix: "QC-SD",
-    stages: [{ name: "Pending", progress_id: 1, dept: null }],
+    stages: [
+      {
+        name: "Manager Approval",
+        progress_id: 1,
+        dept: "Directors/Management",
+      },
+      { name: "Completed", progress_id: 2, dept: null },
+      { name: "", progress_id: -1, dept: null },
+    ],
     route: "scrap-discard",
   },
   {
@@ -85,11 +94,60 @@ const RESOLUTION_GROUPS = [
     route: "replace-vendor",
   },
   {
-    name: "Accept Conditionally",
+    name: "Accept Conditionally – Deviation Approval",
     type: "accept_conditionally",
     prefix: "QC-AC",
-    stages: [{ name: "Pending", progress_id: 1, dept: null }],
+    stages: [
+      { name: "QC Check", progress_id: 1, dept: "Quality Control" },
+      { name: "Stock Entry", progress_id: 2, dept: "Storekeeper" },
+      { name: "Completed", progress_id: 3, dept: null },
+    ],
     route: "accept-conditionally",
+    reasonFilter: "Deviation approval",
+  },
+  {
+    name: "Accept Conditionally – Client/Consultant Approval",
+    type: "accept_conditionally",
+    prefix: "QC-AC",
+    stages: [
+      {
+        name: "Manager Approval",
+        progress_id: 1,
+        dept: "Directors/Management",
+      },
+      { name: "Stock Entry", progress_id: 2, dept: "Storekeeper" },
+      { name: "Completed", progress_id: 3, dept: null },
+    ],
+    route: "accept-conditionally",
+    reasonFilter: "Client/consultant approval",
+  },
+  {
+    name: "Accept Conditionally – Commercial Deduction/Penalty",
+    type: "accept_conditionally",
+    prefix: "QC-AC",
+    stages: [
+      { name: "Verification", progress_id: 1, dept: "Finance" },
+      { name: "Stock Entry", progress_id: 2, dept: "Storekeeper" },
+      { name: "Completed", progress_id: 3, dept: null },
+    ],
+    route: "accept-conditionally",
+    reasonFilter: "Commercial deduction/penalty",
+  },
+  {
+    name: "Accept Conditionally – Extended Warranty/Guarantees",
+    type: "accept_conditionally",
+    prefix: "QC-AC",
+    stages: [
+      {
+        name: "Manager Approval",
+        progress_id: 1,
+        dept: "Directors/Management",
+      },
+      { name: "Stock Entry", progress_id: 2, dept: "Storekeeper" },
+      { name: "Completed", progress_id: 3, dept: null },
+    ],
+    route: "accept-conditionally",
+    reasonFilter: "Extended warranty/guarantees",
   },
   {
     name: "Missing Quantity",
@@ -99,6 +157,14 @@ const RESOLUTION_GROUPS = [
     route: "missing-quantity",
   },
 ];
+
+// Map department label to department ID
+const DEPT_NAME_TO_ID: { [key: string]: number } = {
+  Finance: 10,
+  Storekeeper: 11,
+  "Directors/Management": 8,
+  "Quality Control": 12,
+};
 
 // Department badge styles
 const getDeptStyle = (dept: string | null) => {
@@ -113,6 +179,16 @@ const getDeptStyle = (dept: string | null) => {
         backgroundColor: "rgba(143, 236, 255, 1)",
         color: "rgba(21, 104, 120, 1)",
       };
+    case "Directors/Management":
+      return {
+        backgroundColor: "rgba(205, 222, 255, 1)",
+        color: "rgba(23, 92, 220, 1)",
+      };
+    case "Quality Control":
+      return {
+        backgroundColor: "rgba(233, 213, 255, 1)",
+        color: "rgba(129, 68, 196, 1)",
+      };
     default:
       return { backgroundColor: "rgba(228, 228, 228, 1)", color: "black" };
   }
@@ -123,6 +199,7 @@ export default function ResolutionCenter() {
   const searchParams = useSearchParams();
 
   const downloadIcon = "/icons/download.svg";
+  const departmentID = userInfo?.departmentID;
 
   const [activeTab, setActiveTab] = useState<"failed-qc" | "tracker">(
     searchParams.get("tab") === "tracker" ? "tracker" : "failed-qc",
@@ -200,18 +277,27 @@ export default function ResolutionCenter() {
     fetchResolutionItems();
   }, [activeTab]);
 
-  // Get cards for a specific resolution type and progress stage
-  function getCardsForStage(type: string, progressId: number) {
+  // Get cards for a specific resolution type and progress stage (with optional reason filter)
+  function getCardsForStage(
+    type: string,
+    progressId: number,
+    reasonFilter?: string,
+  ) {
     return resolutionItems.filter(
       (item) =>
-        item.resolution_type === type && item.progress_id === progressId,
+        item.resolution_type === type &&
+        item.progress_id === progressId &&
+        (!reasonFilter || item.reason === reasonFilter),
     );
   }
 
-  // Get total count for a resolution type group
-  function getGroupCount(type: string) {
-    return resolutionItems.filter((item) => item.resolution_type === type)
-      .length;
+  // Get total count for a resolution type group (with optional reason filter)
+  function getGroupCount(type: string, reasonFilter?: string) {
+    return resolutionItems.filter(
+      (item) =>
+        item.resolution_type === type &&
+        (!reasonFilter || item.reason === reasonFilter),
+    ).length;
   }
 
   return (
@@ -390,11 +476,12 @@ export default function ResolutionCenter() {
                 gap: "40px",
               }}
             >
-              {RESOLUTION_GROUPS.map((group) => {
-                const totalCount = getGroupCount(group.type);
+              {RESOLUTION_GROUPS.map((group, index) => {
+                const reasonFilter = (group as any).reasonFilter;
+                const totalCount = getGroupCount(group.type, reasonFilter);
 
                 return (
-                  <div key={group.type}>
+                  <div key={index}>
                     {/* Group Header */}
                     <div
                       style={{
@@ -428,12 +515,23 @@ export default function ResolutionCenter() {
                       }}
                     >
                       {group.stages.map((stage) => {
-                        const cards = getCardsForStage(
-                          group.type,
-                          stage.progress_id,
-                        );
+                        // Blank placeholder column
+                        const isBlankStage = stage.progress_id < 0;
+                        const cards = isBlankStage
+                          ? []
+                          : getCardsForStage(
+                              group.type,
+                              stage.progress_id,
+                              reasonFilter,
+                            );
                         const isEmpty = cards.length === 0;
                         const deptStyle = getDeptStyle(stage.dept);
+
+                        if (isBlankStage) {
+                          return (
+                            <div key="blank" style={{ minHeight: "660px" }} />
+                          );
+                        }
 
                         return (
                           <div
@@ -531,69 +629,82 @@ export default function ResolutionCenter() {
                                 marginTop: "15px",
                               }}
                             >
-                              {cards.map((card) => (
-                                <div
-                                  key={`${card.resolution_type}-${card.id}`}
-                                  style={{
-                                    backgroundColor: "white",
-                                    borderRadius: "15px",
-                                    padding: "15px",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "12px",
-                                    border: "1px solid rgba(231, 231, 231, 1)",
-                                  }}
-                                >
+                              {cards.map((card) => {
+                                const stageDeptId = stage.dept
+                                  ? DEPT_NAME_TO_ID[stage.dept]
+                                  : null;
+                                const canView =
+                                  !stageDeptId ||
+                                  departmentID === 8 ||
+                                  departmentID === stageDeptId;
+
+                                return (
                                   <div
+                                    key={card.id}
                                     style={{
-                                      backgroundColor: "black",
-                                      color: "white",
-                                      padding: "4px 10px",
-                                      borderRadius: "50px",
-                                      fontSize: "11px",
-                                      fontWeight: "600",
-                                      width: "fit-content",
+                                      backgroundColor: "white",
+                                      borderRadius: "15px",
+                                      padding: "15px",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "12px",
+                                      border:
+                                        "1px solid rgba(231, 231, 231, 1)",
                                     }}
                                   >
-                                    {group.name.toUpperCase()}
-                                  </div>
+                                    <div
+                                      style={{
+                                        backgroundColor: "black",
+                                        color: "white",
+                                        padding: "4px 10px",
+                                        borderRadius: "50px",
+                                        fontSize: "11px",
+                                        fontWeight: "600",
+                                        width: "fit-content",
+                                      }}
+                                    >
+                                      {group.name.toUpperCase()}
+                                    </div>
 
-                                  <div>
-                                    <small>QC NUMBER</small>
-                                    <h3>
-                                      {group.prefix}-
-                                      {String(card.id).padStart(5, "0")}
-                                    </h3>
-                                  </div>
+                                    <div>
+                                      <small>QC NUMBER</small>
+                                      <h3>
+                                        {group.prefix}-
+                                        {String(card.id).padStart(5, "0")}
+                                      </h3>
+                                    </div>
 
-                                  <div>
-                                    <small>ITEM NAME</small>
-                                    <h3>{card.material_description}</h3>
-                                  </div>
+                                    <div>
+                                      <small>ITEM</small>
+                                      <h3>{card.material_description}</h3>
+                                    </div>
 
-                                  <div>
-                                    <small>FAILED QTY</small>
-                                    <h3>{card.failed_quantity}</h3>
-                                  </div>
+                                    <div>
+                                      <small>FAILED QTY</small>
+                                      <h3>{card.failed_quantity}</h3>
+                                    </div>
 
-                                  <div>
-                                    <small>VENDOR</small>
-                                    <h3>{card.supplier_name}</h3>
-                                  </div>
+                                    <div>
+                                      <small>VENDOR</small>
+                                      <h3>{card.supplier_name}</h3>
+                                    </div>
 
-                                  <Button
-                                    componentType="link"
-                                    bgColor="rgba(239, 239, 239, 1)"
-                                    borderColor="rgba(239, 239, 239, 1)"
-                                    textColor="black"
-                                    style={{ borderRadius: "50px" }}
-                                    href={`/resolution/${group.route}/${card.id}`}
-                                    full
-                                  >
-                                    VIEW &gt;
-                                  </Button>
-                                </div>
-                              ))}
+                                    {canView && (
+                                      <Button
+                                        componentType="link"
+                                        bgColor="rgba(239, 239, 239, 1)"
+                                        borderColor="rgba(239, 239, 239, 1)"
+                                        textColor="black"
+                                        style={{ borderRadius: "50px" }}
+                                        href={`/resolution/${group.route}/${card.id}`}
+                                        full
+                                      >
+                                        VIEW &gt;
+                                      </Button>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         );

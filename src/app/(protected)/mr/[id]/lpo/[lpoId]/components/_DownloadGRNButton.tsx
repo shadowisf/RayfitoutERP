@@ -1,25 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import { pdf } from "@react-pdf/renderer";
 import Button from "@/app/components/Button";
-import { NcrPDF, NcrData } from "./NcrPDF";
+import { GrnData, GrnPDF } from "./GrnPDF";
 
-type DownloadNCRButtonProps = {
-  qcId: number;
+type DownloadGRNButtonProps = {
+  grnId: number;
   children?: React.ReactNode;
   style?: React.CSSProperties;
   bgColor?: string;
   label?: string;
 };
 
-export default function DownloadNCRButton({
-  qcId,
+export default function DownloadGRNButton({
+  grnId,
   children,
   style,
   bgColor = "rgba(239, 239, 239, 1)",
-  label = "NCR",
-}: DownloadNCRButtonProps) {
+  label = "GRN",
+}: DownloadGRNButtonProps) {
   const downloadIcon = "/icons/download.svg";
 
   async function urlToBase64(url: string): Promise<string> {
@@ -50,95 +49,89 @@ export default function DownloadNCRButton({
     }
   }
 
-  function parseAttachments(raw: any): string[] {
-    if (!raw) return [];
-    try {
-      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-      if (Array.isArray(parsed)) return parsed.filter(Boolean);
-      return [];
-    } catch {
-      return [];
+  function parseAttachmentUrl(raw: any): string | null {
+    if (!raw) return null;
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+        if (typeof parsed === "string") return parsed;
+      } catch {
+        // Plain URL string
+        return raw;
+      }
     }
+    if (Array.isArray(raw) && raw.length > 0) return raw[0];
+    return null;
   }
 
   async function handleDownload() {
     try {
-      // 1. Fetch NCR data
+      // 1. Fetch GRN data
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getNcrData`,
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/grn/getGrnData`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ qc_id: qcId }),
+          body: JSON.stringify({ grn_id: grnId }),
         },
       );
 
       const result = await response.json();
 
       if (!result.success || !result.data) {
-        console.error("Failed to fetch NCR data:", result.message);
+        console.error("Failed to fetch GRN data:", result.message);
         return;
       }
 
-      const ncrData: NcrData = result.data;
+      const grnData: GrnData & {
+        items: (GrnData["items"][0] & { attachment_url?: string })[];
+      } = result.data;
 
-      // 2. Convert first available attachment image to base64
-      const attachmentImages: { [key: number]: string } = {};
-
-      for (const cp of ncrData.failed_checkpoints) {
-        const urls = parseAttachments(cp.attachments);
-        if (urls.length > 0) {
-          const base64 = await urlToBase64(urls[0]);
+      // 2. Convert attachment images to base64
+      for (const item of grnData.items) {
+        const url = parseAttachmentUrl((item as any).attachment_url);
+        if (url) {
+          const base64 = await urlToBase64(url);
           if (base64) {
-            attachmentImages[cp.checkpoint_number] = base64;
-            break; // Only need one image for the PDF
+            item.attachment_image = base64;
           }
         }
       }
 
       // 3. Generate PDF
-      const blob = await pdf(
-        <NcrPDF data={ncrData} attachmentImages={attachmentImages} />,
-      ).toBlob();
+      const blob = await pdf(<GrnPDF data={grnData} />).toBlob();
 
       // 4. Download
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `NCR-${String(ncrData.mr_line_id).padStart(5, "0")}.pdf`;
+      link.download = `GRN-${String(grnData.grn_id).padStart(5, "0")}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error generating NCR PDF:", error);
+      console.error("Error generating GRN PDF:", error);
     }
-  }
-
-  if (children) {
-    return (
-      <Button
-        componentType={"button"}
-        bgColor={bgColor}
-        borderColor="rgba(223, 223, 223, 1)"
-        textColor={"black"}
-        style={style || { padding: "7px 7px" }}
-        onClick={handleDownload}
-      >
-        {children}
-      </Button>
-    );
   }
 
   return (
     <Button
       componentType={"none"}
       bgColor={bgColor}
-      borderColor="rgba(223, 223, 223, 1)"
+      borderColor={"rgba(207, 207, 207, 1)"}
       textColor={"black"}
       style={style || { padding: "7px 7px" }}
     >
-      {label} <img src={downloadIcon} alt="download" onClick={handleDownload} />
+      {children ? (
+        children
+      ) : (
+        <>
+          {label}{" "}
+          <img src={downloadIcon} alt="download" onClick={handleDownload} />
+        </>
+      )}
     </Button>
   );
 }

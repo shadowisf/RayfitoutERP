@@ -20,6 +20,7 @@ import CreateGRNButton from "./storekeeper/_CreateGRNButton";
 import SubmitForQCButton from "./storekeeper/_SubmitForQCButton";
 import QCCheckListButton from "./qualityControl/_QCCheckListButton";
 import AddToInventoryButton from "./storekeeper/_AddStockButton";
+import DownloadCRButton from "@/app/(protected)/resolution/components/_DownloadCRButton";
 
 type GroupedMrLines = {
   [category: string]: {

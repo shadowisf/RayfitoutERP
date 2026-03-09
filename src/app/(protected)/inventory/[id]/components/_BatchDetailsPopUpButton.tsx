@@ -5,8 +5,8 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { InventoryItem } from "../../types/inventoryItem";
 import DownloadLPOButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadLPOButton";
-import DownloadGRNButton from "@/app/(protected)/resolution/components/_DownloadGRNButton";
 import DownloadNCRButton from "@/app/(protected)/resolution/components/_DownloadNCRButton";
+import DownloadGRNButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadGRNButton";
 
 type BatchDetailsPopUpButtonProps = {
   inventoryItem: InventoryItem;
@@ -666,7 +666,11 @@ export default function BatchDetailsPopUpButton({
                     ? `QC-RR-${String(details.qc_resolution_id).padStart(5, "0")}`
                     : details.resolution_type === "Replace from Vendor"
                       ? `QC-RV-${String(details.qc_resolution_id).padStart(5, "0")}`
-                      : `QC-${String(details.qc_id).padStart(5, "0")}`
+                      : details.resolution_type === "Scrap/Discard"
+                        ? `QC-SD-${String(details.qc_resolution_id).padStart(5, "0")}`
+                        : details.resolution_type === "Accept Conditionally"
+                          ? `QC-AC-${String(details.qc_resolution_id).padStart(5, "0")}`
+                          : `QC-${String(details.qc_id).padStart(5, "0")}`
                   : "-"}
               </h3>
             </div>

@@ -192,13 +192,7 @@ export default function ReturnRefundDetailPage() {
     <div className="dashboard">
       {/* Breadcrumb */}
       <h1>
-        <Link
-          href="/resolution"
-          style={{ textDecoration: "none", color: "black" }}
-        >
-          RESOLUTION CENTER
-        </Link>{" "}
-        &gt; {qcNumber}
+        <Link href="/resolution">RESOLUTION CENTER</Link> &gt; {qcNumber}
       </h1>
 
       <br />

@@ -19,6 +19,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
 
   const [mrActionCount, setMrActionCount] = useState<number>(0);
   const [inventoryActionCount, setInventoryActionCount] = useState<number>(0);
+  const [resolutionActionCount, setResolutionActionCount] = useState<number>(0);
 
   const INVENTORY_DEPARTMENT_IDS = [8, 11, 15];
   const PROJECT_DEPARTMENT_IDS = [8, 9, 10, 15, 16];
@@ -83,6 +84,42 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
     return () => clearInterval(interval);
   }, [userInfo]);
 
+  useEffect(() => {
+    if (!userInfo?.departmentID) return;
+
+    const RESOLUTION_DEPARTMENT_IDS = [8, 10, 11, 12];
+    if (!RESOLUTION_DEPARTMENT_IDS.includes(userInfo.departmentID)) {
+      setResolutionActionCount(0);
+      return;
+    }
+
+    const fetchResolutionActionCount = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/resolution/getActionCount`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ department_id: userInfo.departmentID }),
+          },
+        );
+
+        const data = await res.json();
+
+        if (data.success) {
+          setResolutionActionCount(data.count);
+        }
+      } catch (error) {
+        console.error("Error fetching resolution action count:", error);
+      }
+    };
+
+    fetchResolutionActionCount();
+
+    const interval = setInterval(fetchResolutionActionCount, 30000);
+    return () => clearInterval(interval);
+  }, [userInfo]);
+
   const menuItems = [
     { label: "Dashboard", path: "/dashboard", icon: "/icons/dashboard.svg" },
     {
@@ -116,6 +153,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       label: "Resolution Center",
       path: "/resolution",
       icon: "/icons/resolution-center.svg",
+      count: resolutionActionCount,
     },
 
     {

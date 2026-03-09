@@ -55,8 +55,9 @@ export default function QCResolutionTimeline({
     }
   }
 
-  // Check if resolution is completed (progress_id === 3)
-  const isCompleted = currentProgressId === 3;
+  // Check if resolution is completed (progress_id >= max stage id)
+  const maxStageId = stages.length > 0 ? stages[stages.length - 1].id : 3;
+  const isCompleted = currentProgressId >= maxStageId;
 
   return (
     <div className="mr-with-id">

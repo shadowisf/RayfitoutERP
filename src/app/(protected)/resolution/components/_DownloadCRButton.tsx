@@ -2,23 +2,23 @@
 
 import { pdf } from "@react-pdf/renderer";
 import Button from "@/app/components/Button";
-import { GrnPDF, GrnData } from "./GrnPDF";
+import { CrPDF, CrData } from "./CrPDF";
 
-type DownloadGRNButtonProps = {
-  grnId: number;
+type DownloadCRButtonProps = {
+  qcId: number;
   children?: React.ReactNode;
   style?: React.CSSProperties;
   bgColor?: string;
   label?: string;
 };
 
-export default function DownloadGRNButton({
-  grnId,
+export default function DownloadCRButton({
+  qcId,
   children,
   style,
   bgColor = "rgba(239, 239, 239, 1)",
-  label = "GRN",
-}: DownloadGRNButtonProps) {
+  label = "CR",
+}: DownloadCRButtonProps) {
   const downloadIcon = "/icons/download.svg";
 
   async function urlToBase64(url: string): Promise<string> {
@@ -49,87 +49,96 @@ export default function DownloadGRNButton({
     }
   }
 
-  function parseAttachmentUrl(raw: any): string | null {
-    if (!raw) return null;
-    if (typeof raw === "string") {
-      try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
-        if (typeof parsed === "string") return parsed;
-      } catch {
-        // Plain URL string
-        return raw;
-      }
+  function parseAttachments(raw: any): string[] {
+    if (!raw) return [];
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      return [];
+    } catch {
+      return [];
     }
-    if (Array.isArray(raw) && raw.length > 0) return raw[0];
-    return null;
   }
 
   async function handleDownload() {
     try {
-      // 1. Fetch GRN data
+      // 1. Fetch CR data
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/grn/getGrnData`,
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getCrData`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ grn_id: grnId }),
+          body: JSON.stringify({ qc_id: qcId }),
         },
       );
 
       const result = await response.json();
 
       if (!result.success || !result.data) {
-        console.error("Failed to fetch GRN data:", result.message);
+        console.error("Failed to fetch CR data:", result.message);
         return;
       }
 
-      const grnData: GrnData & { items: (GrnData["items"][0] & { attachment_url?: string })[] } = result.data;
+      const crData: CrData = result.data;
 
-      // 2. Convert attachment images to base64
-      for (const item of grnData.items) {
-        const url = parseAttachmentUrl((item as any).attachment_url);
-        if (url) {
-          const base64 = await urlToBase64(url);
+      // 2. Convert first available attachment image to base64
+      const attachmentImages: { [key: number]: string } = {};
+
+      for (const cp of crData.checkpoints) {
+        const urls = parseAttachments(cp.attachments);
+        if (urls.length > 0) {
+          const base64 = await urlToBase64(urls[0]);
           if (base64) {
-            item.attachment_image = base64;
+            attachmentImages[cp.checkpoint_number] = base64;
+            break; // Only need one image for the PDF
           }
         }
       }
 
       // 3. Generate PDF
-      const blob = await pdf(<GrnPDF data={grnData} />).toBlob();
+      const blob = await pdf(
+        <CrPDF data={crData} attachmentImages={attachmentImages} />,
+      ).toBlob();
 
       // 4. Download
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `GRN-${String(grnData.grn_id).padStart(5, "0")}.pdf`;
+      link.download = `CR-${String(crData.qc_id).padStart(5, "0")}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error generating GRN PDF:", error);
+      console.error("Error generating CR PDF:", error);
     }
+  }
+
+  if (children) {
+    return (
+      <Button
+        componentType={"button"}
+        bgColor={bgColor}
+        borderColor="rgba(223, 223, 223, 1)"
+        textColor={"black"}
+        style={style || { padding: "7px 7px" }}
+        onClick={handleDownload}
+      >
+        {children}
+      </Button>
+    );
   }
 
   return (
     <Button
       componentType={"none"}
       bgColor={bgColor}
-      borderColor={"rgba(207, 207, 207, 1)"}
+      borderColor="rgba(223, 223, 223, 1)"
       textColor={"black"}
       style={style || { padding: "7px 7px" }}
     >
-      {children ? (
-        children
-      ) : (
-        <>
-          {label}{" "}
-          <img src={downloadIcon} alt="download" onClick={handleDownload} />
-        </>
-      )}
+      {label}{" "}
+      <img src={downloadIcon} alt="download" onClick={handleDownload} />
     </Button>
   );
 }

@@ -84,6 +84,30 @@ export default function CreateResolutionButton({
     any[]
   >([]);
 
+  // Scrap/Discard fields
+  const [scrapReason, setScrapReason] = useState("");
+  const [scrapAttachmentFile, setScrapAttachmentFile] = useState<File | null>(
+    null,
+  );
+  const [returnNotPossibleReason, setReturnNotPossibleReason] = useState("");
+  const [disposalMethod, setDisposalMethod] = useState("");
+
+  // Conditionally Accept fields
+  const [caReason, setCaReason] = useState("");
+  const [caAttachmentFile, setCaAttachmentFile] = useState<File | null>(null);
+  // Commercial deduction/penalty
+  const [penaltyType, setPenaltyType] = useState("");
+  const [penaltyValue, setPenaltyValue] = useState("");
+  // Deviation approval
+  const [deviationType, setDeviationType] = useState("");
+  const [deviationDescription, setDeviationDescription] = useState("");
+  const [requiresNameChange, setRequiresNameChange] = useState("");
+  // Client/consultant approval
+  const [approvalSource, setApprovalSource] = useState("");
+  // Extended warranty/guarantees
+  const [warrantyType, setWarrantyType] = useState("");
+  const [caRemarks, setCaRemarks] = useState("");
+
   // Category/subcategory cascading state (matching _AddMrItemButton pattern)
   const [categoriesManuallySelected, setCategoriesManuallySelected] =
     useState(false);
@@ -228,6 +252,22 @@ export default function CreateResolutionButton({
     setNewMaterialSubcategoryIds([]);
     setCategoriesManuallySelected(false);
     setUserInitiatedCategorySelection(false);
+    // Scrap/Discard
+    setScrapReason("");
+    setScrapAttachmentFile(null);
+    setReturnNotPossibleReason("");
+    setDisposalMethod("");
+    // Conditionally Accept
+    setCaReason("");
+    setCaAttachmentFile(null);
+    setPenaltyType("");
+    setPenaltyValue("");
+    setDeviationType("");
+    setDeviationDescription("");
+    setRequiresNameChange("");
+    setApprovalSource("");
+    setWarrantyType("");
+    setCaRemarks("");
   }
 
   function handleTypeChange(
@@ -316,7 +356,7 @@ export default function CreateResolutionButton({
       }
     }
 
-    if (resolutionType === "Replace") {
+    if (resolutionType === "Replace from vendor") {
       try {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/resolution`,
@@ -342,6 +382,147 @@ export default function CreateResolutionButton({
                 replacementType === "Approved alternative"
                   ? newMaterialSubcategoryIds
                   : [],
+              created_by: userInfo?.name,
+            }),
+          },
+        );
+
+        if (res.ok) {
+          toast("Resolution created", "success");
+          setIsOpen(false);
+          resetAllFields();
+          setResolutionType("");
+          router.refresh();
+        } else {
+          const data = await res.json();
+          toast(data.message || "Failed to create resolution", "error");
+        }
+      } catch (error) {
+        console.error("Error creating resolution:", error);
+        toast("Failed to create resolution", "error");
+      }
+    }
+
+    if (resolutionType === "Scrap/discard") {
+      try {
+        // Upload scrap attachment to S3 if present
+        let scrapAttachmentUrl: string[] = [];
+        if (scrapAttachmentFile) {
+          const formData = new FormData();
+          formData.append("files", scrapAttachmentFile);
+          formData.append("folder", "qc-resolution-scrap");
+
+          const uploadResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
+            {
+              method: "POST",
+              body: formData,
+            },
+          );
+
+          if (!uploadResponse.ok) {
+            toast("Failed to upload file", "error");
+            return;
+          }
+
+          const uploadResult = await uploadResponse.json();
+          scrapAttachmentUrl = uploadResult.urls || [];
+        }
+
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/resolution`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "createScrapDiscard",
+              qc_mr_line_id: item.qc_id,
+              scrap_quantity: item.failed_quantity,
+              scrap_reason: scrapReason,
+              return_not_possible_reason: returnNotPossibleReason || null,
+              disposal_method: disposalMethod || null,
+              scrap_attachment: scrapAttachmentUrl,
+              created_by: userInfo?.name,
+            }),
+          },
+        );
+
+        if (res.ok) {
+          toast("Resolution created", "success");
+          setIsOpen(false);
+          resetAllFields();
+          setResolutionType("");
+          router.refresh();
+        } else {
+          const data = await res.json();
+          toast(data.message || "Failed to create resolution", "error");
+        }
+      } catch (error) {
+        console.error("Error creating resolution:", error);
+        toast("Failed to create resolution", "error");
+      }
+    }
+
+    if (resolutionType === "Conditionally accept") {
+      try {
+        // Upload attachment to S3 if present
+        let caAttachmentUrl: string[] = [];
+        if (caAttachmentFile) {
+          const formData = new FormData();
+          formData.append("files", caAttachmentFile);
+          formData.append("folder", "qc-resolution-conditionally-accepted");
+
+          const uploadResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
+            {
+              method: "POST",
+              body: formData,
+            },
+          );
+
+          if (!uploadResponse.ok) {
+            toast("Failed to upload file", "error");
+            return;
+          }
+
+          const uploadResult = await uploadResponse.json();
+          caAttachmentUrl = uploadResult.urls || [];
+        }
+
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/resolution`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "createConditionallyAccepted",
+              qc_mr_line_id: item.qc_id,
+              conditionally_accepted_quantity: item.failed_quantity,
+              reason: caReason,
+              penalty_type:
+                caReason === "Commercial deduction/penalty"
+                  ? penaltyType
+                  : null,
+              penalty_value:
+                caReason === "Commercial deduction/penalty"
+                  ? Number(penaltyValue) || 0
+                  : null,
+              deviation_type:
+                caReason === "Deviation approval" ? deviationType : null,
+              deviation_description:
+                caReason === "Deviation approval" ? deviationDescription : null,
+              requires_name_change:
+                caReason === "Deviation approval" ? requiresNameChange : null,
+              approval_source:
+                caReason === "Client/consultant approval"
+                  ? approvalSource
+                  : null,
+              warranty_type:
+                caReason === "Extended warranty/guarantees"
+                  ? warrantyType
+                  : null,
+              remarks: caRemarks || null,
+              attachment: caAttachmentUrl,
               created_by: userInfo?.name,
             }),
           },
@@ -389,16 +570,16 @@ export default function CreateResolutionButton({
           {/* Resolution Type */}
           <div className="input-row full">
             <InputItem
-              label="RESOLUTION TYPE"
+              label="TYPE"
               value={resolutionType}
               type="select"
               required
               onChange={handleTypeChange}
               selectOptions={[
                 "Return/refund",
-                "Replace",
-                "Conditionally accepted",
-                "Reject/scrap",
+                "Replace from vendor",
+                "Conditionally accept",
+                "Scrap/discard",
               ]}
             />
           </div>
@@ -623,8 +804,121 @@ export default function CreateResolutionButton({
             </>
           )}
 
+          {/* Scrap/Discard Fields */}
+          {resolutionType === "Scrap/discard" && (
+            <>
+              <br />
+
+              {/* Item Table */}
+              <table className="items-table two-toned">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>ITEM</th>
+                    <th>FAILED QTY</th>
+                    <th>SCRAP QTY</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>1</td>
+                    <td>{item.material_description}</td>
+                    <td>
+                      {formatNumber(item.failed_quantity)} {item.unit}
+                    </td>
+                    <td>
+                      {formatNumber(item.failed_quantity)} {item.unit}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <br />
+
+              {/* Scrap Reason */}
+              <div className="input-row half">
+                <InputItem
+                  label="SCRAP REASON"
+                  value={scrapReason}
+                  type="select"
+                  required
+                  onChange={(e) => {
+                    setScrapReason(e.target.value);
+                    setScrapAttachmentFile(null);
+                  }}
+                  selectOptions={[
+                    "Vendor rejection refused",
+                    "Expired",
+                    "Damaged beyond repair",
+                    "Custom-fabricated item (non-returnable)",
+                  ]}
+                />
+              </div>
+
+              {/* Conditional Upload based on Scrap Reason */}
+              {scrapReason === "Vendor rejection refused" && (
+                <div className="input-row half">
+                  <SingleUploadFileBox
+                    fileState={scrapAttachmentFile}
+                    setFileState={setScrapAttachmentFile}
+                    label="VENDOR REJECTION EMAIL/CLAUSE"
+                    acceptedFileTypes=".png,.jpg,.jpeg,.pdf"
+                    required
+                  />
+                </div>
+              )}
+
+              {scrapReason === "Expired" && (
+                <div className="input-row half">
+                  <SingleUploadFileBox
+                    fileState={scrapAttachmentFile}
+                    setFileState={setScrapAttachmentFile}
+                    label="EXPIRED LABEL/ITEM"
+                    acceptedFileTypes=".png,.jpg,.jpeg,.pdf"
+                    required
+                  />
+                </div>
+              )}
+
+              {scrapReason === "Damaged beyond repair" && (
+                <div className="input-row half">
+                  <SingleUploadFileBox
+                    fileState={scrapAttachmentFile}
+                    setFileState={setScrapAttachmentFile}
+                    label="PROOF OF DAMAGE"
+                    acceptedFileTypes=".png,.jpg,.jpeg,.pdf"
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Reason Return Not Possible */}
+              <div className="input-row full">
+                <InputItem
+                  label="REASON FOR RETURN NOT POSSIBLE"
+                  value={returnNotPossibleReason}
+                  type="textarea"
+                  required
+                  onChange={(e) => setReturnNotPossibleReason(e.target.value)}
+                />
+              </div>
+
+              {/* Disposal Method */}
+              <div className="input-row half">
+                <InputItem
+                  label="DISPOSAL METHOD"
+                  value={disposalMethod}
+                  type="select"
+                  required
+                  onChange={(e) => setDisposalMethod(e.target.value)}
+                  selectOptions={["Destroy", "Recycle", "Sold at scrap"]}
+                />
+              </div>
+            </>
+          )}
+
           {/* Replace Fields */}
-          {resolutionType === "Replace" && (
+          {resolutionType === "Replace from vendor" && (
             <>
               <br />
 
@@ -754,6 +1048,263 @@ export default function CreateResolutionButton({
                   onChange={(e) => setReplaceNotes(e.target.value)}
                 />
               </div>
+            </>
+          )}
+
+          {/* Conditionally Accept Fields */}
+          {resolutionType === "Conditionally accept" && (
+            <>
+              <br />
+
+              {/* Item Table */}
+              <table className="items-table two-toned">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>ITEM</th>
+                    <th>FAILED QTY</th>
+                    <th>CONDITIONALLY ACCEPTED QTY</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>1</td>
+                    <td>{item.material_description}</td>
+                    <td>
+                      {formatNumber(item.failed_quantity)} {item.unit}
+                    </td>
+                    <td>
+                      {formatNumber(item.failed_quantity)} {item.unit}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <br />
+
+              {/* Reason */}
+              <div className="input-row half">
+                <InputItem
+                  label="REASON"
+                  value={caReason}
+                  type="select"
+                  required
+                  onChange={(e) => {
+                    setCaReason(e.target.value);
+                    setCaAttachmentFile(null);
+                    setPenaltyType("");
+                    setPenaltyValue("");
+                    setDeviationType("");
+                    setDeviationDescription("");
+                    setRequiresNameChange("");
+                    setApprovalSource("");
+                    setWarrantyType("");
+                    setCaRemarks("");
+                  }}
+                  selectOptions={[
+                    "Commercial deduction/penalty",
+                    "Deviation approval",
+                    "Client/consultant approval",
+                    "Extended warranty/guarantees",
+                  ]}
+                />
+              </div>
+
+              {/* Commercial Deduction/Penalty Fields */}
+              {caReason === "Commercial deduction/penalty" && (
+                <>
+                  <div className="input-row half">
+                    <InputItem
+                      label="PENALTY TYPE"
+                      value={penaltyType}
+                      type="select"
+                      required
+                      onChange={(e) => setPenaltyType(e.target.value)}
+                      selectOptions={["Credit", "Debit"]}
+                    />
+                    <InputItem
+                      label="PENALTY VALUE"
+                      value={penaltyValue}
+                      type="text"
+                      required
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (/^\d*\.?\d{0,2}$/.test(value)) {
+                          setPenaltyValue(value);
+                        }
+                      }}
+                      placeholder="ENTER PENALTY VALUE"
+                    />
+                  </div>
+
+                  <div className="input-row half">
+                    <SingleUploadFileBox
+                      fileState={caAttachmentFile}
+                      setFileState={setCaAttachmentFile}
+                      label="COMMERCIAL AGREEMENT EVIDENCE"
+                      acceptedFileTypes=".png,.jpg,.jpeg,.pdf"
+                      required
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Deviation Approval Fields */}
+              {caReason === "Deviation approval" && (
+                <>
+                  <div className="input-row half">
+                    <InputItem
+                      label="DEVIATION TYPE"
+                      value={deviationType}
+                      type="select"
+                      required
+                      onChange={(e) => setDeviationType(e.target.value)}
+                      selectOptions={[
+                        "Specification",
+                        "Finish",
+                        "Dimension/tolerance",
+                        "Other",
+                      ]}
+                    />
+                  </div>
+
+                  <div className="input-row full">
+                    <InputItem
+                      label="DEVIATION DESCRIPTION"
+                      value={deviationDescription}
+                      type="textarea"
+                      required
+                      onChange={(e) => setDeviationDescription(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="input-row full">
+                    <div className="input-item">
+                      <label className="custom">
+                        <span>DOES ITEM REQUIRE NAME CHANGE?</span>
+                      </label>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "20px",
+                          alignItems: "center",
+                        }}
+                      >
+                        <label
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            alignItems: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="requiresNameChange"
+                            value="Yes"
+                            checked={requiresNameChange === "Yes"}
+                            onChange={(e) =>
+                              setRequiresNameChange(e.target.value)
+                            }
+                            required
+                          />
+                          YES
+                        </label>
+                        <label
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            alignItems: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="requiresNameChange"
+                            value="No"
+                            checked={requiresNameChange === "No"}
+                            onChange={(e) =>
+                              setRequiresNameChange(e.target.value)
+                            }
+                          />
+                          NO
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="input-row half">
+                    <SingleUploadFileBox
+                      fileState={caAttachmentFile}
+                      setFileState={setCaAttachmentFile}
+                      label="SUPPORTING DOCUMENTATION"
+                      acceptedFileTypes=".png,.jpg,.jpeg,.pdf"
+                      required
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Client/Consultant Approval Fields */}
+              {caReason === "Client/consultant approval" && (
+                <>
+                  <div className="input-row half">
+                    <InputItem
+                      label="APPROVAL SOURCE"
+                      value={approvalSource}
+                      type="select"
+                      required
+                      onChange={(e) => setApprovalSource(e.target.value)}
+                      selectOptions={["Client", "Consultant", "Manager"]}
+                    />
+                  </div>
+
+                  <div className="input-row half">
+                    <SingleUploadFileBox
+                      fileState={caAttachmentFile}
+                      setFileState={setCaAttachmentFile}
+                      label="APPROVAL DOCUMENT"
+                      acceptedFileTypes=".png,.jpg,.jpeg,.pdf"
+                      required
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Extended Warranty/Guarantees Fields */}
+              {caReason === "Extended warranty/guarantees" && (
+                <>
+                  <div className="input-row half">
+                    <InputItem
+                      label="TYPE"
+                      value={warrantyType}
+                      type="select"
+                      required
+                      onChange={(e) => setWarrantyType(e.target.value)}
+                      selectOptions={["Warranty", "Guarantees"]}
+                    />
+                  </div>
+
+                  <div className="input-row full">
+                    <InputItem
+                      label="REMARKS"
+                      value={caRemarks}
+                      type="textarea"
+                      onChange={(e) => setCaRemarks(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="input-row half">
+                    <SingleUploadFileBox
+                      fileState={caAttachmentFile}
+                      setFileState={setCaAttachmentFile}
+                      label="SUPPORTING DOCUMENTS"
+                      acceptedFileTypes=".png,.jpg,.jpeg,.pdf"
+                      required
+                    />
+                  </div>
+                </>
+              )}
             </>
           )}
         </FormPopUp>

@@ -8,7 +8,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/app/context/AuthContext";
-import DownloadGRNButton from "@/app/(protected)/resolution/components/_DownloadGRNButton";
+import DownloadGRNButton from "../../mr/[id]/lpo/[lpoId]/components/_DownloadGRNButton";
 
 type ReplaceDetail = {
   id: number;
@@ -325,7 +325,8 @@ export default function CreateReplaceGRNButton({
               <tr>
                 <td>1</td>
                 <td>
-                  {detail.replacement_type === "Approved alternative" && detail.new_material_name
+                  {detail.replacement_type === "Approved alternative" &&
+                  detail.new_material_name
                     ? detail.new_material_name
                     : detail.material_description}
                 </td>

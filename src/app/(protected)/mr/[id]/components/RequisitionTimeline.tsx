@@ -61,7 +61,7 @@ const STAGE_LABELS: { [key: number]: string } = {
   23: "FAILED QC",
   24: "STOCK ENTRY",
   25: "COMPLETED",
-  26: "SEGREGATED",
+  26: "SEGREGATION",
 };
 
 // JO Stage Labels (renamed stages for job orders)

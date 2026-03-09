@@ -10,28 +10,22 @@ import { useRouter } from "next/navigation";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import CreateInventoryItemButton from "@/app/(protected)/inventory/components/_CreateInventoryItemButton";
 
-type ReplaceDetail = {
+type ConditionalDetail = {
   id: number;
   qc_mr_line_id: number;
-  lpo_id: number;
-  lpo_mr_line_id: number;
   mr_line_id: number;
   mr_header_id: number;
-  replaced_quantity: number;
-  replacement_type: string;
+  conditionally_accepted_quantity: number;
   material_description: string;
   material_category: string;
   material_subcategory: string;
-  new_material_name: string | null;
-  new_category_name: string | null;
-  new_subcategory_names: string[];
   unit: string;
   unit_price: number;
   supplier_name: string;
 };
 
-type AddReplaceStockButtonProps = {
-  detail: ReplaceDetail;
+type AddConditionalStockButtonProps = {
+  detail: ConditionalDetail;
 };
 
 type ExistingStock = {
@@ -43,28 +37,13 @@ type ExistingStock = {
   notes: string;
 };
 
-export default function AddReplaceStockButton({
+export default function AddConditionalStockButton({
   detail,
-}: AddReplaceStockButtonProps) {
+}: AddConditionalStockButtonProps) {
   const { userInfo } = useAuth();
   const router = useRouter();
 
-  const plusIcon = "/icons/plus.svg";
   const pencilIcon = "/icons/pencil.svg";
-
-  const isApprovedAlt = detail.replacement_type === "Approved alternative";
-  const stockDescription =
-    isApprovedAlt && detail.new_material_name
-      ? detail.new_material_name
-      : detail.material_description;
-  const stockCategory =
-    isApprovedAlt && detail.new_category_name
-      ? detail.new_category_name
-      : detail.material_category;
-  const stockSubcategory =
-    isApprovedAlt && detail.new_subcategory_names?.length > 0
-      ? detail.new_subcategory_names.join(", ")
-      : detail.material_subcategory;
 
   const [isOpen, setIsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -109,7 +88,6 @@ export default function AddReplaceStockButton({
     }
   };
 
-  // Check if stock already exists for this mr_line
   async function checkExistingStock() {
     try {
       const res = await fetch(
@@ -143,7 +121,6 @@ export default function AddReplaceStockButton({
     checkExistingStock();
   }, [detail.mr_line_id]);
 
-  // Load existing stock data when modal opens in edit mode
   useEffect(() => {
     if (isOpen && isEditMode && existingStock) {
       setInventoryItemID(existingStock.inventory_item_id);
@@ -192,11 +169,11 @@ export default function AddReplaceStockButton({
           supplier_id: null,
           received_by: userInfo?.name,
           unit_price: detail.unit_price,
-          quantity: detail.replaced_quantity,
+          quantity: detail.conditionally_accepted_quantity,
           location,
           notes,
           inventory_item_unit: detail.unit,
-          inventory_item_description: stockDescription,
+          inventory_item_description: detail.material_description,
           manually_add: false,
         }),
       });
@@ -240,8 +217,8 @@ export default function AddReplaceStockButton({
         <FormPopUp
           header={
             isEditMode
-              ? `UPDATE STOCK FOR ${stockDescription.toUpperCase()}`
-              : `ADD STOCK FOR ${stockDescription.toUpperCase()}`
+              ? `UPDATE STOCK FOR ${detail.material_description.toUpperCase()}`
+              : `ADD STOCK FOR ${detail.material_description.toUpperCase()}`
           }
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
@@ -272,7 +249,7 @@ export default function AddReplaceStockButton({
           <div className="input-row half">
             <InputItem
               label={"CATEGORY"}
-              value={stockCategory}
+              value={detail.material_category}
               type={"text"}
               placeholder={""}
               required
@@ -281,7 +258,7 @@ export default function AddReplaceStockButton({
             />
             <InputItem
               label={"SUBCATEGORY"}
-              value={stockSubcategory}
+              value={detail.material_subcategory}
               type={"text"}
               placeholder={""}
               required
@@ -325,7 +302,7 @@ export default function AddReplaceStockButton({
           <div className="input-row half">
             <InputItem
               label={"QUANTITY"}
-              value={formatQty(detail.replaced_quantity)}
+              value={formatQty(detail.conditionally_accepted_quantity)}
               type={"text"}
               placeholder={""}
               required
