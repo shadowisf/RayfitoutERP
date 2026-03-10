@@ -61,7 +61,7 @@ const STAGE_LABELS: { [key: number]: string } = {
   23: "FAILED QC",
   24: "STOCK ENTRY",
   25: "COMPLETED",
-  26: "SEGREGATED",
+  26: "SEGREGATION",
 };
 
 // JO Stage Labels (renamed stages for job orders)
@@ -88,9 +88,9 @@ const FULL_MR_STAGES = [1, 2, 3, 7, 9, 10, 12, 26];
 const JO_STAGES_IDS = [1, 3, 7, 10, 25];
 
 // Base LPO stages (no QS)
-const BASE_LPO_STAGES = [1, 3, 7, 10, 12, 14, 17, 24, 25];
+const BASE_LPO_STAGES = [1, 3, 7, 10, 12, 14, 17, 21, 24, 25];
 // Full LPO stages (with QS)
-const FULL_LPO_STAGES = [1, 2, 3, 7, 9, 10, 12, 14, 17, 24, 25];
+const FULL_LPO_STAGES = [1, 2, 3, 7, 9, 10, 12, 14, 17, 21, 24, 25];
 
 type TimelineStage = {
   id: number;

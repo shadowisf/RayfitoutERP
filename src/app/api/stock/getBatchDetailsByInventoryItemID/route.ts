@@ -69,12 +69,14 @@ export async function POST(request: NextRequest) {
         return att;
       }
 
-      // If returned as stringified JSON
+      // If returned as stringified JSON or plain URL string
       if (typeof att === "string") {
         try {
-          return JSON.parse(att);
+          const parsed = JSON.parse(att);
+          return Array.isArray(parsed) ? parsed : [parsed];
         } catch {
-          return null;
+          // Plain URL string — wrap in array
+          return [att];
         }
       }
 
@@ -248,12 +250,12 @@ export async function POST(request: NextRequest) {
             p.id as project_id,
             p.name as project_name,
             
-            -- Supplier Details
-            sup.id as supplier_id,
-            sup.name as supplier_name,
-            sup.contact_person_name as supplier_contact,
-            sup.email as supplier_email,
-            sup.phone as supplier_phone,
+            -- Supplier Details (fallback to LPO supplier if stock supplier is null)
+            COALESCE(sup.id, lpo_sup.id) as supplier_id,
+            COALESCE(sup.name, lpo_sup.name) as supplier_name,
+            COALESCE(sup.contact_person_name, lpo_sup.contact_person_name) as supplier_contact,
+            COALESCE(sup.email, lpo_sup.email) as supplier_email,
+            COALESCE(sup.phone, lpo_sup.phone) as supplier_phone,
             
             -- LPO Details (via lpo_mr_line junction)
             lpo.id as lpo_id,
@@ -268,6 +270,7 @@ export async function POST(request: NextRequest) {
             lpo.payment_status,
             lpo.invoice_file,
             lpo.signed_file as lpo_signed_file,
+            lpo.payment_file,
             
             -- GRN Details (via grn_mr_line)
             grn.id as grn_id,
@@ -283,43 +286,52 @@ export async function POST(request: NextRequest) {
             qc.accepted_quantity as qc_accepted_quantity,
             qc.qc_status,
             qc.reason_for_added_protection,
-            
-            -- QC Resolution
-            qcr.id as qc_resolution_id,
-            qcr.resolution_type
-            
+
+            -- QC Resolutions (from actual tables)
+            rr_res.id as return_refund_resolution_id,
+            rep_res.id as replace_resolution_id,
+            rep_res.replacement_grn_id as replacement_grn_id,
+            sd_res.id as scrap_resolution_id,
+            ca_res.id as conditionally_accepted_resolution_id
+
         FROM stocks s
-        
+
         -- Join MR Header
         INNER JOIN mr_headers mrh ON s.mr_header_id = mrh.id
         INNER JOIN lut_mr_headers_purpose mrp ON mrh.purpose_id = mrp.id
         INNER JOIN lut_mr_headers_progress prog ON mrh.progress_id = prog.id
         INNER JOIN lut_mr_headers_departments dept ON mrh.department_id = dept.id
-        
+
         -- Join MR Line
         INNER JOIN vw_mr_lines mrl ON s.mr_line_id = mrl.id
         INNER JOIN lut_material_categories mc ON mrl.material_category_id = mc.id
-        
+
         -- Join Project (may be null for non-project MRs)
         LEFT JOIN projects p ON mrh.project_id = p.id
-        
+
         -- Join Supplier
         LEFT JOIN suppliers sup ON s.supplier_id = sup.id
-        
+
         -- Join LPO via lpo_mr_line junction table
         LEFT JOIN lpo_mr_line lml ON mrl.id = lml.mr_line_id
         LEFT JOIN lpo ON lml.lpo_id = lpo.id
-        
+
+        -- Join LPO Supplier as fallback (for resolution stocks where s.supplier_id is null)
+        LEFT JOIN suppliers lpo_sup ON lpo.supplier_id = lpo_sup.id
+
         -- Join GRN via grn_mr_line (connected through lpo_mr_line)
         LEFT JOIN grn_mr_line gml ON lml.id = gml.lpo_mr_line_id
         LEFT JOIN grn ON gml.grn_id = grn.id
-        
+
         -- Join QC via qc_mr_line (connected through lpo_mr_line)
         LEFT JOIN qc_mr_line qc ON lml.id = qc.lpo_mr_line_id
-        
-        -- Join QC Resolution
-        LEFT JOIN qc_resolutions qcr ON mrl.id = qcr.mr_line_id
-        
+
+        -- Join QC Resolutions (actual tables via qc_mr_line)
+        LEFT JOIN qc_resolution_return_refund rr_res ON qc.id = rr_res.qc_mr_line_id
+        LEFT JOIN qc_resolution_replace rep_res ON qc.id = rep_res.qc_mr_line_id
+        LEFT JOIN qc_resolution_reject_scrap sd_res ON qc.id = sd_res.qc_mr_line_id
+        LEFT JOIN qc_resolution_conditionally_accepted ca_res ON qc.id = ca_res.qc_mr_line_id
+
         WHERE s.mr_header_id = ? AND s.mr_line_id = ?
         ORDER BY s.created_at DESC
         LIMIT 1
@@ -341,15 +353,68 @@ export async function POST(request: NextRequest) {
           batchDetails.mr_line_id,
         );
 
+        // Derive resolution type and ID from the actual resolution tables
+        let resolutionType: string | null = null;
+        let qcResolutionId: number | null = null;
+        if (batchDetails.return_refund_resolution_id) {
+          resolutionType = "Return/Refund";
+          qcResolutionId = batchDetails.return_refund_resolution_id;
+        } else if (batchDetails.replace_resolution_id) {
+          resolutionType = "Replace from Vendor";
+          qcResolutionId = batchDetails.replace_resolution_id;
+        } else if (batchDetails.scrap_resolution_id) {
+          resolutionType = "Scrap/Discard";
+          qcResolutionId = batchDetails.scrap_resolution_id;
+        } else if (batchDetails.conditionally_accepted_resolution_id) {
+          resolutionType = "Accept Conditionally";
+          qcResolutionId = batchDetails.conditionally_accepted_resolution_id;
+        }
+
+        // For replace resolutions, fetch the replacement GRN data
+        let replacementGrnId: number | null = batchDetails.replacement_grn_id || null;
+        let replacementGrnDate: string | null = null;
+        let replacementGrnReceivedBy: string | null = null;
+        let replacementGrnReceivedQty: number | null = null;
+        let replacementGrnNotes: string | null = null;
+        let replacementGrnAttachment: any = null;
+
+        if (replacementGrnId) {
+          const [repGrnRows] = await db.query<RowDataPacket[]>(
+            `SELECT g.id, g.received_date, g.received_by,
+                    gml.received_quantity, gml.notes, gml.attachment
+             FROM grn g
+             LEFT JOIN grn_mr_line gml ON gml.grn_id = g.id
+             WHERE g.id = ?
+             LIMIT 1`,
+            [replacementGrnId],
+          );
+          if (repGrnRows.length > 0) {
+            replacementGrnDate = repGrnRows[0].received_date;
+            replacementGrnReceivedBy = repGrnRows[0].received_by;
+            replacementGrnReceivedQty = repGrnRows[0].received_quantity;
+            replacementGrnNotes = repGrnRows[0].notes;
+            replacementGrnAttachment = repGrnRows[0].attachment;
+          }
+        }
+
         const response = {
           type: "mr",
           ...batchDetails,
-          material_subcategory: materialSubcategory, // ✅ Add subcategory
+          material_subcategory: materialSubcategory,
           invoice_file: parseAttachment(batchDetails.invoice_file),
           lpo_signed_file: parseAttachment(batchDetails.lpo_signed_file),
+          payment_file: parseAttachment(batchDetails.payment_file),
           mr_line_attachment: parseAttachment(batchDetails.mr_line_attachment),
           grn_attachment: parseAttachment(batchDetails.grn_attachment),
           boq_items: boqDetails,
+          resolution_type: resolutionType,
+          qc_resolution_id: qcResolutionId,
+          replacement_grn_id: replacementGrnId,
+          replacement_grn_date: replacementGrnDate,
+          replacement_grn_received_by: replacementGrnReceivedBy,
+          replacement_grn_received_qty: replacementGrnReceivedQty,
+          replacement_grn_notes: replacementGrnNotes,
+          replacement_grn_attachment: parseAttachment(replacementGrnAttachment),
         };
 
         return NextResponse.json(response);

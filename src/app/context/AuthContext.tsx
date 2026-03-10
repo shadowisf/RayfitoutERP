@@ -35,7 +35,7 @@ function decodeJWT(token: string) {
       atob(base64)
         .split("")
         .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
+        .join(""),
     );
     return JSON.parse(jsonPayload);
   } catch (error) {
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ role: decoded["custom:role"] }),
-            }
+            },
           );
           const departmentData = await departmentResp.json();
           const departmentID = departmentData?.id ?? null;

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Button from "@/app/components/Button";
-import { LpoHeader } from "../../types/lpoHeader";
+import { LpoHeader } from "../../../../types/lpoHeader";
 import { LpoPDF } from "../LpoPDF";
 import { pdf } from "@react-pdf/renderer";
 import { useAuth } from "@/app/context/AuthContext";
-import { MrHeader } from "../../types/mrHeader";
+import { MrHeader } from "../../../../types/mrHeader";
 
 type ViewCRButton = {
   lpoID: number;
@@ -27,7 +27,7 @@ export default function ViewCRButton({ lpoID, mrHeader }: ViewCRButton) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lpo_id: lpoID }),
-          }
+          },
         );
         const data = await response.json();
         setLpo(data.data);

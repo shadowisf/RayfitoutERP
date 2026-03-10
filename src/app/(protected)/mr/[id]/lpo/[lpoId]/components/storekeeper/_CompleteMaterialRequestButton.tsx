@@ -6,8 +6,8 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
-import { MrHeader } from "../../types/mrHeader";
-import { MrLine } from "../../types/mrLine";
+import { MrHeader } from "../../../../types/mrHeader";
+import { MrLine } from "../../../../types/mrLine";
 
 type GroupedMrLines = {
   [category: string]: {

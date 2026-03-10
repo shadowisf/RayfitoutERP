@@ -285,6 +285,11 @@ export default function AddMrItemButton({
       return;
     }
 
+    if (boqLineIDs.length === 0) {
+      toast("Please select at least one bill of quantity item", "error");
+      return;
+    }
+
     try {
       let attachmentUrl = null;
 
@@ -435,8 +440,8 @@ export default function AddMrItemButton({
 
             <div className="input-item">
               <label className="custom">
-                <span>BILL OF QUANTITY</span>
-                <small>(OPTIONAL)</small>
+                <span>BOQ REFERENCE</span>
+                <small></small>
               </label>
 
               <MultipleSelectBoqItemButton

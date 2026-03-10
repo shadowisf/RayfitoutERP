@@ -4,8 +4,8 @@ import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { useState, useEffect } from "react";
-import { MrLine } from "../../types/mrLine";
-import { LpoHeader } from "../../types/lpoHeader";
+import { MrLine } from "../../../../types/mrLine";
+import { LpoHeader } from "../../../../types/lpoHeader";
 
 type GRNRefPopUpProps = {
   mrLine: MrLine;

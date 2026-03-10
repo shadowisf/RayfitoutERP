@@ -2,18 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
-import { LpoPDF } from "@/app/(protected)/mr/[id]/components/LpoPDF";
-import { LpoHeader } from "../../types/lpoHeader";
+import { LpoPDF } from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/LpoPDF";
+import { LpoHeader } from "../../../types/lpoHeader";
 import Button from "@/app/components/Button";
 
 type DownloadLPOButtonProps = {
   lpoID: number;
   children?: React.ReactNode;
+  bgColor?: string;
+  textColor?: string;
+  borderColor?: string;
+  style?: React.CSSProperties;
 };
 
 export default function DownloadLPOButton({
   lpoID,
   children,
+  bgColor = "rgba(239, 239, 239, 1)",
+  textColor = "black",
+  borderColor = "rgba(223, 223, 223, 1)",
+  style = { borderRadius: "25px" },
 }: DownloadLPOButtonProps) {
   const downloadIcon = "/icons/download.svg";
 
@@ -72,10 +80,10 @@ export default function DownloadLPOButton({
     return (
       <Button
         componentType={"button"}
-        bgColor={"rgba(255, 255, 255, 1)"}
-        borderColor={"rgba(207, 207, 207, 1)"}
-        textColor={"black"}
-        style={{ borderRadius: "25px" }}
+        bgColor={bgColor}
+        borderColor={borderColor}
+        textColor={textColor}
+        style={style}
         onClick={handleDownload}
       >
         {children}

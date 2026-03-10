@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { InventoryItem } from "../../types/inventoryItem";
-import DownloadLPOButton from "@/app/(protected)/mr/[id]/components/procurement/_DownloadLPOButton";
-import GRNRefPopUp from "@/app/(protected)/mr/[id]/components/storekeeper/_GRNRefPopUp";
-import { MrLine } from "@/app/(protected)/mr/[id]/types/mrLine";
+import DownloadLPOButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadLPOButton";
+import DownloadNCRButton from "@/app/(protected)/resolution/components/_DownloadNCRButton";
+import DownloadGRNButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadGRNButton";
 
 type BatchDetailsPopUpButtonProps = {
   inventoryItem: InventoryItem;
@@ -70,6 +70,7 @@ type MRBatchDetails = {
   payment_status: string | null;
   invoice_file: string[] | null;
   lpo_signed_file: string[] | null;
+  payment_file: string[] | null;
   grn_id: number | null;
   grn_date: string | null;
   grn_received_by: string | null;
@@ -81,6 +82,12 @@ type MRBatchDetails = {
   qc_status: string | null;
   qc_resolution_id: number | null;
   resolution_type: string | null;
+  replacement_grn_id: number | null;
+  replacement_grn_date: string | null;
+  replacement_grn_received_by: string | null;
+  replacement_grn_received_qty: number | null;
+  replacement_grn_notes: string | null;
+  replacement_grn_attachment: string[] | null;
 };
 
 type ManualStockDetails = {
@@ -334,7 +341,7 @@ export default function BatchDetailsPopUpButton({
           display: "flex",
           alignItems: "center",
           gap: "5px",
-          padding: "0px 5px",
+          padding: "3px 10px",
           borderRadius: "20px",
           backgroundColor: isIncrease
             ? "rgba(244, 197, 197, 1)"
@@ -365,6 +372,30 @@ export default function BatchDetailsPopUpButton({
         )}
       </div>
     );
+  };
+
+  // Shared download helper — fetches file as blob and triggers browser download
+  const handleDownload = async (url: string, fileName: string) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Download failed");
+      }
+
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+    }
   };
 
   // Render MR-based stock details
@@ -610,8 +641,12 @@ export default function BatchDetailsPopUpButton({
             }}
           >
             <div>
-              <small>QUALITY CONTROL STATUS</small>
-              <h3>{details.qc_status || "-"}</h3>
+              <small>QC STATUS</small>
+              <h3>{details.qc_status || "PASSED"}</h3>
+            </div>
+            <div>
+              <small>RESOLUTION TYPE</small>
+              <h3>{details.resolution_type || "-"}</h3>
             </div>
           </div>
           <br />
@@ -624,12 +659,20 @@ export default function BatchDetailsPopUpButton({
             }}
           >
             <div>
-              <small>NON-COMPLIANCE REPORT ID</small>
-              <h3>-</h3>
-            </div>
-            <div>
-              <small>QUALITY CONTROL ID</small>
-              <h3>QC-{String(details.qc_id).padStart(5, "0") || "-"}</h3>
+              <small>QC NUMBER</small>
+              <h3>
+                {details.qc_id
+                  ? details.resolution_type === "Return/Refund"
+                    ? `QC-RR-${String(details.qc_resolution_id).padStart(5, "0")}`
+                    : details.resolution_type === "Replace from Vendor"
+                      ? `QC-RV-${String(details.qc_resolution_id).padStart(5, "0")}`
+                      : details.resolution_type === "Scrap/Discard"
+                        ? `QC-SD-${String(details.qc_resolution_id).padStart(5, "0")}`
+                        : details.resolution_type === "Accept Conditionally"
+                          ? `QC-AC-${String(details.qc_resolution_id).padStart(5, "0")}`
+                          : `QC-${String(details.qc_id).padStart(5, "0")}`
+                  : "-"}
+              </h3>
             </div>
           </div>
         </div>
@@ -682,52 +725,83 @@ export default function BatchDetailsPopUpButton({
           }}
         >
           <h2>DOCUMENTS & ATTACHMENTS</h2>
+
           <br />
+
           <div
             style={{
               display: "inline-grid",
-              gridTemplateColumns: "repeat(2, auto)",
-              gap: "25px",
+              gridTemplateColumns: "repeat(3, auto)",
+              gap: "15px",
             }}
           >
             <div>
-              {details.grn_id && details.mr_line_id && (
-                <GRNRefPopUp
-                  mrLine={
-                    {
-                      id: details.mr_line_id,
-                      mr_header_id: details.mr_header_id,
-                      material_description: details.material_description,
-                      quantity: details.requested_quantity,
-                      unit: details.material_unit,
-                      approved_supplier_name: details.supplier_name || "",
-                      approved_supplier_id: details.supplier_id || 0,
-                    } as MrLine
-                  }
-                  bgColor={"rgba(255, 255, 255, 1)"}
-                  borderColor={"rgba(207, 207, 207, 1)"}
-                  textColor={"black"}
-                  style={{ borderRadius: "25px", padding: "7px 20px" }}
-                >
-                  GRN
-                  <img src={externalLinkIcon} alt="external link" />
-                </GRNRefPopUp>
-              )}
+              {/* For replace resolutions, show replacement GRN download; otherwise show original GRN download */}
+              {details.resolution_type === "Replace from Vendor" &&
+              details.replacement_grn_id ? (
+                <DownloadGRNButton
+                  grnId={details.replacement_grn_id}
+                  bgColor="rgba(255, 255, 255, 1)"
+                  label="Replacement GRN"
+                  style={{
+                    borderRadius: "25px",
+                    padding: "7px 20px",
+                    textTransform: "none",
+                  }}
+                />
+              ) : details.grn_id ? (
+                <DownloadGRNButton
+                  grnId={details.grn_id}
+                  bgColor="rgba(255, 255, 255, 1)"
+                  label="GRN"
+                  style={{
+                    borderRadius: "25px",
+                    padding: "7px 20px",
+                    textTransform: "none",
+                  }}
+                />
+              ) : null}
             </div>
             <div>
               {details.invoice_file && details.invoice_file.length > 0 && (
                 <Button
-                  componentType={"link"}
+                  componentType={"none"}
                   bgColor={"rgba(255, 255, 255, 1)"}
                   borderColor={"rgba(207, 207, 207, 1)"}
                   textColor={"black"}
-                  style={{ borderRadius: "25px" }}
-                  href={details.invoice_file[0]}
-                  target="_blank"
+                  style={{
+                    borderRadius: "25px",
+                    padding: "7px 20px",
+                    textTransform: "none",
+                  }}
                 >
-                  INVOICE
-                  <img src={downloadIcon} alt="Download" />
+                  Invoice
+                  <img
+                    src={downloadIcon}
+                    alt="Download"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      handleDownload(
+                        details.invoice_file![0],
+                        `Invoice-${String(details.lpo_id).padStart(5, "0")}`,
+                      );
+                    }}
+                  />
                 </Button>
+              )}
+            </div>
+            <div>
+              {details.qc_id && details.resolution_type && (
+                <DownloadNCRButton
+                  qcId={details.qc_id}
+                  bgColor="white"
+                  label="NCR"
+                  style={{
+                    borderRadius: "25px",
+                    padding: "7px 20px",
+                    textTransform: "none",
+                  }}
+                />
               )}
             </div>
           </div>
@@ -735,35 +809,85 @@ export default function BatchDetailsPopUpButton({
           <br />
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "25px",
+              display: "inline-grid",
+              gridTemplateColumns: "repeat(3, auto)",
+              gap: "15px",
             }}
           >
             <div>
               {details.lpo_id && (
-                <DownloadLPOButton lpoID={details.lpo_id}>
-                  LPO (UNSIGNED)
-                  <img src={downloadIcon} alt="Download" />
-                </DownloadLPOButton>
+                <Button
+                  componentType={"none"}
+                  bgColor={"rgba(255, 255, 255, 1)"}
+                  borderColor={"rgba(207, 207, 207, 1)"}
+                  textColor={"black"}
+                  style={{
+                    borderRadius: "25px",
+                    padding: "7px 20px",
+                    textTransform: "none",
+                  }}
+                >
+                  LPO (Unsigned)
+                  <DownloadLPOButton lpoID={details.lpo_id} />
+                </Button>
               )}
             </div>
             <div>
               {details.lpo_signed_file &&
                 details.lpo_signed_file.length > 0 && (
                   <Button
-                    componentType={"link"}
+                    componentType={"none"}
                     bgColor={"rgba(255, 255, 255, 1)"}
                     borderColor={"rgba(207, 207, 207, 1)"}
                     textColor={"black"}
-                    style={{ borderRadius: "25px" }}
-                    href={details.lpo_signed_file[0]}
-                    target="_blank"
+                    style={{
+                      borderRadius: "25px",
+                      padding: "7px 20px",
+                      textTransform: "none",
+                    }}
                   >
-                    LPO (SIGNED)
-                    <img src={downloadIcon} alt="Download" />
+                    LPO (Signed)
+                    <img
+                      src={downloadIcon}
+                      alt="Download"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => {
+                        handleDownload(
+                          details.lpo_signed_file![0],
+                          `LPO-Signed-${String(details.lpo_id).padStart(5, "0")}`,
+                        );
+                      }}
+                    />
                   </Button>
                 )}
+            </div>
+            <div>
+              {details.payment_file && details.payment_file.length > 0 && (
+                <Button
+                  componentType={"none"}
+                  bgColor={"rgba(255, 255, 255, 1)"}
+                  borderColor={"rgba(207, 207, 207, 1)"}
+                  textColor={"black"}
+                  style={{
+                    borderRadius: "25px",
+                    padding: "7px 20px",
+                    textTransform: "none",
+                  }}
+                >
+                  Payment Receipt
+                  <img
+                    src={downloadIcon}
+                    alt="Download"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      handleDownload(
+                        details.payment_file![0],
+                        `Payment-Receipt-${String(details.lpo_id).padStart(5, "0")}`,
+                      );
+                    }}
+                  />
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -788,29 +912,6 @@ export default function BatchDetailsPopUpButton({
 
   // Render manual stock details
   const renderManualStockDetails = (details: ManualStockDetails) => {
-    const handleDownload = async (url: string, fileName: string) => {
-      try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error("Download failed");
-        }
-
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        window.URL.revokeObjectURL(blobUrl);
-      } catch (error) {
-        console.error("Error downloading file:", error);
-      }
-    };
-
     return (
       <>
         {/* OVERVIEW SECTION */}

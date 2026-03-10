@@ -74,7 +74,7 @@ export default function CancelMaterialRequestButton({
 
   // Department names
   const departmentNames: { [key: number]: string } = {
-    8: "Management",
+    8: "Directors/Management",
     9: "Procurement",
     10: "Finance",
     11: "Storekeeper",

@@ -4,15 +4,28 @@ import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { useState, useEffect } from "react";
-import { MrLine } from "../../types/mrLine";
 import { useAuth } from "@/app/context/AuthContext";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import CreateInventoryItemButton from "@/app/(protected)/inventory/components/_CreateInventoryItemButton";
 
-type AddToStockButtonProps = {
-  mrLine: MrLine;
+type ConditionalDetail = {
+  id: number;
+  qc_mr_line_id: number;
+  mr_line_id: number;
+  mr_header_id: number;
+  conditionally_accepted_quantity: number;
+  material_description: string;
+  material_category: string;
+  material_subcategory: string;
+  unit: string;
+  unit_price: number;
+  supplier_name: string;
+};
+
+type AddConditionalStockButtonProps = {
+  detail: ConditionalDetail;
 };
 
 type ExistingStock = {
@@ -24,17 +37,16 @@ type ExistingStock = {
   notes: string;
 };
 
-export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
+export default function AddConditionalStockButton({
+  detail,
+}: AddConditionalStockButtonProps) {
   const { userInfo } = useAuth();
-
   const router = useRouter();
 
-  const plusIcon = "/icons/plus.svg";
   const pencilIcon = "/icons/pencil.svg";
 
   const [isOpen, setIsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-
   const [existingStock, setExistingStock] = useState<ExistingStock | null>(
     null,
   );
@@ -42,18 +54,9 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
   const [inventoryItemValues, setInventoryItemValues] = useState<any>([]);
   const [locationValues, setLocationValues] = useState<any[]>([]);
 
-  // For project use location
   const [location, setLocation] = useState("");
-  // For stocks location (defaults to Headquarters)
-  const [stocksLocation, setStocksLocation] = useState("Headquarters");
   const [notes, setNotes] = useState("");
   const [inventoryItemID, setInventoryItemID] = useState<string | number>("");
-
-  // Calculate proposed vs requested quantities
-  const proposedQty = Number(mrLine.approved_proposed_quantity) || 0;
-  const requestedQty = Number(mrLine.quantity) || 0;
-  const hasStockQty = proposedQty > requestedQty;
-  const stockQty = hasStockQty ? proposedQty - requestedQty : 0;
 
   useEffect(() => {
     fetchInventoryItems();
@@ -85,7 +88,6 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
     }
   };
 
-  // Check if stock already exists for this mr_line
   async function checkExistingStock() {
     try {
       const res = await fetch(
@@ -94,7 +96,7 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            mr_line_id: mrLine.id,
+            mr_line_id: detail.mr_line_id,
           }),
         },
       );
@@ -117,9 +119,8 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
 
   useEffect(() => {
     checkExistingStock();
-  }, [mrLine.id]);
+  }, [detail.mr_line_id]);
 
-  // Load existing stock data when modal opens in edit mode
   useEffect(() => {
     if (isOpen && isEditMode && existingStock) {
       setInventoryItemID(existingStock.inventory_item_id);
@@ -128,11 +129,14 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
     }
   }, [isOpen, isEditMode, existingStock]);
 
+  const formatQty = (qty: number) => {
+    return qty % 1 === 0 ? qty.toFixed(0) : qty.toString();
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     if (isEditMode && existingStock) {
-      // Update existing stock
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -148,114 +152,73 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
       if (res.ok) {
         toast("Stock updated", "success");
         setIsOpen(false);
-
-        // Refetch the stock data after update
         await checkExistingStock();
-
         router.refresh();
       } else {
         toast("Failed to update stock", "error");
       }
     } else {
-      // Add new stock - FOR PROJECT USE
-      const resProjectUse = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "addStock",
-            mr_header_id: mrLine.mr_header_id,
-            mr_line_id: mrLine.id,
-            inventory_item_id: inventoryItemID,
-            supplier_id: mrLine.approved_supplier_id,
-            received_by: userInfo?.name,
-            unit_price: mrLine.approved_unit_price,
-            quantity: requestedQty,
-            location,
-            notes,
-            inventory_item_unit: mrLine.unit,
-            inventory_item_description: mrLine.material_description,
-            manually_add: false,
-          }),
-        },
-      );
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "addStock",
+          mr_header_id: detail.mr_header_id,
+          mr_line_id: detail.mr_line_id,
+          inventory_item_id: inventoryItemID,
+          supplier_id: null,
+          received_by: userInfo?.name,
+          unit_price: detail.unit_price,
+          quantity: detail.conditionally_accepted_quantity,
+          location,
+          notes,
+          inventory_item_unit: detail.unit,
+          inventory_item_description: detail.material_description,
+          manually_add: false,
+        }),
+      });
 
-      if (!resProjectUse.ok) {
-        toast("Failed to add project use stock", "error");
+      if (!res.ok) {
+        toast("Failed to add stock", "error");
         return;
       }
 
-      // Add new stock - FOR STOCKS (only if proposed > requested)
-      if (hasStockQty) {
-        const resStocks = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "addStock",
-              mr_header_id: mrLine.mr_header_id,
-              mr_line_id: mrLine.id,
-              inventory_item_id: inventoryItemID,
-              supplier_id: mrLine.approved_supplier_id,
-              received_by: userInfo?.name,
-              unit_price: mrLine.approved_unit_price,
-              quantity: stockQty,
-              location: stocksLocation,
-              notes: notes ? `[FOR STOCKS] ${notes}` : "[FOR STOCKS]",
-              inventory_item_unit: mrLine.unit,
-              inventory_item_description: mrLine.material_description,
-              manually_add: false,
-            }),
-          },
-        );
-
-        if (!resStocks.ok) {
-          toast("Failed to add stocks entry", "error");
-          return;
-        }
-      }
-
       toast("Added to stock", "success");
-
       setLocation("");
-      setStocksLocation("Headquarters");
       setNotes("");
       setInventoryItemID("");
-
-      // Refetch to check if stock now exists
       await checkExistingStock();
-
       router.refresh();
-
       setIsOpen(false);
     }
   }
-
-  const formatQty = (qty: number) => {
-    return qty % 1 === 0 ? qty.toFixed(0) : qty.toString();
-  };
 
   return (
     <>
       <Button
         componentType={"button"}
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(207, 207, 207, 1)"}
-        textColor={"black"}
+        bgColor={"black"}
+        borderColor={"black"}
+        textColor={"white"}
         onClick={() => setIsOpen(true)}
-        style={{ borderRadius: "5px", padding: "7px 7px" }}
+        style={{ padding: "7px 20px", borderRadius: "25px" }}
       >
-        <img src={isEditMode ? pencilIcon : plusIcon} alt="plus or pencil" />
+        {isEditMode ? (
+          <>
+            Edit Stock{" "}
+            <img src={pencilIcon} alt="edit" style={{ filter: "invert(1)" }} />
+          </>
+        ) : (
+          <>Add Stock +</>
+        )}
       </Button>
 
       {isOpen && (
         <FormPopUp
           header={
             isEditMode
-              ? `UPDATE STOCK FOR ${mrLine.material_description.toUpperCase()}`
-              : `ADD STOCK FOR ${mrLine.material_description.toUpperCase()}`
+              ? `UPDATE STOCK FOR ${detail.material_description.toUpperCase()}`
+              : `ADD STOCK FOR ${detail.material_description.toUpperCase()}`
           }
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
@@ -264,7 +227,7 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
           <div className="input-row half">
             <InputItem
               label={"SUPPLIER"}
-              value={mrLine.approved_supplier_name}
+              value={detail.supplier_name}
               type={"text"}
               placeholder={""}
               required
@@ -286,7 +249,7 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
           <div className="input-row half">
             <InputItem
               label={"CATEGORY"}
-              value={mrLine.material_category}
+              value={detail.material_category}
               type={"text"}
               placeholder={""}
               required
@@ -295,7 +258,7 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
             />
             <InputItem
               label={"SUBCATEGORY"}
-              value={mrLine.material_subcategory}
+              value={detail.material_subcategory}
               type={"text"}
               placeholder={""}
               required
@@ -326,7 +289,7 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
             />
             <InputItem
               label={"UNIT"}
-              value={mrLine.unit}
+              value={detail.unit}
               type={"text"}
               placeholder={""}
               required
@@ -336,95 +299,32 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
             <div></div>
           </div>
 
-          {/* Quantity Allocation Section */}
-          {hasStockQty ? (
-            <>
-              <br />
-              <h3 style={{ marginBottom: "10px" }}>FOR PROJECT USE</h3>
-              <div className="input-row half">
-                <InputItem
-                  label={"QTY FOR USE"}
-                  value={formatQty(requestedQty)}
-                  type={"text"}
-                  placeholder={""}
-                  required
-                  onChange={() => {}}
-                  disabled
-                />
-                <InputItem
-                  label={"STOCK LOCATION"}
-                  value={location}
-                  type={"select"}
-                  placeholder={"SELECT LOCATION"}
-                  required
-                  onChange={(e) => {
-                    setLocation(e.target.value);
-                  }}
-                  selectOptions={[
-                    "Headquarters",
-                    "Umm Al Quwain Warehouse",
-                    ...locationValues,
-                  ]}
-                />
-              </div>
-
-              <br />
-              <h3 style={{ marginBottom: "10px" }}>FOR STOCKS</h3>
-              <div className="input-row half">
-                <InputItem
-                  label={"QTY FOR STOCKS"}
-                  value={formatQty(stockQty)}
-                  type={"text"}
-                  placeholder={""}
-                  required
-                  onChange={() => {}}
-                  disabled
-                />
-                <InputItem
-                  label={"STOCK LOCATION"}
-                  value={stocksLocation}
-                  type={"select"}
-                  placeholder={"SELECT LOCATION"}
-                  required
-                  onChange={(e) => {
-                    setStocksLocation(e.target.value);
-                  }}
-                  selectOptions={[
-                    "Headquarters",
-                    "Umm Al Quwain Warehouse",
-                    ...locationValues,
-                  ]}
-                />
-              </div>
-            </>
-          ) : (
-            <div className="input-row half">
-              <InputItem
-                label={"QUANTITY"}
-                value={formatQty(requestedQty)}
-                type={"text"}
-                placeholder={""}
-                required
-                onChange={() => {}}
-                disabled
-              />
-              <InputItem
-                label={"STOCK LOCATION"}
-                value={location}
-                type={"select"}
-                placeholder={"SELECT LOCATION"}
-                required
-                onChange={(e) => {
-                  setLocation(e.target.value);
-                }}
-                selectOptions={[
-                  "Headquarters",
-                  "Umm Al Quwain Warehouse",
-                  ...locationValues,
-                ]}
-              />
-            </div>
-          )}
+          <div className="input-row half">
+            <InputItem
+              label={"QUANTITY"}
+              value={formatQty(detail.conditionally_accepted_quantity)}
+              type={"text"}
+              placeholder={""}
+              required
+              onChange={() => {}}
+              disabled
+            />
+            <InputItem
+              label={"STOCK LOCATION"}
+              value={location}
+              type={"select"}
+              placeholder={"SELECT LOCATION"}
+              required
+              onChange={(e) => {
+                setLocation(e.target.value);
+              }}
+              selectOptions={[
+                "Headquarters",
+                "Umm Al Quwain Warehouse",
+                ...locationValues,
+              ]}
+            />
+          </div>
 
           <div className="input-row full">
             <InputItem

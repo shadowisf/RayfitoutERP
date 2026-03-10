@@ -13,6 +13,7 @@ export default async function LpoWithID({
 }) {
   const { id, lpoId } = await params;
 
+  const uTurnIcon = "/icons/u-turn.svg";
   const externalLinkIcon = "/icons/external-link.svg";
 
   // Fetch MR header (still needed for department_id, project, etc.)
@@ -51,7 +52,7 @@ export default async function LpoWithID({
     return (
       <div className="dashboard">
         <h1>
-          <a href="/mr">MATERIAL REQUISITIONS</a> &gt; MR-
+          <a href="/mr">PROCUREMENT TRACKER</a> &gt; MR-
           {String(id).padStart(5, "0")} &gt; LPO Not Found
         </h1>
         <br />
@@ -291,7 +292,7 @@ export default async function LpoWithID({
         }}
       >
         <h1>
-          <a href="/mr">REQUISITIONS</a> &gt; MR-
+          <a href="/mr">PROCUREMENT TRACKER</a> &gt; MR-
           {String(id).padStart(5, "0")} &gt; LPO-
           {String(lpoId).padStart(5, "0")}
         </h1>
@@ -382,8 +383,12 @@ export default async function LpoWithID({
                     mrHeader={mrHeader}
                     currentProgressId={lpo.progress_id}
                     lpoId={lpo.id}
+                    bgColor="rgba(248, 77, 77, 1)"
+                    borderColor="rgba(248, 77, 77, 1)"
+                    textColor="white"
                   >
-                    Roll Back
+                    ROLL BACK MATERIAL REQUEST{" "}
+                    <img src={uTurnIcon} alt="u-turn" />
                   </CancelMaterialRequestButton>
                 )}
                 <DeleteLpoHeaderButton mrHeader={mrHeader} LpoHeader={lpo} />
