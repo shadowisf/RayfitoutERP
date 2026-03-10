@@ -334,7 +334,7 @@ export default function ReplaceVendorDetailPage() {
 
             {/* Add Stock button at stage 2 (Stock Entry) */}
             {detail.progress_id === 2 && (
-              <AddReplaceStockButton detail={detail} />
+              <AddReplaceStockButton detail={detail} onRefresh={fetchDetail} />
             )}
           </div>
         </div>

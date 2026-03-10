@@ -229,6 +229,7 @@ export default function PaymentButtons({
             action: "approvePayment",
             lpo_id: lpoId,
             payment_file: JSON.stringify(uploadedUrl),
+            from_lpo_workflow: true,
           }),
         },
       );

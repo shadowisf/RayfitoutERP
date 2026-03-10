@@ -689,19 +689,18 @@ export default function ResolutionCenter() {
                                       <h3>{card.supplier_name}</h3>
                                     </div>
 
-                                    {canView && (
-                                      <Button
-                                        componentType="link"
-                                        bgColor="rgba(239, 239, 239, 1)"
-                                        borderColor="rgba(239, 239, 239, 1)"
-                                        textColor="black"
-                                        style={{ borderRadius: "50px" }}
-                                        href={`/resolution/${group.route}/${card.id}`}
-                                        full
-                                      >
-                                        VIEW &gt;
-                                      </Button>
-                                    )}
+                                    <Button
+                                      componentType="link"
+                                      bgColor="rgba(239, 239, 239, 1)"
+                                      borderColor="rgba(239, 239, 239, 1)"
+                                      textColor="black"
+                                      style={{ borderRadius: "50px" }}
+                                      href={`/resolution/${group.route}/${card.id}`}
+                                      full
+                                      disabled={!canView}
+                                    >
+                                      VIEW &gt;
+                                    </Button>
                                   </div>
                                 );
                               })}

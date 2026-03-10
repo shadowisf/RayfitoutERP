@@ -32,6 +32,7 @@ type ReplaceDetail = {
 
 type AddReplaceStockButtonProps = {
   detail: ReplaceDetail;
+  onRefresh?: () => void;
 };
 
 type ExistingStock = {
@@ -45,6 +46,7 @@ type ExistingStock = {
 
 export default function AddReplaceStockButton({
   detail,
+  onRefresh,
 }: AddReplaceStockButtonProps) {
   const { userInfo } = useAuth();
   const router = useRouter();
@@ -174,6 +176,7 @@ export default function AddReplaceStockButton({
 
       if (res.ok) {
         toast("Stock updated", "success");
+        onRefresh?.();
         setIsOpen(false);
         await checkExistingStock();
         router.refresh();
@@ -210,6 +213,7 @@ export default function AddReplaceStockButton({
       setLocation("");
       setNotes("");
       setInventoryItemID("");
+      onRefresh?.();
       await checkExistingStock();
       router.refresh();
       setIsOpen(false);

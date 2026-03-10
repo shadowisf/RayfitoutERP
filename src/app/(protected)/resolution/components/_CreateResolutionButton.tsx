@@ -157,14 +157,14 @@ export default function CreateResolutionButton({
 
   // Fetch categories + subcategories when Replace type is selected
   useEffect(() => {
-    if (resolutionType === "Replace") {
+    if (resolutionType === "Replace from vendor") {
       getMaterialCategoriesAndSubcategories();
     }
   }, [resolutionType]);
 
   // Filter subcategories based on selected category
   useEffect(() => {
-    if (resolutionType !== "Replace") return;
+    if (resolutionType !== "Replace from vendor") return;
 
     if (newMaterialCategoryId && userInitiatedCategorySelection) {
       fetch(

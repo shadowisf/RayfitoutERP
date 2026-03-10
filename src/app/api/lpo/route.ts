@@ -96,16 +96,18 @@ export async function PUT(req: Request) {
 
       await db.query(query, [body.payment_file || null, Number(body.lpo_id)]);
 
-      await db.query(
-        `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
-        [
-          Number(body.mr_header_id),
-          Number(body.lpo_id),
-          10,
-          "Payment Successful",
-          `A payment (AED ${body.payment_value}) was made against LPO-${String(body.lpo_id).padStart(5, "0")}`,
-        ],
-      );
+      if (!body.from_lpo_workflow) {
+        await db.query(
+          `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
+          [
+            Number(body.mr_header_id),
+            Number(body.lpo_id),
+            10,
+            "Payment Successful",
+            `A payment (AED ${body.payment_value}) was made against LPO-${String(body.lpo_id).padStart(5, "0")}`,
+          ],
+        );
+      }
 
       return NextResponse.json({ success: true });
     }
@@ -319,12 +321,15 @@ export async function PUT(req: Request) {
         [Number(body.lpo_id)],
       );
 
-      const rejectReason = rejectedLpo.length > 0
-        ? JSON.stringify([{
-            item: `LPO-${String(body.lpo_id).padStart(5, "0")}`,
-            reason: rejectedLpo[0].payment_reject_comment || "",
-          }])
-        : body.reject_reason || null;
+      const rejectReason =
+        rejectedLpo.length > 0
+          ? JSON.stringify([
+              {
+                item: `LPO-${String(body.lpo_id).padStart(5, "0")}`,
+                reason: rejectedLpo[0].payment_reject_comment || "",
+              },
+            ])
+          : body.reject_reason || null;
 
       await db.query(`UPDATE lpo SET progress_id = 13 WHERE id = ?`, [
         Number(body.lpo_id),
@@ -334,7 +339,12 @@ export async function PUT(req: Request) {
         `INSERT INTO mr_header_progress_log
          (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id, reject_reason)
          VALUES (?, 13, 14, ?, ?, ?)`,
-        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id), rejectReason],
+        [
+          Number(body.mr_header_id),
+          body.changed_by,
+          Number(body.lpo_id),
+          rejectReason,
+        ],
       );
 
       await db.query(
@@ -360,7 +370,12 @@ export async function PUT(req: Request) {
         `INSERT INTO mr_header_progress_log
          (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id, reject_reason)
          VALUES (?, 16, 17, ?, ?, ?)`,
-        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id), body.reject_reason || null],
+        [
+          Number(body.mr_header_id),
+          body.changed_by,
+          Number(body.lpo_id),
+          body.reject_reason || null,
+        ],
       );
 
       return NextResponse.json({ success: true });
@@ -375,11 +390,7 @@ export async function PUT(req: Request) {
         `INSERT INTO mr_header_progress_log
          (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id)
          VALUES (?, 21, 17, ?, ?)`,
-        [
-          Number(body.mr_header_id),
-          body.changed_by,
-          Number(body.lpo_id),
-        ],
+        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id)],
       );
 
       return NextResponse.json({ success: true });
@@ -468,7 +479,12 @@ export async function PUT(req: Request) {
         `INSERT INTO mr_header_progress_log
          (mr_header_id, progress_id, from_progress_id, changed_by, lpo_id, reject_reason)
          VALUES (?, 23, 21, ?, ?, ?)`,
-        [Number(body.mr_header_id), body.changed_by, Number(body.lpo_id), body.reject_reason || null],
+        [
+          Number(body.mr_header_id),
+          body.changed_by,
+          Number(body.lpo_id),
+          body.reject_reason || null,
+        ],
       );
 
       return NextResponse.json({ success: true });
