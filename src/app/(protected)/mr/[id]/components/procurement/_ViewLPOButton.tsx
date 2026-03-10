@@ -9,34 +9,37 @@ import { pdf } from "@react-pdf/renderer";
 import EditLPOButton from "./_EditLPOButton";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../types/mrHeader";
+import DeleteLPOButton from "./_DeleteLPOButton";
 
 type ViewLPOButtonProps = {
   lpoID: number;
   mrHeader: MrHeader;
+  onRefresh?: () => void;
 };
 
-export default function ViewLPOButton({ lpoID, mrHeader }: ViewLPOButtonProps) {
+export default function ViewLPOButton({ lpoID, mrHeader, onRefresh }: ViewLPOButtonProps) {
   const { userInfo } = useAuth();
 
   const [lpo, setLpo] = useState<LpoHeader | null>(null);
 
-  useEffect(() => {
-    async function fetchLpo() {
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPODetails`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lpo_id: lpoID }),
-          },
-        );
-        const data = await response.json();
-        setLpo(data.data);
-      } catch (error) {
-        console.error("Error fetching LPO:", error);
-      }
+  async function fetchLpo() {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPODetails`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lpo_id: lpoID }),
+        },
+      );
+      const data = await response.json();
+      setLpo(data.data);
+    } catch (error) {
+      console.error("Error fetching LPO:", error);
     }
+  }
+
+  useEffect(() => {
     fetchLpo();
   }, [lpoID]);
 
@@ -82,7 +85,12 @@ export default function ViewLPOButton({ lpoID, mrHeader }: ViewLPOButtonProps) {
       {userInfo?.departmentID === 9 &&
         (mrHeader.progress_id === 12 ||
           mrHeader.progress_id === 13 ||
-          mrHeader.progress_id === 16) && <EditLPOButton lpoId={lpoID} />}
+          mrHeader.progress_id === 16) && (
+          <>
+            <EditLPOButton lpoId={lpoID} />
+            <DeleteLPOButton lpoId={lpoID} onRefresh={onRefresh} />
+          </>
+        )}
       <DownloadLPOButton lpoID={lpoID} />
     </Button>
   );

@@ -405,7 +405,11 @@ export default function IssueLPOButton({
 
     return (
       <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
-        <ViewLPOButton lpoID={existingLpoId} mrHeader={mrHeader} />
+        <ViewLPOButton
+          lpoID={existingLpoId}
+          mrHeader={mrHeader}
+          onRefresh={() => checkExistingLpo()}
+        />
 
         {/* ✅ Only show Upload Signed LPO for Cash/Local suppliers (NOT credit, NOT marketplace) */}
         {!isCredit &&

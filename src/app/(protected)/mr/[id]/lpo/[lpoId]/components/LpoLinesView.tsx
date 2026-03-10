@@ -74,6 +74,7 @@ export default function LpoLinesView({
   const [qcStatus, setQcStatus] = useState<{
     [itemId: number]: "passed" | "failed" | "pending";
   }>({});
+  const [qcIds, setQcIds] = useState<{ [itemId: number]: number }>({});
   const [isCheckingQc, setIsCheckingQc] = useState<boolean>(true);
 
   // Inventory status tracking
@@ -121,8 +122,9 @@ export default function LpoLinesView({
 
   // Action columns (conditional based on progress and department)
   const hasQcColumn = userInfo?.departmentID === 12 && progressId === 21;
+  const hasCrColumn = progressId >= 21;
   const hasStocksColumn = progressId === 24 && userInfo?.departmentID === 11;
-  const actionColumnCount = [hasQcColumn, hasStocksColumn].filter(
+  const actionColumnCount = [hasQcColumn, hasCrColumn, hasStocksColumn].filter(
     Boolean,
   ).length;
 
@@ -418,10 +420,10 @@ export default function LpoLinesView({
     checkGrnQuantityMismatch();
   }, [progressId, lpoId, allItems.length, refreshKey]);
 
-  // Check QC statuses (also at progress 24+ to filter out failed items)
+  // Check QC statuses (at progress 21+ for CR column and to filter out failed items)
   useEffect(() => {
     async function checkQcStatuses() {
-      if (progressId !== 21 && progressId < 24) {
+      if (progressId < 21) {
         setIsCheckingQc(false);
         return;
       }
@@ -430,6 +432,7 @@ export default function LpoLinesView({
       const statusMap: {
         [itemId: number]: "passed" | "failed" | "pending";
       } = {};
+      const idMap: { [itemId: number]: number } = {};
 
       try {
         const lpoDetailsResponse = await fetch(
@@ -465,6 +468,7 @@ export default function LpoLinesView({
                     const qcData = await qcResponse.json();
                     if (qcData.success && qcData.data) {
                       statusMap[item.id] = qcData.data.qc_status;
+                      idMap[item.id] = qcData.data.id;
                     } else {
                       statusMap[item.id] = "pending";
                     }
@@ -485,6 +489,7 @@ export default function LpoLinesView({
         }
 
         setQcStatus(statusMap);
+        setQcIds(idMap);
       } catch (error) {
         console.error("Error checking QC statuses:", error);
       } finally {
@@ -758,6 +763,7 @@ export default function LpoLinesView({
               {userInfo?.departmentID === 12 && progressId === 21 && (
                 <th>QC</th>
               )}
+              {hasCrColumn && <th>CR</th>}
               {progressId === 24 && userInfo?.departmentID === 11 && (
                 <th>STOCKS</th>
               )}
@@ -846,6 +852,17 @@ export default function LpoLinesView({
                   {userInfo?.departmentID === 12 && progressId === 21 && (
                     <td>
                       <QCCheckListButton item={item} mrHeader={lpoAsMrHeader} />
+                    </td>
+                  )}
+
+                  {hasCrColumn && (
+                    <td>
+                      {qcIds[item.id] &&
+                      qcStatus[item.id] !== "pending" ? (
+                        <DownloadCRButton qcId={qcIds[item.id]} />
+                      ) : (
+                        "-"
+                      )}
                     </td>
                   )}
 
