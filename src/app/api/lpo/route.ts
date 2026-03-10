@@ -529,6 +529,11 @@ export async function DELETE(req: Request) {
 
       return NextResponse.json({ success: true });
     }
+
+    if (body.action === "deleteLpoPDF") {
+      await db.query("DELETE FROM lpo WHERE id = ?", [Number(body.id)]);
+      return NextResponse.json({ success: true });
+    }
   } catch (err: any) {
     console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });

@@ -48,14 +48,20 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
   // ─── Formatting helpers ───────────────────────────────────────────────────
 
   /** Format to exactly 2 decimal places for unit/total prices on load */
-  const formatToTwoDecimals = (value: number | string): string => {
+  const formatToTwoDecimals = (
+    value: number | string | null | undefined,
+  ): string => {
+    if (value === null || value === undefined || value === "") return "";
     const num = typeof value === "string" ? parseFloat(value) : value;
-    if (isNaN(num)) return "0.00";
+    if (isNaN(num)) return "";
     return num.toFixed(2);
   };
 
   /** Format without trailing zeros for discount, vat rate, s&h on load */
-  const formatFieldValue = (value: number | string): string => {
+  const formatFieldValue = (
+    value: number | string | null | undefined,
+  ): string => {
+    if (value === null || value === undefined || value === "") return "0";
     const num = typeof value === "string" ? parseFloat(value) : value;
     if (isNaN(num)) return "0";
     if (Number.isInteger(num)) return num.toString();
@@ -110,17 +116,18 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
       setDeliveryTerms(lpoData.delivery_terms || "");
 
       // Format field values the same way as IssueLPOButton
-      setDiscount(formatFieldValue(lpoData.discount || 0));
-      setVatRate(formatFieldValue(lpoData.vat_rate || 5));
-      setShippingHandling(formatFieldValue(lpoData.shipping_and_handling || 0));
+      setDiscount(formatFieldValue(lpoData.discount));
+      setVatRate(formatFieldValue(lpoData.vat_rate));
+      setShippingHandling(formatFieldValue(lpoData.shipping_and_handling));
 
       // Format unit/total prices to 2 decimals on load
       const initialUnitPrices: { [key: number]: string } = {};
       const initialTotalPrices: { [key: number]: string } = {};
 
       lpoData.lpo_mr_lines.forEach((line, index) => {
-        initialUnitPrices[index] = formatToTwoDecimals(line.unit_price || 0);
-        initialTotalPrices[index] = formatToTwoDecimals(line.total_price || 0);
+        initialUnitPrices[index] = formatToTwoDecimals(line.unit_price);
+        initialTotalPrices[index] =
+          formatToTwoDecimals(line.total_price) || "0.00";
       });
 
       setUnitPrices(initialUnitPrices);
@@ -142,9 +149,15 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
     // Store raw value while typing — no reformatting
     setUnitPrices((prev) => ({ ...prev, [index]: value }));
 
-    // Recalculate total live
-    const quantity = lpoData.lpo_mr_lines[index].quantity;
+    // Recalculate total live - use safer access
+    const line = lpoData.lpo_mr_lines[index];
+    if (!line) return;
+
+    // Use approved_proposed_quantity from lpo_mr_lines (same as displayed)
+    const proposedQty = Number(line.approved_proposed_quantity) || 0;
+    const quantity = proposedQty > 0 ? proposedQty : Number(line.quantity) || 0;
     const unitPrice = parseFloat(value) || 0;
+
     setTotalPrices((prev) => ({
       ...prev,
       [index]: (quantity * unitPrice).toFixed(2),
@@ -207,7 +220,6 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
         setIsOpen(false);
         setLpoData(null);
         router.refresh();
-        /* setTimeout(() => window.location.reload(), 1500); */
       } else {
         toast("Failed to update local purchase order", "error");
       }
@@ -323,9 +335,13 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                 </thead>
                 <tbody style={{ fontWeight: "normal" }}>
                   {lpoData.lpo_mr_lines.map((line, index) => {
-                    const formattedQty = formatNumberWithoutTrailingZeros(
-                      line.approved_proposed_quantity,
-                    );
+                    // Use approved_proposed_quantity with fallback to quantity
+                    const proposedQty =
+                      Number(line.approved_proposed_quantity) || 0;
+                    const displayQty =
+                      proposedQty > 0 ? proposedQty : line.quantity;
+                    const formattedQty =
+                      formatNumberWithoutTrailingZeros(displayQty);
 
                     return (
                       <tr key={line.id || index}>
