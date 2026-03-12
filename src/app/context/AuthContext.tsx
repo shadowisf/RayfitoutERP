@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: "test@test.com",
       sub: "test-sub",
       role: "Management",
-      departmentID: 11,
+      departmentID: 8,
     });
     setIsLoading(false);
     return;
