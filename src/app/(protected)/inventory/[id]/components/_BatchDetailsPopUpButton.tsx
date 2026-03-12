@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { InventoryItem } from "../../types/inventoryItem";
 import DownloadLPOButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadLPOButton";
 import DownloadNCRButton from "@/app/(protected)/resolution/components/_DownloadNCRButton";
+import DownloadCRButton from "@/app/(protected)/resolution/components/_DownloadCRButton";
 import DownloadGRNButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadGRNButton";
 
 type BatchDetailsPopUpButtonProps = {
@@ -796,6 +797,20 @@ export default function BatchDetailsPopUpButton({
                   qcId={details.qc_id}
                   bgColor="white"
                   label="NCR"
+                  style={{
+                    borderRadius: "25px",
+                    padding: "7px 20px",
+                    textTransform: "none",
+                  }}
+                />
+              )}
+            </div>
+            <div>
+              {details.qc_id && details.qc_status !== "Failed" && (
+                <DownloadCRButton
+                  qcId={details.qc_id}
+                  bgColor="white"
+                  label="CR"
                   style={{
                     borderRadius: "25px",
                     padding: "7px 20px",

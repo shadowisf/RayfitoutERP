@@ -81,7 +81,7 @@ export default function DownloadCRButton({
 
       const crData: CrData = result.data;
 
-      // 2. Convert first available attachment image to base64
+      // 2. Convert all checkpoint attachment images to base64
       const attachmentImages: { [key: number]: string } = {};
 
       for (const cp of crData.checkpoints) {
@@ -90,7 +90,6 @@ export default function DownloadCRButton({
           const base64 = await urlToBase64(urls[0]);
           if (base64) {
             attachmentImages[cp.checkpoint_number] = base64;
-            break; // Only need one image for the PDF
           }
         }
       }

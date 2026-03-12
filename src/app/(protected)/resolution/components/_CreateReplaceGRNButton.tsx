@@ -33,11 +33,13 @@ type ReplaceDetail = {
 type CreateReplaceGRNButtonProps = {
   detail: ReplaceDetail;
   onRefresh?: () => void;
+  progressId?: number;
 };
 
 export default function CreateReplaceGRNButton({
   detail,
   onRefresh,
+  progressId = 1,
 }: CreateReplaceGRNButtonProps) {
   const router = useRouter();
   const { userInfo } = useAuth();
@@ -248,11 +250,32 @@ export default function CreateReplaceGRNButton({
   return (
     <>
       {detail.replacement_grn_id ? (
-        <DownloadGRNButton
-          grnId={detail.replacement_grn_id}
-          bgColor="white"
-          style={{ padding: "5px 10px", borderRadius: "25px" }}
-        />
+        <Button
+          componentType={"none"}
+          bgColor={"white"}
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
+          style={{
+            padding: "7px 20px",
+            borderRadius: "25px",
+          }}
+        >
+          GRN
+          {progressId === 1 && (
+            <img
+              src={pencilIcon}
+              alt="edit"
+              style={{ cursor: "pointer" }}
+              onClick={() => setIsOpen(true)}
+            />
+          )}
+          <DownloadGRNButton
+            grnId={detail.replacement_grn_id}
+            bgColor="transparent"
+            label=""
+            style={{ padding: "0", border: "none" }}
+          />
+        </Button>
       ) : (
         <Button
           componentType={"button"}

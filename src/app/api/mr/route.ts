@@ -493,6 +493,146 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "setQSReviewItemAvailable") {
+      await db.query(
+        `UPDATE mr_lines SET qs_review_type = 'item_available', linked_inventory_item_id = ?, qs_approval_status = 'Approved' WHERE id = ?`,
+        [body.linked_inventory_item_id, body.id],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "setQSReviewNeedOrder") {
+      await db.query(
+        `UPDATE mr_lines SET qs_review_type = 'need_order', linked_inventory_item_id = NULL, qs_approval_status = 'Approved' WHERE id = ?`,
+        [body.id],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "resetQSReview") {
+      await db.query(
+        `UPDATE mr_lines SET qs_review_type = NULL, linked_inventory_item_id = NULL, qs_approval_status = NULL WHERE id = ?`,
+        [body.id],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "linkStockTransferToMrLine") {
+      await db.query(
+        `UPDATE mr_lines SET stock_transfer_id = ? WHERE id = ?`,
+        [body.stock_transfer_id, body.id],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "updateMrLineSignedDn") {
+      await db.query(
+        `UPDATE mr_lines SET signed_dn_file = ? WHERE id = ?`,
+        [body.signed_dn_file, body.id],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitStockTransferCompletion") {
+      // Check if all item_available items have stock_transfer_id and signed_dn_file
+      const [incompleteItems]: any = await db.query(
+        `SELECT COUNT(*) as cnt FROM mr_lines
+         WHERE mr_header_id = ? AND qs_review_type = 'item_available'
+         AND (stock_transfer_id IS NULL OR signed_dn_file IS NULL)`,
+        [body.id],
+      );
+
+      if (incompleteItems[0].cnt > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Not all item available lines have been transferred and signed",
+          },
+          { status: 400 },
+        );
+      }
+
+      // Check if there are any need_order lines
+      const [needOrderLines]: any = await db.query(
+        `SELECT COUNT(*) as cnt FROM mr_lines
+         WHERE mr_header_id = ? AND qs_review_type = 'need_order'`,
+        [body.id],
+      );
+
+      const hasNeedOrder = needOrderLines[0].cnt > 0;
+
+      if (hasNeedOrder) {
+        // Mixed MR: some item_available, some need_order → go to quotations
+        await db.query(
+          `UPDATE mr_headers SET progress_id = 7 WHERE id = ?`,
+          [body.id],
+        );
+
+        await db.query(
+          `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 7, 4, ?)`,
+          [body.id, body.changed_by],
+        );
+
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            9,
+            "Quotations Required",
+            `${formattedId} is awaiting quotations`,
+          ],
+        );
+
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            body.department_id,
+            "Stock Transfer Completed",
+            `${formattedId} stock transfer has been completed and submitted for quotations`,
+          ],
+        );
+      } else {
+        // All lines are item_available → go directly to completed
+        await db.query(
+          `UPDATE mr_headers SET progress_id = 25 WHERE id = ?`,
+          [body.id],
+        );
+
+        await db.query(
+          `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 25, 4, ?)`,
+          [body.id, body.changed_by],
+        );
+
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            body.department_id,
+            "Material Received",
+            `Your ${formattedId} was fulfilled successfully via stock transfer`,
+          ],
+        );
+
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            11,
+            "Stock Transfer Completed",
+            `${formattedId} stock transfer completed and ${prefix} marked as fulfilled`,
+          ],
+        );
+      }
+
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action === "resetItem") {
       await db.query(
         `UPDATE mr_lines SET approval_status = null, reject_comment = null WHERE id = ?`,
@@ -543,24 +683,53 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitForQuotations") {
-      await db.query(`UPDATE mr_headers SET progress_id = 7 WHERE id = ?`, [
+      // Check item types for split logic
+      const [lineTypes]: any = await db.query(
+        `SELECT qs_review_type FROM mr_lines WHERE mr_header_id = ? AND qs_approval_status = 'Approved'`,
+        [body.id],
+      );
+
+      const hasItemAvailable = lineTypes.some(
+        (l: any) => l.qs_review_type === "item_available",
+      );
+
+      // If ANY items have item_available → always go through stock transfer first
+      // If ALL items are need_order (none item_available) → skip stock transfer, go to quotation directly
+      let targetProgressId = hasItemAvailable ? 4 : 7;
+
+      await db.query(`UPDATE mr_headers SET progress_id = ? WHERE id = ?`, [
+        targetProgressId,
         body.id,
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 7, ?, ?)`,
-        [body.id, body.from_progress_id || 3, body.changed_by],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, ?, ?, ?)`,
+        [body.id, targetProgressId, body.from_progress_id || 3, body.changed_by],
       );
 
-      await db.query(
-        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
-        [
-          body.id,
-          9,
-          "Quotations Required",
-          `${formattedId} is awaiting quotations`,
-        ],
-      );
+      if (targetProgressId === 4) {
+        // Has item_available items → stock transfer first
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            11,
+            "Stock Transfer Required",
+            `${formattedId} requires stock transfer`,
+          ],
+        );
+      } else {
+        // Pure need_order → goes directly to quotations
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            9,
+            "Quotations Required",
+            `${formattedId} is awaiting quotations`,
+          ],
+        );
+      }
 
       await db.query(
         `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
@@ -568,7 +737,7 @@ export async function PUT(req: Request) {
           body.id,
           body.department_id,
           `${prefix} Approved`,
-          `Your ${formattedId} is awaiting quotations`,
+          `Your ${formattedId} has been approved`,
         ],
       );
 

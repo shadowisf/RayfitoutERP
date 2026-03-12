@@ -163,7 +163,7 @@ export default function AddJoItemButton({
           <div className="input-row three-col">
             <div className="input-item">
               <label className="custom">
-                <span>BILL OF QUANTITY ITEMS</span>
+                <span>BOQ REFERENCE</span>
                 <small>(OPTIONAL)</small>
               </label>
               <MultipleSelectBoqItemButton
@@ -233,6 +233,7 @@ export default function AddJoItemButton({
                 }
               }}
               postfixText={"AED"}
+              required
             />
 
             <InputItem

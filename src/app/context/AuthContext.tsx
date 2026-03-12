@@ -51,6 +51,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userInfo, setUserInfo] = useState<any>(null);
 
   async function checkAuth() {
+    // TODO: TEMPORARY - Remove this hardcoded auth bypass
+    setIsAuthenticated(true);
+    setUser({ idToken: "fake-token" });
+    setUserInfo({
+      name: "TEST",
+      email: "test@test.com",
+      sub: "test-sub",
+      role: "Management",
+      departmentID: 8,
+    });
+    setIsLoading(false);
+    return;
+    // END TEMPORARY
+
+    /* FINANCE = 10
+    MANAGER = 8
+    STOREKEEPER = 11
+    PROCUREMENT = 9
+    QUALITY CONTROL = 12
+    QUANTITY SURVEYOR = 16 */
+
     try {
       const session = await getSession();
       if (session) {

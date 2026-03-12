@@ -97,6 +97,7 @@ export default function ReplaceVendorDetailPage() {
   const [detail, setDetail] = useState<ReplaceDetail | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [hasStock, setHasStock] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   function parseFileUrl(raw: any): string | null {
     if (!raw) return null;
@@ -156,7 +157,12 @@ export default function ReplaceVendorDetailPage() {
       }
     }
     checkStock();
-  }, [detail?.mr_line_id, detail?.progress_id]);
+  }, [detail?.mr_line_id, detail?.progress_id, refreshKey]);
+
+  function handleRefresh() {
+    fetchDetail();
+    setRefreshKey((k) => k + 1);
+  }
 
   async function handleProgressSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -327,14 +333,21 @@ export default function ReplaceVendorDetailPage() {
               bgColor="transparent"
             />
 
-            {/* GRN button at stage 1 (Awaiting Delivery) */}
-            {detail.progress_id === 1 && (
-              <CreateReplaceGRNButton detail={detail} onRefresh={fetchDetail} />
+            {/* GRN button - show at stage 1 for create/edit/download, stage 2+ for download */}
+            {(detail.progress_id === 1 || detail.replacement_grn_id) && (
+              <CreateReplaceGRNButton
+                detail={detail}
+                onRefresh={handleRefresh}
+                progressId={detail.progress_id}
+              />
             )}
 
             {/* Add Stock button at stage 2 (Stock Entry) */}
             {detail.progress_id === 2 && (
-              <AddReplaceStockButton detail={detail} onRefresh={fetchDetail} />
+              <AddReplaceStockButton
+                detail={detail}
+                onRefresh={handleRefresh}
+              />
             )}
           </div>
         </div>

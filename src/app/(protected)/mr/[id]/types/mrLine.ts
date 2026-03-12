@@ -34,6 +34,11 @@ export type MrLine = {
   reject_comment: string;
   qs_approval_status: string;
   qs_reject_comment: string;
+  qs_review_type: "item_available" | "need_order" | null;
+  linked_inventory_item_id: number | null;
+  linked_inventory_item_description: string | null;
+  stock_transfer_id: number | null;
+  signed_dn_file: string | null;
   approved_supplier_id: number;
   approved_supplier_type: string;
   approved_supplier_name: string;

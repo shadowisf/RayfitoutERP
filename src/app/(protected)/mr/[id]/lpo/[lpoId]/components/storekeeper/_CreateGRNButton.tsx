@@ -577,11 +577,30 @@ export default function CreateGRNButton({
   return (
     <>
       {existingGrn ? (
-        <DownloadGRNButton
-          grnId={existingGrn.id}
-          bgColor="white"
+        <Button
+          componentType={"none"}
+          bgColor={"white"}
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
           style={{ padding: "7px 20px", borderRadius: "25px" }}
-        />
+        >
+          GRN
+          {(userInfo?.departmentID === 11 ||
+            userInfo?.departmentID === 8) &&
+            mrHeader.progress_id === 17 && (
+              <img
+                src={pencilIcon}
+                alt="edit"
+                style={{ cursor: "pointer" }}
+                onClick={() => setIsOpen(true)}
+              />
+            )}
+          <DownloadGRNButton
+            grnId={existingGrn.id}
+            bgColor="transparent"
+            style={{ padding: "0", border: "none" }}
+          />
+        </Button>
       ) : (
         <Button
           componentType={"button"}

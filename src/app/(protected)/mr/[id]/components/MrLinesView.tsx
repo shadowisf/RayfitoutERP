@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import AddMrItemButton from "./department/_AddMrItemButton";
 import { MrLine } from "../types/mrLine";
 import EditMrItemButton from "./department/_EditMrItemButton";
@@ -32,10 +32,15 @@ import AddToInventoryButton from "../lpo/[lpoId]/components/storekeeper/_AddStoc
 import QCRecheckButton from "./procurement/_QCRecheckButton";
 import ResolutionButton from "./procurement/_AddResolutionButton";
 import QSInitialApprovalButtons from "./quantitySurveyor/_InitialApprovalButton";
+import QSReviewButton from "./quantitySurveyor/_QSReviewButton";
 import SubmitForQSPricingApprovalButton from "./procurement/_SubmitForQSPricingApprovalButton";
 import CheckPricesButton from "./quantitySurveyor/_CheckPricesButton";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import SubmitForQSApprovalButton from "./department/_SubmitForQSApprovalButton";
+import MrTransferIssueButton from "./storekeeper/_MrTransferIssueButton";
+import MrDownloadDnButton from "./storekeeper/_MrDownloadDnButton";
+import MrUploadSignedDnButton from "./storekeeper/_MrUploadSignedDnButton";
+import SubmitForStockTransferCompletion from "./storekeeper/_SubmitForStockTransferCompletion";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -54,12 +59,44 @@ type MrLinesViewProps = {
   mrHeader: MrHeader;
 };
 
-export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
+export default function MrLinesView({
+  mrHeader,
+  mrLines: rawMrLines,
+}: MrLinesViewProps) {
   const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
   const trashIcon = "/icons/trash.svg";
   const externalLinkIcon = "/icons/external-link.svg";
+
+  // After stock transfer (progress > 4), filter out item_available lines
+  // They've been fulfilled via stock transfer and shouldn't appear in quotation/LPO stages
+  const mrLines = useMemo(() => {
+    if (mrHeader.progress_id <= 4) return rawMrLines;
+
+    const filtered: GroupedMrLines = {};
+    for (const category in rawMrLines) {
+      filtered[category] = {};
+      for (const subCategory in rawMrLines[category]) {
+        filtered[category][subCategory] = {};
+        for (const supplier in rawMrLines[category][subCategory]) {
+          const items = rawMrLines[category][subCategory][supplier].filter(
+            (item) => item.qs_review_type !== "item_available",
+          );
+          if (items.length > 0) {
+            filtered[category][subCategory][supplier] = items;
+          }
+        }
+        if (Object.keys(filtered[category][subCategory]).length === 0) {
+          delete filtered[category][subCategory];
+        }
+      }
+      if (Object.keys(filtered[category]).length === 0) {
+        delete filtered[category];
+      }
+    }
+    return filtered;
+  }, [rawMrLines, mrHeader.progress_id]);
 
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
 
@@ -149,6 +186,14 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     };
   }>({});
 
+  // Inventory match suggestions for QS Review stage
+  const [inventoryMatches, setInventoryMatches] = useState<{
+    [description: string]: {
+      id: number;
+      description: string;
+    } | null;
+  }>({});
+
   const canSeePrice =
     userInfo?.departmentID === 8 ||
     userInfo?.departmentID === 9 ||
@@ -171,6 +216,48 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     // Decimal case: max 3 decimals, remove trailing zeros
     return parseFloat(num.toFixed(3)).toString();
   };
+
+  // Fetch inventory matches for QS Review stage
+  useEffect(() => {
+    if (mrHeader.progress_id !== 2) return;
+
+    const descriptions: string[] = [];
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
+          for (const item of items) {
+            if (item.material_description && !item.qs_review_type) {
+              descriptions.push(item.material_description);
+            }
+          }
+        }
+      }
+    }
+
+    if (descriptions.length === 0) return;
+
+    async function fetchMatches() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory/searchByDescription`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ descriptions }),
+          },
+        );
+        const data = await res.json();
+        if (data.success) {
+          setInventoryMatches(data.data);
+        }
+      } catch {
+        console.error("Failed to fetch inventory matches");
+      }
+    }
+
+    fetchMatches();
+  }, [mrHeader.progress_id, mrLines]);
 
   useEffect(() => {
     async function fetchLpoPrices() {
@@ -1659,6 +1746,48 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
     return allReviewed && allApproved;
   }
 
+  // Check if all items have qs_review_type set (for QS submit button)
+  function allItemsQSReviewed() {
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          const items = mrLines[category][subCategory][supplier];
+          for (const item of items) {
+            if (!item.qs_review_type) return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  // Get all flat items from grouped mrLines
+  function getAllFlatItems(): MrLine[] {
+    const items: MrLine[] = [];
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          items.push(...mrLines[category][subCategory][supplier]);
+        }
+      }
+    }
+    return items;
+  }
+
+  // Get item_available items
+  function getItemAvailableItems(): MrLine[] {
+    return getAllFlatItems().filter(
+      (l) => l.qs_review_type === "item_available",
+    );
+  }
+
+  // Check if all stock transfers are complete (for stock transfer submit)
+  function allStockTransfersComplete(): boolean {
+    const items = getItemAvailableItems();
+    if (items.length === 0) return false;
+    return items.every((l) => l.stock_transfer_id && l.signed_dn_file);
+  }
+
   function allItemsHaveSupplierQuotations() {
     let totalItems = 0;
     for (const category in mrLines) {
@@ -2236,6 +2365,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       <th>ACTIONS</th>
                                     )}
                                   {mrHeader.progress_id === 3 &&
+                                    (userInfo?.departmentID === 8 ||
+                                      userInfo?.departmentID ===
+                                        mrHeader.department_id) && (
+                                      <th>QS REVIEW</th>
+                                    )}
+                                  {mrHeader.progress_id === 3 &&
                                     userInfo?.departmentID === 8 && (
                                       <th>ACTIONS</th>
                                     )}
@@ -2275,6 +2410,10 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     canSeePrice && <th>UNIT PRICE</th>}
                                   {mrHeader.progress_id >= 10 &&
                                     canSeePrice && <th>TOTAL PRICE</th>}
+                                  {userInfo?.departmentID === 11 &&
+                                    mrHeader.progress_id === 4 && (
+                                      <th>STOCK TRANSFER</th>
+                                    )}
                                   {userInfo?.departmentID === 12 &&
                                     mrHeader.progress_id === 21 && (
                                       <th>QUALITY CONTROL</th>
@@ -2301,7 +2440,40 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                     return (
                                       <tr key={item.id}>
                                         <td>{itemIndex + 1}</td>
-                                        <td>{item.material_description}</td>
+                                        <td>
+                                          {item.material_description}
+                                          {item.qs_review_type ===
+                                            "item_available" &&
+                                            mrHeader.progress_id <= 4 &&
+                                            item.linked_inventory_item_description && (
+                                              <div
+                                                style={{
+                                                  fontSize: "10px",
+                                                  color:
+                                                    "rgba(26, 216, 135, 1)",
+                                                  marginTop: "4px",
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  gap: "4px",
+                                                }}
+                                              >
+                                                Item available:{" "}
+                                                {
+                                                  item.linked_inventory_item_description
+                                                }
+                                                <img
+                                                  src={externalLinkIcon}
+                                                  alt=""
+                                                  style={{
+                                                    width: "10px",
+                                                    height: "10px",
+                                                    filter:
+                                                      "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
+                                                  }}
+                                                />
+                                              </div>
+                                            )}
+                                        </td>
                                         {mrHeader.progress_id >= 9 ? (
                                           <>
                                             <td>
@@ -2393,59 +2565,153 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                           )}
                                         </td>
 
-                                        {(((mrHeader.progress_id === 5 ||
-                                          mrHeader.progress_id === 3 ||
-                                          mrHeader.progress_id === 2) &&
-                                          userInfo?.departmentID ===
-                                            mrHeader.department_id) ||
-                                          ((mrHeader.progress_id === 5 ||
-                                            mrHeader.progress_id === 3) &&
-                                            userInfo?.departmentID === 8) ||
-                                          ((mrHeader.progress_id === 5 ||
+                                        {!(
+                                          mrHeader.progress_id === 3 &&
+                                          userInfo?.departmentID === 8
+                                        ) &&
+                                          (((mrHeader.progress_id === 5 ||
+                                            mrHeader.progress_id === 3 ||
                                             mrHeader.progress_id === 2) &&
-                                            userInfo?.departmentID === 16)) && (
-                                          <td>
-                                            <div
-                                              style={{
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                gap: "10px",
-                                              }}
-                                            >
-                                              {/* Show QS approval buttons */}
-                                              {(mrHeader.progress_id === 5 ||
-                                                mrHeader.progress_id === 2) &&
-                                                (userInfo?.departmentID ===
-                                                  mrHeader.department_id ||
-                                                  userInfo?.departmentID ===
-                                                    16 ||
-                                                  userInfo?.departmentID ===
-                                                    8) && (
-                                                  <QSInitialApprovalButtons
-                                                    item={item}
-                                                    progressID={
-                                                      mrHeader.progress_id
-                                                    }
-                                                  />
-                                                )}
+                                            userInfo?.departmentID ===
+                                              mrHeader.department_id) ||
+                                            ((mrHeader.progress_id === 5 ||
+                                              mrHeader.progress_id === 3) &&
+                                              userInfo?.departmentID === 8) ||
+                                            ((mrHeader.progress_id === 5 ||
+                                              mrHeader.progress_id === 2) &&
+                                              userInfo?.departmentID ===
+                                                16)) && (
+                                            <td>
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  flexDirection: "column",
+                                                  gap: "10px",
+                                                }}
+                                              >
+                                                {/* Show QS Review buttons (Item Available / Need Order) */}
+                                                {(mrHeader.progress_id === 5 ||
+                                                  mrHeader.progress_id === 2) &&
+                                                  (userInfo?.departmentID ===
+                                                    mrHeader.department_id ||
+                                                    userInfo?.departmentID ===
+                                                      16 ||
+                                                    userInfo?.departmentID ===
+                                                      8) && (
+                                                    <QSReviewButton
+                                                      item={item}
+                                                      progressID={
+                                                        mrHeader.progress_id
+                                                      }
+                                                      inventoryMatch={
+                                                        inventoryMatches[
+                                                          item
+                                                            .material_description
+                                                        ] || null
+                                                      }
+                                                    />
+                                                  )}
 
-                                              {/* Show Manager approval buttons */}
-                                              {(mrHeader.progress_id === 5 ||
-                                                mrHeader.progress_id === 3) &&
-                                                (userInfo?.departmentID ===
-                                                  mrHeader.department_id ||
-                                                  userInfo?.departmentID ===
-                                                    8) && (
-                                                  <InitialApprovalButtons
-                                                    item={item}
-                                                    progressID={
-                                                      mrHeader.progress_id
-                                                    }
-                                                  />
-                                                )}
-                                            </div>
-                                          </td>
-                                        )}
+                                                {/* Show Manager approval buttons */}
+                                                {(mrHeader.progress_id === 5 ||
+                                                  mrHeader.progress_id === 3) &&
+                                                  (userInfo?.departmentID ===
+                                                    mrHeader.department_id ||
+                                                    userInfo?.departmentID ===
+                                                      8) && (
+                                                    <InitialApprovalButtons
+                                                      item={item}
+                                                      progressID={
+                                                        mrHeader.progress_id
+                                                      }
+                                                    />
+                                                  )}
+                                              </div>
+                                            </td>
+                                          )}
+
+                                        {/* QS Review column at Manager Approval stage */}
+                                        {mrHeader.progress_id === 3 &&
+                                          (userInfo?.departmentID === 8 ||
+                                            userInfo?.departmentID ===
+                                              mrHeader.department_id) && (
+                                            <td>
+                                              {item.qs_review_type ===
+                                              "need_order" ? (
+                                                <div
+                                                  className="approval-pill"
+                                                  style={{
+                                                    backgroundColor:
+                                                      "rgba(34, 150, 100, 1)",
+                                                    color: "white",
+                                                  }}
+                                                >
+                                                  <span
+                                                    style={{
+                                                      textWrap: "nowrap",
+                                                    }}
+                                                  >
+                                                    Need Order
+                                                  </span>
+                                                </div>
+                                              ) : item.qs_review_type ===
+                                                "item_available" ? (
+                                                <div
+                                                  className="approval-pill"
+                                                  style={{
+                                                    backgroundColor:
+                                                      "rgba(34, 150, 100, 1)",
+                                                    color: "white",
+                                                  }}
+                                                >
+                                                  <span
+                                                    style={{
+                                                      textWrap: "nowrap",
+                                                    }}
+                                                  >
+                                                    {item.linked_inventory_item_description ||
+                                                      "Item Available"}
+                                                  </span>
+                                                  {item.linked_inventory_item_id && (
+                                                    <Button
+                                                      componentType="link"
+                                                      bgColor={"transparent"}
+                                                      borderColor={
+                                                        "transparent"
+                                                      }
+                                                      textColor={"black"}
+                                                      href={`/inventory/${item.linked_inventory_item_id}`}
+                                                      style={{ padding: "0px" }}
+                                                    >
+                                                      <img
+                                                        src={externalLinkIcon}
+                                                        alt="view"
+                                                        style={{
+                                                          filter: "invert(1)",
+                                                          cursor: "pointer",
+                                                        }}
+                                                      />
+                                                    </Button>
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                "-"
+                                              )}
+                                            </td>
+                                          )}
+
+                                        {/* Manager ACTIONS cell at Manager Approval stage */}
+                                        {mrHeader.progress_id === 3 &&
+                                          userInfo?.departmentID === 8 && (
+                                            <td>
+                                              <InitialApprovalButtons
+                                                item={item}
+                                                progressID={
+                                                  mrHeader.progress_id
+                                                }
+                                              />
+                                            </td>
+                                          )}
 
                                         {(mrHeader.progress_id === 1 ||
                                           mrHeader.progress_id === 5 ||
@@ -2658,6 +2924,45 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                                   alt="trash icon"
                                                 />
                                               </DeleteMrItemButton>
+                                            </td>
+                                          )}
+
+                                        {/* Stock Transfer actions at progress_id 4 (ALL view - storekeeper only) */}
+                                        {userInfo?.departmentID === 11 &&
+                                          mrHeader.progress_id === 4 && (
+                                            <td>
+                                              {item.qs_review_type ===
+                                              "item_available" ? (
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    flexDirection: "column",
+                                                    gap: "6px",
+                                                  }}
+                                                >
+                                                  {!item.stock_transfer_id ? (
+                                                    <MrTransferIssueButton
+                                                      item={item}
+                                                    />
+                                                  ) : (
+                                                    <>
+                                                      <MrDownloadDnButton
+                                                        transactionID={
+                                                          item.stock_transfer_id
+                                                        }
+                                                      />
+                                                      <MrUploadSignedDnButton
+                                                        transactionID={
+                                                          item.stock_transfer_id
+                                                        }
+                                                        mrLineId={item.id}
+                                                      />
+                                                    </>
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                "-"
+                                              )}
                                             </td>
                                           )}
 
@@ -2928,6 +3233,12 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                   <th>ACTIONS</th>
                                 )}
                               {mrHeader.progress_id === 3 &&
+                                (userInfo?.departmentID === 8 ||
+                                  userInfo?.departmentID ===
+                                    mrHeader.department_id) && (
+                                  <th>QS REVIEW</th>
+                                )}
+                              {mrHeader.progress_id === 3 &&
                                 userInfo?.departmentID === 8 && (
                                   <th>ACTIONS</th>
                                 )}
@@ -2979,6 +3290,11 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 mrHeader.progress_id === 23 && (
                                   <th>RESOLUTION</th>
                                 )}
+                              {(userInfo?.departmentID === 11 ||
+                                userInfo?.departmentID === 8) &&
+                                mrHeader.progress_id === 4 && (
+                                  <th>STOCK TRANSFER</th>
+                                )}
                               {(mrHeader.progress_id === 9 ||
                                 mrHeader.progress_id === 10) &&
                                 (userInfo?.departmentID === 8 ||
@@ -2993,7 +3309,39 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                 return (
                                   <tr key={item.id}>
                                     <td>{itemIndex + 1}</td>
-                                    <td>{item.material_description}</td>
+                                    <td>
+                                      {item.material_description}
+                                      {item.qs_review_type ===
+                                        "item_available" &&
+                                        mrHeader.progress_id <= 4 &&
+                                        item.linked_inventory_item_description && (
+                                          <div
+                                            style={{
+                                              fontSize: "10px",
+                                              color: "rgba(26, 216, 135, 1)",
+                                              marginTop: "4px",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: "4px",
+                                            }}
+                                          >
+                                            Item available:{" "}
+                                            {
+                                              item.linked_inventory_item_description
+                                            }
+                                            <img
+                                              src={externalLinkIcon}
+                                              alt=""
+                                              style={{
+                                                width: "10px",
+                                                height: "10px",
+                                                filter:
+                                                  "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
+                                              }}
+                                            />
+                                          </div>
+                                        )}
+                                    </td>
                                     {mrHeader.progress_id >= 9 ? (
                                       <>
                                         <td>
@@ -3084,56 +3432,142 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                       )}
                                     </td>
 
-                                    {(((mrHeader.progress_id === 5 ||
-                                      mrHeader.progress_id === 3 ||
-                                      mrHeader.progress_id === 2) &&
-                                      userInfo?.departmentID ===
-                                        mrHeader.department_id) ||
-                                      ((mrHeader.progress_id === 5 ||
-                                        mrHeader.progress_id === 3) &&
-                                        userInfo?.departmentID === 8) ||
-                                      ((mrHeader.progress_id === 5 ||
+                                    {!(
+                                      mrHeader.progress_id === 3 &&
+                                      userInfo?.departmentID === 8
+                                    ) &&
+                                      (((mrHeader.progress_id === 5 ||
+                                        mrHeader.progress_id === 3 ||
                                         mrHeader.progress_id === 2) &&
-                                        userInfo?.departmentID === 16)) && (
-                                      <td>
-                                        <div
-                                          style={{
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            gap: "10px",
-                                          }}
-                                        >
-                                          {/* Show QS approval buttons */}
-                                          {(mrHeader.progress_id === 5 ||
-                                            mrHeader.progress_id === 2) &&
-                                            (userInfo?.departmentID ===
-                                              mrHeader.department_id ||
-                                              userInfo?.departmentID === 16 ||
-                                              userInfo?.departmentID === 8) && (
-                                              <QSInitialApprovalButtons
-                                                item={item}
-                                                progressID={
-                                                  mrHeader.progress_id
-                                                }
-                                              />
-                                            )}
+                                        userInfo?.departmentID ===
+                                          mrHeader.department_id) ||
+                                        ((mrHeader.progress_id === 5 ||
+                                          mrHeader.progress_id === 3) &&
+                                          userInfo?.departmentID === 8) ||
+                                        ((mrHeader.progress_id === 5 ||
+                                          mrHeader.progress_id === 2) &&
+                                          userInfo?.departmentID === 16)) && (
+                                        <td>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              flexDirection: "column",
+                                              gap: "10px",
+                                            }}
+                                          >
+                                            {/* Show QS Review buttons (Item Available / Need Order) */}
+                                            {(mrHeader.progress_id === 5 ||
+                                              mrHeader.progress_id === 2) &&
+                                              (userInfo?.departmentID ===
+                                                mrHeader.department_id ||
+                                                userInfo?.departmentID === 16 ||
+                                                userInfo?.departmentID ===
+                                                  8) && (
+                                                <QSReviewButton
+                                                  item={item}
+                                                  progressID={
+                                                    mrHeader.progress_id
+                                                  }
+                                                  inventoryMatch={
+                                                    inventoryMatches[
+                                                      item.material_description
+                                                    ] || null
+                                                  }
+                                                />
+                                              )}
 
-                                          {/* Show Manager approval buttons */}
-                                          {(mrHeader.progress_id === 5 ||
-                                            mrHeader.progress_id === 3) &&
-                                            (userInfo?.departmentID ===
-                                              mrHeader.department_id ||
-                                              userInfo?.departmentID === 8) && (
-                                              <InitialApprovalButtons
-                                                item={item}
-                                                progressID={
-                                                  mrHeader.progress_id
-                                                }
-                                              />
-                                            )}
-                                        </div>
-                                      </td>
-                                    )}
+                                            {/* Show Manager approval buttons */}
+                                            {(mrHeader.progress_id === 5 ||
+                                              mrHeader.progress_id === 3) &&
+                                              (userInfo?.departmentID ===
+                                                mrHeader.department_id ||
+                                                userInfo?.departmentID ===
+                                                  8) && (
+                                                <InitialApprovalButtons
+                                                  item={item}
+                                                  progressID={
+                                                    mrHeader.progress_id
+                                                  }
+                                                />
+                                              )}
+                                          </div>
+                                        </td>
+                                      )}
+
+                                    {/* QS Review column at Manager Approval stage (supplier view) */}
+                                    {mrHeader.progress_id === 3 &&
+                                      (userInfo?.departmentID === 8 ||
+                                        userInfo?.departmentID ===
+                                          mrHeader.department_id) && (
+                                        <td>
+                                          {item.qs_review_type ===
+                                          "need_order" ? (
+                                            <div
+                                              className="approval-pill"
+                                              style={{
+                                                backgroundColor:
+                                                  "rgba(34, 150, 100, 1)",
+                                                color: "white",
+                                              }}
+                                            >
+                                              <span
+                                                style={{ textWrap: "nowrap" }}
+                                              >
+                                                Need Order
+                                              </span>
+                                            </div>
+                                          ) : item.qs_review_type ===
+                                            "item_available" ? (
+                                            <div
+                                              className="approval-pill"
+                                              style={{
+                                                backgroundColor:
+                                                  "rgba(34, 150, 100, 1)",
+                                                color: "white",
+                                              }}
+                                            >
+                                              <span
+                                                style={{ textWrap: "nowrap" }}
+                                              >
+                                                {item.linked_inventory_item_description ||
+                                                  "Item Available"}
+                                              </span>
+                                              {item.linked_inventory_item_id && (
+                                                <Button
+                                                  componentType="link"
+                                                  bgColor={"transparent"}
+                                                  borderColor={"transparent"}
+                                                  textColor={"black"}
+                                                  href={`/inventory/${item.linked_inventory_item_id}`}
+                                                  style={{ padding: "0px" }}
+                                                >
+                                                  <img
+                                                    src={externalLinkIcon}
+                                                    alt="view"
+                                                    style={{
+                                                      filter: "invert(1)",
+                                                      cursor: "pointer",
+                                                    }}
+                                                  />
+                                                </Button>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            "-"
+                                          )}
+                                        </td>
+                                      )}
+
+                                    {/* Manager ACTIONS cell at Manager Approval stage (supplier view) */}
+                                    {mrHeader.progress_id === 3 &&
+                                      userInfo?.departmentID === 8 && (
+                                        <td>
+                                          <InitialApprovalButtons
+                                            item={item}
+                                            progressID={mrHeader.progress_id}
+                                          />
+                                        </td>
+                                      )}
 
                                     {(mrHeader.progress_id === 1 ||
                                       mrHeader.progress_id === 5 ||
@@ -3364,6 +3798,46 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                                             mrHeader={mrHeader}
                                             item={item}
                                           />
+                                        </td>
+                                      )}
+
+                                    {/* Stock Transfer actions at progress_id 4 (specific category view) */}
+                                    {(userInfo?.departmentID === 11 ||
+                                      userInfo?.departmentID === 8) &&
+                                      mrHeader.progress_id === 4 && (
+                                        <td>
+                                          {item.qs_review_type ===
+                                          "item_available" ? (
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "6px",
+                                              }}
+                                            >
+                                              {!item.stock_transfer_id ? (
+                                                <MrTransferIssueButton
+                                                  item={item}
+                                                />
+                                              ) : (
+                                                <>
+                                                  <MrDownloadDnButton
+                                                    transactionID={
+                                                      item.stock_transfer_id
+                                                    }
+                                                  />
+                                                  <MrUploadSignedDnButton
+                                                    transactionID={
+                                                      item.stock_transfer_id
+                                                    }
+                                                    mrLineId={item.id}
+                                                  />
+                                                </>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            "-"
+                                          )}
                                         </td>
                                       )}
                                   </tr>
@@ -3699,7 +4173,36 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
                     <td>{itemIndex + 1}</td>
                     <td>{item.material_category}</td>
                     <td>{item.material_subcategory}</td>
-                    <td>{item.material_description}</td>
+                    <td>
+                      {item.material_description}
+                      {item.qs_review_type === "item_available" &&
+                        mrHeader.progress_id <= 4 &&
+                        item.linked_inventory_item_description && (
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              color: "rgba(26, 216, 135, 1)",
+                              marginTop: "4px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                            }}
+                          >
+                            Item available:{" "}
+                            {item.linked_inventory_item_description}
+                            <img
+                              src={externalLinkIcon}
+                              alt=""
+                              style={{
+                                width: "10px",
+                                height: "10px",
+                                filter:
+                                  "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
+                              }}
+                            />
+                          </div>
+                        )}
+                    </td>
                     {mrHeader.progress_id >= 9 ? (
                       <>
                         <td>
@@ -4051,6 +4554,15 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
               mrHeader={mrHeader}
               progressId={mrHeader.progress_id}
               disabled={!allItemsApproved()}
+              label={(() => {
+                const allItems = getAllFlatItems();
+                const hasItemAvailable = allItems.some(
+                  (l) => l.qs_review_type === "item_available",
+                );
+                return hasItemAvailable
+                  ? "SUBMIT FOR STOCK TRANSFER"
+                  : "SUBMIT FOR QUOTATIONS";
+              })()}
               style={{
                 opacity: !allItemsApproved() ? "0.5" : "1",
                 cursor: !allItemsApproved() ? "not-allowed" : "pointer",
@@ -4074,22 +4586,30 @@ export default function MrLinesView({ mrHeader, mrLines }: MrLinesViewProps) {
 
           <div></div>
 
-          {hasQSRejectedItems() ? (
-            <SubmitForResubmissionButton mrHeader={mrHeader} />
-          ) : (
-            <SubmitForInitialApprovalButton
-              mrHeader={mrHeader}
-              progressId={mrHeader.progress_id}
-              disabled={!allItemsQSApproved()} // Changed this line
-              style={{
-                opacity: !allItemsQSApproved() ? "0.5" : "1", // Changed this line
-                cursor: !allItemsQSApproved() ? "not-allowed" : "pointer", // Changed this line
-                pointerEvents: !allItemsQSApproved() ? "none" : "auto", // Changed this line
-              }}
-            />
-          )}
+          <SubmitForInitialApprovalButton
+            mrHeader={mrHeader}
+            progressId={mrHeader.progress_id}
+            disabled={!allItemsQSReviewed()}
+            style={{
+              opacity: !allItemsQSReviewed() ? "0.5" : "1",
+              cursor: !allItemsQSReviewed() ? "not-allowed" : "pointer",
+              pointerEvents: !allItemsQSReviewed() ? "none" : "auto",
+            }}
+          />
         </div>
       )}
+
+      {/* Stock Transfer (Progress 4) - Storekeeper actions */}
+      {(userInfo?.departmentID === 11 || userInfo?.departmentID === 8) &&
+        mrHeader.progress_id === 4 && (
+          <div className="bottom-nav">
+            <div></div>
+            <SubmitForStockTransferCompletion
+              mrHeader={mrHeader}
+              mrLines={getAllFlatItems()}
+            />
+          </div>
+        )}
 
       {/* Awaiting Quotations / Price Approval Rejected (Progress 7 or 11) - Procurement Submit for Pricing Approval */}
       {userInfo?.departmentID === 9 &&

@@ -162,8 +162,8 @@ const styles = StyleSheet.create({
 
   // Attachment image
   attachmentImage: {
-    width: 80,
-    height: 80,
+    width: 50,
+    height: 50,
     objectFit: "cover",
     borderRadius: 4,
   },
