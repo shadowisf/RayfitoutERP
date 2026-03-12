@@ -6,6 +6,9 @@ import {
   StyleSheet,
   Font,
   Image,
+  Svg,
+  Rect,
+  Path,
 } from "@react-pdf/renderer";
 
 Font.register({
@@ -98,22 +101,6 @@ const styles = StyleSheet.create({
     color: "#000000",
   },
 
-  // Section Header (black pill)
-  sectionHeader: {
-    backgroundColor: "#000000",
-    color: "#ffffff",
-    paddingTop: 6,
-    paddingBottom: 3,
-    paddingLeft: 16,
-    paddingRight: 16,
-    fontSize: 10,
-    fontFamily: "Mont-SemiBold",
-    textTransform: "uppercase",
-    borderRadius: 25,
-    textAlign: "center",
-    marginBottom: 15,
-  },
-
   // Vendor details
   vendorSection: {
     marginBottom: 30,
@@ -141,7 +128,7 @@ const styles = StyleSheet.create({
   inspectionHeader: {
     fontSize: 10,
     fontFamily: "Mont-SemiBold",
-    marginBottom: 5,
+    marginBottom: 10,
     color: "#000000",
     textTransform: "uppercase",
   },
@@ -154,111 +141,108 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#f5f5f5",
     padding: "8 12",
-    fontSize: 8,
+    fontSize: 7,
     fontFamily: "Mont-SemiBold",
     textTransform: "uppercase",
   },
   tableRow: {
     flexDirection: "row",
-    padding: "8 12",
+    padding: "6 12",
     borderBottom: "1 solid #e0e0e0",
     fontSize: 8,
     color: "#333333",
-    minHeight: 50,
+    minHeight: 40,
+    alignItems: "flex-start",
   },
 
   // CR table columns
-  colItem: {
-    width: "20%",
+  colMaterial: {
+    width: "15%",
     paddingRight: 4,
   },
   colQtyDelivered: {
-    width: "11%",
-    paddingRight: 4,
-  },
-  colAcceptedQty: {
-    width: "11%",
-    paddingRight: 4,
-  },
-  colQcCode: {
-    width: "11%",
-    paddingRight: 4,
-  },
-  colStatus: {
     width: "10%",
     paddingRight: 4,
   },
+  colAcceptedQty: {
+    width: "10%",
+    paddingRight: 4,
+  },
+  colQcCode: {
+    width: "18%",
+    paddingRight: 4,
+  },
+  colChecklist: {
+    width: "10%",
+    paddingRight: 4,
+    alignItems: "center",
+  },
   colNotes: {
-    width: "22%",
+    width: "17%",
     paddingRight: 4,
   },
   colAttachment: {
-    width: "15%",
+    width: "20%",
     alignItems: "center",
     justifyContent: "center",
   },
 
-  // Status badges
-  statusBadgePassed: {
-    backgroundColor: "#E8F5E9",
-    color: "#2E7D32",
-    fontSize: 8,
-    fontFamily: "Mont-SemiBold",
-    paddingTop: 3,
-    paddingBottom: 2,
-    paddingLeft: 8,
-    paddingRight: 8,
-    borderRadius: 10,
-    textAlign: "center",
-  },
-  statusBadgeFailed: {
-    backgroundColor: "#FFEBEE",
-    color: "#D32F2F",
-    fontSize: 8,
-    fontFamily: "Mont-SemiBold",
-    paddingTop: 3,
-    paddingBottom: 2,
-    paddingLeft: 8,
-    paddingRight: 8,
-    borderRadius: 10,
-    textAlign: "center",
-  },
-
-  // Notes
-  noteItem: {
-    marginBottom: 3,
-    fontSize: 8,
-    lineHeight: 1.4,
-  },
-  noteLabel: {
-    fontFamily: "Mont-SemiBold",
-    fontSize: 8,
-  },
-  noteText: {
-    fontSize: 8,
-    color: "#333333",
-  },
-
   // Attachment image
   attachmentImage: {
-    width: 80,
-    height: 80,
+    width: 70,
+    height: 70,
     objectFit: "cover",
     borderRadius: 4,
   },
+
+  // Section labels
+  vendorSectionLabel: {
+    fontSize: 8,
+    fontFamily: "Mont-SemiBold",
+    color: "#666666",
+    textTransform: "uppercase",
+    marginBottom: 5,
+  },
 });
 
-// Map checkpoint names to short codes
-const CHECKPOINT_CODE_MAP: { [key: string]: string } = {
-  "Item matches purchase specifications": "SPEC",
-  "Dimensions as per approved drawings": "DIM",
-  "Material grade confirmed": "GRADE",
-  "Visual inspection - no damage": "VISUAL",
-  "Finishing quality acceptable": "FINISH",
-  "No corrosion / scratches": "SURFACE",
-  "Color matches approved sample": "COLOR",
-  "Assembly/Functional test": "FUNC",
-};
+// Checkbox component for passed checkpoints
+function CheckboxChecked() {
+  return (
+    <Svg width={12} height={12} viewBox="0 0 12 12">
+      <Rect
+        x={0.5}
+        y={0.5}
+        width={11}
+        height={11}
+        rx={2}
+        fill="#000000"
+        stroke="#000000"
+        strokeWidth={1}
+      />
+      <Path d="M3 6 L5 8 L9 4" stroke="#ffffff" strokeWidth={1.5} fill="none" />
+    </Svg>
+  );
+}
+
+// Checkbox with X for failed checkpoints
+function CheckboxFailed() {
+  return (
+    <Svg width={12} height={12} viewBox="0 0 12 12">
+      <Rect
+        x={0.5}
+        y={0.5}
+        width={11}
+        height={11}
+        rx={2}
+        fill="#ffffff"
+        stroke="#000000"
+        strokeWidth={1}
+      />
+      <Path d="M3.5 3.5 L8.5 8.5" stroke="#000000" strokeWidth={1.5} />
+      <Path d="M8.5 3.5 L3.5 8.5" stroke="#000000" strokeWidth={1.5} />
+    </Svg>
+  );
+}
 
 export type CrData = {
   qc_id: number;
@@ -300,47 +284,24 @@ export function CrPDF({ data, attachmentImages }: CrPDFProps) {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "-";
     const date = new Date(dateStr);
-    return date.toLocaleDateString("en-GB");
+    return date
+      .toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "2-digit",
+      })
+      .toUpperCase();
   };
 
   const formatQuantity = (value: number | string): string => {
     const num = Number(value);
     if (isNaN(num)) return "0";
-    if (Number.isInteger(num)) return num.toLocaleString("en-US");
-    return num.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 3,
-    });
+    if (Number.isInteger(num)) return num.toString();
+    return parseFloat(num.toFixed(3)).toString();
   };
 
   const isCompliant = data.qc_status === "passed";
-
-  // Build notes from checkpoints that have notes
-  const getNotesContent = () => {
-    const failedCheckpoints = data.checkpoints.filter(
-      (cp) => cp.response === "no",
-    );
-
-    if (failedCheckpoints.length === 0) {
-      return null;
-    }
-
-    return failedCheckpoints;
-  };
-
-  const notesCheckpoints = getNotesContent();
-
-  // Get first available attachment image
-  const getFirstAttachmentImage = (): string | null => {
-    for (const cp of data.checkpoints) {
-      if (attachmentImages[cp.checkpoint_number]) {
-        return attachmentImages[cp.checkpoint_number];
-      }
-    }
-    return null;
-  };
-
-  const firstImage = getFirstAttachmentImage();
+  const checkpoints = data.checkpoints;
 
   return (
     <Document>
@@ -349,7 +310,8 @@ export function CrPDF({ data, attachmentImages }: CrPDFProps) {
         <View style={styles.header}>
           <Image src={logo} style={styles.logo} />
           <Text style={styles.title}>
-            COMPLIANCE <Text style={styles.titleBold}>REPORT</Text>{" "}
+            <Text style={styles.titleBold}>COMPLIANCE REPORT </Text>
+            <Text style={styles.titleLight}>(CR)</Text>
           </Text>
         </View>
 
@@ -360,21 +322,24 @@ export function CrPDF({ data, attachmentImages }: CrPDFProps) {
             <Text style={styles.infoValue}>{formatDate(data.qc_date)}</Text>
           </View>
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>CR NUMBER</Text>
+            <Text style={styles.infoLabel}>CR No</Text>
             <Text style={styles.infoValue}>
-              CR-{String(data.qc_id).padStart(5, "0")}
+              CR-{new Date(data.qc_date).getFullYear()}-
+              {String(data.qc_id).padStart(5, "0")}
             </Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>LPO Number</Text>
             <Text style={styles.infoValue}>
-              LPO-{String(data.lpo_number).padStart(5, "0")}
+              PO-{String(data.lpo_number).padStart(5, "0")}
             </Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>MR Number</Text>
             <Text style={styles.infoValue}>
-              MR-{String(data.mr_header_id).padStart(5, "0")}
+              {data.mr_header_id
+                ? `MR-${String(data.mr_header_id).padStart(5, "0")}`
+                : "-"}
             </Text>
           </View>
           <View style={styles.infoItem}>
@@ -394,16 +359,12 @@ export function CrPDF({ data, attachmentImages }: CrPDFProps) {
           </View>
         </View>
 
-        {/* Vendor Section Header */}
-        <View style={{ width: 100 }}>
-          <Text style={styles.sectionHeader}>VENDOR</Text>
-        </View>
-
-        {/* Vendor Details */}
+        {/* Vendor Section */}
         <View style={styles.vendorSection}>
+          <Text style={styles.vendorSectionLabel}>VENDOR/VENDOR</Text>
           <Text style={styles.vendorName}>{data.supplier.name}</Text>
           <Text style={styles.vendorId}>
-            VENDOR NUMBER: VEN-{String(data.supplier.id).padStart(5, "0")}
+            VENDOR ID: SUP{String(data.supplier.id).padStart(4, "0")}
           </Text>
 
           <Text style={styles.vendorName}>
@@ -421,62 +382,73 @@ export function CrPDF({ data, attachmentImages }: CrPDFProps) {
         {/* Items Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.colItem}>ITEM</Text>
+            <Text style={styles.colMaterial}>MATERIAL</Text>
             <Text style={styles.colQtyDelivered}>QTY DELIVERED</Text>
             <Text style={styles.colAcceptedQty}>ACCEPTED QTY</Text>
             <Text style={styles.colQcCode}>QC CODE</Text>
-            <Text style={styles.colStatus}>STATUS</Text>
+            <Text style={styles.colChecklist}>CHECKLIST</Text>
             <Text style={styles.colNotes}>NOTES</Text>
-            <Text style={styles.colAttachment}>ATTACHMENT(S)</Text>
+            <Text style={styles.colAttachment}>ATTACHEMENT</Text>
           </View>
 
-          <View style={styles.tableRow}>
-            <Text style={styles.colItem}>{data.material_description}</Text>
-            <Text style={styles.colQtyDelivered}>
-              {formatQuantity(data.received_quantity)} {data.unit}
-            </Text>
-            <Text style={styles.colAcceptedQty}>
-              {formatQuantity(data.accepted_quantity)} {data.unit}
-            </Text>
-            <Text style={styles.colQcCode}>
-              CR-{String(data.qc_id).padStart(5, "0")}
-            </Text>
-            <View style={styles.colStatus}>
-              <Text
-                style={
-                  isCompliant
-                    ? styles.statusBadgePassed
-                    : styles.statusBadgeFailed
-                }
-              >
-                {isCompliant ? "PASSED" : "FAILED"}
+          {/* One row per checkpoint, item info only on first row */}
+          {checkpoints.map((cp, index) => (
+            <View
+              key={cp.checkpoint_number}
+              style={styles.tableRow}
+              wrap={false}
+            >
+              {/* Material info - only first row */}
+              <Text style={styles.colMaterial}>
+                {index === 0 ? data.material_description : ""}
               </Text>
+              <Text style={styles.colQtyDelivered}>
+                {index === 0
+                  ? `${formatQuantity(data.received_quantity)} ${data.unit}`
+                  : ""}
+              </Text>
+              <Text style={styles.colAcceptedQty}>
+                {index === 0
+                  ? `${formatQuantity(data.accepted_quantity)} ${data.unit}`
+                  : ""}
+              </Text>
+
+              {/* Checkpoint name */}
+              <View style={styles.colQcCode}>
+                <Text style={{ fontSize: 7 }}>{cp.checkpoint_name}</Text>
+              </View>
+
+              {/* Checklist - checkbox */}
+              <View style={styles.colChecklist}>
+                {cp.response === "yes" ? (
+                  <CheckboxChecked />
+                ) : cp.response === "no" ? (
+                  <CheckboxFailed />
+                ) : (
+                  <Text style={{ fontSize: 7, color: "#999999" }}>N/A</Text>
+                )}
+              </View>
+
+              {/* Notes */}
+              <View style={styles.colNotes}>
+                <Text style={{ fontSize: 7 }}>
+                  {cp.notes ? cp.notes : "-"}
+                </Text>
+              </View>
+
+              {/* Attachment */}
+              <View style={styles.colAttachment}>
+                {attachmentImages[cp.checkpoint_number] ? (
+                  <Image
+                    src={attachmentImages[cp.checkpoint_number]}
+                    style={styles.attachmentImage}
+                  />
+                ) : (
+                  <Text style={{ fontSize: 7, color: "#999999" }}>-</Text>
+                )}
+              </View>
             </View>
-            <View style={styles.colNotes}>
-              {notesCheckpoints && notesCheckpoints.length > 0 ? (
-                notesCheckpoints.map((cp) => {
-                  const code =
-                    CHECKPOINT_CODE_MAP[cp.checkpoint_name] ||
-                    cp.checkpoint_name;
-                  return (
-                    <View key={cp.checkpoint_number} style={styles.noteItem}>
-                      <Text>
-                        <Text style={styles.noteLabel}>{code}:</Text>{" "}
-                        <Text style={styles.noteText}>{cp.notes || "-"}</Text>
-                      </Text>
-                    </View>
-                  );
-                })
-              ) : (
-                <Text style={styles.noteText}>All checkpoints passed</Text>
-              )}
-            </View>
-            <View style={styles.colAttachment}>
-              {firstImage ? (
-                <Image src={firstImage} style={styles.attachmentImage} />
-              ) : null}
-            </View>
-          </View>
+          ))}
         </View>
       </Page>
     </Document>

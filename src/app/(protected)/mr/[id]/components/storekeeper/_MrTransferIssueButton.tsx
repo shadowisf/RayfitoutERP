@@ -1,0 +1,787 @@
+"use client";
+
+import Button from "@/app/components/Button";
+import FormPopUp from "@/app/components/FormPopup";
+import InputItem from "@/app/components/InputItem";
+import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
+import { useEffect, useState } from "react";
+import { toast } from "@/app/components/Toast";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext";
+import { MrLine } from "../../types/mrLine";
+import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
+import FormContextHeader from "@/app/components/FormContextHeader";
+import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
+
+type Props = {
+  item: MrLine;
+  onTransferComplete?: (transferId: number) => void;
+};
+
+export default function MrTransferIssueButton({
+  item,
+  onTransferComplete,
+}: Props) {
+  const router = useRouter();
+  const { userInfo } = useAuth();
+
+  const [isOpen, setIsOpen] = useState(false);
+
+  const [type, setType] = useState("");
+  const [from, setFrom] = useState<string | number>("");
+  const [to, setTo] = useState("");
+  const [quantity, setQuantity] = useState<string | number>(
+    item.quantity || "",
+  );
+  const [purpose, setPurpose] = useState("");
+  const [receiverName, setReceiverName] = useState<string | number>("");
+  const [serialNumber, setSerialNumber] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [thirdParty, setThirdParty] = useState(false);
+  const [packingList, setPackingList] = useState(false);
+  const [projectID, setProjectID] = useState<string | number>(
+    item.project_id || "",
+  );
+  const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
+  const [containerNumber, setContainerNumber] = useState("");
+  const [length, setLength] = useState("");
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
+
+  const [availableQuantity, setAvailableQuantity] = useState<number | string>(
+    "",
+  );
+  const [fromValues, setFromValues] = useState<string[]>([]);
+  const [toValues, setToValues] = useState<string[]>([]);
+  const [projectValues, setProjectValues] = useState<any>([]);
+  const [stocksData, setStocksData] = useState<any>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchStocksData();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
+      method: "GET",
+    })
+      .then((res) => res.json())
+      .then((data) => setProjectValues(data));
+  }, []);
+
+  function fetchStocksData() {
+    if (!item.linked_inventory_item_id) return;
+
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getStocksByInventoryItemID`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inventoryItemId: item.linked_inventory_item_id,
+        }),
+      },
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        setStocksData(data);
+
+        const stockLocations = data.stocks.map(
+          (s: { location: string }) => s.location,
+        );
+        const transferredLocations = data.stocksTransferIssue
+          .filter((t: any) => t.type.toLowerCase().includes("transfer"))
+          .map((t: any) => t.to_location);
+
+        const allLocations = [
+          ...new Set([...stockLocations, ...transferredLocations]),
+        ];
+        setFromValues(allLocations as string[]);
+      });
+
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
+      method: "GET",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const locations = data.map((item: { name: string }) => item.name);
+        setToValues(locations);
+      });
+  }
+
+  // Calculate available quantity when "from" changes
+  useEffect(() => {
+    if (!from || !stocksData) {
+      setAvailableQuantity("");
+      return;
+    }
+
+    let locationQuantity = 0;
+    const round = (n: number) => Math.round(n * 1000) / 1000;
+
+    stocksData.stocks.forEach((stock: any) => {
+      if (stock.location === from) {
+        locationQuantity = round(locationQuantity + Number(stock.quantity));
+      }
+    });
+
+    stocksData.stocksTransferIssue.forEach((transaction: any) => {
+      const transactionType = transaction.type.toLowerCase();
+      if (
+        transactionType.includes("issue") ||
+        transactionType.includes("send")
+      ) {
+        if (transaction.from_location === from) {
+          locationQuantity = round(
+            locationQuantity - Number(transaction.quantity),
+          );
+        }
+      } else if (transactionType.includes("transfer")) {
+        if (transaction.from_location === from) {
+          locationQuantity = round(
+            locationQuantity - Number(transaction.quantity),
+          );
+        }
+        if (transaction.to_location === from) {
+          locationQuantity = round(
+            locationQuantity + Number(transaction.quantity),
+          );
+        }
+      }
+    });
+
+    setAvailableQuantity(locationQuantity > 0 ? round(locationQuantity) : 0);
+  }, [from, stocksData]);
+
+  // Reset fields when type changes
+  useEffect(() => {
+    setFrom("");
+    setTo("");
+    setPurpose("");
+    setReceiverName("");
+    setFile(null);
+    setThirdParty(false);
+    setPackingList(false);
+    setContainerNumber("");
+    setLength("");
+    setWidth("");
+    setHeight("");
+  }, [type]);
+
+  const handleBoqSelection = (boqIDs: number[], boqInfo: string) => {
+    setBoqLineIDs(boqIDs);
+  };
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (availableQuantity === "" || availableQuantity === 0) {
+      toast("No stock available at selected location", "error");
+      return;
+    }
+
+    const qty = Number(quantity);
+    const available = Number(availableQuantity);
+
+    if (isNaN(qty) || qty <= 0) {
+      toast("Please enter a valid quantity", "error");
+      return;
+    }
+
+    if (qty > available) {
+      toast("Quantity cannot exceed available quantity", "error");
+      return;
+    }
+
+    let attachmentUrls: string[] = [];
+
+    if (file) {
+      try {
+        const formData = new FormData();
+        formData.append("files", file);
+        formData.append("folder", "stock-issue-attachments");
+
+        const uploadResponse = await fetch("/api/s3", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload files");
+        }
+
+        const uploadResult = await uploadResponse.json();
+        attachmentUrls = uploadResult.urls;
+      } catch (error) {
+        console.error("Error uploading files:", error);
+        toast("Failed to upload files", "error");
+        return;
+      }
+    }
+
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/stock`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "transferIssueStock",
+        inventory_item_id: item.linked_inventory_item_id,
+        project_id: projectID,
+        boq_line_ids: boqLineIDs,
+        type,
+        transferee: userInfo?.name,
+        from,
+        to: to || item.delivery_location || "",
+        quantity,
+        purpose,
+        third_party_involved: thirdParty,
+        packing_list_required: packingList,
+        receiver_name: receiverName,
+        serial_number: serialNumber,
+        attachment: file ? JSON.stringify(attachmentUrls) : null,
+        container_number: containerNumber,
+        length,
+        width,
+        height,
+        inventory_item_name:
+          item.linked_inventory_item_description || item.material_description,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const transferId = data.transferId || data.insertId;
+
+      if (transferId) {
+        // Link transfer to MR line
+        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "linkStockTransferToMrLine",
+            id: item.id,
+            stock_transfer_id: transferId,
+          }),
+        });
+
+        if (onTransferComplete) {
+          onTransferComplete(transferId);
+        }
+      }
+
+      toast(
+        type.toLowerCase().includes("transfer")
+          ? "Stock transferred"
+          : type.toLowerCase().includes("issue")
+            ? "Stock issued"
+            : "Stock sent",
+        "success",
+      );
+      setIsOpen(false);
+      router.refresh();
+    } else {
+      toast("Failed to transfer or issue stock", "error");
+    }
+  }
+
+  return (
+    <>
+      <Button
+        componentType={"button"}
+        bgColor={"black"}
+        borderColor={"black"}
+        textColor={"white"}
+        onClick={() => setIsOpen(true)}
+        style={{
+          padding: "7px 20px",
+          borderRadius: "25px",
+        }}
+      >
+        Transfer/Issue Item
+      </Button>
+
+      {isOpen && (
+        <FormPopUp
+          header={`ISSUE/TRANSFER STOCK - ${(item.linked_inventory_item_description || item.material_description).toUpperCase()}`}
+          setIsOpen={setIsOpen}
+          handleSubmit={handleSubmit}
+          addButtonLabel={"CONFIRM"}
+          style={{ minWidth: "1000px" }}
+        >
+          <FormContextHeader>TRANSFER CONTEXT</FormContextHeader>
+          <div className="input-row half">
+            <InputItem
+              label={"TYPE"}
+              value={type}
+              type={"select"}
+              required
+              onChange={(e) => setType(e.target.value)}
+              selectOptions={[
+                "Material transfer",
+                "Issue for use",
+                "Send for processing",
+              ]}
+            />
+            {type !== "" && (
+              <InputItem
+                label={
+                  type.toLowerCase().includes("transfer")
+                    ? "PURPOSE OF TRANSFER"
+                    : type.toLowerCase().includes("issue")
+                      ? "PURPOSE OF ISSUE"
+                      : "PURPOSE OF SENDING"
+                }
+                value={purpose}
+                type={"select"}
+                required
+                onChange={(e) => setPurpose(e.target.value)}
+                selectOptions={
+                  type.toLowerCase().includes("transfer")
+                    ? [
+                        "Relocation/re-racking",
+                        "Storage consolidation",
+                        "Temporary holding",
+                        "Space optimization",
+                      ]
+                    : type.toLowerCase().includes("issue")
+                      ? [
+                          "Project execution",
+                          "Equipment/laptop/tools",
+                          "Administrative/non-project work",
+                        ]
+                      : [
+                          "Veneer pressing",
+                          "Painting/coating",
+                          "Polishing/finishing",
+                          "CNC cutting/trimming",
+                          "Repair/rectification",
+                          "Testing/certification",
+                        ]
+                }
+              />
+            )}
+          </div>
+
+          {type.toLowerCase().includes("issue") && (
+            <div className="input-row half">
+              <SingleSelectDropdown
+                label="PROJECT REFERENCE"
+                dbData={projectValues}
+                selectedValue={projectID}
+                onChange={setProjectID}
+                placeholder="SELECT PROJECT"
+                idField="id"
+                labelField="name"
+                required={false}
+              />
+              <div className="input-item">
+                <label className="custom">
+                  <span>BILL OF QUANTITY REFERENCE</span>
+                  <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                    (OPTIONAL)
+                  </small>
+                </label>
+
+                <MultipleSelectBoqItemButton
+                  projectID={Number(projectID)}
+                  onSelectBoq={handleBoqSelection}
+                  disabled={projectID === ""}
+                  currentBoqLineIDs={boqLineIDs}
+                  style={{ height: "30.5px" }}
+                />
+              </div>
+            </div>
+          )}
+
+          <br />
+
+          {type !== "" && (
+            <>
+              <FormContextHeader>QUANTITY & RESPONSIBILITY</FormContextHeader>
+              <div className="input-row half">
+                <InputItem
+                  label={
+                    type.toLowerCase().includes("transfer")
+                      ? "TRANSFER FROM"
+                      : type.toLowerCase().includes("issue")
+                        ? "ISSUE FROM"
+                        : "SEND FROM"
+                  }
+                  value={from}
+                  type={"select"}
+                  placeholder={
+                    type.toLowerCase().includes("transfer")
+                      ? "SELECT TRANSFER FROM"
+                      : "SELECT ISSUE FROM"
+                  }
+                  required
+                  onChange={(e) => setFrom(e.target.value)}
+                  selectOptions={fromValues.filter((val: string) => val !== to)}
+                />
+
+                {type.toLowerCase().includes("transfer") ? (
+                  <InputItem
+                    label={"TRANSFER TO"}
+                    value={to}
+                    type={"select"}
+                    placeholder={"SELECT TRANSFER TO"}
+                    required
+                    onChange={(e) => setTo(e.target.value)}
+                    selectOptions={[
+                      "Headquarters",
+                      "Umm Al Quwain Warehouse",
+                      ...toValues,
+                    ].filter((val: string) => val !== from)}
+                  />
+                ) : (
+                  <InputItem
+                    label={
+                      type.toLowerCase().includes("send")
+                        ? "FULL NAME OF RECEPIENT / ORGANIZATION"
+                        : "FULL NAME OF RECEPIENT"
+                    }
+                    type="text"
+                    value={receiverName}
+                    onChange={(e) => setReceiverName(e.target.value)}
+                    required
+                  />
+                )}
+              </div>
+
+              {type.toLowerCase().includes("transfer") && (
+                <>
+                  <div className="input-row half">
+                    <div
+                      className="input-item"
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          height: "100%",
+                        }}
+                      >
+                        <div
+                          onClick={() => setThirdParty(!thirdParty)}
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "5px",
+                            border: thirdParty ? "none" : "2px solid #d1d5db",
+                            backgroundColor: thirdParty
+                              ? "#10b981"
+                              : "transparent",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {thirdParty && (
+                            <svg
+                              width="24"
+                              height="24"
+                              viewBox="0 0 20 20"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M16.6667 5L7.50004 14.1667L3.33337 10"
+                                stroke="white"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                      <label
+                        style={{
+                          maxWidth: "500px",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        3RD PARTY TRANSPORT INVOLVED?
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="input-row half">
+                    <div
+                      className="input-item"
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          height: "100%",
+                        }}
+                      >
+                        <div
+                          onClick={() => setPackingList(!packingList)}
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "5px",
+                            border: packingList ? "none" : "2px solid #d1d5db",
+                            backgroundColor: packingList
+                              ? "#10b981"
+                              : "transparent",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {packingList && (
+                            <svg
+                              width="24"
+                              height="24"
+                              viewBox="0 0 20 20"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M16.6667 5L7.50004 14.1667L3.33337 10"
+                                stroke="white"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                      <label
+                        style={{
+                          maxWidth: "500px",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        PACKING LIST REQUIRED?
+                      </label>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="input-row half">
+                <InputItem
+                  label={"CONTAINER NUMBER / VEHICLE REFERENCE NUMBER"}
+                  value={containerNumber}
+                  type={"text"}
+                  onChange={(e) => setContainerNumber(e.target.value)}
+                  required
+                />
+
+                <div className="input-item">
+                  <label className="custom">
+                    <span>DIMENSIONS</span>
+                  </label>
+
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <InputItem
+                      label={"LENGTH"}
+                      value={length}
+                      type={"text"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                          setLength(val);
+                        }
+                      }}
+                      required
+                      style={{
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        width: "175px",
+                      }}
+                    />
+                    <InputItem
+                      label={"WIDTH"}
+                      value={width}
+                      type={"text"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                          setWidth(val);
+                        }
+                      }}
+                      required
+                      style={{
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        width: "175px",
+                      }}
+                    />
+                    <InputItem
+                      label={"HEIGHT"}
+                      value={height}
+                      type={"text"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                          setHeight(val);
+                        }
+                      }}
+                      required
+                      style={{
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        width: "175px",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="input-row three-col">
+                <InputItem
+                  label={"AVAILABLE QUANTITY"}
+                  value={
+                    availableQuantity === ""
+                      ? ""
+                      : Number.isInteger(Number(availableQuantity))
+                        ? String(availableQuantity)
+                        : Number(availableQuantity)
+                            .toFixed(3)
+                            .replace(/\.?0+$/, "")
+                  }
+                  type={"text"}
+                  placeholder={""}
+                  required
+                  disabled
+                  onChange={() => {}}
+                />
+                <InputItem
+                  label={
+                    type.toLowerCase().includes("transfer")
+                      ? "QUANTITY TO TRANSFER"
+                      : type.toLowerCase().includes("issue")
+                        ? "QUANTITY TO ISSUE"
+                        : "QUANTITY TO SEND"
+                  }
+                  value={quantity}
+                  type={"text"}
+                  placeholder={
+                    type.toLowerCase().includes("transfer")
+                      ? "ENTER QUANTITY TO TRANSFER"
+                      : "ENTER QUANTITY TO ISSUE"
+                  }
+                  required
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    if (val === "" || /^\d*\.?\d{0,3}$/.test(val)) {
+                      setQuantity(val);
+                    }
+                  }}
+                  disabled={from === ""}
+                />
+
+                {type.toLowerCase().includes("transfer") && (
+                  <InputItem
+                    label={"FULL NAME OF SITE RECIPIENT"}
+                    value={receiverName}
+                    type={"text"}
+                    onChange={(e) => setReceiverName(e.target.value)}
+                    required
+                  />
+                )}
+
+                {type.toLowerCase().includes("issue") && (
+                  <InputItem
+                    label={"MODEL NUMBER / SERIAL NUMBER"}
+                    value={serialNumber}
+                    type={"text"}
+                    required={false}
+                    onChange={(e) => setSerialNumber(e.target.value)}
+                  />
+                )}
+
+                {type.toLowerCase().includes("send") && (
+                  <div
+                    className="input-item"
+                    style={{ flexDirection: "row", alignItems: "center" }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        height: "100%",
+                      }}
+                    >
+                      <div
+                        onClick={() => setThirdParty(!thirdParty)}
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "5px",
+                          border: thirdParty ? "none" : "2px solid #d1d5db",
+                          backgroundColor: thirdParty
+                            ? "#10b981"
+                            : "transparent",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {thirdParty && (
+                          <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M16.6667 5L7.50004 14.1667L3.33337 10"
+                              stroke="white"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                    <label
+                      style={{
+                        maxWidth: "500px",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      3RD PARTY TRANSPORT INVOLVED?
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              <br />
+
+              <FormContextHeader>PROOF/ATTACHMENTS</FormContextHeader>
+              <div className="input-row half">
+                <SingleUploadFileBox
+                  fileState={file}
+                  setFileState={setFile}
+                  label={"IMAGE OF MATERIAL / EQUIPMENT"}
+                  acceptedFileTypes={".png,.jpg,.jpeg"}
+                  required
+                />
+              </div>
+            </>
+          )}
+        </FormPopUp>
+      )}
+    </>
+  );
+}

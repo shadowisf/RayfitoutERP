@@ -13,6 +13,7 @@ type SubmitForQuotationsButtonProps = {
   disabled?: boolean;
   style?: React.CSSProperties;
   progressId?: number;
+  label?: string;
 };
 
 export default function SubmitForQuotationsButton({
@@ -20,6 +21,7 @@ export default function SubmitForQuotationsButton({
   style,
   disabled,
   progressId,
+  label,
 }: SubmitForQuotationsButtonProps) {
   const router = useRouter();
 
@@ -65,7 +67,7 @@ export default function SubmitForQuotationsButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        SUBMIT FOR QUOTATIONS
+        {label || "SUBMIT FOR QUOTATIONS"}
       </Button>
 
       {isOpen && (

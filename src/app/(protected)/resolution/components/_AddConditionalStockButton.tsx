@@ -26,6 +26,7 @@ type ConditionalDetail = {
 
 type AddConditionalStockButtonProps = {
   detail: ConditionalDetail;
+  onRefresh?: () => void;
 };
 
 type ExistingStock = {
@@ -39,6 +40,7 @@ type ExistingStock = {
 
 export default function AddConditionalStockButton({
   detail,
+  onRefresh,
 }: AddConditionalStockButtonProps) {
   const { userInfo } = useAuth();
   const router = useRouter();
@@ -153,6 +155,7 @@ export default function AddConditionalStockButton({
         toast("Stock updated", "success");
         setIsOpen(false);
         await checkExistingStock();
+        onRefresh?.();
         router.refresh();
       } else {
         toast("Failed to update stock", "error");
@@ -188,6 +191,7 @@ export default function AddConditionalStockButton({
       setNotes("");
       setInventoryItemID("");
       await checkExistingStock();
+      onRefresh?.();
       router.refresh();
       setIsOpen(false);
     }

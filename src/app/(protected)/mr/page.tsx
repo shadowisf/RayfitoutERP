@@ -328,6 +328,7 @@ export default function MR() {
   const progressToResponsibleDepartment: { [key: number]: number } = {
     2: 16,
     3: 8,
+    4: 11,
     5: 0,
     7: 9,
     9: 16,
@@ -360,6 +361,7 @@ export default function MR() {
       "Awaiting Delivery": { name: "Storekeeper", id: 11 },
       "QC Check": { name: "Quality Control", id: 12 },
       "Failed QC": { name: "Quality Control", id: 12 },
+      "Stock Transfer": { name: "Storekeeper", id: 11 },
       "Stock Entry": { name: "Storekeeper", id: 11 },
       Completed: { name: "", id: 0 },
     };
@@ -447,6 +449,10 @@ export default function MR() {
         { name: "Manager Approval", progress_id: 3 },
       ],
       countStatuses: [2, 3],
+    },
+    {
+      name: "Existing Stock",
+      statuses: [{ name: "Stock Transfer", progress_id: 4 }],
     },
     {
       name: "Commercial Validation",

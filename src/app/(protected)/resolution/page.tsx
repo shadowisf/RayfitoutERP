@@ -198,7 +198,13 @@ export default function ResolutionCenter() {
   const { userInfo } = useAuth();
   const searchParams = useSearchParams();
 
+  const fileIcon = "/icons/resolution-file.svg";
+  const trashIcon = "/icons/resolution-trash.svg";
+  const uTurnIcon = "/icons/resolution-u-turn.svg";
+  const twoWayArrowIcon = "/icons/resolution-two-way-arrow.svg";
+  const checkIcon = "/icons/resolution-check.svg";
   const downloadIcon = "/icons/download.svg";
+
   const departmentID = userInfo?.departmentID;
 
   const [activeTab, setActiveTab] = useState<"failed-qc" | "tracker">(
@@ -247,34 +253,36 @@ export default function ResolutionCenter() {
     }
   }
 
+  // Fetch resolution items on mount to show counts in widgets
   useEffect(() => {
     fetchFailedQCItems();
+    fetchResolutionItems(); // Fetch immediately for widget counts
   }, []);
 
-  useEffect(() => {
-    if (activeTab !== "tracker") return;
+  async function fetchResolutionItems() {
+    setIsTrackerLoading(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/resolution`,
+      );
 
-    async function fetchResolutionItems() {
-      setIsTrackerLoading(true);
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/resolution`,
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setResolutionItems(data.data);
-          }
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setResolutionItems(data.data);
         }
-      } catch (error) {
-        console.error("Error fetching resolution items:", error);
-      } finally {
-        setIsTrackerLoading(false);
       }
+    } catch (error) {
+      console.error("Error fetching resolution items:", error);
+    } finally {
+      setIsTrackerLoading(false);
     }
+  }
 
-    fetchResolutionItems();
+  useEffect(() => {
+    if (activeTab === "tracker" && resolutionItems.length === 0) {
+      fetchResolutionItems();
+    }
   }, [activeTab]);
 
   // Get cards for a specific resolution type and progress stage (with optional reason filter)
@@ -300,6 +308,40 @@ export default function ResolutionCenter() {
     ).length;
   }
 
+  // Calculate resolution counts from resolutionItems
+  const resolutionCounts = {
+    scrapped: resolutionItems.filter(
+      (item) => item.resolution_type === "scrap_discard",
+    ).length,
+    returned: resolutionItems.filter(
+      (item) => item.resolution_type === "return_refund",
+    ).length,
+    replaced: resolutionItems.filter(
+      (item) => item.resolution_type === "replace_vendor",
+    ).length,
+    conditionallyAccepted: resolutionItems.filter(
+      (item) => item.resolution_type === "accept_conditionally",
+    ).length,
+  };
+
+  // Widget styles based on failed items count
+  const getFailedItemsWidgetStyle = () => {
+    if (failedQCItems.length === 0) {
+      return {
+        backgroundColor: "white",
+        color: "black",
+        iconFilter: "invert(1)",
+      };
+    }
+    return {
+      backgroundColor: "rgba(248, 77, 77, 1)",
+      color: "white",
+      iconFilter: "none",
+    };
+  };
+
+  const failedWidgetStyle = getFailedItemsWidgetStyle();
+
   return (
     <div className="dashboard">
       <div
@@ -312,6 +354,117 @@ export default function ResolutionCenter() {
         <h1>RESOLUTION CENTER</h1>
       </div>
 
+      <br />
+      <br />
+
+      <div style={{ display: "flex", gap: "15px" }}>
+        {/* Failed QC Items Widget */}
+        <div
+          className="widget-container"
+          style={{
+            width: "300px",
+            height: "150px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            borderRadius: "15px",
+            backgroundColor: failedWidgetStyle.backgroundColor,
+            color: failedWidgetStyle.color,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <h4 style={{ color: failedWidgetStyle.color }}>Failed Items</h4>
+            <img
+              src={fileIcon}
+              alt="file"
+              style={{ filter: failedWidgetStyle.iconFilter }}
+            />
+          </div>
+          <h4 style={{ fontSize: "24px", color: failedWidgetStyle.color }}>
+            {failedQCItems.length}
+          </h4>
+        </div>
+
+        {/* Scrapped Items Widget */}
+        <div
+          className="widget-container"
+          style={{
+            width: "300px",
+            height: "150px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            borderRadius: "15px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <h4>Scrapped Items</h4>
+            <img src={trashIcon} alt="trash" />
+          </div>
+          <h4 style={{ fontSize: "24px" }}>{resolutionCounts.scrapped}</h4>
+        </div>
+
+        {/* Returned Items Widget */}
+        <div
+          className="widget-container"
+          style={{
+            width: "300px",
+            height: "150px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            borderRadius: "15px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <h4>Returned Items</h4>
+            <img src={uTurnIcon} alt="return" />
+          </div>
+          <h4 style={{ fontSize: "24px" }}>{resolutionCounts.returned}</h4>
+        </div>
+
+        {/* Replaced Items Widget */}
+        <div
+          className="widget-container"
+          style={{
+            width: "300px",
+            height: "150px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            borderRadius: "15px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <h4>Replaced Items</h4>
+            <img src={twoWayArrowIcon} alt="two-way arrow" />
+          </div>
+          <h4 style={{ fontSize: "24px" }}>{resolutionCounts.replaced}</h4>
+        </div>
+
+        {/* Conditionally Accepted Items Widget */}
+        <div
+          className="widget-container"
+          style={{
+            width: "300px",
+            height: "150px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            borderRadius: "15px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <h4>Conditionally Accepted Items</h4>
+            <img src={checkIcon} alt="check" />
+          </div>
+          <h4 style={{ fontSize: "24px" }}>
+            {resolutionCounts.conditionallyAccepted}
+          </h4>
+        </div>
+      </div>
+
+      <br />
       <br />
 
       <div className="category-grid">
@@ -327,7 +480,7 @@ export default function ResolutionCenter() {
               borderRadius: "25px",
             }}
           >
-            FAILED QC
+            FAILED ITEMS
           </Button>
           <Button
             componentType={"button"}

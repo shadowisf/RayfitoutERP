@@ -47,6 +47,7 @@ const STAGE_LABELS: { [key: number]: string } = {
   1: "REQUEST CREATED",
   2: "QS REVIEW",
   3: "MANAGER APPROVAL",
+  4: "STOCK TRANSFER",
   5: "REQUEST REJECTED",
   7: "QUOTATIONS",
   9: "QS PRICE CHECK",
@@ -81,7 +82,12 @@ const JO_STAGE_LABELS: { [key: number]: string } = {
 // Base MR stages (no QS)
 const BASE_MR_STAGES = [1, 3, 7, 10, 12, 26];
 // Full MR stages (with QS)
-const FULL_MR_STAGES = [1, 2, 3, 7, 9, 10, 12, 26];
+const FULL_MR_STAGES = [1, 2, 3, 4, 7, 9, 10, 12, 26];
+
+// Shortened MR stages: all items available, no need_order → stock transfer then completed
+// No manager approval needed — QS review handles it, then stock transfer, then done
+const BASE_MR_STAGES_ALL_AVAILABLE = [1, 4, 25];
+const FULL_MR_STAGES_ALL_AVAILABLE = [1, 2, 4, 25];
 
 // JO Stages - simplified flow for job orders
 // ORDER CREATED (1) → MANAGER APPROVAL (3) → QUOTATIONS (7) → MANAGER PRICE APPROVAL (10) → COMPLETED (25)
@@ -90,7 +96,7 @@ const JO_STAGES_IDS = [1, 3, 7, 10, 25];
 // Base LPO stages (no QS)
 const BASE_LPO_STAGES = [1, 3, 7, 10, 12, 14, 17, 21, 24, 25];
 // Full LPO stages (with QS)
-const FULL_LPO_STAGES = [1, 2, 3, 7, 9, 10, 12, 14, 17, 21, 24, 25];
+const FULL_LPO_STAGES = [1, 2, 3, 4, 7, 9, 10, 12, 14, 17, 21, 24, 25];
 
 type TimelineStage = {
   id: number;
@@ -109,6 +115,8 @@ export default function RequisitionTimeline({
 }: RequisitionTimelineProps) {
   const [progressLog, setProgressLog] = useState<ProgressLogEntry[]>([]);
   const [hasBoqReference, setHasBoqReference] = useState<boolean>(false);
+  const [hasItemAvailable, setHasItemAvailable] = useState<boolean>(false);
+  const [hasNeedOrder, setHasNeedOrder] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -139,6 +147,8 @@ export default function RequisitionTimeline({
         if (boqRes.ok) {
           const boqData = await boqRes.json();
           setHasBoqReference(boqData.hasBoqReference || false);
+          setHasItemAvailable(boqData.hasItemAvailable || false);
+          setHasNeedOrder(boqData.hasNeedOrder ?? true);
         }
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -161,7 +171,10 @@ export default function RequisitionTimeline({
 
   if (lpoId) {
     // LPO flow
-    baseStageIds = hasBoqReference ? FULL_LPO_STAGES : BASE_LPO_STAGES;
+    const fullStages = hasItemAvailable
+      ? FULL_LPO_STAGES
+      : FULL_LPO_STAGES.filter((id) => id !== 4);
+    baseStageIds = hasBoqReference ? fullStages : BASE_LPO_STAGES;
     stageLabels = STAGE_LABELS;
     rejectionIds = REJECTION_IDS;
   } else if (type === "job") {
@@ -171,7 +184,18 @@ export default function RequisitionTimeline({
     rejectionIds = JO_REJECTION_IDS;
   } else {
     // MR flow
-    baseStageIds = hasBoqReference ? FULL_MR_STAGES : BASE_MR_STAGES;
+    if (hasItemAvailable && !hasNeedOrder) {
+      // All lines are item_available → shortened flow: stock transfer then completed
+      baseStageIds = hasBoqReference
+        ? FULL_MR_STAGES_ALL_AVAILABLE
+        : BASE_MR_STAGES_ALL_AVAILABLE;
+    } else {
+      // Normal or mixed flow - only include stage 4 (Stock Transfer) if there are item_available lines
+      const fullStages = hasItemAvailable
+        ? FULL_MR_STAGES
+        : FULL_MR_STAGES.filter((id) => id !== 4);
+      baseStageIds = hasBoqReference ? fullStages : BASE_MR_STAGES;
+    }
     stageLabels = STAGE_LABELS;
     rejectionIds = REJECTION_IDS;
   }

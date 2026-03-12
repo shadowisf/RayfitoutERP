@@ -116,6 +116,23 @@ export default function DownloadGRNButton({
     }
   }
 
+  if (label || children) {
+    return (
+      <Button
+        componentType={"none"}
+        bgColor={bgColor}
+        borderColor={"rgba(207, 207, 207, 1)"}
+        textColor={"black"}
+        style={style || { padding: "7px 7px" }}
+      >
+        <>
+          {label || children}{" "}
+          <img src={downloadIcon} alt="download" onClick={handleDownload} />
+        </>
+      </Button>
+    );
+  }
+
   return (
     <Button
       componentType={"none"}
@@ -124,14 +141,7 @@ export default function DownloadGRNButton({
       textColor={"black"}
       style={style || { padding: "7px 7px" }}
     >
-      {children ? (
-        children
-      ) : (
-        <>
-          {label}{" "}
-          <img src={downloadIcon} alt="download" onClick={handleDownload} />
-        </>
-      )}
+      <img src={downloadIcon} alt="download" onClick={handleDownload} />
     </Button>
   );
 }

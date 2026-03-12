@@ -60,7 +60,7 @@ export default function SubmitForQSPricingApprovalButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        SUBMIT FOR QS PRICE APPROVAL
+        SUBMIT FOR QS PRICE CHECK
       </Button>
 
       {isOpen && (

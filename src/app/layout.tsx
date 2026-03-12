@@ -3,7 +3,7 @@ import "./globals.scss";
 import { AuthProvider } from "./context/AuthContext";
 
 export const metadata: Metadata = {
-  title: "Rayfitout - ERP",
+  title: "Enterprise Resource Planning - Rayfitout",
   description: "",
 };
 

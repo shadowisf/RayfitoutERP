@@ -16,6 +16,7 @@ type CreateCAQCChecklistButtonProps = {
   acceptedQuantity: number;
   receivedQuantity: number;
   orderedQuantity: number;
+  onRefresh?: () => void;
 };
 
 type CheckpointResponse = "yes" | "no" | "na" | null;
@@ -57,6 +58,7 @@ export default function CreateCAQCChecklistButton({
   acceptedQuantity,
   receivedQuantity,
   orderedQuantity,
+  onRefresh,
 }: CreateCAQCChecklistButtonProps) {
   const router = useRouter();
   const { userInfo } = useAuth();
@@ -463,6 +465,7 @@ export default function CreateCAQCChecklistButton({
         setReasonForAdequateProtection("");
         setAttachmentsToDelete([]);
         await checkExistingQc();
+        onRefresh?.();
         router.refresh();
       } else {
         toast(

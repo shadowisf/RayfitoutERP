@@ -71,6 +71,12 @@ export default function AddMrItemButton({
   const [deliveryLocation, setDeliveryLocation] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
 
+  const [inventoryMatch, setInventoryMatch] = useState<{
+    id: number;
+    description: string;
+  } | null>(null);
+  const [isSearchingInventory, setIsSearchingInventory] = useState(false);
+
   async function refreshSubcategories() {
     if (materialCategoryID && userInitiatedCategorySelection) {
       // If a category is selected, fetch only its subcategories
@@ -188,6 +194,45 @@ export default function AddMrItemButton({
       }, 0);
     }
   }, [isOpen, autoCategoryID, autoSubCategoryIDs]);
+
+  // Debounced inventory search when user types item description
+  useEffect(() => {
+    if (!materialDescription || materialDescription.trim().length < 3) {
+      setInventoryMatch(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingInventory(true);
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory/searchByDescription`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              descriptions: [materialDescription.trim()],
+            }),
+          },
+        );
+        const data = await res.json();
+        if (data.success && data.data) {
+          const match = data.data[materialDescription.trim()];
+          setInventoryMatch(
+            match ? { id: match.id, description: match.description } : null,
+          );
+        } else {
+          setInventoryMatch(null);
+        }
+      } catch {
+        setInventoryMatch(null);
+      } finally {
+        setIsSearchingInventory(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [materialDescription]);
 
   // Filter subcategories based on selected category - only if category was selected by user
   useEffect(() => {
@@ -352,6 +397,7 @@ export default function AddMrItemButton({
         setAttachment(null);
         setCategoriesManuallySelected(false);
         setUserInitiatedCategorySelection(false);
+        setInventoryMatch(null);
 
         router.refresh();
       } else {
@@ -430,13 +476,166 @@ export default function AddMrItemButton({
 
           {/* Description and BOQ Line Row */}
           <div className="input-row half">
-            <InputItem
-              label={"ITEM"}
-              value={materialDescription}
-              type={"text"}
-              required
-              onChange={(e) => setMaterialDescription(e.target.value)}
-            />
+            {/* <div className="input-item">
+              <label className="custom">
+                <span>MATERIAL DESCRIPTION</span>
+              </label>
+              <small
+                style={{
+                  fontStyle: "italic",
+                  fontWeight: "100",
+                  fontSize: "9px",
+                  marginBottom: "6px",
+                  color: "rgba(150, 150, 150, 1)",
+                }}
+              >
+                ENTER MATERIAL NAME OR{" "}
+                <a
+                  href="/inventory"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontWeight: "600",
+                    textDecoration: "underline",
+                    color: "inherit",
+                  }}
+                >
+                  SELECT FROM INVENTORY
+                </a>
+              </small>
+              <input
+                type="text"
+                value={materialDescription || ""}
+                onChange={(e) => setMaterialDescription(e.target.value)}
+                placeholder="ENTER MATERIAL NAME"
+                required
+              />
+              {inventoryMatch && (
+                <div
+                  style={{
+                    fontSize: "10px",
+                    color: "rgba(150, 150, 150, 1)",
+                    marginTop: "6px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={{ fontStyle: "italic" }}>
+                    Possible match in inventory:
+                  </span>
+                  <a
+                    href={`/inventory/${inventoryMatch.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontWeight: "600",
+                      color: "black",
+                      textDecoration: "none",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    &ldquo;{inventoryMatch.description}&rdquo;
+                    <img
+                      src="/icons/external-link.svg"
+                      alt=""
+                      style={{ width: "10px", height: "10px" }}
+                    />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMaterialDescription(inventoryMatch.description);
+                      setInventoryMatch(null);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                      fontSize: "10px",
+                      fontWeight: "600",
+                      textDecoration: "underline",
+                      color: "black",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Use This Item
+                  </button>
+                </div>
+              )}
+            </div> */}
+            <div>
+              <InputItem
+                label={"ITEM"}
+                value={materialDescription}
+                type={"text"}
+                onChange={(e) => setMaterialDescription(e.target.value)}
+                required
+              />
+              {inventoryMatch && (
+                <div
+                  style={{
+                    fontSize: "10px",
+                    color: "rgba(150, 150, 150, 1)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "25px",
+                    flexWrap: "wrap",
+                    marginTop: "-10px",
+                    marginBottom: "10px",
+                  }}
+                >
+                  <div style={{ fontStyle: "italic" }}>
+                    <span>Possible match in inventory: </span>
+                    <a
+                      href={`/inventory/${inventoryMatch.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontWeight: "600",
+                        color: "black",
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "7px",
+                      }}
+                    >
+                      &ldquo;{inventoryMatch.description}&rdquo;
+                      <img
+                        src="/icons/external-link.svg"
+                        alt=""
+                        style={{ width: "10px", height: "10px" }}
+                      />
+                    </a>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setMaterialDescription(inventoryMatch.description);
+                      setInventoryMatch(null);
+                    }}
+                    style={{
+                      padding: 0,
+                      cursor: "pointer",
+                      fontSize: "10px",
+                      fontWeight: "600",
+                      textDecoration: "underline",
+                      color: "black",
+                    }}
+                    componentType={"button"}
+                    bgColor={"transparent"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                  >
+                    Use This Item
+                  </Button>
+                </div>
+              )}
+            </div>
 
             <div className="input-item">
               <label className="custom">

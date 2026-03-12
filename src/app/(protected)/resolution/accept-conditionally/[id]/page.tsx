@@ -139,6 +139,7 @@ export default function AcceptConditionallyDetailPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [hasStock, setHasStock] = useState(false);
   const [hasQCChecklist, setHasQCChecklist] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   function parseFileUrl(raw: any): string | null {
     if (!raw) return null;
@@ -216,7 +217,7 @@ export default function AcceptConditionallyDetailPage() {
       }
     }
     checkStock();
-  }, [detail?.mr_line_id, detail?.progress_id]);
+  }, [detail?.mr_line_id, detail?.progress_id, refreshKey]);
 
   // Check if QC checklist exists (for deviation approval QC stage)
   useEffect(() => {
@@ -238,7 +239,12 @@ export default function AcceptConditionallyDetailPage() {
       }
     }
     checkQC();
-  }, [detail?.lpo_mr_line_id, detail?.progress_id]);
+  }, [detail?.lpo_mr_line_id, detail?.progress_id, refreshKey]);
+
+  function handleRefresh() {
+    fetchDetail();
+    setRefreshKey((k) => k + 1);
+  }
 
   async function handleProgressSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -435,10 +441,16 @@ export default function AcceptConditionallyDetailPage() {
                 acceptedQuantity={detail.conditionally_accepted_quantity}
                 receivedQuantity={detail.received_quantity}
                 orderedQuantity={detail.accepted_quantity}
+                onRefresh={handleRefresh}
               />
             )}
 
-            {isStockEntryStage && <AddConditionalStockButton detail={detail} />}
+            {isStockEntryStage && (
+              <AddConditionalStockButton
+                detail={detail}
+                onRefresh={handleRefresh}
+              />
+            )}
 
             <DownloadNCRButton
               qcId={detail.qc_mr_line_id}

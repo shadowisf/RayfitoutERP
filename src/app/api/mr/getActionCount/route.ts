@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     const progressToResponsibleDepartment: { [key: number]: number } = {
       2: 16, // Awaiting QS initial approval → QS
       3: 8, // Awaiting manager initial approval → Management
+      4: 11, // Stock Transfer → Storekeeper
       7: 9, // Awaiting quotations → Procurement
       9: 16, // Awaiting QS price approval → QS
       10: 8, // Awaiting manager price approval → Management
@@ -85,15 +86,30 @@ export async function POST(req: NextRequest) {
       const lpoCount = await countLposAtStages([14]);
       count = mrCount + lpoCount;
     } else if (department_id === 11) {
-      // Storekeeper: LPO stages 17, 24 + own department's rejected (5)
+      // Storekeeper: MR stages 4 (stock transfer) + LPO stages 17, 24 + own department's rejected (5)
+      // Also count mixed MRs (progress >= 7) that have item_available lines needing stock transfer
       const [mrRows] = await db.query(
         `SELECT COUNT(*) as count
          FROM mr_headers
-         WHERE progress_id = 5 AND department_id = 11`,
+         WHERE progress_id = 4
+            OR (progress_id = 5 AND department_id = 11)`,
       );
       const mrCount = Number((mrRows as any)[0].count);
+
+      // Count mixed MRs with pending stock transfers
+      const [mixedRows] = await db.query(
+        `SELECT COUNT(DISTINCT mh.id) as count
+         FROM mr_headers mh
+         INNER JOIN mr_lines ml ON mh.id = ml.mr_header_id
+         WHERE mh.progress_id >= 7
+           AND mh.progress_id < 25
+           AND ml.qs_review_type = 'item_available'
+           AND (ml.stock_transfer_id IS NULL OR ml.signed_dn_file IS NULL)`,
+      );
+      const mixedCount = Number((mixedRows as any)[0].count);
+
       const lpoCount = await countLposAtStages([17, 24]);
-      count = mrCount + lpoCount;
+      count = mrCount + mixedCount + lpoCount;
     } else if (department_id === 12) {
       // Quality Control: LPO stages 21, 23 + own department's rejected (5)
       const [mrRows] = await db.query(
