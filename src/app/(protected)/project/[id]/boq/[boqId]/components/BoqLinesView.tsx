@@ -666,10 +666,12 @@ export default function BoqLinesView({
 
                         {canSeePrice && (
                           <>
-                            <td>{item.rate_per_quantity?.toLocaleString()}</td>
                             <td>
-                              {boqHeader.currency}{" "}
-                              {item.total_cost?.toLocaleString()}
+                              {/* {item.rate_per_quantity?.toLocaleString()} */}
+                            </td>
+                            <td>
+                              {/* {boqHeader.currency}{" "}
+                              {item.total_cost?.toLocaleString()} */}
                             </td>
                           </>
                         )}
@@ -712,8 +714,8 @@ export default function BoqLinesView({
                     <td colSpan={canSeePrice ? 2 : 1}></td>
                     <td>
                       <h3 style={{ textWrap: "nowrap" }}>
-                        {boqHeader.currency}{" "}
-                        {calculateSubtotal(items).toLocaleString()}
+                        {/* {boqHeader.currency}{" "}
+                        {calculateSubtotal(items).toLocaleString()} */}
                       </h3>
                     </td>
                     <td colSpan={canManage ? 3 : 1}></td>
@@ -1159,8 +1161,8 @@ export default function BoqLinesView({
                 <td>{index + 1}</td>
                 <td>{category}</td>
                 <td>
-                  {boqHeader.currency}{" "}
-                  {calculateCategorySubtotal(category).toLocaleString()}
+                  {/* {boqHeader.currency}{" "}
+                  {calculateCategorySubtotal(category).toLocaleString()} */}
                 </td>
               </tr>
             ))}
@@ -1174,14 +1176,14 @@ export default function BoqLinesView({
                 </td>
                 <td>
                   <h3>
-                    {boqHeader.currency}{" "}
+                    {/* {boqHeader.currency}{" "}
                     {categories
                       .reduce(
                         (total, category) =>
                           total + calculateCategorySubtotal(category),
                         0,
                       )
-                      .toLocaleString()}
+                      .toLocaleString()} */}
                   </h3>
                 </td>
               </tr>
@@ -1206,14 +1208,14 @@ export default function BoqLinesView({
               </td>
               <td>
                 <h3>
-                  {boqHeader.currency}{" "}
+                  {/* {boqHeader.currency}{" "}
                   {(
                     categories.reduce(
                       (total, category) =>
                         total + calculateCategorySubtotal(category),
                       0,
                     ) - (boqHeader.discount || 0)
-                  ).toLocaleString()}
+                  ).toLocaleString()} */}
                 </h3>
               </td>
             </tr>

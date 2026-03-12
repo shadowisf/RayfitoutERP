@@ -89,7 +89,7 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
           <h2>{boqHeader?.client_name || "-"}</h2>
         </div>
 
-        {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
+        {/* {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
           <div>
             <small>TOTAL VALUE</small>
             <h2>
@@ -102,7 +102,7 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
               })}
             </h2>
           </div>
-        )}
+        )} */}
 
         <div></div>
       </div>

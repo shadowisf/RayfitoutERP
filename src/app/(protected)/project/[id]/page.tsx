@@ -256,7 +256,7 @@ export default function ProjectWithID() {
             </h2>
           </div>
 
-          <div>
+          {/* <div>
             <small>ALLOCATED BUDGET</small>
             <h2>
               {project?.allocated_budget
@@ -265,7 +265,7 @@ export default function ProjectWithID() {
                   ).toLocaleString("en-US")}`
                 : "-"}
             </h2>
-          </div>
+          </div> */}
 
           <div>
             <small>START DATE</small>
