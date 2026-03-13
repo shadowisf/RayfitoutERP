@@ -28,7 +28,6 @@ export default function DownloadLPOButton({
 
   const [lpo, setLpo] = useState<LpoHeader | null>(null);
   const [mrHeader, setMrHeader] = useState<MrHeader | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -85,8 +84,6 @@ export default function DownloadLPOButton({
       return;
     }
 
-    setIsLoading(true);
-
     try {
       // Generate PDF blob
       const blob = await pdf(<LpoPDF lpo={lpo} mr={mrHeader} />).toBlob();
@@ -118,7 +115,6 @@ export default function DownloadLPOButton({
         textColor={textColor}
         style={style}
         onClick={handleDownload}
-        disabled={isLoading || !lpo || !mrHeader}
       >
         {children}
       </Button>
