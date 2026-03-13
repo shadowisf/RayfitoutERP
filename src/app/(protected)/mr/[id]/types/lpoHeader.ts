@@ -28,4 +28,5 @@ export type LpoHeader = {
   supplier_address: string;
   supplier_trn_number: string;
   created_at: string;
+  date_requested?: string;
 };

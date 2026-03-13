@@ -1,11 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Button from "@/app/components/Button";
-import { LpoHeader } from "../../types/lpoHeader";
 import DownloadLPOButton from "../../lpo/[lpoId]/components/_DownloadLPOButton";
-import { LpoPDF } from "../../lpo/[lpoId]/components/LpoPDF";
-import { pdf } from "@react-pdf/renderer";
 import EditLPOButton from "./_EditLPOButton";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../types/mrHeader";
@@ -17,54 +13,12 @@ type ViewLPOButtonProps = {
   onRefresh?: () => void;
 };
 
-export default function ViewLPOButton({ lpoID, mrHeader, onRefresh }: ViewLPOButtonProps) {
+export default function ViewLPOButton({
+  lpoID,
+  mrHeader,
+  onRefresh,
+}: ViewLPOButtonProps) {
   const { userInfo } = useAuth();
-
-  const [lpo, setLpo] = useState<LpoHeader | null>(null);
-
-  async function fetchLpo() {
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPODetails`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lpo_id: lpoID }),
-        },
-      );
-      const data = await response.json();
-      setLpo(data.data);
-    } catch (error) {
-      console.error("Error fetching LPO:", error);
-    }
-  }
-
-  useEffect(() => {
-    fetchLpo();
-  }, [lpoID]);
-
-  useEffect(() => {
-    async function generatePdfBlob() {
-      if (!lpo) return;
-
-      try {
-        // Generate PDF blob
-        const blob = await pdf(<LpoPDF lpo={lpo} />).toBlob();
-
-        // Create blob URL
-        const url = URL.createObjectURL(blob);
-
-        // Cleanup function to revoke the URL when component unmounts
-        return () => {
-          URL.revokeObjectURL(url);
-        };
-      } catch (error) {
-        console.error("Error generating PDF blob:", error);
-      }
-    }
-
-    generatePdfBlob();
-  }, [lpo]);
 
   return (
     <Button
@@ -75,13 +29,6 @@ export default function ViewLPOButton({ lpoID, mrHeader, onRefresh }: ViewLPOBut
       style={{ padding: "7px 20px", borderRadius: "25px" }}
     >
       LPO
-      {/* <a
-        href={pdfUrl ? pdfUrl : "#"}
-        target="_blank"
-        style={{ display: "flex" }}
-      >
-        <img src={externalLinkIcon} alt="external link" />
-      </a> */}
       {userInfo?.departmentID === 9 &&
         (mrHeader.progress_id === 12 ||
           mrHeader.progress_id === 13 ||
@@ -91,6 +38,7 @@ export default function ViewLPOButton({ lpoID, mrHeader, onRefresh }: ViewLPOBut
             <DeleteLPOButton lpoId={lpoID} onRefresh={onRefresh} />
           </>
         )}
+      {/* Pass mr data to DownloadLPOButton if needed, or let it fetch itself */}
       <DownloadLPOButton lpoID={lpoID} />
     </Button>
   );

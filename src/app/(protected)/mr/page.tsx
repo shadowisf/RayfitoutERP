@@ -29,7 +29,8 @@ type LpoCard = {
 };
 
 // Progress IDs that use LPO cards instead of MR cards
-const LPO_STAGE_IDS = [13, 14, 15, 16, 17, 21, 24, 25];
+// TEMPORARILY DISABLED QC: removed 21 (QC Check)
+const LPO_STAGE_IDS = [13, 14, 15, 16, 17, 24, 25];
 
 export default function MR() {
   const { userInfo } = useAuth();
@@ -359,8 +360,9 @@ export default function MR() {
       "Payment Rejected": { name: "Procurement", id: 9 },
       "GRN failed": { name: "Procurement", id: 9 },
       "Awaiting Delivery": { name: "Storekeeper", id: 11 },
-      "QC Check": { name: "Quality Control", id: 12 },
-      "Failed QC": { name: "Quality Control", id: 12 },
+      // TEMPORARILY DISABLED QC
+      // "QC Check": { name: "Quality Control", id: 12 },
+      // "Failed QC": { name: "Quality Control", id: 12 },
       "Stock Transfer": { name: "Storekeeper", id: 11 },
       "Stock Entry": { name: "Storekeeper", id: 11 },
       Completed: { name: "", id: 0 },
@@ -473,7 +475,7 @@ export default function MR() {
       name: "Delivery",
       statuses: [
         { name: "Awaiting Delivery", progress_id: 17 },
-        { name: "QC Check", progress_id: 21 },
+        // TEMPORARILY DISABLED QC: { name: "QC Check", progress_id: 21 },
         { name: "Stock Entry", progress_id: 24 },
       ],
     },

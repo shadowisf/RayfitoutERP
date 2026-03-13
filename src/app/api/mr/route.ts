@@ -407,9 +407,10 @@ export async function PUT(req: Request) {
         body.id,
       ]);
 
+      // TEMPORARILY DISABLED QC - allow from_progress_id 17 (was hardcoded 21)
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 24, 21, ?)`,
-        [body.id, body.changed_by],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 24, ?, ?)`,
+        [body.id, body.from_progress_id || 17, body.changed_by],
       );
 
       return NextResponse.json({ status: 200 });

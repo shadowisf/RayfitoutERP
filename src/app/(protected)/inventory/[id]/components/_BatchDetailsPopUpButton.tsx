@@ -5,8 +5,10 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { InventoryItem } from "../../types/inventoryItem";
 import DownloadLPOButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadLPOButton";
+/* TEMPORARILY DISABLED QC/CR/NCR
 import DownloadNCRButton from "@/app/(protected)/resolution/components/_DownloadNCRButton";
 import DownloadCRButton from "@/app/(protected)/resolution/components/_DownloadCRButton";
+*/
 import DownloadGRNButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadGRNButton";
 
 type BatchDetailsPopUpButtonProps = {
@@ -632,6 +634,7 @@ export default function BatchDetailsPopUpButton({
             borderRadius: "10px",
           }}
         >
+          {/* TEMPORARILY DISABLED QC/CR/NCR
           <h2>QUALITY & RESOLUTION</h2>
           <br />
           <div
@@ -676,6 +679,7 @@ export default function BatchDetailsPopUpButton({
               </h3>
             </div>
           </div>
+          */}
         </div>
 
         {/* STOCK ENTRY DETAILS */}
@@ -791,6 +795,7 @@ export default function BatchDetailsPopUpButton({
                 </Button>
               )}
             </div>
+            {/* TEMPORARILY DISABLED QC/CR/NCR
             <div>
               {details.qc_id && details.resolution_type && (
                 <DownloadNCRButton
@@ -819,6 +824,7 @@ export default function BatchDetailsPopUpButton({
                 />
               )}
             </div>
+            */}
           </div>
           <br />
           <br />

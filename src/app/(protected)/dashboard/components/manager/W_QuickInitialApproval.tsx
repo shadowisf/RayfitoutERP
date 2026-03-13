@@ -467,7 +467,7 @@ export default function QuickInitialApprovalWidget() {
             fontSize: "14px",
           }}
         >
-          No MRs pending initial approval
+          No requests pending initial approval
         </p>
       </div>
     );
@@ -488,7 +488,7 @@ export default function QuickInitialApprovalWidget() {
             fontWeight: "800",
           }}
         >
-          {mrHeaders.length} MRs
+          {mrHeaders.length} REQUESTS
         </span>
       </div>
 

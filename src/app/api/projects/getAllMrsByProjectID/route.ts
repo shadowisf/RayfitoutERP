@@ -21,8 +21,12 @@ export async function POST(req: Request) {
     const [mrRows]: any = await db.query(mrQuery, [projectId]);
 
     // Separate non-segregated MRs and segregated MRs
+    // Exclude rejected MRs (5 = Request Rejected, 11 = Price Rejected, 13 = Payment Rejected)
+    const REJECTED_PROGRESS_IDS = [5, 11, 13];
     const nonSegregatedMrs = mrRows.filter(
-      (mr: any) => mr.progress_id !== 26,
+      (mr: any) =>
+        mr.progress_id !== 26 &&
+        !REJECTED_PROGRESS_IDS.includes(mr.progress_id),
     );
     const segregatedMrIds = mrRows
       .filter((mr: any) => mr.progress_id === 26)
@@ -37,6 +41,7 @@ export async function POST(req: Request) {
       });
 
     // For segregated MRs, fetch all their LPOs with progress info
+    // EXCLUDE LPOs with progress_id = 13 (Payment Rejected)
     let lpoEntries: any[] = [];
 
     if (segregatedMrIds.length > 0) {
@@ -51,6 +56,7 @@ export async function POST(req: Request) {
         FROM lpo l
         LEFT JOIN lut_mr_headers_progress p ON l.progress_id = p.id
         WHERE l.mr_header_id IN (${placeholders})
+          AND l.progress_id != 13
       `;
       const [lpoRows]: any = await db.query(lpoQuery, segregatedMrIds);
 
@@ -76,7 +82,12 @@ export async function POST(req: Request) {
       display_progress_name: mr.progress_name,
     }));
 
-    const enrichedRows = [...nonSegregatedEntries, ...lpoEntries];
+    // Additional safety filter: exclude any LPO entries with progress_id 13
+    const filteredLpoEntries = lpoEntries.filter(
+      (entry) => entry.lpo_progress_id !== 13,
+    );
+
+    const enrichedRows = [...nonSegregatedEntries, ...filteredLpoEntries];
 
     return NextResponse.json(
       {

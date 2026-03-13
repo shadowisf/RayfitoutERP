@@ -14,13 +14,15 @@ import SubmitForPaymentButton from "../../../components/procurement/_SubmitForPa
 import SubmitForDeliveryButton from "./finance/_SubmitForDeliveryButton";
 import SubmitForLPOResubmissionButton from "./finance/_SubmitForLPOResubmission";
 import SubmitForLPOResubmissionGRNFailButton from "./storekeeper/_SubmitForLPOResubmissionGRNFail";
+/* TEMPORARILY DISABLED QC/CR
 import SubmitForStockEntryButton from "./qualityControl/_SubmitForStockEntry";
+import QCCheckListButton from "./qualityControl/_QCCheckListButton";
+import DownloadCRButton from "@/app/(protected)/resolution/components/_DownloadCRButton";
+*/
 import CompleteMaterialRequestButton from "./storekeeper/_CompleteMaterialRequestButton";
 import CreateGRNButton from "./storekeeper/_CreateGRNButton";
 import SubmitForQCButton from "./storekeeper/_SubmitForQCButton";
-import QCCheckListButton from "./qualityControl/_QCCheckListButton";
 import AddToInventoryButton from "./storekeeper/_AddStockButton";
-import DownloadCRButton from "@/app/(protected)/resolution/components/_DownloadCRButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -121,8 +123,9 @@ export default function LpoLinesView({
   const priceColumnCount = hasPriceColumns ? 2 : 0; // UNIT PRICE and TOTAL PRICE
 
   // Action columns (conditional based on progress and department)
-  const hasQcColumn = userInfo?.departmentID === 12 && progressId === 21;
-  const hasCrColumn = progressId >= 21;
+  // TEMPORARILY DISABLED QC/CR columns
+  const hasQcColumn = false; // was: userInfo?.departmentID === 12 && progressId === 21;
+  const hasCrColumn = false; // was: progressId >= 21;
   const hasStocksColumn = progressId === 24 && userInfo?.departmentID === 11;
   const actionColumnCount = [hasQcColumn, hasCrColumn, hasStocksColumn].filter(
     Boolean,
@@ -760,10 +763,12 @@ export default function LpoLinesView({
               <th>ATTACHMENT</th>
               {canSeePrice && <th>UNIT PRICE</th>}
               {canSeePrice && <th>TOTAL PRICE</th>}
+              {/* TEMPORARILY DISABLED QC/CR
               {userInfo?.departmentID === 12 && progressId === 21 && (
                 <th>QC</th>
               )}
               {hasCrColumn && <th>CR</th>}
+              */}
               {progressId === 24 && userInfo?.departmentID === 11 && (
                 <th>STOCKS</th>
               )}
@@ -849,6 +854,7 @@ export default function LpoLinesView({
 
                   {canSeePrice && <td>AED {totalPrice.toFixed(2)}</td>}
 
+                  {/* TEMPORARILY DISABLED QC/CR
                   {userInfo?.departmentID === 12 && progressId === 21 && (
                     <td>
                       <QCCheckListButton item={item} mrHeader={lpoAsMrHeader} />
@@ -865,6 +871,7 @@ export default function LpoLinesView({
                       )}
                     </td>
                   )}
+                  */}
 
                   {userInfo?.departmentID === 11 && progressId === 24 && (
                     <td>
@@ -1085,7 +1092,7 @@ export default function LpoLinesView({
         </div>
       )}
 
-      {/* Awaiting QC Check (Progress 21) - QC Submit for Stock Entry (with or without resolution) */}
+      {/* TEMPORARILY DISABLED QC
       {userInfo?.departmentID === 12 && progressId === 21 && (
         <div className="bottom-nav">
           <div></div>
@@ -1108,6 +1115,7 @@ export default function LpoLinesView({
           />
         </div>
       )}
+      */}
 
       {/* Awaiting Stock Entry (Progress 24) - Storekeeper Complete */}
       {userInfo?.departmentID === 11 && progressId === 24 && (

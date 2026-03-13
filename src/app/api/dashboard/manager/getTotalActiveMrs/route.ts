@@ -21,11 +21,13 @@ export async function POST(request: Request) {
     }
 
     if (filter === 0) {
+      // Active MRs: below segregated stage (< 26), not completed (25)
       const [mrRows]: any = await db.query(
-        `SELECT COUNT(*) AS mr_count FROM vw_mr_headers WHERE progress_id = 12`,
+        `SELECT COUNT(*) AS mr_count FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25`,
       );
+      // Active LPOs: above LPO & Invoice stage (> 12), not completed (25)
       const [lpoRows]: any = await db.query(
-        `SELECT COUNT(*) AS lpo_count FROM lpo WHERE progress_id != 25`,
+        `SELECT COUNT(*) AS lpo_count FROM lpo WHERE progress_id > 12 AND progress_id != 25`,
       );
       const thisWeek =
         Number(mrRows[0].mr_count || 0) + Number(lpoRows[0].lpo_count || 0);
@@ -34,14 +36,14 @@ export async function POST(request: Request) {
       const [mrItems]: any = await db.query(
         `SELECT id, type, project_name,
            (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw_mr_headers.id) AS item_count
-         FROM vw_mr_headers WHERE progress_id = 12
+         FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25
          ORDER BY date_requested DESC LIMIT ?`,
         [halfLimit],
       );
       const [lpoItems]: any = await db.query(
         `SELECT l.id, l.mr_header_id,
            (SELECT COUNT(*) FROM lpo_mr_line lml WHERE lml.lpo_id = l.id) AS item_count
-         FROM lpo l WHERE l.progress_id != 25
+         FROM lpo l WHERE l.progress_id > 12 AND l.progress_id != 25
          ORDER BY l.created_at DESC LIMIT ?`,
         [halfLimit],
       );
@@ -72,14 +74,14 @@ export async function POST(request: Request) {
       `SELECT
         COUNT(CASE WHEN date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 END) AS this_week,
         COUNT(CASE WHEN date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND date_requested < DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 END) AS last_week
-       FROM vw_mr_headers WHERE progress_id = 12`,
+       FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25`,
       [filter, filter * 2, filter],
     );
     const [lpoCountRows]: any = await db.query(
       `SELECT
         COUNT(CASE WHEN l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 END) AS this_week,
         COUNT(CASE WHEN l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 END) AS last_week
-       FROM lpo l WHERE l.progress_id != 25`,
+       FROM lpo l WHERE l.progress_id > 12 AND l.progress_id != 25`,
       [filter, filter * 2, filter],
     );
 
@@ -94,7 +96,7 @@ export async function POST(request: Request) {
     const [mrItems]: any = await db.query(
       `SELECT id, type, project_name,
          (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw_mr_headers.id) AS item_count
-       FROM vw_mr_headers WHERE progress_id = 12
+       FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25
          AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
        ORDER BY date_requested DESC LIMIT ?`,
       [filter, halfLimit],
@@ -102,7 +104,7 @@ export async function POST(request: Request) {
     const [lpoItems]: any = await db.query(
       `SELECT l.id, l.mr_header_id,
          (SELECT COUNT(*) FROM lpo_mr_line lml WHERE lml.lpo_id = l.id) AS item_count
-       FROM lpo l WHERE l.progress_id != 25
+       FROM lpo l WHERE l.progress_id > 12 AND l.progress_id != 25
          AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
        ORDER BY l.created_at DESC LIMIT ?`,
       [filter, halfLimit],

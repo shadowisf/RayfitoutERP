@@ -84,6 +84,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
     return () => clearInterval(interval);
   }, [userInfo]);
 
+  /* TEMPORARILY DISABLED - Resolution Center
   useEffect(() => {
     if (!userInfo?.departmentID) return;
 
@@ -119,6 +120,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
     const interval = setInterval(fetchResolutionActionCount, 30000);
     return () => clearInterval(interval);
   }, [userInfo]);
+  */
 
   const menuItems = [
     { label: "Dashboard", path: "/dashboard", icon: "/icons/dashboard.svg" },
@@ -149,12 +151,14 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       path: "/payment",
       icon: "/icons/payment-black.svg",
     }, */
+    /* TEMPORARILY DISABLED - Resolution Center
     {
       label: "Resolution Center",
       path: "/resolution",
       icon: "/icons/resolution-center.svg",
       count: resolutionActionCount,
     },
+    */
 
     {
       label: "Inventory",

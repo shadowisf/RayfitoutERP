@@ -31,6 +31,21 @@ export default function SubmitForQC({
 
     const apiUrl = lpoId ? `/api/lpo` : `/api/mr`;
 
+    // TEMPORARILY DISABLED QC - skip directly to Stock Entry (stage 24)
+    const bodyData = lpoId
+      ? {
+          action: "submitLpoForStockEntry",
+          lpo_id: lpoId,
+          mr_header_id: mrHeaderID,
+          from_progress_id: 17,
+          changed_by: userInfo?.name,
+        }
+      : {
+          action: "submitForStockEntry",
+          id: mrHeaderID,
+          changed_by: userInfo?.name,
+        };
+    /* ORIGINAL QC SUBMISSION
     const bodyData = lpoId
       ? {
           action: "submitLpoForQC",
@@ -43,6 +58,7 @@ export default function SubmitForQC({
           id: mrHeaderID,
           changed_by: userInfo?.name,
         };
+    */
 
     const res = await fetch(apiUrl, {
       method: "PUT",
@@ -72,7 +88,7 @@ export default function SubmitForQC({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        SUBMIT FOR QUALITY CONTROL
+        SUBMIT FOR STOCK ENTRY
       </Button>
 
       {isOpen && (

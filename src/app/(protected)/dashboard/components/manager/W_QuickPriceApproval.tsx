@@ -754,7 +754,7 @@ export default function QuickPriceApprovalWidget() {
             fontSize: "14px",
           }}
         >
-          No MRs pending price approval
+          No requests pending price approval
         </p>
       </div>
     );
@@ -775,7 +775,7 @@ export default function QuickPriceApprovalWidget() {
             fontWeight: "800",
           }}
         >
-          {mrHeaders.length} MRs
+          {mrHeaders.length} REQUESTS
         </span>
       </div>
 
