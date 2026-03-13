@@ -17,7 +17,7 @@ export default function DownloadGRNButton({
   children,
   style,
   bgColor = "rgba(239, 239, 239, 1)",
-  label = "GRN",
+  label,
 }: DownloadGRNButtonProps) {
   const downloadIcon = "/icons/download.svg";
 
