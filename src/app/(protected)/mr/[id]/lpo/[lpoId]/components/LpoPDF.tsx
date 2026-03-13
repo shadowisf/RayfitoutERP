@@ -10,6 +10,7 @@ import {
   Line,
 } from "@react-pdf/renderer";
 import { LpoHeader } from "@/app/(protected)/mr/[id]/types/lpoHeader";
+import { MrHeader } from "../../../types/mrHeader";
 
 Font.register({
   family: "Mont",
@@ -278,9 +279,10 @@ const styles = StyleSheet.create({
 
 type LpoPDFProps = {
   lpo: LpoHeader;
+  mr: MrHeader;
 };
 
-export function LpoPDF({ lpo }: LpoPDFProps) {
+export function LpoPDF({ lpo, mr }: LpoPDFProps) {
   const logo = "/icons/logo.jpg";
 
   const formatQuantity = (value: number | string): string => {
@@ -346,7 +348,7 @@ export function LpoPDF({ lpo }: LpoPDFProps) {
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Date</Text>
             <Text style={styles.infoValue}>
-              {new Date(lpo.created_at).toLocaleDateString("en-GB")}
+              {new Date(mr.date_requested).toLocaleDateString("en-GB")}
             </Text>
           </View>
           <View style={styles.infoItem}>

@@ -8,15 +8,17 @@ export async function POST(request: NextRequest) {
     const { lpo_id } = body;
 
     const lpoQuery = `
-  SELECT 
+  SELECT
     l.*,
     s.name as supplier_name,
     s.address as supplier_address,
     s.trn_number as supplier_trn_number,
-    p.name as project_name
+    p.name as project_name,
+    mh.date_requested
   FROM lpo l
   LEFT JOIN suppliers s ON l.supplier_id = s.id
   LEFT JOIN projects p ON l.project_id = p.id
+  LEFT JOIN mr_headers mh ON l.mr_header_id = mh.id
   WHERE l.id = ?
 `;
 

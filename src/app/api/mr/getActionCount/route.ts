@@ -35,14 +35,16 @@ export async function POST(req: NextRequest) {
       15: 9, // Payment rejected → Procurement
       16: 9, // GRN failed → Procurement
       17: 11, // Pending delivery → Storekeeper
-      21: 12, // QC Check → Quality Control
-      23: 12, // Failed QC → Quality Control
+      // TEMPORARILY DISABLED QC
+      // 21: 12, // QC Check → Quality Control
+      // 23: 12, // Failed QC → Quality Control
       24: 11, // Awaiting stock entry → Storekeeper
     };
 
     // LPO stages (13+) need to be counted from the lpo table, not mr_headers
     // Stage 12 remains an MR-level stage (procurement issues LPOs)
-    const LPO_STAGES = [13, 14, 15, 16, 17, 21, 23, 24, 25];
+    // TEMPORARILY DISABLED QC: removed 21, 23
+    const LPO_STAGES = [13, 14, 15, 16, 17, 24, 25];
 
     let count = 0;
 
@@ -110,6 +112,7 @@ export async function POST(req: NextRequest) {
 
       const lpoCount = await countLposAtStages([17, 24]);
       count = mrCount + mixedCount + lpoCount;
+    /* TEMPORARILY DISABLED QC
     } else if (department_id === 12) {
       // Quality Control: LPO stages 21, 23 + own department's rejected (5)
       const [mrRows] = await db.query(
@@ -120,6 +123,7 @@ export async function POST(req: NextRequest) {
       const mrCount = Number((mrRows as any)[0].count);
       const lpoCount = await countLposAtStages([21, 23]);
       count = mrCount + lpoCount;
+    */
     } else {
       // Other departments: Count responsible MR stages + LPO stages + own department's progress_id 5
       const responsibleMrStages = Object.entries(

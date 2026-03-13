@@ -93,10 +93,10 @@ const FULL_MR_STAGES_ALL_AVAILABLE = [1, 2, 4, 25];
 // ORDER CREATED (1) → MANAGER APPROVAL (3) → QUOTATIONS (7) → MANAGER PRICE APPROVAL (10) → COMPLETED (25)
 const JO_STAGES_IDS = [1, 3, 7, 10, 25];
 
-// Base LPO stages (no QS)
-const BASE_LPO_STAGES = [1, 3, 7, 10, 12, 14, 17, 21, 24, 25];
-// Full LPO stages (with QS)
-const FULL_LPO_STAGES = [1, 2, 3, 4, 7, 9, 10, 12, 14, 17, 21, 24, 25];
+// Base LPO stages (no QS) - TEMPORARILY DISABLED QC: removed 21 (QC Check)
+const BASE_LPO_STAGES = [1, 3, 7, 10, 12, 14, 17, 24, 25];
+// Full LPO stages (with QS) - TEMPORARILY DISABLED QC: removed 21 (QC Check)
+const FULL_LPO_STAGES = [1, 2, 3, 4, 7, 9, 10, 12, 14, 17, 24, 25];
 
 type TimelineStage = {
   id: number;

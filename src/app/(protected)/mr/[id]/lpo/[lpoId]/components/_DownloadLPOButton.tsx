@@ -5,6 +5,7 @@ import { pdf } from "@react-pdf/renderer";
 import { LpoPDF } from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/LpoPDF";
 import { LpoHeader } from "../../../types/lpoHeader";
 import Button from "@/app/components/Button";
+import { MrHeader } from "../../../types/mrHeader";
 
 type DownloadLPOButtonProps = {
   lpoID: number;
@@ -26,11 +27,14 @@ export default function DownloadLPOButton({
   const downloadIcon = "/icons/download.svg";
 
   const [lpo, setLpo] = useState<LpoHeader | null>(null);
+  const [mrHeader, setMrHeader] = useState<MrHeader | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    async function fetchLpo() {
+    async function fetchData() {
       try {
-        const response = await fetch(
+        // Fetch LPO first
+        const lpoResponse = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPODetails`,
           {
             method: "POST",
@@ -38,25 +42,54 @@ export default function DownloadLPOButton({
             body: JSON.stringify({ lpo_id: lpoID }),
           },
         );
-        const data = await response.json();
-        if (data.success && data.data) {
-          setLpo(data.data);
+        const lpoData = await lpoResponse.json();
+
+        if (!lpoData.data) {
+          console.error("No LPO data found");
+          return;
+        }
+
+        setLpo(lpoData.data);
+
+        // Then fetch MR header using mr_header_id from LPO
+        if (lpoData.data.mr_header_id) {
+          const mrResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMrHeaderByID`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: lpoData.data.mr_header_id }),
+            },
+          );
+          const mrData = await mrResponse.json();
+
+          // API returns data directly, not wrapped in success
+          if (mrData && mrData.id) {
+            setMrHeader(mrData);
+          } else {
+            console.error("Failed to fetch MR header:", mrData.error);
+          }
         }
       } catch (error) {
-        console.error("Error fetching LPO:", error);
+        console.error("Error fetching data:", error);
       }
     }
-    fetchLpo();
+
+    if (lpoID) {
+      fetchData();
+    }
   }, [lpoID]);
 
   async function handleDownload() {
-    if (!lpo) {
+    if (!lpo || !mrHeader) {
       return;
     }
 
+    setIsLoading(true);
+
     try {
       // Generate PDF blob
-      const blob = await pdf(<LpoPDF lpo={lpo} />).toBlob();
+      const blob = await pdf(<LpoPDF lpo={lpo} mr={mrHeader} />).toBlob();
 
       // Create download link
       const url = URL.createObjectURL(blob);
@@ -85,11 +118,22 @@ export default function DownloadLPOButton({
         textColor={textColor}
         style={style}
         onClick={handleDownload}
+        disabled={isLoading || !lpo || !mrHeader}
       >
         {children}
       </Button>
     );
   }
 
-  return <img src={downloadIcon} alt="download" onClick={handleDownload} />;
+  return (
+    <img
+      src={downloadIcon}
+      alt="download"
+      onClick={handleDownload}
+      style={{
+        cursor: !lpo || !mrHeader ? "not-allowed" : "pointer",
+        opacity: !lpo || !mrHeader ? 0.5 : 1,
+      }}
+    />
+  );
 }
