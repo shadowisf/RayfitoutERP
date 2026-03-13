@@ -786,7 +786,7 @@ export default function BoqReferencePopUp({
                               fontWeight: 600,
                             }}
                           >
-                            {/* AED {group.totalPrice.toLocaleString()} */}
+                            AED {group.totalPrice.toLocaleString()}
                           </td>
                         )}
                       </tr>
@@ -824,9 +824,9 @@ export default function BoqReferencePopUp({
                           backgroundColor: "white",
                         }}
                       >
-                        {/* <h3 style={{ textWrap: "nowrap" }}>
+                        <h3 style={{ textWrap: "nowrap" }}>
                           AED {grandTotal.toLocaleString()}
-                        </h3> */}
+                        </h3>
                       </td>
                     </tr>
                   </tfoot>
@@ -1094,9 +1094,9 @@ export default function BoqReferencePopUp({
                                 backgroundColor: "white",
                               }}
                             >
-                              {/* <h3 style={{ textWrap: "nowrap" }}>
+                              <h3 style={{ textWrap: "nowrap" }}>
                                 AED {group.totalPrice.toLocaleString()}
-                              </h3> */}
+                              </h3>
                             </td>
                             <td
                               style={{
@@ -1391,14 +1391,14 @@ export default function BoqReferencePopUp({
                                   backgroundColor: "white",
                                 }}
                               >
-                                {/* <h3
+                                <h3
                                   style={{
                                     textWrap: "nowrap",
                                     fontSize: "14px",
                                   }}
                                 >
                                   AED {subCatTotal.toLocaleString()}
-                                </h3> */}
+                                </h3>
                               </td>
                               <td
                                 style={{

@@ -354,7 +354,7 @@ export default function Boq() {
                   <td>{boq.total_items || "-"}</td>
                   {canSeePrice && (
                     <td>
-                      {/* {boq.currency} {Number(boq.total_value).toFixed(2)} */}
+                      {boq.currency} {Number(boq.total_value).toFixed(2)}
                     </td>
                   )}
 

@@ -1098,7 +1098,7 @@ export default function MR() {
                     fontSize: "14px",
                   }}
                 >
-                  {totalCount} Items
+                  {totalCount} Requests
                 </div>
               </div>
 

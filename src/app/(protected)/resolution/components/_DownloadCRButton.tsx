@@ -17,7 +17,7 @@ export default function DownloadCRButton({
   children,
   style,
   bgColor = "rgba(239, 239, 239, 1)",
-  label = "CR",
+  label,
 }: DownloadCRButtonProps) {
   const downloadIcon = "/icons/download.svg";
 
@@ -113,17 +113,17 @@ export default function DownloadCRButton({
     }
   }
 
-  if (children) {
+  if (children || label) {
     return (
       <Button
-        componentType={"button"}
+        componentType={"none"}
         bgColor={bgColor}
         borderColor="rgba(223, 223, 223, 1)"
         textColor={"black"}
         style={style || { padding: "7px 7px" }}
-        onClick={handleDownload}
       >
-        {children}
+        {children || label}{" "}
+        <img src={downloadIcon} alt="download" onClick={handleDownload} />
       </Button>
     );
   }
@@ -136,7 +136,6 @@ export default function DownloadCRButton({
       textColor={"black"}
       style={style || { padding: "7px 7px" }}
     >
-      {label}{" "}
       <img src={downloadIcon} alt="download" onClick={handleDownload} />
     </Button>
   );
