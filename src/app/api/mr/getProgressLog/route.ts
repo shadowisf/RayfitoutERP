@@ -80,6 +80,93 @@ export async function POST(req: Request) {
 
     let result = [...progressRows];
 
+    // Enrich rejection entries with fallback data where reject_reason is missing
+    const hasRequestRejection = result.some(
+      (e: any) => e.progress_id === 5 && !e.reject_reason,
+    );
+    const hasPriceRejection = result.some(
+      (e: any) => e.progress_id === 11,
+    );
+    const hasPaymentRejection =
+      lpo_id && result.some((e: any) => e.progress_id === 13 && !e.reject_reason);
+
+    // Request Rejected (5): fallback to mr_lines reject_comment & qs_reject_comment
+    if (hasRequestRejection) {
+      const [rejectedItems]: any = await db.query(
+        `SELECT material_description, reject_comment, qs_reject_comment FROM mr_lines
+         WHERE mr_header_id = ? AND (approval_status = 'Rejected' OR qs_approval_status = 'Rejected')`,
+        [mr_header_id],
+      );
+      if (rejectedItems.length > 0) {
+        const fallbackReason = JSON.stringify(
+          rejectedItems.map((item: any) => ({
+            item: item.material_description,
+            reason: item.reject_comment || item.qs_reject_comment || "",
+          })),
+        );
+        result = result.map((entry: any) => {
+          if (entry.progress_id === 5 && !entry.reject_reason) {
+            return { ...entry, reject_reason: fallbackReason };
+          }
+          return entry;
+        });
+      }
+    }
+
+    // Price Rejected (11): deduplicate items (multiple vendors per item → one entry per item)
+    if (hasPriceRejection) {
+      result = result.map((entry: any) => {
+        if (entry.progress_id === 11 && entry.reject_reason) {
+          try {
+            const reasons: { item: string; reason: string }[] = JSON.parse(
+              entry.reject_reason,
+            );
+            // Deduplicate by item name, keep the first reason found
+            const seen = new Map<string, string>();
+            for (const r of reasons) {
+              if (!seen.has(r.item)) {
+                seen.set(r.item, r.reason);
+              }
+            }
+            const deduped = Array.from(seen.entries()).map(([item, reason]) => ({
+              item,
+              reason,
+            }));
+            return { ...entry, reject_reason: JSON.stringify(deduped) };
+          } catch {
+            return entry;
+          }
+        }
+        return entry;
+      });
+    }
+
+    // Payment Rejected (13): fallback to lpo.payment_reject_comment
+    if (hasPaymentRejection) {
+      const [lpoRows]: any = await db.query(
+        `SELECT payment_reject_comment FROM lpo WHERE id = ?`,
+        [lpo_id],
+      );
+      const paymentRejectComment = lpoRows?.[0]?.payment_reject_comment;
+
+      if (paymentRejectComment) {
+        result = result.map((entry: any) => {
+          if (entry.progress_id === 13 && !entry.reject_reason) {
+            return {
+              ...entry,
+              reject_reason: JSON.stringify([
+                {
+                  item: `LPO-${String(lpo_id).padStart(5, "0")}`,
+                  reason: paymentRejectComment,
+                },
+              ]),
+            };
+          }
+          return entry;
+        });
+      }
+    }
+
     // If header exists and no progress_id 1 in results, add synthetic entry
     const hasCreatedEntry = result.some((row: any) => row.progress_id === 1);
 

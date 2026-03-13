@@ -349,11 +349,13 @@ export async function PUT(req: Request) {
 
     if (body.action === "submitForPricingResubmission") {
       // Auto-query rejected quotations for the reject_reason
+      // Use GROUP BY to deduplicate (one row per item, not per vendor)
       const [rejectedQuotations]: any = await db.query(
-        `SELECT ml.material_description, sq.reject_comment
+        `SELECT ml.material_description, MAX(sq.reject_comment) as reject_comment
          FROM mr_line_supplier_quotation sq
          JOIN mr_lines ml ON sq.mr_line_id = ml.id
-         WHERE ml.mr_header_id = ? AND sq.approval_status = 'Rejected'`,
+         WHERE ml.mr_header_id = ? AND sq.approval_status = 'Rejected'
+         GROUP BY ml.id, ml.material_description`,
         [body.id],
       );
 
@@ -644,10 +646,10 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitForResubmission") {
-      // Auto-query rejected items for the reject_reason
+      // Auto-query rejected items for the reject_reason (both manager and QS rejections)
       const [rejectedItems]: any = await db.query(
-        `SELECT material_description, reject_comment FROM mr_lines
-         WHERE mr_header_id = ? AND approval_status = 'Rejected'`,
+        `SELECT material_description, reject_comment, qs_reject_comment FROM mr_lines
+         WHERE mr_header_id = ? AND (approval_status = 'Rejected' OR qs_approval_status = 'Rejected')`,
         [body.id],
       );
 
@@ -656,7 +658,7 @@ export async function PUT(req: Request) {
           ? JSON.stringify(
               rejectedItems.map((item: any) => ({
                 item: item.material_description,
-                reason: item.reject_comment || "",
+                reason: item.reject_comment || item.qs_reject_comment || "",
               })),
             )
           : null;
