@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function checkAuth() {
     // TODO: TEMPORARY - Remove this hardcoded auth bypass
-    setIsAuthenticated(true);
+    /* setIsAuthenticated(true);
     setUser({ idToken: "fake-token" });
     setUserInfo({
       name: "TEST",
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       departmentID: 8,
     });
     setIsLoading(false);
-    return;
+    return; */
     // END TEMPORARY
 
     /* FINANCE = 10
