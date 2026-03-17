@@ -14,9 +14,10 @@ import { Supplier } from "../types/supplier";
 type props = {
   supplier: Supplier;
   onSuccess?: () => void;
+  iconOnly?: boolean;
 };
 
-export default function EditSupplierButton({ supplier, onSuccess }: props) {
+export default function EditSupplierButton({ supplier, onSuccess, iconOnly }: props) {
   const router = useRouter();
 
   const pencilIcon = "/icons/pencil.svg";
@@ -279,14 +280,19 @@ export default function EditSupplierButton({ supplier, onSuccess }: props) {
     <>
       <Button
         componentType="button"
-        bgColor={"transparent"}
-        borderColor={"transparent"}
+        bgColor={iconOnly ? "rgba(239, 239, 239, 1)" : "transparent"}
+        borderColor={iconOnly ? "rgba(223, 223, 223, 1)" : "transparent"}
         textColor={"black"}
         onClick={() => setIsOpen(true)}
-        full
-        style={{ justifyContent: "flex-start" }}
+        full={!iconOnly}
+        style={
+          iconOnly
+            ? { padding: "7px 7px" }
+            : { justifyContent: "flex-start" }
+        }
       >
-        <img src={pencilIcon} alt="pencil" /> Edit
+        <img src={pencilIcon} alt="pencil" />
+        {!iconOnly && " Edit"}
       </Button>
 
       {isOpen && (

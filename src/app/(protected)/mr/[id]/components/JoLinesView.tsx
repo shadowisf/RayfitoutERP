@@ -98,6 +98,16 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
       Number(item.approved_total_price) > 0,
   );
 
+  // Track live prices when manager selects/changes quotation (before page refresh)
+  const [livePrices, setLivePrices] = useState<Record<number, number>>({});
+
+  const handleTotalPriceChange = (joLineId: number, totalPrice: number) => {
+    setLivePrices((prev) => ({ ...prev, [joLineId]: totalPrice }));
+  };
+
+  // Show total price column from manager price approval stage onwards
+  const showTotalPriceColumn = mrHeader.progress_id >= 10 && canSeePrice;
+
   // ────────────────────────────────────────────────
   // NEW: Check if ANY line has a REJECTED quotation
   // (used to disable Submit for Manager Price Approval)
@@ -249,6 +259,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
               <th>BOQ REF.</th>
               <th>QTY</th>
               {canSeePrice && <th>BUDGET EST.</th>}
+              {showTotalPriceColumn && <th>TOTAL PRICE</th>}
               <th>ATTACHMENT</th>
 
               {mrHeader.progress_id === 3 && <th>APPROVAL STATUS</th>}
@@ -307,6 +318,19 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                       )}
                     </td>
                   )}
+
+                  {showTotalPriceColumn && (
+                    <td>
+                      {(() => {
+                        const price =
+                          livePrices[item.id] !== undefined
+                            ? livePrices[item.id]
+                            : Number(item.approved_total_price) || 0;
+                        return price > 0 ? `AED ${price.toFixed(2)}` : "-";
+                      })()}
+                    </td>
+                  )}
+
                   <td>
                     {attachments.length > 0
                       ? attachments.map((url, idx) => (
@@ -388,6 +412,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                       <JoPriceApprovalButton
                         progressID={mrHeader.progress_id}
                         joLine={item}
+                        onTotalPriceChange={handleTotalPriceChange}
                       />
                     </td>
                   )}
@@ -396,22 +421,34 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             })}
           </tbody>
 
-          {canSeePrice && (
+          {showTotalPriceColumn && (
             <tfoot style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}>
-              {hasAnyApprovedPrice && (
-                <tr>
-                  <td
-                    colSpan={5}
-                    style={{ fontWeight: "600", padding: "15px 20px" }}
-                  >
-                    TOTAL PRICE
-                  </td>
-                  <td style={{ fontWeight: "600", padding: "15px 20px" }}>
-                    AED {totalApprovedPrice.toFixed(2)}
-                  </td>
-                  <td colSpan={10}></td>
-                </tr>
-              )}
+              {(() => {
+                const liveTotalPrice = joLines.reduce((sum, item) => {
+                  const price =
+                    livePrices[item.id] !== undefined
+                      ? livePrices[item.id]
+                      : Number(item.approved_total_price) || 0;
+                  return sum + price;
+                }, 0);
+                const hasAnyPrice =
+                  liveTotalPrice > 0 || hasAnyApprovedPrice;
+
+                return hasAnyPrice ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      style={{ fontWeight: "600", padding: "15px 20px" }}
+                    >
+                      TOTAL PRICE
+                    </td>
+                    <td style={{ fontWeight: "600", padding: "15px 20px" }}>
+                      AED {liveTotalPrice.toFixed(2)}
+                    </td>
+                    <td colSpan={10}></td>
+                  </tr>
+                ) : null;
+              })()}
             </tfoot>
           )}
         </table>

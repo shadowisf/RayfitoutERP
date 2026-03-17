@@ -9,11 +9,13 @@ import { toast } from "@/app/components/Toast";
 type props = {
   subcontractor: Subcontractor;
   onSuccess?: () => void;
+  iconOnly?: boolean;
 };
 
 export default function DeleteSubcontractorButton({
   subcontractor,
   onSuccess,
+  iconOnly,
 }: props) {
   const router = useRouter();
 
@@ -58,14 +60,19 @@ export default function DeleteSubcontractorButton({
     <>
       <Button
         componentType="button"
-        bgColor={"transparent"}
-        borderColor={"transparent"}
+        bgColor={iconOnly ? "rgba(239, 239, 239, 1)" : "transparent"}
+        borderColor={iconOnly ? "rgba(223, 223, 223, 1)" : "transparent"}
         textColor={"black"}
         onClick={() => setIsOpen(true)}
-        full
-        style={{ justifyContent: "flex-start" }}
+        full={!iconOnly}
+        style={
+          iconOnly
+            ? { padding: "7px 7px" }
+            : { justifyContent: "flex-start" }
+        }
       >
-        <img src={trashIcon} alt="trash" /> Delete
+        <img src={trashIcon} alt="trash" />
+        {!iconOnly && " Delete"}
       </Button>
 
       {isOpen && (

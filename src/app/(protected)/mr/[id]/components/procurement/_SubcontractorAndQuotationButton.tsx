@@ -11,7 +11,7 @@ import RejectCommentPopUp from "../manager/RejectCommentPopUp";
 import { MrHeader } from "../../types/mrHeader";
 import { JoLine } from "../../types/joLine";
 import { useAuth } from "@/app/context/AuthContext";
-import CreateSubcontractorButton from "../../../../subcontractor/components/_CreateSubcontractorButton";
+import CreateSubcontractorButton from "../../../../vendor/components/_CreateSubcontractorButton";
 
 type SubcontractorQuotation = {
   id?: number;
@@ -737,6 +737,7 @@ export default function SubcontractorAndQuotationButton({
                             style={{
                               padding: "7px 20px",
                               borderRadius: "25px",
+                              minWidth: "200px",
                             }}
                           >
                             Quotation

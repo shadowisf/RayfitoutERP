@@ -3,7 +3,7 @@
 import Button from "@/app/components/Button";
 import { useState, useRef, useEffect } from "react";
 import DeleteInventoryItemButton from "../[id]/components/_DeleteInventoryItemButton";
-import InventoryFilterButton from "../[id]/components/_InventoryFilterButton";
+import InventoryFilterButton from "../components/_InventoryFilterButton";
 import EditInventoryItemButton from "../components/_EditInventoryItemButton";
 import { InventoryItem } from "../types/inventoryItem";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";

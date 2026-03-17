@@ -462,6 +462,7 @@ export default function QuickInitialApprovalWidget() {
         <h3 style={{ marginBottom: "15px" }}>Initial Approval</h3>
         <p
           style={{
+            color: "gray",
             textAlign: "center",
             padding: "40px 0",
             fontSize: "14px",

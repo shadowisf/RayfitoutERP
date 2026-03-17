@@ -1,0 +1,28 @@
+export const UNIT_OPTIONS = [
+  "ITEM",
+  "NOS",
+  "SQM",
+  "SQFT",
+  "M",
+  "LM",
+  "FT",
+  "CUM",
+  "KG",
+  "TON",
+  "LTR",
+  "GAL",
+  "SET",
+  "LOT",
+  "LS",
+  "PAIR",
+  "BOX",
+  "BAG",
+  "ROLL",
+  "DRUM",
+  "MONTHS",
+  "DAYS",
+  "GLB",
+  "CFT",
+] as const;
+
+export type UnitType = (typeof UNIT_OPTIONS)[number];

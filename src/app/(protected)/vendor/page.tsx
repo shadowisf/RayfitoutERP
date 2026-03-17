@@ -3,36 +3,17 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import ThreeDotsMenuButton from "@/app/components/_ThreeButtonsMenuButton";
-import CreateSubcontractorButton from "../subcontractor/components/_CreateSubcontractorButton";
-import EditSubcontractorButton from "../subcontractor/components/_EditSubcontractorButton";
-import DeleteSubcontractorButton from "../subcontractor/components/_DeleteSubcontractorButton";
+import CreateSubcontractorButton from "./components/_CreateSubcontractorButton";
+import EditSubcontractorButton from "./components/_EditSubcontractorButton";
+import DeleteSubcontractorButton from "./components/_DeleteSubcontractorButton";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import CreateSupplierButton from "../vendor/components/_CreateSupplierButton";
 import DeleteSupplierButton from "../vendor/components/_DeleteSupplierButton";
 import EditSupplierButton from "../vendor/components/_EditSupplierButton";
 import VendorFilterButton from "../vendor/components/_VendorFilterButton";
+import SubcontractorFilterButton from "./components/_SubcontractorFilterButton";
 import { Supplier } from "../vendor/types/supplier";
-
-type Subcontractor = {
-  id: number;
-  name: string;
-  trn_number: string;
-  trn_certificate: string;
-  contract: string;
-  trade_license: string;
-  other_docs: string;
-  contact_person_name: string;
-  phone: string;
-  email: string;
-  address: string;
-  website: string;
-  bank_name: string;
-  account_number: string;
-  notes: string;
-  material_categories: string;
-  material_category_ids: string;
-};
 
 export default function VendorManagement() {
   const { userInfo } = useAuth();
@@ -65,6 +46,13 @@ export default function VendorManagement() {
   const [subSearchQuery, setSubSearchQuery] = useState("");
   // Default to "name" for alphabetical sorting by subcontractor name
   const [subSortBy, setSubSortBy] = useState<"name" | "id">("name");
+  const [subFilters, setSubFilters] = useState<{
+    selectedScopes: string[];
+    selectedProjects: string[];
+  }>({
+    selectedScopes: [],
+    selectedProjects: [],
+  });
 
   // ─── Check URL params on mount ───
   useEffect(() => {
@@ -193,18 +181,82 @@ export default function VendorManagement() {
     }
   });
 
+  // ─── Extract unique subcontractor scopes & projects ───
+  const subScopesOfWork = useMemo(() => {
+    const scopes = new Set<string>();
+    subcontractors.forEach((s: any) => {
+      if (s.scope_of_work) scopes.add(s.scope_of_work);
+    });
+    return Array.from(scopes).sort();
+  }, [subcontractors]);
+
+  const subProjects = useMemo(() => {
+    const projects = new Set<string>();
+    subcontractors.forEach((s: any) => {
+      if (s.project_names) {
+        s.project_names
+          .split(" | ")
+          .map((p: string) => p.trim())
+          .filter((p: string) => p)
+          .forEach((p: string) => projects.add(p));
+      }
+    });
+    return Array.from(projects).sort();
+  }, [subcontractors]);
+
+  // ─── Subcontractor filter helpers ───
+  const hasActiveSubFilters =
+    subFilters.selectedScopes.length > 0 ||
+    subFilters.selectedProjects.length > 0;
+
+  const resetSubFilters = () => {
+    setSubFilters({
+      selectedScopes: [],
+      selectedProjects: [],
+    });
+  };
+
   // ─── Subcontractor filter & sort ───
-  const filteredSubcontractors = subcontractors.filter((subcontractor) => {
+  const filteredSubcontractors = subcontractors.filter((subcontractor: any) => {
+    // Apply scope filter
+    if (subFilters.selectedScopes.length > 0) {
+      if (!subFilters.selectedScopes.includes(subcontractor.scope_of_work)) {
+        return false;
+      }
+    }
+
+    // Apply project filter
+    if (subFilters.selectedProjects.length > 0) {
+      const subProjects = subcontractor.project_names
+        ? subcontractor.project_names
+            .split(" | ")
+            .map((p: string) => p.trim())
+            .filter((p: string) => p)
+        : [];
+      const hasMatchingProject = subProjects.some((p: string) =>
+        subFilters.selectedProjects.includes(p),
+      );
+      if (!hasMatchingProject) {
+        return false;
+      }
+    }
+
+    // Apply search
     const query = subSearchQuery.toLowerCase();
-    return (
-      subcontractor.name?.toLowerCase().includes(query) ||
-      subcontractor.material_categories?.toLowerCase().includes(query) ||
-      subcontractor.trn_number?.toLowerCase().includes(query) ||
-      subcontractor.contact_person_name?.toLowerCase().includes(query) ||
-      `SUB-${String(subcontractor.id).padStart(5, "0")}`
-        .toLowerCase()
-        .includes(query)
-    );
+    if (query) {
+      return (
+        subcontractor.name?.toLowerCase().includes(query) ||
+        subcontractor.material_categories?.toLowerCase().includes(query) ||
+        subcontractor.trn_number?.toLowerCase().includes(query) ||
+        subcontractor.contact_person_name?.toLowerCase().includes(query) ||
+        subcontractor.project_names?.toLowerCase().includes(query) ||
+        `SUB-${String(subcontractor.id).padStart(5, "0")}`
+          .toLowerCase()
+          .includes(query)
+      );
+    }
+
+    return true;
   });
 
   // Fixed sorting: always apply a sort, defaulting to name
@@ -575,21 +627,118 @@ export default function VendorManagement() {
         </table>
       )}
 
+      {/* ─── SUBCONTRACTOR FILTER BAR ─── */}
+      {activeTab === "subcontractors" && (
+        <>
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              paddingBottom: "20px",
+              borderBottom: "1px solid rgba(207, 207, 207, 1)",
+              alignItems: "center",
+            }}
+          >
+            <SubcontractorFilterButton
+              scopesOfWork={subScopesOfWork}
+              projects={subProjects}
+              onApplyFilters={setSubFilters}
+              currentFilters={subFilters}
+            />
+
+            {hasActiveSubFilters && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  alignItems: "center",
+                }}
+              >
+                {subFilters.selectedScopes.length > 0 && (
+                  <Button
+                    style={{
+                      borderRadius: "50px",
+                      fontWeight: 600,
+                    }}
+                    componentType={"none"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                  >
+                    SCOPE:{" "}
+                    <span
+                      style={{
+                        color: "rgba(16, 185, 129, 1)",
+                        textWrap: "nowrap",
+                      }}
+                    >
+                      {subFilters.selectedScopes[0].toUpperCase()}
+                      {subFilters.selectedScopes.length > 1 &&
+                        `, +${subFilters.selectedScopes.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
+                {subFilters.selectedProjects.length > 0 && (
+                  <Button
+                    style={{
+                      borderRadius: "50px",
+                      fontWeight: 600,
+                    }}
+                    componentType={"none"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                  >
+                    PROJECT:{" "}
+                    <span
+                      style={{
+                        color: "rgba(16, 185, 129, 1)",
+                        textWrap: "nowrap",
+                      }}
+                    >
+                      {subFilters.selectedProjects[0].toUpperCase()}
+                      {subFilters.selectedProjects.length > 1 &&
+                        `, +${subFilters.selectedProjects.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
+                <Button
+                  onClick={resetSubFilters}
+                  componentType={"button"}
+                  bgColor={"transparent"}
+                  borderColor={"transparent"}
+                  textColor={"black"}
+                  style={{ padding: "0px" }}
+                >
+                  RESET FILTER
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <br />
+        </>
+      )}
+
       {/* ─── SUBCONTRACTORS TABLE ─── */}
       {activeTab === "subcontractors" && (
         <table className="items-table two-toned">
           <thead>
             <tr>
               <th>#</th>
-              <th>ID</th>
+              <th>SUBCONTRACTOR NUMBER</th>
               <th>NAME</th>
-              <th>MATERIAL CATEGORIES</th>
+              <th>SCOPE OF WORK</th>
+              <th>PROJECT</th>
+              <th>TOTAL COST</th>
               <th>TRN</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {sortedSubcontractors.map((subcontractor, index) => {
+            {sortedSubcontractors.map((subcontractor: any, index: number) => {
               return (
                 <tr key={subcontractor.id}>
                   <td>{index + 1}</td>
@@ -597,7 +746,21 @@ export default function VendorManagement() {
                     SUB-{String(subcontractor.id).padStart(5, "0")}
                   </td>
                   <td>{subcontractor.name}</td>
-                  <td>{subcontractor.material_categories || "-"}</td>
+                  <td>{subcontractor.scope_of_work || "-"}</td>
+                  <td>
+                    {subcontractor.project_names
+                      ? subcontractor.project_names
+                          .split(" | ")
+                          .map((project: string, pIdx: number) => (
+                            <div key={pIdx}>{project}</div>
+                          ))
+                      : "-"}
+                  </td>
+                  <td>
+                    {subcontractor.total_cost
+                      ? `AED ${Number(subcontractor.total_cost).toFixed(2)}`
+                      : "-"}
+                  </td>
                   <td>{subcontractor.trn_number || "-"}</td>
 
                   <td>

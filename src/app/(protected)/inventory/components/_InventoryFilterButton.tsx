@@ -619,7 +619,7 @@ export default function InventoryFilterButton({
               style={{
                 border: "1px solid #e5e7eb",
                 borderRadius: "8px",
-                padding: "20px",
+                padding: "10px",
               }}
             >
               <div style={{ position: "relative", marginBottom: "15px" }}>

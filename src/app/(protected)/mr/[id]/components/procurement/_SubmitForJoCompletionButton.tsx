@@ -72,7 +72,7 @@ export default function SubmitForJoCompletionButton({
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this job order for completion?</p>
+          <p>Are you sure you want to submit this job order</p>
         </FormPopUp>
       )}
     </>

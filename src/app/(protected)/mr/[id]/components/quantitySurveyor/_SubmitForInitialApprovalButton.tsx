@@ -65,7 +65,7 @@ export default function SubmitForInitialApprovalButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        SUBMIT FOR MANAGER INITIAL APPROVAL
+        SUBMIT FOR MANAGER APPROVAL
       </Button>
 
       {isOpen && (

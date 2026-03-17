@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
+import { UNIT_OPTIONS } from "@/constants/units";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { BoqLine } from "../../types/boqLine";
@@ -413,30 +414,7 @@ export default function EditBoqItemButton({
               type="select"
               placeholder="SELECT UNIT"
               onChange={(e) => setUnit(e.target.value)}
-              selectOptions={[
-                "ITEM",
-                "NOS",
-                "SQM",
-                "SQFT",
-                "M",
-                "LM",
-                "FT",
-                "CUM",
-                "KG",
-                "TON",
-                "LTR",
-                "GAL",
-                "SET",
-                "LOT",
-                "LS",
-                "PAIR",
-                "BOX",
-                "BAG",
-                "ROLL",
-                "MONTHS",
-                "DAYS",
-                "GLB",
-              ]}
+              selectOptions={[...UNIT_OPTIONS]}
               required
             />
           </div>

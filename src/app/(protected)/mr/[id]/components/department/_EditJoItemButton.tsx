@@ -3,6 +3,7 @@
 import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
+import { UNIT_OPTIONS } from "@/constants/units";
 import InputItem from "@/app/components/InputItem";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
@@ -210,28 +211,7 @@ export default function EditJoItemButton({ item, projectID }: props) {
               type={"select"}
               required
               onChange={(e) => setUnit(e.target.value)}
-              selectOptions={[
-                "ITEM",
-                "NOS",
-                "SQM",
-                "SQFT",
-                "M",
-                "LM",
-                "FT",
-                "CUM",
-                "KG",
-                "TON",
-                "LTR",
-                "GAL",
-                "SET",
-                "LOT",
-                "LS",
-                "PAIR",
-                "BOX",
-                "BAG",
-                "ROLL",
-                "DRUM",
-              ]}
+              selectOptions={[...UNIT_OPTIONS]}
             />
           </div>
 

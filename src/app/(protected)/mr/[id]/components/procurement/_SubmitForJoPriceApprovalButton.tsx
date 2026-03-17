@@ -41,7 +41,7 @@ export default function SubmitForJoPriceApprovalButton({
     });
 
     if (res.ok) {
-      toast("Job order submitted for manager price approval", "success");
+      toast("Job order submitted", "success");
 
       setIsOpen(false);
 
@@ -73,10 +73,7 @@ export default function SubmitForJoPriceApprovalButton({
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>
-            Are you sure you want to submit this job order for manager price
-            approval?
-          </p>
+          <p>Are you sure you want to submit this job order?</p>
         </FormPopUp>
       )}
     </>

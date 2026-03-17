@@ -21,6 +21,9 @@ export async function POST(req: Request) {
         mh.jo_invoice_file,
         mh.jo_payment_receipt,
         mh.jo_paid_at,
+        p.name AS project_name,
+        MIN(jl.start_date) AS start_date,
+        MAX(jl.end_date) AS end_date,
         SUM(sq.total_price) AS invoice_amount,
         CASE
           WHEN mh.jo_payment_receipt IS NOT NULL
@@ -32,9 +35,10 @@ export async function POST(req: Request) {
       FROM jo_line_subcontractor_quotation sq
       JOIN jo_lines jl ON sq.jo_line_id = jl.id
       JOIN mr_headers mh ON jl.mr_header_id = mh.id
+      LEFT JOIN projects p ON mh.project_id = p.id
       WHERE sq.subcontractor_id = ?
         AND sq.approval_status = 'Approved'
-      GROUP BY mh.id, mh.required_date, mh.jo_invoice_file, mh.jo_payment_receipt
+      GROUP BY mh.id, mh.required_date, mh.jo_invoice_file, mh.jo_payment_receipt, mh.jo_paid_at, p.name
       ORDER BY mh.required_date DESC
       `,
       [subcontractorId],

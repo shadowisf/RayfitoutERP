@@ -7,10 +7,26 @@ export async function GET() {
     const [rows]: any = await db.query(`
       SELECT s.*,
         GROUP_CONCAT(DISTINCT mc.value) as material_categories,
-        GROUP_CONCAT(DISTINCT mc.id) as material_category_ids
+        GROUP_CONCAT(DISTINCT mc.id) as material_category_ids,
+        jo_agg.project_names,
+        jo_agg.total_cost,
+        jo_agg.latest_required_date
       FROM subcontractors s
       LEFT JOIN jt_subcontractor_material_category jsmc ON s.id = jsmc.subcontractor_id
       LEFT JOIN lut_material_categories mc ON jsmc.material_category_id = mc.id
+      LEFT JOIN (
+        SELECT
+          sq.subcontractor_id,
+          GROUP_CONCAT(DISTINCT p.name ORDER BY p.name SEPARATOR ' | ') AS project_names,
+          SUM(sq.total_price) AS total_cost,
+          MAX(mh.required_date) AS latest_required_date
+        FROM jo_line_subcontractor_quotation sq
+        JOIN jo_lines jl ON sq.jo_line_id = jl.id
+        JOIN mr_headers mh ON jl.mr_header_id = mh.id
+        LEFT JOIN projects p ON mh.project_id = p.id
+        WHERE sq.approval_status = 'Approved'
+        GROUP BY sq.subcontractor_id
+      ) jo_agg ON s.id = jo_agg.subcontractor_id
       GROUP BY s.id
       ORDER BY s.name ASC
     `);
@@ -29,16 +45,17 @@ export async function POST(req: Request) {
     if (body.action === "createSubcontractor") {
       const query = `
         INSERT INTO subcontractors
-        (name, trn_number, trn_certificate, contract, trade_license, other_docs, contact_person_name, phone, email, address, website, bank_name, account_number, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (name, scope_of_work, trn_number, trn_certificate, contract, trade_license, other_docs, contact_person_name, phone, email, address, website, bank_name, account_number, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
         body.name,
+        body.scope_of_work,
         body.trn_number,
         body.trn_certificate,
         body.contract,
-        body.trade_licens,
+        body.trade_license,
         body.other_docs || null,
         body.contact_person_name,
         body.phone || null,
