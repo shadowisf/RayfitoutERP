@@ -1,6 +1,7 @@
 type Subcontractor = {
   id: number;
   name: string;
+  scope_of_work: string;
   trn_number: string;
   trn_certificate: string;
   contract: string;

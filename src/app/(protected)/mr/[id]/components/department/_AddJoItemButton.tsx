@@ -3,6 +3,7 @@
 import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
+import { UNIT_OPTIONS } from "@/constants/units";
 import InputItem from "@/app/components/InputItem";
 import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 import { toast } from "@/app/components/Toast";
@@ -44,6 +45,11 @@ export default function AddJoItemButton({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!boqLineIDs) {
+      toast("Please select a bill of quantity reference", "error");
+      return;
+    }
 
     let attachmentUrls: string[] = [];
 
@@ -164,7 +170,7 @@ export default function AddJoItemButton({
             <div className="input-item">
               <label className="custom">
                 <span>BOQ REFERENCE</span>
-                <small>(OPTIONAL)</small>
+                <small>{/* (OPTIONAL) */}</small>
               </label>
               <MultipleSelectBoqItemButton
                 projectID={projectID}
@@ -195,28 +201,7 @@ export default function AddJoItemButton({
               type={"select"}
               required
               onChange={(e) => setUnit(e.target.value)}
-              selectOptions={[
-                "ITEM",
-                "NOS",
-                "SQM",
-                "SQFT",
-                "M",
-                "LM",
-                "FT",
-                "CUM",
-                "KG",
-                "TON",
-                "LTR",
-                "GAL",
-                "SET",
-                "LOT",
-                "LS",
-                "PAIR",
-                "BOX",
-                "BAG",
-                "ROLL",
-                "DRUM",
-              ]}
+              selectOptions={[...UNIT_OPTIONS]}
             />
           </div>
 

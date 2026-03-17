@@ -13,11 +13,13 @@ import Button from "@/app/components/Button";
 type props = {
   subcontractor: Subcontractor;
   onSuccess?: () => void;
+  iconOnly?: boolean;
 };
 
 export default function EditSubcontractorButton({
   onSuccess,
   subcontractor,
+  iconOnly,
 }: props) {
   const router = useRouter();
 
@@ -276,14 +278,19 @@ export default function EditSubcontractorButton({
     <>
       <Button
         componentType="button"
-        bgColor={"transparent"}
-        borderColor={"transparent"}
+        bgColor={iconOnly ? "rgba(239, 239, 239, 1)" : "transparent"}
+        borderColor={iconOnly ? "rgba(223, 223, 223, 1)" : "transparent"}
         textColor={"black"}
         onClick={() => setIsOpen(true)}
-        full
-        style={{ justifyContent: "flex-start" }}
+        full={!iconOnly}
+        style={
+          iconOnly
+            ? { padding: "7px 7px" }
+            : { justifyContent: "flex-start" }
+        }
       >
-        <img src={pencilIcon} alt="pencil" /> Edit
+        <img src={pencilIcon} alt="pencil" />
+        {!iconOnly && " Edit"}
       </Button>
 
       {isOpen && (

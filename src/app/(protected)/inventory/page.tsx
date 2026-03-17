@@ -7,12 +7,13 @@ import Button from "@/app/components/Button";
 import EditInventoryItemButton from "./components/_EditInventoryItemButton";
 import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStocksButton";
 import TransactionDetailsPopUpButton from "./[id]/components/_IssueDetailsPopUpButton";
-import InventoryFilterButton from "./[id]/components/_InventoryFilterButton";
+import InventoryFilterButton from "./components/_InventoryFilterButton";
 import StockLocationHoverPopup from "./components/_StockLocationHoverPopup";
 import ArchiveInventoryItemButton from "./[id]/components/_ArchiveInventoryItemButton";
 import DeleteTransactionButton from "./[id]/components/_DeleteTransactionButton";
 import EditTransactionButton from "./components/_EditTransactionButton";
 import { useAuth } from "@/app/context/AuthContext";
+import DownloadInventoryListPdfButton from "./components/_DownloadInventoryListPdfButton";
 
 export default function Inventory() {
   const { userInfo } = useAuth();
@@ -1329,7 +1330,7 @@ export default function Inventory() {
 
                   <div
                     style={{ borderRight: "1px solid rgba(207, 207, 207, 1)" }}
-                  ></div>
+                  />
 
                   <InventoryFilterButton
                     categories={categories}
@@ -1350,6 +1351,7 @@ export default function Inventory() {
                           style={{
                             borderRadius: "50px",
                             fontWeight: 600,
+                            textWrap: "nowrap",
                           }}
                           componentType={"none"}
                           bgColor={"rgba(239, 239, 239, 1)"}
@@ -1360,7 +1362,6 @@ export default function Inventory() {
                           <span
                             style={{
                               color: "rgba(16, 185, 129, 1)",
-                              textWrap: "nowrap",
                             }}
                           >
                             {filters.selectedCategories[0].toUpperCase()}
@@ -1375,6 +1376,7 @@ export default function Inventory() {
                           style={{
                             borderRadius: "50px",
                             fontWeight: "600",
+                            textWrap: "nowrap",
                           }}
                           componentType={"none"}
                           bgColor={"rgba(239, 239, 239, 1)"}
@@ -1385,7 +1387,6 @@ export default function Inventory() {
                           <span
                             style={{
                               color: "rgba(16, 185, 129, 1)",
-                              textWrap: "nowrap",
                             }}
                           >
                             {getStockAddedLabel(
@@ -1400,6 +1401,7 @@ export default function Inventory() {
                           style={{
                             borderRadius: "50px",
                             fontWeight: "600",
+                            textWrap: "nowrap",
                           }}
                           componentType={"none"}
                           bgColor={"rgba(239, 239, 239, 1)"}
@@ -1410,7 +1412,6 @@ export default function Inventory() {
                           <span
                             style={{
                               color: "rgba(16, 185, 129, 1)",
-                              textWrap: "nowrap",
                             }}
                           >
                             {filters.selectedStockStatuses[0]}
@@ -1425,6 +1426,7 @@ export default function Inventory() {
                           style={{
                             borderRadius: "50px",
                             fontWeight: "600",
+                            textWrap: "nowrap",
                           }}
                           componentType={"none"}
                           bgColor={"rgba(239, 239, 239, 1)"}
@@ -1435,7 +1437,6 @@ export default function Inventory() {
                           <span
                             style={{
                               color: "rgba(16, 185, 129, 1)",
-                              textWrap: "nowrap",
                             }}
                           >
                             {(() => {
@@ -1457,6 +1458,7 @@ export default function Inventory() {
                           style={{
                             borderRadius: "50px",
                             fontWeight: "600",
+                            textWrap: "nowrap",
                           }}
                           componentType={"none"}
                           bgColor={"rgba(239, 239, 239, 1)"}
@@ -1467,7 +1469,6 @@ export default function Inventory() {
                           <span
                             style={{
                               color: "rgba(16, 185, 129, 1)",
-                              textWrap: "nowrap",
                             }}
                           >
                             {filters.selectedLocations[0].toUpperCase()}
@@ -1492,36 +1493,71 @@ export default function Inventory() {
                 </div>
 
                 <div
-                  style={{
-                    maxWidth: "300px",
-                    backgroundColor: "white",
-                    position: "relative",
-                  }}
+                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
                 >
-                  <input
-                    type="text"
-                    placeholder="SEARCH"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                  <div
                     style={{
-                      width: "300px",
-                      padding: "10px 40px 10px 15px",
-                      borderRadius: "8px",
-                      border: "1px solid rgba(223, 223, 223, 1)",
-                      fontSize: "14px",
+                      maxWidth: "300px",
+                      backgroundColor: "white",
+                      position: "relative",
                     }}
-                  />
-                  <img
-                    src={searchIcon}
-                    alt="search"
-                    style={{
-                      position: "absolute",
-                      right: "15px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      width: "16px",
-                      height: "16px",
-                      opacity: 0.5,
+                  >
+                    <input
+                      type="text"
+                      placeholder="SEARCH"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{
+                        width: "300px",
+                        padding: "10px 40px 10px 15px",
+                        borderRadius: "8px",
+                        border: "1px solid rgba(223, 223, 223, 1)",
+                        fontSize: "14px",
+                      }}
+                    />
+                    <img
+                      src={searchIcon}
+                      alt="search"
+                      style={{
+                        position: "absolute",
+                        right: "15px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        width: "16px",
+                        height: "16px",
+                        opacity: 0.5,
+                      }}
+                    />
+                  </div>
+
+                  <DownloadInventoryListPdfButton
+                    filteredItems={processedInventory}
+                    pageQuantities={pageQuantities}
+                    activeFilters={{
+                      subcategories:
+                        filters.selectedCategories.length > 0
+                          ? filters.selectedCategories
+                          : undefined,
+                      stockAddedIn:
+                        filters.stockAddedIn !== "all"
+                          ? getStockAddedLabel(filters.stockAddedIn)
+                          : undefined,
+                      stockStatuses:
+                        filters.selectedStockStatuses.length > 0
+                          ? filters.selectedStockStatuses
+                          : undefined,
+                      projects:
+                        filters.selectedProjects.length > 0
+                          ? filters.selectedProjects.map(
+                              (pId) =>
+                                availableProjects.find((p) => p.id === pId)
+                                  ?.name || String(pId),
+                            )
+                          : undefined,
+                      locations:
+                        filters.selectedLocations.length > 0
+                          ? filters.selectedLocations
+                          : undefined,
                     }}
                   />
                 </div>

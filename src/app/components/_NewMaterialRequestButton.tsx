@@ -97,6 +97,17 @@ export default function NewMrButton() {
       });
   }, []);
 
+  const MR_PURPOSE_IDS = [1, 2, 3, 4, 5];
+  const JO_PURPOSE_IDS = [1, 2, 6, 7, 8, 9];
+
+  const filteredPurposeReasonValues = purposeReasonValues.filter((item: any) =>
+    mode === "material"
+      ? MR_PURPOSE_IDS.includes(item.id)
+      : mode === "job"
+        ? JO_PURPOSE_IDS.includes(item.id)
+        : true,
+  );
+
   useEffect(() => {
     if (purposeReasonID === 6) {
       setProjectID("");
@@ -137,7 +148,7 @@ export default function NewMrButton() {
 
     if (res.ok) {
       toast(
-        `${mode === "job" ? "Job" : "Material"} request created`,
+        `${mode === "job" ? "Job order" : "Material request"} created`,
         "success",
       );
 
@@ -352,7 +363,7 @@ export default function NewMrButton() {
               selectedValue={purposeReasonID}
               onChange={setPurposeReasonID}
               placeholder={"SELECT PURPOSE/REASON"}
-              dbData={purposeReasonValues}
+              dbData={filteredPurposeReasonValues}
               idField="id"
               labelField="value"
               tooltipField="tooltip"
@@ -367,8 +378,9 @@ export default function NewMrButton() {
               dbData={[...projects]}
               idField="id"
               labelField="name"
-              required={purposeReasonID === 1 || purposeReasonID === 2}
-              disabled={purposeReasonID === 6}
+              /* required={purposeReasonID === 1 || purposeReasonID === 2} */
+              required
+              /* disabled={purposeReasonID === 6} */
             />
           </div>
 

@@ -5,6 +5,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import { toast } from "@/app/components/Toast";
+import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReferencePopUp";
 
 type JoDetailsPopUpProps = {
   joId: number;
@@ -230,10 +231,6 @@ export default function JoDetailsPopUp({
               <small>REQUIRED DATE</small>
               <h2>{formatDate(mrHeader.required_date)}</h2>
             </div>
-            <div>
-              <small>DELIVERY DATE</small>
-              <h2>{formatDate(mrHeader.delivery_date)}</h2>
-            </div>
           </div>
 
           <br />
@@ -391,7 +388,7 @@ export default function JoDetailsPopUp({
             <th>#</th>
             <th>JOB SCOPE</th>
             <th>DESCRIPTION</th>
-            <th>BOQ REF</th>
+            <th>BOQ REF.</th>
             <th>QTY</th>
             <th>BUDGET EST.</th>
             <th>TOTAL PRICE</th>
@@ -425,7 +422,13 @@ export default function JoDetailsPopUp({
                   <td>{index + 1}</td>
                   <td>{line.job_scope_name || "-"}</td>
                   <td>{line.job_description || "-"}</td>
-                  <td>{line.boq_item_numbers || "-"}</td>
+                  <td>
+                    {line.boq_line_ids && mrHeader ? (
+                      <BoqReferencePopUp item={line} mrHeader={mrHeader} />
+                    ) : (
+                      line.boq_item_numbers || "-"
+                    )}
+                  </td>
                   <td>
                     {formatQuantity(line.quantity)} {line.unit || ""}
                   </td>

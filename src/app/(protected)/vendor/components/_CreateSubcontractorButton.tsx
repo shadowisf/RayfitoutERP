@@ -28,6 +28,7 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
   const [materialCategoryID, setMaterialCategoryID] = useState<
     (string | number)[]
   >([]);
+  const [scopeOfWork, setScopeOfWork] = useState("");
   const [trn, setTrn] = useState("");
   const [trnCertificateFile, setTrnCertificateFile] = useState<File | null>(
     null,
@@ -168,7 +169,8 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
           body: JSON.stringify({
             action: "createSubcontractor",
             name,
-            material_categories: materialCategoryID,
+            /* material_categories: materialCategoryID, */
+            scope_of_work: scopeOfWork,
             trn_number: trn,
             trn_certificate: fileUrls.trn_certificate || null,
             contract: fileUrls.contract || null,
@@ -238,7 +240,7 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
           </div>
 
           <div className="input-row half">
-            <MultiSelectDropdown
+            {/* <MultiSelectDropdown
               dbData={materialCategoryValues}
               selectedValues={materialCategoryID}
               onChange={(categoryIds) => {
@@ -246,6 +248,13 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
               }}
               label="MATERIAL CATEGORIES"
               style={{ width: "410px" }}
+              required
+            /> */}
+            <InputItem
+              label={"SCOPE OF WORK"}
+              value={scopeOfWork}
+              type={"text"}
+              onChange={(e) => setScopeOfWork(e.target.value)}
               required
             />
           </div>

@@ -10,9 +10,10 @@ import { Supplier } from "../types/supplier";
 type props = {
   supplier: Supplier;
   onSuccess?: () => void;
+  iconOnly?: boolean;
 };
 
-export default function DeleteSupplierButton({ supplier, onSuccess }: props) {
+export default function DeleteSupplierButton({ supplier, onSuccess, iconOnly }: props) {
   const router = useRouter();
 
   const trashIcon = "/icons/trash.svg";
@@ -56,14 +57,19 @@ export default function DeleteSupplierButton({ supplier, onSuccess }: props) {
     <>
       <Button
         componentType="button"
-        bgColor={"transparent"}
-        borderColor={"transparent"}
+        bgColor={iconOnly ? "rgba(239, 239, 239, 1)" : "transparent"}
+        borderColor={iconOnly ? "rgba(223, 223, 223, 1)" : "transparent"}
         textColor={"black"}
         onClick={() => setIsOpen(true)}
-        full
-        style={{ justifyContent: "flex-start" }}
+        full={!iconOnly}
+        style={
+          iconOnly
+            ? { padding: "7px 7px" }
+            : { justifyContent: "flex-start" }
+        }
       >
-        <img src={trashIcon} alt="trash" /> Delete
+        <img src={trashIcon} alt="trash" />
+        {!iconOnly && " Delete"}
       </Button>
 
       {isOpen && (

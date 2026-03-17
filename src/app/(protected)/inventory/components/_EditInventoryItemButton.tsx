@@ -3,6 +3,7 @@
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
+import { UNIT_OPTIONS } from "@/constants/units";
 import { useEffect, useState } from "react";
 import { toast } from "@/app/components/Toast";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
@@ -353,27 +354,7 @@ export default function EditInventoryItemButton({
                 placeholder={"SELECT UNIT"}
                 required
                 onChange={(e) => setUnit(e.target.value)}
-                selectOptions={[
-                  "ITEM",
-                  "NOS",
-                  "SQM",
-                  "SQFT",
-                  "M",
-                  "LM",
-                  "FT",
-                  "CUM",
-                  "KG",
-                  "TON",
-                  "LTR",
-                  "GAL",
-                  "SET",
-                  "LOT",
-                  "LS",
-                  "PAIR",
-                  "BOX",
-                  "BAG",
-                  "ROLL",
-                ]}
+                selectOptions={[...UNIT_OPTIONS]}
               />
 
               <div className="input-item">

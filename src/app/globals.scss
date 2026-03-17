@@ -268,7 +268,7 @@ button {
       grid-template-columns: repeat(3, 1fr);
     }
 
-    .item {
+    > .item {
       min-height: 175px;
       padding: 20px;
       border-radius: 15px;
@@ -318,7 +318,7 @@ button {
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
 
-    .item {
+    > .item {
       background-color: white;
       border-radius: 15px;
       padding: 15px;
@@ -368,7 +368,7 @@ button {
     display: flex;
     gap: 20px;
 
-    .item {
+    > .item {
       padding: 15px;
       background-color: white;
       border: 1px solid rgba(217, 217, 217, 1);
@@ -381,7 +381,7 @@ button {
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
 
-    .item {
+    > .item {
       background-color: white;
       border: rgba(223, 223, 223, 1) 1px solid;
       border-radius: 15px;
