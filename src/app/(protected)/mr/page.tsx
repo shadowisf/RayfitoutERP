@@ -52,6 +52,7 @@ export default function MR() {
   }>({});
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [filters, setFilters] = useState<{
     itemsRequestedIn: string;
     selectedDepartments: number[];
@@ -1089,9 +1090,38 @@ export default function MR() {
                   display: "flex",
                   alignItems: "center",
                   gap: "15px",
-                  marginBottom: "20px",
+                  marginBottom: collapsedGroups[group.name] ? "0px" : "20px",
+                  cursor: "pointer",
+                  userSelect: "none",
                 }}
+                onClick={() =>
+                  setCollapsedGroups((prev) => ({
+                    ...prev,
+                    [group.name]: !prev[group.name],
+                  }))
+                }
               >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  style={{
+                    transition: "transform 0.2s ease",
+                    transform: collapsedGroups[group.name]
+                      ? "rotate(-90deg)"
+                      : "rotate(0deg)",
+                  }}
+                >
+                  <path
+                    d="M3.5 5.25L7 8.75L10.5 5.25"
+                    stroke="black"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
                 <h2 style={{ margin: 0 }}>{group.name}</h2>
                 <div
                   style={{
@@ -1107,6 +1137,7 @@ export default function MR() {
                 </div>
               </div>
 
+              {!collapsedGroups[group.name] && (
               <div
                 style={{
                   display: "grid",
@@ -2003,6 +2034,7 @@ export default function MR() {
                   );
                 })}
               </div>
+              )}
             </div>
           );
         })}

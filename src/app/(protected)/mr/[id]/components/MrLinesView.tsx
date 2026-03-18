@@ -223,8 +223,19 @@ export default function MrLinesView({
     return count;
   })();
 
-  // For the "by item" table which has CATEGORY + SUBCATEGORY columns
-  const subtotalLabelColSpanByItem = subtotalLabelColSpan + 2;
+  // For the "by item" table: #, CATEGORY, SUBCATEGORY, ITEM, QTY cols, BOQ REF, BRAND & SPECS, ATTACHMENT
+  // No VENDOR & QUOTATION, no ACTIONS in the by-item table
+  const subtotalLabelColSpanByItem = (() => {
+    const pid = mrHeader.progress_id;
+    let count = 0;
+    // #, CATEGORY, SUBCATEGORY, ITEM
+    count += 4;
+    // QTY columns: progress >= 9 means 3 cols, else 1
+    count += pid >= 9 ? 3 : 1;
+    // BOQ REF, BRAND & SPECS, ATTACHMENT
+    count += 3;
+    return count;
+  })();
 
   const subtotalTrailingColSpan = (() => {
     const pid = mrHeader.progress_id;

@@ -85,6 +85,8 @@ export default function DraftMrsWidget({ filterDays }: props) {
 
   // Hover handlers
   const handleMouseEnter = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button, a, [role='button']")) return;
     setMousePosition({ x: e.clientX, y: e.clientY });
     setIsWaiting(true);
     hoverTimer.current = setTimeout(() => {
@@ -94,7 +96,26 @@ export default function DraftMrsWidget({ filterDays }: props) {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button, a, [role='button']")) {
+      if (hoverTimer.current) {
+        clearTimeout(hoverTimer.current);
+        hoverTimer.current = null;
+      }
+      setIsWaiting(false);
+      setShowPopup(false);
+      return;
+    }
     setMousePosition({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseDown = () => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setIsWaiting(false);
+    setShowPopup(false);
   };
 
   const handleMouseLeave = () => {
@@ -139,6 +160,7 @@ export default function DraftMrsWidget({ filterDays }: props) {
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onMouseDown={handleMouseDown}
     >
       <div className="top">
         <span>MRs in Draft</span>
