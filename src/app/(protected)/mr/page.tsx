@@ -444,13 +444,15 @@ export default function MR() {
 
   const stageGroups = [
     {
+      name: "Draft",
+      statuses: [{ name: "Draft", progress_id: 1 }],
+    },
+    {
       name: "Approval",
       statuses: [
-        { name: "Draft", progress_id: 1 },
         { name: "QS Review", progress_id: 2 },
         { name: "Manager Approval", progress_id: 3 },
       ],
-      countStatuses: [2, 3],
     },
     {
       name: "Existing Stock",
@@ -724,13 +726,13 @@ export default function MR() {
   );
 
   const groupedLPOs = filteredLPOs.reduce(
-    (acc: Record<string, LpoCard[]>, lpoCard) => {
-      const status = lpoCard.progress_name || "Unknown";
-      acc[status] = acc[status] || [];
-      acc[status].push(lpoCard);
+    (acc: Record<number, LpoCard[]>, lpoCard) => {
+      const key = lpoCard.progress_id;
+      acc[key] = acc[key] || [];
+      acc[key].push(lpoCard);
       return acc;
     },
-    {},
+    {} as Record<number, LpoCard[]>,
   );
 
   const shouldShowStatusWhenFiltering = (status: any) => {
@@ -741,7 +743,7 @@ export default function MR() {
 
     // For Completed stage, check both LPOs and JOs (exclude material MRs)
     if (status.progress_id === 25) {
-      const lpos = groupedLPOs[status.name] || [];
+      const lpos = groupedLPOs[status.progress_id] || [];
       const jos = (groupedMRs[status.name] || []).filter(
         (mr: any) => mr.type === "job",
       );
@@ -759,13 +761,17 @@ export default function MR() {
     }
 
     if (useLpoCards) {
-      const lpos = groupedLPOs[status.name] || [];
+      const lpos = groupedLPOs[status.progress_id] || [];
 
-      if (userDeptId === 8 && filterRelevant) {
-        if (status.progress_id === 14) {
-          return false; // hide Pending Payments section completely
+      if (userDeptId === 8) {
+        if (filterRelevant) {
+          if (status.progress_id === 14) {
+            return false; // hide Pending Payments section completely
+          }
+          return lpos.some((l) => l.department_id === 8);
         }
-        return lpos.some((l) => l.department_id === 8);
+        // Managers see all LPO stages when filter is off
+        return lpos.length > 0;
       }
       const responsibleDept =
         progressToResponsibleDepartment[status.progress_id];
@@ -1058,23 +1064,20 @@ export default function MR() {
           const totalCount = group.statuses.reduce((sum, status) => {
             if (filterRelevant && !shouldShowStatusWhenFiltering(status))
               return sum;
-            if (
-              group.countStatuses &&
-              !group.countStatuses.includes(status.progress_id)
-            )
-              return sum;
             const useLpo = LPO_STAGE_IDS.includes(status.progress_id);
             const isCompleted = status.progress_id === 25;
             if (isCompleted) {
               const joCount = (groupedMRs[status.name] || []).filter(
                 (mr) => mr.type === "job",
               ).length;
-              return sum + (groupedLPOs[status.name]?.length || 0) + joCount;
+              return (
+                sum + (groupedLPOs[status.progress_id]?.length || 0) + joCount
+              );
             }
             return (
               sum +
               (useLpo
-                ? groupedLPOs[status.name]?.length || 0
+                ? groupedLPOs[status.progress_id]?.length || 0
                 : groupedMRs[status.name]?.length || 0)
             );
           }, 0);
@@ -1127,7 +1130,7 @@ export default function MR() {
                       ? []
                       : groupedMRs[status.name] || [];
                   const lpos = useLpoCards
-                    ? groupedLPOs[status.name] || []
+                    ? groupedLPOs[status.progress_id] || []
                     : [];
                   const cardCount = isCompletedStage
                     ? lpos.length + mrs.length

@@ -55,4 +55,6 @@ export type MrLine = {
   approved_supplier_email: string;
   approved_supplier_address: string;
   approved_vat_rate: number;
+  stock_inventory_item_id: number | null;
+  stock_inventory_item_name: string | null;
 };

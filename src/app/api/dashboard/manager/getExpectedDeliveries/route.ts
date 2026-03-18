@@ -15,7 +15,7 @@ export async function GET() {
         ON lml.lpo_id = lpo.id
       LEFT JOIN suppliers s
         ON s.id = lpo.supplier_id
-      WHERE mh.progress_id = 17
+      WHERE lpo.progress_id = 17
       GROUP BY lpo.id, s.name
       ORDER BY lpo.delivery_date ASC
     `);

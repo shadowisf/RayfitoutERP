@@ -431,21 +431,41 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                       : Number(item.approved_total_price) || 0;
                   return sum + price;
                 }, 0);
-                const hasAnyPrice =
-                  liveTotalPrice > 0 || hasAnyApprovedPrice;
+                const hasAnyPrice = liveTotalPrice > 0 || hasAnyApprovedPrice;
+
+                // Columns before TOTAL PRICE: #, SCOPE, DESCRIPTION, BOQ REF, QTY + BUDGET EST. if canSeePrice
+                const labelColSpan = 5 + (canSeePrice ? 1 : 0);
+                // Columns after TOTAL PRICE value
+                let trailingCols = 1; // ATTACHMENT
+                if (mrHeader.progress_id === 3) trailingCols += 1;
+                if (
+                  mrHeader.progress_id === 5 &&
+                  (userInfo?.departmentID === 8 ||
+                    userInfo?.departmentID === mrHeader.department_id)
+                )
+                  trailingCols += 1;
+                if (
+                  (mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
+                  userInfo?.departmentID === mrHeader.department_id
+                )
+                  trailingCols += 1;
+                if (showQuotationColumn) trailingCols += 1;
+                if (showPriceApprovalColumn) trailingCols += 1;
 
                 return hasAnyPrice ? (
                   <tr>
+                    <td colSpan={labelColSpan - 1} />
                     <td
-                      colSpan={6}
-                      style={{ fontWeight: "600", padding: "15px 20px" }}
+                      style={{
+                        fontWeight: "600",
+                      }}
                     >
-                      TOTAL PRICE
+                      SUBTOTAL
                     </td>
-                    <td style={{ fontWeight: "600", padding: "15px 20px" }}>
+                    <td style={{ fontWeight: "600" }}>
                       AED {liveTotalPrice.toFixed(2)}
                     </td>
-                    <td colSpan={10}></td>
+                    {trailingCols > 0 && <td colSpan={trailingCols} />}
                   </tr>
                 ) : null;
               })()}

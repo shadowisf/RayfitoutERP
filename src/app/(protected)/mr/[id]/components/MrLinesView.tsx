@@ -201,6 +201,45 @@ export default function MrLinesView({
     userInfo?.departmentID === 10 ||
     userInfo?.departmentID === 16;
 
+  // Compute columns before TOTAL PRICE and columns after it for subtotal alignment
+  // Subtotal only renders when progress_id >= 10 && canSeePrice
+  const subtotalLabelColSpan = (() => {
+    const pid = mrHeader.progress_id;
+    const dept = userInfo?.departmentID;
+    let count = 0;
+
+    // #, ITEM
+    count += 2;
+    // QTY columns: progress >= 9 means 3 cols, else 1
+    count += pid >= 9 ? 3 : 1;
+    // BOQ REF, BRAND & SPECS, ATTACHMENT
+    count += 3;
+    // APPROVAL STATUS (only at progress 2, 3, 5 — not at >= 10)
+    // ACTIONS columns before price (progress 1, 5, 11, 3, 2 — mostly not at >= 10 except 11)
+    if (pid === 11 && dept === mrHeader.department_id) count += 1; // ACTIONS
+    if (pid === 11 && dept === 9) count += 1; // ACTIONS
+    // VENDOR & QUOTATION (progress >= 10 and !== 11)
+    if (pid >= 10 && pid !== 11) count += 1;
+    return count;
+  })();
+
+  // For the "by item" table which has CATEGORY + SUBCATEGORY columns
+  const subtotalLabelColSpanByItem = subtotalLabelColSpan + 2;
+
+  const subtotalTrailingColSpan = (() => {
+    const pid = mrHeader.progress_id;
+    const dept = userInfo?.departmentID;
+    let count = 0;
+
+    if (dept === 11 && pid === 4) count += 1; // STOCK TRANSFER — not at >= 10
+    if (dept === 12 && pid === 21) count += 1; // QUALITY CONTROL
+    if (dept === 11 && pid === 24) count += 1; // STOCKS
+    if (dept === 9 && pid === 23) count += 1; // RESOLUTION
+    if ((pid === 9 || pid === 10) && (dept === 8 || dept === 16)) count += 1; // ACTIONS
+
+    return count;
+  })();
+
   const formatNumber = (value: unknown): string => {
     // Convert to number safely
     const num = Number(value);
@@ -3007,56 +3046,27 @@ export default function MrLinesView({
                                   }}
                                 >
                                   <tr>
+                                    <td colSpan={subtotalLabelColSpan} />
                                     <td
-                                      colSpan={100}
                                       style={{
-                                        padding: "0",
+                                        fontWeight: "600",
                                       }}
                                     >
-                                      <table
-                                        style={{
-                                          width: "100%",
-                                          tableLayout: "fixed",
-                                        }}
-                                      >
-                                        <tbody>
-                                          <tr>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td
-                                              style={{
-                                                fontWeight: "600",
-                                                padding: "15px 20px",
-                                              }}
-                                            >
-                                              SUBTOTAL
-                                            </td>
-                                            <td
-                                              style={{
-                                                padding: "15px 20px",
-                                                fontWeight: "600",
-                                                borderRadius: "50px",
-                                              }}
-                                            >
-                                              AED{" "}
-                                              {calculateItemsTotal(
-                                                getAllItemsInSubCategory(
-                                                  suppliers,
-                                                ),
-                                              ).toFixed(2)}
-                                            </td>
-                                          </tr>
-                                        </tbody>
-                                      </table>
+                                      SUBTOTAL
                                     </td>
+                                    <td
+                                      style={{
+                                        fontWeight: "600",
+                                      }}
+                                    >
+                                      AED{" "}
+                                      {calculateItemsTotal(
+                                        getAllItemsInSubCategory(suppliers),
+                                      ).toFixed(2)}
+                                    </td>
+                                    {subtotalTrailingColSpan > 0 && (
+                                      <td colSpan={subtotalTrailingColSpan} />
+                                    )}
                                   </tr>
                                 </tfoot>
                               )}
@@ -3852,54 +3862,29 @@ export default function MrLinesView({
                               }}
                             >
                               <tr>
+                                <td colSpan={subtotalLabelColSpan} />
                                 <td
-                                  colSpan={100}
                                   style={{
-                                    padding: "0",
+                                    fontWeight: "600",
+                                    
                                   }}
                                 >
-                                  <table
-                                    style={{
-                                      width: "100%",
-                                      tableLayout: "fixed",
-                                    }}
-                                  >
-                                    <tbody>
-                                      <tr>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td
-                                          style={{
-                                            fontWeight: "600",
-                                            padding: "15px 20px",
-                                          }}
-                                        >
-                                          SUBTOTAL
-                                        </td>
-                                        <td
-                                          style={{
-                                            padding: "15px 20px",
-                                            fontWeight: "600",
-                                            borderRadius: "50px",
-                                          }}
-                                        >
-                                          AED{" "}
-                                          {calculateItemsTotal(
-                                            getAllItemsInSubCategory(suppliers),
-                                          ).toFixed(2)}
-                                        </td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
+                                  SUBTOTAL
                                 </td>
+                                <td
+                                  style={{
+                                    fontWeight: "600",
+                                    
+                                  }}
+                                >
+                                  AED{" "}
+                                  {calculateItemsTotal(
+                                    getAllItemsInSubCategory(suppliers),
+                                  ).toFixed(2)}
+                                </td>
+                                {subtotalTrailingColSpan > 0 && (
+                                  <td colSpan={subtotalTrailingColSpan} />
+                                )}
                               </tr>
                             </tfoot>
                           )}
@@ -4387,52 +4372,26 @@ export default function MrLinesView({
                   }}
                 >
                   <tr>
+                    <td colSpan={subtotalLabelColSpanByItem} />
                     <td
-                      colSpan={100}
                       style={{
-                        padding: "0",
+                        fontWeight: "600",
+                        
                       }}
                     >
-                      <table
-                        style={{
-                          width: "100%",
-                          tableLayout: "fixed",
-                        }}
-                      >
-                        <tbody>
-                          <tr>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td
-                              style={{
-                                fontWeight: "600",
-                                padding: "15px 20px",
-                              }}
-                            >
-                              SUBTOTAL
-                            </td>
-                            <td
-                              style={{
-                                padding: "15px 20px",
-                                fontWeight: "600",
-                                borderRadius: "50px",
-                              }}
-                            >
-                              AED {calculateItemsTotal(items).toFixed(2)}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                      SUBTOTAL
                     </td>
+                    <td
+                      style={{
+                        fontWeight: "600",
+                        
+                      }}
+                    >
+                      AED {calculateItemsTotal(items).toFixed(2)}
+                    </td>
+                    {subtotalTrailingColSpan > 0 && (
+                      <td colSpan={subtotalTrailingColSpan} />
+                    )}
                   </tr>
                 </tfoot>
               )}

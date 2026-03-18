@@ -44,7 +44,7 @@ export default function BudgetAllocationGraph({ projectId }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filter, project_id: projectId }),
-      }
+      },
     )
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -103,7 +103,7 @@ export default function BudgetAllocationGraph({ projectId }: Props) {
     data.chartData.forEach((point) => {
       const date = new Date(point.date);
       const monthKey = `${date.getFullYear()}-${String(
-        date.getMonth() + 1
+        date.getMonth() + 1,
       ).padStart(2, "0")}-01`;
 
       if (!monthlyData[monthKey]) {
@@ -119,7 +119,7 @@ export default function BudgetAllocationGraph({ projectId }: Props) {
     });
 
     return Object.values(monthlyData).sort((a, b) =>
-      a.date.localeCompare(b.date)
+      a.date.localeCompare(b.date),
     );
   };
 

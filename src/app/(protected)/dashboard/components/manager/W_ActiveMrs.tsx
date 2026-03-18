@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "../OverviewHoverPopup";
+import HoverLoadingCursor from "../HoverLoadingCursor";
 
 type props = {
   filterDays?: number;
@@ -24,6 +25,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
 
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
+  const [isWaiting, setIsWaiting] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const hoverTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -77,7 +79,9 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   // Hover handlers
   const handleMouseEnter = (e: React.MouseEvent) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
+    setIsWaiting(true);
     hoverTimer.current = setTimeout(() => {
+      setIsWaiting(false);
       setShowPopup(true);
     }, 2000);
   };
@@ -92,6 +96,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
       hoverTimer.current = null;
     }
     setShowPopup(false);
+    setIsWaiting(false);
   };
 
   const hasNoActiveMRs = thisWeek === 0;
@@ -141,6 +146,10 @@ export default function ActiveMrsWidget({ filterDays }: props) {
         <br />
         <span>{isLoading ? "Loading..." : changeText}</span>
       </div>
+
+      {isWaiting && !showPopup && (
+        <HoverLoadingCursor mouseX={mousePosition.x} mouseY={mousePosition.y} />
+      )}
 
       {showPopup && items.length > 0 && (
         <OverviewHoverPopup

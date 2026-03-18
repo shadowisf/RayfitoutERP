@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     if (filter === 0) {
       // Active MRs: below segregated stage (< 26), not completed (25)
       const [mrRows]: any = await db.query(
-        `SELECT COUNT(*) AS mr_count FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25`,
+        `SELECT COUNT(*) AS mr_count FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25 AND progress_id != 1`,
       );
       // Active LPOs: above LPO & Invoice stage (> 12), not completed (25)
       const [lpoRows]: any = await db.query(
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       const [mrItems]: any = await db.query(
         `SELECT id, type, project_name,
            (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw_mr_headers.id) AS item_count
-         FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25
+         FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25 AND progress_id != 1
          ORDER BY date_requested DESC LIMIT ?`,
         [halfLimit],
       );
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       `SELECT
         COUNT(CASE WHEN date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 END) AS this_week,
         COUNT(CASE WHEN date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND date_requested < DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 END) AS last_week
-       FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25`,
+       FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25 AND progress_id != 1`,
       [filter, filter * 2, filter],
     );
     const [lpoCountRows]: any = await db.query(
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     const [mrItems]: any = await db.query(
       `SELECT id, type, project_name,
          (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw_mr_headers.id) AS item_count
-       FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25
+       FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25 AND progress_id != 1
          AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
        ORDER BY date_requested DESC LIMIT ?`,
       [filter, halfLimit],

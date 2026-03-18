@@ -792,7 +792,42 @@ export default function LpoLinesView({
                   <td>{itemIndex + 1}</td>
                   <td>{item.material_category}</td>
                   <td>{item.material_subcategory}</td>
-                  <td>{item.material_description}</td>
+                  <td>
+                    {item.material_description}
+                    {progressId === 25 && item.stock_inventory_item_id && (
+                      <div
+                        style={{
+                          fontStyle: "italic",
+                          marginTop: "4px",
+                          fontSize: "10px",
+                        }}
+                      >
+                        <span style={{ color: "rgba(150, 150, 150, 1)" }}>
+                          Stock added for:{" "}
+                        </span>
+                        <a
+                          href={`/inventory/${item.stock_inventory_item_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            fontWeight: "600",
+                            color: "black",
+                            textDecoration: "none",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                          }}
+                        >
+                          &ldquo;{item.stock_inventory_item_name}&rdquo;
+                          <img
+                            src="/icons/external-link.svg"
+                            alt=""
+                            style={{ width: "10px", height: "10px" }}
+                          />
+                        </a>
+                      </div>
+                    )}
+                  </td>
                   <td>
                     {formatNumber(item?.quantity)} {item.unit}
                   </td>

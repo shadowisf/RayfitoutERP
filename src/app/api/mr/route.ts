@@ -524,19 +524,19 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "linkStockTransferToMrLine") {
-      await db.query(
-        `UPDATE mr_lines SET stock_transfer_id = ? WHERE id = ?`,
-        [body.stock_transfer_id, body.id],
-      );
+      await db.query(`UPDATE mr_lines SET stock_transfer_id = ? WHERE id = ?`, [
+        body.stock_transfer_id,
+        body.id,
+      ]);
 
       return NextResponse.json({ status: 200 });
     }
 
     if (body.action === "updateMrLineSignedDn") {
-      await db.query(
-        `UPDATE mr_lines SET signed_dn_file = ? WHERE id = ?`,
-        [body.signed_dn_file, body.id],
-      );
+      await db.query(`UPDATE mr_lines SET signed_dn_file = ? WHERE id = ?`, [
+        body.signed_dn_file,
+        body.id,
+      ]);
 
       return NextResponse.json({ status: 200 });
     }
@@ -571,10 +571,9 @@ export async function PUT(req: Request) {
 
       if (hasNeedOrder) {
         // Mixed MR: some item_available, some need_order → go to quotations
-        await db.query(
-          `UPDATE mr_headers SET progress_id = 7 WHERE id = ?`,
-          [body.id],
-        );
+        await db.query(`UPDATE mr_headers SET progress_id = 7 WHERE id = ?`, [
+          body.id,
+        ]);
 
         await db.query(
           `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 7, 4, ?)`,
@@ -602,10 +601,9 @@ export async function PUT(req: Request) {
         );
       } else {
         // All lines are item_available → go directly to completed
-        await db.query(
-          `UPDATE mr_headers SET progress_id = 25 WHERE id = ?`,
-          [body.id],
-        );
+        await db.query(`UPDATE mr_headers SET progress_id = 25 WHERE id = ?`, [
+          body.id,
+        ]);
 
         await db.query(
           `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 25, 4, ?)`,
@@ -707,7 +705,12 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, ?, ?, ?)`,
-        [body.id, targetProgressId, body.from_progress_id || 3, body.changed_by],
+        [
+          body.id,
+          targetProgressId,
+          body.from_progress_id || 3,
+          body.changed_by,
+        ],
       );
 
       if (targetProgressId === 4) {

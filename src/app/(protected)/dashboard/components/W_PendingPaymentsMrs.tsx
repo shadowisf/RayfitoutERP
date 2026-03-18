@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "./OverviewHoverPopup";
+import HoverLoadingCursor from "./HoverLoadingCursor";
 
 type props = {
   filterDays?: number;
@@ -24,6 +25,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
 
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
+  const [isWaiting, setIsWaiting] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const hoverTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -76,7 +78,9 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
   // Hover handlers
   const handleMouseEnter = (e: React.MouseEvent) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
+    setIsWaiting(true);
     hoverTimer.current = setTimeout(() => {
+      setIsWaiting(false);
       setShowPopup(true);
     }, 2000);
   };
@@ -91,6 +95,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
       hoverTimer.current = null;
     }
     setShowPopup(false);
+    setIsWaiting(false);
   };
 
   const hasNoPendingPayments = thisWeek === 0;
@@ -143,6 +148,10 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
         <span>{isLoading ? "Loading..." : changeText}</span>
       </div>
 
+      {isWaiting && !showPopup && (
+        <HoverLoadingCursor mouseX={mousePosition.x} mouseY={mousePosition.y} />
+      )}
+
       {showPopup && items.length > 0 && (
         <OverviewHoverPopup
           mouseX={mousePosition.x}
@@ -150,7 +159,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
           items={items}
           totalCount={totalCount}
           columns={[
-            { key: "display_id", label: "ID" },
+            { key: "display_id", label: "LPO NUMBER" },
             {
               key: "amount",
               label: "AMOUNT",

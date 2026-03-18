@@ -1141,8 +1141,8 @@ export default function NotificationDropdown() {
     if (headerLower.includes("rolled") && headerLower.includes("back")) {
       return {
         icon: mrRollbackIcon,
-        headerColor: "rgba(248, 77, 77, 1)",
-        dotColor: "rgba(248, 77, 77, 1)",
+        headerColor: "rgba(146, 139, 49, 1)",
+        dotColor: "rgba(146, 139, 49, 1)",
       };
     }
 

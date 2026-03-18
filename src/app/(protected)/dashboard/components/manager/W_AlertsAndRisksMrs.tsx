@@ -120,24 +120,27 @@ export default function AlertsAndRiskMrsWidget() {
       >
         {/* Critical MRs */}
         <div
-          className="item"
           style={{
             backgroundColor: "rgba(255, 226, 226, 1)",
             cursor: "pointer",
+            minHeight: "175px",
+            padding: "20px",
+            borderRadius: "15px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
           }}
           onClick={() => router.push("/dashboard/details/critical-mrs")}
           onMouseEnter={handleCriticalMouseEnter}
           onMouseMove={handleCriticalMouseMove}
           onMouseLeave={handleCriticalMouseLeave}
         >
-          <div className="top">
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span></span>
             <img src={warningIcon} alt="critical icon" />
           </div>
           <div style={{ color: "rgba(190, 20, 20, 1)" }}>
-            <div className="bottom">
-              <p className="number">{totalCriticalMrs || 0}</p>
-            </div>
+            <p style={{ fontSize: "24px", fontWeight: 600 }}>{totalCriticalMrs || 0}</p>
             <span>Critical MRs</span>
           </div>
 
@@ -162,24 +165,27 @@ export default function AlertsAndRiskMrsWidget() {
 
         {/* Late Deliveries */}
         <div
-          className="item"
           style={{
             backgroundColor: "rgba(255, 226, 226, 1)",
             cursor: "pointer",
+            minHeight: "175px",
+            padding: "20px",
+            borderRadius: "15px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
           }}
           onClick={() => router.push("/dashboard/details/late-deliveries")}
           onMouseEnter={handleLateMouseEnter}
           onMouseMove={handleLateMouseMove}
           onMouseLeave={handleLateMouseLeave}
         >
-          <div className="top">
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span></span>
             <img src={warningIcon} alt="late deliveries icon" />
           </div>
           <div style={{ color: "rgba(190, 20, 20, 1)" }}>
-            <div className="bottom">
-              <p className="number">{totalLateDeliveries || 0}</p>
-            </div>
+            <p style={{ fontSize: "24px", fontWeight: 600 }}>{totalLateDeliveries || 0}</p>
             <span>Late Deliveries</span>
           </div>
 
@@ -204,17 +210,22 @@ export default function AlertsAndRiskMrsWidget() {
 
         {/* Pending Resolutions */}
         <div
-          className="item"
-          style={{ backgroundColor: "rgba(245, 253, 223, 1)" }}
+          style={{
+            backgroundColor: "rgba(245, 253, 223, 1)",
+            minHeight: "175px",
+            padding: "20px",
+            borderRadius: "15px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
         >
-          <div className="top">
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span></span>
             <img src={pendingResolutionsIcon} alt="resolutions icon" />
           </div>
           <div style={{ color: "rgba(134, 146, 30, 1)" }}>
-            <div className="bottom">
-              <p className="number">0</p>
-            </div>
+            <p style={{ fontSize: "24px", fontWeight: 600 }}>0</p>
             <span>Pending Resolutions</span>
           </div>
         </div>

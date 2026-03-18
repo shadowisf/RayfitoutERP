@@ -62,7 +62,9 @@ export async function POST(request: NextRequest) {
         vml.*,
         lml.id as lpo_mr_line_id,
         lml.unit_price as lpo_unit_price,
-        lml.total_price as lpo_total_price
+        lml.total_price as lpo_total_price,
+        (SELECT st.inventory_item_id FROM stocks st WHERE st.mr_line_id = lml.mr_line_id LIMIT 1) as stock_inventory_item_id,
+        (SELECT inv.description FROM stocks st2 JOIN inventory inv ON inv.id = st2.inventory_item_id WHERE st2.mr_line_id = lml.mr_line_id LIMIT 1) as stock_inventory_item_name
       FROM lpo_mr_line lml
       JOIN vw_mr_lines vml ON lml.mr_line_id = vml.id
       WHERE lml.lpo_id = ?
