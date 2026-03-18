@@ -23,7 +23,13 @@ export async function GET() {
         p.name as project_name,
         d.value as department_name,
         pr.value as progress_name,
-        (SELECT COUNT(*) FROM lpo_mr_line lml WHERE lml.lpo_id = l.id) AS item_count
+        (SELECT COUNT(*) FROM lpo_mr_line lml WHERE lml.lpo_id = l.id) AS item_count,
+        (SELECT GROUP_CONCAT(DISTINCT CONCAT(inv.id, ':::', inv.description) SEPARATOR ' | ')
+         FROM lpo_mr_line lml2
+         JOIN stocks st ON st.mr_line_id = lml2.mr_line_id
+         JOIN inventory inv ON inv.id = st.inventory_item_id
+         WHERE lml2.lpo_id = l.id
+        ) AS stock_inventory_items
       FROM lpo l
       JOIN suppliers s ON l.supplier_id = s.id
       JOIN mr_headers mh ON l.mr_header_id = mh.id

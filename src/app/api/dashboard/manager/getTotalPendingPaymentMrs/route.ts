@@ -16,14 +16,13 @@ export async function POST(request: Request) {
 
     if (filter === 0) {
       const [rows]: any = await db.query(
-        `SELECT COUNT(*) AS this_week FROM vw_mr_headers WHERE progress_id = 14`
+        `SELECT COUNT(*) AS this_week FROM lpo WHERE progress_id = 14`
       );
       const [itemRows]: any = await db.query(
         `SELECT l.id AS lpo_id, l.mr_header_id, l.total, s.name AS supplier_name
          FROM lpo l
-         INNER JOIN mr_headers h ON h.id = l.mr_header_id
          LEFT JOIN suppliers s ON s.id = l.supplier_id
-         WHERE h.progress_id = 14 AND l.payment_status != 'Rejected'
+         WHERE l.progress_id = 14
          ORDER BY l.total DESC LIMIT ?`,
         [maxItems]
       );
@@ -40,18 +39,17 @@ export async function POST(request: Request) {
 
     const [rows]: any = await db.query(
       `SELECT
-        SUM(date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)) AS this_week,
-        SUM(date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND date_requested < DATE_SUB(CURDATE(), INTERVAL ? DAY)) AS last_week
-      FROM vw_mr_headers WHERE progress_id = 14`,
+        SUM(l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)) AS this_week,
+        SUM(l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL ? DAY)) AS last_week
+      FROM lpo l WHERE l.progress_id = 14`,
       [filter, filter * 2, filter]
     );
     const [itemRows]: any = await db.query(
       `SELECT l.id AS lpo_id, l.mr_header_id, l.total, s.name AS supplier_name
        FROM lpo l
-       INNER JOIN mr_headers h ON h.id = l.mr_header_id
        LEFT JOIN suppliers s ON s.id = l.supplier_id
-       WHERE h.progress_id = 14 AND l.payment_status != 'Rejected'
-         AND h.date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       WHERE l.progress_id = 14
+         AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
        ORDER BY l.total DESC LIMIT ?`,
       [filter, maxItems]
     );

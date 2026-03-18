@@ -16,15 +16,13 @@ export async function POST(request: Request) {
 
     if (filter === 0) {
       const [rows]: any = await db.query(
-        `SELECT COUNT(*) AS this_week FROM vw_mr_headers WHERE progress_id = 17`,
+        `SELECT COUNT(*) AS this_week FROM lpo WHERE progress_id = 17`,
       );
-      // Show LPOs from MRs at delivery stage with item counts
       const [itemRows]: any = await db.query(
         `SELECT l.id, l.mr_header_id,
            (SELECT COUNT(*) FROM lpo_mr_line lml WHERE lml.lpo_id = l.id) AS item_count
          FROM lpo l
-         INNER JOIN mr_headers h ON h.id = l.mr_header_id
-         WHERE h.progress_id = 17
+         WHERE l.progress_id = 17
          ORDER BY l.delivery_date ASC LIMIT ?`,
         [maxItems]
       );
@@ -41,18 +39,17 @@ export async function POST(request: Request) {
 
     const [rows]: any = await db.query(
       `SELECT
-        SUM(date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)) AS this_week,
-        SUM(date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND date_requested < DATE_SUB(CURDATE(), INTERVAL ? DAY)) AS last_week
-      FROM vw_mr_headers WHERE progress_id = 17`,
+        SUM(l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)) AS this_week,
+        SUM(l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL ? DAY)) AS last_week
+      FROM lpo l WHERE l.progress_id = 17`,
       [filter, filter * 2, filter],
     );
     const [itemRows]: any = await db.query(
       `SELECT l.id, l.mr_header_id,
          (SELECT COUNT(*) FROM lpo_mr_line lml WHERE lml.lpo_id = l.id) AS item_count
        FROM lpo l
-       INNER JOIN mr_headers h ON h.id = l.mr_header_id
-       WHERE h.progress_id = 17
-         AND h.date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       WHERE l.progress_id = 17
+         AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
        ORDER BY l.delivery_date ASC LIMIT ?`,
       [filter, maxItems]
     );
