@@ -64,7 +64,8 @@ export default function IssueLPOButton({
     (sum, price) => sum + parseFloat(price || "0"),
     0,
   );
-  const discountAmount = parseFloat(discount || "0");
+  const discountRate = parseFloat(discount || "0");
+  const discountAmount = subtotal * (discountRate / 100);
   const amountAfterDiscount = subtotal - discountAmount;
   const vatAmount = (amountAfterDiscount * parseFloat(vatRate || "0")) / 100;
   const shAmount = parseFloat(shippingHandling || "0");
@@ -644,13 +645,25 @@ export default function IssueLPOButton({
               </div>
               <div className="input-row full">
                 <InputItem
-                  label={"DISCOUNT"}
+                  label={"DISCOUNT (%)"}
                   value={discount}
                   type={"text"}
-                  placeholder={"ENTER DISCOUNT"}
+                  placeholder={""}
                   required
                   onChange={(e) => handleDiscountChange(e.target.value)}
                   sideLabel={true}
+                />
+              </div>
+              <div className="input-row full">
+                <InputItem
+                  label={"DISCOUNT"}
+                  value={formatNumber(discountAmount)}
+                  type={"text"}
+                  placeholder={""}
+                  required
+                  onChange={() => {}}
+                  sideLabel={true}
+                  disabled={true}
                 />
               </div>
               <div className="input-row full">

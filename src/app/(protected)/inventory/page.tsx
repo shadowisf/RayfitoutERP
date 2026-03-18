@@ -9,6 +9,7 @@ import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStoc
 import TransactionDetailsPopUpButton from "./[id]/components/_IssueDetailsPopUpButton";
 import InventoryFilterButton from "./components/_InventoryFilterButton";
 import StockLocationHoverPopup from "./components/_StockLocationHoverPopup";
+import HoverLoadingCursor from "../dashboard/components/HoverLoadingCursor";
 import ArchiveInventoryItemButton from "./[id]/components/_ArchiveInventoryItemButton";
 import DeleteTransactionButton from "./[id]/components/_DeleteTransactionButton";
 import EditTransactionButton from "./components/_EditTransactionButton";
@@ -82,6 +83,7 @@ export default function Inventory() {
   const [hoverTimer, setHoverTimer] = useState<NodeJS.Timeout | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [showPopup, setShowPopup] = useState(false);
+  const [isWaiting, setIsWaiting] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -982,18 +984,47 @@ export default function Inventory() {
   };
 
   const handleMouseEnter = (itemId: number, event: React.MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.closest("button, a, [role='button']")) return;
+
     setMousePosition({ x: event.clientX, y: event.clientY });
+    setIsWaiting(true);
 
     const timer = setTimeout(() => {
+      setIsWaiting(false);
       setHoveredItemId(itemId);
       setShowPopup(true);
-    }, 2000); // 2 second delay
+    }, 2000);
 
     setHoverTimer(timer);
   };
 
   const handleMouseMove = (event: React.MouseEvent) => {
+    const target = event.target as HTMLElement;
+    const overButton = !!target.closest("button, a, [role='button']");
+
+    if (overButton && (isWaiting || showPopup)) {
+      if (hoverTimer) {
+        clearTimeout(hoverTimer);
+        setHoverTimer(null);
+      }
+      setIsWaiting(false);
+      setShowPopup(false);
+      setHoveredItemId(null);
+      return;
+    }
+
     setMousePosition({ x: event.clientX, y: event.clientY });
+  };
+
+  const handleMouseDown = () => {
+    if (hoverTimer) {
+      clearTimeout(hoverTimer);
+      setHoverTimer(null);
+    }
+    setIsWaiting(false);
+    setShowPopup(false);
+    setHoveredItemId(null);
   };
 
   const handleMouseLeave = () => {
@@ -1001,6 +1032,7 @@ export default function Inventory() {
       clearTimeout(hoverTimer);
       setHoverTimer(null);
     }
+    setIsWaiting(false);
     setShowPopup(false);
     setHoveredItemId(null);
   };
@@ -1604,6 +1636,7 @@ export default function Inventory() {
                           onMouseEnter={(e) => handleMouseEnter(item.id, e)}
                           onMouseMove={handleMouseMove}
                           onMouseLeave={handleMouseLeave}
+                          onMouseDown={handleMouseDown}
                           style={{ position: "relative" }}
                         >
                           <td>{startIndex + index + 1}</td>
@@ -1894,6 +1927,13 @@ export default function Inventory() {
             </div>
           )}
         </div>
+      )}
+
+      {isWaiting && !showPopup && (
+        <HoverLoadingCursor
+          mouseX={mousePosition.x}
+          mouseY={mousePosition.y}
+        />
       )}
 
       {showPopup && hoveredItemId !== null && (

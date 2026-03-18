@@ -1,9 +1,12 @@
 "use client";
 
+import Button from "@/app/components/Button";
 import { useEffect, useState } from "react";
 
 export default function ExpectedDeliveriesWidget() {
   const [deliveries, setDeliveries] = useState<any[]>([]);
+
+  const externalLinkIcon = "/icons/external-link.svg";
 
   useEffect(() => {
     fetch(
@@ -26,11 +29,12 @@ export default function ExpectedDeliveriesWidget() {
       <table className="items-table two-toned alt">
         <thead>
           <tr>
-            <th>ID</th>
+            <th>LPO NUMBER</th>
             <th>VENDOR</th>
             <th>ETA</th>
             <th>ITEMS</th>
             <th>STATUS</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -67,6 +71,18 @@ export default function ExpectedDeliveriesWidget() {
                   >
                     {isOverdue ? "Overdue" : "On Schedule"}
                   </div>
+                </td>
+                <td>
+                  <Button
+                    componentType={"link"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"rgba(223, 223, 223, 1)"}
+                    textColor={"black"}
+                    href={`/mr/${delivery.mr_header_id}/lpo/${delivery.id}`}
+                    style={{ padding: "7px 7px" }}
+                  >
+                    <img src={externalLinkIcon} alt="external link" />
+                  </Button>
                 </td>
               </tr>
             );
