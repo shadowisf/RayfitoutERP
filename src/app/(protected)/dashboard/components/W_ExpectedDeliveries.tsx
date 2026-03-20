@@ -54,7 +54,7 @@ export default function ExpectedDeliveriesWidget() {
                 <td>LPO-{String(delivery.id).padStart(5, "0")}</td>
                 <td>{delivery.supplier_name}</td>
                 <td>
-                  {new Date(delivery.delivery_date).toLocaleDateString("en-US")}
+                  {new Date(delivery.delivery_date).toLocaleDateString("en-GB")}
                 </td>
                 <td>{delivery.item_count}</td>
                 <td>
