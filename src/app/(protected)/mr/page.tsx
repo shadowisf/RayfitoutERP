@@ -545,12 +545,13 @@ export default function MR() {
     if (userDeptId === 8) {
       // Manager
       if (isFilterRelevant) {
-        // Stages where manager is responsible → show all departments
-        const responsibleDept =
-          progressToResponsibleDepartment[mr.progress_id];
-        if (responsibleDept === 8) return true;
-        // Other stages → only own department
-        return mr.department_id === 8;
+        // Only show stages the manager is responsible for
+        // Manager Approval (3), Manager Price Approval (10): show all MRs
+        if ([3, 10].includes(mr.progress_id)) return true;
+        // Request Rejected (5): show only own dept
+        if (mr.progress_id === 5) return mr.department_id === 8;
+        // All other stages: hide
+        return false;
       }
       // filter off → see everything
       return true;
@@ -787,16 +788,14 @@ export default function MR() {
 
     if (status.progress_id === 1) return mrs.length > 0;
     if (userDeptId === 8) {
-      // Managers can see all MRs (as requested)
-      if ([5, 25].includes(status.progress_id)) {
-        return mrs.some((mr: any) => mr.department_id === userDeptId);
-      }
-      // For stages where manager is responsible, show if there are any MRs
-      const responsibleDept =
-        progressToResponsibleDepartment[status.progress_id];
-      if (responsibleDept === 8) return mrs.length > 0;
-      // Other stages → show only if manager's dept has MRs
-      return mrs.some((mr: any) => mr.department_id === 8);
+      // Only show stages the manager is responsible for
+      // Manager Approval (3), Manager Price Approval (10): show if any MRs exist
+      if ([3, 10].includes(status.progress_id)) return mrs.length > 0;
+      // Request Rejected (5): show if own dept has rejected MRs
+      if (status.progress_id === 5)
+        return mrs.some((mr: any) => mr.department_id === 8);
+      // All other MR stages: hide
+      return false;
     }
     if ([5, 25].includes(status.progress_id)) {
       return mrs.some((mr: any) => mr.department_id === userDeptId);

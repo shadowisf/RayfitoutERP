@@ -10,6 +10,7 @@ import CancelMaterialRequestButton from "./components/_CancelMaterialRequest";
 import RequisitionTimeline from "./components/RequisitionTimeline";
 import DownloadMrPDFButton from "./components/_DownloadMrPDFButton";
 import DownloadJoPDFButton from "./components/_DownloadJoPDFButton";
+import JoContractWidget from "./components/_JoContractWidget";
 
 export default async function MrWithID({
   params,
@@ -342,230 +343,252 @@ export default async function MrWithID({
 
       <br />
 
-      <div className="mr-with-id">
-        <div className="top">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-            }}
-          >
-            <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: "25px" }}>
+        <div className="mr-with-id" style={{ flex: 1 }}>
+          <div className="top">
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              <div
+                style={{ display: "flex", gap: "25px", alignItems: "center" }}
+              >
+                <div>
+                  <small>
+                    {mrHeader.type.toLowerCase().includes("material")
+                      ? "MR"
+                      : "JO"}{" "}
+                    NUMBER
+                  </small>
+                  <h2>
+                    {mrHeader.type.toLowerCase().includes("material")
+                      ? "MR-"
+                      : "JO-"}
+                    {String(mrHeader.id).padStart(5, "0")}
+                  </h2>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <p
+                    className="approval-pill normal-text"
+                    style={{ ...progressStyle, textTransform: "uppercase" }}
+                  >
+                    {mrHeader.progress_name}
+                  </p>
+                </div>
+
+                {mrHeader.progress_id !== 1 && mrHeader.progress_id !== 25 && (
+                  <div
+                    className="approval-pill normal-text centered"
+                    style={{
+                      backgroundColor: "white",
+                      color: darkerTextColor, // darker for readability
+                      border: "1px solid rgba(207, 207, 207, 1)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <svg
+                      width="13"
+                      height="15"
+                      viewBox="0 0 15 17"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
+                        fill={priorityColor} // flag keeps original brightness
+                      />
+                    </svg>
+                    <span>PRIORITY: {priorityLabel}</span>
+                  </div>
+                )}
+              </div>
+
+              <div
+                style={{ display: "flex", gap: "10px", alignItems: "center" }}
+              >
+                <EditMrHeaderButton mrHeader={mrHeader} />
+                <DeleteMrHeaderButton mrHeader={mrHeader} />
+              </div>
+            </div>
+          </div>
+
+          <br />
+          <br />
+
+          <div className="bottom">
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
               <div>
-                <small>
-                  {mrHeader.type.toLowerCase().includes("material")
-                    ? "MR"
-                    : "JO"}{" "}
-                  NUMBER
-                </small>
+                <small>PROJECT</small>
+                <h2>{mrHeader.project_name || "-"}</h2>
+              </div>
+
+              {mrHeader.project_name && (
+                <Button
+                  componentType="link"
+                  bgColor="rgba(239, 239, 239, 1)"
+                  borderColor="rgba(223, 223, 223, 1)"
+                  textColor="black"
+                  href={`/project/${mrHeader.project_id}`}
+                  style={{ padding: "7px 7px" }}
+                >
+                  <img src={externalLinkIcon} alt="external link" />
+                </Button>
+              )}
+            </div>
+
+            <div>
+              <small>PURPOSE</small>
+              <h2>{mrHeader.purpose_name}</h2>
+            </div>
+
+            <div>
+              <small>REQUESTED BY</small>
+              <h2>{mrHeader.requested_by || ""}</h2>
+            </div>
+
+            <div>
+              <small>DEPARTMENT</small>
+              <h2>{mrHeader.department_name}</h2>
+            </div>
+
+            <div
+              style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}
+            >
+              <div>
+                <small>REQUIRED DATE</small>
                 <h2>
-                  {mrHeader.type.toLowerCase().includes("material")
-                    ? "MR-"
-                    : "JO-"}
-                  {String(mrHeader.id).padStart(5, "0")}
+                  {new Date(mrHeader.required_date).toLocaleDateString("en-GB")}
                 </h2>
               </div>
 
-              <div style={{ display: "flex", gap: "10px" }}>
-                <p
-                  className="approval-pill normal-text"
-                  style={{ ...progressStyle, textTransform: "uppercase" }}
-                >
-                  {mrHeader.progress_name}
-                </p>
-              </div>
-
-              {mrHeader.progress_id !== 1 && mrHeader.progress_id !== 25 && (
-                <div
-                  className="approval-pill normal-text centered"
-                  style={{
-                    backgroundColor: "white",
-                    color: darkerTextColor, // darker for readability
-                    border: "1px solid rgba(207, 207, 207, 1)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
-                  <svg
-                    width="13"
-                    height="15"
-                    viewBox="0 0 15 17"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
+              {!isCompleted && (
+                <div>
+                  <h2
+                    className="approval-pill normal-text"
+                    style={{
+                      ...daysLeftStyle,
+                      padding: "4px 10px",
+                      borderRadius: "50px",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      whiteSpace: "nowrap",
+                    }}
                   >
-                    <path
-                      d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
-                      fill={priorityColor} // flag keeps original brightness
-                    />
-                  </svg>
-                  <span>PRIORITY: {priorityLabel}</span>
+                    {daysLeftText}
+                  </h2>
                 </div>
               )}
             </div>
 
-            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              <EditMrHeaderButton mrHeader={mrHeader} />
-              <DeleteMrHeaderButton mrHeader={mrHeader} />
-            </div>
-          </div>
-        </div>
-
-        <br />
-        <br />
-
-        <div className="bottom">
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <div>
-              <small>PROJECT</small>
-              <h2>{mrHeader.project_name || "-"}</h2>
-            </div>
-
-            {mrHeader.project_name && (
-              <Button
-                componentType="link"
-                bgColor="rgba(239, 239, 239, 1)"
-                borderColor="rgba(223, 223, 223, 1)"
-                textColor="black"
-                href={`/project/${mrHeader.project_id}`}
-                style={{ padding: "7px 7px" }}
-              >
-                <img src={externalLinkIcon} alt="external link" />
-              </Button>
-            )}
-          </div>
-
-          <div>
-            <small>PURPOSE</small>
-            <h2>{mrHeader.purpose_name}</h2>
-          </div>
-
-          <div>
-            <small>REQUESTED BY</small>
-            <h2>{mrHeader.requested_by || ""}</h2>
-          </div>
-
-          <div>
-            <small>DEPARTMENT</small>
-            <h2>{mrHeader.department_name}</h2>
-          </div>
-
-          <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
-            <div>
-              <small>REQUIRED DATE</small>
-              <h2>
-                {new Date(mrHeader.required_date).toLocaleDateString("en-GB")}
-              </h2>
-            </div>
-
-            {!isCompleted && (
+            {mrHeader.progress_id !== 1 && mrHeader.progress_id !== 25 && (
               <div>
-                <h2
-                  className="approval-pill normal-text"
+                <small>CURRENT PROGRESS DURATION</small>
+                <div
                   style={{
-                    ...daysLeftStyle,
-                    padding: "4px 10px",
+                    padding: "4px 8px",
                     borderRadius: "50px",
                     fontSize: "11px",
                     fontWeight: "600",
-                    whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    backgroundColor: "rgba(234, 234, 234, 1)",
+                    color: "rgba(89, 89, 89, 1)",
+                    width: "fit-content",
                   }}
                 >
-                  {daysLeftText}
-                </h2>
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 11 11"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    style={{ color: "rgba(89, 89, 89, 1)" }}
+                  >
+                    <path
+                      d="M5.5 2.5V5.5H8.5"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  {duration}
+                </div>
               </div>
             )}
           </div>
 
-          {mrHeader.progress_id !== 1 && mrHeader.progress_id !== 25 && (
-            <div>
-              <small>CURRENT PROGRESS DURATION</small>
-              <div
-                style={{
-                  padding: "4px 8px",
-                  borderRadius: "50px",
-                  fontSize: "11px",
-                  fontWeight: "600",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "5px",
-                  backgroundColor: "rgba(234, 234, 234, 1)",
-                  color: "rgba(89, 89, 89, 1)",
-                  width: "fit-content",
-                }}
-              >
-                <svg
-                  width="11"
-                  height="11"
-                  viewBox="0 0 11 11"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  style={{ color: "rgba(89, 89, 89, 1)" }}
-                >
-                  <path
-                    d="M5.5 2.5V5.5H8.5"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                {duration}
+          {mrHeader?.progress_id === 17 && (
+            <>
+              <br />
+              <br />
+              <div className="bottom">
+                {deliveryDates?.length > 0 && (
+                  <>
+                    {deliveryDates.map((delivery: any, index: number) => {
+                      const { text, style } = calculateDaysLeft(
+                        delivery.delivery_date,
+                      );
+                      return (
+                        <div
+                          key={index}
+                          style={{ display: "flex", gap: "10px" }}
+                        >
+                          <div>
+                            <small>
+                              {delivery.supplier_name.toUpperCase()} DELIVERY
+                              DATE
+                            </small>
+                            <h2>
+                              {new Date(
+                                delivery.delivery_date,
+                              ).toLocaleDateString("en-GB")}
+                            </h2>
+                          </div>
+                          {!isCompleted && (
+                            <div>
+                              <h2
+                                className="approval-pill normal-text"
+                                style={{
+                                  ...style,
+                                  borderRadius: "5px",
+                                  textWrap: "nowrap",
+                                }}
+                              >
+                                {text}
+                              </h2>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
               </div>
-            </div>
+            </>
           )}
         </div>
 
-        {mrHeader?.progress_id === 17 && (
-          <>
-            <br />
-            <br />
-            <div className="bottom">
-              {deliveryDates?.length > 0 && (
-                <>
-                  {deliveryDates.map((delivery: any, index: number) => {
-                    const { text, style } = calculateDaysLeft(
-                      delivery.delivery_date,
-                    );
-                    return (
-                      <div key={index} style={{ display: "flex", gap: "10px" }}>
-                        <div>
-                          <small>
-                            {delivery.supplier_name.toUpperCase()} DELIVERY DATE
-                          </small>
-                          <h2>
-                            {new Date(
-                              delivery.delivery_date,
-                            ).toLocaleDateString("en-GB")}
-                          </h2>
-                        </div>
-                        {!isCompleted && (
-                          <div>
-                            <h2
-                              className="approval-pill normal-text"
-                              style={{
-                                ...style,
-                                borderRadius: "5px",
-                                textWrap: "nowrap",
-                              }}
-                            >
-                              {text}
-                            </h2>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-          </>
+        {effectiveIsJobOrder && mrHeader.progress_id >= 7 && (
+          <JoContractWidget
+            mrHeaderId={mrHeader.id}
+            progressId={mrHeader.progress_id}
+            departmentId={mrHeader.department_id}
+            initialContractFile={mrHeader.jo_contract_file}
+            initialOtherDocsFile={mrHeader.jo_other_docs_file}
+          />
         )}
       </div>
 

@@ -58,6 +58,13 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
     return parseFloat(num.toFixed(3)).toString();
   };
 
+  const formatDate = (value: string | null | undefined): string => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleDateString("en-GB");
+  };
+
   // Check if all items have been reviewed (approved or rejected)
   const allItemsReviewed = joLines.every(
     (item) =>
@@ -235,7 +242,8 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
 
           <div className="right">
             {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-              userInfo?.departmentID === mrHeader.department_id && (
+              userInfo?.departmentID === mrHeader.department_id &&
+              joLines.length === 0 && (
                 <AddJoItemButton
                   mrHeaderID={mrHeader.id}
                   projectID={mrHeader.project_id}
@@ -258,6 +266,8 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
               <th>DESCRIPTION</th>
               <th>BOQ REF.</th>
               <th>QTY</th>
+              <th>START DATE</th>
+              <th>END DATE</th>
               {canSeePrice && <th>BUDGET EST.</th>}
               {showTotalPriceColumn && <th>TOTAL PRICE</th>}
               <th>ATTACHMENT</th>
@@ -308,6 +318,8 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                   <td>
                     {formatNumber(item.quantity)} {item.unit}
                   </td>
+                  <td>{formatDate(item.start_date)}</td>
+                  <td>{formatDate(item.end_date)}</td>
 
                   {canSeePrice && (
                     <td>
@@ -433,8 +445,8 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                 }, 0);
                 const hasAnyPrice = liveTotalPrice > 0 || hasAnyApprovedPrice;
 
-                // Columns before TOTAL PRICE: #, SCOPE, DESCRIPTION, BOQ REF, QTY + BUDGET EST. if canSeePrice
-                const labelColSpan = 5 + (canSeePrice ? 1 : 0);
+                // Columns before BUDGET EST.: #, SCOPE, DESCRIPTION, BOQ REF, QTY, START DATE, END DATE
+                const labelColSpan = 7 + (canSeePrice ? 1 : 0);
                 // Columns after TOTAL PRICE value
                 let trailingCols = 1; // ATTACHMENT
                 if (mrHeader.progress_id === 3) trailingCols += 1;

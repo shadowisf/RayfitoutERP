@@ -444,6 +444,8 @@ export default function QuickInitialApprovalWidget() {
       delivery_date: "",
       jo_invoice_file: "",
       jo_payment_receipt: "",
+      jo_contract_file: null,
+      jo_other_docs_file: null,
     };
   }
 

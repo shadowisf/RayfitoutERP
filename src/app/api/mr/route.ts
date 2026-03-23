@@ -1050,6 +1050,22 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "updateJoContract") {
+      await db.query(
+        `UPDATE mr_headers SET jo_contract_file = ? WHERE id = ?`,
+        [body.jo_contract_file, body.id],
+      );
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "updateJoOtherDocs") {
+      await db.query(
+        `UPDATE mr_headers SET jo_other_docs_file = ? WHERE id = ?`,
+        [body.jo_other_docs_file, body.id],
+      );
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action === "submitJoForFinalCompletion") {
       await db.query(`UPDATE mr_headers SET progress_id = 25 WHERE id = ?`, [
         body.id,
@@ -1219,9 +1235,16 @@ export async function PUT(req: Request) {
 
       return NextResponse.json({ success: true });
     }
+    return NextResponse.json(
+      { error: `Unknown action: ${body.action}` },
+      { status: 400 },
+    );
   } catch (err: any) {
-    console.error(err.sqlMessage);
-    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+    console.error(err.sqlMessage || err.message || err);
+    return NextResponse.json(
+      { error: err.sqlMessage || err.message || "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 

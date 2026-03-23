@@ -25,7 +25,7 @@ export default function HoverLoadingCursor({
         width="18"
         height="18"
         viewBox="0 0 18 18"
-        style={{ animation: "hover-cursor-spin 2s linear forwards" }}
+        style={{ transform: "rotate(-90deg)" }}
       >
         <circle
           cx="9"
