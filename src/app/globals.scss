@@ -1164,15 +1164,6 @@ label {
   }
 }
 
-@keyframes hover-cursor-spin {
-  from {
-    transform: rotate(-90deg);
-  }
-  to {
-    transform: rotate(270deg);
-  }
-}
-
 @keyframes hover-cursor-fill {
   from {
     stroke-dashoffset: 44;

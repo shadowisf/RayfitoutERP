@@ -17,5 +17,7 @@ export type MrHeader = {
   delivery_date: string;
   jo_invoice_file: string;
   jo_payment_receipt: string;
+  jo_contract_file: string | null;
+  jo_other_docs_file: string | null;
   item_count?: number;
 };

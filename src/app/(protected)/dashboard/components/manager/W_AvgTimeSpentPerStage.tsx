@@ -32,10 +32,10 @@ export default function AvgTimeSpentPerStageWidget() {
     "LPO & Invoice",
     "Payment Rejected",
     "Pending Payments",
-    "GRN Failed",
+    // "GRN Failed",
     "Awaiting Delivery",
-    "QC Check",
-    "Failed QC",
+    // "QC Check",
+    // "Failed QC",
     "Stock Entry",
   ];
 
@@ -62,11 +62,14 @@ export default function AvgTimeSpentPerStageWidget() {
           throw new Error("Invalid data format");
         }
 
-        // ❌ Remove Completed stage and filter out < 1 minute or 0
+        // ❌ Remove Completed stage, hidden stages, and filter out < 1 minute or 0
         const filtered = responseData.filter(
           (item) =>
             item.stage.toLowerCase() !== "completed" &&
-            item.averageMinutes >= 1,
+            item.averageMinutes >= 1 &&
+            stageOrder.some(
+              (s) => s.toLowerCase() === item.stage.toLowerCase(),
+            ),
         );
 
         // ✅ Sort by defined stage order

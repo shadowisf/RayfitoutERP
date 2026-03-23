@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
-import JoDetailsPopUp from "./_JoDetailsPopUp";
 import Button from "@/app/components/Button";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import EditSubcontractorButton from "../../components/_EditSubcontractorButton";
@@ -36,9 +35,7 @@ export default function SubcontractorDetailClient({
   const { userInfo } = useAuth();
   const router = useRouter();
 
-  const [jobOrders, setJobOrders] = useState<JobOrderRow[]>(initialJobOrders);
-  const [selectedJo, setSelectedJo] = useState<JobOrderRow | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [jobOrders] = useState<JobOrderRow[]>(initialJobOrders);
 
   const externalLinkIcon = "/icons/external-link.svg";
   const supplierContractIcon = "/icons/supplier-contract.svg";
@@ -46,62 +43,12 @@ export default function SubcontractorDetailClient({
   const supplierBankIcon = "/icons/supplier-bank.svg";
   const supplierTRNIcon = "/icons/supplier-trn.svg";
 
-  const formatCurrency = (value: number) =>
-    `AED ${Number(value || 0).toFixed(2)}`;
-
   const formatDate = (value: string | null) => {
     if (!value) return "-";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "-";
     return date.toLocaleDateString("en-GB");
   };
-
-  const getPaymentStatusStyle = (jo: JobOrderRow) => {
-    const hasReceipt =
-      jo.jo_payment_receipt &&
-      jo.jo_payment_receipt !== "" &&
-      jo.jo_payment_receipt !== "[]";
-
-    if (hasReceipt) {
-      return {
-        backgroundColor: "rgba(34, 150, 100, 1)",
-        color: "white",
-        label: "PAID",
-      };
-    }
-
-    if (jo.jo_invoice_file) {
-      return {
-        backgroundColor: "rgba(255, 193, 7, 1)",
-        color: "rgba(100, 65, 0, 1)",
-        label: "UNPAID",
-      };
-    }
-
-    return {
-      backgroundColor: "rgba(231, 231, 231, 1)",
-      color: "black",
-      label: "NO INVOICE",
-    };
-  };
-
-  // Refresh JO list after payment
-  async function refreshJobOrders() {
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor/getJOsBySubcontractorID`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subcontractor_id: subcontractor.id }),
-        },
-      );
-      const data = await res.json();
-      setJobOrders(data);
-    } catch (error) {
-      console.error("Error refreshing JOs:", error);
-    }
-  }
 
   return (
     <div className="dashboard">
@@ -189,7 +136,7 @@ export default function SubcontractorDetailClient({
           }}
         >
           {/* CONTRACT */}
-          <div
+          {/* <div
             className="widget-container"
             style={{
               display: "flex",
@@ -254,12 +201,13 @@ export default function SubcontractorDetailClient({
               />
             </div>
             <h2>CONTRACT</h2>
-          </div>
+          </div> */}
 
           {/* CONTACT PERSON - spans full width */}
           <div
             className="widget-container"
             style={{
+              gridColumn: "1 / -1",
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
@@ -431,53 +379,38 @@ export default function SubcontractorDetailClient({
         <thead>
           <tr>
             <th>#</th>
-            <th>PAID DATE</th>
             <th>JO NUMBER</th>
             <th>PROJECT</th>
             <th>START DATE</th>
             <th>END DATE</th>
-            <th>INVOICE AMOUNT</th>
-            <th>TOTAL PAID</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {jobOrders.length === 0 ? (
             <tr>
-              <td colSpan={9} style={{ textAlign: "center", padding: "30px" }}>
+              <td colSpan={6} style={{ textAlign: "center", padding: "30px" }}>
                 No job orders found for this subcontractor.
               </td>
             </tr>
           ) : (
             jobOrders.map((jo, index) => {
-              const statusInfo = getPaymentStatusStyle(jo);
-
               return (
                 <tr key={jo.jo_id}>
                   <td>{index + 1}</td>
-                  <td>
-                    {statusInfo.label === "PAID"
-                      ? formatDate(jo.jo_paid_at)
-                      : "-"}
-                  </td>
                   <td style={{ textWrap: "nowrap" }}>
                     JO-{String(jo.jo_id).padStart(5, "0")}
                   </td>
                   <td>{jo.project_name || "-"}</td>
                   <td>{formatDate(jo.start_date)}</td>
                   <td>{formatDate(jo.end_date)}</td>
-                  <td>{formatCurrency(jo.invoice_amount)}</td>
-                  <td>{formatCurrency(jo.total_paid)}</td>
                   <td>
                     <Button
-                      onClick={() => {
-                        setSelectedJo(jo);
-                        setIsDetailsOpen(true);
-                      }}
+                      componentType={"link"}
+                      href={`/mr/${jo.jo_id}`}
                       style={{
                         padding: "7px 7px",
                       }}
-                      componentType={"button"}
                       bgColor={"rgba(239, 239, 239, 1)"}
                       borderColor={"rgba(223, 223, 223, 1)"}
                       textColor={"black"}
@@ -491,26 +424,6 @@ export default function SubcontractorDetailClient({
           )}
         </tbody>
       </table>
-
-      {/* JO Details Popup */}
-      {isDetailsOpen && selectedJo && (
-        <JoDetailsPopUp
-          joId={selectedJo.jo_id}
-          mrNumber={
-            selectedJo.mr_number ||
-            `JO-${String(selectedJo.jo_id).padStart(5, "0")}`
-          }
-          joPaymentReceipt={selectedJo.jo_payment_receipt}
-          joInvoiceFile={selectedJo.jo_invoice_file}
-          onClose={() => {
-            setIsDetailsOpen(false);
-            setSelectedJo(null);
-          }}
-          onPaymentComplete={() => {
-            refreshJobOrders();
-          }}
-        />
-      )}
     </div>
   );
 }
