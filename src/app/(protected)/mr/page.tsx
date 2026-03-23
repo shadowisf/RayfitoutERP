@@ -545,7 +545,11 @@ export default function MR() {
     if (userDeptId === 8) {
       // Manager
       if (isFilterRelevant) {
-        // When "only related" is ON → only own department (8)
+        // Stages where manager is responsible → show all departments
+        const responsibleDept =
+          progressToResponsibleDepartment[mr.progress_id];
+        if (responsibleDept === 8) return true;
+        // Other stages → only own department
         return mr.department_id === 8;
       }
       // filter off → see everything
@@ -787,7 +791,12 @@ export default function MR() {
       if ([5, 25].includes(status.progress_id)) {
         return mrs.some((mr: any) => mr.department_id === userDeptId);
       }
-      return getResponsibleDepartment(status.name).id === 8;
+      // For stages where manager is responsible, show if there are any MRs
+      const responsibleDept =
+        progressToResponsibleDepartment[status.progress_id];
+      if (responsibleDept === 8) return mrs.length > 0;
+      // Other stages → show only if manager's dept has MRs
+      return mrs.some((mr: any) => mr.department_id === 8);
     }
     if ([5, 25].includes(status.progress_id)) {
       return mrs.some((mr: any) => mr.department_id === userDeptId);
