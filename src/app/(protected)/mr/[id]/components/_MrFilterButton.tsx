@@ -137,7 +137,7 @@ export default function MrFilterButton({
 
       {isOpen && (
         <FormPopUp
-          header={"FILTER MATERIAL REQUISITIONS"}
+          header={"FILTER REQUISITIONS"}
           setIsOpen={setIsOpen}
           addButtonLabel="APPLY FILTER"
           handleSubmit={handleApply}
@@ -170,6 +170,7 @@ export default function MrFilterButton({
                 { value: "all", label: "All" },
                 { value: "material", label: "Material Request" },
                 { value: "job", label: "Job Order" },
+                { value: "payment", label: "Payment Request" },
               ].map((option) => (
                 <label
                   key={option.value}

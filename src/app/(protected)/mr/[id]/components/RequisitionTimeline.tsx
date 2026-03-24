@@ -21,7 +21,7 @@ type RequisitionTimelineProps = {
   mrHeaderId: number;
   currentProgressId: number;
   lpoId?: number;
-  type?: "material" | "job";
+  type?: "material" | "job" | "payment";
 };
 
 // Rejection progress IDs for MR/LPO
@@ -92,6 +92,21 @@ const FULL_MR_STAGES_ALL_AVAILABLE = [1, 2, 4, 25];
 // JO Stages - simplified flow for job orders
 // ORDER CREATED (1) → MANAGER APPROVAL (3) → QUOTATIONS (7) → MANAGER PRICE APPROVAL (10) → COMPLETED (25)
 const JO_STAGES_IDS = [1, 3, 7, 10, 25];
+
+// Payment Request Stages
+// REQUEST CREATED (1) → QS REVIEW (2) → MANAGER APPROVAL (3) → PAYMENT (14) → COMPLETED (25)
+const PR_STAGES_IDS = [1, 2, 3, 14, 25];
+
+const PR_STAGE_LABELS: { [key: number]: string } = {
+  1: "REQUEST CREATED",
+  2: "QS REVIEW",
+  3: "MANAGER APPROVAL",
+  5: "REQUEST REJECTED",
+  14: "PAYMENT",
+  25: "COMPLETED",
+};
+
+const PR_REJECTION_IDS = new Set([5]);
 
 // Base LPO stages (no QS) - TEMPORARILY DISABLED QC: removed 21 (QC Check)
 const BASE_LPO_STAGES = [1, 3, 7, 10, 12, 14, 17, 24, 25];
@@ -177,6 +192,11 @@ export default function RequisitionTimeline({
     baseStageIds = hasBoqReference ? fullStages : BASE_LPO_STAGES;
     stageLabels = STAGE_LABELS;
     rejectionIds = REJECTION_IDS;
+  } else if (type === "payment") {
+    // Payment request flow
+    baseStageIds = PR_STAGES_IDS;
+    stageLabels = PR_STAGE_LABELS;
+    rejectionIds = PR_REJECTION_IDS;
   } else if (type === "job") {
     // JO flow - use JO-specific stages and labels
     baseStageIds = JO_STAGES_IDS;

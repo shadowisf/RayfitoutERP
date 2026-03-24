@@ -14,6 +14,7 @@ type props = {
   currentBoqLineIDs?: number[];
   disabled?: boolean;
   style?: React.CSSProperties;
+  singleSelect?: boolean;
 };
 
 type GroupedBoqLines = {
@@ -28,6 +29,7 @@ export default function MultipleSelectBoqItemButton({
   currentBoqLineIDs = [],
   disabled,
   style,
+  singleSelect = false,
 }: props) {
   const locationIcon = "/icons/location-boq.svg";
   const arrowRight = "/icons/arrow-right.svg";
@@ -226,6 +228,10 @@ export default function MultipleSelectBoqItemButton({
 
   // Toggle individual item
   const handleCheckboxToggle = (boqId: number) => {
+    if (singleSelect) {
+      setTempSelectedBoqIDs([boqId]);
+      return;
+    }
     setTempSelectedBoqIDs((prev) => {
       const isSelected = prev.includes(boqId);
       if (isSelected) {
@@ -408,45 +414,47 @@ export default function MultipleSelectBoqItemButton({
       <br />
       <br />
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "20px",
-          marginBottom: "10px",
-        }}
-      >
-        <label
+      {!singleSelect && (
+        <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
-            cursor: "pointer",
-            fontWeight: 600,
-            fontSize: "14px",
+            gap: "20px",
+            marginBottom: "10px",
           }}
         >
-          <input
-            type="checkbox"
-            checked={
-              boqCategories.length > 0 &&
-              boqCategories.every((cat) => selectedCategories.has(cat))
-            }
-            onChange={(e) => {
-              const isChecked = e.target.checked;
-              boqCategories.forEach((cat) => {
-                toggleCategory(cat, isChecked);
-              });
-            }}
+          <label
             style={{
-              width: "18px",
-              height: "18px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
               cursor: "pointer",
+              fontWeight: 600,
+              fontSize: "14px",
             }}
-          />
-          SELECT ALL CATEGORIES
-        </label>
-      </div>
+          >
+            <input
+              type="checkbox"
+              checked={
+                boqCategories.length > 0 &&
+                boqCategories.every((cat) => selectedCategories.has(cat))
+              }
+              onChange={(e) => {
+                const isChecked = e.target.checked;
+                boqCategories.forEach((cat) => {
+                  toggleCategory(cat, isChecked);
+                });
+              }}
+              style={{
+                width: "18px",
+                height: "18px",
+                cursor: "pointer",
+              }}
+            />
+            SELECT ALL CATEGORIES
+          </label>
+        </div>
+      )}
 
       <br />
       <br />
@@ -552,20 +560,22 @@ export default function MultipleSelectBoqItemButton({
                       gap: "8px",
                     }}
                   >
-                    <input
-                      type="checkbox"
-                      checked={isCategorySelected(category)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        toggleCategory(category, e.target.checked);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        width: "16px",
-                        height: "16px",
-                        cursor: "pointer",
-                      }}
-                    />
+                    {!singleSelect && (
+                      <input
+                        type="checkbox"
+                        checked={isCategorySelected(category)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          toggleCategory(category, e.target.checked);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          width: "16px",
+                          height: "16px",
+                          cursor: "pointer",
+                        }}
+                      />
+                    )}
                     {category}
                   </div>
                 );
@@ -656,37 +666,39 @@ export default function MultipleSelectBoqItemButton({
                       borderBottom: "2px solid rgba(0, 0, 0, 0.1)",
                     }}
                   >
-                    <label
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        cursor: "pointer",
-                        fontWeight: 600,
-                        fontSize: "12px",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={
-                          Object.keys(subCategoriesData).length > 0 &&
-                          Object.keys(subCategoriesData).every((subCat) =>
-                            isSubCategorySelected(category, subCat),
-                          )
-                        }
-                        onChange={(e) => {
-                          const isChecked = e.target.checked;
-                          Object.keys(subCategoriesData).forEach((subCat) => {
-                            toggleSubCategory(category, subCat, isChecked);
-                          });
-                        }}
+                    {!singleSelect && (
+                      <label
                         style={{
-                          width: "16px",
-                          height: "16px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
                           cursor: "pointer",
+                          fontWeight: 600,
+                          fontSize: "12px",
                         }}
-                      />
-                    </label>
+                      >
+                        <input
+                          type="checkbox"
+                          checked={
+                            Object.keys(subCategoriesData).length > 0 &&
+                            Object.keys(subCategoriesData).every((subCat) =>
+                              isSubCategorySelected(category, subCat),
+                            )
+                          }
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            Object.keys(subCategoriesData).forEach((subCat) => {
+                              toggleSubCategory(category, subCat, isChecked);
+                            });
+                          }}
+                          style={{
+                            width: "16px",
+                            height: "16px",
+                            cursor: "pointer",
+                          }}
+                        />
+                      </label>
+                    )}
 
                     <h2
                       style={{
@@ -724,25 +736,27 @@ export default function MultipleSelectBoqItemButton({
                               fontSize: "14px",
                             }}
                           >
-                            <input
-                              type="checkbox"
-                              checked={isSubCategorySelected(
-                                category,
-                                subCategory,
-                              )}
-                              onChange={(e) =>
-                                toggleSubCategory(
+                            {!singleSelect && (
+                              <input
+                                type="checkbox"
+                                checked={isSubCategorySelected(
                                   category,
                                   subCategory,
-                                  e.target.checked,
-                                )
-                              }
-                              style={{
-                                width: "18px",
-                                height: "18px",
-                                cursor: "pointer",
-                              }}
-                            />
+                                )}
+                                onChange={(e) =>
+                                  toggleSubCategory(
+                                    category,
+                                    subCategory,
+                                    e.target.checked,
+                                  )
+                                }
+                                style={{
+                                  width: "18px",
+                                  height: "18px",
+                                  cursor: "pointer",
+                                }}
+                              />
+                            )}
                             {categoryIndex + 1}.{subCategoryIndex + 1}{" "}
                             {subCategory}
                           </label>
@@ -774,7 +788,8 @@ export default function MultipleSelectBoqItemButton({
                                 <tr key={boq.id}>
                                   <td onClick={(e) => e.stopPropagation()}>
                                     <input
-                                      type="checkbox"
+                                      type={singleSelect ? "radio" : "checkbox"}
+                                      name={singleSelect ? "boq-select" : undefined}
                                       checked={tempSelectedBoqIDs.includes(
                                         boq.id,
                                       )}
@@ -785,6 +800,7 @@ export default function MultipleSelectBoqItemButton({
                                         width: "18px",
                                         height: "18px",
                                         cursor: "pointer",
+                                        accentColor: singleSelect ? "#00aa6c" : undefined,
                                       }}
                                     />
                                   </td>
@@ -906,25 +922,27 @@ export default function MultipleSelectBoqItemButton({
                         fontSize: "14px",
                       }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isSubCategorySelected(
-                          activeBoqCategory,
-                          subCategory,
-                        )}
-                        onChange={(e) =>
-                          toggleSubCategory(
+                      {!singleSelect && (
+                        <input
+                          type="checkbox"
+                          checked={isSubCategorySelected(
                             activeBoqCategory,
                             subCategory,
-                            e.target.checked,
-                          )
-                        }
-                        style={{
-                          width: "18px",
-                          height: "18px",
-                          cursor: "pointer",
-                        }}
-                      />
+                          )}
+                          onChange={(e) =>
+                            toggleSubCategory(
+                              activeBoqCategory,
+                              subCategory,
+                              e.target.checked,
+                            )
+                          }
+                          style={{
+                            width: "18px",
+                            height: "18px",
+                            cursor: "pointer",
+                          }}
+                        />
+                      )}
                       {boqCategories.indexOf(activeBoqCategory) + 1}.{index + 1}{" "}
                       {subCategory}
                     </label>

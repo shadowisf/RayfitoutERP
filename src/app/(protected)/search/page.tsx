@@ -1046,7 +1046,7 @@ export default function SearchResultsPage() {
     if (results.materialRequests.length > 0) {
       sections.push({
         category: "MATERIAL REQUEST",
-        label: "MATERIAL REQUESTS",
+        label: "REQUESTS & ITEMS",
         items: results.materialRequests,
       });
     }
@@ -1094,6 +1094,10 @@ export default function SearchResultsPage() {
   const renderCard = (item: SearchResult) => {
     switch (item.category) {
       case "MATERIAL REQUEST":
+      case "JOB ORDER":
+      case "PAYMENT REQUEST":
+      case "ITEM IN MATERIAL REQUEST":
+      case "ITEM IN LPO":
         return (
           <MRCard
             key={`mr-${item.id}`}

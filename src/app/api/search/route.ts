@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
 
     const searchTerm = `%${query}%`;
 
-    // Extract numeric ID from patterns like MR-00001, LPO-00012, BOQ-00003
-    const idMatch = query.match(/^(?:MR|JO|LPO|BOQ|RAY|DN)-?(\d+)$/i);
+    // Extract numeric ID from patterns like MR-00001, LPO-00012, BOQ-00003, PR-00001
+    const idMatch = query.match(/^(?:MR|JO|PR|LPO|BOQ|RAY|DN)-?(\d+)$/i);
     const numericId = idMatch ? parseInt(idMatch[1], 10) : null;
 
     // Also try parsing as a plain number
@@ -23,7 +23,11 @@ export async function GET(req: NextRequest) {
     const [mrRows]: any = await db.query(
       `SELECT
         id,
-        CASE WHEN type = 'job' THEN CONCAT('JO-', LPAD(id, 5, '0')) ELSE CONCAT('MR-', LPAD(id, 5, '0')) END as display_id,
+        CASE
+          WHEN type = 'job' THEN CONCAT('JO-', LPAD(id, 5, '0'))
+          WHEN type = 'payment' THEN CONCAT('PR-', LPAD(id, 5, '0'))
+          ELSE CONCAT('MR-', LPAD(id, 5, '0'))
+        END as display_id,
         type,
         project_name,
         department_name,
@@ -36,7 +40,13 @@ export async function GET(req: NextRequest) {
       WHERE
         progress_id <= 12
         AND (
-          CONCAT(CASE WHEN type = 'job' THEN 'JO-' ELSE 'MR-' END, LPAD(id, 5, '0')) LIKE ?
+          CONCAT(
+            CASE
+              WHEN type = 'job' THEN 'JO-'
+              WHEN type = 'payment' THEN 'PR-'
+              ELSE 'MR-'
+            END, LPAD(id, 5, '0')
+          ) LIKE ?
           OR project_name LIKE ?
           OR department_name LIKE ?
           OR requested_by LIKE ?
@@ -51,6 +61,35 @@ export async function GET(req: NextRequest) {
         searchTerm,
         numericId || plainNumber || -1,
       ],
+    );
+
+    // 1b. Search MR line items by material_description
+    const [mrLineRows]: any = await db.query(
+      `SELECT
+        ml.id as line_id,
+        ml.mr_header_id,
+        ml.material_description,
+        mh.type,
+        mh.project_id,
+        mh.progress_id,
+        CASE
+          WHEN mh.type = 'job' THEN CONCAT('JO-', LPAD(mh.id, 5, '0'))
+          WHEN mh.type = 'payment' THEN CONCAT('PR-', LPAD(mh.id, 5, '0'))
+          ELSE CONCAT('MR-', LPAD(mh.id, 5, '0'))
+        END as mr_display_id,
+        p.name as project_name,
+        d.value as department_name,
+        mh.requested_by,
+        l.id as lpo_id
+      FROM mr_lines ml
+      JOIN mr_headers mh ON ml.mr_header_id = mh.id
+      LEFT JOIN projects p ON mh.project_id = p.id
+      LEFT JOIN lut_mr_headers_departments d ON mh.department_id = d.id
+      LEFT JOIN lpo l ON l.mr_header_id = mh.id
+      WHERE ml.material_description LIKE ?
+      ORDER BY ml.id DESC
+      LIMIT 5`,
+      [searchTerm],
     );
 
     // 2. Search LPOs (with extra fields for cards)
@@ -326,13 +365,43 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Build MR line item results
+    const mrLineItems = mrLineRows.map((row: any) => {
+      const hasLpo = row.lpo_id != null;
+      const isLpoStage = hasLpo && row.progress_id >= 12;
+      return {
+        id: row.line_id,
+        display_id: row.material_description,
+        category: isLpoStage ? "ITEM IN LPO" : "ITEM IN MATERIAL REQUEST",
+        url: isLpoStage
+          ? `/mr/${row.mr_header_id}/lpo/${row.lpo_id}`
+          : `/mr/${row.mr_header_id}`,
+        project_name: row.project_name,
+        department_name: row.department_name,
+        requested_by: row.requested_by,
+        mr_display_id: row.mr_display_id,
+        type: row.type,
+      };
+    });
+
     return NextResponse.json({
       results: {
-        materialRequests: mrRows.map((row: any) => ({
-          ...row,
-          category: "MATERIAL REQUEST",
-          url: `/mr/${row.id}`,
-        })),
+        materialRequests: [
+          ...mrRows.map((row: any) => {
+            const cat =
+              row.type === "job"
+                ? "JOB ORDER"
+                : row.type === "payment"
+                  ? "PAYMENT REQUEST"
+                  : "MATERIAL REQUEST";
+            return {
+              ...row,
+              category: cat,
+              url: `/mr/${row.id}`,
+            };
+          }),
+          ...mrLineItems,
+        ],
         lpos: lpoRows.map((row: any) => ({
           ...row,
           category: "LPO",

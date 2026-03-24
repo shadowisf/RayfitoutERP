@@ -23,6 +23,7 @@ type InputItemProps = {
   noOptionalLabel?: boolean;
   postfixText?: string;
   min?: string; // Add min prop for date inputs
+  onBlur?: () => void;
 };
 
 export default function InputItem({
@@ -41,6 +42,7 @@ export default function InputItem({
   noOptionalLabel,
   postfixText,
   min, // Destructure min prop
+  onBlur,
 }: InputItemProps) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -142,6 +144,7 @@ export default function InputItem({
               required={required}
               disabled={disabled}
               onClick={onClick}
+              onBlur={onBlur}
             />
           </div>
         </div>

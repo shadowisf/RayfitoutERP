@@ -47,7 +47,7 @@ export default function InfoPopUpButton({
         <FormPopUp
           header={header}
           setIsOpen={setIsOpen}
-          style={{ whiteSpace: "pre-wrap" }}
+          style={{ whiteSpace: "pre-wrap", color: "black" }}
         >
           {text}
         </FormPopUp>

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 interface SearchResult {
-  id: number;
+  id: number | string;
   display_id: string;
   category: string;
   url: string;
@@ -134,7 +134,12 @@ function getCategoryBg(category: string): string {
 function getSubtitle(item: SearchResult): string {
   switch (item.category) {
     case "MATERIAL REQUEST":
+    case "JOB ORDER":
+    case "PAYMENT REQUEST":
       return [item.requested_by, item.project_name].filter(Boolean).join(" - ");
+    case "ITEM IN MATERIAL REQUEST":
+    case "ITEM IN LPO":
+      return [item.mr_display_id, item.project_name].filter(Boolean).join(" - ");
     case "LPO":
       return [item.supplier_name, item.project_name]
         .filter(Boolean)

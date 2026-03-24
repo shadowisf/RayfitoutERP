@@ -14,6 +14,7 @@ export default function NewMrButton() {
 
   const jobIcon = "/icons/job-req.svg";
   const mrIcon = "/icons/material-req.svg";
+  const paymentIcon = "/icons/payment-req.svg";
   const warningIcon = "/icons/warning.svg";
 
   const router = useRouter();
@@ -21,15 +22,17 @@ export default function NewMrButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  const [mode, setMode] = useState<"material" | "job" | "">("");
+  const [mode, setMode] = useState<"material" | "job" | "payment" | "">("");
 
   const [purposeReasonValues, setPurposeReasonValues] = useState<[]>([]);
   const [projects, setProjects] = useState<[]>([]);
+  const [jobOrders, setJobOrders] = useState<any[]>([]);
 
   const [purposeReasonID, setPurposeReasonID] = useState<string | number>("");
   const [projectID, setProjectID] = useState<string | number>("");
   const [requestedBy, setRequestedBy] = useState<string | number>("");
   const [neededBy, setNeededBy] = useState("");
+  const [selectedJoId, setSelectedJoId] = useState<string | number>("");
 
   // Check if selected date is at least 3 days from today (applies to ALL users)
   const isDateValid = () => {
@@ -95,6 +98,14 @@ export default function NewMrButton() {
       .then(function (data) {
         setProjects(data);
       });
+
+    // Fetch job orders for payment request
+    fetch("/api/mr")
+      .then((res) => res.json())
+      .then(function (data) {
+        const jos = data.filter((mr: any) => mr.type === "job");
+        setJobOrders(jos);
+      });
   }, []);
 
   const MR_PURPOSE_IDS = [1, 2, 3, 4, 5];
@@ -116,6 +127,44 @@ export default function NewMrButton() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (mode === "payment") {
+      if (!selectedJoId) {
+        toast("Please select a job order", "error");
+        return;
+      }
+
+      const selectedJo = jobOrders.find(
+        (jo: any) => jo.id === Number(selectedJoId),
+      );
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "createMrHeader",
+          type: "payment",
+          project_id: selectedJo?.project_id || null,
+          department_id: userInfo?.departmentID,
+          requested_by: userInfo?.name,
+          payment_jo_reference_id: Number(selectedJoId),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast("Payment request created", "success");
+        setIsCreateOpen(false);
+        setSelectedJoId("");
+        setMode("");
+        router.refresh();
+        router.replace(`/mr/${data.mrHeaderId}`);
+      } else {
+        toast("Failed to create payment request", "error");
+      }
+      return;
+    }
 
     // Validate date before submitting
     if (!isDateValid()) {
@@ -196,7 +245,7 @@ export default function NewMrButton() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
+              gridTemplateColumns: "1fr 1fr 1fr",
               gap: "20px",
             }}
           >
@@ -211,6 +260,7 @@ export default function NewMrButton() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                width: "300px",
               }}
               onClick={() => setMode("job")}
             >
@@ -284,6 +334,7 @@ export default function NewMrButton() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                width: "300px",
               }}
               onClick={() => setMode("material")}
             >
@@ -346,11 +397,112 @@ export default function NewMrButton() {
                 </span>
               </div>
             </label>
+
+            <label
+              style={{
+                position: "relative",
+                border: `1px solid ${mode === "payment" ? "rgba(0, 163, 93, 1)" : "rgba(217, 217, 217, 1)"}`,
+                borderRadius: "10px",
+                padding: "40px 20px",
+                cursor: "pointer",
+                background:
+                  mode === "payment" ? "rgba(227, 255, 243, 1)" : "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "300px",
+              }}
+              onClick={() => setMode("payment")}
+            >
+              <input
+                type="radio"
+                name="requestType"
+                value="mr"
+                checked={mode === "payment"}
+                onChange={() => setMode("payment")}
+                style={{
+                  position: "absolute",
+                  top: "16px",
+                  left: "16px",
+                  width: "20px",
+                  height: "20px",
+                  cursor: "pointer",
+                  accentColor: "#00aa6c",
+                }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "20px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "80px",
+                    height: "80px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <img
+                    src={paymentIcon}
+                    alt="Payment Request"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                      filter:
+                        mode === "payment"
+                          ? "brightness(100) invert(1)"
+                          : "none",
+                    }}
+                  />
+                </div>
+                <span
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 600,
+                    textAlign: "center",
+                    color: "black",
+                  }}
+                >
+                  PAYMENT REQUEST
+                </span>
+              </div>
+            </label>
           </div>
         </FormPopUp>
       )}
 
-      {isCreateOpen && (
+      {isCreateOpen && mode === "payment" && (
+        <FormPopUp
+          header={"CREATE PAYMENT REQUEST"}
+          setIsOpen={setIsCreateOpen}
+          handleSubmit={handleSubmit}
+          addButtonLabel={"CONFIRM"}
+        >
+          <div className="input-row full">
+            <SingleSelectDropdown
+              label={"SELECT JOB ORDER"}
+              selectedValue={selectedJoId}
+              onChange={setSelectedJoId}
+              placeholder={"SELECT JOB ORDER TO REFERENCE"}
+              dbData={jobOrders.map((jo: any) => ({
+                id: jo.id,
+                name: `JO-${String(jo.id).padStart(5, "0")} — ${jo.project_name || "No Project"} — ${jo.requested_by}`,
+              }))}
+              idField="id"
+              labelField="name"
+              required
+            />
+          </div>
+        </FormPopUp>
+      )}
+
+      {isCreateOpen && mode !== "payment" && (
         <FormPopUp
           header={`CREATE ${String(mode).toUpperCase()} REQUEST`}
           setIsOpen={setIsCreateOpen}
