@@ -13,7 +13,7 @@ type CancelMaterialRequestButtonProps = {
   mrHeader: MrHeader;
   currentProgressId: number;
   lpoId?: number;
-  type?: "material" | "job";
+  type?: "material" | "job" | "payment";
   bgColor?: string;
   textColor?: string;
   borderColor?: string;

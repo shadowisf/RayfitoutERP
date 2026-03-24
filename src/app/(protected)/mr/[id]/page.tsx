@@ -5,11 +5,13 @@ import DeleteMrHeaderButton from "./components/department/_DeleteMrHeaderButton"
 import EditMrHeaderButton from "./components/department/_EditMrHeaderButton";
 import MrLinesView from "./components/MrLinesView";
 import JoLinesView from "./components/JoLinesView";
+import PrLinesView from "./components/PrLinesView";
 import { MrHeader } from "./types/mrHeader";
 import CancelMaterialRequestButton from "./components/_CancelMaterialRequest";
 import RequisitionTimeline from "./components/RequisitionTimeline";
 import DownloadMrPDFButton from "./components/_DownloadMrPDFButton";
 import DownloadJoPDFButton from "./components/_DownloadJoPDFButton";
+import DownloadPrPDFButton from "./components/_DownloadPrPDFButton";
 import JoContractWidget from "./components/_JoContractWidget";
 
 export default async function MrWithID({
@@ -38,23 +40,25 @@ export default async function MrWithID({
     });
 
   const isJobOrder = mrHeader.type === "job";
+  const isPaymentRequest = mrHeader.type === "payment";
 
   // Fetch both MR lines and JO lines — we'll decide which to show
-  const mrLines = isJobOrder
-    ? {}
-    : await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMrLinesByMrHeaderID`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id }),
-        },
-      )
-        .then((res) => res.json())
-        .catch((err) => {
-          console.error(err);
-          return {};
-        });
+  const mrLines =
+    isJobOrder || isPaymentRequest
+      ? {}
+      : await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMrLinesByMrHeaderID`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id }),
+          },
+        )
+          .then((res) => res.json())
+          .catch((err) => {
+            console.error(err);
+            return {};
+          });
 
   // Always try to fetch JO lines (handles case where type column isn't set yet)
   const joLines = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`, {
@@ -312,7 +316,11 @@ export default async function MrWithID({
       >
         <h1>
           <a href="/mr">PROCUREMENT TRACKER</a> &gt;{" "}
-          {mrHeader.type.toLowerCase().includes("material") ? "MR-" : "JO-"}
+          {mrHeader.type === "payment"
+            ? "PR-"
+            : mrHeader.type === "job"
+              ? "JO-"
+              : "MR-"}
           {String(mrHeader.id).padStart(5, "0")}
         </h1>
 
@@ -324,16 +332,26 @@ export default async function MrWithID({
               borderColor="rgba(248, 77, 77, 1)"
               textColor="white"
               currentProgressId={mrHeader.progress_id}
-              type={effectiveIsJobOrder ? "job" : "material"}
+              type={
+                isPaymentRequest
+                  ? "payment"
+                  : effectiveIsJobOrder
+                    ? "job"
+                    : "material"
+              }
             >
-              {effectiveIsJobOrder
-                ? "ROLL BACK JOB ORDER"
-                : "ROLL BACK MATERIAL REQUEST"}{" "}
+              {isPaymentRequest
+                ? "ROLL BACK PAYMENT REQUEST"
+                : effectiveIsJobOrder
+                  ? "ROLL BACK JOB ORDER"
+                  : "ROLL BACK MATERIAL REQUEST"}{" "}
               <img src={uTurnIcon} alt="u-turn" />
             </CancelMaterialRequestButton>
           )}
 
-          {effectiveIsJobOrder ? (
+          {isPaymentRequest ? (
+            <DownloadPrPDFButton mrHeader={mrHeader} />
+          ) : effectiveIsJobOrder ? (
             <DownloadJoPDFButton mrHeader={mrHeader} joLines={joLines} />
           ) : (
             <DownloadMrPDFButton mrHeader={mrHeader} mrLines={mrLines} />
@@ -358,18 +376,35 @@ export default async function MrWithID({
               >
                 <div>
                   <small>
-                    {mrHeader.type.toLowerCase().includes("material")
-                      ? "MR"
-                      : "JO"}{" "}
+                    {mrHeader.type === "payment"
+                      ? "PR"
+                      : mrHeader.type === "job"
+                        ? "JO"
+                        : "MR"}{" "}
                     NUMBER
                   </small>
                   <h2>
-                    {mrHeader.type.toLowerCase().includes("material")
-                      ? "MR-"
-                      : "JO-"}
+                    {mrHeader.type === "payment"
+                      ? "PR-"
+                      : mrHeader.type === "job"
+                        ? "JO-"
+                        : "MR-"}
                     {String(mrHeader.id).padStart(5, "0")}
                   </h2>
                 </div>
+
+                {isPaymentRequest && mrHeader.payment_jo_reference_id && (
+                  <div>
+                    <small>JO NUMBER</small>
+                    <h2>
+                      JO-
+                      {String(mrHeader.payment_jo_reference_id).padStart(
+                        5,
+                        "0",
+                      )}
+                    </h2>
+                  </div>
+                )}
 
                 <div style={{ display: "flex", gap: "10px" }}>
                   <p
@@ -442,10 +477,12 @@ export default async function MrWithID({
               )}
             </div>
 
-            <div>
-              <small>PURPOSE</small>
-              <h2>{mrHeader.purpose_name}</h2>
-            </div>
+            {!isPaymentRequest && (
+              <div>
+                <small>PURPOSE</small>
+                <h2>{mrHeader.purpose_name}</h2>
+              </div>
+            )}
 
             <div>
               <small>REQUESTED BY</small>
@@ -598,13 +635,21 @@ export default async function MrWithID({
       <RequisitionTimeline
         mrHeaderId={mrHeader.id}
         currentProgressId={mrHeader.progress_id}
-        type={effectiveIsJobOrder ? "job" : "material"}
+        type={
+          isPaymentRequest
+            ? "payment"
+            : effectiveIsJobOrder
+              ? "job"
+              : "material"
+        }
       />
 
       <br />
       <br />
 
-      {effectiveIsJobOrder ? (
+      {isPaymentRequest ? (
+        <PrLinesView mrHeader={mrHeader} />
+      ) : effectiveIsJobOrder ? (
         hasJoLines ? (
           <JoLinesView joLines={joLines} mrHeader={mrHeader} />
         ) : (

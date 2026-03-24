@@ -242,8 +242,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
 
           <div className="right">
             {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-              userInfo?.departmentID === mrHeader.department_id &&
-              joLines.length === 0 && (
+              userInfo?.departmentID === mrHeader.department_id && (
                 <AddJoItemButton
                   mrHeaderID={mrHeader.id}
                   projectID={mrHeader.project_id}

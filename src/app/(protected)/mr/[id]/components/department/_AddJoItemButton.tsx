@@ -178,6 +178,7 @@ export default function AddJoItemButton({
                 onSelectBoq={(selectedIDs: number[]) => {
                   setBoqLineIDs(selectedIDs);
                 }}
+                singleSelect
               />
             </div>
 

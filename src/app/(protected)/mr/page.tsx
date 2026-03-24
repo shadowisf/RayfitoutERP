@@ -52,7 +52,9 @@ export default function MR() {
   }>({});
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [collapsedGroups, setCollapsedGroups] = useState<
+    Record<string, boolean>
+  >({});
   const [filters, setFilters] = useState<{
     itemsRequestedIn: string;
     selectedDepartments: number[];
@@ -582,7 +584,7 @@ export default function MR() {
     let filtered = lpoCards;
 
     // Apply request type filter - LPOs are always material requests
-    if (filters.requestType === "job") {
+    if (filters.requestType === "job" || filters.requestType === "payment") {
       return [];
     }
 
@@ -702,11 +704,13 @@ export default function MR() {
 
     if (searchQuery.trim() !== "") {
       const rawQuery = searchQuery.toLowerCase().trim();
-      const normalizedQuery = rawQuery.replace(/^mr-/, "");
+      const normalizedQuery = rawQuery.replace(/^(mr|jo|pr)-/, "");
       filtered = filtered.filter((mr) => {
-        const formattedMrId = `mr-${mr.id.toString().padStart(5, "0")}`;
+        const prefix =
+          mr.type === "job" ? "jo" : mr.type === "payment" ? "pr" : "mr";
+        const formattedId = `${prefix}-${mr.id.toString().padStart(5, "0")}`;
         return (
-          formattedMrId.includes(rawQuery) ||
+          formattedId.includes(rawQuery) ||
           mr.id.toString().includes(normalizedQuery) ||
           mr.project_name?.toLowerCase().includes(rawQuery) ||
           mr.requested_by?.toLowerCase().includes(rawQuery) ||
@@ -747,41 +751,54 @@ export default function MR() {
 
     const useLpoCards = LPO_STAGE_IDS.includes(status.progress_id);
 
-    // For Completed stage, check both LPOs and JOs (exclude material MRs)
+    // For Completed stage, check LPOs, JOs, and Payment Requests
     if (status.progress_id === 25) {
       const lpos = groupedLPOs[status.progress_id] || [];
-      const jos = (groupedMRs[status.name] || []).filter(
-        (mr: any) => mr.type === "job",
+      const completedMrs = (groupedMRs[status.name] || []).filter(
+        (mr: any) => mr.type === "job" || mr.type === "payment",
       );
 
       if (userDeptId === 8 && filterRelevant) {
         return (
           lpos.some((l) => l.department_id === 8) ||
-          jos.some((mr: any) => mr.department_id === 8)
+          completedMrs.some((mr: any) => mr.department_id === 8)
         );
       }
       return (
         lpos.some((l: any) => l.department_id === userDeptId) ||
-        jos.some((mr: any) => mr.department_id === userDeptId)
+        completedMrs.some((mr: any) => mr.department_id === userDeptId)
       );
     }
 
     if (useLpoCards) {
       const lpos = groupedLPOs[status.progress_id] || [];
+      const paymentMrs =
+        status.progress_id === 14
+          ? (groupedMRs[status.name] || []).filter(
+              (mr: any) => mr.type === "payment",
+            )
+          : [];
 
       if (userDeptId === 8) {
         if (filterRelevant) {
           if (status.progress_id === 14) {
-            return false; // hide Pending Payments section completely
+            return false; // hide Pending Payments section completely for managers
           }
           return lpos.some((l) => l.department_id === 8);
         }
         // Managers see all LPO stages when filter is off
-        return lpos.length > 0;
+        return lpos.length > 0 || paymentMrs.length > 0;
       }
       const responsibleDept =
         progressToResponsibleDepartment[status.progress_id];
-      return responsibleDept === userDeptId;
+      if (responsibleDept === userDeptId) return true;
+      // Also show if there are payment requests and user is from the originating dept
+      if (
+        status.progress_id === 14 &&
+        paymentMrs.some((mr: any) => mr.department_id === userDeptId)
+      )
+        return true;
+      return false;
     }
 
     const mrs = groupedMRs[status.name] || [];
@@ -1075,12 +1092,23 @@ export default function MR() {
               return sum;
             const useLpo = LPO_STAGE_IDS.includes(status.progress_id);
             const isCompleted = status.progress_id === 25;
+            const isPendingPay = status.progress_id === 14;
             if (isCompleted) {
-              const joCount = (groupedMRs[status.name] || []).filter(
-                (mr) => mr.type === "job",
+              const mrCount = (groupedMRs[status.name] || []).filter(
+                (mr) => mr.type === "job" || mr.type === "payment",
               ).length;
               return (
-                sum + (groupedLPOs[status.progress_id]?.length || 0) + joCount
+                sum + (groupedLPOs[status.progress_id]?.length || 0) + mrCount
+              );
+            }
+            if (isPendingPay) {
+              const prCount = (groupedMRs[status.name] || []).filter(
+                (mr) => mr.type === "payment",
+              ).length;
+              return (
+                sum +
+                (groupedLPOs[status.progress_id]?.length || 0) +
+                prCount
               );
             }
             return (
@@ -1146,136 +1174,433 @@ export default function MR() {
               </div>
 
               {!collapsedGroups[group.name] && (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                  gap: "20px",
-                }}
-              >
-                {group.statuses.map((status) => {
-                  if (filterRelevant && !shouldShowStatusWhenFiltering(status))
-                    return null;
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: "20px",
+                  }}
+                >
+                  {group.statuses.map((status) => {
+                    if (
+                      filterRelevant &&
+                      !shouldShowStatusWhenFiltering(status)
+                    )
+                      return null;
 
-                  const useLpoCards = LPO_STAGE_IDS.includes(
-                    status.progress_id,
-                  );
-                  const isCompletedStage = status.progress_id === 25;
-                  const mrs = isCompletedStage
-                    ? (groupedMRs[status.name] || []).filter(
-                        (mr) => mr.type === "job",
-                      )
-                    : useLpoCards
-                      ? []
-                      : groupedMRs[status.name] || [];
-                  const lpos = useLpoCards
-                    ? groupedLPOs[status.progress_id] || []
-                    : [];
-                  const cardCount = isCompletedStage
-                    ? lpos.length + mrs.length
-                    : useLpoCards
-                      ? lpos.length
-                      : mrs.length;
-                  const dept = getResponsibleDepartment(status.name);
-                  const deptStyle = getDepartmentStyle(dept.id);
-                  const isEmpty = cardCount === 0;
+                    const useLpoCards = LPO_STAGE_IDS.includes(
+                      status.progress_id,
+                    );
+                    const isCompletedStage = status.progress_id === 25;
+                    const isPendingPayments = status.progress_id === 14;
+                    const mrs = isCompletedStage
+                      ? (groupedMRs[status.name] || []).filter(
+                          (mr) => mr.type === "job" || mr.type === "payment",
+                        )
+                      : isPendingPayments
+                        ? (groupedMRs[status.name] || []).filter(
+                            (mr) => mr.type === "payment",
+                          )
+                        : useLpoCards
+                          ? []
+                          : groupedMRs[status.name] || [];
+                    const lpos = useLpoCards
+                      ? groupedLPOs[status.progress_id] || []
+                      : [];
+                    const cardCount =
+                      isCompletedStage || isPendingPayments
+                        ? lpos.length + mrs.length
+                        : useLpoCards
+                          ? lpos.length
+                          : mrs.length;
+                    const dept = getResponsibleDepartment(status.name);
+                    const deptStyle = getDepartmentStyle(dept.id);
+                    const isEmpty = cardCount === 0;
 
-                  return (
-                    <div
-                      key={status.name}
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        backgroundColor: isEmpty
-                          ? "rgba(242, 242, 242, 1)"
-                          : "transparent",
-                        borderRadius: "15px",
-                      }}
-                    >
+                    return (
                       <div
+                        key={status.name}
                         style={{
                           display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          marginBottom: "10px",
-                          padding: "15px",
-                          borderRadius: "50px",
+                          flexDirection: "column",
                           backgroundColor: isEmpty
                             ? "rgba(242, 242, 242, 1)"
-                            : "white",
-                          border: isEmpty
-                            ? "none"
-                            : "1px solid rgba(231, 231, 231, 1)",
+                            : "transparent",
+                          borderRadius: "15px",
                         }}
                       >
-                        <h3
-                          style={{
-                            margin: 0,
-                            fontSize: "14px",
-                            fontWeight: "600",
-                          }}
-                        >
-                          {status.name}
-                        </h3>
                         <div
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: "10px",
+                            justifyContent: "space-between",
+                            marginBottom: "10px",
+                            padding: "15px",
+                            borderRadius: "50px",
+                            backgroundColor: isEmpty
+                              ? "rgba(242, 242, 242, 1)"
+                              : "white",
+                            border: isEmpty
+                              ? "none"
+                              : "1px solid rgba(231, 231, 231, 1)",
                           }}
                         >
-                          {dept.name && !isEmpty && (
-                            <div
-                              style={{
-                                ...deptStyle,
-                                padding: "7px 10px",
-                                borderRadius: "50px",
-                                fontSize: "10px",
-                                fontWeight: "600",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "6px",
-                              }}
-                            >
-                              <span style={{ scale: "3" }}>•</span>
-                              {dept.name.toUpperCase()}
-                            </div>
-                          )}
-                          <div
+                          <h3
                             style={{
-                              fontSize: "16px",
+                              margin: 0,
+                              fontSize: "14px",
                               fontWeight: "600",
-                              padding: "6px",
-                              minWidth: "32px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              borderRadius: "50%",
-                              backgroundColor: isEmpty ? "white" : "black",
-                              color: isEmpty ? "black" : "white",
                             }}
                           >
-                            {cardCount}
+                            {status.name}
+                          </h3>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                            }}
+                          >
+                            {dept.name && !isEmpty && (
+                              <div
+                                style={{
+                                  ...deptStyle,
+                                  padding: "7px 10px",
+                                  borderRadius: "50px",
+                                  fontSize: "10px",
+                                  fontWeight: "600",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                }}
+                              >
+                                <span style={{ scale: "3" }}>•</span>
+                                {dept.name.toUpperCase()}
+                              </div>
+                            )}
+                            <div
+                              style={{
+                                fontSize: "16px",
+                                fontWeight: "600",
+                                padding: "6px",
+                                minWidth: "32px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                borderRadius: "50%",
+                                backgroundColor: isEmpty ? "white" : "black",
+                                color: isEmpty ? "black" : "white",
+                              }}
+                            >
+                              {cardCount}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "15px",
-                          overflowY: "auto",
-                          maxHeight: "660px",
-                          paddingRight: "5px",
-                          marginTop: "15px",
-                        }}
-                      >
-                        {cardCount > 0 ? (
-                          isCompletedStage ? (
-                            /* ===== COMPLETED STAGE: BOTH LPO + MR/JO CARDS ===== */
-                            <>
-                              {lpos.map((lpoCard) => {
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "15px",
+                            overflowY: "auto",
+                            maxHeight: "660px",
+                            paddingRight: "5px",
+                            marginTop: "15px",
+                          }}
+                        >
+                          {cardCount > 0 ? (
+                            isCompletedStage || isPendingPayments ? (
+                              /* ===== MIXED STAGE: BOTH LPO + MR CARDS ===== */
+                              <>
+                                {lpos.map((lpoCard) => {
+                                  const key = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
+                                  const dur = lpoDurations[key] || {
+                                    duration: "00:00:00",
+                                    hoursDecimal: 0,
+                                    style: {
+                                      color: "black",
+                                      backgroundColor: "rgba(231, 231, 231, 1)",
+                                    },
+                                  };
+
+                                  return (
+                                    <div
+                                      key={`lpo-${lpoCard.id}`}
+                                      style={{
+                                        backgroundColor: "white",
+                                        borderRadius: "15px",
+                                        padding: "15px",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "12px",
+                                        border:
+                                          "1px solid rgba(231, 231, 231, 1)",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          backgroundColor: "black",
+                                          color: "white",
+                                          padding: "4px 10px",
+                                          borderRadius: "50px",
+                                          fontSize: "11px",
+                                          fontWeight: "600",
+                                          width: "fit-content",
+                                          alignItems: "center",
+                                        }}
+                                      >
+                                        MATERIAL REQUEST
+                                      </div>
+
+                                      <div>
+                                        <small>MR NUMBER</small>
+                                        <h3>
+                                          MR-
+                                          {String(
+                                            lpoCard.mr_header_id,
+                                          ).padStart(5, "0")}
+                                        </h3>
+                                      </div>
+
+                                      <div>
+                                        <small>LPO NUMBER</small>
+                                        <h3>
+                                          LPO-
+                                          {String(lpoCard.id).padStart(5, "0")}
+                                        </h3>
+                                      </div>
+
+                                      <div>
+                                        <small>PROJECT</small>
+                                        <h3>{lpoCard.project_name || "-"}</h3>
+                                      </div>
+
+                                      <div>
+                                        <small>VENDOR</small>
+                                        <h3>{lpoCard.supplier_name || "-"}</h3>
+                                      </div>
+
+                                      <div>
+                                        <small>ITEM COUNT</small>
+                                        <h3>{lpoCard.item_count ?? 0} ITEMS</h3>
+                                      </div>
+
+                                      <div>
+                                        <small>REQUESTER</small>
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            gap: "5px",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          <h3
+                                            style={{
+                                              backgroundColor: "black",
+                                              color: "white",
+                                              borderRadius: "50%",
+                                              width: "24px",
+                                              height: "24px",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "center",
+                                              fontSize: "11px",
+                                              fontWeight: "600",
+                                            }}
+                                          >
+                                            {lpoCard.requested_by
+                                              ? lpoCard.requested_by
+                                                  .split(" ")
+                                                  .map((n: string) => n[0])
+                                                  .join("")
+                                                  .toUpperCase()
+                                                  .slice(0, 2)
+                                              : "?"}
+                                          </h3>
+                                          <h3>
+                                            {lpoCard.requested_by || "-"},{" "}
+                                            {lpoCard.department_name || "-"}
+                                          </h3>
+                                        </div>
+                                      </div>
+
+                                      <Button
+                                        componentType="link"
+                                        bgColor="rgba(239, 239, 239, 1)"
+                                        borderColor="rgba(239, 239, 239, 1)"
+                                        textColor="black"
+                                        href={`/mr/${lpoCard.mr_header_id}/lpo/${lpoCard.id}`}
+                                        full
+                                        style={{ borderRadius: "50px" }}
+                                        disabled={
+                                          !canViewLPO(lpoCard, filterRelevant)
+                                        }
+                                      >
+                                        VIEW &gt;
+                                      </Button>
+                                    </div>
+                                  );
+                                })}
+                                {mrs.map((mr) => {
+                                  const key = `${mr.id}-${mr.progress_id}`;
+                                  const dur = mrDurations[key] || {
+                                    duration: "00:00:00",
+                                    hoursDecimal: 0,
+                                    style: {
+                                      color: "black",
+                                      backgroundColor: "rgba(231, 231, 231, 1)",
+                                    },
+                                  };
+
+                                  return (
+                                    <div
+                                      key={mr.id}
+                                      style={{
+                                        backgroundColor:
+                                          mr.type === "job"
+                                            ? "rgba(255, 253, 227, 1)"
+                                            : mr.type === "payment"
+                                              ? "rgba(189, 242, 217, 1)"
+                                              : "white",
+                                        borderRadius: "15px",
+                                        padding: "15px",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "12px",
+                                        border:
+                                          "1px solid rgba(231, 231, 231, 1)",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          backgroundColor:
+                                            mr.type === "job"
+                                              ? "rgba(209, 182, 34, 1)"
+                                              : mr.type === "payment"
+                                                ? "rgba(0, 163, 93, 1)"
+                                                : "black",
+                                          color: "white",
+                                          padding: "4px 10px",
+                                          borderRadius: "50px",
+                                          fontSize: "11px",
+                                          fontWeight: "600",
+                                          width: "fit-content",
+                                          alignItems: "center",
+                                        }}
+                                      >
+                                        {mr.type === "job"
+                                          ? "JOB ORDER"
+                                          : mr.type === "payment"
+                                            ? "PAYMENT REQUEST"
+                                            : "MATERIAL REQUEST"}
+                                      </div>
+
+                                      <div>
+                                        <small>
+                                          {mr.type === "job"
+                                            ? "JO NUMBER"
+                                            : mr.type === "payment"
+                                              ? "PR NUMBER"
+                                              : "MR NUMBER"}
+                                        </small>
+                                        <h3>
+                                          {mr.type === "job"
+                                            ? "JO"
+                                            : mr.type === "payment"
+                                              ? "PR"
+                                              : "MR"}
+                                          -{String(mr.id).padStart(5, "0")}
+                                        </h3>
+                                      </div>
+
+                                      {mr.type === "payment" &&
+                                        mr.payment_jo_reference_id && (
+                                          <div>
+                                            <small>JO NUMBER</small>
+                                            <h3>
+                                              JO-
+                                              {String(
+                                                mr.payment_jo_reference_id,
+                                              ).padStart(5, "0")}
+                                            </h3>
+                                          </div>
+                                        )}
+
+                                      <div>
+                                        <small>PROJECT</small>
+                                        <h3>{mr.project_name || "-"}</h3>
+                                      </div>
+
+                                      <div>
+                                        <small>ITEM COUNT</small>
+                                        <h3>{mr.item_count ?? 0} ITEMS</h3>
+                                      </div>
+
+                                      <div>
+                                        <small>REQUESTER</small>
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            gap: "5px",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          <h3
+                                            style={{
+                                              backgroundColor: "black",
+                                              color: "white",
+                                              borderRadius: "50%",
+                                              width: "24px",
+                                              height: "24px",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "center",
+                                              fontSize: "11px",
+                                              fontWeight: "600",
+                                            }}
+                                          >
+                                            {mr.requested_by
+                                              ? mr.requested_by
+                                                  .split(" ")
+                                                  .map((n: string) => n[0])
+                                                  .join("")
+                                                  .toUpperCase()
+                                                  .slice(0, 2)
+                                              : "?"}
+                                          </h3>
+                                          <h3>
+                                            {mr.requested_by || "-"},{" "}
+                                            {mr.department_name || "-"}
+                                          </h3>
+                                        </div>
+                                      </div>
+
+                                      <Button
+                                        componentType="link"
+                                        bgColor={
+                                          mr.type === "job" ||
+                                          mr.type === "payment"
+                                            ? "white"
+                                            : "rgba(239, 239, 239, 1)"
+                                        }
+                                        borderColor="rgba(239, 239, 239, 1)"
+                                        textColor="black"
+                                        href={`/mr/${mr.id}`}
+                                        full
+                                        style={{ borderRadius: "50px" }}
+                                        disabled={
+                                          !canViewMR(mr, filterRelevant)
+                                        }
+                                      >
+                                        VIEW &gt;
+                                      </Button>
+                                    </div>
+                                  );
+                                })}
+                              </>
+                            ) : useLpoCards ? (
+                              /* ===== LPO CARDS ===== */
+                              lpos.map((lpoCard) => {
                                 const key = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
                                 const dur = lpoDurations[key] || {
                                   duration: "00:00:00",
@@ -1302,17 +1627,119 @@ export default function MR() {
                                   >
                                     <div
                                       style={{
-                                        backgroundColor: "black",
-                                        color: "white",
-                                        padding: "4px 10px",
-                                        borderRadius: "50px",
-                                        fontSize: "11px",
-                                        fontWeight: "600",
-                                        width: "fit-content",
-                                        alignItems: "center",
+                                        display: "flex",
+                                        alignItems: "flex-start",
+                                        justifyContent: "space-between",
                                       }}
                                     >
-                                      MATERIAL REQUEST
+                                      <div
+                                        style={{ display: "flex", gap: "10px" }}
+                                      >
+                                        <div
+                                          style={{
+                                            backgroundColor: "black",
+                                            color: "white",
+                                            padding: "4px 10px",
+                                            borderRadius: "50px",
+                                            fontSize: "11px",
+                                            fontWeight: "600",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          MATERIAL REQUEST
+                                        </div>
+
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            alignItems: "flex-end",
+                                            gap: "10px",
+                                          }}
+                                        >
+                                          {lpoCard.progress_id !== 25 &&
+                                            lpoCard.delivery_date && (
+                                              <div
+                                                style={{
+                                                  ...getDaysLeftStyle(
+                                                    lpoCard.delivery_date,
+                                                  ),
+                                                  padding: "4px 10px",
+                                                  borderRadius: "50px",
+                                                  fontSize: "11px",
+                                                  fontWeight: "600",
+                                                  whiteSpace: "nowrap",
+                                                }}
+                                              >
+                                                {getDaysLeftText(
+                                                  lpoCard.delivery_date,
+                                                )}
+                                              </div>
+                                            )}
+
+                                          {lpoCard.progress_id !== 25 && (
+                                            <div
+                                              style={{
+                                                padding: "4px 8px",
+                                                borderRadius: "50px",
+                                                fontSize: "11px",
+                                                fontWeight: "600",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "5px",
+                                                backgroundColor:
+                                                  "rgba(234, 234, 234, 1)",
+                                                color: "rgba(89, 89, 89, 1)",
+                                              }}
+                                            >
+                                              <svg
+                                                width="11"
+                                                height="11"
+                                                viewBox="0 0 11 11"
+                                                fill="none"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                style={{
+                                                  color: "rgba(89, 89, 89, 1)",
+                                                }}
+                                              >
+                                                <path
+                                                  d="M5.5 2.5V5.5H8.5"
+                                                  stroke="currentColor"
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                />
+                                                <path
+                                                  d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                                  stroke="currentColor"
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                />
+                                              </svg>
+                                              {dur.duration}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {lpoCard.progress_id !== 25 && (
+                                        <div style={{ alignSelf: "flex-end" }}>
+                                          <svg
+                                            width="15"
+                                            height="17"
+                                            viewBox="0 0 15 17"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                          >
+                                            <path
+                                              d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
+                                              fill={getFlagColor(
+                                                dur.hoursDecimal,
+                                                lpoCard.progress_id,
+                                              )}
+                                            />
+                                          </svg>
+                                        </div>
+                                      )}
                                     </div>
 
                                     <div>
@@ -1335,13 +1762,13 @@ export default function MR() {
                                     </div>
 
                                     <div>
-                                      <small>PROJECT</small>
-                                      <h3>{lpoCard.project_name || "-"}</h3>
+                                      <small>VENDOR</small>
+                                      <h3>{lpoCard.supplier_name || "-"}</h3>
                                     </div>
 
                                     <div>
-                                      <small>VENDOR</small>
-                                      <h3>{lpoCard.supplier_name || "-"}</h3>
+                                      <small>PROJECT</small>
+                                      <h3>{lpoCard.project_name || "-"}</h3>
                                     </div>
 
                                     <div>
@@ -1388,6 +1815,18 @@ export default function MR() {
                                       </div>
                                     </div>
 
+                                    {lpoCard.progress_id === 17 &&
+                                      lpoCard.delivery_date && (
+                                        <div>
+                                          <small>DELIVERY ETA</small>
+                                          <h3>
+                                            {new Date(
+                                              lpoCard.delivery_date,
+                                            ).toLocaleDateString("en-GB")}
+                                          </h3>
+                                        </div>
+                                      )}
+
                                     <Button
                                       componentType="link"
                                       bgColor="rgba(239, 239, 239, 1)"
@@ -1404,8 +1843,10 @@ export default function MR() {
                                     </Button>
                                   </div>
                                 );
-                              })}
-                              {mrs.map((mr) => {
+                              })
+                            ) : (
+                              /* ===== MR CARDS ===== */
+                              mrs.map((mr) => {
                                 const key = `${mr.id}-${mr.progress_id}`;
                                 const dur = mrDurations[key] || {
                                   duration: "00:00:00",
@@ -1423,7 +1864,9 @@ export default function MR() {
                                       backgroundColor:
                                         mr.type === "job"
                                           ? "rgba(255, 253, 227, 1)"
-                                          : "white",
+                                          : mr.type === "payment"
+                                            ? "rgba(189, 242, 217, 1)"
+                                            : "white",
                                       borderRadius: "15px",
                                       padding: "15px",
                                       display: "flex",
@@ -1435,35 +1878,157 @@ export default function MR() {
                                   >
                                     <div
                                       style={{
-                                        backgroundColor:
-                                          mr.type === "job"
-                                            ? "rgba(209, 182, 34, 1)"
-                                            : "black",
-                                        color: "white",
-                                        padding: "4px 10px",
-                                        borderRadius: "50px",
-                                        fontSize: "11px",
-                                        fontWeight: "600",
-                                        width: "fit-content",
-                                        alignItems: "center",
+                                        display: "flex",
+                                        alignItems: "flex-start",
+                                        justifyContent: "space-between",
                                       }}
                                     >
-                                      {mr.type === "job"
-                                        ? "JOB ORDER"
-                                        : "MATERIAL REQUEST"}
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "flex-end",
+                                          gap: "10px",
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            backgroundColor:
+                                              mr.type === "job"
+                                                ? "rgba(209, 182, 34, 1)"
+                                                : mr.type === "payment"
+                                                  ? "rgba(0, 163, 93, 1)"
+                                                  : "black",
+                                            color: "white",
+                                            padding: "4px 10px",
+                                            borderRadius: "50px",
+                                            fontSize: "11px",
+                                            fontWeight: "600",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          {mr.type === "job"
+                                            ? "JOB ORDER"
+                                            : mr.type === "payment"
+                                              ? "PAYMENT REQUEST"
+                                              : "MATERIAL REQUEST"}
+                                        </div>
+
+                                        {mr.progress_id !== 25 && (
+                                          <div
+                                            style={{
+                                              ...getDaysLeftStyle(
+                                                mr.required_date,
+                                              ),
+                                              padding: "4px 10px",
+                                              borderRadius: "50px",
+                                              fontSize: "11px",
+                                              fontWeight: "600",
+                                              whiteSpace: "nowrap",
+                                            }}
+                                          >
+                                            {getDaysLeftText(mr.required_date)}
+                                          </div>
+                                        )}
+
+                                        {mr.progress_id !== 1 &&
+                                          mr.progress_id !== 25 && (
+                                            <div
+                                              style={{
+                                                padding: "4px 8px",
+                                                borderRadius: "50px",
+                                                fontSize: "11px",
+                                                fontWeight: "600",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "5px",
+                                                backgroundColor:
+                                                  "rgba(234, 234, 234, 1)",
+                                                color: "rgba(89, 89, 89, 1)",
+                                              }}
+                                            >
+                                              <svg
+                                                width="11"
+                                                height="11"
+                                                viewBox="0 0 11 11"
+                                                fill="none"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                style={{
+                                                  color: "rgba(89, 89, 89, 1)",
+                                                }}
+                                              >
+                                                <path
+                                                  d="M5.5 2.5V5.5H8.5"
+                                                  stroke="currentColor"
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                />
+                                                <path
+                                                  d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                                  stroke="currentColor"
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                />
+                                              </svg>
+                                              {dur.duration}
+                                            </div>
+                                          )}
+                                      </div>
+
+                                      {mr.progress_id !== 1 &&
+                                        mr.progress_id !== 25 && (
+                                          <div
+                                            style={{ alignSelf: "flex-end" }}
+                                          >
+                                            <svg
+                                              width="15"
+                                              height="17"
+                                              viewBox="0 0 15 17"
+                                              fill="none"
+                                              xmlns="http://www.w3.org/2000/svg"
+                                            >
+                                              <path
+                                                d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
+                                                fill={getFlagColor(
+                                                  dur.hoursDecimal,
+                                                  mr.progress_id,
+                                                )}
+                                              />
+                                            </svg>
+                                          </div>
+                                        )}
                                     </div>
 
                                     <div>
                                       <small>
                                         {mr.type === "job"
                                           ? "JO NUMBER"
-                                          : "MR NUMBER"}
+                                          : mr.type === "payment"
+                                            ? "PR NUMBER"
+                                            : "MR NUMBER"}
                                       </small>
                                       <h3>
-                                        {mr.type === "job" ? "JO" : "MR"}-
-                                        {String(mr.id).padStart(5, "0")}
+                                        {mr.type === "job"
+                                          ? "JO"
+                                          : mr.type === "payment"
+                                            ? "PR"
+                                            : "MR"}
+                                        -{String(mr.id).padStart(5, "0")}
                                       </h3>
                                     </div>
+
+                                    {mr.type === "payment" &&
+                                      mr.payment_jo_reference_id && (
+                                        <div>
+                                          <small>JO NUMBER</small>
+                                          <h3>
+                                            JO-
+                                            {String(
+                                              mr.payment_jo_reference_id,
+                                            ).padStart(5, "0")}
+                                          </h3>
+                                        </div>
+                                      )}
 
                                     <div>
                                       <small>PROJECT</small>
@@ -1514,10 +2079,32 @@ export default function MR() {
                                       </div>
                                     </div>
 
+                                    {mr.progress_id === 17 &&
+                                      mrDeliveryDates[mr.id]?.length > 0 && (
+                                        <div>
+                                          {mrDeliveryDates[mr.id].map(
+                                            (d, i) => (
+                                              <div key={i}>
+                                                <small>
+                                                  {d.supplier_name.toUpperCase()}{" "}
+                                                  DELIVERY ETA
+                                                </small>
+                                                <h3>
+                                                  {new Date(
+                                                    d.delivery_date,
+                                                  ).toLocaleDateString("en-GB")}
+                                                </h3>
+                                              </div>
+                                            ),
+                                          )}
+                                        </div>
+                                      )}
+
                                     <Button
                                       componentType="link"
                                       bgColor={
-                                        mr.type === "job"
+                                        mr.type === "job" ||
+                                        mr.type === "payment"
                                           ? "white"
                                           : "rgba(239, 239, 239, 1)"
                                       }
@@ -1532,516 +2119,26 @@ export default function MR() {
                                     </Button>
                                   </div>
                                 );
-                              })}
-                            </>
-                          ) : useLpoCards ? (
-                            /* ===== LPO CARDS ===== */
-                            lpos.map((lpoCard) => {
-                              const key = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
-                              const dur = lpoDurations[key] || {
-                                duration: "00:00:00",
-                                hoursDecimal: 0,
-                                style: {
-                                  color: "black",
-                                  backgroundColor: "rgba(231, 231, 231, 1)",
-                                },
-                              };
-
-                              return (
-                                <div
-                                  key={`lpo-${lpoCard.id}`}
-                                  style={{
-                                    backgroundColor: "white",
-                                    borderRadius: "15px",
-                                    padding: "15px",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "12px",
-                                    border: "1px solid rgba(231, 231, 231, 1)",
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "flex-start",
-                                      justifyContent: "space-between",
-                                    }}
-                                  >
-                                    <div
-                                      style={{ display: "flex", gap: "10px" }}
-                                    >
-                                      <div
-                                        style={{
-                                          backgroundColor: "black",
-                                          color: "white",
-                                          padding: "4px 10px",
-                                          borderRadius: "50px",
-                                          fontSize: "11px",
-                                          fontWeight: "600",
-                                          display: "inline-flex",
-                                          alignItems: "center",
-                                        }}
-                                      >
-                                        MATERIAL REQUEST
-                                      </div>
-
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "flex-end",
-                                          gap: "10px",
-                                        }}
-                                      >
-                                        {lpoCard.progress_id !== 25 &&
-                                          lpoCard.delivery_date && (
-                                            <div
-                                              style={{
-                                                ...getDaysLeftStyle(
-                                                  lpoCard.delivery_date,
-                                                ),
-                                                padding: "4px 10px",
-                                                borderRadius: "50px",
-                                                fontSize: "11px",
-                                                fontWeight: "600",
-                                                whiteSpace: "nowrap",
-                                              }}
-                                            >
-                                              {getDaysLeftText(
-                                                lpoCard.delivery_date,
-                                              )}
-                                            </div>
-                                          )}
-
-                                        {lpoCard.progress_id !== 25 && (
-                                          <div
-                                            style={{
-                                              padding: "4px 8px",
-                                              borderRadius: "50px",
-                                              fontSize: "11px",
-                                              fontWeight: "600",
-                                              display: "flex",
-                                              alignItems: "center",
-                                              gap: "5px",
-                                              backgroundColor:
-                                                "rgba(234, 234, 234, 1)",
-                                              color: "rgba(89, 89, 89, 1)",
-                                            }}
-                                          >
-                                            <svg
-                                              width="11"
-                                              height="11"
-                                              viewBox="0 0 11 11"
-                                              fill="none"
-                                              xmlns="http://www.w3.org/2000/svg"
-                                              style={{
-                                                color: "rgba(89, 89, 89, 1)",
-                                              }}
-                                            >
-                                              <path
-                                                d="M5.5 2.5V5.5H8.5"
-                                                stroke="currentColor"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                              />
-                                              <path
-                                                d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                                                stroke="currentColor"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                              />
-                                            </svg>
-                                            {dur.duration}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {lpoCard.progress_id !== 25 && (
-                                      <div style={{ alignSelf: "flex-end" }}>
-                                        <svg
-                                          width="15"
-                                          height="17"
-                                          viewBox="0 0 15 17"
-                                          fill="none"
-                                          xmlns="http://www.w3.org/2000/svg"
-                                        >
-                                          <path
-                                            d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
-                                            fill={getFlagColor(
-                                              dur.hoursDecimal,
-                                              lpoCard.progress_id,
-                                            )}
-                                          />
-                                        </svg>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div>
-                                    <small>MR NUMBER</small>
-                                    <h3>
-                                      MR-
-                                      {String(lpoCard.mr_header_id).padStart(
-                                        5,
-                                        "0",
-                                      )}
-                                    </h3>
-                                  </div>
-
-                                  <div>
-                                    <small>LPO NUMBER</small>
-                                    <h3>
-                                      LPO-{String(lpoCard.id).padStart(5, "0")}
-                                    </h3>
-                                  </div>
-
-                                  <div>
-                                    <small>VENDOR</small>
-                                    <h3>{lpoCard.supplier_name || "-"}</h3>
-                                  </div>
-
-                                  <div>
-                                    <small>PROJECT</small>
-                                    <h3>{lpoCard.project_name || "-"}</h3>
-                                  </div>
-
-                                  <div>
-                                    <small>ITEM COUNT</small>
-                                    <h3>{lpoCard.item_count ?? 0} ITEMS</h3>
-                                  </div>
-
-                                  <div>
-                                    <small>REQUESTER</small>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        gap: "5px",
-                                        alignItems: "center",
-                                      }}
-                                    >
-                                      <h3
-                                        style={{
-                                          backgroundColor: "black",
-                                          color: "white",
-                                          borderRadius: "50%",
-                                          width: "24px",
-                                          height: "24px",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                          fontSize: "11px",
-                                          fontWeight: "600",
-                                        }}
-                                      >
-                                        {lpoCard.requested_by
-                                          ? lpoCard.requested_by
-                                              .split(" ")
-                                              .map((n: string) => n[0])
-                                              .join("")
-                                              .toUpperCase()
-                                              .slice(0, 2)
-                                          : "?"}
-                                      </h3>
-                                      <h3>
-                                        {lpoCard.requested_by || "-"},{" "}
-                                        {lpoCard.department_name || "-"}
-                                      </h3>
-                                    </div>
-                                  </div>
-
-                                  {lpoCard.progress_id === 17 &&
-                                    lpoCard.delivery_date && (
-                                      <div>
-                                        <small>DELIVERY ETA</small>
-                                        <h3>
-                                          {new Date(
-                                            lpoCard.delivery_date,
-                                          ).toLocaleDateString("en-GB")}
-                                        </h3>
-                                      </div>
-                                    )}
-
-                                  <Button
-                                    componentType="link"
-                                    bgColor="rgba(239, 239, 239, 1)"
-                                    borderColor="rgba(239, 239, 239, 1)"
-                                    textColor="black"
-                                    href={`/mr/${lpoCard.mr_header_id}/lpo/${lpoCard.id}`}
-                                    full
-                                    style={{ borderRadius: "50px" }}
-                                    disabled={
-                                      !canViewLPO(lpoCard, filterRelevant)
-                                    }
-                                  >
-                                    VIEW &gt;
-                                  </Button>
-                                </div>
-                              );
-                            })
+                              })
+                            )
                           ) : (
-                            /* ===== MR CARDS ===== */
-                            mrs.map((mr) => {
-                              const key = `${mr.id}-${mr.progress_id}`;
-                              const dur = mrDurations[key] || {
-                                duration: "00:00:00",
-                                hoursDecimal: 0,
-                                style: {
-                                  color: "black",
-                                  backgroundColor: "rgba(231, 231, 231, 1)",
-                                },
-                              };
-
-                              return (
-                                <div
-                                  key={mr.id}
-                                  style={{
-                                    backgroundColor:
-                                      mr.type === "job"
-                                        ? "rgba(255, 253, 227, 1)"
-                                        : "white",
-                                    borderRadius: "15px",
-                                    padding: "15px",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "12px",
-                                    border: "1px solid rgba(231, 231, 231, 1)",
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "flex-start",
-                                      justifyContent: "space-between",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "flex-end",
-                                        gap: "10px",
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          backgroundColor:
-                                            mr.type === "job"
-                                              ? "rgba(209, 182, 34, 1)"
-                                              : "black",
-                                          color: "white",
-                                          padding: "4px 10px",
-                                          borderRadius: "50px",
-                                          fontSize: "11px",
-                                          fontWeight: "600",
-                                          display: "inline-flex",
-                                          alignItems: "center",
-                                        }}
-                                      >
-                                        {mr.type === "job"
-                                          ? "JOB ORDER"
-                                          : "MATERIAL REQUEST"}
-                                      </div>
-
-                                      {mr.progress_id !== 25 && (
-                                        <div
-                                          style={{
-                                            ...getDaysLeftStyle(
-                                              mr.required_date,
-                                            ),
-                                            padding: "4px 10px",
-                                            borderRadius: "50px",
-                                            fontSize: "11px",
-                                            fontWeight: "600",
-                                            whiteSpace: "nowrap",
-                                          }}
-                                        >
-                                          {getDaysLeftText(mr.required_date)}
-                                        </div>
-                                      )}
-
-                                      {mr.progress_id !== 1 &&
-                                        mr.progress_id !== 25 && (
-                                          <div
-                                            style={{
-                                              padding: "4px 8px",
-                                              borderRadius: "50px",
-                                              fontSize: "11px",
-                                              fontWeight: "600",
-                                              display: "flex",
-                                              alignItems: "center",
-                                              gap: "5px",
-                                              backgroundColor:
-                                                "rgba(234, 234, 234, 1)",
-                                              color: "rgba(89, 89, 89, 1)",
-                                            }}
-                                          >
-                                            <svg
-                                              width="11"
-                                              height="11"
-                                              viewBox="0 0 11 11"
-                                              fill="none"
-                                              xmlns="http://www.w3.org/2000/svg"
-                                              style={{
-                                                color: "rgba(89, 89, 89, 1)",
-                                              }}
-                                            >
-                                              <path
-                                                d="M5.5 2.5V5.5H8.5"
-                                                stroke="currentColor"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                              />
-                                              <path
-                                                d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                                                stroke="currentColor"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                              />
-                                            </svg>
-                                            {dur.duration}
-                                          </div>
-                                        )}
-                                    </div>
-
-                                    {mr.progress_id !== 1 &&
-                                      mr.progress_id !== 25 && (
-                                        <div style={{ alignSelf: "flex-end" }}>
-                                          <svg
-                                            width="15"
-                                            height="17"
-                                            viewBox="0 0 15 17"
-                                            fill="none"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                          >
-                                            <path
-                                              d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
-                                              fill={getFlagColor(
-                                                dur.hoursDecimal,
-                                                mr.progress_id,
-                                              )}
-                                            />
-                                          </svg>
-                                        </div>
-                                      )}
-                                  </div>
-
-                                  <div>
-                                    <small>
-                                      {mr.type === "job"
-                                        ? "JO NUMBER"
-                                        : "MR NUMBER"}
-                                    </small>
-                                    <h3>
-                                      {mr.type === "job" ? "JO" : "MR"}-
-                                      {String(mr.id).padStart(5, "0")}
-                                    </h3>
-                                  </div>
-
-                                  <div>
-                                    <small>PROJECT</small>
-                                    <h3>{mr.project_name || "-"}</h3>
-                                  </div>
-
-                                  <div>
-                                    <small>ITEM COUNT</small>
-                                    <h3>{mr.item_count ?? 0} ITEMS</h3>
-                                  </div>
-
-                                  <div>
-                                    <small>REQUESTER</small>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        gap: "5px",
-                                        alignItems: "center",
-                                      }}
-                                    >
-                                      <h3
-                                        style={{
-                                          backgroundColor: "black",
-                                          color: "white",
-                                          borderRadius: "50%",
-                                          width: "24px",
-                                          height: "24px",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                          fontSize: "11px",
-                                          fontWeight: "600",
-                                        }}
-                                      >
-                                        {mr.requested_by
-                                          ? mr.requested_by
-                                              .split(" ")
-                                              .map((n: string) => n[0])
-                                              .join("")
-                                              .toUpperCase()
-                                              .slice(0, 2)
-                                          : "?"}
-                                      </h3>
-                                      <h3>
-                                        {mr.requested_by || "-"},{" "}
-                                        {mr.department_name || "-"}
-                                      </h3>
-                                    </div>
-                                  </div>
-
-                                  {mr.progress_id === 17 &&
-                                    mrDeliveryDates[mr.id]?.length > 0 && (
-                                      <div>
-                                        {mrDeliveryDates[mr.id].map((d, i) => (
-                                          <div key={i}>
-                                            <small>
-                                              {d.supplier_name.toUpperCase()}{" "}
-                                              DELIVERY ETA
-                                            </small>
-                                            <h3>
-                                              {new Date(
-                                                d.delivery_date,
-                                              ).toLocaleDateString("en-GB")}
-                                            </h3>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-
-                                  <Button
-                                    componentType="link"
-                                    bgColor={
-                                      mr.type === "job"
-                                        ? "white"
-                                        : "rgba(239, 239, 239, 1)"
-                                    }
-                                    borderColor="rgba(239, 239, 239, 1)"
-                                    textColor="black"
-                                    href={`/mr/${mr.id}`}
-                                    full
-                                    style={{ borderRadius: "50px" }}
-                                    disabled={!canViewMR(mr, filterRelevant)}
-                                  >
-                                    VIEW &gt;
-                                  </Button>
-                                </div>
-                              );
-                            })
-                          )
-                        ) : (
-                          <div
-                            style={{
-                              padding: "40px 20px",
-                              textAlign: "center",
-                              color: "#9ca3af",
-                              fontSize: "12px",
-                              minHeight: "660px",
-                            }}
-                          >
-                            No items
-                          </div>
-                        )}
+                            <div
+                              style={{
+                                padding: "40px 20px",
+                                textAlign: "center",
+                                color: "#9ca3af",
+                                fontSize: "12px",
+                                minHeight: "660px",
+                              }}
+                            >
+                              No items
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           );

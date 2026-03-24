@@ -6,11 +6,14 @@ export async function GET() {
   try {
     const [rows]: any = await db.query(`
       SELECT vw.*,
+        mh.payment_jo_reference_id,
         CASE
           WHEN vw.type = 'job' THEN (SELECT COUNT(*) FROM jo_lines jl WHERE jl.mr_header_id = vw.id)
+          WHEN vw.type = 'payment' THEN (SELECT COUNT(*) FROM pr_lines pl WHERE pl.mr_header_id = vw.id)
           ELSE (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw.id)
         END AS item_count
       FROM vw_mr_headers vw
+      LEFT JOIN mr_headers mh ON mh.id = vw.id
     `);
 
     return NextResponse.json(rows, { status: 200 });
@@ -34,6 +37,27 @@ export async function POST(req: Request) {
     }
 
     if (body.action === "createMrHeader") {
+      if (body.type === "payment") {
+        // Payment request: only needs department_id, requested_by, and jo reference
+        const headerQuery = `
+          INSERT INTO mr_headers
+          (type, project_id, department_id, requested_by, required_date, payment_jo_reference_id)
+          VALUES ('payment', ?, ?, ?, NOW(), ?)
+        `;
+        const headerValues = [
+          Number(body.project_id) || null,
+          Number(body.department_id),
+          body.requested_by,
+          Number(body.payment_jo_reference_id),
+        ];
+        const [headerResult] = await db.query<ResultSetHeader>(
+          headerQuery,
+          headerValues,
+        );
+        const mrHeaderId = headerResult.insertId;
+        return NextResponse.json({ success: true, mrHeaderId });
+      }
+
       const headerQuery = `
       INSERT INTO mr_headers
       (type, project_id, department_id, requested_by, required_date, purpose_id)
@@ -184,6 +208,8 @@ export async function PUT(req: Request) {
         );
         if (typeRows?.[0]?.type === "job") {
           prefix = "JO";
+        } else if (typeRows?.[0]?.type === "payment") {
+          prefix = "PR";
         }
       } catch {
         // fallback to MR
@@ -445,6 +471,226 @@ export async function PUT(req: Request) {
           body.department_id,
           `${prefix} Submitted`,
           `Your ${formattedId} is awaiting manager approval`,
+        ],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    // Payment Request: Submit for QS Review (1 → 2)
+    if (body.action === "submitForQsReview") {
+      await db.query(`UPDATE mr_headers SET progress_id = 2 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 2, ?, ?)`,
+        [body.id, body.from_progress_id || 1, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          16,
+          "QS Review Required",
+          `${formattedId} is awaiting your review`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          `${prefix} Submitted`,
+          `Your ${formattedId} is awaiting QS review`,
+        ],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    // Payment Request: QS submits for Manager Approval (2 → 3)
+    if (body.action === "submitPrForManagerApproval") {
+      await db.query(`UPDATE mr_headers SET progress_id = 3 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 3, 2, ?)`,
+        [body.id, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          8,
+          "Manager Approval Required",
+          `${formattedId} is awaiting your approval`,
+        ],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    // Payment Request: Manager approves → Payment stage (3 → 14)
+    if (body.action === "submitPrForPayment") {
+      await db.query(`UPDATE mr_headers SET progress_id = 14 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 14, 3, ?)`,
+        [body.id, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          10,
+          "Payment Required",
+          `${formattedId} is awaiting payment`,
+        ],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          `${prefix} Approved`,
+          `Your ${formattedId} has been approved by manager`,
+        ],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    // Payment Request: Manager rejects → Rejected (3 → 5)
+    if (body.action === "submitPrForRejection") {
+      const [rejectedItems]: any = await db.query(
+        `SELECT pl.id, pl.reject_comment FROM pr_lines pl
+         WHERE pl.mr_header_id = ? AND pl.approval_status = 'Rejected'`,
+        [body.id],
+      );
+
+      const rejectReason =
+        rejectedItems.length > 0
+          ? JSON.stringify(
+              rejectedItems.map((item: any) => ({
+                item: `PR Line ${item.id}`,
+                reason: item.reject_comment || "",
+              })),
+            )
+          : null;
+
+      await db.query(`UPDATE mr_headers SET progress_id = 5 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason) VALUES (?, 5, ?, ?, ?)`,
+        [body.id, body.from_progress_id || 3, body.changed_by, rejectReason],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          `${prefix} Rejected`,
+          `${formattedId} was rejected`,
+        ],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    // Payment Request: QS rejects → Rejected (2 → 5)
+    if (body.action === "submitPrQsRejection") {
+      const [rejectedItems]: any = await db.query(
+        `SELECT pl.id, pl.qs_reject_comment FROM pr_lines pl
+         WHERE pl.mr_header_id = ? AND pl.qs_approval_status = 'Rejected'`,
+        [body.id],
+      );
+
+      const rejectReason =
+        rejectedItems.length > 0
+          ? JSON.stringify(
+              rejectedItems.map((item: any) => ({
+                item: `PR Line ${item.id}`,
+                reason: item.qs_reject_comment || "",
+              })),
+            )
+          : null;
+
+      await db.query(`UPDATE mr_headers SET progress_id = 5 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason) VALUES (?, 5, 2, ?, ?)`,
+        [body.id, body.changed_by, rejectReason],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          `${prefix} Rejected by QS`,
+          `${formattedId} was rejected by QS`,
+        ],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    // Payment Request: Finance proceeds with payment (14 → 25)
+    if (body.action === "completePrPayment") {
+      await db.query(`UPDATE mr_headers SET progress_id = 25 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 25, 14, ?)`,
+        [body.id, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          `${prefix} Completed`,
+          `${formattedId} payment has been completed`,
+        ],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    // Payment Request: Finance rejects payment (14 → 5)
+    if (body.action === "rejectPrPayment") {
+      await db.query(`UPDATE mr_headers SET progress_id = 5 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason) VALUES (?, 5, 14, ?, ?)`,
+        [body.id, body.changed_by, body.reject_reason || null],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          body.department_id,
+          `${prefix} Payment Rejected`,
+          `${formattedId} payment was rejected`,
         ],
       );
 
