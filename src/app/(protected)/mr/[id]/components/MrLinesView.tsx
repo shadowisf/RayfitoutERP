@@ -41,6 +41,7 @@ import MrTransferIssueButton from "./storekeeper/_MrTransferIssueButton";
 import MrDownloadDnButton from "./storekeeper/_MrDownloadDnButton";
 import MrUploadSignedDnButton from "./storekeeper/_MrUploadSignedDnButton";
 import SubmitForStockTransferCompletion from "./storekeeper/_SubmitForStockTransferCompletion";
+import CommentsSection from "@/app/components/CommentsSection";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -3877,7 +3878,6 @@ export default function MrLinesView({
                                 <td
                                   style={{
                                     fontWeight: "600",
-                                    
                                   }}
                                 >
                                   SUBTOTAL
@@ -3885,7 +3885,6 @@ export default function MrLinesView({
                                 <td
                                   style={{
                                     fontWeight: "600",
-                                    
                                   }}
                                 >
                                   AED{" "}
@@ -4387,7 +4386,6 @@ export default function MrLinesView({
                     <td
                       style={{
                         fontWeight: "600",
-                        
                       }}
                     >
                       SUBTOTAL
@@ -4395,7 +4393,6 @@ export default function MrLinesView({
                     <td
                       style={{
                         fontWeight: "600",
-                        
                       }}
                     >
                       AED {calculateItemsTotal(items).toFixed(2)}
@@ -4446,6 +4443,11 @@ export default function MrLinesView({
             <br />
           </>
         )}
+
+      <CommentsSection
+        mrHeaderId={mrHeader.id}
+        stageName={mrHeader.progress_name || ""}
+      />
 
       {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
         userInfo?.departmentID === mrHeader.department_id && (

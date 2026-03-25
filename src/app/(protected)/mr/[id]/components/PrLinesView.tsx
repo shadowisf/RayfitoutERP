@@ -11,6 +11,7 @@ import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import BoqReferencePopUp from "./BoqReferencePopUp";
 import InputItem from "@/app/components/InputItem";
 import UploadFileBox from "@/app/components/SingleUploadFileBox";
+import CommentsSection from "@/app/components/CommentsSection";
 
 type PrLine = {
   id: number;
@@ -1227,6 +1228,11 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
           </div>
         </FormPopUp>
       )}
+
+      <CommentsSection
+        mrHeaderId={mrHeader.id}
+        stageName={mrHeader.progress_name || ""}
+      />
 
       {/* ── Bottom Nav: Stage Transitions ── */}
 

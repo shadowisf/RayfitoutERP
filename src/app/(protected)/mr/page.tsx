@@ -996,7 +996,9 @@ export default function MR() {
                 >
                   {filters.requestType === "material"
                     ? "MATERIAL REQUEST"
-                    : "JOB ORDER"}
+                    : filters.requestType === "payment"
+                      ? "PAYMENT REQUEST"
+                      : "JOB ORDER"}
                 </span>
               </Button>
             )}

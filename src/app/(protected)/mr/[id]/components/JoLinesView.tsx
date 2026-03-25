@@ -19,6 +19,7 @@ import JoPriceApprovalButton from "./manager/_JoPriceApprovalButton";
 import SubmitForJoPriceApprovalButton from "./procurement/_SubmitForJoPriceApprovalButton";
 import SubmitForPricingResubmissionButton from "./manager/_SubmitForPriceResubmissionButton";
 import SubmitForJoCompletionButton from "./procurement/_SubmitForJoCompletionButton";
+import CommentsSection from "@/app/components/CommentsSection";
 
 type JoLinesViewProps = {
   joLines: JoLine[];
@@ -496,6 +497,11 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             allJoLines={joLines}
           />
         )}
+
+      <CommentsSection
+        mrHeaderId={mrHeader.id}
+        stageName={mrHeader.progress_name || ""}
+      />
 
       {/* Bottom action nav — stage transitions */}
 
