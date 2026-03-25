@@ -23,6 +23,7 @@ import CompleteMaterialRequestButton from "./storekeeper/_CompleteMaterialReques
 import CreateGRNButton from "./storekeeper/_CreateGRNButton";
 import SubmitForQCButton from "./storekeeper/_SubmitForQCButton";
 import AddToInventoryButton from "./storekeeper/_AddStockButton";
+import CommentsSection from "@/app/components/CommentsSection";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -1030,6 +1031,12 @@ export default function LpoLinesView({
         <br />
         <br />
       </div>
+
+      <CommentsSection
+        mrHeaderId={mrHeader.id}
+        lpoId={lpoId}
+        stageName={lpo.progress_name || mrHeader.progress_name || ""}
+      />
 
       {/* Awaiting LPO & Invoice (Progress 12, 13, 16) - Procurement Submit for Payment */}
       {userInfo?.departmentID === 9 &&
