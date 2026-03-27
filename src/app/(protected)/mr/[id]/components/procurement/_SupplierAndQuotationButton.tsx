@@ -494,21 +494,6 @@ export default function SupplierAndQuotationButton({
       (q: SupplierQuotation) => q.supplier_id !== "",
     );
 
-    const hasHighValueQuotation = validQuotations.some(
-      (q: { total_price: string }) => {
-        const totalPrice = parseFloat(q.total_price);
-        return !isNaN(totalPrice) && totalPrice >= 900;
-      },
-    );
-
-    if (hasHighValueQuotation && validQuotations.length < 3) {
-      toast(
-        "Minimum 3 vendors required for quotations with total price greater than or equal to 900 AED",
-        "error",
-      );
-      return;
-    }
-
     for (let i = 0; i < validQuotations.length; i++) {
       const quotation = validQuotations[i];
 
@@ -979,34 +964,6 @@ export default function SupplierAndQuotationButton({
 
             <br />
 
-            {(() => {
-              const validQuotations = supplierQuotations.filter(
-                (q: SupplierQuotation) => q.supplier_id !== "",
-              );
-
-              const hasHighValueQuotation = validQuotations.some(
-                (q: { total_price: string }) => {
-                  const totalPrice = parseFloat(q.total_price);
-                  return !isNaN(totalPrice) && totalPrice >= 900;
-                },
-              );
-
-              if (hasHighValueQuotation && validQuotations.length < 3) {
-                return (
-                  <div
-                    style={{
-                      padding: "10px 15px",
-                      color: "rgba(248, 77, 77, 1)",
-                      textAlign: "left",
-                    }}
-                  >
-                    Total price is greater than or equal to 900 AED. Minimum 3
-                    vendors required
-                  </div>
-                );
-              }
-              return null;
-            })()}
           </>
         </FormPopUp>
       )}
