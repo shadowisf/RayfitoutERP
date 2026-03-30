@@ -36,6 +36,141 @@ export async function POST(req: Request) {
       return NextResponse.json(rows, { status: 200 });
     }
 
+    if (body.action === "getTableViewItems") {
+      // LPO stage progress IDs — material MRs at these stages are shown as LPOs
+      // 26 = Segregated (MR split into multiple LPOs), also include LPO workflow stages
+      const LPO_STAGE_IDS = [13, 14, 15, 16, 17, 24, 25, 26];
+
+      // MR lines NOT yet at LPO stage (still in MR workflow)
+      const [mrLines]: any = await db.query(`
+        SELECT
+          ml.id AS line_id,
+          ml.mr_header_id,
+          NULL AS lpo_id,
+          ml.material_description,
+          ml.quantity,
+          ml.unit,
+          mc.value AS material_category,
+          mh.type,
+          mh.requested_by,
+          mh.department_id,
+          vw.project_name,
+          vw.progress_name,
+          vw.progress_id
+        FROM mr_lines ml
+        JOIN mr_headers mh ON mh.id = ml.mr_header_id
+        JOIN vw_mr_headers vw ON vw.id = mh.id
+        LEFT JOIN lut_material_categories mc ON mc.id = ml.material_category_id
+        WHERE mh.type = 'material'
+          AND vw.progress_id NOT IN (${LPO_STAGE_IDS.join(",")})
+        ORDER BY mc.value ASC, ml.material_description ASC
+      `);
+
+      // LPO lines — material MRs that have been segregated into LPOs (progress 26)
+      // or are at an LPO workflow stage. Use each LPO's own progress_name, not the MR's.
+      const [lpoLines]: any = await db.query(`
+        SELECT
+          ml.id AS line_id,
+          ml.mr_header_id,
+          l.id AS lpo_id,
+          ml.material_description,
+          ml.quantity,
+          ml.unit,
+          mc.value AS material_category,
+          'material' AS type,
+          mh.requested_by,
+          mh.department_id,
+          vw.project_name,
+          lpo_pr.value AS progress_name,
+          l.progress_id
+        FROM lpo_mr_line lml
+        JOIN lpo l ON l.id = lml.lpo_id
+        JOIN mr_lines ml ON ml.id = lml.mr_line_id
+        JOIN mr_headers mh ON mh.id = ml.mr_header_id
+        JOIN vw_mr_headers vw ON vw.id = mh.id
+        LEFT JOIN lut_material_categories mc ON mc.id = ml.material_category_id
+        LEFT JOIN lut_mr_headers_progress lpo_pr ON lpo_pr.id = l.progress_id
+        WHERE mh.type = 'material'
+          AND vw.progress_id IN (${LPO_STAGE_IDS.join(",")})
+        ORDER BY mc.value ASC, ml.material_description ASC
+      `);
+
+      // Get all JO lines — grouped by BOQ line
+      // BOQ ref numbers (e.g. "1.1.1") are computed dynamically from vw_boq_lines
+      // using DENSE_RANK/ROW_NUMBER over category_order, subcategory_order, item_order
+      const [joLines]: any = await db.query(`
+        WITH boq_refs AS (
+          SELECT
+            id,
+            item_name,
+            CONCAT(
+              DENSE_RANK() OVER (PARTITION BY project_id ORDER BY category_order),
+              '.',
+              DENSE_RANK() OVER (PARTITION BY project_id, category ORDER BY subcategory_order),
+              '.',
+              ROW_NUMBER() OVER (PARTITION BY project_id, category, sub_category ORDER BY item_order)
+            ) AS boq_ref_number
+          FROM vw_boq_lines
+        )
+        SELECT
+          jl.id AS line_id,
+          jl.mr_header_id,
+          jl.job_description AS material_description,
+          jl.quantity,
+          jl.unit,
+          COALESCE(br.boq_ref_number, 'No BOQ Ref') AS material_category,
+          jtjlbl.boq_line_id AS boq_line_id,
+          br.boq_ref_number AS boq_item_number,
+          br.item_name AS boq_description,
+          mh.type,
+          mh.requested_by,
+          mh.department_id,
+          vw.project_name,
+          vw.progress_name,
+          vw.progress_id
+        FROM jo_lines jl
+        JOIN mr_headers mh ON mh.id = jl.mr_header_id
+        JOIN vw_mr_headers vw ON vw.id = mh.id
+        LEFT JOIN jt_jo_lines_boq_lines jtjlbl ON jtjlbl.jo_line_id = jl.id
+        LEFT JOIN boq_refs br ON br.id = jtjlbl.boq_line_id
+        WHERE mh.type = 'job'
+        ORDER BY mh.id ASC, br.boq_ref_number ASC, jl.job_description ASC
+      `);
+
+      // Get all PR lines — grouped by JO reference (job order the PR was raised against)
+      const [prLines]: any = await db.query(`
+        SELECT
+          pl.id AS line_id,
+          pl.mr_header_id,
+          jl.job_description AS material_description,
+          jl.quantity,
+          jl.unit,
+          CONCAT('JO-', LPAD(jo_mh.id, 5, '0'), ' — ', LEFT(jl.job_description, 40)) AS material_category,
+          mh.type,
+          mh.requested_by,
+          mh.department_id,
+          vw.project_name,
+          vw.progress_name,
+          vw.progress_id
+        FROM pr_lines pl
+        JOIN mr_headers mh ON mh.id = pl.mr_header_id
+        JOIN vw_mr_headers vw ON vw.id = mh.id
+        JOIN jo_lines jl ON jl.id = pl.jo_line_id
+        JOIN mr_headers jo_mh ON jo_mh.id = jl.mr_header_id
+        WHERE mh.type = 'payment'
+        ORDER BY mh.id ASC, jl.job_description ASC
+      `);
+
+      return NextResponse.json(
+        {
+          material: [...mrLines, ...lpoLines],
+          job: joLines,
+          payment: prLines,
+        },
+        { status: 200 },
+      );
+    }
+
     if (body.action === "createMrHeader") {
       if (body.type === "payment") {
         // Payment request: only needs department_id, requested_by, and jo reference
@@ -548,12 +683,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
-        [
-          body.id,
-          10,
-          "Payment Required",
-          `${formattedId} is awaiting payment`,
-        ],
+        [body.id, 10, "Payment Required", `${formattedId} is awaiting payment`],
       );
 
       await db.query(
