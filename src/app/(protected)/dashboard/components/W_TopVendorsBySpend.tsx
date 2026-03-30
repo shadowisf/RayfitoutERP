@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 interface TopVendor {
   supplier_id: number;
@@ -35,10 +36,7 @@ export default function TopVendorsBySpendWidget() {
 
   // Format currency
   const formatCurrency = (value: number) => {
-    return `${value.toLocaleString(undefined, {
-      minimumFractionDigits: 3,
-      maximumFractionDigits: 3,
-    })} AED`;
+    return formatPriceAED(value);
   };
 
   if (loading) {

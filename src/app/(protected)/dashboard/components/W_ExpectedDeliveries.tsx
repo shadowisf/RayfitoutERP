@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 export default function ExpectedDeliveriesWidget() {
   const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [rowLimit, setRowLimit] = useState<number>(20);
 
   const externalLinkIcon = "/icons/external-link.svg";
 
@@ -22,9 +23,34 @@ export default function ExpectedDeliveriesWidget() {
     return null;
   }
 
+  const displayedDeliveries = deliveries.slice(0, rowLimit);
+
   return (
     <>
-      <h2>EXPECTED DELIVERIES</h2>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h2>EXPECTED DELIVERIES</h2>
+        <select
+          value={rowLimit}
+          onChange={(e) => setRowLimit(Number(e.target.value))}
+          style={{
+            width: "150px",
+            backgroundColor: "white",
+            borderRadius: "50px",
+          }}
+        >
+          {[20, 50, 100, 200].map((n) => (
+            <option key={n} value={n}>
+              Show {n} rows
+            </option>
+          ))}
+        </select>
+      </div>
       <br />
       <table className="items-table two-toned alt">
         <thead>
@@ -38,7 +64,7 @@ export default function ExpectedDeliveriesWidget() {
           </tr>
         </thead>
         <tbody>
-          {deliveries.map((delivery) => {
+          {displayedDeliveries.map((delivery) => {
             const deliveryDate = new Date(delivery.delivery_date);
             const today = new Date();
 

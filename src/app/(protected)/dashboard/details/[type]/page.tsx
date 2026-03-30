@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import Button from "@/app/components/Button";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type WidgetConfig = {
   title: string;
@@ -15,21 +16,18 @@ type WidgetConfig = {
 
 const WIDGET_CONFIGS: Record<string, WidgetConfig> = {
   "active-mrs": {
-    title: "Active MRs & LPOs",
+    title: "Active MRs",
     apiUrl: "/api/dashboard/manager/getTotalActiveMrs",
     bodyBuilder: (filter) => ({ filter, limit: 100 }),
     columns: [
-      { key: "display_id", label: "MR/LPO NUMBER" },
+      { key: "display_id", label: "MR NUMBER" },
       {
         key: "item_count",
         label: "ITEMS",
         format: (val: number) => `${val} items`,
       },
     ],
-    linkBuilder: (item) =>
-      item.type === "lpo"
-        ? `/mr/${item.mr_header_id}/lpo/${item.raw_id}`
-        : `/mr/${item.raw_id}`,
+    linkBuilder: (item) => `/mr/${item.raw_id}`,
   },
   "pending-approvals": {
     title: "Pending Approvals",
@@ -54,7 +52,7 @@ const WIDGET_CONFIGS: Record<string, WidgetConfig> = {
       {
         key: "amount",
         label: "AMOUNT",
-        format: (val: number) => `AED ${val.toFixed(2)}`,
+        format: (val: number) => formatPriceAED(val),
       },
     ],
     linkBuilder: (item) => `/mr/${item.mr_header_id}/lpo/${item.raw_id}`,
@@ -68,7 +66,7 @@ const WIDGET_CONFIGS: Record<string, WidgetConfig> = {
       {
         key: "amount",
         label: "AMOUNT",
-        format: (val: number) => `AED ${val.toFixed(2)}`,
+        format: (val: number) => formatPriceAED(val),
       },
     ],
     linkBuilder: (item) => `/mr/${item.mr_header_id}/lpo/${item.raw_id}`,
@@ -142,7 +140,7 @@ const WIDGET_CONFIGS: Record<string, WidgetConfig> = {
       {
         key: "amount",
         label: "AMOUNT",
-        format: (val: number) => `AED ${val.toFixed(2)}`,
+        format: (val: number) => formatPriceAED(val),
       },
     ],
     linkBuilder: (item) => `/mr/${item.mr_header_id}/lpo/${item.raw_id}`,

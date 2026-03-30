@@ -20,6 +20,7 @@ import SubmitForJoPriceApprovalButton from "./procurement/_SubmitForJoPriceAppro
 import SubmitForPricingResubmissionButton from "./manager/_SubmitForPriceResubmissionButton";
 import SubmitForJoCompletionButton from "./procurement/_SubmitForJoCompletionButton";
 import CommentsSection from "@/app/components/CommentsSection";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type JoLinesViewProps = {
   joLines: JoLine[];
@@ -324,7 +325,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                   {canSeePrice && (
                     <td>
                       {item.budget_estimate != 0 ? (
-                        <>AED {Number(item.budget_estimate).toFixed(2)}</>
+                        <>{formatPriceAED(item.budget_estimate)}</>
                       ) : (
                         "-"
                       )}
@@ -338,7 +339,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                           livePrices[item.id] !== undefined
                             ? livePrices[item.id]
                             : Number(item.approved_total_price) || 0;
-                        return price > 0 ? `AED ${price.toFixed(2)}` : "-";
+                        return price > 0 ? formatPriceAED(price) : "-";
                       })()}
                     </td>
                   )}
@@ -475,7 +476,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                       SUBTOTAL
                     </td>
                     <td style={{ fontWeight: "600" }}>
-                      AED {liveTotalPrice.toFixed(2)}
+                      {formatPriceAED(liveTotalPrice)}
                     </td>
                     {trailingCols > 0 && <td colSpan={trailingCols} />}
                   </tr>

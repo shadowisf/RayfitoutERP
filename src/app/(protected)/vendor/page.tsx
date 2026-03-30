@@ -14,6 +14,7 @@ import EditSupplierButton from "../vendor/components/_EditSupplierButton";
 import VendorFilterButton from "../vendor/components/_VendorFilterButton";
 import SubcontractorFilterButton from "./components/_SubcontractorFilterButton";
 import { Supplier } from "../vendor/types/supplier";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 export default function VendorManagement() {
   const { userInfo } = useAuth();
@@ -758,7 +759,7 @@ export default function VendorManagement() {
                   </td>
                   <td>
                     {subcontractor.total_cost
-                      ? `AED ${Number(subcontractor.total_cost).toFixed(2)}`
+                      ? formatPriceAED(subcontractor.total_cost)
                       : "-"}
                   </td>
                   <td>{subcontractor.trn_number || "-"}</td>

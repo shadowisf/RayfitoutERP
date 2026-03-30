@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type ResolutionButtonProps = {
   mrHeader: MrHeader;
@@ -298,7 +299,7 @@ export default function ResolutionButton({
             resolution_id: existingResolution?.resolution_id,
             resolution_type: existingResolution?.resolution_type,
           }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -328,7 +329,7 @@ export default function ResolutionButton({
               mr_header_id: mrHeader.id,
               mr_line_id: item.id,
             }),
-          }
+          },
         );
 
         const data = await response.json();
@@ -365,7 +366,7 @@ export default function ResolutionButton({
               mr_header_id: mrHeader.id,
               supplier_id: item.approved_supplier_id,
             }),
-          }
+          },
         );
 
         const lpoData = await lpoResponse.json();
@@ -380,7 +381,7 @@ export default function ResolutionButton({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ lpo_id: lpo.id }),
-            }
+            },
           );
 
           const lpoDetailsData = await lpoDetailsResponse.json();
@@ -391,7 +392,7 @@ export default function ResolutionButton({
             lpoDetailsData.data.lpo_mr_lines
           ) {
             const lpoLine = lpoDetailsData.data.lpo_mr_lines.find(
-              (line: any) => line.mr_line_id === item.id
+              (line: any) => line.mr_line_id === item.id,
             );
 
             if (lpoLine) {
@@ -406,7 +407,7 @@ export default function ResolutionButton({
                   body: JSON.stringify({
                     lpo_mr_line_id: lpoLine.id,
                   }),
-                }
+                },
               );
 
               const qcDataResponse = await qcResponse.json();
@@ -425,14 +426,14 @@ export default function ResolutionButton({
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ lpo_id: lpo.id }),
-                }
+                },
               );
 
               const grnDataResponse = await grnResponse.json();
 
               if (grnDataResponse.success && grnDataResponse.data) {
                 const grnLine = grnDataResponse.data.grn_lines?.find(
-                  (gl: any) => gl.lpo_mr_line_id === lpoLine.id
+                  (gl: any) => gl.lpo_mr_line_id === lpoLine.id,
                 );
 
                 if (grnLine) {
@@ -475,7 +476,7 @@ export default function ResolutionButton({
 
             setProofFilePreview(parsedUrl);
             setProofFileType(
-              parsedUrl.endsWith(".pdf") ? "application/pdf" : "image/jpeg"
+              parsedUrl.endsWith(".pdf") ? "application/pdf" : "image/jpeg",
             );
           } catch (e) {
             // If not JSON, use as-is
@@ -483,14 +484,14 @@ export default function ResolutionButton({
             setProofFileType(
               existingResolution.proof_of_payment_url.endsWith(".pdf")
                 ? "application/pdf"
-                : "image/jpeg"
+                : "image/jpeg",
             );
           }
         }
       } else if (existingResolution.resolution_type === "Replace") {
         setReplacementType(existingResolution.replacement_type || "");
         setExpectedReplacementDate(
-          existingResolution.expected_replacement_date || ""
+          existingResolution.expected_replacement_date || "",
         );
         setReplaceNotes(existingResolution.notes || "");
       } else if (
@@ -508,7 +509,7 @@ export default function ResolutionButton({
 
             setAttachmentFilePreview(parsedUrl);
             setAttachmentFileType(
-              parsedUrl.endsWith(".pdf") ? "application/pdf" : "image/jpeg"
+              parsedUrl.endsWith(".pdf") ? "application/pdf" : "image/jpeg",
             );
           } catch (e) {
             // If not JSON, use as-is
@@ -516,14 +517,14 @@ export default function ResolutionButton({
             setAttachmentFileType(
               existingResolution.attachment.endsWith(".pdf")
                 ? "application/pdf"
-                : "image/jpeg"
+                : "image/jpeg",
             );
           }
         }
       } else if (existingResolution.resolution_type === "Reject/scrap") {
         setScrapReason(existingResolution.scrap_reason || "");
         setReturnNotPossibleReason(
-          existingResolution.return_not_possible_reason || ""
+          existingResolution.return_not_possible_reason || "",
         );
         setDisposalMethod(existingResolution.disposal_method || "");
 
@@ -537,7 +538,7 @@ export default function ResolutionButton({
 
             setScrapFilePreview(parsedUrl);
             setScrapFileType(
-              parsedUrl.endsWith(".pdf") ? "application/pdf" : "image/jpeg"
+              parsedUrl.endsWith(".pdf") ? "application/pdf" : "image/jpeg",
             );
           } catch (e) {
             // If not JSON, use as-is
@@ -545,7 +546,7 @@ export default function ResolutionButton({
             setScrapFileType(
               existingResolution.scrap_attachment.endsWith(".pdf")
                 ? "application/pdf"
-                : "image/jpeg"
+                : "image/jpeg",
             );
           }
         }
@@ -633,7 +634,7 @@ export default function ResolutionButton({
 
   // Conditionally Accepted Attachment file handlers
   const handleAttachmentFileSelect = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -868,7 +869,7 @@ export default function ResolutionButton({
       if (res.ok) {
         toast(
           isEditMode ? "Resolution updated" : "Resolution created",
-          "success"
+          "success",
         );
         setIsOpen(false);
         router.refresh();
@@ -910,7 +911,7 @@ export default function ResolutionButton({
       if (res.ok) {
         toast(
           isEditMode ? "Resolution updated" : "Resolution created",
-          "success"
+          "success",
         );
         setIsOpen(false);
         router.refresh();
@@ -994,7 +995,7 @@ export default function ResolutionButton({
           isEditMode
             ? "Resolution updated successfully"
             : "Resolution created successfully",
-          "success"
+          "success",
         );
         setIsOpen(false);
         router.refresh();
@@ -1080,7 +1081,7 @@ export default function ResolutionButton({
           isEditMode
             ? "Resolution updated successfully"
             : "Resolution created successfully",
-          "success"
+          "success",
         );
         setIsOpen(false);
         router.refresh();
@@ -1157,7 +1158,7 @@ export default function ResolutionButton({
                     <td>
                       {failedQuantity} {item.unit}
                     </td>
-                    <td>{expectedRefund.toFixed(2)} AED</td>
+                    <td>{formatPriceAED(expectedRefund)}</td>
                     <td>
                       <div className="input-prefix right">
                         <span>AED</span>
@@ -1180,8 +1181,8 @@ export default function ResolutionButton({
                     <td>
                       <b>TOTAL</b>
                     </td>
-                    <td>{expectedRefund.toFixed(2)} AED</td>
-                    <td>{actualRefundAmount.toFixed(2)} AED</td>
+                    <td>{formatPriceAED(expectedRefund)}</td>
+                    <td>{formatPriceAED(actualRefundAmount)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1661,8 +1662,8 @@ export default function ResolutionButton({
                       {scrapReason === "Supplier rejection refused"
                         ? "SUPPLIER REJECTION EMAIL/CLAUSE"
                         : scrapReason === "Expired"
-                        ? "EXPIRED LABEL/ITEM"
-                        : "ATTACHMENTS"}{" "}
+                          ? "EXPIRED LABEL/ITEM"
+                          : "ATTACHMENTS"}{" "}
                       {isEditMode &&
                         scrapFilePreview &&
                         "(Optional - Click to change)"}

@@ -10,6 +10,7 @@ import { toast } from "@/app/components/Toast";
 import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReferencePopUp";
 import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type LpoDetailsPopUpProps = {
   lpoId: number;
@@ -73,7 +74,7 @@ export default function LpoDetailsPopUp({
   }, [lpoId]);
 
   const formatCurrency = (value: number | string) =>
-    `AED ${Number(value || 0).toFixed(2)}`;
+    formatPriceAED(value);
 
   const formatDate = (value: string | null) => {
     if (!value) return "-";

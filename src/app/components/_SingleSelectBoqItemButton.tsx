@@ -7,6 +7,7 @@ import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import Button from "./Button";
 import { BoqLine } from "../(protected)/project/[id]/boq/[boqId]/types/boqLine";
+import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 
 type props = {
   projectID: number;
@@ -562,11 +563,9 @@ export default function SingleSelectBoqItemButton({
                                 {canSeePrice && (
                                   <>
                                     <td>
-                                      {boq.rate_per_quantity?.toLocaleString()}
+                                      {formatPrice(boq.rate_per_quantity)}
                                     </td>
-                                    <td>
-                                      AED {boq.total_cost?.toLocaleString()}
-                                    </td>
+                                    <td>{formatPriceAED(boq.total_cost)}</td>
                                   </>
                                 )}
 
@@ -700,10 +699,8 @@ export default function SingleSelectBoqItemButton({
 
                             {canSeePrice && (
                               <>
-                                <td>
-                                  {boq.rate_per_quantity?.toLocaleString()}
-                                </td>
-                                <td>AED {boq.total_cost?.toLocaleString()}</td>
+                                <td>{formatPrice(boq.rate_per_quantity)}</td>
+                                <td>{formatPriceAED(boq.total_cost)}</td>
                               </>
                             )}
 

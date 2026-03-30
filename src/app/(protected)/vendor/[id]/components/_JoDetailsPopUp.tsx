@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import { toast } from "@/app/components/Toast";
 import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReferencePopUp";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type JoDetailsPopUpProps = {
   joId: number;
@@ -86,7 +87,7 @@ export default function JoDetailsPopUp({
   }, [joId]);
 
   const formatCurrency = (value: number | string) =>
-    `AED ${Number(value || 0).toFixed(2)}`;
+    formatPriceAED(value);
 
   const formatDate = (value: string | null) => {
     if (!value) return "-";

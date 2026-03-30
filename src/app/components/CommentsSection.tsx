@@ -55,11 +55,14 @@ export default function CommentsSection({
 
   async function fetchDepartments() {
     try {
-      const res = await fetch("/api/comments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "getDepartments" }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/comments`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "getDepartments" }),
+        },
+      );
       const data = await res.json();
       setDepartments(data);
     } catch (err) {
@@ -69,15 +72,18 @@ export default function CommentsSection({
 
   async function fetchComments() {
     try {
-      const res = await fetch("/api/comments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "getComments",
-          mr_header_id: mrHeaderId,
-          lpo_id: lpoId || null,
-        }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/comments`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "getComments",
+            mr_header_id: mrHeaderId,
+            lpo_id: lpoId || null,
+          }),
+        },
+      );
       const data = await res.json();
       setComments(data);
     } catch (err) {
@@ -105,7 +111,7 @@ export default function CommentsSection({
 
       const deptInfo = departments.find((d) => d.id === userInfo.departmentID);
 
-      await fetch("/api/comments", {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -385,7 +391,6 @@ export default function CommentsSection({
       <h2>COMMENTS</h2>
 
       <br />
-      <br />
 
       {/* Comments list */}
       <div
@@ -525,7 +530,7 @@ export default function CommentsSection({
               lineHeight: "1.5",
               fontFamily: "inherit",
               fontSize: "14px",
-              minHeight: "24px",
+              minHeight: "50px",
               whiteSpace: "pre-wrap",
               wordWrap: "break-word",
             }}

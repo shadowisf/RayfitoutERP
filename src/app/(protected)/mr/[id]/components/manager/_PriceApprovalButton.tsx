@@ -11,6 +11,7 @@ import InputItem from "@/app/components/InputItem";
 import RejectCommentPopUp from "./RejectCommentPopUp";
 import { MrLine } from "../../types/mrLine";
 import SupplierDetailsPopUp from "../SupplierDetailsPopUp";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type PriceApprovalButtonProps = {
   progressID: number;
@@ -732,8 +733,8 @@ export default function PriceApprovalButton({
                             ? `${formatQuantity(stockQty)} ${mrLine.unit}`
                             : "-"}
                         </td>
-                        <td>{formatCurrency(quotation.unit_price)} AED</td>
-                        <td>{formatCurrency(quotation.total_price)} AED</td>
+                        <td>{formatPriceAED(quotation.unit_price)}</td>
+                        <td>{formatPriceAED(quotation.total_price)}</td>
                       </tr>
                     );
                   },

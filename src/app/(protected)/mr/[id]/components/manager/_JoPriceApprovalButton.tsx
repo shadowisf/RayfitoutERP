@@ -10,6 +10,7 @@ import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
 import RejectCommentPopUp from "./RejectCommentPopUp";
 import { JoLine } from "../../types/joLine";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type JoPriceApprovalButtonProps = {
   progressID: number;
@@ -599,7 +600,7 @@ export default function JoPriceApprovalButton({
                           />
                         </Button>
                       </td>
-                      <td>{quotation.total_price} AED</td>
+                      <td>{formatPriceAED(quotation.total_price)}</td>
                     </tr>
                   ),
                 )}

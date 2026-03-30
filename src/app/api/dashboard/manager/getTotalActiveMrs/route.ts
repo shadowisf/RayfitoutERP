@@ -20,49 +20,38 @@ export async function POST(request: Request) {
       );
     }
 
-    if (filter === 0) {
-      // Active MRs: below segregated stage (< 26), not completed (25)
-      const [mrRows]: any = await db.query(
-        `SELECT COUNT(*) AS mr_count FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25 AND progress_id != 1`,
-      );
-      // Active LPOs: above LPO & Invoice stage (> 12), not completed (25)
-      const [lpoRows]: any = await db.query(
-        `SELECT COUNT(*) AS lpo_count FROM lpo WHERE progress_id > 12 AND progress_id != 25`,
-      );
-      const thisWeek =
-        Number(mrRows[0].mr_count || 0) + Number(lpoRows[0].lpo_count || 0);
+    // Active MRs: exclude completed (25), draft (1), and segregated (26) where ALL LPOs are completed
+    const segregatedExclusionClause = `
+      AND NOT (
+        progress_id = 26
+        AND (SELECT COUNT(*) FROM lpo WHERE lpo.mr_header_id = vw_mr_headers.id) > 0
+        AND (SELECT COUNT(*) FROM lpo WHERE lpo.mr_header_id = vw_mr_headers.id AND lpo.progress_id != 25) = 0
+      )`;
 
-      const halfLimit = Math.ceil(maxItems / 2);
+    if (filter === 0) {
+      const [mrRows]: any = await db.query(
+        `SELECT COUNT(*) AS mr_count FROM vw_mr_headers WHERE progress_id != 25 AND progress_id != 1 ${segregatedExclusionClause}`,
+      );
+      const thisWeek = Number(mrRows[0].mr_count || 0);
+
       const [mrItems]: any = await db.query(
         `SELECT id, type, project_name,
-           (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw_mr_headers.id) AS item_count
-         FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25 AND progress_id != 1
+           CASE
+             WHEN type = 'job' THEN (SELECT COUNT(*) FROM jo_lines jl WHERE jl.mr_header_id = vw_mr_headers.id)
+             WHEN type = 'payment' THEN (SELECT COUNT(*) FROM pr_lines pl WHERE pl.mr_header_id = vw_mr_headers.id)
+             ELSE (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw_mr_headers.id)
+           END AS item_count
+         FROM vw_mr_headers WHERE progress_id != 25 AND progress_id != 1 ${segregatedExclusionClause}
          ORDER BY date_requested DESC LIMIT ?`,
-        [halfLimit],
-      );
-      const [lpoItems]: any = await db.query(
-        `SELECT l.id, l.mr_header_id,
-           (SELECT COUNT(*) FROM lpo_mr_line lml WHERE lml.lpo_id = l.id) AS item_count
-         FROM lpo l WHERE l.progress_id > 12 AND l.progress_id != 25
-         ORDER BY l.created_at DESC LIMIT ?`,
-        [halfLimit],
+        [maxItems],
       );
 
-      const items = [
-        ...mrItems.map((mr: any) => ({
-          display_id: `${mr.type === "job" ? "JO" : "MR"}-${String(mr.id).padStart(5, "0")}`,
-          item_count: Number(mr.item_count) || 0,
-          raw_id: mr.id,
-          type: "mr",
-        })),
-        ...lpoItems.map((lpo: any) => ({
-          display_id: `LPO-${String(lpo.id).padStart(5, "0")}`,
-          item_count: Number(lpo.item_count) || 0,
-          raw_id: lpo.id,
-          mr_header_id: lpo.mr_header_id,
-          type: "lpo",
-        })),
-      ].slice(0, maxItems);
+      const items = mrItems.map((mr: any) => ({
+        display_id: `${mr.type === "job" ? "JO" : mr.type === "payment" ? "PR" : "MR"}-${String(mr.id).padStart(5, "0")}`,
+        item_count: Number(mr.item_count) || 0,
+        raw_id: mr.id,
+        type: "mr",
+      }));
 
       return NextResponse.json(
         { this_week: thisWeek, last_week: 0, items, total_count: thisWeek },
@@ -74,57 +63,32 @@ export async function POST(request: Request) {
       `SELECT
         COUNT(CASE WHEN date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 END) AS this_week,
         COUNT(CASE WHEN date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND date_requested < DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 END) AS last_week
-       FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25 AND progress_id != 1`,
-      [filter, filter * 2, filter],
-    );
-    const [lpoCountRows]: any = await db.query(
-      `SELECT
-        COUNT(CASE WHEN l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 END) AS this_week,
-        COUNT(CASE WHEN l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 END) AS last_week
-       FROM lpo l WHERE l.progress_id > 12 AND l.progress_id != 25`,
+       FROM vw_mr_headers WHERE progress_id != 25 AND progress_id != 1 ${segregatedExclusionClause}`,
       [filter, filter * 2, filter],
     );
 
-    const thisWeek =
-      Number(mrCountRows[0].this_week || 0) +
-      Number(lpoCountRows[0].this_week || 0);
-    const lastWeek =
-      Number(mrCountRows[0].last_week || 0) +
-      Number(lpoCountRows[0].last_week || 0);
+    const thisWeek = Number(mrCountRows[0].this_week || 0);
+    const lastWeek = Number(mrCountRows[0].last_week || 0);
 
-    const halfLimit = Math.ceil(maxItems / 2);
     const [mrItems]: any = await db.query(
       `SELECT id, type, project_name,
-         (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw_mr_headers.id) AS item_count
-       FROM vw_mr_headers WHERE progress_id < 26 AND progress_id != 25 AND progress_id != 1
+         CASE
+           WHEN type = 'job' THEN (SELECT COUNT(*) FROM jo_lines jl WHERE jl.mr_header_id = vw_mr_headers.id)
+           WHEN type = 'payment' THEN (SELECT COUNT(*) FROM pr_lines pl WHERE pl.mr_header_id = vw_mr_headers.id)
+           ELSE (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw_mr_headers.id)
+         END AS item_count
+       FROM vw_mr_headers WHERE progress_id != 25 AND progress_id != 1 ${segregatedExclusionClause}
          AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
        ORDER BY date_requested DESC LIMIT ?`,
-      [filter, halfLimit],
-    );
-    const [lpoItems]: any = await db.query(
-      `SELECT l.id, l.mr_header_id,
-         (SELECT COUNT(*) FROM lpo_mr_line lml WHERE lml.lpo_id = l.id) AS item_count
-       FROM lpo l WHERE l.progress_id > 12 AND l.progress_id != 25
-         AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-       ORDER BY l.created_at DESC LIMIT ?`,
-      [filter, halfLimit],
+      [filter, maxItems],
     );
 
-    const items = [
-      ...mrItems.map((mr: any) => ({
-        display_id: `${mr.type === "job" ? "JO" : "MR"}-${String(mr.id).padStart(5, "0")}`,
-        item_count: Number(mr.item_count) || 0,
-        raw_id: mr.id,
-        type: "mr",
-      })),
-      ...lpoItems.map((lpo: any) => ({
-        display_id: `LPO-${String(lpo.id).padStart(5, "0")}`,
-        item_count: Number(lpo.item_count) || 0,
-        raw_id: lpo.id,
-        mr_header_id: lpo.mr_header_id,
-        type: "lpo",
-      })),
-    ].slice(0, maxItems);
+    const items = mrItems.map((mr: any) => ({
+      display_id: `${mr.type === "job" ? "JO" : mr.type === "payment" ? "PR" : "MR"}-${String(mr.id).padStart(5, "0")}`,
+      item_count: Number(mr.item_count) || 0,
+      raw_id: mr.id,
+      type: "mr",
+    }));
 
     return NextResponse.json(
       {

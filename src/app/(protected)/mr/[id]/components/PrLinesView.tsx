@@ -12,6 +12,7 @@ import BoqReferencePopUp from "./BoqReferencePopUp";
 import InputItem from "@/app/components/InputItem";
 import UploadFileBox from "@/app/components/SingleUploadFileBox";
 import CommentsSection from "@/app/components/CommentsSection";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type PrLine = {
   id: number;
@@ -807,7 +808,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                       <td>{retention.toFixed(1)}%</td>
                       <td style={{ fontWeight: 600 }}>
                         {Number(line.approved_total_price) > 0
-                          ? `AED ${Number(line.approved_total_price).toFixed(2)}`
+                          ? formatPriceAED(line.approved_total_price)
                           : "-"}
                       </td>
                       <td>
@@ -1173,7 +1174,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                         SUBTOTAL BEFORE RETENTION
                       </td>
                       <td style={{ fontWeight: 600 }}>
-                        AED {subtotalBeforeRetention.toFixed(2)}
+                        {formatPriceAED(subtotalBeforeRetention)}
                       </td>
                       <td colSpan={trailingCols} />
                     </tr>
@@ -1181,7 +1182,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                       <td colSpan={6} />
                       <td style={{ fontWeight: 600 }}>RETENTION</td>
                       <td style={{ fontWeight: 600 }}>
-                        - AED {totalRetention.toFixed(2)}
+                        - {formatPriceAED(totalRetention)}
                       </td>
                       <td colSpan={trailingCols} />
                     </tr>
@@ -1191,7 +1192,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                         SUBTOTAL AFTER RETENTION
                       </td>
                       <td style={{ fontWeight: 600 }}>
-                        AED {subtotalAfterRetention.toFixed(2)}
+                        {formatPriceAED(subtotalAfterRetention)}
                       </td>
                       <td colSpan={trailingCols} />
                     </tr>

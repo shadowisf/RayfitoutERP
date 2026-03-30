@@ -24,6 +24,7 @@ import CreateGRNButton from "./storekeeper/_CreateGRNButton";
 import SubmitForQCButton from "./storekeeper/_SubmitForQCButton";
 import AddToInventoryButton from "./storekeeper/_AddStockButton";
 import CommentsSection from "@/app/components/CommentsSection";
+import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -886,9 +887,9 @@ export default function LpoLinesView({
                     )}
                   </td>
 
-                  {canSeePrice && <td>AED {unitPrice.toFixed(2)}</td>}
+                  {canSeePrice && <td>{formatPriceAED(unitPrice)}</td>}
 
-                  {canSeePrice && <td>AED {totalPrice.toFixed(2)}</td>}
+                  {canSeePrice && <td>{formatPriceAED(totalPrice)}</td>}
 
                   {/* TEMPORARILY DISABLED QC/CR
                   {userInfo?.departmentID === 12 && progressId === 21 && (
@@ -940,7 +941,7 @@ export default function LpoLinesView({
                     fontWeight: "600",
                   }}
                 >
-                  AED {calculateItemsTotal(displayItems).toFixed(2)}
+                  {formatPriceAED(calculateItemsTotal(displayItems))}
                 </td>
                 {summaryTrailingColSpan > 0 && (
                   <td colSpan={summaryTrailingColSpan} />
@@ -963,11 +964,10 @@ export default function LpoLinesView({
                       fontWeight: "600",
                     }}
                   >
-                    - AED{" "}
-                    {(
+                    - {formatPriceAED(
                       calculateItemsTotal(displayItems) *
                       (getDiscountRate() / 100)
-                    ).toFixed(2)}
+                    )}
                   </td>
                   {summaryTrailingColSpan > 0 && (
                     <td colSpan={summaryTrailingColSpan} />
@@ -991,7 +991,7 @@ export default function LpoLinesView({
                       fontWeight: "600",
                     }}
                   >
-                    AED {getShippingAndHandling().toFixed(2)}
+                    {formatPriceAED(getShippingAndHandling())}
                   </td>
                   {summaryTrailingColSpan > 0 && (
                     <td colSpan={summaryTrailingColSpan} />
@@ -1014,10 +1014,9 @@ export default function LpoLinesView({
                     fontWeight: "600",
                   }}
                 >
-                  AED{" "}
-                  {calculateTotalWithVAT(
+                  {formatPriceAED(calculateTotalWithVAT(
                     calculateItemsTotal(displayItems),
-                  ).toFixed(2)}
+                  ))}
                 </td>
                 {summaryTrailingColSpan > 0 && (
                   <td colSpan={summaryTrailingColSpan} />

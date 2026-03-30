@@ -7,6 +7,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { LpoHeader } from "../../types/lpoHeader";
+import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 
 type EditLPOButtonProps = {
   lpoId: number;
@@ -365,7 +366,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                           </div>
                         </td>
                         <td>
-                          {parseFloat(totalPrices[index] || "0").toFixed(2)} AED
+                          {formatPriceAED(parseFloat(totalPrices[index] || "0"))}
                         </td>
                       </tr>
                     );
@@ -409,7 +410,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                   <div className="input-row full">
                     <InputItem
                       label={"SUB TOTAL"}
-                      value={subtotal.toFixed(2)}
+                      value={formatPrice(subtotal)}
                       type={"text"}
                       required
                       onChange={() => {}}
@@ -431,7 +432,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                   <div className="input-row full">
                     <InputItem
                       label={"DISCOUNT"}
-                      value={discountAmount.toFixed(2)}
+                      value={formatPrice(discountAmount)}
                       type={"text"}
                       placeholder={""}
                       required
@@ -465,7 +466,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                   <div className="input-row full">
                     <InputItem
                       label={"VAT"}
-                      value={vatAmount.toFixed(2)}
+                      value={formatPrice(vatAmount)}
                       type={"text"}
                       required
                       onChange={() => {}}
@@ -476,7 +477,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
                   <div className="input-row full">
                     <InputItem
                       label={"TOTAL"}
-                      value={`${total.toFixed(2)} AED`}
+                      value={formatPriceAED(total)}
                       type={"text"}
                       required={true}
                       onChange={() => {}}

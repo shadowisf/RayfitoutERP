@@ -11,6 +11,7 @@ import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReference
 import DownloadLPOButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadLPOButton";
 import RejectCommentPopUp from "@/app/(protected)/mr/[id]/components/manager/RejectCommentPopUp";
 import { useAuth } from "@/app/context/AuthContext";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type EntityType = "supplier" | "subcontractor";
 
@@ -128,7 +129,7 @@ export default function PaymentDetailsClient({
   const closeIcon = "/icons/cross-small.svg";
 
   const formatCurrency = (value: number) =>
-    `AED ${Number(value || 0).toFixed(2)}`;
+    formatPriceAED(value);
 
   const formatDate = (value: string | null) => {
     if (!value) return "-";
@@ -1276,14 +1277,14 @@ function JobOrderItemsTable({ joId, projectId }: JobOrderItemsTableProps) {
             </td>
             <td>
               {item.budget_estimate ? (
-                <>AED {Number(item.budget_estimate).toFixed(2)}</>
+                <>{formatPriceAED(item.budget_estimate)}</>
               ) : (
                 "-"
               )}
             </td>
             <td>
               {item.approved_total_price ? (
-                <>AED {Number(item.approved_total_price).toFixed(2)}</>
+                <>{formatPriceAED(item.approved_total_price)}</>
               ) : (
                 "-"
               )}
@@ -1298,7 +1299,7 @@ function JobOrderItemsTable({ joId, projectId }: JobOrderItemsTableProps) {
               SUBTOTAL
             </td>
             <td style={{ fontWeight: "600", padding: "15px 20px" }}>
-              AED {totalApprovedPrice.toFixed(2)}
+              {formatPriceAED(totalApprovedPrice)}
             </td>
           </tr>
         </tfoot>
@@ -1444,16 +1445,16 @@ function SupplierLpoItemsTable({
             </td>
             <td>
               {typeof item.unit_price === "number"
-                ? `AED ${item.unit_price.toFixed(2)}`
+                ? formatPriceAED(item.unit_price)
                 : typeof item.unit_price === "string" && item.unit_price
-                  ? `AED ${parseFloat(item.unit_price).toFixed(2)}`
+                  ? formatPriceAED(item.unit_price)
                   : "-"}
             </td>
             <td>
               {typeof item.total_price === "number"
-                ? `AED ${item.total_price.toFixed(2)}`
+                ? formatPriceAED(item.total_price)
                 : typeof item.total_price === "string" && item.total_price
-                  ? `AED ${parseFloat(item.total_price).toFixed(2)}`
+                  ? formatPriceAED(item.total_price)
                   : "-"}
             </td>
           </tr>
@@ -1465,7 +1466,7 @@ function SupplierLpoItemsTable({
             SUBTOTAL
           </td>
           <td style={{ fontWeight: "600", padding: "15px 20px" }}>
-            AED {total.toFixed(2)}
+            {formatPriceAED(total)}
           </td>
         </tr>
       </tfoot>

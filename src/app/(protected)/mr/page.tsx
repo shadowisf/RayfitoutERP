@@ -2,9 +2,35 @@
 
 import Button from "@/app/components/Button";
 import { useAuth } from "@/app/context/AuthContext";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { MrHeader } from "./[id]/types/mrHeader";
+import type { MrLine } from "./[id]/types/mrLine";
 import MrFilterButton from "./[id]/components/_MrFilterButton";
+import BulkQuotationCreator from "./[id]/components/procurement/_BulkQuotationCreator";
+import SupplierAndQuotationButton from "./[id]/components/procurement/_SupplierAndQuotationButton";
+
+type TableItem = {
+  line_id: number;
+  mr_header_id: number;
+  lpo_id?: number | null;
+  material_description: string;
+  quantity: number;
+  unit_price?: number;
+  total_price?: number;
+  unit: string;
+  material_category: string;
+  type: string;
+  requested_by: string;
+  department_id: number;
+  project_name: string;
+  progress_name: string;
+  progress_id: number;
+  supplier_name?: string;
+  boq_line_id?: number | null;
+  boq_item_number?: string | null;
+  boq_description?: string | null;
+  has_quotation?: boolean;
+};
 
 type LpoCard = {
   id: number;
@@ -52,6 +78,18 @@ export default function MR() {
   }>({});
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
+  const [tableItems, setTableItems] = useState<{
+    material: TableItem[];
+    lpo: TableItem[];
+    job: TableItem[];
+    payment: TableItem[];
+  }>({ material: [], lpo: [], job: [], payment: [] });
+  const [tableLoading, setTableLoading] = useState(false);
+  const [tableRefreshKey, setTableRefreshKey] = useState(0);
+  const [collapsedCategories, setCollapsedCategories] = useState<
+    Record<string, boolean>
+  >({});
   const [collapsedGroups, setCollapsedGroups] = useState<
     Record<string, boolean>
   >({});
@@ -147,6 +185,25 @@ export default function MR() {
       .then((data) => setLpoCards(data))
       .catch((err) => console.error("Error fetching LPO cards:", err));
   }, [userInfo]);
+
+  useEffect(() => {
+    if (viewMode !== "table") return;
+    setTableLoading(true);
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "getTableViewItems" }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setTableItems(data);
+        setTableLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error fetching table items:", err);
+        setTableLoading(false);
+      });
+  }, [viewMode, tableRefreshKey]);
 
   useEffect(() => {
     if (lpoCards.length === 0) return;
@@ -891,39 +948,95 @@ export default function MR() {
       >
         <h1>PROCUREMENT TRACKER</h1>
 
-        <div
-          style={{
-            maxWidth: "300px",
-            backgroundColor: "white",
-            position: "relative",
-          }}
-        >
-          <input
-            type="text"
-            placeholder="SEARCH"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+          {/* View toggle */}
+          <div
             style={{
-              width: "300px",
-              padding: "10px 40px 10px 15px",
-              borderRadius: "8px",
-              border: "1px solid rgba(223, 223, 223, 1)",
-              fontSize: "14px",
+              display: "flex",
+              backgroundColor: "rgba(242, 242, 242, 1)",
+              borderRadius: "10px",
+              padding: "4px",
             }}
-          />
-          <img
-            src={searchIcon}
-            alt="search"
+          >
+            <button
+              onClick={() => setViewMode("kanban")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                border: "none",
+                cursor: "pointer",
+                backgroundColor:
+                  viewMode === "kanban" ? "white" : "transparent",
+                color: "black",
+              }}
+            >
+              <img
+                src="/icons/kanban-option.svg"
+                alt="kanban"
+                style={{ width: "16px", height: "16px" }}
+              />
+              KANBAN
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                border: "none",
+                cursor: "pointer",
+                backgroundColor: viewMode === "table" ? "white" : "transparent",
+                color: "black",
+              }}
+            >
+              <img
+                src="/icons/table-option.svg"
+                alt="table"
+                style={{ width: "16px", height: "16px" }}
+              />
+              TABLE
+            </button>
+          </div>
+
+          <div
             style={{
-              position: "absolute",
-              right: "15px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: "16px",
-              height: "16px",
-              opacity: 0.5,
+              maxWidth: "300px",
+              backgroundColor: "white",
+              position: "relative",
             }}
-          />
+          >
+            <input
+              type="text"
+              placeholder="SEARCH"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: "300px",
+                padding: "10px 40px 10px 15px",
+                borderRadius: "8px",
+                border: "1px solid rgba(223, 223, 223, 1)",
+                fontSize: "14px",
+              }}
+            />
+            <img
+              src={searchIcon}
+              alt="search"
+              style={{
+                position: "absolute",
+                right: "15px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "16px",
+                height: "16px",
+                opacity: 0.5,
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -1084,237 +1197,545 @@ export default function MR() {
       <br />
       <br />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
-        {stageGroups.map((group) => {
-          if (filterRelevant && !shouldShowGroupWhenFiltering(group))
-            return null;
+      {viewMode === "table" && (
+        <TableView
+          tableItems={tableItems}
+          tableLoading={tableLoading}
+          searchQuery={searchQuery}
+          filters={filters}
+          collapsedCategories={collapsedCategories}
+          setCollapsedCategories={setCollapsedCategories}
+          onRefresh={() => setTableRefreshKey((k) => k + 1)}
+        />
+      )}
 
-          const totalCount = group.statuses.reduce((sum, status) => {
-            if (filterRelevant && !shouldShowStatusWhenFiltering(status))
-              return sum;
-            const useLpo = LPO_STAGE_IDS.includes(status.progress_id);
-            const isCompleted = status.progress_id === 25;
-            const isPendingPay = status.progress_id === 14;
-            if (isCompleted) {
-              const mrCount = (groupedMRs[status.name] || []).filter(
-                (mr) => mr.type === "job" || mr.type === "payment",
-              ).length;
-              return (
-                sum + (groupedLPOs[status.progress_id]?.length || 0) + mrCount
-              );
-            }
-            if (isPendingPay) {
-              const prCount = (groupedMRs[status.name] || []).filter(
-                (mr) => mr.type === "payment",
-              ).length;
+      {viewMode === "kanban" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+          {stageGroups.map((group) => {
+            if (filterRelevant && !shouldShowGroupWhenFiltering(group))
+              return null;
+
+            const totalCount = group.statuses.reduce((sum, status) => {
+              if (filterRelevant && !shouldShowStatusWhenFiltering(status))
+                return sum;
+              const useLpo = LPO_STAGE_IDS.includes(status.progress_id);
+              const isCompleted = status.progress_id === 25;
+              const isPendingPay = status.progress_id === 14;
+              if (isCompleted) {
+                const mrCount = (groupedMRs[status.name] || []).filter(
+                  (mr) => mr.type === "job" || mr.type === "payment",
+                ).length;
+                return (
+                  sum + (groupedLPOs[status.progress_id]?.length || 0) + mrCount
+                );
+              }
+              if (isPendingPay) {
+                const prCount = (groupedMRs[status.name] || []).filter(
+                  (mr) => mr.type === "payment",
+                ).length;
+                return (
+                  sum + (groupedLPOs[status.progress_id]?.length || 0) + prCount
+                );
+              }
               return (
                 sum +
-                (groupedLPOs[status.progress_id]?.length || 0) +
-                prCount
+                (useLpo
+                  ? groupedLPOs[status.progress_id]?.length || 0
+                  : groupedMRs[status.name]?.length || 0)
               );
-            }
+            }, 0);
+
             return (
-              sum +
-              (useLpo
-                ? groupedLPOs[status.progress_id]?.length || 0
-                : groupedMRs[status.name]?.length || 0)
-            );
-          }, 0);
-
-          return (
-            <div key={group.name}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "15px",
-                  marginBottom: collapsedGroups[group.name] ? "0px" : "20px",
-                  cursor: "pointer",
-                  userSelect: "none",
-                }}
-                onClick={() =>
-                  setCollapsedGroups((prev) => ({
-                    ...prev,
-                    [group.name]: !prev[group.name],
-                  }))
-                }
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  style={{
-                    transition: "transform 0.2s ease",
-                    transform: collapsedGroups[group.name]
-                      ? "rotate(-90deg)"
-                      : "rotate(0deg)",
-                  }}
-                >
-                  <path
-                    d="M3.5 5.25L7 8.75L10.5 5.25"
-                    stroke="black"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <h2 style={{ margin: 0 }}>{group.name}</h2>
+              <div key={group.name}>
                 <div
                   style={{
-                    backgroundColor: "black",
-                    color: "white",
-                    borderRadius: "50px",
-                    padding: "3px 8px",
-                    fontWeight: "600",
-                    fontSize: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "15px",
+                    marginBottom: collapsedGroups[group.name] ? "0px" : "20px",
+                    cursor: "pointer",
+                    userSelect: "none",
                   }}
+                  onClick={() =>
+                    setCollapsedGroups((prev) => ({
+                      ...prev,
+                      [group.name]: !prev[group.name],
+                    }))
+                  }
                 >
-                  {totalCount} Requests
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    style={{
+                      transition: "transform 0.2s ease",
+                      transform: collapsedGroups[group.name]
+                        ? "rotate(-90deg)"
+                        : "rotate(0deg)",
+                    }}
+                  >
+                    <path
+                      d="M3.5 5.25L7 8.75L10.5 5.25"
+                      stroke="black"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <h2 style={{ margin: 0 }}>{group.name}</h2>
+                  <div
+                    style={{
+                      backgroundColor: "black",
+                      color: "white",
+                      borderRadius: "50px",
+                      padding: "3px 8px",
+                      fontWeight: "600",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {totalCount} Requests
+                  </div>
                 </div>
-              </div>
 
-              {!collapsedGroups[group.name] && (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: "20px",
-                  }}
-                >
-                  {group.statuses.map((status) => {
-                    if (
-                      filterRelevant &&
-                      !shouldShowStatusWhenFiltering(status)
-                    )
-                      return null;
+                {!collapsedGroups[group.name] && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(3, 1fr)",
+                      gap: "20px",
+                    }}
+                  >
+                    {group.statuses.map((status) => {
+                      if (
+                        filterRelevant &&
+                        !shouldShowStatusWhenFiltering(status)
+                      )
+                        return null;
 
-                    const useLpoCards = LPO_STAGE_IDS.includes(
-                      status.progress_id,
-                    );
-                    const isCompletedStage = status.progress_id === 25;
-                    const isPendingPayments = status.progress_id === 14;
-                    const mrs = isCompletedStage
-                      ? (groupedMRs[status.name] || []).filter(
-                          (mr) => mr.type === "job" || mr.type === "payment",
-                        )
-                      : isPendingPayments
+                      const useLpoCards = LPO_STAGE_IDS.includes(
+                        status.progress_id,
+                      );
+                      const isCompletedStage = status.progress_id === 25;
+                      const isPendingPayments = status.progress_id === 14;
+                      const mrs = isCompletedStage
                         ? (groupedMRs[status.name] || []).filter(
-                            (mr) => mr.type === "payment",
+                            (mr) => mr.type === "job" || mr.type === "payment",
                           )
-                        : useLpoCards
-                          ? []
-                          : groupedMRs[status.name] || [];
-                    const lpos = useLpoCards
-                      ? groupedLPOs[status.progress_id] || []
-                      : [];
-                    const cardCount =
-                      isCompletedStage || isPendingPayments
-                        ? lpos.length + mrs.length
-                        : useLpoCards
-                          ? lpos.length
-                          : mrs.length;
-                    const dept = getResponsibleDepartment(status.name);
-                    const deptStyle = getDepartmentStyle(dept.id);
-                    const isEmpty = cardCount === 0;
+                        : isPendingPayments
+                          ? (groupedMRs[status.name] || []).filter(
+                              (mr) => mr.type === "payment",
+                            )
+                          : useLpoCards
+                            ? []
+                            : groupedMRs[status.name] || [];
+                      const lpos = useLpoCards
+                        ? groupedLPOs[status.progress_id] || []
+                        : [];
+                      const cardCount =
+                        isCompletedStage || isPendingPayments
+                          ? lpos.length + mrs.length
+                          : useLpoCards
+                            ? lpos.length
+                            : mrs.length;
+                      const dept = getResponsibleDepartment(status.name);
+                      const deptStyle = getDepartmentStyle(dept.id);
+                      const isEmpty = cardCount === 0;
 
-                    return (
-                      <div
-                        key={status.name}
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          backgroundColor: isEmpty
-                            ? "rgba(242, 242, 242, 1)"
-                            : "transparent",
-                          borderRadius: "15px",
-                        }}
-                      >
+                      return (
                         <div
+                          key={status.name}
                           style={{
                             display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            marginBottom: "10px",
-                            padding: "15px",
-                            borderRadius: "50px",
+                            flexDirection: "column",
                             backgroundColor: isEmpty
                               ? "rgba(242, 242, 242, 1)"
-                              : "white",
-                            border: isEmpty
-                              ? "none"
-                              : "1px solid rgba(231, 231, 231, 1)",
+                              : "transparent",
+                            borderRadius: "15px",
                           }}
                         >
-                          <h3
-                            style={{
-                              margin: 0,
-                              fontSize: "14px",
-                              fontWeight: "600",
-                            }}
-                          >
-                            {status.name}
-                          </h3>
                           <div
                             style={{
                               display: "flex",
                               alignItems: "center",
-                              gap: "10px",
+                              justifyContent: "space-between",
+                              marginBottom: "10px",
+                              padding: "15px",
+                              borderRadius: "50px",
+                              backgroundColor: isEmpty
+                                ? "rgba(242, 242, 242, 1)"
+                                : "white",
+                              border: isEmpty
+                                ? "none"
+                                : "1px solid rgba(231, 231, 231, 1)",
                             }}
                           >
-                            {dept.name && !isEmpty && (
-                              <div
-                                style={{
-                                  ...deptStyle,
-                                  padding: "7px 10px",
-                                  borderRadius: "50px",
-                                  fontSize: "10px",
-                                  fontWeight: "600",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "6px",
-                                }}
-                              >
-                                <span style={{ scale: "3" }}>•</span>
-                                {dept.name.toUpperCase()}
-                              </div>
-                            )}
-                            <div
+                            <h3
                               style={{
-                                fontSize: "16px",
+                                margin: 0,
+                                fontSize: "14px",
                                 fontWeight: "600",
-                                padding: "6px",
-                                minWidth: "32px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                borderRadius: "50%",
-                                backgroundColor: isEmpty ? "white" : "black",
-                                color: isEmpty ? "black" : "white",
                               }}
                             >
-                              {cardCount}
+                              {status.name}
+                            </h3>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "10px",
+                              }}
+                            >
+                              {dept.name && !isEmpty && (
+                                <div
+                                  style={{
+                                    ...deptStyle,
+                                    padding: "7px 10px",
+                                    borderRadius: "50px",
+                                    fontSize: "10px",
+                                    fontWeight: "600",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                  }}
+                                >
+                                  <span style={{ scale: "3" }}>•</span>
+                                  {dept.name.toUpperCase()}
+                                </div>
+                              )}
+                              <div
+                                style={{
+                                  fontSize: "16px",
+                                  fontWeight: "600",
+                                  padding: "6px",
+                                  minWidth: "32px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  borderRadius: "50%",
+                                  backgroundColor: isEmpty ? "white" : "black",
+                                  color: isEmpty ? "black" : "white",
+                                }}
+                              >
+                                {cardCount}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "15px",
-                            overflowY: "auto",
-                            maxHeight: "660px",
-                            paddingRight: "5px",
-                            marginTop: "15px",
-                          }}
-                        >
-                          {cardCount > 0 ? (
-                            isCompletedStage || isPendingPayments ? (
-                              /* ===== MIXED STAGE: BOTH LPO + MR CARDS ===== */
-                              <>
-                                {lpos.map((lpoCard) => {
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "15px",
+                              overflowY: "auto",
+                              maxHeight: "660px",
+                              paddingRight: "5px",
+                              marginTop: "15px",
+                            }}
+                          >
+                            {cardCount > 0 ? (
+                              isCompletedStage || isPendingPayments ? (
+                                /* ===== MIXED STAGE: BOTH LPO + MR CARDS ===== */
+                                <>
+                                  {lpos.map((lpoCard) => {
+                                    const key = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
+                                    const dur = lpoDurations[key] || {
+                                      duration: "00:00:00",
+                                      hoursDecimal: 0,
+                                      style: {
+                                        color: "black",
+                                        backgroundColor:
+                                          "rgba(231, 231, 231, 1)",
+                                      },
+                                    };
+
+                                    return (
+                                      <div
+                                        key={`lpo-${lpoCard.id}`}
+                                        style={{
+                                          backgroundColor: "white",
+                                          borderRadius: "15px",
+                                          padding: "15px",
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "12px",
+                                          border:
+                                            "1px solid rgba(231, 231, 231, 1)",
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            backgroundColor: "black",
+                                            color: "white",
+                                            padding: "4px 10px",
+                                            borderRadius: "50px",
+                                            fontSize: "11px",
+                                            fontWeight: "600",
+                                            width: "fit-content",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          MATERIAL REQUEST
+                                        </div>
+
+                                        <div>
+                                          <small>MR NUMBER</small>
+                                          <h3>
+                                            MR-
+                                            {String(
+                                              lpoCard.mr_header_id,
+                                            ).padStart(5, "0")}
+                                          </h3>
+                                        </div>
+
+                                        <div>
+                                          <small>LPO NUMBER</small>
+                                          <h3>
+                                            LPO-
+                                            {String(lpoCard.id).padStart(
+                                              5,
+                                              "0",
+                                            )}
+                                          </h3>
+                                        </div>
+
+                                        <div>
+                                          <small>PROJECT</small>
+                                          <h3>{lpoCard.project_name || "-"}</h3>
+                                        </div>
+
+                                        <div>
+                                          <small>VENDOR</small>
+                                          <h3>
+                                            {lpoCard.supplier_name || "-"}
+                                          </h3>
+                                        </div>
+
+                                        <div>
+                                          <small>ITEM COUNT</small>
+                                          <h3>
+                                            {lpoCard.item_count ?? 0} ITEMS
+                                          </h3>
+                                        </div>
+
+                                        <div>
+                                          <small>REQUESTER</small>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "5px",
+                                              alignItems: "center",
+                                            }}
+                                          >
+                                            <h3
+                                              style={{
+                                                backgroundColor: "black",
+                                                color: "white",
+                                                borderRadius: "50%",
+                                                width: "24px",
+                                                height: "24px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "11px",
+                                                fontWeight: "600",
+                                              }}
+                                            >
+                                              {lpoCard.requested_by
+                                                ? lpoCard.requested_by
+                                                    .split(" ")
+                                                    .map((n: string) => n[0])
+                                                    .join("")
+                                                    .toUpperCase()
+                                                    .slice(0, 2)
+                                                : "?"}
+                                            </h3>
+                                            <h3>
+                                              {lpoCard.requested_by || "-"},{" "}
+                                              {lpoCard.department_name || "-"}
+                                            </h3>
+                                          </div>
+                                        </div>
+
+                                        <Button
+                                          componentType="link"
+                                          bgColor="rgba(239, 239, 239, 1)"
+                                          borderColor="rgba(239, 239, 239, 1)"
+                                          textColor="black"
+                                          href={`/mr/${lpoCard.mr_header_id}/lpo/${lpoCard.id}`}
+                                          full
+                                          style={{ borderRadius: "50px" }}
+                                          disabled={
+                                            !canViewLPO(lpoCard, filterRelevant)
+                                          }
+                                        >
+                                          VIEW &gt;
+                                        </Button>
+                                      </div>
+                                    );
+                                  })}
+                                  {mrs.map((mr) => {
+                                    const key = `${mr.id}-${mr.progress_id}`;
+                                    const dur = mrDurations[key] || {
+                                      duration: "00:00:00",
+                                      hoursDecimal: 0,
+                                      style: {
+                                        color: "black",
+                                        backgroundColor:
+                                          "rgba(231, 231, 231, 1)",
+                                      },
+                                    };
+
+                                    return (
+                                      <div
+                                        key={mr.id}
+                                        style={{
+                                          backgroundColor:
+                                            mr.type === "job"
+                                              ? "rgba(255, 253, 227, 1)"
+                                              : mr.type === "payment"
+                                                ? "rgba(189, 242, 217, 1)"
+                                                : "white",
+                                          borderRadius: "15px",
+                                          padding: "15px",
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "12px",
+                                          border:
+                                            "1px solid rgba(231, 231, 231, 1)",
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            backgroundColor:
+                                              mr.type === "job"
+                                                ? "rgba(209, 182, 34, 1)"
+                                                : mr.type === "payment"
+                                                  ? "rgba(0, 163, 93, 1)"
+                                                  : "black",
+                                            color: "white",
+                                            padding: "4px 10px",
+                                            borderRadius: "50px",
+                                            fontSize: "11px",
+                                            fontWeight: "600",
+                                            width: "fit-content",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          {mr.type === "job"
+                                            ? "JOB ORDER"
+                                            : mr.type === "payment"
+                                              ? "PAYMENT REQUEST"
+                                              : "MATERIAL REQUEST"}
+                                        </div>
+
+                                        <div>
+                                          <small>
+                                            {mr.type === "job"
+                                              ? "JO NUMBER"
+                                              : mr.type === "payment"
+                                                ? "PR NUMBER"
+                                                : "MR NUMBER"}
+                                          </small>
+                                          <h3>
+                                            {mr.type === "job"
+                                              ? "JO"
+                                              : mr.type === "payment"
+                                                ? "PR"
+                                                : "MR"}
+                                            -{String(mr.id).padStart(5, "0")}
+                                          </h3>
+                                        </div>
+
+                                        {mr.type === "payment" &&
+                                          mr.payment_jo_reference_id && (
+                                            <div>
+                                              <small>JO NUMBER</small>
+                                              <h3>
+                                                JO-
+                                                {String(
+                                                  mr.payment_jo_reference_id,
+                                                ).padStart(5, "0")}
+                                              </h3>
+                                            </div>
+                                          )}
+
+                                        <div>
+                                          <small>PROJECT</small>
+                                          <h3>{mr.project_name || "-"}</h3>
+                                        </div>
+
+                                        <div>
+                                          <small>ITEM COUNT</small>
+                                          <h3>{mr.item_count ?? 0} ITEMS</h3>
+                                        </div>
+
+                                        <div>
+                                          <small>REQUESTER</small>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "5px",
+                                              alignItems: "center",
+                                            }}
+                                          >
+                                            <h3
+                                              style={{
+                                                backgroundColor: "black",
+                                                color: "white",
+                                                borderRadius: "50%",
+                                                width: "24px",
+                                                height: "24px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "11px",
+                                                fontWeight: "600",
+                                              }}
+                                            >
+                                              {mr.requested_by
+                                                ? mr.requested_by
+                                                    .split(" ")
+                                                    .map((n: string) => n[0])
+                                                    .join("")
+                                                    .toUpperCase()
+                                                    .slice(0, 2)
+                                                : "?"}
+                                            </h3>
+                                            <h3>
+                                              {mr.requested_by || "-"},{" "}
+                                              {mr.department_name || "-"}
+                                            </h3>
+                                          </div>
+                                        </div>
+
+                                        <Button
+                                          componentType="link"
+                                          bgColor={
+                                            mr.type === "job" ||
+                                            mr.type === "payment"
+                                              ? "white"
+                                              : "rgba(239, 239, 239, 1)"
+                                          }
+                                          borderColor="rgba(239, 239, 239, 1)"
+                                          textColor="black"
+                                          href={`/mr/${mr.id}`}
+                                          full
+                                          style={{ borderRadius: "50px" }}
+                                          disabled={
+                                            !canViewMR(mr, filterRelevant)
+                                          }
+                                        >
+                                          VIEW &gt;
+                                        </Button>
+                                      </div>
+                                    );
+                                  })}
+                                </>
+                              ) : useLpoCards ? (
+                                /* ===== LPO CARDS ===== */
+                                lpos.map((lpoCard) => {
                                   const key = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
                                   const dur = lpoDurations[key] || {
                                     duration: "00:00:00",
@@ -1341,17 +1762,125 @@ export default function MR() {
                                     >
                                       <div
                                         style={{
-                                          backgroundColor: "black",
-                                          color: "white",
-                                          padding: "4px 10px",
-                                          borderRadius: "50px",
-                                          fontSize: "11px",
-                                          fontWeight: "600",
-                                          width: "fit-content",
-                                          alignItems: "center",
+                                          display: "flex",
+                                          alignItems: "flex-start",
+                                          justifyContent: "space-between",
                                         }}
                                       >
-                                        MATERIAL REQUEST
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            gap: "10px",
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              backgroundColor: "black",
+                                              color: "white",
+                                              padding: "4px 10px",
+                                              borderRadius: "50px",
+                                              fontSize: "11px",
+                                              fontWeight: "600",
+                                              display: "inline-flex",
+                                              alignItems: "center",
+                                            }}
+                                          >
+                                            MATERIAL REQUEST
+                                          </div>
+
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "flex-end",
+                                              gap: "10px",
+                                            }}
+                                          >
+                                            {lpoCard.progress_id !== 25 &&
+                                              lpoCard.delivery_date && (
+                                                <div
+                                                  style={{
+                                                    ...getDaysLeftStyle(
+                                                      lpoCard.delivery_date,
+                                                    ),
+                                                    padding: "4px 10px",
+                                                    borderRadius: "50px",
+                                                    fontSize: "11px",
+                                                    fontWeight: "600",
+                                                    whiteSpace: "nowrap",
+                                                  }}
+                                                >
+                                                  {getDaysLeftText(
+                                                    lpoCard.delivery_date,
+                                                  )}
+                                                </div>
+                                              )}
+
+                                            {lpoCard.progress_id !== 25 && (
+                                              <div
+                                                style={{
+                                                  padding: "4px 8px",
+                                                  borderRadius: "50px",
+                                                  fontSize: "11px",
+                                                  fontWeight: "600",
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  gap: "5px",
+                                                  backgroundColor:
+                                                    "rgba(234, 234, 234, 1)",
+                                                  color: "rgba(89, 89, 89, 1)",
+                                                }}
+                                              >
+                                                <svg
+                                                  width="11"
+                                                  height="11"
+                                                  viewBox="0 0 11 11"
+                                                  fill="none"
+                                                  xmlns="http://www.w3.org/2000/svg"
+                                                  style={{
+                                                    color:
+                                                      "rgba(89, 89, 89, 1)",
+                                                  }}
+                                                >
+                                                  <path
+                                                    d="M5.5 2.5V5.5H8.5"
+                                                    stroke="currentColor"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                  />
+                                                  <path
+                                                    d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                                    stroke="currentColor"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                  />
+                                                </svg>
+                                                {dur.duration}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        {lpoCard.progress_id !== 25 && (
+                                          <div
+                                            style={{ alignSelf: "flex-end" }}
+                                          >
+                                            <svg
+                                              width="15"
+                                              height="17"
+                                              viewBox="0 0 15 17"
+                                              fill="none"
+                                              xmlns="http://www.w3.org/2000/svg"
+                                            >
+                                              <path
+                                                d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
+                                                fill={getFlagColor(
+                                                  dur.hoursDecimal,
+                                                  lpoCard.progress_id,
+                                                )}
+                                              />
+                                            </svg>
+                                          </div>
+                                        )}
                                       </div>
 
                                       <div>
@@ -1373,13 +1902,13 @@ export default function MR() {
                                       </div>
 
                                       <div>
-                                        <small>PROJECT</small>
-                                        <h3>{lpoCard.project_name || "-"}</h3>
+                                        <small>VENDOR</small>
+                                        <h3>{lpoCard.supplier_name || "-"}</h3>
                                       </div>
 
                                       <div>
-                                        <small>VENDOR</small>
-                                        <h3>{lpoCard.supplier_name || "-"}</h3>
+                                        <small>PROJECT</small>
+                                        <h3>{lpoCard.project_name || "-"}</h3>
                                       </div>
 
                                       <div>
@@ -1426,6 +1955,18 @@ export default function MR() {
                                         </div>
                                       </div>
 
+                                      {lpoCard.progress_id === 17 &&
+                                        lpoCard.delivery_date && (
+                                          <div>
+                                            <small>DELIVERY ETA</small>
+                                            <h3>
+                                              {new Date(
+                                                lpoCard.delivery_date,
+                                              ).toLocaleDateString("en-GB")}
+                                            </h3>
+                                          </div>
+                                        )}
+
                                       <Button
                                         componentType="link"
                                         bgColor="rgba(239, 239, 239, 1)"
@@ -1442,8 +1983,10 @@ export default function MR() {
                                       </Button>
                                     </div>
                                   );
-                                })}
-                                {mrs.map((mr) => {
+                                })
+                              ) : (
+                                /* ===== MR CARDS ===== */
+                                mrs.map((mr) => {
                                   const key = `${mr.id}-${mr.progress_id}`;
                                   const dur = mrDurations[key] || {
                                     duration: "00:00:00",
@@ -1475,26 +2018,128 @@ export default function MR() {
                                     >
                                       <div
                                         style={{
-                                          backgroundColor:
-                                            mr.type === "job"
-                                              ? "rgba(209, 182, 34, 1)"
-                                              : mr.type === "payment"
-                                                ? "rgba(0, 163, 93, 1)"
-                                                : "black",
-                                          color: "white",
-                                          padding: "4px 10px",
-                                          borderRadius: "50px",
-                                          fontSize: "11px",
-                                          fontWeight: "600",
-                                          width: "fit-content",
-                                          alignItems: "center",
+                                          display: "flex",
+                                          alignItems: "flex-start",
+                                          justifyContent: "space-between",
                                         }}
                                       >
-                                        {mr.type === "job"
-                                          ? "JOB ORDER"
-                                          : mr.type === "payment"
-                                            ? "PAYMENT REQUEST"
-                                            : "MATERIAL REQUEST"}
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            alignItems: "flex-end",
+                                            gap: "10px",
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              backgroundColor:
+                                                mr.type === "job"
+                                                  ? "rgba(209, 182, 34, 1)"
+                                                  : mr.type === "payment"
+                                                    ? "rgba(0, 163, 93, 1)"
+                                                    : "black",
+                                              color: "white",
+                                              padding: "4px 10px",
+                                              borderRadius: "50px",
+                                              fontSize: "11px",
+                                              fontWeight: "600",
+                                              display: "inline-flex",
+                                              alignItems: "center",
+                                            }}
+                                          >
+                                            {mr.type === "job"
+                                              ? "JOB ORDER"
+                                              : mr.type === "payment"
+                                                ? "PAYMENT REQUEST"
+                                                : "MATERIAL REQUEST"}
+                                          </div>
+
+                                          {mr.progress_id !== 25 && (
+                                            <div
+                                              style={{
+                                                ...getDaysLeftStyle(
+                                                  mr.required_date,
+                                                ),
+                                                padding: "4px 10px",
+                                                borderRadius: "50px",
+                                                fontSize: "11px",
+                                                fontWeight: "600",
+                                                whiteSpace: "nowrap",
+                                              }}
+                                            >
+                                              {getDaysLeftText(
+                                                mr.required_date,
+                                              )}
+                                            </div>
+                                          )}
+
+                                          {mr.progress_id !== 1 &&
+                                            mr.progress_id !== 25 && (
+                                              <div
+                                                style={{
+                                                  padding: "4px 8px",
+                                                  borderRadius: "50px",
+                                                  fontSize: "11px",
+                                                  fontWeight: "600",
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  gap: "5px",
+                                                  backgroundColor:
+                                                    "rgba(234, 234, 234, 1)",
+                                                  color: "rgba(89, 89, 89, 1)",
+                                                }}
+                                              >
+                                                <svg
+                                                  width="11"
+                                                  height="11"
+                                                  viewBox="0 0 11 11"
+                                                  fill="none"
+                                                  xmlns="http://www.w3.org/2000/svg"
+                                                  style={{
+                                                    color:
+                                                      "rgba(89, 89, 89, 1)",
+                                                  }}
+                                                >
+                                                  <path
+                                                    d="M5.5 2.5V5.5H8.5"
+                                                    stroke="currentColor"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                  />
+                                                  <path
+                                                    d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                                    stroke="currentColor"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                  />
+                                                </svg>
+                                                {dur.duration}
+                                              </div>
+                                            )}
+                                        </div>
+
+                                        {mr.progress_id !== 1 &&
+                                          mr.progress_id !== 25 && (
+                                            <div
+                                              style={{ alignSelf: "flex-end" }}
+                                            >
+                                              <svg
+                                                width="15"
+                                                height="17"
+                                                viewBox="0 0 15 17"
+                                                fill="none"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                              >
+                                                <path
+                                                  d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
+                                                  fill={getFlagColor(
+                                                    dur.hoursDecimal,
+                                                    mr.progress_id,
+                                                  )}
+                                                />
+                                              </svg>
+                                            </div>
+                                          )}
                                       </div>
 
                                       <div>
@@ -1577,6 +2222,29 @@ export default function MR() {
                                         </div>
                                       </div>
 
+                                      {mr.progress_id === 17 &&
+                                        mrDeliveryDates[mr.id]?.length > 0 && (
+                                          <div>
+                                            {mrDeliveryDates[mr.id].map(
+                                              (d, i) => (
+                                                <div key={i}>
+                                                  <small>
+                                                    {d.supplier_name.toUpperCase()}{" "}
+                                                    DELIVERY ETA
+                                                  </small>
+                                                  <h3>
+                                                    {new Date(
+                                                      d.delivery_date,
+                                                    ).toLocaleDateString(
+                                                      "en-GB",
+                                                    )}
+                                                  </h3>
+                                                </div>
+                                              ),
+                                            )}
+                                          </div>
+                                        )}
+
                                       <Button
                                         componentType="link"
                                         bgColor={
@@ -1598,554 +2266,613 @@ export default function MR() {
                                       </Button>
                                     </div>
                                   );
-                                })}
-                              </>
-                            ) : useLpoCards ? (
-                              /* ===== LPO CARDS ===== */
-                              lpos.map((lpoCard) => {
-                                const key = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
-                                const dur = lpoDurations[key] || {
-                                  duration: "00:00:00",
-                                  hoursDecimal: 0,
-                                  style: {
-                                    color: "black",
-                                    backgroundColor: "rgba(231, 231, 231, 1)",
-                                  },
-                                };
-
-                                return (
-                                  <div
-                                    key={`lpo-${lpoCard.id}`}
-                                    style={{
-                                      backgroundColor: "white",
-                                      borderRadius: "15px",
-                                      padding: "15px",
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: "12px",
-                                      border:
-                                        "1px solid rgba(231, 231, 231, 1)",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "flex-start",
-                                        justifyContent: "space-between",
-                                      }}
-                                    >
-                                      <div
-                                        style={{ display: "flex", gap: "10px" }}
-                                      >
-                                        <div
-                                          style={{
-                                            backgroundColor: "black",
-                                            color: "white",
-                                            padding: "4px 10px",
-                                            borderRadius: "50px",
-                                            fontSize: "11px",
-                                            fontWeight: "600",
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                          }}
-                                        >
-                                          MATERIAL REQUEST
-                                        </div>
-
-                                        <div
-                                          style={{
-                                            display: "flex",
-                                            alignItems: "flex-end",
-                                            gap: "10px",
-                                          }}
-                                        >
-                                          {lpoCard.progress_id !== 25 &&
-                                            lpoCard.delivery_date && (
-                                              <div
-                                                style={{
-                                                  ...getDaysLeftStyle(
-                                                    lpoCard.delivery_date,
-                                                  ),
-                                                  padding: "4px 10px",
-                                                  borderRadius: "50px",
-                                                  fontSize: "11px",
-                                                  fontWeight: "600",
-                                                  whiteSpace: "nowrap",
-                                                }}
-                                              >
-                                                {getDaysLeftText(
-                                                  lpoCard.delivery_date,
-                                                )}
-                                              </div>
-                                            )}
-
-                                          {lpoCard.progress_id !== 25 && (
-                                            <div
-                                              style={{
-                                                padding: "4px 8px",
-                                                borderRadius: "50px",
-                                                fontSize: "11px",
-                                                fontWeight: "600",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "5px",
-                                                backgroundColor:
-                                                  "rgba(234, 234, 234, 1)",
-                                                color: "rgba(89, 89, 89, 1)",
-                                              }}
-                                            >
-                                              <svg
-                                                width="11"
-                                                height="11"
-                                                viewBox="0 0 11 11"
-                                                fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                style={{
-                                                  color: "rgba(89, 89, 89, 1)",
-                                                }}
-                                              >
-                                                <path
-                                                  d="M5.5 2.5V5.5H8.5"
-                                                  stroke="currentColor"
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                />
-                                                <path
-                                                  d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                                                  stroke="currentColor"
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                />
-                                              </svg>
-                                              {dur.duration}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      {lpoCard.progress_id !== 25 && (
-                                        <div style={{ alignSelf: "flex-end" }}>
-                                          <svg
-                                            width="15"
-                                            height="17"
-                                            viewBox="0 0 15 17"
-                                            fill="none"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                          >
-                                            <path
-                                              d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
-                                              fill={getFlagColor(
-                                                dur.hoursDecimal,
-                                                lpoCard.progress_id,
-                                              )}
-                                            />
-                                          </svg>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <div>
-                                      <small>MR NUMBER</small>
-                                      <h3>
-                                        MR-
-                                        {String(lpoCard.mr_header_id).padStart(
-                                          5,
-                                          "0",
-                                        )}
-                                      </h3>
-                                    </div>
-
-                                    <div>
-                                      <small>LPO NUMBER</small>
-                                      <h3>
-                                        LPO-
-                                        {String(lpoCard.id).padStart(5, "0")}
-                                      </h3>
-                                    </div>
-
-                                    <div>
-                                      <small>VENDOR</small>
-                                      <h3>{lpoCard.supplier_name || "-"}</h3>
-                                    </div>
-
-                                    <div>
-                                      <small>PROJECT</small>
-                                      <h3>{lpoCard.project_name || "-"}</h3>
-                                    </div>
-
-                                    <div>
-                                      <small>ITEM COUNT</small>
-                                      <h3>{lpoCard.item_count ?? 0} ITEMS</h3>
-                                    </div>
-
-                                    <div>
-                                      <small>REQUESTER</small>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          gap: "5px",
-                                          alignItems: "center",
-                                        }}
-                                      >
-                                        <h3
-                                          style={{
-                                            backgroundColor: "black",
-                                            color: "white",
-                                            borderRadius: "50%",
-                                            width: "24px",
-                                            height: "24px",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            fontSize: "11px",
-                                            fontWeight: "600",
-                                          }}
-                                        >
-                                          {lpoCard.requested_by
-                                            ? lpoCard.requested_by
-                                                .split(" ")
-                                                .map((n: string) => n[0])
-                                                .join("")
-                                                .toUpperCase()
-                                                .slice(0, 2)
-                                            : "?"}
-                                        </h3>
-                                        <h3>
-                                          {lpoCard.requested_by || "-"},{" "}
-                                          {lpoCard.department_name || "-"}
-                                        </h3>
-                                      </div>
-                                    </div>
-
-                                    {lpoCard.progress_id === 17 &&
-                                      lpoCard.delivery_date && (
-                                        <div>
-                                          <small>DELIVERY ETA</small>
-                                          <h3>
-                                            {new Date(
-                                              lpoCard.delivery_date,
-                                            ).toLocaleDateString("en-GB")}
-                                          </h3>
-                                        </div>
-                                      )}
-
-                                    <Button
-                                      componentType="link"
-                                      bgColor="rgba(239, 239, 239, 1)"
-                                      borderColor="rgba(239, 239, 239, 1)"
-                                      textColor="black"
-                                      href={`/mr/${lpoCard.mr_header_id}/lpo/${lpoCard.id}`}
-                                      full
-                                      style={{ borderRadius: "50px" }}
-                                      disabled={
-                                        !canViewLPO(lpoCard, filterRelevant)
-                                      }
-                                    >
-                                      VIEW &gt;
-                                    </Button>
-                                  </div>
-                                );
-                              })
+                                })
+                              )
                             ) : (
-                              /* ===== MR CARDS ===== */
-                              mrs.map((mr) => {
-                                const key = `${mr.id}-${mr.progress_id}`;
-                                const dur = mrDurations[key] || {
-                                  duration: "00:00:00",
-                                  hoursDecimal: 0,
-                                  style: {
-                                    color: "black",
-                                    backgroundColor: "rgba(231, 231, 231, 1)",
-                                  },
-                                };
+                              <div
+                                style={{
+                                  padding: "40px 20px",
+                                  textAlign: "center",
+                                  color: "#9ca3af",
+                                  fontSize: "12px",
+                                  minHeight: "660px",
+                                }}
+                              >
+                                No items
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
-                                return (
-                                  <div
-                                    key={mr.id}
-                                    style={{
-                                      backgroundColor:
-                                        mr.type === "job"
-                                          ? "rgba(255, 253, 227, 1)"
-                                          : mr.type === "payment"
-                                            ? "rgba(189, 242, 217, 1)"
-                                            : "white",
-                                      borderRadius: "15px",
-                                      padding: "15px",
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: "12px",
-                                      border:
-                                        "1px solid rgba(231, 231, 231, 1)",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "flex-start",
-                                        justifyContent: "space-between",
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "flex-end",
-                                          gap: "10px",
-                                        }}
-                                      >
-                                        <div
-                                          style={{
-                                            backgroundColor:
-                                              mr.type === "job"
-                                                ? "rgba(209, 182, 34, 1)"
-                                                : mr.type === "payment"
-                                                  ? "rgba(0, 163, 93, 1)"
-                                                  : "black",
-                                            color: "white",
-                                            padding: "4px 10px",
-                                            borderRadius: "50px",
-                                            fontSize: "11px",
-                                            fontWeight: "600",
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                          }}
-                                        >
-                                          {mr.type === "job"
-                                            ? "JOB ORDER"
-                                            : mr.type === "payment"
-                                              ? "PAYMENT REQUEST"
-                                              : "MATERIAL REQUEST"}
-                                        </div>
+// ==================== TABLE VIEW COMPONENT ====================
 
-                                        {mr.progress_id !== 25 && (
-                                          <div
-                                            style={{
-                                              ...getDaysLeftStyle(
-                                                mr.required_date,
-                                              ),
-                                              padding: "4px 10px",
-                                              borderRadius: "50px",
-                                              fontSize: "11px",
-                                              fontWeight: "600",
-                                              whiteSpace: "nowrap",
-                                            }}
-                                          >
-                                            {getDaysLeftText(mr.required_date)}
-                                          </div>
-                                        )}
+type TableViewProps = {
+  tableItems: {
+    material: TableItem[];
+    lpo: TableItem[];
+    job: TableItem[];
+    payment: TableItem[];
+  };
+  tableLoading: boolean;
+  searchQuery: string;
+  filters: {
+    itemsRequestedIn: string;
+    selectedDepartments: number[];
+    selectedProjects: number[];
+    requestType: string;
+  };
+  collapsedCategories: Record<string, boolean>;
+  setCollapsedCategories: React.Dispatch<
+    React.SetStateAction<Record<string, boolean>>
+  >;
+  onRefresh: () => void;
+};
 
-                                        {mr.progress_id !== 1 &&
-                                          mr.progress_id !== 25 && (
-                                            <div
-                                              style={{
-                                                padding: "4px 8px",
-                                                borderRadius: "50px",
-                                                fontSize: "11px",
-                                                fontWeight: "600",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "5px",
-                                                backgroundColor:
-                                                  "rgba(234, 234, 234, 1)",
-                                                color: "rgba(89, 89, 89, 1)",
-                                              }}
-                                            >
-                                              <svg
-                                                width="11"
-                                                height="11"
-                                                viewBox="0 0 11 11"
-                                                fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                style={{
-                                                  color: "rgba(89, 89, 89, 1)",
-                                                }}
-                                              >
-                                                <path
-                                                  d="M5.5 2.5V5.5H8.5"
-                                                  stroke="currentColor"
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                />
-                                                <path
-                                                  d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
-                                                  stroke="currentColor"
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                />
-                                              </svg>
-                                              {dur.duration}
-                                            </div>
-                                          )}
-                                      </div>
+function TableView({
+  tableItems,
+  tableLoading,
+  searchQuery,
+  filters,
+  collapsedCategories,
+  setCollapsedCategories,
+  onRefresh,
+}: TableViewProps) {
+  const externalLinkIcon = "/icons/external-link.svg";
 
-                                      {mr.progress_id !== 1 &&
-                                        mr.progress_id !== 25 && (
-                                          <div
-                                            style={{ alignSelf: "flex-end" }}
-                                          >
-                                            <svg
-                                              width="15"
-                                              height="17"
-                                              viewBox="0 0 15 17"
-                                              fill="none"
-                                              xmlns="http://www.w3.org/2000/svg"
-                                            >
-                                              <path
-                                                d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
-                                                fill={getFlagColor(
-                                                  dur.hoursDecimal,
-                                                  mr.progress_id,
-                                                )}
-                                              />
-                                            </svg>
-                                          </div>
-                                        )}
-                                    </div>
+  // Selection state for bulk quotation creation
+  const [selectedItems, setSelectedItems] = useState<TableItem[]>([]);
 
-                                    <div>
-                                      <small>
-                                        {mr.type === "job"
-                                          ? "JO NUMBER"
-                                          : mr.type === "payment"
-                                            ? "PR NUMBER"
-                                            : "MR NUMBER"}
-                                      </small>
-                                      <h3>
-                                        {mr.type === "job"
-                                          ? "JO"
-                                          : mr.type === "payment"
-                                            ? "PR"
-                                            : "MR"}
-                                        -{String(mr.id).padStart(5, "0")}
-                                      </h3>
-                                    </div>
+  function toggleItemSelection(item: TableItem) {
+    setSelectedItems((prev) => {
+      const exists = prev.find(
+        (s) =>
+          s.line_id === item.line_id && s.mr_header_id === item.mr_header_id,
+      );
+      if (exists) {
+        return prev.filter(
+          (s) =>
+            !(
+              s.line_id === item.line_id && s.mr_header_id === item.mr_header_id
+            ),
+        );
+      }
+      return [...prev, item];
+    });
+  }
 
-                                    {mr.type === "payment" &&
-                                      mr.payment_jo_reference_id && (
-                                        <div>
-                                          <small>JO NUMBER</small>
-                                          <h3>
-                                            JO-
-                                            {String(
-                                              mr.payment_jo_reference_id,
-                                            ).padStart(5, "0")}
-                                          </h3>
-                                        </div>
-                                      )}
+  function isItemSelected(item: TableItem): boolean {
+    return selectedItems.some(
+      (s) => s.line_id === item.line_id && s.mr_header_id === item.mr_header_id,
+    );
+  }
 
-                                    <div>
-                                      <small>PROJECT</small>
-                                      <h3>{mr.project_name || "-"}</h3>
-                                    </div>
+  function isQuotationStage(item: TableItem): boolean {
+    return item.type === "material" && item.progress_id === 7;
+  }
 
-                                    <div>
-                                      <small>ITEM COUNT</small>
-                                      <h3>{mr.item_count ?? 0} ITEMS</h3>
-                                    </div>
+  function toggleCategorySelection(catItems: TableItem[]) {
+    const quotationItems = catItems.filter(isQuotationStage);
+    if (quotationItems.length === 0) return;
 
-                                    <div>
-                                      <small>REQUESTER</small>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          gap: "5px",
-                                          alignItems: "center",
-                                        }}
-                                      >
-                                        <h3
-                                          style={{
-                                            backgroundColor: "black",
-                                            color: "white",
-                                            borderRadius: "50%",
-                                            width: "24px",
-                                            height: "24px",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            fontSize: "11px",
-                                            fontWeight: "600",
-                                          }}
-                                        >
-                                          {mr.requested_by
-                                            ? mr.requested_by
-                                                .split(" ")
-                                                .map((n: string) => n[0])
-                                                .join("")
-                                                .toUpperCase()
-                                                .slice(0, 2)
-                                            : "?"}
-                                        </h3>
-                                        <h3>
-                                          {mr.requested_by || "-"},{" "}
-                                          {mr.department_name || "-"}
-                                        </h3>
-                                      </div>
-                                    </div>
+    const allSelected = quotationItems.every((item) => isItemSelected(item));
 
-                                    {mr.progress_id === 17 &&
-                                      mrDeliveryDates[mr.id]?.length > 0 && (
-                                        <div>
-                                          {mrDeliveryDates[mr.id].map(
-                                            (d, i) => (
-                                              <div key={i}>
-                                                <small>
-                                                  {d.supplier_name.toUpperCase()}{" "}
-                                                  DELIVERY ETA
-                                                </small>
-                                                <h3>
-                                                  {new Date(
-                                                    d.delivery_date,
-                                                  ).toLocaleDateString("en-GB")}
-                                                </h3>
-                                              </div>
-                                            ),
-                                          )}
-                                        </div>
-                                      )}
+    if (allSelected) {
+      // Deselect all quotation items in this category
+      setSelectedItems((prev) =>
+        prev.filter(
+          (s) =>
+            !quotationItems.some(
+              (qi) =>
+                qi.line_id === s.line_id && qi.mr_header_id === s.mr_header_id,
+            ),
+        ),
+      );
+    } else {
+      // Select all quotation items in this category that aren't already selected
+      setSelectedItems((prev) => {
+        const newItems = quotationItems.filter(
+          (qi) =>
+            !prev.some(
+              (s) =>
+                s.line_id === qi.line_id && s.mr_header_id === qi.mr_header_id,
+            ),
+        );
+        return [...prev, ...newItems];
+      });
+    }
+  }
 
-                                    <Button
-                                      componentType="link"
-                                      bgColor={
-                                        mr.type === "job" ||
-                                        mr.type === "payment"
-                                          ? "white"
-                                          : "rgba(239, 239, 239, 1)"
-                                      }
-                                      borderColor="rgba(239, 239, 239, 1)"
-                                      textColor="black"
-                                      href={`/mr/${mr.id}`}
-                                      full
-                                      style={{ borderRadius: "50px" }}
-                                      disabled={!canViewMR(mr, filterRelevant)}
-                                    >
-                                      VIEW &gt;
-                                    </Button>
-                                  </div>
-                                );
-                              })
-                            )
-                          ) : (
-                            <div
+  function isCategorySelected(catItems: TableItem[]): boolean {
+    const quotationItems = catItems.filter(isQuotationStage);
+    if (quotationItems.length === 0) return false;
+    return quotationItems.every((item) => isItemSelected(item));
+  }
+
+  function isCategoryIndeterminate(catItems: TableItem[]): boolean {
+    const quotationItems = catItems.filter(isQuotationStage);
+    if (quotationItems.length === 0) return false;
+    const selectedCount = quotationItems.filter((item) =>
+      isItemSelected(item),
+    ).length;
+    return selectedCount > 0 && selectedCount < quotationItems.length;
+  }
+
+  function categoryHasQuotationItems(catItems: TableItem[]): boolean {
+    return catItems.some(isQuotationStage);
+  }
+
+  function filterItems(items: TableItem[]): TableItem[] {
+    let filtered = items;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(
+        (item) =>
+          item.material_description?.toLowerCase().includes(q) ||
+          item.material_category?.toLowerCase().includes(q) ||
+          item.project_name?.toLowerCase().includes(q) ||
+          item.requested_by?.toLowerCase().includes(q) ||
+          item.mr_header_id.toString().includes(q),
+      );
+    }
+
+    if (filters.selectedDepartments.length > 0) {
+      filtered = filtered.filter((item) =>
+        filters.selectedDepartments.includes(item.department_id),
+      );
+    }
+
+    return filtered;
+  }
+
+  function groupByCategory(
+    items: TableItem[],
+    groupByLpo = false,
+  ): Record<string, TableItem[]> {
+    const groups: Record<string, TableItem[]> = {};
+    for (const item of items) {
+      const cat =
+        groupByLpo && item.lpo_id
+          ? `LPO-${String(item.lpo_id).padStart(5, "0")}`
+          : item.material_category || "Uncategorized";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(item);
+    }
+    return groups;
+  }
+
+  function getCategoryTotalQty(items: TableItem[]): string {
+    const total = items.reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0,
+    );
+    const units = items.map((i) => i.unit).filter(Boolean);
+    const unit = units.length > 0 ? units[0] : "";
+    const allSameUnit = units.every((u) => u === unit);
+    const formatted = Number.isInteger(total)
+      ? total
+      : parseFloat(total.toFixed(3));
+    return `${formatted} ${allSameUnit ? unit : "ITEMS"}`;
+  }
+
+  function getItemLink(item: TableItem): string {
+    if (item.lpo_id) return `/mr/${item.mr_header_id}/lpo/${item.lpo_id}`;
+    if (item.type === "job" || item.type === "payment")
+      return `/mr/${item.mr_header_id}`;
+    return `/mr/${item.mr_header_id}`;
+  }
+
+  function getItemRef(item: TableItem): string {
+    if (item.lpo_id) return `LPO-${String(item.lpo_id).padStart(5, "0")}`;
+    if (item.type === "job")
+      return `JO-${String(item.mr_header_id).padStart(5, "0")}`;
+    if (item.type === "payment")
+      return `PR-${String(item.mr_header_id).padStart(5, "0")}`;
+    return `MR-${String(item.mr_header_id).padStart(5, "0")}`;
+  }
+
+  function getStageStyle(progressName: string): React.CSSProperties {
+    const name = progressName?.toLowerCase() || "";
+    if (name.includes("completed"))
+      return {
+        backgroundColor: "rgba(87, 244, 176, 1)",
+        color: "rgba(31, 101, 71, 1)",
+      };
+    if (name.includes("rejected") || name.includes("failed"))
+      return {
+        backgroundColor: "rgba(255, 181, 181, 1)",
+        color: "rgba(248, 77, 77, 1)",
+      };
+
+    return {
+      backgroundColor: "rgba(255, 250, 189, 1)",
+      color: "rgba(134, 83, 47, 1)",
+    };
+  }
+
+  const sections: {
+    type: string;
+    label: string;
+    items: TableItem[];
+  }[] = [];
+
+  if (filters.requestType === "all" || filters.requestType === "material") {
+    sections.push({
+      type: "material",
+      label: "MATERIAL REQUESTS",
+      items: filterItems(tableItems.material),
+    });
+  }
+  if (filters.requestType === "all" || filters.requestType === "job") {
+    sections.push({
+      type: "job",
+      label: "JOB ORDERS",
+      items: filterItems(tableItems.job),
+    });
+  }
+  if (filters.requestType === "all" || filters.requestType === "payment") {
+    sections.push({
+      type: "payment",
+      label: "PAYMENT REQUESTS",
+      items: filterItems(tableItems.payment),
+    });
+  }
+
+  if (tableLoading) {
+    return (
+      <div style={{ textAlign: "center", padding: "60px 0", color: "#9ca3af" }}>
+        Loading items...
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+        {sections.map((section) => {
+          const grouped = groupByCategory(section.items);
+          const categoryNames = Object.keys(grouped).sort();
+          const totalItems = section.items.length;
+
+          return (
+            <div key={section.type}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "15px",
+                  marginBottom: "20px",
+                }}
+              >
+                <h2 style={{ margin: 0 }}>{section.label}</h2>
+                <div
+                  style={{
+                    backgroundColor: "black",
+                    color: "white",
+                    borderRadius: "50px",
+                    padding: "4px 12px",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                  }}
+                >
+                  {totalItems} Items
+                </div>
+              </div>
+
+              {totalItems === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "40px",
+                    color: "#9ca3af",
+                    backgroundColor: "rgba(242, 242, 242, 1)",
+                    borderRadius: "12px",
+                  }}
+                >
+                  No items found
+                </div>
+              ) : (
+                <table
+                  className="items-table alt two-toned"
+                  style={{ width: "100%" }}
+                >
+                  <thead>
+                    <tr>
+                      <th style={{ width: "30px" }}></th>
+                      <th>
+                        {section.type === "job"
+                          ? "BOQ"
+                          : section.type === "payment"
+                            ? "JOB ORDER"
+                            : "CATEGORY"}
+                      </th>
+                      <th>REQ. QTY</th>
+                      <th>REF.</th>
+                      <th>REQUESTER</th>
+                      <th>PROJECT</th>
+                      <th>STAGE</th>
+                      {section.type === "material" && <th>QUOTATION</th>}
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categoryNames.map((catName) => {
+                      const catItems = grouped[catName];
+                      const catKey = `${section.type}-${catName}`;
+                      const isCollapsed = collapsedCategories[catKey] ?? true;
+                      const catTotalQty = getCategoryTotalQty(catItems);
+
+                      return (
+                        <React.Fragment key={catKey}>
+                          {/* Category header row */}
+                          <tr
+                            style={{
+                              cursor: "pointer",
+                              backgroundColor: "rgba(249,249,249,1)",
+                            }}
+                            onClick={() =>
+                              setCollapsedCategories((prev) => ({
+                                ...prev,
+                                [catKey]: !isCollapsed,
+                              }))
+                            }
+                          >
+                            <td
                               style={{
-                                padding: "40px 20px",
+                                width: "30px",
                                 textAlign: "center",
-                                color: "#9ca3af",
-                                fontSize: "12px",
-                                minHeight: "660px",
+                                paddingTop: "14px",
+                                paddingBottom: "14px",
                               }}
                             >
-                              No items
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                              <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 14 14"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                style={{
+                                  transition: "transform 0.2s ease",
+                                  transform: isCollapsed
+                                    ? "rotate(-90deg)"
+                                    : "rotate(0deg)",
+                                }}
+                              >
+                                <path
+                                  d="M3.5 5.25L7 8.75L10.5 5.25"
+                                  stroke="black"
+                                  strokeWidth="1.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </td>
+                            <td>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "10px",
+                                }}
+                              >
+                                {categoryHasQuotationItems(catItems) && (
+                                  <input
+                                    type="checkbox"
+                                    checked={isCategorySelected(catItems)}
+                                    ref={(el) => {
+                                      if (el)
+                                        el.indeterminate =
+                                          isCategoryIndeterminate(catItems);
+                                    }}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      toggleCategorySelection(catItems);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                      width: "16px",
+                                      height: "16px",
+                                      cursor: "pointer",
+                                      accentColor: "rgba(0, 163, 93, 1)",
+                                    }}
+                                  />
+                                )}
+                                {section.type === "job" ? (
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px",
+                                    }}
+                                  >
+                                    <strong>{catName}</strong>
+                                    {catItems[0]?.boq_description && (
+                                      <span>
+                                        -{" "}
+                                        {catItems[0].boq_description.length > 50
+                                          ? catItems[0].boq_description.substring(
+                                              0,
+                                              50,
+                                            ) + "…"
+                                          : catItems[0].boq_description}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <strong>{catName.toUpperCase()}</strong>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <strong>{catTotalQty}</strong>
+                            </td>
+                            <td
+                              colSpan={section.type === "material" ? 6 : 5}
+                            ></td>
+                          </tr>
+
+                          {/* Individual items */}
+                          {!isCollapsed &&
+                            catItems.map((item) => (
+                              <tr key={`${item.mr_header_id}-${item.line_id}`}>
+                                <td></td>
+                                <td style={{ paddingLeft: "30px" }}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "10px",
+                                    }}
+                                  >
+                                    {isQuotationStage(item) && (
+                                      <input
+                                        type="checkbox"
+                                        checked={isItemSelected(item)}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          toggleItemSelection(item);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                          width: "16px",
+                                          height: "16px",
+                                          cursor: "pointer",
+                                          accentColor: "rgba(0, 163, 93, 1)",
+                                        }}
+                                      />
+                                    )}
+                                    <span>
+                                      {item.material_description || "-"}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td>
+                                  {Number.isInteger(Number(item.quantity))
+                                    ? Number(item.quantity)
+                                    : Number(item.quantity).toFixed(2)}{" "}
+                                  {item.unit}
+                                </td>
+                                <td>{getItemRef(item)}</td>
+                                <td>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        backgroundColor: "black",
+                                        color: "white",
+                                        borderRadius: "50%",
+                                        width: "24px",
+                                        height: "24px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "10px",
+                                        fontWeight: "600",
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      {item.requested_by
+                                        ? item.requested_by
+                                            .split(" ")
+                                            .map((n) => n[0])
+                                            .join("")
+                                            .toUpperCase()
+                                            .slice(0, 2)
+                                        : "?"}
+                                    </div>
+                                    {item.requested_by || "-"}
+                                  </div>
+                                </td>
+                                <td>{item.project_name || "-"}</td>
+                                <td>
+                                  <span
+                                    style={{
+                                      ...getStageStyle(item.progress_name),
+                                      padding: "4px 10px",
+                                      borderRadius: "50px",
+                                      fontSize: "11px",
+                                      fontWeight: "600",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {item.progress_name}
+                                  </span>
+                                </td>
+                                {section.type === "material" && (
+                                  <td>
+                                    {isQuotationStage(item) &&
+                                      item.has_quotation && (
+                                        <SupplierAndQuotationButton
+                                          mrHeader={
+                                            {
+                                              id: item.mr_header_id,
+                                              progress_id: item.progress_id,
+                                            } as MrHeader
+                                          }
+                                          mrLine={
+                                            {
+                                              id: item.line_id,
+                                              mr_header_id: item.mr_header_id,
+                                              quantity: item.quantity,
+                                              unit: item.unit,
+                                              material_description:
+                                                item.material_description,
+                                            } as MrLine
+                                          }
+                                        />
+                                      )}
+                                  </td>
+                                )}
+                                <td>
+                                  <Button
+                                    componentType={"link"}
+                                    bgColor={"rgba(239, 239, 239, 1)"}
+                                    borderColor={"rgba(223, 223, 223, 1)"}
+                                    textColor={"black"}
+                                    style={{ padding: "7px 7px" }}
+                                    href={getItemLink(item)}
+                                  >
+                                    <img src={externalLinkIcon} alt="details" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
             </div>
           );
         })}
       </div>
-    </div>
+
+      <BulkQuotationCreator
+        selectedItems={selectedItems}
+        onClear={() => setSelectedItems([])}
+        onSuccess={() => {
+          setSelectedItems([]);
+          onRefresh();
+        }}
+      />
+    </>
   );
 }
