@@ -4,7 +4,7 @@ import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-  
+
 type props = {
   onSuccess?: () => void;
 };
@@ -53,7 +53,7 @@ export default function CreateCategoryButton({ onSuccess }: props) {
         onClick={() => setIsOpen(true)}
         full
       >
-        NEW CATEOGRY +
+        NEW CATEGORY +
       </Button>
 
       {isOpen && (

@@ -42,6 +42,7 @@ import MrDownloadDnButton from "./storekeeper/_MrDownloadDnButton";
 import MrUploadSignedDnButton from "./storekeeper/_MrUploadSignedDnButton";
 import SubmitForStockTransferCompletion from "./storekeeper/_SubmitForStockTransferCompletion";
 import CommentsSection from "@/app/components/CommentsSection";
+import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -2923,7 +2924,7 @@ export default function MrLinesView({
                                                 }
 
                                                 //const priceWithVat = unitPrice * (1 + vatRate / 100);
-                                                return `AED ${unitPrice.toFixed(2)}`;
+                                                return formatPriceAED(unitPrice);
                                               })()}
                                             </td>
                                           )}
@@ -2954,7 +2955,7 @@ export default function MrLinesView({
                                                 }
 
                                                 /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
-                                                return `AED ${totalPrice.toFixed(2)}`;
+                                                return formatPriceAED(totalPrice);
                                               })()}
                                             </td>
                                           )}
@@ -3071,10 +3072,9 @@ export default function MrLinesView({
                                         fontWeight: "600",
                                       }}
                                     >
-                                      AED{" "}
-                                      {calculateItemsTotal(
+                                      {formatPriceAED(calculateItemsTotal(
                                         getAllItemsInSubCategory(suppliers),
-                                      ).toFixed(2)}
+                                      ))}
                                     </td>
                                     {subtotalTrailingColSpan > 0 && (
                                       <td colSpan={subtotalTrailingColSpan} />
@@ -3741,7 +3741,7 @@ export default function MrLinesView({
                                             }
 
                                             //const priceWithVat = unitPrice * (1 + vatRate / 100);
-                                            return `AED ${unitPrice.toFixed(2)}`;
+                                            return formatPriceAED(unitPrice);
                                           })()}
                                         </td>
                                       )}
@@ -3772,7 +3772,7 @@ export default function MrLinesView({
                                             }
 
                                             /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
-                                            return `AED ${totalPrice.toFixed(2)}`;
+                                            return formatPriceAED(totalPrice);
                                           })()}
                                         </td>
                                       )}
@@ -3887,10 +3887,9 @@ export default function MrLinesView({
                                     fontWeight: "600",
                                   }}
                                 >
-                                  AED{" "}
-                                  {calculateItemsTotal(
+                                  {formatPriceAED(calculateItemsTotal(
                                     getAllItemsInSubCategory(suppliers),
-                                  ).toFixed(2)}
+                                  ))}
                                 </td>
                                 {subtotalTrailingColSpan > 0 && (
                                   <td colSpan={subtotalTrailingColSpan} />
@@ -4322,7 +4321,7 @@ export default function MrLinesView({
                           }
 
                           //const priceWithVat = unitPrice * (1 + vatRate / 100);
-                          return `AED ${unitPrice.toFixed(2)}`;
+                          return formatPriceAED(unitPrice);
                         })()}
                       </td>
                     )}
@@ -4346,7 +4345,7 @@ export default function MrLinesView({
                           }
 
                           /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
-                          return `AED ${totalPrice.toFixed(2)}`;
+                          return formatPriceAED(totalPrice);
                         })()}
                       </td>
                     )}
@@ -4395,7 +4394,7 @@ export default function MrLinesView({
                         fontWeight: "600",
                       }}
                     >
-                      AED {calculateItemsTotal(items).toFixed(2)}
+                      {formatPriceAED(calculateItemsTotal(items))}
                     </td>
                     {subtotalTrailingColSpan > 0 && (
                       <td colSpan={subtotalTrailingColSpan} />

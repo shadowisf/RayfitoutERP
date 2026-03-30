@@ -3,6 +3,7 @@
 import Button from "@/app/components/Button";
 import { useState, useEffect } from "react";
 import { MrHeader } from "../types/mrHeader";
+import { formatPrice } from "@/lib/formatPrice";
 
 type props = {
   /* mrHeader: MrHeader; */
@@ -94,11 +95,11 @@ export default function BudgetTrackerMeter({
           }}
         >
           <h2 style={{ color: meterColor, fontSize: "24px" }}>
-            AED {allocatedBudget.toLocaleString("en-US")}
+            AED {formatPrice(allocatedBudget)}
           </h2>
           <h2 style={{ fontSize: "24px" }}>/</h2>
           <h2 style={{ fontSize: "24px" }}>
-            AED {quotedBudget.toLocaleString("en-US")}
+            AED {formatPrice(quotedBudget)}
           </h2>
         </div>
 

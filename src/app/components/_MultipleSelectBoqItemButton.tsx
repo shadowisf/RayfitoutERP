@@ -7,6 +7,7 @@ import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import Button from "./Button";
 import { BoqLine } from "../(protected)/project/[id]/boq/[boqId]/types/boqLine";
+import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 
 type props = {
   projectID: number;
@@ -449,6 +450,7 @@ export default function MultipleSelectBoqItemButton({
                 width: "18px",
                 height: "18px",
                 cursor: "pointer",
+                accentColor: "rgba(0, 163, 93, 1)",
               }}
             />
             SELECT ALL CATEGORIES
@@ -573,6 +575,7 @@ export default function MultipleSelectBoqItemButton({
                           width: "16px",
                           height: "16px",
                           cursor: "pointer",
+                          accentColor: "rgba(0, 163, 93, 1)",
                         }}
                       />
                     )}
@@ -695,6 +698,7 @@ export default function MultipleSelectBoqItemButton({
                             width: "16px",
                             height: "16px",
                             cursor: "pointer",
+                            accentColor: "rgba(0, 163, 93, 1)",
                           }}
                         />
                       </label>
@@ -754,6 +758,7 @@ export default function MultipleSelectBoqItemButton({
                                   width: "18px",
                                   height: "18px",
                                   cursor: "pointer",
+                                  accentColor: "rgba(0, 163, 93, 1)",
                                 }}
                               />
                             )}
@@ -789,7 +794,9 @@ export default function MultipleSelectBoqItemButton({
                                   <td onClick={(e) => e.stopPropagation()}>
                                     <input
                                       type={singleSelect ? "radio" : "checkbox"}
-                                      name={singleSelect ? "boq-select" : undefined}
+                                      name={
+                                        singleSelect ? "boq-select" : undefined
+                                      }
                                       checked={tempSelectedBoqIDs.includes(
                                         boq.id,
                                       )}
@@ -800,7 +807,7 @@ export default function MultipleSelectBoqItemButton({
                                         width: "18px",
                                         height: "18px",
                                         cursor: "pointer",
-                                        accentColor: singleSelect ? "#00aa6c" : undefined,
+                                        accentColor: "rgba(0, 163, 93, 1)",
                                       }}
                                     />
                                   </td>
@@ -870,11 +877,9 @@ export default function MultipleSelectBoqItemButton({
                                   {canSeePrice && (
                                     <>
                                       <td>
-                                        {boq.rate_per_quantity?.toLocaleString()}
+                                        {formatPrice(boq.rate_per_quantity)}
                                       </td>
-                                      <td>
-                                        AED {boq.total_cost?.toLocaleString()}
-                                      </td>
+                                      <td>{formatPriceAED(boq.total_cost)}</td>
                                     </>
                                   )}
 
@@ -940,6 +945,7 @@ export default function MultipleSelectBoqItemButton({
                             width: "18px",
                             height: "18px",
                             cursor: "pointer",
+                            accentColor: "rgba(0, 163, 93, 1)",
                           }}
                         />
                       )}
@@ -981,6 +987,7 @@ export default function MultipleSelectBoqItemButton({
                                   width: "18px",
                                   height: "18px",
                                   cursor: "pointer",
+                                  accentColor: "rgba(0, 163, 93, 1)",
                                 }}
                               />
                             </td>
@@ -1047,10 +1054,8 @@ export default function MultipleSelectBoqItemButton({
 
                             {canSeePrice && (
                               <>
-                                <td>
-                                  {boq.rate_per_quantity?.toLocaleString()}
-                                </td>
-                                <td>AED {boq.total_cost?.toLocaleString()}</td>
+                                <td>{formatPrice(boq.rate_per_quantity)}</td>
+                                <td>{formatPriceAED(boq.total_cost)}</td>
                               </>
                             )}
 

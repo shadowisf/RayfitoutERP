@@ -13,6 +13,7 @@ import { LpoHeader } from "../../types/lpoHeader";
 import ViewLPOButton from "./_ViewLPOButton";
 import UploadInvoiceButton from "./_UploadInvoiceButton";
 import UploadSignedLPOButton from "./_UploadSignedLPOButton";
+import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 
 type IssueLPOButtonProps = {
   mrHeader: MrHeader;
@@ -590,7 +591,7 @@ export default function IssueLPOButton({
                       </div>
                     </td>
                     <td>
-                      {parseFloat(totalPrices[index] || "0").toFixed(2)} AED
+                      {formatPriceAED(parseFloat(totalPrices[index] || "0"))}
                     </td>
                   </tr>
                 );
@@ -634,7 +635,7 @@ export default function IssueLPOButton({
               <div className="input-row full">
                 <InputItem
                   label={"SUB TOTAL"}
-                  value={formatNumber(subtotal)}
+                  value={formatPrice(subtotal)}
                   type={"text"}
                   placeholder={""}
                   required
@@ -657,7 +658,7 @@ export default function IssueLPOButton({
               <div className="input-row full">
                 <InputItem
                   label={"DISCOUNT"}
-                  value={formatNumber(discountAmount)}
+                  value={formatPrice(discountAmount)}
                   type={"text"}
                   placeholder={""}
                   required
@@ -691,7 +692,7 @@ export default function IssueLPOButton({
               <div className="input-row full">
                 <InputItem
                   label={"VAT"}
-                  value={formatNumber(vatAmount)}
+                  value={formatPrice(vatAmount)}
                   type={"text"}
                   placeholder={""}
                   required
@@ -703,7 +704,7 @@ export default function IssueLPOButton({
               <div className="input-row full">
                 <InputItem
                   label={"TOTAL"}
-                  value={`${formatNumber(total)} AED`}
+                  value={formatPriceAED(total)}
                   type={"text"}
                   placeholder={""}
                   required={true}

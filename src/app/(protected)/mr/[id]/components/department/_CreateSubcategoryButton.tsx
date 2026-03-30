@@ -66,7 +66,7 @@ export default function CreateSubCategoryButton({
         onClick={() => openMenu()}
         full
       >
-        NEW SUBCATEOGRY +
+        NEW SUBCATEGORY +
       </Button>
 
       {isOpen && (

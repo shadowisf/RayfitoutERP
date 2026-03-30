@@ -84,6 +84,7 @@ export default function Inventory() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [showPopup, setShowPopup] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
+  const [prefetchedStockData, setPrefetchedStockData] = useState<any>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -989,6 +990,24 @@ export default function Inventory() {
 
     setMousePosition({ x: event.clientX, y: event.clientY });
     setIsWaiting(true);
+    setPrefetchedStockData(null);
+
+    // Prefetch stock data immediately so it's ready when popup shows
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getStocksByInventoryItemID`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inventoryItemId: itemId }),
+      },
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        setPrefetchedStockData(data);
+      })
+      .catch(() => {
+        setPrefetchedStockData({ success: false });
+      });
 
     const timer = setTimeout(() => {
       setIsWaiting(false);
@@ -1035,6 +1054,7 @@ export default function Inventory() {
     setIsWaiting(false);
     setShowPopup(false);
     setHoveredItemId(null);
+    setPrefetchedStockData(null);
   };
 
   return (
@@ -1944,6 +1964,7 @@ export default function Inventory() {
           unit={
             currentItems.find((item) => item.id === hoveredItemId)?.unit || ""
           }
+          prefetchedData={prefetchedStockData}
         />
       )}
     </div>

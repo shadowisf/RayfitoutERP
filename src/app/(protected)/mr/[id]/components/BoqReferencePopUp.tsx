@@ -8,6 +8,7 @@ import Button from "@/app/components/Button";
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import DownloadBoqButton from "@/app/(protected)/project/[id]/boq/[boqId]/components/manager/_DownloadBoqButton";
+import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 
 type BoqReferencePopUpProps = {
   mrHeader: MrHeader;
@@ -786,7 +787,7 @@ export default function BoqReferencePopUp({
                               fontWeight: 600,
                             }}
                           >
-                            AED {group.totalPrice.toLocaleString()}
+                            {formatPriceAED(group.totalPrice)}
                           </td>
                         )}
                       </tr>
@@ -825,7 +826,7 @@ export default function BoqReferencePopUp({
                         }}
                       >
                         <h3 style={{ textWrap: "nowrap" }}>
-                          AED {grandTotal.toLocaleString()}
+                          {formatPriceAED(grandTotal)}
                         </h3>
                       </td>
                     </tr>
@@ -1015,7 +1016,7 @@ export default function BoqReferencePopUp({
                                     backgroundColor: bgColor,
                                   }}
                                 >
-                                  AED {boqItem.total_cost?.toLocaleString()}
+                                  {formatPriceAED(boqItem.total_cost)}
                                 </td>
                               )}
                               <td
@@ -1095,7 +1096,7 @@ export default function BoqReferencePopUp({
                               }}
                             >
                               <h3 style={{ textWrap: "nowrap" }}>
-                                AED {group.totalPrice.toLocaleString()}
+                                {formatPriceAED(group.totalPrice)}
                               </h3>
                             </td>
                             <td
@@ -1312,7 +1313,7 @@ export default function BoqReferencePopUp({
                                       backgroundColor: bgColor,
                                     }}
                                   >
-                                    AED {boqItem.total_cost?.toLocaleString()}
+                                    {formatPriceAED(boqItem.total_cost)}
                                   </td>
                                 )}
                                 <td
@@ -1397,7 +1398,7 @@ export default function BoqReferencePopUp({
                                     fontSize: "14px",
                                   }}
                                 >
-                                  AED {subCatTotal.toLocaleString()}
+                                  {formatPriceAED(subCatTotal)}
                                 </h3>
                               </td>
                               <td

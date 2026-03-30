@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import Button from "@/app/components/Button";
 import { useAuth } from "@/app/context/AuthContext";
 import { BoqHeader } from "../project/[id]/boq/[boqId]/types/boqHeader";
+import { formatPrice } from "@/lib/formatPrice";
 
 export default function Boq() {
   const { userInfo } = useAuth();
@@ -354,7 +355,7 @@ export default function Boq() {
                   <td>{boq.total_items || "-"}</td>
                   {canSeePrice && (
                     <td>
-                      {boq.currency} {Number(boq.total_value).toFixed(2)}
+                      {boq.currency} {formatPrice(boq.total_value)}
                     </td>
                   )}
 

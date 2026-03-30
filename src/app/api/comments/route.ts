@@ -32,12 +32,29 @@ export async function POST(request: Request) {
     }
 
     if (body.action === "addComment") {
-      const { mr_header_id, lpo_id, author_name, author_department_id, author_department_name, message, stage_name, mentioned_department_ids } = body;
+      const {
+        mr_header_id,
+        lpo_id,
+        author_name,
+        author_department_id,
+        author_department_name,
+        message,
+        stage_name,
+        mentioned_department_ids,
+      } = body;
 
       // Insert the comment
       await db.query(
         `INSERT INTO mr_comments (mr_header_id, lpo_id, author_name, author_department_id, author_department_name, message, stage_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [mr_header_id, lpo_id || null, author_name, author_department_id, author_department_name, message, stage_name],
+        [
+          mr_header_id,
+          lpo_id || null,
+          author_name,
+          author_department_id,
+          author_department_name,
+          message,
+          stage_name,
+        ],
       );
 
       // Create notifications for mentioned departments
@@ -48,7 +65,8 @@ export async function POST(request: Request) {
           [mr_header_id],
         );
         const mrType = mrRows[0]?.type || "material";
-        const prefix = mrType === "job" ? "JO" : mrType === "payment" ? "PR" : "MR";
+        const prefix =
+          mrType === "job" ? "JO" : mrType === "payment" ? "PR" : "MR";
         const formattedId = `${prefix}-${String(mr_header_id).padStart(5, "0")}`;
 
         for (const deptId of mentioned_department_ids) {

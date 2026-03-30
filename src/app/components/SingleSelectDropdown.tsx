@@ -219,7 +219,13 @@ export default function SingleSelectDropdown({
   function handleSelectClick(e: React.MouseEvent<HTMLSelectElement>) {
     e.preventDefault();
     if (!disabled) {
-      setIsOpen((prev) => !prev);
+      setIsOpen((prev) => {
+        if (prev) {
+          // Closing - clear hover state
+          setHoveredOption(null);
+        }
+        return !prev;
+      });
     }
   }
 
@@ -604,7 +610,7 @@ export default function SingleSelectDropdown({
       </div>
 
       {/* TOOLTIP */}
-      {hoveredOption && hoveredOptionData?.tooltip && (
+      {isOpen && hoveredOption && hoveredOptionData?.tooltip && (
         <div
           className="select-tooltip"
           style={{

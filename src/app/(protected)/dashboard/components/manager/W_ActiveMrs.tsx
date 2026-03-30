@@ -180,7 +180,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
           items={items}
           totalCount={totalCount}
           columns={[
-            { key: "display_id", label: "MR/LPO NUMBER" },
+            { key: "display_id", label: "MR NUMBER" },
             {
               key: "item_count",
               label: "ITEMS",
