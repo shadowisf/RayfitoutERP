@@ -715,29 +715,28 @@ export default function SupplierAndQuotationButton({
             ))}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {mrHeader.progress_id === 11 && allSuppliersQSRejected && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "15px",
-                padding: "5px 10px 5px 15px",
-                backgroundColor: "rgba(185, 28, 28, 1)",
-                color: "white",
-                borderRadius: "25px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <span>Rejected by QS</span>
-              <RejectCommentPopUp text={qsRejectComments} />
-            </div>
-          )}
+        {(mrHeader.progress_id == 11 || mrHeader.progress_id == 9) && (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {allSuppliersQSRejected && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "15px",
+                  padding: "5px 10px 5px 15px",
+                  backgroundColor: "rgba(185, 28, 28, 1)",
+                  color: "white",
+                  borderRadius: "25px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span>Rejected by QS</span>
+                <RejectCommentPopUp text={qsRejectComments} />
+              </div>
+            )}
 
-          {(mrHeader.progress_id === 9 || mrHeader.progress_id === 11) &&
-            allSuppliersQSPending &&
-            !allSuppliersQSRejected && (
+            {allSuppliersQSPending && !allSuppliersQSRejected && (
               <div
                 style={{
                   display: "flex",
@@ -755,24 +754,25 @@ export default function SupplierAndQuotationButton({
               </div>
             )}
 
-          {mrHeader.progress_id === 9 && hasQSApprovedSupplier && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "10px",
-                padding: "5px 15px",
-                backgroundColor: "rgba(34, 150, 100, 1)",
-                color: "white",
-                borderRadius: "25px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <span>Approved by QS</span>
-            </div>
-          )}
-        </div>
+            {hasQSApprovedSupplier && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                  padding: "5px 15px",
+                  backgroundColor: "rgba(34, 150, 100, 1)",
+                  color: "white",
+                  borderRadius: "25px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span>Approved by QS</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {isOpen && (
@@ -963,7 +963,6 @@ export default function SupplierAndQuotationButton({
             </Button>
 
             <br />
-
           </>
         </FormPopUp>
       )}

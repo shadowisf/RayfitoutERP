@@ -56,7 +56,8 @@ export async function POST(req: Request) {
           mh.department_id,
           vw.project_name,
           vw.progress_name,
-          vw.progress_id
+          vw.progress_id,
+          (SELECT COUNT(*) FROM mr_line_supplier_quotation sq WHERE sq.mr_line_id = ml.id) > 0 AS has_quotation
         FROM mr_lines ml
         JOIN mr_headers mh ON mh.id = ml.mr_header_id
         JOIN vw_mr_headers vw ON vw.id = mh.id

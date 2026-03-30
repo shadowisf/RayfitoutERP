@@ -4,7 +4,10 @@ import Button from "@/app/components/Button";
 import { useAuth } from "@/app/context/AuthContext";
 import React, { useEffect, useState } from "react";
 import { MrHeader } from "./[id]/types/mrHeader";
+import type { MrLine } from "./[id]/types/mrLine";
 import MrFilterButton from "./[id]/components/_MrFilterButton";
+import BulkQuotationCreator from "./[id]/components/procurement/_BulkQuotationCreator";
+import SupplierAndQuotationButton from "./[id]/components/procurement/_SupplierAndQuotationButton";
 
 type TableItem = {
   line_id: number;
@@ -26,6 +29,7 @@ type TableItem = {
   boq_line_id?: number | null;
   boq_item_number?: string | null;
   boq_description?: string | null;
+  has_quotation?: boolean;
 };
 
 type LpoCard = {
@@ -82,6 +86,7 @@ export default function MR() {
     payment: TableItem[];
   }>({ material: [], lpo: [], job: [], payment: [] });
   const [tableLoading, setTableLoading] = useState(false);
+  const [tableRefreshKey, setTableRefreshKey] = useState(0);
   const [collapsedCategories, setCollapsedCategories] = useState<
     Record<string, boolean>
   >({});
@@ -198,7 +203,7 @@ export default function MR() {
         console.error("Error fetching table items:", err);
         setTableLoading(false);
       });
-  }, [viewMode]);
+  }, [viewMode, tableRefreshKey]);
 
   useEffect(() => {
     if (lpoCards.length === 0) return;
@@ -963,13 +968,9 @@ export default function MR() {
                 borderRadius: "8px",
                 border: "none",
                 cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: "600",
                 backgroundColor:
                   viewMode === "kanban" ? "white" : "transparent",
                 color: "black",
-                boxShadow:
-                  viewMode === "kanban" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
               }}
             >
               <img
@@ -989,12 +990,8 @@ export default function MR() {
                 borderRadius: "8px",
                 border: "none",
                 cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: "600",
                 backgroundColor: viewMode === "table" ? "white" : "transparent",
                 color: "black",
-                boxShadow:
-                  viewMode === "table" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
               }}
             >
               <img
@@ -1208,6 +1205,7 @@ export default function MR() {
           filters={filters}
           collapsedCategories={collapsedCategories}
           setCollapsedCategories={setCollapsedCategories}
+          onRefresh={() => setTableRefreshKey((k) => k + 1)}
         />
       )}
 
@@ -2319,6 +2317,7 @@ type TableViewProps = {
   setCollapsedCategories: React.Dispatch<
     React.SetStateAction<Record<string, boolean>>
   >;
+  onRefresh: () => void;
 };
 
 function TableView({
@@ -2328,8 +2327,91 @@ function TableView({
   filters,
   collapsedCategories,
   setCollapsedCategories,
+  onRefresh,
 }: TableViewProps) {
   const externalLinkIcon = "/icons/external-link.svg";
+
+  // Selection state for bulk quotation creation
+  const [selectedItems, setSelectedItems] = useState<TableItem[]>([]);
+
+  function toggleItemSelection(item: TableItem) {
+    setSelectedItems((prev) => {
+      const exists = prev.find(
+        (s) =>
+          s.line_id === item.line_id && s.mr_header_id === item.mr_header_id,
+      );
+      if (exists) {
+        return prev.filter(
+          (s) =>
+            !(
+              s.line_id === item.line_id && s.mr_header_id === item.mr_header_id
+            ),
+        );
+      }
+      return [...prev, item];
+    });
+  }
+
+  function isItemSelected(item: TableItem): boolean {
+    return selectedItems.some(
+      (s) => s.line_id === item.line_id && s.mr_header_id === item.mr_header_id,
+    );
+  }
+
+  function isQuotationStage(item: TableItem): boolean {
+    return item.type === "material" && item.progress_id === 7;
+  }
+
+  function toggleCategorySelection(catItems: TableItem[]) {
+    const quotationItems = catItems.filter(isQuotationStage);
+    if (quotationItems.length === 0) return;
+
+    const allSelected = quotationItems.every((item) => isItemSelected(item));
+
+    if (allSelected) {
+      // Deselect all quotation items in this category
+      setSelectedItems((prev) =>
+        prev.filter(
+          (s) =>
+            !quotationItems.some(
+              (qi) =>
+                qi.line_id === s.line_id && qi.mr_header_id === s.mr_header_id,
+            ),
+        ),
+      );
+    } else {
+      // Select all quotation items in this category that aren't already selected
+      setSelectedItems((prev) => {
+        const newItems = quotationItems.filter(
+          (qi) =>
+            !prev.some(
+              (s) =>
+                s.line_id === qi.line_id && s.mr_header_id === qi.mr_header_id,
+            ),
+        );
+        return [...prev, ...newItems];
+      });
+    }
+  }
+
+  function isCategorySelected(catItems: TableItem[]): boolean {
+    const quotationItems = catItems.filter(isQuotationStage);
+    if (quotationItems.length === 0) return false;
+    return quotationItems.every((item) => isItemSelected(item));
+  }
+
+  function isCategoryIndeterminate(catItems: TableItem[]): boolean {
+    const quotationItems = catItems.filter(isQuotationStage);
+    if (quotationItems.length === 0) return false;
+    const selectedCount = quotationItems.filter((item) =>
+      isItemSelected(item),
+    ).length;
+    return selectedCount > 0 && selectedCount < quotationItems.length;
+  }
+
+  function categoryHasQuotationItems(catItems: TableItem[]): boolean {
+    return catItems.some(isQuotationStage);
+  }
 
   function filterItems(items: TableItem[]): TableItem[] {
     let filtered = items;
@@ -2383,13 +2465,6 @@ function TableView({
       ? total
       : parseFloat(total.toFixed(3));
     return `${formatted} ${allSameUnit ? unit : "ITEMS"}`;
-  }
-
-  function getRefPrefix(type: string): string {
-    if (type === "job") return "JO";
-    if (type === "payment") return "PR";
-    if (type === "lpo") return "LPO";
-    return "MR";
   }
 
   function getItemLink(item: TableItem): string {
@@ -2464,245 +2539,340 @@ function TableView({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
-      {sections.map((section) => {
-        const grouped = groupByCategory(section.items);
-        const categoryNames = Object.keys(grouped).sort();
-        const totalItems = section.items.length;
+    <>
+      <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+        {sections.map((section) => {
+          const grouped = groupByCategory(section.items);
+          const categoryNames = Object.keys(grouped).sort();
+          const totalItems = section.items.length;
 
-        return (
-          <div key={section.type}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "15px",
-                marginBottom: "20px",
-              }}
-            >
-              <h2 style={{ margin: 0 }}>{section.label}</h2>
+          return (
+            <div key={section.type}>
               <div
                 style={{
-                  backgroundColor: "black",
-                  color: "white",
-                  borderRadius: "50px",
-                  padding: "4px 12px",
-                  fontWeight: "600",
-                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "15px",
+                  marginBottom: "20px",
                 }}
               >
-                {totalItems} Items
+                <h2 style={{ margin: 0 }}>{section.label}</h2>
+                <div
+                  style={{
+                    backgroundColor: "black",
+                    color: "white",
+                    borderRadius: "50px",
+                    padding: "4px 12px",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                  }}
+                >
+                  {totalItems} Items
+                </div>
               </div>
-            </div>
 
-            {totalItems === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "40px",
-                  color: "#9ca3af",
-                  backgroundColor: "rgba(242, 242, 242, 1)",
-                  borderRadius: "12px",
-                }}
-              >
-                No items found
-              </div>
-            ) : (
-              <table
-                className="items-table alt two-toned"
-                style={{ width: "100%" }}
-              >
-                <thead>
-                  <tr>
-                    <th style={{ width: "30px" }}></th>
-                    <th>
-                      {section.type === "job"
-                        ? "BOQ"
-                        : section.type === "payment"
-                          ? "JOB ORDER"
-                          : "CATEGORY"}
-                    </th>
-                    <th>REQ. QTY</th>
-                    <th>REF.</th>
-                    <th>REQUESTER</th>
-                    <th>PROJECT</th>
-                    <th>STAGE</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {categoryNames.map((catName) => {
-                    const catItems = grouped[catName];
-                    const catKey = `${section.type}-${catName}`;
-                    const isCollapsed = collapsedCategories[catKey] ?? true;
-                    const catTotalQty = getCategoryTotalQty(catItems);
+              {totalItems === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "40px",
+                    color: "#9ca3af",
+                    backgroundColor: "rgba(242, 242, 242, 1)",
+                    borderRadius: "12px",
+                  }}
+                >
+                  No items found
+                </div>
+              ) : (
+                <table
+                  className="items-table alt two-toned"
+                  style={{ width: "100%" }}
+                >
+                  <thead>
+                    <tr>
+                      <th style={{ width: "30px" }}></th>
+                      <th>
+                        {section.type === "job"
+                          ? "BOQ"
+                          : section.type === "payment"
+                            ? "JOB ORDER"
+                            : "CATEGORY"}
+                      </th>
+                      <th>REQ. QTY</th>
+                      <th>REF.</th>
+                      <th>REQUESTER</th>
+                      <th>PROJECT</th>
+                      <th>STAGE</th>
+                      {section.type === "material" && <th>QUOTATION</th>}
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categoryNames.map((catName) => {
+                      const catItems = grouped[catName];
+                      const catKey = `${section.type}-${catName}`;
+                      const isCollapsed = collapsedCategories[catKey] ?? true;
+                      const catTotalQty = getCategoryTotalQty(catItems);
 
-                    return (
-                      <React.Fragment key={catKey}>
-                        {/* Category header row */}
-                        <tr
-                          style={{
-                            cursor: "pointer",
-                            backgroundColor: "rgba(249,249,249,1)",
-                            height: "52px",
-                          }}
-                          onClick={() =>
-                            setCollapsedCategories((prev) => ({
-                              ...prev,
-                              [catKey]: !isCollapsed,
-                            }))
-                          }
-                        >
-                          <td
+                      return (
+                        <React.Fragment key={catKey}>
+                          {/* Category header row */}
+                          <tr
                             style={{
-                              width: "30px",
-                              textAlign: "center",
-                              paddingTop: "14px",
-                              paddingBottom: "14px",
+                              cursor: "pointer",
+                              backgroundColor: "rgba(249,249,249,1)",
                             }}
+                            onClick={() =>
+                              setCollapsedCategories((prev) => ({
+                                ...prev,
+                                [catKey]: !isCollapsed,
+                              }))
+                            }
                           >
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 14 14"
-                              fill="none"
-                              xmlns="http://www.w3.org/2000/svg"
+                            <td
                               style={{
-                                transition: "transform 0.2s ease",
-                                transform: isCollapsed
-                                  ? "rotate(-90deg)"
-                                  : "rotate(0deg)",
+                                width: "30px",
+                                textAlign: "center",
+                                paddingTop: "14px",
+                                paddingBottom: "14px",
                               }}
                             >
-                              <path
-                                d="M3.5 5.25L7 8.75L10.5 5.25"
-                                stroke="black"
-                                strokeWidth="1.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </td>
-                          <td>
-                            {section.type === "job" ? (
+                              <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 14 14"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                style={{
+                                  transition: "transform 0.2s ease",
+                                  transform: isCollapsed
+                                    ? "rotate(-90deg)"
+                                    : "rotate(0deg)",
+                                }}
+                              >
+                                <path
+                                  d="M3.5 5.25L7 8.75L10.5 5.25"
+                                  stroke="black"
+                                  strokeWidth="1.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </td>
+                            <td>
                               <div
                                 style={{
                                   display: "flex",
                                   alignItems: "center",
-                                  gap: "8px",
+                                  gap: "10px",
                                 }}
                               >
-                                <strong>{catName}</strong>
-                                {catItems[0]?.boq_description && (
-                                  <span>
-                                    -{" "}
-                                    {catItems[0].boq_description.length > 50
-                                      ? catItems[0].boq_description.substring(
-                                          0,
-                                          50,
-                                        ) + "…"
-                                      : catItems[0].boq_description}
-                                  </span>
+                                {categoryHasQuotationItems(catItems) && (
+                                  <input
+                                    type="checkbox"
+                                    checked={isCategorySelected(catItems)}
+                                    ref={(el) => {
+                                      if (el)
+                                        el.indeterminate =
+                                          isCategoryIndeterminate(catItems);
+                                    }}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      toggleCategorySelection(catItems);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                      width: "16px",
+                                      height: "16px",
+                                      cursor: "pointer",
+                                      accentColor: "rgba(0, 163, 93, 1)",
+                                    }}
+                                  />
                                 )}
-                              </div>
-                            ) : (
-                              <strong>{catName.toUpperCase()}</strong>
-                            )}
-                          </td>
-                          <td>
-                            <strong>{catTotalQty}</strong>
-                          </td>
-                          <td colSpan={5}></td>
-                        </tr>
-
-                        {/* Individual items */}
-                        {!isCollapsed &&
-                          catItems.map((item) => (
-                            <tr key={`${item.mr_header_id}-${item.line_id}`}>
-                              <td></td>
-                              <td style={{ paddingLeft: "30px" }}>
-                                {item.material_description || "-"}
-                              </td>
-                              <td>
-                                {Number.isInteger(Number(item.quantity))
-                                  ? Number(item.quantity)
-                                  : Number(item.quantity).toFixed(2)}{" "}
-                                {item.unit}
-                              </td>
-                              <td>{getItemRef(item)}</td>
-                              <td>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                  }}
-                                >
+                                {section.type === "job" ? (
                                   <div
                                     style={{
-                                      backgroundColor: "black",
-                                      color: "white",
-                                      borderRadius: "50%",
-                                      width: "24px",
-                                      height: "24px",
                                       display: "flex",
                                       alignItems: "center",
-                                      justifyContent: "center",
-                                      fontSize: "10px",
-                                      fontWeight: "600",
-                                      flexShrink: 0,
+                                      gap: "8px",
                                     }}
                                   >
-                                    {item.requested_by
-                                      ? item.requested_by
-                                          .split(" ")
-                                          .map((n) => n[0])
-                                          .join("")
-                                          .toUpperCase()
-                                          .slice(0, 2)
-                                      : "?"}
+                                    <strong>{catName}</strong>
+                                    {catItems[0]?.boq_description && (
+                                      <span>
+                                        -{" "}
+                                        {catItems[0].boq_description.length > 50
+                                          ? catItems[0].boq_description.substring(
+                                              0,
+                                              50,
+                                            ) + "…"
+                                          : catItems[0].boq_description}
+                                      </span>
+                                    )}
                                   </div>
-                                  {item.requested_by || "-"}
-                                </div>
-                              </td>
-                              <td>{item.project_name || "-"}</td>
-                              <td>
-                                <span
-                                  style={{
-                                    ...getStageStyle(item.progress_name),
-                                    padding: "4px 10px",
-                                    borderRadius: "50px",
-                                    fontSize: "11px",
-                                    fontWeight: "600",
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
-                                  {item.progress_name}
-                                </span>
-                              </td>
-                              <td>
-                                <Button
-                                  componentType={"link"}
-                                  bgColor={"rgba(239, 239, 239, 1)"}
-                                  borderColor={"rgba(223, 223, 223, 1)"}
-                                  textColor={"black"}
-                                  style={{ padding: "7px 7px" }}
-                                  href={getItemLink(item)}
-                                >
-                                  <img src={externalLinkIcon} alt="details" />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        );
-      })}
-    </div>
+                                ) : (
+                                  <strong>{catName.toUpperCase()}</strong>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <strong>{catTotalQty}</strong>
+                            </td>
+                            <td
+                              colSpan={section.type === "material" ? 6 : 5}
+                            ></td>
+                          </tr>
+
+                          {/* Individual items */}
+                          {!isCollapsed &&
+                            catItems.map((item) => (
+                              <tr key={`${item.mr_header_id}-${item.line_id}`}>
+                                <td></td>
+                                <td style={{ paddingLeft: "30px" }}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "10px",
+                                    }}
+                                  >
+                                    {isQuotationStage(item) && (
+                                      <input
+                                        type="checkbox"
+                                        checked={isItemSelected(item)}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          toggleItemSelection(item);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                          width: "16px",
+                                          height: "16px",
+                                          cursor: "pointer",
+                                          accentColor: "rgba(0, 163, 93, 1)",
+                                        }}
+                                      />
+                                    )}
+                                    <span>
+                                      {item.material_description || "-"}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td>
+                                  {Number.isInteger(Number(item.quantity))
+                                    ? Number(item.quantity)
+                                    : Number(item.quantity).toFixed(2)}{" "}
+                                  {item.unit}
+                                </td>
+                                <td>{getItemRef(item)}</td>
+                                <td>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        backgroundColor: "black",
+                                        color: "white",
+                                        borderRadius: "50%",
+                                        width: "24px",
+                                        height: "24px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "10px",
+                                        fontWeight: "600",
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      {item.requested_by
+                                        ? item.requested_by
+                                            .split(" ")
+                                            .map((n) => n[0])
+                                            .join("")
+                                            .toUpperCase()
+                                            .slice(0, 2)
+                                        : "?"}
+                                    </div>
+                                    {item.requested_by || "-"}
+                                  </div>
+                                </td>
+                                <td>{item.project_name || "-"}</td>
+                                <td>
+                                  <span
+                                    style={{
+                                      ...getStageStyle(item.progress_name),
+                                      padding: "4px 10px",
+                                      borderRadius: "50px",
+                                      fontSize: "11px",
+                                      fontWeight: "600",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {item.progress_name}
+                                  </span>
+                                </td>
+                                {section.type === "material" && (
+                                  <td>
+                                    {isQuotationStage(item) &&
+                                      item.has_quotation && (
+                                        <SupplierAndQuotationButton
+                                          mrHeader={
+                                            {
+                                              id: item.mr_header_id,
+                                              progress_id: item.progress_id,
+                                            } as MrHeader
+                                          }
+                                          mrLine={
+                                            {
+                                              id: item.line_id,
+                                              mr_header_id: item.mr_header_id,
+                                              quantity: item.quantity,
+                                              unit: item.unit,
+                                              material_description:
+                                                item.material_description,
+                                            } as MrLine
+                                          }
+                                        />
+                                      )}
+                                  </td>
+                                )}
+                                <td>
+                                  <Button
+                                    componentType={"link"}
+                                    bgColor={"rgba(239, 239, 239, 1)"}
+                                    borderColor={"rgba(223, 223, 223, 1)"}
+                                    textColor={"black"}
+                                    style={{ padding: "7px 7px" }}
+                                    href={getItemLink(item)}
+                                  >
+                                    <img src={externalLinkIcon} alt="details" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <BulkQuotationCreator
+        selectedItems={selectedItems}
+        onClear={() => setSelectedItems([])}
+        onSuccess={() => {
+          setSelectedItems([]);
+          onRefresh();
+        }}
+      />
+    </>
   );
 }
