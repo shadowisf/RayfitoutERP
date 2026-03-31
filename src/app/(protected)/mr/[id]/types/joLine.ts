@@ -3,10 +3,13 @@ export type JoLine = {
   mr_header_id: number;
   job_scope_id: number;
   job_scope_name: string;
+  job_scope: string;
+  contract_type: string;
   job_description: string;
   quantity: number;
   unit: string;
   budget_estimate: number;
+  subcontracted_works_value: number;
   start_date: string;
   end_date: string;
   attachment: string;
@@ -21,4 +24,13 @@ export type JoLine = {
   approved_unit_price: number;
   approved_total_price: number;
   approved_quotation_file: string;
+  jo_attachments?: JoLineAttachment[];
+};
+
+export type JoLineAttachment = {
+  id: number;
+  jo_line_id: number;
+  attachment_type: string;
+  file_url: string;
+  file_name: string;
 };

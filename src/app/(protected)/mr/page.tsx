@@ -2690,24 +2690,24 @@ function TableView({
               ) : (
                 <table
                   className="items-table alt two-toned"
-                  style={{ width: "100%" }}
+                  style={{ width: "100%", tableLayout: "fixed" }}
                 >
                   <thead>
                     <tr>
                       <th style={{ width: "30px" }}></th>
-                      <th>
+                      <th style={{ width: section.type === "material" ? "22%" : "26%" }}>
                         {section.type === "job"
                           ? "BOQ"
                           : section.type === "payment"
                             ? "JOB ORDER"
                             : "CATEGORY"}
                       </th>
-                      <th>REQ. QTY</th>
-                      <th>REFERENCE</th>
-                      <th>REQUESTER</th>
-                      <th>PROJECT</th>
-                      <th>STAGE</th>
-                      {section.type === "material" && <th>QUOTATION</th>}
+                      <th style={{ width: "10%" }}>REQ. QTY</th>
+                      <th style={{ width: "14%" }}>REFERENCE</th>
+                      <th style={{ width: "14%" }}>REQUESTER</th>
+                      <th style={{ width: section.type === "material" ? "18%" : "22%" }}>PROJECT</th>
+                      <th style={{ width: "12%" }}>STAGE</th>
+                      {section.type === "material" && <th style={{ width: "10%" }}>QUOTATION</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -2736,8 +2736,8 @@ function TableView({
                               style={{
                                 width: "30px",
                                 textAlign: "center",
-                                paddingTop: "14px",
-                                paddingBottom: "14px",
+                                paddingTop: "18px",
+                                paddingBottom: "18px",
                               }}
                             >
                               <svg
@@ -2762,12 +2762,13 @@ function TableView({
                                 />
                               </svg>
                             </td>
-                            <td>
+                            <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               <div
                                 style={{
                                   display: "flex",
                                   alignItems: "center",
                                   gap: "10px",
+                                  overflow: "hidden",
                                 }}
                               >
                                 {categoryHasQuotationItems(catItems) && (
@@ -2831,12 +2832,13 @@ function TableView({
                             catItems.map((item) => (
                               <tr key={`${item.mr_header_id}-${item.line_id}`}>
                                 <td></td>
-                                <td style={{ paddingLeft: "30px" }}>
+                                <td style={{ paddingLeft: "30px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   <div
                                     style={{
                                       display: "flex",
                                       alignItems: "center",
                                       gap: "10px",
+                                      overflow: "hidden",
                                     }}
                                   >
                                     {isQuotationStage(item) && (
@@ -2853,10 +2855,11 @@ function TableView({
                                           height: "16px",
                                           cursor: "pointer",
                                           accentColor: "rgba(0, 163, 93, 1)",
+                                          flexShrink: 0,
                                         }}
                                       />
                                     )}
-                                    <span>
+                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                       {item.material_description || "-"}
                                     </span>
                                   </div>
@@ -2895,12 +2898,13 @@ function TableView({
                                     </Button>
                                   </div>
                                 </td>
-                                <td>
+                                <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   <div
                                     style={{
                                       display: "flex",
                                       alignItems: "center",
                                       gap: "8px",
+                                      overflow: "hidden",
                                     }}
                                   >
                                     <div
@@ -2927,10 +2931,12 @@ function TableView({
                                             .slice(0, 2)
                                         : "?"}
                                     </div>
-                                    {item.requested_by || "-"}
+                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      {item.requested_by || "-"}
+                                    </span>
                                   </div>
                                 </td>
-                                <td>{item.project_name || "-"}</td>
+                                <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.project_name || "-"}</td>
                                 <td>
                                   <span
                                     style={{

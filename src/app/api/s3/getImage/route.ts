@@ -4,7 +4,7 @@ import sharp from "sharp";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const url = body.url;
+    const url: string = Array.isArray(body.url) ? body.url[0] : body.url;
 
     if (!url) {
       return NextResponse.json(

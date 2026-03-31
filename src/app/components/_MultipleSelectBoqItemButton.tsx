@@ -11,7 +11,7 @@ import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 
 type props = {
   projectID: number;
-  onSelectBoq: (boqLineIDs: number[], boqInfo: string) => void;
+  onSelectBoq: (boqLineIDs: number[], boqInfo: string, selectedLines?: BoqLine[]) => void;
   currentBoqLineIDs?: number[];
   disabled?: boolean;
   style?: React.CSSProperties;
@@ -351,7 +351,7 @@ export default function MultipleSelectBoqItemButton({
         ? `${selectedBoqs[0].item_number} ${selectedBoqs[0].item_name}`
         : `${selectedBoqs.length} BOQ ITEMS SELECTED`;
 
-    onSelectBoq(tempSelectedBoqIDs, infoText);
+    onSelectBoq(tempSelectedBoqIDs, infoText, selectedBoqs);
     setSelectedBoqInfo(infoText);
     setIsOpen(false);
   };
