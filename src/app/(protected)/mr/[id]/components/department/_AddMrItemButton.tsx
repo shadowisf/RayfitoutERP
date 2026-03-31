@@ -48,10 +48,10 @@ export default function AddMrItemButton({
   const [userInitiatedCategorySelection, setUserInitiatedCategorySelection] =
     useState(false);
 
-  const [predefinedItems, setPredefinedItems] = useState<any[]>([]);
-  const [selectedPredefinedItem, setSelectedPredefinedItem] = useState<
-    string | number
-  >("");
+  // const [predefinedItems, setPredefinedItems] = useState<any[]>([]);
+  // const [selectedPredefinedItem, setSelectedPredefinedItem] = useState<
+  //   string | number
+  // >("");
 
   const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
     [],
@@ -64,12 +64,12 @@ export default function AddMrItemButton({
   const [materialCategoryID, setMaterialCategoryID] = useState<string | number>(
     "",
   );
-  const [materialSubCategoryID, setMaterialSubCategoryID] = useState<
-    string | number
-  >("");
-  // const [materialSubCategoryIDs, setMaterialSubCategoryIDs] = useState<
-  //   (string | number)[]
-  // >([]);
+  // const [materialSubCategoryID, setMaterialSubCategoryID] = useState<
+  //   string | number
+  // >("");
+  const [materialSubCategoryIDs, setMaterialSubCategoryIDs] = useState<
+    (string | number)[]
+  >([]);
   const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
   const [materialDescription, setMaterialDescription] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -136,11 +136,11 @@ export default function AddMrItemButton({
   useEffect(() => {
     getMaterialCategoriesAndSubcategories();
 
-    // Fetch predefined items
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`)
-      .then((res) => res.json())
-      .then((data) => setPredefinedItems(data))
-      .catch((err) => console.error("Error fetching predefined items:", err));
+    // // Fetch predefined items
+    // fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`)
+    //   .then((res) => res.json())
+    //   .then((data) => setPredefinedItems(data))
+    //   .catch((err) => console.error("Error fetching predefined items:", err));
 
     // Fetch projects for delivery location
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
@@ -178,32 +178,34 @@ export default function AddMrItemButton({
           setCategoriesManuallySelected(true);
           setUserInitiatedCategorySelection(true);
 
-          // Now set the subcategory - this needs to happen AFTER we have the data
+          // Now set the subcategories - this needs to happen AFTER we have the data
           if (autoSubCategoryIDs && autoSubCategoryIDs.length > 0) {
-            const firstId = Array.isArray(autoSubCategoryIDs)
-              ? autoSubCategoryIDs[0]
-              : autoSubCategoryIDs;
+            const idsArray = Array.isArray(autoSubCategoryIDs)
+              ? autoSubCategoryIDs
+              : [autoSubCategoryIDs];
 
-            const normalizedId =
-              typeof firstId === "string" ? parseInt(firstId) : firstId;
+            const normalizedIds = idsArray.map((id) =>
+              typeof id === "string" ? parseInt(id) : id,
+            );
 
             // IMPORTANT: Set this in the next tick to ensure state is ready
             setTimeout(() => {
-              setMaterialSubCategoryID(normalizedId);
+              setMaterialSubCategoryIDs(normalizedIds);
             }, 0);
           }
         });
     } else if (autoSubCategoryIDs && autoSubCategoryIDs.length > 0) {
       // If only subcategories are provided without category
-      const firstId = Array.isArray(autoSubCategoryIDs)
-        ? autoSubCategoryIDs[0]
-        : autoSubCategoryIDs;
+      const idsArray = Array.isArray(autoSubCategoryIDs)
+        ? autoSubCategoryIDs
+        : [autoSubCategoryIDs];
 
-      const normalizedId =
-        typeof firstId === "string" ? parseInt(firstId) : firstId;
+      const normalizedIds = idsArray.map((id) =>
+        typeof id === "string" ? parseInt(id) : id,
+      );
 
       setTimeout(() => {
-        setMaterialSubCategoryID(normalizedId);
+        setMaterialSubCategoryIDs(normalizedIds);
       }, 0);
     }
   }, [isOpen, autoCategoryID, autoSubCategoryIDs]);
@@ -281,11 +283,11 @@ export default function AddMrItemButton({
   }, [materialCategoryID, userInitiatedCategorySelection]);
 
   // Handle subcategory change - auto-select category if needed
-  const handleSubCategoryChange = (selectedId: string | number) => {
-    setMaterialSubCategoryID(selectedId);
+  const handleSubCategoryChange = (selectedIds: (string | number)[]) => {
+    setMaterialSubCategoryIDs(selectedIds);
 
-    // If subcategory is cleared
-    if (!selectedId) {
+    // If subcategories are cleared
+    if (selectedIds.length === 0) {
       if (!categoriesManuallySelected) {
         setMaterialCategoryID("");
       }
@@ -301,81 +303,51 @@ export default function AddMrItemButton({
       return;
     }
 
-    // Get category from selected subcategory
-    const selectedSubCategory = materialSubCategoryValues.find(
-      (sc: any) => sc.id === selectedId,
+    // Get category from first selected subcategory
+    const firstSelectedSubCategory = materialSubCategoryValues.find(
+      (sc: any) => sc.id === selectedIds[0],
     ) as any;
 
-    if (selectedSubCategory?.category_id) {
+    if (firstSelectedSubCategory?.category_id) {
       if (categoriesManuallySelected && materialCategoryID) {
         // Don't override the manually selected category
       } else {
         // Auto-select the category based on subcategory
-        setMaterialCategoryID(selectedSubCategory.category_id);
+        setMaterialCategoryID(firstSelectedSubCategory.category_id);
       }
     }
   };
 
-  // const handleSubCategoryChange = (selectedIds: (string | number)[]) => {
-  //   setMaterialSubCategoryIDs(selectedIds);
-  //   ...
+  // // Handle predefined item selection
+  // const handlePredefinedItemChange = (itemId: string | number) => {
+  //   setSelectedPredefinedItem(itemId);
+  //   if (!itemId) {
+  //     setMaterialDescription("");
+  //     setMaterialCategoryID("");
+  //     setMaterialSubCategoryID("");
+  //     setUnit("");
+  //     setBrand("");
+  //     setCategoriesManuallySelected(false);
+  //     setUserInitiatedCategorySelection(false);
+  //     return;
+  //   }
+  //   const item = predefinedItems.find((p: any) => p.id === itemId);
+  //   if (!item) return;
+  //   setMaterialDescription(item.material_description);
+  //   setMaterialCategoryID(item.category_id);
+  //   setCategoriesManuallySelected(true);
+  //   setUserInitiatedCategorySelection(true);
+  //   fetch(
+  //     `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+  //     { method: "POST", headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ category_id: item.category_id }) },
+  //   ).then((res) => res.json()).then((data) => {
+  //     setMaterialSubCategoryValues(data);
+  //     setTimeout(() => { setMaterialSubCategoryID(item.subcategory_id); }, 0);
+  //   });
+  //   if (item.unit) { setUnit(mapPredefinedUnit(item.unit)); } else { setUnit(""); }
+  //   setBrand(item.brand || "");
   // };
-
-  // Handle predefined item selection
-  const handlePredefinedItemChange = (itemId: string | number) => {
-    setSelectedPredefinedItem(itemId);
-
-    if (!itemId) {
-      // Reset if cleared
-      setMaterialDescription("");
-      setMaterialCategoryID("");
-      setMaterialSubCategoryID("");
-      setUnit("");
-      setBrand("");
-      setCategoriesManuallySelected(false);
-      setUserInitiatedCategorySelection(false);
-      return;
-    }
-
-    const item = predefinedItems.find((p: any) => p.id === itemId);
-    if (!item) return;
-
-    // Set material description
-    setMaterialDescription(item.material_description);
-
-    // Set category
-    setMaterialCategoryID(item.category_id);
-    setCategoriesManuallySelected(true);
-    setUserInitiatedCategorySelection(true);
-
-    // Fetch subcategories for this category, then set the subcategory
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category_id: item.category_id }),
-      },
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setMaterialSubCategoryValues(data);
-        setTimeout(() => {
-          setMaterialSubCategoryID(item.subcategory_id);
-        }, 0);
-      });
-
-    // Set unit (mapped from predefined unit)
-    if (item.unit) {
-      const mappedUnit = mapPredefinedUnit(item.unit);
-      setUnit(mappedUnit);
-    } else {
-      setUnit("");
-    }
-
-    // Set brand
-    setBrand(item.brand || "");
-  };
 
   // Handle category change
   const handleCategoryChange = (categoryId: string | number) => {
@@ -398,8 +370,8 @@ export default function AddMrItemButton({
       return;
     }
 
-    if (!materialSubCategoryID) {
-      toast("Please select a material subcategory", "error");
+    if (materialSubCategoryIDs.length === 0) {
+      toast("Please select at least one material subcategory", "error");
       return;
     }
 
@@ -432,25 +404,19 @@ export default function AddMrItemButton({
         attachmentUrl = uploadResult.urls[0];
       }
 
-      // If a predefined item was selected and it had no unit, save the user-selected unit back
-      if (selectedPredefinedItem && unit) {
-        const selectedItem = predefinedItems.find(
-          (p: any) => p.id === selectedPredefinedItem,
-        );
-        if (selectedItem && !selectedItem.unit) {
-          await fetch(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                id: selectedPredefinedItem,
-                unit,
-              }),
-            },
-          );
-        }
-      }
+      // // If a predefined item was selected and it had no unit, save the user-selected unit back
+      // if (selectedPredefinedItem && unit) {
+      //   const selectedItem = predefinedItems.find(
+      //     (p: any) => p.id === selectedPredefinedItem,
+      //   );
+      //   if (selectedItem && !selectedItem.unit) {
+      //     await fetch(
+      //       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
+      //       { method: "PUT", headers: { "Content-Type": "application/json" },
+      //         body: JSON.stringify({ id: selectedPredefinedItem, unit }) },
+      //     );
+      //   }
+      // }
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
         method: "POST",
@@ -459,7 +425,7 @@ export default function AddMrItemButton({
           action: "createMrLine",
           mr_header_id: mrHeaderID,
           material_category_id: materialCategoryID,
-          material_subcategory_ids: [materialSubCategoryID],
+          material_subcategory_ids: materialSubCategoryIDs,
           material_description: materialDescription,
           quantity: Number(quantity),
           unit,
@@ -477,9 +443,9 @@ export default function AddMrItemButton({
 
         // Reset form
         setIsOpen(false);
-        setSelectedPredefinedItem("");
+        // setSelectedPredefinedItem("");
         setMaterialCategoryID("");
-        setMaterialSubCategoryID("");
+        setMaterialSubCategoryIDs([]);
         setMaterialDescription("");
         setQuantity("");
         setUnit("");
@@ -550,7 +516,7 @@ export default function AddMrItemButton({
               }
             />
 
-            {/* <MultiSelectDropdown
+            <MultiSelectDropdown
               label={"SUBCATEGORIES"}
               dbData={materialSubCategoryValues}
               selectedValues={materialSubCategoryIDs}
@@ -566,9 +532,9 @@ export default function AddMrItemButton({
                   }}
                 />
               }
-            /> */}
+            />
 
-            <SingleSelectDropdown
+            {/* <SingleSelectDropdown
               label={"SUBCATEGORY"}
               dbData={materialSubCategoryValues}
               selectedValue={materialSubCategoryID}
@@ -584,12 +550,12 @@ export default function AddMrItemButton({
                   }}
                 />
               }
-            />
+            /> */}
           </div>
 
           {/* Item Selection and BOQ Line Row */}
           <div className="input-row half">
-            <SingleSelectDropdown
+            {/* <SingleSelectDropdown
               label={"ITEM"}
               dbData={predefinedItems}
               idField="id"
@@ -602,6 +568,13 @@ export default function AddMrItemButton({
               formatOptionLabel={(item: any) =>
                 `${item.material_description}${item.brand ? ` — ${item.brand}` : ""}`
               }
+            /> */}
+            <InputItem
+              label={"ITEM"}
+              value={materialDescription}
+              type={"text"}
+              required
+              onChange={(e) => setMaterialDescription(e.target.value)}
             />
 
             <div className="input-item">

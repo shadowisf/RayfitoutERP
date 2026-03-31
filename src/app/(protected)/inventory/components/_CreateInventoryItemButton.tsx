@@ -51,10 +51,10 @@ export default function CreateInventoryItemButton({
   const [specification, setSpecification] = useState("");
   const [image, setImage] = useState<File | null>(null);
 
-  const [predefinedItems, setPredefinedItems] = useState<any[]>([]);
-  const [selectedPredefinedItem, setSelectedPredefinedItem] = useState<
-    string | number
-  >("");
+  // const [predefinedItems, setPredefinedItems] = useState<any[]>([]);
+  // const [selectedPredefinedItem, setSelectedPredefinedItem] = useState<
+  //   string | number
+  // >("");
 
   // Fetch all categories on mount
   useEffect(() => {
@@ -79,11 +79,11 @@ export default function CreateInventoryItemButton({
         setMaterialSubCategoryValues(data);
       });
 
-    // Fetch predefined items
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`)
-      .then((res) => res.json())
-      .then((data) => setPredefinedItems(data))
-      .catch((err) => console.error("Error fetching predefined items:", err));
+    // // Fetch predefined items
+    // fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`)
+    //   .then((res) => res.json())
+    //   .then((data) => setPredefinedItems(data))
+    //   .catch((err) => console.error("Error fetching predefined items:", err));
   }, []);
 
   // When category is selected, filter subcategories by category
@@ -122,55 +122,23 @@ export default function CreateInventoryItemButton({
     }
   }, [materialCategoryID]);
 
-  const handlePredefinedItemChange = (itemId: string | number) => {
-    setSelectedPredefinedItem(itemId);
-
-    if (!itemId) {
-      setDescription("");
-      setMaterialCategoryID("");
-      setMaterialSubCategoryID("");
-      setUnit("");
-      setBrand("");
-      return;
-    }
-
-    const item = predefinedItems.find((p: any) => p.id === itemId);
-    if (!item) return;
-
-    // Set description
-    setDescription(item.material_description);
-
-    // Set category
-    setMaterialCategoryID(item.category_id);
-
-    // Fetch subcategories for this category, then set the subcategory
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category_id: item.category_id }),
-      },
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setMaterialSubCategoryValues(data);
-        setTimeout(() => {
-          setMaterialSubCategoryID(item.subcategory_id);
-        }, 0);
-      });
-
-    // Set unit (mapped from predefined unit)
-    if (item.unit) {
-      const mappedUnit = mapPredefinedUnit(item.unit);
-      setUnit(mappedUnit);
-    } else {
-      setUnit("");
-    }
-
-    // Set brand
-    setBrand(item.brand || "");
-  };
+  // const handlePredefinedItemChange = (itemId: string | number) => {
+  //   setSelectedPredefinedItem(itemId);
+  //   if (!itemId) { setDescription(""); setMaterialCategoryID(""); setMaterialSubCategoryID("");
+  //     setUnit(""); setBrand(""); return; }
+  //   const item = predefinedItems.find((p: any) => p.id === itemId);
+  //   if (!item) return;
+  //   setDescription(item.material_description); setMaterialCategoryID(item.category_id);
+  //   fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+  //     { method: "POST", headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ category_id: item.category_id }) })
+  //     .then((res) => res.json()).then((data) => {
+  //       setMaterialSubCategoryValues(data);
+  //       setTimeout(() => { setMaterialSubCategoryID(item.subcategory_id); }, 0);
+  //     });
+  //   if (item.unit) { setUnit(mapPredefinedUnit(item.unit)); } else { setUnit(""); }
+  //   setBrand(item.brand || "");
+  // };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -202,29 +170,17 @@ export default function CreateInventoryItemButton({
       }
     }
 
-    // Save unit back to predefined item if it had no unit
-    if (selectedPredefinedItem && unit) {
-      const selectedItem = predefinedItems.find(
-        (p: any) => p.id === selectedPredefinedItem,
-      );
-      if (selectedItem && !selectedItem.unit) {
-        try {
-          await fetch(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                id: selectedPredefinedItem,
-                unit: unit,
-              }),
-            },
-          );
-        } catch (err) {
-          console.error("Error saving unit to predefined item:", err);
-        }
-      }
-    }
+    // // Save unit back to predefined item if it had no unit
+    // if (selectedPredefinedItem && unit) {
+    //   const selectedItem = predefinedItems.find((p: any) => p.id === selectedPredefinedItem);
+    //   if (selectedItem && !selectedItem.unit) {
+    //     try {
+    //       await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
+    //         { method: "PUT", headers: { "Content-Type": "application/json" },
+    //           body: JSON.stringify({ id: selectedPredefinedItem, unit }) });
+    //     } catch (err) { console.error("Error saving unit to predefined item:", err); }
+    //   }
+    // }
 
     // Add new inventory
     const res = await fetch(
@@ -261,7 +217,7 @@ export default function CreateInventoryItemButton({
       router.refresh();
 
       // Reset form
-      setSelectedPredefinedItem("");
+      // setSelectedPredefinedItem("");
       setMaterialCategoryID("");
       setMaterialSubCategoryID("");
       setDescription("");
@@ -329,7 +285,7 @@ export default function CreateInventoryItemButton({
           </div>
 
           <div className="input-row full">
-            <SingleSelectDropdown
+            {/* <SingleSelectDropdown
               label={"ITEM"}
               dbData={predefinedItems}
               idField="id"
@@ -341,6 +297,13 @@ export default function CreateInventoryItemButton({
               formatOptionLabel={(item: any) =>
                 `${item.material_description}${item.brand ? ` — ${item.brand}` : ""}`
               }
+            /> */}
+            <InputItem
+              label={"ITEM"}
+              value={description}
+              type={"text"}
+              required
+              onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 

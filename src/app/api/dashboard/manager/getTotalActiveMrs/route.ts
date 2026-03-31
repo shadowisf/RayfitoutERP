@@ -20,12 +20,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Active MRs: exclude completed (25), draft (1), and segregated (26) where ALL LPOs are completed
+    // Active MRs: exclude completed (25), draft (1), and segregated (26) where ALL LPOs are completed OR no LPOs exist
     const segregatedExclusionClause = `
       AND NOT (
         progress_id = 26
-        AND (SELECT COUNT(*) FROM lpo WHERE lpo.mr_header_id = vw_mr_headers.id) > 0
-        AND (SELECT COUNT(*) FROM lpo WHERE lpo.mr_header_id = vw_mr_headers.id AND lpo.progress_id != 25) = 0
+        AND (
+          (SELECT COUNT(*) FROM lpo WHERE lpo.mr_header_id = vw_mr_headers.id) = 0
+          OR (SELECT COUNT(*) FROM lpo WHERE lpo.mr_header_id = vw_mr_headers.id AND lpo.progress_id != 25) = 0
+        )
       )`;
 
     if (filter === 0) {
