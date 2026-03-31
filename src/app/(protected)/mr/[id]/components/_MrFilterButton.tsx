@@ -11,12 +11,14 @@ type MrFilterButtonProps = {
     selectedDepartments: number[];
     selectedProjects: number[];
     requestType: string;
+    selectedStages: number[];
   }) => void;
   currentFilters: {
     itemsRequestedIn: string;
     selectedDepartments: number[];
     selectedProjects: number[];
     requestType: string;
+    selectedStages: number[];
   };
 };
 
@@ -41,6 +43,9 @@ export default function MrFilterButton({
   const [requestType, setRequestType] = useState<string>(
     currentFilters.requestType,
   );
+  const [selectedStages, setSelectedStages] = useState<number[]>(
+    currentFilters.selectedStages,
+  );
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
 
   const handleOpen = () => {
@@ -48,6 +53,7 @@ export default function MrFilterButton({
     setSelectedDepartments(currentFilters.selectedDepartments);
     setSelectedProjects(currentFilters.selectedProjects);
     setRequestType(currentFilters.requestType);
+    setSelectedStages(currentFilters.selectedStages);
     setIsOpen(true);
   };
 
@@ -57,6 +63,7 @@ export default function MrFilterButton({
       selectedDepartments,
       selectedProjects,
       requestType,
+      selectedStages,
     });
     setIsOpen(false);
   };
@@ -66,6 +73,7 @@ export default function MrFilterButton({
     setSelectedDepartments([]);
     setSelectedProjects([]);
     setRequestType("all");
+    setSelectedStages([]);
     setProjectSearchQuery("");
   };
 
@@ -85,6 +93,34 @@ export default function MrFilterButton({
     { label: "Finishing", departmentId: 6 },
     { label: "Landscaping", departmentId: 7 }, */
   ];
+
+  // Stage options matching the kanban stageGroups
+  const stageOptions = [
+    { label: "Draft", progressId: 1 },
+    { label: "QS Review", progressId: 2 },
+    { label: "Manager Approval", progressId: 3 },
+    { label: "Stock Transfer", progressId: 4 },
+    { label: "Quotations", progressId: 7 },
+    { label: "QS Price Check", progressId: 9 },
+    { label: "Manager Price Approval", progressId: 10 },
+    { label: "LPO & Invoice", progressId: 12 },
+    { label: "Pending Payments", progressId: 14 },
+    { label: "Awaiting Delivery", progressId: 17 },
+    { label: "Stock Entry", progressId: 24 },
+    { label: "Request Rejected", progressId: 5 },
+    { label: "Price Approval Rejected", progressId: 11 },
+    { label: "Payment Rejected", progressId: 13 },
+    { label: "GRN Failed", progressId: 16 },
+    { label: "Completed", progressId: 25 },
+  ];
+
+  const handleStageChange = (progressId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedStages([...selectedStages, progressId]);
+    } else {
+      setSelectedStages(selectedStages.filter((s) => s !== progressId));
+    }
+  };
 
   const handleDepartmentChange = (departmentId: number, checked: boolean) => {
     if (checked) {
@@ -137,9 +173,9 @@ export default function MrFilterButton({
 
       {isOpen && (
         <FormPopUp
-          header={"FILTER REQUISITIONS"}
+          header={"FILTER REQUESTS"}
           setIsOpen={setIsOpen}
-          addButtonLabel="APPLY FILTER"
+          addButtonLabel="CONFIRM"
           handleSubmit={handleApply}
           style={{ minWidth: "600px" }}
           secondButton={
@@ -150,7 +186,7 @@ export default function MrFilterButton({
               textColor={"black"}
               onClick={handleReset}
             >
-              RESET FILTER
+              RESET
             </Button>
           }
         >
@@ -291,6 +327,49 @@ export default function MrFilterButton({
             </div>
           </div>
 
+          {/* Stage Section */}
+          <div style={{ marginBottom: "30px" }}>
+            <h3
+              style={{
+                marginBottom: "15px",
+                fontSize: "14px",
+                fontWeight: "600",
+              }}
+            >
+              STAGE
+            </h3>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+              {stageOptions.map((stage) => (
+                <label
+                  key={stage.progressId}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    cursor: "pointer",
+                    minWidth: "200px",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedStages.includes(stage.progressId)}
+                    onChange={(e) =>
+                      handleStageChange(stage.progressId, e.target.checked)
+                    }
+                    style={{
+                      width: "18px",
+                      height: "18px",
+                      cursor: "pointer",
+                      accentColor: "#10b981",
+                    }}
+                  />
+                  <h4>{stage.label}</h4>
+                </label>
+              ))}
+            </div>
+          </div>
+
           {/* Projects Section */}
           <div style={{ marginBottom: "30px" }}>
             <h3
@@ -307,7 +386,7 @@ export default function MrFilterButton({
               style={{
                 border: "1px solid #e5e7eb",
                 borderRadius: "8px",
-                padding: "20px",
+                padding: "10px",
               }}
             >
               <div style={{ position: "relative", marginBottom: "15px" }}>
