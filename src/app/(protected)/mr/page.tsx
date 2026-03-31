@@ -98,11 +98,13 @@ export default function MR() {
     selectedDepartments: number[];
     selectedProjects: number[];
     requestType: string;
+    selectedStages: number[];
   }>({
     itemsRequestedIn: "all",
     selectedDepartments: [],
     selectedProjects: [],
     requestType: "all",
+    selectedStages: [],
   });
 
   const getFlagColor = (hours: number, progress_id: number): string => {
@@ -928,14 +930,38 @@ export default function MR() {
       selectedDepartments: [],
       selectedProjects: [],
       requestType: "all",
+      selectedStages: [],
     });
+  };
+
+  const getStageName = (progressId: number): string => {
+    const stageMap: Record<number, string> = {
+      1: "Draft",
+      2: "QS Review",
+      3: "Manager Approval",
+      4: "Stock Transfer",
+      5: "Request Rejected",
+      7: "Quotations",
+      9: "QS Price Check",
+      10: "Manager Price Approval",
+      11: "Price Approval Rejected",
+      12: "LPO & Invoice",
+      13: "Payment Rejected",
+      14: "Pending Payments",
+      16: "GRN Failed",
+      17: "Awaiting Delivery",
+      24: "Stock Entry",
+      25: "Completed",
+    };
+    return stageMap[progressId] || `Stage ${progressId}`;
   };
 
   const hasActiveFilters =
     filters.itemsRequestedIn !== "all" ||
     filters.selectedDepartments.length > 0 ||
     filters.selectedProjects.length > 0 ||
-    filters.requestType !== "all";
+    filters.requestType !== "all" ||
+    filters.selectedStages.length > 0;
 
   return (
     <div className="dashboard">
@@ -959,7 +985,10 @@ export default function MR() {
             }}
           >
             <button
-              onClick={() => setViewMode("kanban")}
+              onClick={() => {
+                setViewMode("kanban");
+                setFilters((prev) => ({ ...prev, selectedStages: [] }));
+              }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -981,7 +1010,16 @@ export default function MR() {
               KANBAN
             </button>
             <button
-              onClick={() => setViewMode("table")}
+              onClick={() => {
+                setViewMode("table");
+                setFilters((prev) => ({
+                  ...prev,
+                  selectedStages:
+                    prev.selectedStages.length === 0
+                      ? [7]
+                      : prev.selectedStages,
+                }));
+              }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1043,42 +1081,46 @@ export default function MR() {
       <br />
 
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-        <Button
-          componentType="button"
-          bgColor="white"
-          borderColor="rgba(241, 244, 246, 1)"
-          textColor="black"
-          onClick={() => setFilterRelevant(!filterRelevant)}
-          style={{ padding: "7px 20px", borderRadius: "50px" }}
-        >
-          ONLY RELATED CARDS{" "}
-          <div
-            style={{
-              position: "relative",
-              width: "30px",
-              height: "17px",
-              backgroundColor: filterRelevant
-                ? "rgb(34, 197, 94)"
-                : "rgba(200, 200, 200, 1)",
-              borderRadius: "34px",
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                top: "0px",
-                left: filterRelevant ? "15px" : "0px",
-                width: "17px",
-                border: "1px solid rgba(217, 217, 217, 1)",
-                height: "17px",
-                backgroundColor: "white",
-                borderRadius: "50%",
-              }}
-            />
-          </div>
-        </Button>
+        {viewMode === "kanban" && (
+          <>
+            <Button
+              componentType="button"
+              bgColor="white"
+              borderColor="rgba(241, 244, 246, 1)"
+              textColor="black"
+              onClick={() => setFilterRelevant(!filterRelevant)}
+              style={{ padding: "7px 20px", borderRadius: "50px" }}
+            >
+              ONLY RELATED CARDS{" "}
+              <div
+                style={{
+                  position: "relative",
+                  width: "30px",
+                  height: "17px",
+                  backgroundColor: filterRelevant
+                    ? "rgb(34, 197, 94)"
+                    : "rgba(200, 200, 200, 1)",
+                  borderRadius: "34px",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "0px",
+                    left: filterRelevant ? "15px" : "0px",
+                    width: "17px",
+                    border: "1px solid rgba(217, 217, 217, 1)",
+                    height: "17px",
+                    backgroundColor: "white",
+                    borderRadius: "50%",
+                  }}
+                />
+              </div>
+            </Button>
 
-        <div style={{ borderRight: "1px solid rgba(207, 207, 207, 1)" }} />
+            <div style={{ borderRight: "1px solid rgba(207, 207, 207, 1)" }} />
+          </>
+        )}
 
         <MrFilterButton
           availableProjects={availableProjects}
@@ -1180,6 +1222,25 @@ export default function MR() {
               </Button>
             )}
 
+            {filters.selectedStages.length > 0 && (
+              <Button
+                style={{ borderRadius: "50px", fontWeight: "600" }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
+              >
+                STAGE:{" "}
+                <span
+                  style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}
+                >
+                  {getStageName(filters.selectedStages[0]).toUpperCase()}
+                  {filters.selectedStages.length > 1 &&
+                    `, +${filters.selectedStages.length - 1} MORE`}
+                </span>
+              </Button>
+            )}
+
             <Button
               onClick={resetAllFilters}
               componentType="button"
@@ -1206,6 +1267,8 @@ export default function MR() {
           collapsedCategories={collapsedCategories}
           setCollapsedCategories={setCollapsedCategories}
           onRefresh={() => setTableRefreshKey((k) => k + 1)}
+          filterRelevant={filterRelevant}
+          userDeptId={Number(userInfo?.departmentID) || 0}
         />
       )}
 
@@ -2312,12 +2375,15 @@ type TableViewProps = {
     selectedDepartments: number[];
     selectedProjects: number[];
     requestType: string;
+    selectedStages: number[];
   };
   collapsedCategories: Record<string, boolean>;
   setCollapsedCategories: React.Dispatch<
     React.SetStateAction<Record<string, boolean>>
   >;
   onRefresh: () => void;
+  filterRelevant: boolean;
+  userDeptId: number;
 };
 
 function TableView({
@@ -2328,6 +2394,8 @@ function TableView({
   collapsedCategories,
   setCollapsedCategories,
   onRefresh,
+  filterRelevant,
+  userDeptId,
 }: TableViewProps) {
   const externalLinkIcon = "/icons/external-link.svg";
 
@@ -2434,6 +2502,43 @@ function TableView({
       );
     }
 
+    if (filters.selectedStages.length > 0) {
+      filtered = filtered.filter((item) =>
+        filters.selectedStages.includes(item.progress_id),
+      );
+    }
+
+    // "ONLY RELATED CARDS" — filter by responsible department for the stage
+    if (filterRelevant && userDeptId) {
+      const progressToResponsible: { [key: number]: number } = {
+        2: 16,
+        3: 8,
+        4: 11,
+        5: 0,
+        7: 9,
+        9: 16,
+        10: 8,
+        11: 9,
+        12: 9,
+        13: 9,
+        14: 10,
+        16: 9,
+        17: 11,
+        21: 12,
+        23: 12,
+        24: 11,
+      };
+      filtered = filtered.filter((item) => {
+        const responsible = progressToResponsible[item.progress_id];
+        // If stage has no mapping or maps to 0, show to managers (8)
+        if (responsible === undefined || responsible === 0) {
+          return userDeptId === 8;
+        }
+        // Show if user's department is responsible, or user is manager
+        return responsible === userDeptId || userDeptId === 8;
+      });
+    }
+
     return filtered;
   }
 
@@ -2458,6 +2563,7 @@ function TableView({
       (sum, item) => sum + Number(item.quantity || 0),
       0,
     );
+    if (total === 0) return "";
     const units = items.map((i) => i.unit).filter(Boolean);
     const unit = units.length > 0 ? units[0] : "";
     const allSameUnit = units.every((u) => u === unit);
@@ -2563,8 +2669,6 @@ function TableView({
                     color: "white",
                     borderRadius: "50px",
                     padding: "4px 12px",
-                    fontWeight: "600",
-                    fontSize: "13px",
                   }}
                 >
                   {totalItems} Items
@@ -2599,12 +2703,11 @@ function TableView({
                             : "CATEGORY"}
                       </th>
                       <th>REQ. QTY</th>
-                      <th>REF.</th>
+                      <th>REFERENCE</th>
                       <th>REQUESTER</th>
                       <th>PROJECT</th>
                       <th>STAGE</th>
                       {section.type === "material" && <th>QUOTATION</th>}
-                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2759,12 +2862,39 @@ function TableView({
                                   </div>
                                 </td>
                                 <td>
-                                  {Number.isInteger(Number(item.quantity))
-                                    ? Number(item.quantity)
-                                    : Number(item.quantity).toFixed(2)}{" "}
-                                  {item.unit}
+                                  {item.quantity && Number(item.quantity) !== 0
+                                    ? <>
+                                        {Number.isInteger(Number(item.quantity))
+                                          ? Number(item.quantity)
+                                          : Number(item.quantity).toFixed(2)}{" "}
+                                        {item.unit}
+                                      </>
+                                    : ""}
                                 </td>
-                                <td>{getItemRef(item)}</td>
+                                <td>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      gap: "10px",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    {getItemRef(item)}{" "}
+                                    <Button
+                                      componentType={"link"}
+                                      bgColor={"rgba(239, 239, 239, 1)"}
+                                      borderColor={"rgba(223, 223, 223, 1)"}
+                                      textColor={"black"}
+                                      style={{ padding: "7px 7px" }}
+                                      href={getItemLink(item)}
+                                    >
+                                      <img
+                                        src={externalLinkIcon}
+                                        alt="details"
+                                      />
+                                    </Button>
+                                  </div>
+                                </td>
                                 <td>
                                   <div
                                     style={{
@@ -2818,7 +2948,7 @@ function TableView({
                                 {section.type === "material" && (
                                   <td>
                                     {isQuotationStage(item) &&
-                                      item.has_quotation && (
+                                      !!item.has_quotation && (
                                         <SupplierAndQuotationButton
                                           mrHeader={
                                             {
@@ -2840,18 +2970,6 @@ function TableView({
                                       )}
                                   </td>
                                 )}
-                                <td>
-                                  <Button
-                                    componentType={"link"}
-                                    bgColor={"rgba(239, 239, 239, 1)"}
-                                    borderColor={"rgba(223, 223, 223, 1)"}
-                                    textColor={"black"}
-                                    style={{ padding: "7px 7px" }}
-                                    href={getItemLink(item)}
-                                  >
-                                    <img src={externalLinkIcon} alt="details" />
-                                  </Button>
-                                </td>
                               </tr>
                             ))}
                         </React.Fragment>
