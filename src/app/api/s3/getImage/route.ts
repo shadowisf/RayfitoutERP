@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,9 +23,15 @@ export async function POST(request: NextRequest) {
 
     const blob = await response.blob();
     const arrayBuffer = await blob.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    let buffer: Buffer = Buffer.from(arrayBuffer);
 
-    const contentType = response.headers.get("content-type") || "image/jpeg";
+    let contentType = response.headers.get("content-type") || "image/jpeg";
+
+    // Convert WebP to PNG since @react-pdf/renderer doesn't support WebP
+    if (contentType.includes("webp") || url.toLowerCase().endsWith(".webp")) {
+      buffer = Buffer.from(await sharp(buffer).jpeg({ quality: 85 }).toBuffer());
+      contentType = "image/jpeg";
+    }
 
     console.log("Successfully proxied image, size:", buffer.length);
 

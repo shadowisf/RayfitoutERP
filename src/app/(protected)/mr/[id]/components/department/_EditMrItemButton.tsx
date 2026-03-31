@@ -44,10 +44,10 @@ export default function EditMrItemButton({
   const [userInitiatedCategorySelection, setUserInitiatedCategorySelection] =
     useState(false);
 
-  const [predefinedItems, setPredefinedItems] = useState<any[]>([]);
-  const [selectedPredefinedItem, setSelectedPredefinedItem] = useState<
-    string | number
-  >("");
+  // const [predefinedItems, setPredefinedItems] = useState<any[]>([]);
+  // const [selectedPredefinedItem, setSelectedPredefinedItem] = useState<
+  //   string | number
+  // >("");
 
   const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
     [],
@@ -61,8 +61,11 @@ export default function EditMrItemButton({
     item.material_category_id,
   );
 
-  const [materialSubCategoryID, setMaterialSubCategoryID] = useState<
-    string | number
+  // const [materialSubCategoryID, setMaterialSubCategoryID] = useState<
+  //   string | number
+  // >("");
+  const [materialSubCategoryIDs, setMaterialSubCategoryIDs] = useState<
+    (string | number)[]
   >(() => {
     if (item.material_subcategory_id) {
       if (typeof item.material_subcategory_id === "string") {
@@ -72,23 +75,19 @@ export default function EditMrItemButton({
           .filter((id) => id && id !== "")
           .map((id) => Number(id))
           .filter((id) => !isNaN(id));
-        return ids[0] || "";
+        return ids;
       }
       if (Array.isArray(item.material_subcategory_id)) {
-        const ids = item.material_subcategory_id
+        return item.material_subcategory_id
           .map((id) => Number(id))
           .filter((id) => !isNaN(id));
-        return ids[0] || "";
       }
       if (typeof item.material_subcategory_id === "number") {
-        return item.material_subcategory_id;
+        return [item.material_subcategory_id];
       }
     }
-    return "";
+    return [];
   });
-  // const [materialSubCategoryIDs, setMaterialSubCategoryIDs] = useState<
-  //   (string | number)[]
-  // >(...);
 
   // ✅ Parse boq_ids from the view (comma-separated string to array)
   const [boqLineIDs, setBoqLineIDs] = useState<number[]>(() => {
@@ -176,22 +175,19 @@ export default function EditMrItemButton({
   useEffect(() => {
     getMaterialCategoriesAndSubcategories();
 
-    // Fetch predefined items and auto-select if current item matches
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`)
-      .then((res) => res.json())
-      .then((data) => {
-        setPredefinedItems(data);
-        // Try to match existing item by material_description
-        const match = data.find(
-          (p: any) =>
-            p.material_description.toLowerCase() ===
-            item.material_description.toLowerCase(),
-        );
-        if (match) {
-          setSelectedPredefinedItem(match.id);
-        }
-      })
-      .catch((err) => console.error("Error fetching predefined items:", err));
+    // // Fetch predefined items and auto-select if current item matches
+    // fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`)
+    //   .then((res) => res.json())
+    //   .then((data) => {
+    //     setPredefinedItems(data);
+    //     const match = data.find(
+    //       (p: any) =>
+    //         p.material_description.toLowerCase() ===
+    //         item.material_description.toLowerCase(),
+    //     );
+    //     if (match) { setSelectedPredefinedItem(match.id); }
+    //   })
+    //   .catch((err) => console.error("Error fetching predefined items:", err));
 
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
       method: "GET",
@@ -243,11 +239,11 @@ export default function EditMrItemButton({
   }, [materialCategoryID, userInitiatedCategorySelection]);
 
   // Handle subcategory change - auto-select category if needed
-  const handleSubCategoryChange = (selectedId: string | number) => {
-    setMaterialSubCategoryID(selectedId);
+  const handleSubCategoryChange = (selectedIds: (string | number)[]) => {
+    setMaterialSubCategoryIDs(selectedIds);
 
-    // If subcategory is cleared
-    if (!selectedId) {
+    // If subcategories are cleared
+    if (selectedIds.length === 0) {
       if (!categoriesManuallySelected) {
         setMaterialCategoryID("");
       }
@@ -266,17 +262,17 @@ export default function EditMrItemButton({
       return;
     }
 
-    // Get category from selected subcategory
-    const selectedSubCategory = materialSubCategoryValues.find(
-      (sc: any) => sc.id === selectedId,
+    // Get category from first selected subcategory
+    const firstSelectedSubCategory = materialSubCategoryValues.find(
+      (sc: any) => sc.id === selectedIds[0],
     ) as any;
 
-    if (selectedSubCategory?.category_id) {
+    if (firstSelectedSubCategory?.category_id) {
       if (categoriesManuallySelected && materialCategoryID) {
         // Don't override the manually selected category
       } else {
         // Auto-select the category based on subcategory
-        setMaterialCategoryID(selectedSubCategory.category_id);
+        setMaterialCategoryID(firstSelectedSubCategory.category_id);
       }
     }
   };
@@ -286,54 +282,29 @@ export default function EditMrItemButton({
     setBoqLineIDs(boqIDs);
   };
 
-  // Handle predefined item selection
-  const handlePredefinedItemChange = (itemId: string | number) => {
-    setSelectedPredefinedItem(itemId);
-
-    if (!itemId) {
-      setMaterialDescription("");
-      setMaterialCategoryID("");
-      setMaterialSubCategoryID("");
-      setUnit("");
-      setBrand("");
-      setCategoriesManuallySelected(false);
-      setUserInitiatedCategorySelection(false);
-      return;
-    }
-
-    const selectedItem = predefinedItems.find((p: any) => p.id === itemId);
-    if (!selectedItem) return;
-
-    setMaterialDescription(selectedItem.material_description);
-    setMaterialCategoryID(selectedItem.category_id);
-    setCategoriesManuallySelected(true);
-    setUserInitiatedCategorySelection(true);
-
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category_id: selectedItem.category_id }),
-      },
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setMaterialSubCategoryValues(data);
-        setTimeout(() => {
-          setMaterialSubCategoryID(selectedItem.subcategory_id);
-        }, 0);
-      });
-
-    if (selectedItem.unit) {
-      const mappedUnit = mapPredefinedUnit(selectedItem.unit);
-      setUnit(mappedUnit);
-    } else {
-      setUnit("");
-    }
-
-    setBrand(selectedItem.brand || "");
-  };
+  // // Handle predefined item selection
+  // const handlePredefinedItemChange = (itemId: string | number) => {
+  //   setSelectedPredefinedItem(itemId);
+  //   if (!itemId) {
+  //     setMaterialDescription(""); setMaterialCategoryID(""); setMaterialSubCategoryID("");
+  //     setUnit(""); setBrand(""); setCategoriesManuallySelected(false);
+  //     setUserInitiatedCategorySelection(false); return;
+  //   }
+  //   const selectedItem = predefinedItems.find((p: any) => p.id === itemId);
+  //   if (!selectedItem) return;
+  //   setMaterialDescription(selectedItem.material_description);
+  //   setMaterialCategoryID(selectedItem.category_id);
+  //   setCategoriesManuallySelected(true); setUserInitiatedCategorySelection(true);
+  //   fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+  //     { method: "POST", headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ category_id: selectedItem.category_id }) })
+  //     .then((res) => res.json()).then((data) => {
+  //       setMaterialSubCategoryValues(data);
+  //       setTimeout(() => { setMaterialSubCategoryID(selectedItem.subcategory_id); }, 0);
+  //     });
+  //   if (selectedItem.unit) { setUnit(mapPredefinedUnit(selectedItem.unit)); } else { setUnit(""); }
+  //   setBrand(selectedItem.brand || "");
+  // };
 
   // Handle category change
   const handleCategoryChange = (categoryId: string | number) => {
@@ -351,8 +322,17 @@ export default function EditMrItemButton({
       return;
     }
 
-    if (!materialSubCategoryID) {
-      toast("Please select a material subcategory", "error");
+    if (materialSubCategoryIDs.length === 0) {
+      toast("Please select at least one material subcategory", "error");
+      return;
+    }
+
+    const cleanedSubcategoryIds = materialSubCategoryIDs
+      .filter((id) => id && !isNaN(Number(id)))
+      .map((id) => Number(id));
+
+    if (cleanedSubcategoryIds.length === 0) {
+      toast("Invalid subcategory selection", "error");
       return;
     }
 
@@ -385,25 +365,17 @@ export default function EditMrItemButton({
         attachmentUrl = uploadResult.urls[0];
       }
 
-      // If a predefined item was selected and it had no unit, save the user-selected unit back
-      if (selectedPredefinedItem && unit) {
-        const selectedPredefItem = predefinedItems.find(
-          (p: any) => p.id === selectedPredefinedItem,
-        );
-        if (selectedPredefItem && !selectedPredefItem.unit) {
-          await fetch(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                id: selectedPredefinedItem,
-                unit,
-              }),
-            },
-          );
-        }
-      }
+      // // If a predefined item was selected and it had no unit, save the user-selected unit back
+      // if (selectedPredefinedItem && unit) {
+      //   const selectedPredefItem = predefinedItems.find(
+      //     (p: any) => p.id === selectedPredefinedItem,
+      //   );
+      //   if (selectedPredefItem && !selectedPredefItem.unit) {
+      //     await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
+      //       { method: "PUT", headers: { "Content-Type": "application/json" },
+      //         body: JSON.stringify({ id: selectedPredefinedItem, unit }) });
+      //   }
+      // }
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
         method: "PUT",
@@ -413,7 +385,7 @@ export default function EditMrItemButton({
           id: Number(item.id),
           boq_line_ids: boqLineIDs,
           material_category_id: Number(materialCategoryID),
-          material_subcategory_id: [Number(materialSubCategoryID)],
+          material_subcategory_id: cleanedSubcategoryIds,
           material_description: materialDescription.trim(),
           quantity: Number(quantity),
           unit: unit,
@@ -487,7 +459,7 @@ export default function EditMrItemButton({
               }
             />
 
-            {/* <MultiSelectDropdown
+            <MultiSelectDropdown
               label={"SUBCATEGORIES"}
               dbData={materialSubCategoryValues}
               selectedValues={materialSubCategoryIDs}
@@ -503,9 +475,9 @@ export default function EditMrItemButton({
                   }}
                 />
               }
-            /> */}
+            />
 
-            <SingleSelectDropdown
+            {/* <SingleSelectDropdown
               label={"SUBCATEGORY"}
               dbData={materialSubCategoryValues}
               selectedValue={materialSubCategoryID}
@@ -521,12 +493,12 @@ export default function EditMrItemButton({
                   }}
                 />
               }
-            />
+            /> */}
           </div>
 
           {/* Item Selection and BOQ Line Row */}
           <div className="input-row half">
-            <SingleSelectDropdown
+            {/* <SingleSelectDropdown
               label={"ITEM"}
               dbData={predefinedItems}
               idField="id"
@@ -539,6 +511,13 @@ export default function EditMrItemButton({
               formatOptionLabel={(item: any) =>
                 `${item.material_description}${item.brand ? ` — ${item.brand}` : ""}`
               }
+            /> */}
+            <InputItem
+              label={"ITEM"}
+              value={materialDescription}
+              type={"text"}
+              required
+              onChange={(e) => setMaterialDescription(e.target.value)}
             />
 
             <div className="input-item">

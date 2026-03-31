@@ -50,10 +50,10 @@ export default function EditInventoryItemButton({
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
 
-  const [predefinedItems, setPredefinedItems] = useState<any[]>([]);
-  const [selectedPredefinedItem, setSelectedPredefinedItem] = useState<
-    string | number
-  >("");
+  // const [predefinedItems, setPredefinedItems] = useState<any[]>([]);
+  // const [selectedPredefinedItem, setSelectedPredefinedItem] = useState<
+  //   string | number
+  // >("");
 
   // Fetch material categories
   useEffect(() => {
@@ -82,13 +82,11 @@ export default function EditInventoryItemButton({
           setMaterialSubCategoryValues(data);
         });
 
-      // Fetch predefined items
-      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`)
-        .then((res) => res.json())
-        .then((data) => setPredefinedItems(data))
-        .catch((err) =>
-          console.error("Error fetching predefined items:", err),
-        );
+      // // Fetch predefined items
+      // fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`)
+      //   .then((res) => res.json())
+      //   .then((data) => setPredefinedItems(data))
+      //   .catch((err) => console.error("Error fetching predefined items:", err));
     }
   }, [isOpen]);
 
@@ -128,12 +126,12 @@ export default function EditInventoryItemButton({
     }
   }, [materialCategoryID]);
 
-  // Fetch inventory item details when modal opens (also re-run when predefinedItems load for auto-match)
+  // Fetch inventory item details when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchInventoryItemDetails();
     }
-  }, [isOpen, inventoryItem.id, predefinedItems]);
+  }, [isOpen, inventoryItem.id]);
 
   const fetchInventoryItemDetails = async () => {
     try {
@@ -176,17 +174,13 @@ export default function EditInventoryItemButton({
         setImagePreview(data.image);
       }
 
-      // Auto-match predefined item by description
-      if (data.description && predefinedItems.length > 0) {
-        const match = predefinedItems.find(
-          (p: any) =>
-            p.material_description?.toLowerCase() ===
-            data.description?.toLowerCase(),
-        );
-        if (match) {
-          setSelectedPredefinedItem(match.id);
-        }
-      }
+      // // Auto-match predefined item by description
+      // if (data.description && predefinedItems.length > 0) {
+      //   const match = predefinedItems.find(
+      //     (p: any) => p.material_description?.toLowerCase() === data.description?.toLowerCase(),
+      //   );
+      //   if (match) { setSelectedPredefinedItem(match.id); }
+      // }
     } catch (error) {
       console.error("Error fetching inventory item:", error);
       toast("Failed to load inventory item details", "error");
@@ -214,55 +208,23 @@ export default function EditInventoryItemButton({
     }
   };
 
-  const handlePredefinedItemChange = (itemId: string | number) => {
-    setSelectedPredefinedItem(itemId);
-
-    if (!itemId) {
-      setDescription("");
-      setMaterialCategoryID("");
-      setMaterialSubCategoryID("");
-      setUnit("");
-      setBrand("");
-      return;
-    }
-
-    const item = predefinedItems.find((p: any) => p.id === itemId);
-    if (!item) return;
-
-    // Set description
-    setDescription(item.material_description);
-
-    // Set category
-    setMaterialCategoryID(item.category_id);
-
-    // Fetch subcategories for this category, then set the subcategory
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category_id: item.category_id }),
-      },
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setMaterialSubCategoryValues(data);
-        setTimeout(() => {
-          setMaterialSubCategoryID(item.subcategory_id);
-        }, 0);
-      });
-
-    // Set unit (mapped from predefined unit)
-    if (item.unit) {
-      const mappedUnit = mapPredefinedUnit(item.unit);
-      setUnit(mappedUnit);
-    } else {
-      setUnit("");
-    }
-
-    // Set brand
-    setBrand(item.brand || "");
-  };
+  // const handlePredefinedItemChange = (itemId: string | number) => {
+  //   setSelectedPredefinedItem(itemId);
+  //   if (!itemId) { setDescription(""); setMaterialCategoryID(""); setMaterialSubCategoryID("");
+  //     setUnit(""); setBrand(""); return; }
+  //   const item = predefinedItems.find((p: any) => p.id === itemId);
+  //   if (!item) return;
+  //   setDescription(item.material_description); setMaterialCategoryID(item.category_id);
+  //   fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+  //     { method: "POST", headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ category_id: item.category_id }) })
+  //     .then((res) => res.json()).then((data) => {
+  //       setMaterialSubCategoryValues(data);
+  //       setTimeout(() => { setMaterialSubCategoryID(item.subcategory_id); }, 0);
+  //     });
+  //   if (item.unit) { setUnit(mapPredefinedUnit(item.unit)); } else { setUnit(""); }
+  //   setBrand(item.brand || "");
+  // };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -304,29 +266,17 @@ export default function EditInventoryItemButton({
       imageUrl = null;
     }
 
-    // Save unit back to predefined item if it had no unit
-    if (selectedPredefinedItem && unit) {
-      const selectedItem = predefinedItems.find(
-        (p: any) => p.id === selectedPredefinedItem,
-      );
-      if (selectedItem && !selectedItem.unit) {
-        try {
-          await fetch(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                id: selectedPredefinedItem,
-                unit: unit,
-              }),
-            },
-          );
-        } catch (err) {
-          console.error("Error saving unit to predefined item:", err);
-        }
-      }
-    }
+    // // Save unit back to predefined item if it had no unit
+    // if (selectedPredefinedItem && unit) {
+    //   const selectedItem = predefinedItems.find((p: any) => p.id === selectedPredefinedItem);
+    //   if (selectedItem && !selectedItem.unit) {
+    //     try {
+    //       await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
+    //         { method: "PUT", headers: { "Content-Type": "application/json" },
+    //           body: JSON.stringify({ id: selectedPredefinedItem, unit }) });
+    //     } catch (err) { console.error("Error saving unit to predefined item:", err); }
+    //   }
+    // }
 
     // Update inventory item
     const res = await fetch(
@@ -417,7 +367,7 @@ export default function EditInventoryItemButton({
             </div>
 
             <div className="input-row full">
-              <SingleSelectDropdown
+              {/* <SingleSelectDropdown
                 label={"ITEM"}
                 dbData={predefinedItems}
                 idField="id"
@@ -429,6 +379,13 @@ export default function EditInventoryItemButton({
                 formatOptionLabel={(item: any) =>
                   `${item.material_description}${item.brand ? ` — ${item.brand}` : ""}`
                 }
+              /> */}
+              <InputItem
+                label={"ITEM"}
+                value={description}
+                type={"text"}
+                required
+                onChange={(e) => setDescription(e.target.value)}
               />
             </div>
 
