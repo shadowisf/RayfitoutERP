@@ -46,7 +46,7 @@ export default function ExpectedDeliveriesWidget() {
         >
           {[20, 50, 100, 200].map((n) => (
             <option key={n} value={n}>
-              Show {n} rows
+              Show {n}
             </option>
           ))}
         </select>

@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 type StageData = {
   stage: string;
-  averageMinutes: number;
-  averageHoursFloat: number;
+  medianMinutes: number;
+  medianHoursFloat: number;
   hours: number;
   minutes: number;
   count: number;
@@ -66,7 +66,7 @@ export default function AvgTimeSpentPerStageWidget() {
         const filtered = responseData.filter(
           (item) =>
             item.stage.toLowerCase() !== "completed" &&
-            item.averageMinutes >= 1 &&
+            item.medianMinutes >= 1 &&
             stageOrder.some(
               (s) => s.toLowerCase() === item.stage.toLowerCase(),
             ),
@@ -100,10 +100,10 @@ export default function AvgTimeSpentPerStageWidget() {
 
   // ✅ Use logarithmic scaling for better visibility of small values
   const maxMinutes =
-    data.length > 0 ? Math.max(...data.map((d) => d.averageMinutes)) : 0;
+    data.length > 0 ? Math.max(...data.map((d) => d.medianMinutes)) : 0;
 
   const minMinutes =
-    data.length > 0 ? Math.min(...data.map((d) => d.averageMinutes)) : 0;
+    data.length > 0 ? Math.min(...data.map((d) => d.medianMinutes)) : 0;
 
   // ✅ Calculate bar width with logarithmic scaling for better visibility
   const getBarWidth = (minutes: number) => {
@@ -181,7 +181,7 @@ export default function AvgTimeSpentPerStageWidget() {
           justifyContent: "space-between",
         }}
       >
-        <h3 style={{ margin: 0 }}>Average Time Spent Per Stage</h3>
+        <h3 style={{ margin: 0 }}>Median Time Spent Per Stage</h3>
         <select
           onChange={(e) => setFilter(Number(e.target.value))}
           value={filter}
@@ -215,8 +215,8 @@ export default function AvgTimeSpentPerStageWidget() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
           {data.map((item, index) => {
-            const barWidth = getBarWidth(item.averageMinutes);
-            const barColor = getBarColor(item.averageMinutes);
+            const barWidth = getBarWidth(item.medianMinutes);
+            const barColor = getBarColor(item.medianMinutes);
             const isHovered = hoveredIndex === index;
 
             return (

@@ -94,6 +94,26 @@ export async function POST(req: Request) {
             }
           });
         }
+
+        // Fetch attachments for all JO lines
+        const joLineIds = rows.map((r: any) => r.id);
+        if (joLineIds.length > 0) {
+          const [attachmentRows]: any = await db.query(
+            `SELECT * FROM jo_line_attachments WHERE jo_line_id IN (${joLineIds.map(() => "?").join(",")}) ORDER BY id ASC`,
+            joLineIds,
+          );
+          // Group attachments by jo_line_id
+          const attachmentMap: Record<number, any[]> = {};
+          attachmentRows.forEach((att: any) => {
+            if (!attachmentMap[att.jo_line_id]) {
+              attachmentMap[att.jo_line_id] = [];
+            }
+            attachmentMap[att.jo_line_id].push(att);
+          });
+          rows.forEach((row: any) => {
+            row.jo_attachments = attachmentMap[row.id] || [];
+          });
+        }
       }
 
       return NextResponse.json(rows, { status: 200 });
@@ -106,43 +126,40 @@ export async function POST(req: Request) {
       return NextResponse.json(rows, { status: 200 });
     }
 
+    if (body.action === "getBoqItemsByJoLineID") {
+      const [rows]: any = await db.query(
+        `SELECT * FROM jt_jo_lines_boq_lines WHERE jo_line_id = ?`,
+        [Number(body.jo_line_id)],
+      );
+      return NextResponse.json(rows, { status: 200 });
+    }
+
+    if (body.action === "getAttachmentsByJoLineID") {
+      const [rows]: any = await db.query(
+        `SELECT * FROM jo_line_attachments WHERE jo_line_id = ? ORDER BY id ASC`,
+        [Number(body.jo_line_id)],
+      );
+      return NextResponse.json(rows, { status: 200 });
+    }
+
     if (body.action === "createJoLine") {
       const lineQuery = `
         INSERT INTO jo_lines
-        (mr_header_id, job_scope, job_description, quantity, unit, budget_estimate, start_date, end_date, attachment)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (mr_header_id, job_scope, contract_type, job_description, quantity, unit, budget_estimate, subcontracted_works_value, start_date, end_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
-
-      // Handle attachment as JSON array or null
-      let attachmentValue = null;
-      if (
-        body.attachment &&
-        Array.isArray(body.attachment) &&
-        body.attachment.length > 0
-      ) {
-        attachmentValue = JSON.stringify(body.attachment); // MySQL will parse this as JSON
-      } else if (body.attachment && typeof body.attachment === "string") {
-        // If already a string, parse it first to validate, then stringify
-        try {
-          const parsed = JSON.parse(body.attachment);
-          attachmentValue = JSON.stringify(parsed);
-        } catch {
-          attachmentValue = JSON.stringify([body.attachment]);
-        }
-      }
 
       const lineValues = [
         Number(body.mr_header_id),
-        body.job_scope,
+        body.job_scope || "",
+        body.contract_type || "",
         body.job_description || "",
-        body.quantity && !isNaN(Number(body.quantity))
-          ? Number(body.quantity)
-          : 0,
-        body.unit || "",
-        Number(body.budget_estimate) || 0,
+        0, // quantity - now tracked per BOQ item
+        "", // unit - now tracked per BOQ item
+        Number(body.subcontractor_budget) || 0,
+        Number(body.subcontracted_works_value) || 0,
         body.start_date || null,
         body.end_date || null,
-        attachmentValue, // JSON string or null
       ];
 
       const [lineResult] = await db.query<ResultSetHeader>(
@@ -151,28 +168,33 @@ export async function POST(req: Request) {
       );
       const joLineId = lineResult.insertId;
 
-      // Insert BOQ line associations
-      if (body.boq_line_ids && body.boq_line_ids.length > 0) {
-        const validBoqIds = body.boq_line_ids
-          .map((id: any) =>
-            typeof id === "object" && id !== null ? id.id : id,
-          )
-          .filter(
-            (id: any) => id !== null && id !== undefined && !isNaN(Number(id)),
-          )
-          .map((id: any) => Number(id));
-
-        if (validBoqIds.length > 0) {
-          const boqValues = validBoqIds.map((boqLineId: number) => [
+      // Insert BOQ line associations with subcontracted qty
+      if (body.boq_items && body.boq_items.length > 0) {
+        const boqValues = body.boq_items
+          .filter((item: any) => item.boq_line_id && !isNaN(Number(item.boq_line_id)))
+          .map((item: any) => [
             joLineId,
-            boqLineId,
+            Number(item.boq_line_id),
+            Number(item.subcontracted_qty) || 0,
           ]);
-          const placeholders = boqValues.map(() => "(?, ?)").join(", ");
+
+        if (boqValues.length > 0) {
+          const placeholders = boqValues.map(() => "(?, ?, ?)").join(", ");
           const flatValues = boqValues.flat();
 
           await db.query(
-            `INSERT INTO jt_jo_lines_boq_lines (jo_line_id, boq_line_id) VALUES ${placeholders}`,
+            `INSERT INTO jt_jo_lines_boq_lines (jo_line_id, boq_line_id, subcontracted_qty) VALUES ${placeholders}`,
             flatValues,
+          );
+        }
+      }
+
+      // Insert attachments
+      if (body.attachments && body.attachments.length > 0) {
+        for (const att of body.attachments) {
+          await db.query(
+            `INSERT INTO jo_line_attachments (jo_line_id, attachment_type, file_url, file_name) VALUES (?, ?, ?, ?)`,
+            [joLineId, att.type, att.url, att.file_name || ""],
           );
         }
       }
@@ -217,45 +239,64 @@ export async function PUT(req: Request) {
     if (body.action === "updateJoLine") {
       const query = `
         UPDATE jo_lines
-        SET job_scope_id = ?,
+        SET job_scope = ?,
+            contract_type = ?,
             job_description = ?,
-            quantity = ?,
-            unit = ?,
             budget_estimate = ?,
+            subcontracted_works_value = ?,
             start_date = ?,
             end_date = ?,
-            attachment = ?,
             approval_status = null,
             reject_comment = null
         WHERE id = ?
       `;
 
       await db.query(query, [
-        Number(body.job_scope_id) || null,
+        body.job_scope || "",
+        body.contract_type || "",
         body.job_description || "",
-        Number(body.quantity) || 0,
-        body.unit || "",
-        Number(body.budget_estimate) || 0,
+        Number(body.subcontractor_budget) || 0,
+        Number(body.subcontracted_works_value) || 0,
         body.start_date || null,
         body.end_date || null,
-        body.attachment || null,
         Number(body.id),
       ]);
 
-      // Update BOQ line associations
+      // Update BOQ line associations with subcontracted qty
       await db.query(`DELETE FROM jt_jo_lines_boq_lines WHERE jo_line_id = ?`, [
         Number(body.id),
       ]);
 
-      if (body.boq_line_ids && body.boq_line_ids.length > 0) {
-        const boqValues = body.boq_line_ids
-          .filter((id: any) => id && !isNaN(Number(id)))
-          .map((boqLineId: number) => [Number(body.id), Number(boqLineId)]);
+      if (body.boq_items && body.boq_items.length > 0) {
+        const boqValues = body.boq_items
+          .filter((item: any) => item.boq_line_id && !isNaN(Number(item.boq_line_id)))
+          .map((item: any) => [
+            Number(body.id),
+            Number(item.boq_line_id),
+            Number(item.subcontracted_qty) || 0,
+          ]);
 
         if (boqValues.length > 0) {
+          const placeholders = boqValues.map(() => "(?, ?, ?)").join(", ");
+          const flatValues = boqValues.flat();
+
           await db.query(
-            `INSERT INTO jt_jo_lines_boq_lines (jo_line_id, boq_line_id) VALUES ?`,
-            [boqValues],
+            `INSERT INTO jt_jo_lines_boq_lines (jo_line_id, boq_line_id, subcontracted_qty) VALUES ${placeholders}`,
+            flatValues,
+          );
+        }
+      }
+
+      // Update attachments: delete all existing, re-insert
+      await db.query(`DELETE FROM jo_line_attachments WHERE jo_line_id = ?`, [
+        Number(body.id),
+      ]);
+
+      if (body.attachments && body.attachments.length > 0) {
+        for (const att of body.attachments) {
+          await db.query(
+            `INSERT INTO jo_line_attachments (jo_line_id, attachment_type, file_url, file_name) VALUES (?, ?, ?, ?)`,
+            [Number(body.id), att.type, att.url, att.file_name || ""],
           );
         }
       }
