@@ -2,10 +2,10 @@
 
 import FormPopUp from "@/app/components/FormPopup";
 import { useEffect, useState, useMemo, useRef } from "react";
-import { MrLine } from "../types/mrLine";
-import { JoLine } from "../types/joLine";
+import { MrLine } from "../[id]/types/mrLine";
+import { JoLine } from "../[id]/types/joLine";
 import Button from "@/app/components/Button";
-import { MrHeader } from "../types/mrHeader";
+import { MrHeader } from "../[id]/types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import DownloadBoqButton from "@/app/(protected)/project/[id]/boq/[boqId]/components/manager/_DownloadBoqButton";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
@@ -1005,7 +1005,7 @@ export default function BoqReferencePopUp({
                                   backgroundColor: bgColor,
                                 }}
                               >
-                                {formatQuantity(item.quantity)} {item.unit}
+                                {formatQuantity(boqItem.quantity)} {boqItem.unit}
                               </td>
                               {canSeePrice && (
                                 <td
@@ -1302,7 +1302,7 @@ export default function BoqReferencePopUp({
                                     backgroundColor: bgColor,
                                   }}
                                 >
-                                  {formatQuantity(item.quantity)} {item.unit}
+                                  {formatQuantity(boqItem.quantity)} {boqItem.unit}
                                 </td>
                                 {canSeePrice && (
                                   <td

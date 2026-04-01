@@ -7,10 +7,10 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
-import SupplierDetailsPopUp from "@/app/(protected)/mr/[id]/components/SupplierDetailsPopUp";
+import SupplierDetailsPopUp from "@/app/(protected)/mr/components/SupplierDetailsPopUp";
 import { SupplierQuotation } from "@/app/(protected)/mr/[id]/types/supplierQuotation";
 import { useAuth } from "@/app/context/AuthContext";
-import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReferencePopUp";
+import BoqReferencePopUp from "@/app/(protected)/mr/components/BoqReferencePopUp";
 import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 
 type MrHeaderData = {

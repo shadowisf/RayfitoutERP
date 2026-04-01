@@ -3,12 +3,12 @@
 import { JoLine } from "../types/joLine";
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
-import { useState, useEffect, useCallback, Fragment } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Button from "@/app/components/Button";
 import AddJoItemButton from "./department/_AddJoItemButton";
 import JoApprovalButtons from "./manager/_JoApprovalButtons";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
-import BoqReferencePopUp from "./BoqReferencePopUp";
+import BoqReferencePopUp from "../../components/BoqReferencePopUp";
 import SubmitForInitialApprovalButton from "./quantitySurveyor/_SubmitForInitialApprovalButton";
 import SubmitForQuotationsButton from "./manager/_SubmitForQuotationsButton";
 import SubmitForResubmissionButton from "./manager/_SubmitForInitialResubmissionButton";
@@ -21,25 +21,23 @@ import SubmitForPricingResubmissionButton from "./manager/_SubmitForPriceResubmi
 import SubmitForJoCompletionButton from "./procurement/_SubmitForJoCompletionButton";
 import CommentsSection from "@/app/components/CommentsSection";
 import { formatPriceAED } from "@/lib/formatPrice";
+import JoRfqButton from "./procurement/_JoRfqButton";
 
 type JoLinesViewProps = {
   joLines: JoLine[];
   mrHeader: MrHeader;
 };
 
-// Helper to parse JSON attachment field
-const parseAttachments = (attachment: any): string[] => {
-  if (!attachment) return [];
-  if (Array.isArray(attachment)) return attachment;
-  if (typeof attachment === "string") {
-    try {
-      const parsed = JSON.parse(attachment);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
+// Map attachment type keys to display labels
+const ATTACHMENT_TYPE_LABELS: Record<string, string> = {
+  design_drawings: "Design & drawings",
+  hse_compliance: "HSE & compliance",
+  scope_pricing: "Scope & pricing",
+  contract_commercial: "Contract & commercial",
+  technical_specifications: "Technical specifications",
+  surveys_existing_conditions: "Surveys & existing conditions",
+  programme_logistics: "Programme & logistics",
+  prequalification_admin: "Pre-qualification & admin",
 };
 
 export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
@@ -47,25 +45,32 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
 
   const externalLinkIcon = "/icons/external-link.svg";
 
+  // ── RFQ State ──────────────────────────────────────
+  const [rfqSelectedIds, setRfqSelectedIds] = useState<number[]>([]);
+  const [rfqExists, setRfqExists] = useState(false);
+
+  const isProcurementQuotation =
+    [7, 11].includes(mrHeader.progress_id) && userInfo?.departmentID === 9;
+
+  const toggleRfqSelection = (id: number) => {
+    setRfqSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const toggleAllRfq = () => {
+    if (rfqSelectedIds.length === joLines.length) {
+      setRfqSelectedIds([]);
+    } else {
+      setRfqSelectedIds(joLines.map((l) => l.id));
+    }
+  };
+
   const canSeePrice =
     userInfo?.departmentID === 8 ||
     userInfo?.departmentID === 9 ||
     userInfo?.departmentID === 10 ||
     userInfo?.departmentID === 16;
-
-  const formatNumber = (value: unknown): string => {
-    const num = Number(value);
-    if (isNaN(num)) return "";
-    if (Number.isInteger(num)) return num.toString();
-    return parseFloat(num.toFixed(3)).toString();
-  };
-
-  const formatDate = (value: string | null | undefined): string => {
-    if (!value) return "-";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "-";
-    return date.toLocaleDateString("en-GB");
-  };
 
   // Check if all items have been reviewed (approved or rejected)
   const allItemsReviewed = joLines.every(
@@ -239,10 +244,20 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
   return (
     <>
       <div className="subcategory-section">
-        <div className="subcategory-header">
+        <div
+          className="subcategory-header"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <h2 style={{ textTransform: "uppercase" }}>JOB ITEMS</h2>
 
-          <div className="right">
+          <div
+            className="right"
+            style={{ display: "flex", gap: "10px", alignItems: "center" }}
+          >
             {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
               userInfo?.departmentID === mrHeader.department_id && (
                 <AddJoItemButton
@@ -254,6 +269,20 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             {mrHeader.progress_id === 10 && userInfo?.departmentID === 8 && (
               <div id="jo-smart-select-portal"></div>
             )}
+
+            {/* RFQ Button (Create / Edit / Download / Delete) */}
+            {isProcurementQuotation && (
+              <JoRfqButton
+                mrHeader={mrHeader}
+                selectedIds={rfqSelectedIds}
+                onRfqLoaded={(rfq) => {
+                  setRfqExists(!!rfq);
+                  if (rfq) {
+                    setRfqSelectedIds(rfq.jo_line_ids);
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
 
@@ -262,16 +291,37 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
         <table className="items-table">
           <thead>
             <tr>
-              <th>#</th>
+              <th>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  {isProcurementQuotation && (
+                    <input
+                      type="checkbox"
+                      checked={
+                        rfqSelectedIds.length === joLines.length &&
+                        joLines.length > 0
+                      }
+                      onChange={toggleAllRfq}
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        cursor: "pointer",
+                        accentColor: "rgba(0, 163, 93, 1)",
+                      }}
+                    />
+                  )}
+                  #
+                </div>
+              </th>
               <th>SCOPE</th>
+              <th>CONTRACT TYPE</th>
               <th>DESCRIPTION</th>
               <th>BOQ REF.</th>
-              <th>QTY</th>
-              <th>START DATE</th>
-              <th>END DATE</th>
-              {canSeePrice && <th>BUDGET EST.</th>}
+              {canSeePrice && <th>WORKS VALUE</th>}
+              {canSeePrice && <th>BUDGET</th>}
               {showTotalPriceColumn && <th>TOTAL PRICE</th>}
-              <th>ATTACHMENT</th>
+              <th>ATTACHMENT(S)</th>
 
               {mrHeader.progress_id === 3 && <th>APPROVAL STATUS</th>}
 
@@ -292,13 +342,37 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
           </thead>
           <tbody>
             {joLines.map((item: JoLine, index: number) => {
-              // Parse attachments for this row
-              const attachments = parseAttachments(item.attachment);
+              // Use typed attachments from API
+              const typedAttachments = item.jo_attachments || [];
 
               return (
                 <tr key={item.id}>
-                  <td>{index + 1}</td>
-                  <td>{item.job_scope_name || "-"}</td>
+                  <td>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      {isProcurementQuotation && (
+                        <input
+                          type="checkbox"
+                          checked={rfqSelectedIds.includes(item.id)}
+                          onChange={() => toggleRfqSelection(item.id)}
+                          style={{
+                            width: "16px",
+                            height: "16px",
+                            cursor: "pointer",
+                            accentColor: "rgba(0, 163, 93, 1)",
+                          }}
+                        />
+                      )}
+                      {index + 1}
+                    </div>
+                  </td>
+                  <td>{item.job_scope_name || item.job_scope || "-"}</td>
+                  <td>{item.contract_type || "-"}</td>
                   <td>
                     {item.job_description ? (
                       <InfoPopUpButton
@@ -316,15 +390,22 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                       "-"
                     )}
                   </td>
-                  <td>
-                    {formatNumber(item.quantity)} {item.unit}
-                  </td>
-                  <td>{formatDate(item.start_date)}</td>
-                  <td>{formatDate(item.end_date)}</td>
 
                   {canSeePrice && (
                     <td>
-                      {item.budget_estimate != 0 ? (
+                      {item.subcontracted_works_value != null &&
+                      Number(item.subcontracted_works_value) > 0 ? (
+                        <>{formatPriceAED(item.subcontracted_works_value)}</>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  )}
+
+                  {canSeePrice && (
+                    <td>
+                      {item.budget_estimate != null &&
+                      Number(item.budget_estimate) > 0 ? (
                         <>{formatPriceAED(item.budget_estimate)}</>
                       ) : (
                         "-"
@@ -345,23 +426,27 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                   )}
 
                   <td>
-                    {attachments.length > 0
-                      ? attachments.map((url, idx) => (
-                          <Fragment key={`${item.id}-attachment-${idx}`}>
+                    {typedAttachments.length > 0
+                      ? typedAttachments.map((att, idx) => {
+                          const typeLabel =
+                            ATTACHMENT_TYPE_LABELS[att.attachment_type] ||
+                            att.attachment_type;
+                          return (
                             <div
+                              key={`${item.id}-attachment-${idx}`}
                               style={{
                                 display: "flex",
                                 gap: "10px",
                                 alignItems: "center",
                               }}
                             >
-                              {idx + 1}
+                              <span>{typeLabel}:</span>
                               <Button
                                 componentType={"link"}
                                 bgColor={"rgba(239, 239, 239, 1)"}
                                 borderColor={"rgba(223, 223, 223, 1)"}
                                 textColor={"black"}
-                                href={url}
+                                href={att.file_url}
                                 target="_blank"
                                 style={{ padding: "7px 7px" }}
                               >
@@ -371,10 +456,8 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                                 />
                               </Button>
                             </div>
-
-                            <br />
-                          </Fragment>
-                        ))
+                          );
+                        })
                       : "-"}
                   </td>
 
@@ -446,8 +529,8 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                 }, 0);
                 const hasAnyPrice = liveTotalPrice > 0 || hasAnyApprovedPrice;
 
-                // Columns before BUDGET EST.: #, SCOPE, DESCRIPTION, BOQ REF, QTY, START DATE, END DATE
-                const labelColSpan = 7 + (canSeePrice ? 1 : 0);
+                // Columns before SUBCONTRACTOR BUDGET: #, SCOPE, CONTRACT TYPE, DESCRIPTION, BOQ REF, (+ SUB-CONTRACTED WORKS VALUE if canSeePrice)
+                const labelColSpan = 5 + (canSeePrice ? 2 : 0);
                 // Columns after TOTAL PRICE value
                 let trailingCols = 1; // ATTACHMENT
                 if (mrHeader.progress_id === 3) trailingCols += 1;

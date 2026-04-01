@@ -7,7 +7,7 @@ import EditMrItemButton from "./department/_EditMrItemButton";
 import DeleteMrItemButton from "./department/_DeleteMrItemButton";
 import RenameMrSubCategoryButton from "./department/_RenameMrSubCategoryButton";
 import DeleteMrSubCategoryButton from "./department/_DeleteMrSubCategoryButton";
-import BoqReferencePopUp from "./BoqReferencePopUp";
+import BoqReferencePopUp from "../../components/BoqReferencePopUp";
 import SubmitForInitialApprovalButton from "./quantitySurveyor/_SubmitForInitialApprovalButton";
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
@@ -20,7 +20,7 @@ import PriceApprovalButton from "./manager/_PriceApprovalButton";
 import SubmitForPricingResubmissionButton from "./manager/_SubmitForPriceResubmissionButton";
 import SubmitForLPO from "./manager/_SubmitForLPOButton";
 import Button from "@/app/components/Button";
-import SupplierDetailsPopUp from "./SupplierDetailsPopUp";
+import SupplierDetailsPopUp from "../../components/SupplierDetailsPopUp";
 import IssueLPOButton from "./procurement/_IssueLPOButton";
 import SubmitForPaymentButton, {
   SupplierInfo,
@@ -2380,8 +2380,8 @@ export default function MrLinesView({
                                   <th>ITEM</th>
                                   {mrHeader.progress_id >= 9 ? (
                                     <>
-                                      <th>QTY FOR USE</th>
-                                      <th>QTY FOR STOCKS</th>
+                                      <th>QTY USE</th>
+                                      <th>QTY STOCKS</th>
                                       <th>TOTAL QTY</th>
                                     </>
                                   ) : (
@@ -2924,7 +2924,9 @@ export default function MrLinesView({
                                                 }
 
                                                 //const priceWithVat = unitPrice * (1 + vatRate / 100);
-                                                return formatPriceAED(unitPrice);
+                                                return formatPriceAED(
+                                                  unitPrice,
+                                                );
                                               })()}
                                             </td>
                                           )}
@@ -2955,7 +2957,9 @@ export default function MrLinesView({
                                                 }
 
                                                 /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
-                                                return formatPriceAED(totalPrice);
+                                                return formatPriceAED(
+                                                  totalPrice,
+                                                );
                                               })()}
                                             </td>
                                           )}
@@ -3072,9 +3076,11 @@ export default function MrLinesView({
                                         fontWeight: "600",
                                       }}
                                     >
-                                      {formatPriceAED(calculateItemsTotal(
-                                        getAllItemsInSubCategory(suppliers),
-                                      ))}
+                                      {formatPriceAED(
+                                        calculateItemsTotal(
+                                          getAllItemsInSubCategory(suppliers),
+                                        ),
+                                      )}
                                     </td>
                                     {subtotalTrailingColSpan > 0 && (
                                       <td colSpan={subtotalTrailingColSpan} />
@@ -3220,8 +3226,8 @@ export default function MrLinesView({
                               <th>ITEM</th>
                               {mrHeader.progress_id >= 9 ? (
                                 <>
-                                  <th>QTY FOR USE</th>
-                                  <th>QTY FOR STOCKS</th>
+                                  <th>QTY USE</th>
+                                  <th>QTY STOCKS</th>
                                   <th>TOTAL QTY</th>
                                 </>
                               ) : (
@@ -3887,9 +3893,11 @@ export default function MrLinesView({
                                     fontWeight: "600",
                                   }}
                                 >
-                                  {formatPriceAED(calculateItemsTotal(
-                                    getAllItemsInSubCategory(suppliers),
-                                  ))}
+                                  {formatPriceAED(
+                                    calculateItemsTotal(
+                                      getAllItemsInSubCategory(suppliers),
+                                    ),
+                                  )}
                                 </td>
                                 {subtotalTrailingColSpan > 0 && (
                                   <td colSpan={subtotalTrailingColSpan} />
@@ -4136,8 +4144,8 @@ export default function MrLinesView({
                   <th>ITEM</th>
                   {mrHeader.progress_id >= 9 ? (
                     <>
-                      <th>QTY FOR USE</th>
-                      <th>QTY FOR STOCKS</th>
+                      <th>QTY USE</th>
+                      <th>QTY STOCKS</th>
                       <th>TOTAL QTY</th>
                     </>
                   ) : (

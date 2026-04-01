@@ -5,8 +5,8 @@ import { MrLine } from "../../../types/mrLine";
 import { MrHeader } from "../../../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import Button from "@/app/components/Button";
-import BoqReferencePopUp from "../../../components/BoqReferencePopUp";
-import SupplierDetailsPopUp from "../../../components/SupplierDetailsPopUp";
+import BoqReferencePopUp from "../../../../components/BoqReferencePopUp";
+import SupplierDetailsPopUp from "../../../../components/SupplierDetailsPopUp";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import IssueLPOButton from "../../../components/procurement/_IssueLPOButton";
 import PaymentButtons from "./finance/_PaymentButtons";
@@ -757,8 +757,8 @@ export default function LpoLinesView({
               <th>CATEGORY</th>
               <th>SUBCATEGORY</th>
               <th>ITEM</th>
-              <th>QTY FOR USE</th>
-              <th>QTY FOR STOCKS</th>
+              <th>QTY USE</th>
+              <th>QTY STOCKS</th>
               <th>TOTAL QTY</th>
               <th>BOQ REF.</th>
               <th>BRAND & SPECS</th>
@@ -964,9 +964,10 @@ export default function LpoLinesView({
                       fontWeight: "600",
                     }}
                   >
-                    - {formatPriceAED(
+                    -{" "}
+                    {formatPriceAED(
                       calculateItemsTotal(displayItems) *
-                      (getDiscountRate() / 100)
+                        (getDiscountRate() / 100),
                     )}
                   </td>
                   {summaryTrailingColSpan > 0 && (
@@ -984,7 +985,7 @@ export default function LpoLinesView({
                       fontWeight: "600",
                     }}
                   >
-                    SHIPPING & HANDLING
+                    S&H
                   </td>
                   <td
                     style={{
@@ -1014,9 +1015,9 @@ export default function LpoLinesView({
                     fontWeight: "600",
                   }}
                 >
-                  {formatPriceAED(calculateTotalWithVAT(
-                    calculateItemsTotal(displayItems),
-                  ))}
+                  {formatPriceAED(
+                    calculateTotalWithVAT(calculateItemsTotal(displayItems)),
+                  )}
                 </td>
                 {summaryTrailingColSpan > 0 && (
                   <td colSpan={summaryTrailingColSpan} />

@@ -27,6 +27,34 @@ Font.register({
 
 Font.registerHyphenationCallback((word) => [word]);
 
+// Attachment type labels
+const ATTACHMENT_TYPE_LABELS: Record<string, string> = {
+  design_drawings: "Design & drawings",
+  hse_compliance: "HSE & compliance",
+  scope_pricing: "Scope & pricing",
+  contract_commercial: "Contract & commercial",
+  technical_specifications: "Technical specifications",
+  surveys_existing_conditions: "Surveys & existing conditions",
+  programme_logistics: "Programme & logistics",
+  prequalification_admin: "Pre-qualification & admin",
+};
+
+// Image extensions for checking if an attachment is an image
+const IMAGE_EXTENSIONS = [
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".bmp",
+  ".webp",
+  ".svg",
+];
+
+const isImageUrl = (url: string): boolean => {
+  const lower = url.toLowerCase();
+  return IMAGE_EXTENSIONS.some((ext) => lower.includes(ext));
+};
+
 const styles = StyleSheet.create({
   page: {
     backgroundColor: "#ffffff",
@@ -91,7 +119,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#f5f5f5",
     padding: "8 12",
-    fontSize: 8,
+    fontSize: 7,
     fontFamily: "Mont-SemiBold",
     textTransform: "uppercase",
   },
@@ -102,7 +130,6 @@ const styles = StyleSheet.create({
     color: "#333333",
     alignItems: "flex-start",
     backgroundColor: "#f5f5f5",
-    border: "1px solid #f5f5f5",
     minHeight: 50,
   },
   tableRowOdd: {
@@ -112,56 +139,73 @@ const styles = StyleSheet.create({
     color: "#333333",
     alignItems: "flex-start",
     backgroundColor: "#ffffff",
-    border: "1px solid #f5f5f5",
     minHeight: 50,
   },
 
   // Column widths
   colNum: {
     width: "4%",
-    paddingRight: 4,
+    paddingRight: 2,
   },
   colScope: {
-    width: "15%",
-    paddingRight: 4,
-  },
-  colDescription: {
-    width: "33%",
-    paddingRight: 4,
-  },
-  colDescriptionWide: {
-    width: "45%",
-    paddingRight: 4,
-  },
-  colQty: {
     width: "10%",
     paddingRight: 4,
   },
-  colBudget: {
-    width: "14%",
+  colContractType: {
+    width: "13%",
     paddingRight: 4,
   },
-  colAttachment: {
-    width: "12%",
+  colDescription: {
+    width: "20%",
     paddingRight: 4,
   },
   colBoqRef: {
-    width: "12%",
+    width: "8%",
+    paddingRight: 4,
+  },
+  colSubWorksValue: {
+    width: "13%",
+    paddingRight: 4,
+  },
+  colBudget: {
+    width: "13%",
+    paddingRight: 4,
+  },
+  colTotalPrice: {
+    width: "13%",
+    paddingRight: 4,
+  },
+  colAttachment: {
+    width: "16%",
     paddingRight: 4,
   },
 
-  // Attachment Image
+  // Attachment styles
+  attachmentContainer: {
+    flexDirection: "column",
+    gap: 4,
+  },
+  attachmentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  attachmentLabel: {
+    fontSize: 6,
+    fontFamily: "Mont-SemiBold",
+    color: "#666666",
+  },
   attachmentImage: {
-    height: 40,
+    height: 30,
     objectFit: "contain",
   },
-  attachmentContainer: {
-    flexDirection: "row",
-    gap: 3,
-    flexWrap: "wrap",
-  },
   attachmentWrapper: {
-    height: 40,
+    height: 30,
+  },
+  attachmentFileName: {
+    fontSize: 5,
+    color: "#333333",
+    maxWidth: 80,
   },
 
   // Summary
@@ -202,22 +246,11 @@ const styles = StyleSheet.create({
 type props = {
   mrHeader: MrHeader;
   joLines: JoLine[];
+  showPrices?: boolean;
 };
 
-export function JoPDF({ mrHeader, joLines }: props) {
+export function JoPDF({ mrHeader, joLines, showPrices = true }: props) {
   const logo = "/icons/logo.jpg";
-
-  const formatQuantity = (value: number | string): string => {
-    const num = Number(value);
-    if (isNaN(num)) return "0";
-    if (Number.isInteger(num)) {
-      return num.toLocaleString("en-US");
-    }
-    return num.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 3,
-    });
-  };
 
   const formatDate = (dateStr: string): string => {
     try {
@@ -238,37 +271,58 @@ export function JoPDF({ mrHeader, joLines }: props) {
     return `AED ${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // Check if any lines have attachments
-  const hasAnyAttachments = joLines.some((line) => {
-    if (!line.attachment) return false;
-    try {
-      const parsed =
-        typeof line.attachment === "string"
-          ? JSON.parse(line.attachment)
-          : line.attachment;
-      return Array.isArray(parsed) && parsed.length > 0;
-    } catch {
-      return false;
-    }
-  });
-
-  // Check if any lines have budget estimates
-  const hasAnyBudget = joLines.some(
-    (line) => line.budget_estimate != null && Number(line.budget_estimate) > 0,
+  // Check if any lines have typed attachments
+  const hasAnyAttachments = joLines.some(
+    (line) => line.jo_attachments && line.jo_attachments.length > 0,
   );
 
-  // Calculate total budget
+  // Check if any lines have budget
+  const hasAnyBudget =
+    showPrices &&
+    joLines.some(
+      (line) =>
+        line.budget_estimate != null && Number(line.budget_estimate) > 0,
+    );
+
+  // Check if any lines have sub-contracted works value
+  const hasAnySubWorksValue =
+    showPrices &&
+    joLines.some(
+      (line) =>
+        line.subcontracted_works_value != null &&
+        Number(line.subcontracted_works_value) > 0,
+    );
+
+  // Check if any lines have approved total price (post-quotation)
+  const hasAnyApprovedPrice =
+    showPrices &&
+    joLines.some(
+      (line) =>
+        line.approved_total_price != null &&
+        Number(line.approved_total_price) > 0,
+    );
+
+  // Calculate totals
   const totalBudget = joLines.reduce(
     (sum, line) => sum + (Number(line.budget_estimate) || 0),
     0,
   );
 
-  // Determine description column width
-  const descColKey = hasAnyAttachments ? "colDescription" : "colDescriptionWide";
+  const totalApprovedPrice = joLines.reduce(
+    (sum, line) => sum + (Number(line.approved_total_price) || 0),
+    0,
+  );
+
+  // Use approved price subtotal if available, otherwise budget
+  const useApprovedPrice = hasAnyApprovedPrice && totalApprovedPrice > 0;
+  const subtotalValue = useApprovedPrice ? totalApprovedPrice : totalBudget;
+  const subtotalLabel = useApprovedPrice ? "SUBTOTAL" : "SUBTOTAL (BUDGET)";
+  const showSubtotal =
+    showPrices && (hasAnyBudget || hasAnyApprovedPrice) && subtotalValue > 0;
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" orientation="portrait" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
           <Image src={logo} style={styles.logo} />
@@ -317,7 +371,9 @@ export function JoPDF({ mrHeader, joLines }: props) {
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>REQUIRED DATE</Text>
             <Text style={styles.infoValue}>
-              {mrHeader.required_date ? formatDate(mrHeader.required_date) : "-"}
+              {mrHeader.required_date
+                ? formatDate(mrHeader.required_date)
+                : "-"}
             </Text>
           </View>
         </View>
@@ -328,13 +384,14 @@ export function JoPDF({ mrHeader, joLines }: props) {
           <View style={styles.tableHeader}>
             <Text style={styles.colNum}>#</Text>
             <Text style={styles.colScope}>SCOPE</Text>
-            <Text style={styles[descColKey]}>DESCRIPTION</Text>
-            <Text style={styles.colQty}>QTY</Text>
-            {hasAnyBudget && (
-              <Text style={styles.colBudget}>BUDGET EST.</Text>
+            <Text style={styles.colContractType}>CONTRACT TYPE</Text>
+            <Text style={styles.colDescription}>DESCRIPTION</Text>
+            {hasAnySubWorksValue && (
+              <Text style={styles.colSubWorksValue}>WORKS VALUE</Text>
             )}
-            {hasAnyAttachments && (
-              <Text style={styles.colAttachment}>ATTACHMENT(S)</Text>
+            {hasAnyBudget && <Text style={styles.colBudget}>BUDGET</Text>}
+            {hasAnyApprovedPrice && (
+              <Text style={styles.colTotalPrice}>TOTAL PRICE</Text>
             )}
           </View>
 
@@ -342,38 +399,32 @@ export function JoPDF({ mrHeader, joLines }: props) {
             const rowStyle =
               index % 2 === 0 ? styles.tableRowOdd : styles.tableRowEven;
 
-            // Parse attachments
-            let attachments: string[] = [];
-            if (line.attachment) {
-              try {
-                const parsed =
-                  typeof line.attachment === "string"
-                    ? JSON.parse(line.attachment)
-                    : line.attachment;
-                if (Array.isArray(parsed)) attachments = parsed;
-              } catch {
-                // ignore
-              }
-            }
+            const typedAttachments = line.jo_attachments || [];
 
             return (
               <View key={line.id} style={rowStyle} wrap={false}>
                 <Text style={styles.colNum}>{index + 1}</Text>
 
                 <Text style={styles.colScope}>
-                  {line.job_scope_name || "-"}
+                  {line.job_scope_name || line.job_scope || "-"}
+                </Text>
+
+                <Text style={styles.colContractType}>
+                  {line.contract_type || "-"}
                 </Text>
 
                 <Text
-                  style={styles[descColKey]}
+                  style={styles.colDescription}
                   hyphenationCallback={(word) => [word]}
                 >
                   {line.job_description || "-"}
                 </Text>
 
-                <Text style={styles.colQty}>
-                  {formatQuantity(line.quantity)} {line.unit || ""}
-                </Text>
+                {hasAnySubWorksValue && (
+                  <Text style={styles.colSubWorksValue}>
+                    {formatMoney(line.subcontracted_works_value)}
+                  </Text>
+                )}
 
                 {hasAnyBudget && (
                   <Text style={styles.colBudget}>
@@ -381,39 +432,23 @@ export function JoPDF({ mrHeader, joLines }: props) {
                   </Text>
                 )}
 
-                {hasAnyAttachments && (
-                  <View style={styles.colAttachment}>
-                    {attachments.length > 0 ? (
-                      <View style={styles.attachmentContainer}>
-                        {attachments.map((base64Url: string, i: number) => {
-                          if (!base64Url || base64Url.trim() === "")
-                            return null;
-
-                          return (
-                            <View key={i} style={styles.attachmentWrapper}>
-                              <Image
-                                src={base64Url}
-                                style={styles.attachmentImage}
-                              />
-                            </View>
-                          );
-                        })}
-                      </View>
-                    ) : null}
-                  </View>
+                {hasAnyApprovedPrice && (
+                  <Text style={styles.colTotalPrice}>
+                    {formatMoney(line.approved_total_price)}
+                  </Text>
                 )}
               </View>
             );
           })}
         </View>
 
-        {/* Summary */}
-        {hasAnyBudget && (
+        {/* Subtotal */}
+        {showSubtotal && (
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>TOTAL BUDGET ESTIMATE</Text>
+            <Text style={styles.summaryLabel}>{subtotalLabel}</Text>
             <Text style={styles.summaryValue}>
               AED{" "}
-              {totalBudget.toLocaleString("en-US", {
+              {subtotalValue.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}

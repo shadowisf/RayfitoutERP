@@ -11,7 +11,11 @@ import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 
 type props = {
   projectID: number;
-  onSelectBoq: (boqLineIDs: number[], boqInfo: string, selectedLines?: BoqLine[]) => void;
+  onSelectBoq: (
+    boqLineIDs: number[],
+    boqInfo: string,
+    selectedLines?: BoqLine[],
+  ) => void;
   currentBoqLineIDs?: number[];
   disabled?: boolean;
   style?: React.CSSProperties;
@@ -415,6 +419,7 @@ export default function MultipleSelectBoqItemButton({
       <br />
       <br />
 
+      {/* SELECT ALL CATEGORIES checkbox — commented out
       {!singleSelect && (
         <div
           style={{
@@ -457,6 +462,7 @@ export default function MultipleSelectBoqItemButton({
           </label>
         </div>
       )}
+      */}
 
       <br />
       <br />
@@ -562,6 +568,7 @@ export default function MultipleSelectBoqItemButton({
                       gap: "8px",
                     }}
                   >
+                    {/* Category checkbox — commented out
                     {!singleSelect && (
                       <input
                         type="checkbox"
@@ -579,6 +586,7 @@ export default function MultipleSelectBoqItemButton({
                         }}
                       />
                     )}
+                    */}
                     {category}
                   </div>
                 );
@@ -669,6 +677,7 @@ export default function MultipleSelectBoqItemButton({
                       borderBottom: "2px solid rgba(0, 0, 0, 0.1)",
                     }}
                   >
+                    {/* Category-level checkbox in ALL view — commented out
                     {!singleSelect && (
                       <label
                         style={{
@@ -703,6 +712,7 @@ export default function MultipleSelectBoqItemButton({
                         />
                       </label>
                     )}
+                    */}
 
                     <h2
                       style={{

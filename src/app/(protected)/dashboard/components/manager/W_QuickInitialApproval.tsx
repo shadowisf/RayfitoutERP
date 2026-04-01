@@ -7,7 +7,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
-import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReferencePopUp";
+import BoqReferencePopUp from "@/app/(protected)/mr/components/BoqReferencePopUp";
 import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 

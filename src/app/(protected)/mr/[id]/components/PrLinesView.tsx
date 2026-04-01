@@ -8,7 +8,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
-import BoqReferencePopUp from "./BoqReferencePopUp";
+import BoqReferencePopUp from "../../components/BoqReferencePopUp";
 import InputItem from "@/app/components/InputItem";
 import UploadFileBox from "@/app/components/SingleUploadFileBox";
 import CommentsSection from "@/app/components/CommentsSection";

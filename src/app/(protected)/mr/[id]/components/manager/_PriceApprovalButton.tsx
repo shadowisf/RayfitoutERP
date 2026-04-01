@@ -10,7 +10,7 @@ import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
 import RejectCommentPopUp from "./RejectCommentPopUp";
 import { MrLine } from "../../types/mrLine";
-import SupplierDetailsPopUp from "../SupplierDetailsPopUp";
+import SupplierDetailsPopUp from "../../../components/SupplierDetailsPopUp";
 import { formatPriceAED } from "@/lib/formatPrice";
 
 type PriceApprovalButtonProps = {

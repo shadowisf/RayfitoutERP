@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import Button from "@/app/components/Button";
 import DownloadLPOButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadLPOButton";
-import BoqReferencePopUp from "../mr/[id]/components/BoqReferencePopUp";
+import BoqReferencePopUp from "../mr/components/BoqReferencePopUp";
 import { MrLine } from "../mr/[id]/types/mrLine";
 import { MrHeader } from "../mr/[id]/types/mrHeader";
 import CreateResolutionButton from "./components/_CreateResolutionButton";
