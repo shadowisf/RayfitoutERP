@@ -5,7 +5,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import { toast } from "@/app/components/Toast";
-import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReferencePopUp";
+import BoqReferencePopUp from "@/app/(protected)/mr/components/BoqReferencePopUp";
 import { formatPriceAED } from "@/lib/formatPrice";
 
 type JoDetailsPopUpProps = {
@@ -86,8 +86,7 @@ export default function JoDetailsPopUp({
     fetchData();
   }, [joId]);
 
-  const formatCurrency = (value: number | string) =>
-    formatPriceAED(value);
+  const formatCurrency = (value: number | string) => formatPriceAED(value);
 
   const formatDate = (value: string | null) => {
     if (!value) return "-";

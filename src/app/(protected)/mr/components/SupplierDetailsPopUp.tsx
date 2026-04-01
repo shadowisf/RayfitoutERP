@@ -3,8 +3,8 @@
 import FormPopUp from "@/app/components/FormPopup";
 import { useState } from "react";
 import Button from "@/app/components/Button";
-import { MrLine } from "../types/mrLine";
-import { SupplierQuotation } from "../types/supplierQuotation";
+import { MrLine } from "../[id]/types/mrLine";
+import { SupplierQuotation } from "../[id]/types/supplierQuotation";
 import { Supplier } from "@/app/(protected)/vendor/types/supplier";
 
 type SupplierDetailsPopUpProps = {

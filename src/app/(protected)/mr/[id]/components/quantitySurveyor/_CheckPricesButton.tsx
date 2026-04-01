@@ -8,7 +8,7 @@ import { SupplierQuotation } from "../../types/supplierQuotation";
 import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
 import { MrLine } from "../../types/mrLine";
-import SupplierDetailsPopUp from "../SupplierDetailsPopUp";
+import SupplierDetailsPopUp from "../../../components/SupplierDetailsPopUp";
 import RejectCommentPopUp from "./RejectPopUp";
 
 type props = {

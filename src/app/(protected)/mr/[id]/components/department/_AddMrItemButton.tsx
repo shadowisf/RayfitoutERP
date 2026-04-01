@@ -579,7 +579,7 @@ export default function AddMrItemButton({
 
             <div className="input-item">
               <label className="custom">
-                <span>BOQ REFERENCE</span>
+                <span>BOQ REF.</span>
                 <small></small>
               </label>
 

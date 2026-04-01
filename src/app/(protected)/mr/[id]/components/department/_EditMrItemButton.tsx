@@ -522,8 +522,8 @@ export default function EditMrItemButton({
 
             <div className="input-item">
               <label className="custom">
-                <span>BILL OF QUANTITY</span>
-                <small>(OPTIONAL)</small>
+                <span>BOQ REF.</span>
+                <small></small>
               </label>
 
               <MultipleSelectBoqItemButton

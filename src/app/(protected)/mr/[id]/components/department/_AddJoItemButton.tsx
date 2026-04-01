@@ -70,7 +70,16 @@ type AttachmentItem = {
   file?: File;
   url?: string;
   fileName?: string;
+  previewUrl?: string;
 };
+
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+
+function isImageFile(fileName?: string): boolean {
+  if (!fileName) return false;
+  const lower = fileName.toLowerCase();
+  return IMAGE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
 
 type props = {
   mrHeaderID: number;
@@ -135,15 +144,22 @@ export default function AddJoItemButton({
     typeLabel: string,
     file: File,
   ) => {
+    const previewUrl = isImageFile(file.name)
+      ? URL.createObjectURL(file)
+      : undefined;
     setAttachments((prev) => [
       ...prev,
-      { type: typeKey, typeLabel, file, fileName: file.name },
+      { type: typeKey, typeLabel, file, fileName: file.name, previewUrl },
     ]);
     setShowAttachmentPopup(false);
   };
 
   const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
+    setAttachments((prev) => {
+      const removed = prev[index];
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -261,7 +277,7 @@ export default function AddJoItemButton({
           header={"ADD JOB"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
-          addButtonLabel={"ADD JOB"}
+          addButtonLabel={"CONFIRM"}
           style={{ minWidth: "1000px" }}
         >
           {/* Job Scope + Contract Type */}
@@ -310,8 +326,10 @@ export default function AddJoItemButton({
             />
           </div>
 
+          <br />
+
           {/* BOQ Section */}
-          <div style={{ marginBottom: "15px" }}>
+          <div>
             <div
               style={{
                 display: "flex",
@@ -449,6 +467,10 @@ export default function AddJoItemButton({
             )}
           </div>
 
+          <br />
+          <br />
+          <br />
+
           {/* Sub-contracted Works Value + Subcontractor Budget */}
           <div className="input-row half">
             <InputItem
@@ -494,64 +516,119 @@ export default function AddJoItemButton({
                   marginBottom: "10px",
                 }}
               >
-                {attachments.map((att, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "12px 15px",
-                      borderRadius: "10px",
-                      border: "1px solid rgba(223,223,223,1)",
-                    }}
-                  >
+                {attachments.map((att, i) => {
+                  const attType = ATTACHMENT_TYPES.find(
+                    (t) => t.key === att.type,
+                  );
+                  const fileSize = att.file?.size
+                    ? att.file.size >= 1024 * 1024
+                      ? `${(att.file.size / (1024 * 1024)).toFixed(1)}mb`
+                      : `${(att.file.size / 1024).toFixed(0)}kb`
+                    : null;
+                  return (
                     <div
+                      key={i}
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "12px",
-                      }}
-                    >
-                      <strong style={{ fontSize: "13px" }}>
-                        {att.typeLabel}
-                      </strong>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
+                        justifyContent: "space-between",
+                        padding: "15px 20px",
+                        borderRadius: "10px",
+                        backgroundColor: "rgba(248,249,251,1)",
                       }}
                     >
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "8px",
-                          backgroundColor: "rgba(255,230,230,1)",
-                          borderRadius: "8px",
-                          padding: "6px 12px",
+                          gap: "16px",
                         }}
                       >
-                        <span style={{ fontSize: "13px", fontWeight: 600 }}>
-                          {att.fileName?.toUpperCase()}
-                        </span>
+                        {attType?.icon && (
+                          <img
+                            src={attType.icon}
+                            alt="icon"
+                            style={{ width: "28px", height: "28px" }}
+                          />
+                        )}
+                        <h4>{att.typeLabel}</h4>
                       </div>
-
-                      <Button
-                        componentType={"button"}
-                        bgColor={"rgba(239, 239, 239, 1)"}
-                        borderColor={"rgba(223, 223, 223, 1)"}
-                        textColor={"black"}
-                        style={{ padding: "7px 7px" }}
-                        onClick={() => removeAttachment(i)}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "50px",
+                        }}
                       >
-                        <img src={trashIcon} alt="delete" />
-                      </Button>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "50px",
+                            backgroundColor: "white",
+                            borderRadius: "10px",
+                            padding: "10px",
+                            border: "1px solid rgba(217, 217, 217, 1)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "10px",
+                              alignItems: "center",
+                            }}
+                          >
+                            <img
+                              src={
+                                att.previewUrl
+                                  ? att.previewUrl
+                                  : "/icons/pdf.svg"
+                              }
+                              alt="file"
+                              style={{
+                                width: "28px",
+                                height: "28px",
+                                borderRadius: att.previewUrl
+                                  ? "4px"
+                                  : undefined,
+                                objectFit: att.previewUrl ? "cover" : undefined,
+                              }}
+                            />
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                              }}
+                            >
+                              <span>{att.fileName?.toUpperCase()}</span>
+                              {fileSize && (
+                                <span
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "rgba(128,128,128,1)",
+                                  }}
+                                >
+                                  {fileSize}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <Button
+                            componentType={"button"}
+                            bgColor={"rgba(239, 239, 239, 1)"}
+                            borderColor={"rgba(223, 223, 223, 1)"}
+                            textColor={"black"}
+                            style={{ padding: "7px 7px" }}
+                            onClick={() => removeAttachment(i)}
+                          >
+                            <img src={trashIcon} alt="delete" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

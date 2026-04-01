@@ -5,9 +5,10 @@ import { useAuth } from "@/app/context/AuthContext";
 import React, { useEffect, useState } from "react";
 import { MrHeader } from "./[id]/types/mrHeader";
 import type { MrLine } from "./[id]/types/mrLine";
-import MrFilterButton from "./[id]/components/_MrFilterButton";
+import MrFilterButton from "./components/_MrFilterButton";
 import BulkQuotationCreator from "./[id]/components/procurement/_BulkQuotationCreator";
 import SupplierAndQuotationButton from "./[id]/components/procurement/_SupplierAndQuotationButton";
+import ExportItemsButton from "./components/_ExportItemsButton";
 
 type TableItem = {
   line_id: number;
@@ -30,6 +31,7 @@ type TableItem = {
   boq_item_number?: string | null;
   boq_description?: string | null;
   has_quotation?: boolean;
+  delivery_location?: string;
 };
 
 type LpoCard = {
@@ -2658,21 +2660,32 @@ function TableView({
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "15px",
+                  justifyContent: "space-between",
                   marginBottom: "20px",
                 }}
               >
-                <h2 style={{ margin: 0 }}>{section.label}</h2>
                 <div
                   style={{
-                    backgroundColor: "black",
-                    color: "white",
-                    borderRadius: "50px",
-                    padding: "4px 12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "15px",
                   }}
                 >
-                  {totalItems} Items
+                  <h2 style={{ margin: 0 }}>{section.label}</h2>
+                  <div
+                    style={{
+                      backgroundColor: "black",
+                      color: "white",
+                      borderRadius: "50px",
+                      padding: "4px 12px",
+                    }}
+                  >
+                    {totalItems} Items
+                  </div>
                 </div>
+                {section.type === "material" && selectedItems.length > 0 && (
+                  <ExportItemsButton selectedItems={selectedItems} />
+                )}
               </div>
 
               {totalItems === 0 ? (
@@ -2695,7 +2708,11 @@ function TableView({
                   <thead>
                     <tr>
                       <th style={{ width: "30px" }}></th>
-                      <th style={{ width: section.type === "material" ? "22%" : "26%" }}>
+                      <th
+                        style={{
+                          width: section.type === "material" ? "22%" : "26%",
+                        }}
+                      >
                         {section.type === "job"
                           ? "BOQ"
                           : section.type === "payment"
@@ -2705,9 +2722,17 @@ function TableView({
                       <th style={{ width: "10%" }}>REQ. QTY</th>
                       <th style={{ width: "14%" }}>REFERENCE</th>
                       <th style={{ width: "14%" }}>REQUESTER</th>
-                      <th style={{ width: section.type === "material" ? "18%" : "22%" }}>PROJECT</th>
+                      <th
+                        style={{
+                          width: section.type === "material" ? "18%" : "22%",
+                        }}
+                      >
+                        PROJECT
+                      </th>
                       <th style={{ width: "12%" }}>STAGE</th>
-                      {section.type === "material" && <th style={{ width: "10%" }}>QUOTATION</th>}
+                      {section.type === "material" && (
+                        <th style={{ width: "10%" }}>QUOTATION</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -2762,7 +2787,13 @@ function TableView({
                                 />
                               </svg>
                             </td>
-                            <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <td
+                              style={{
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
                               <div
                                 style={{
                                   display: "flex",
@@ -2832,7 +2863,14 @@ function TableView({
                             catItems.map((item) => (
                               <tr key={`${item.mr_header_id}-${item.line_id}`}>
                                 <td></td>
-                                <td style={{ paddingLeft: "30px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                <td
+                                  style={{
+                                    paddingLeft: "30px",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
                                   <div
                                     style={{
                                       display: "flex",
@@ -2859,20 +2897,29 @@ function TableView({
                                         }}
                                       />
                                     )}
-                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    <span
+                                      style={{
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                      }}
+                                    >
                                       {item.material_description || "-"}
                                     </span>
                                   </div>
                                 </td>
                                 <td>
-                                  {item.quantity && Number(item.quantity) !== 0
-                                    ? <>
-                                        {Number.isInteger(Number(item.quantity))
-                                          ? Number(item.quantity)
-                                          : Number(item.quantity).toFixed(2)}{" "}
-                                        {item.unit}
-                                      </>
-                                    : ""}
+                                  {item.quantity &&
+                                  Number(item.quantity) !== 0 ? (
+                                    <>
+                                      {Number.isInteger(Number(item.quantity))
+                                        ? Number(item.quantity)
+                                        : Number(item.quantity).toFixed(2)}{" "}
+                                      {item.unit}
+                                    </>
+                                  ) : (
+                                    ""
+                                  )}
                                 </td>
                                 <td>
                                   <div
@@ -2898,7 +2945,13 @@ function TableView({
                                     </Button>
                                   </div>
                                 </td>
-                                <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                <td
+                                  style={{
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
                                   <div
                                     style={{
                                       display: "flex",
@@ -2931,12 +2984,26 @@ function TableView({
                                             .slice(0, 2)
                                         : "?"}
                                     </div>
-                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    <span
+                                      style={{
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                      }}
+                                    >
                                       {item.requested_by || "-"}
                                     </span>
                                   </div>
                                 </td>
-                                <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.project_name || "-"}</td>
+                                <td
+                                  style={{
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {item.project_name || "-"}
+                                </td>
                                 <td>
                                   <span
                                     style={{

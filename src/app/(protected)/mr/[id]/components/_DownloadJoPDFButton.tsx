@@ -8,6 +8,21 @@ import { JoLine } from "../types/joLine";
 import { toast } from "@/app/components/Toast";
 import { JoPDF } from "./JoPDF";
 
+const IMAGE_EXTENSIONS = [
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".bmp",
+  ".webp",
+  ".svg",
+];
+
+const isImageUrl = (url: string): boolean => {
+  const lower = url.toLowerCase();
+  return IMAGE_EXTENSIONS.some((ext) => lower.includes(ext));
+};
+
 type props = {
   mrHeader: MrHeader;
   joLines: JoLine[];
@@ -60,51 +75,28 @@ export default function DownloadJoPDFButton({ mrHeader, joLines }: props) {
     setIsProcessing(true);
 
     try {
-      console.log("Processing JO line images...");
-
-      // Process JO lines and convert attachment images to base64
+      // Process JO lines: convert typed attachment images to base64
       const processedLines = await Promise.all(
         joLines.map(async (line) => {
-          if (!line.attachment) return line;
+          const typedAttachments = line.jo_attachments || [];
+          if (typedAttachments.length === 0) return line;
 
-          try {
-            let urls: string[] = [];
+          const processedAttachments = await Promise.all(
+            typedAttachments.map(async (att) => {
+              const fileUrl = att.file_url || "";
+              if (!fileUrl || !isImageUrl(fileUrl)) return att;
 
-            if (Array.isArray(line.attachment)) {
-              urls = line.attachment as unknown as string[];
-            } else if (typeof line.attachment === "string") {
-              if (line.attachment.trim() === "") return line;
-              try {
-                urls = JSON.parse(line.attachment);
-              } catch {
-                urls = [line.attachment];
-              }
-            }
+              const base64 = await urlToBase64(fileUrl);
+              if (!base64) return att;
 
-            if (!Array.isArray(urls) || urls.length === 0) return line;
+              return { ...att, file_url: base64 };
+            }),
+          );
 
-            console.log(
-              `Processing ${urls.length} images for item: ${line.job_description}`,
-            );
-
-            // Convert all images to base64
-            const base64Images = await Promise.all(
-              urls.map((url) => urlToBase64(url)),
-            );
-
-            // Filter out failed conversions
-            const validImages = base64Images.filter((img) => img !== "");
-
-            console.log(`Successfully converted ${validImages.length} images`);
-
-            return {
-              ...line,
-              attachment: JSON.stringify(validImages),
-            };
-          } catch (error) {
-            console.error("Error processing line attachments:", error);
-            return line;
-          }
+          return {
+            ...line,
+            jo_attachments: processedAttachments,
+          };
         }),
       );
 
@@ -113,23 +105,17 @@ export default function DownloadJoPDFButton({ mrHeader, joLines }: props) {
         <JoPDF mrHeader={mrHeader} joLines={processedLines} />,
       ).toBlob();
 
-      console.log("JO PDF generated successfully");
-
       // Create download link
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = `JO-${String(mrHeader.id).padStart(5, "0")}.pdf`;
 
-      // Trigger download
       document.body.appendChild(link);
       link.click();
 
-      // Cleanup
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
-      console.log("Download complete");
     } catch (error) {
       console.error("Error generating JO PDF:", error);
       toast("Failed to generate PDF. Please try again.", "error");

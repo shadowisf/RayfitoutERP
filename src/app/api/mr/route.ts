@@ -57,7 +57,8 @@ export async function POST(req: Request) {
           vw.project_name,
           vw.progress_name,
           vw.progress_id,
-          (SELECT COUNT(*) FROM mr_line_supplier_quotation sq WHERE sq.mr_line_id = ml.id) > 0 AS has_quotation
+          (SELECT COUNT(*) FROM mr_line_supplier_quotation sq WHERE sq.mr_line_id = ml.id) > 0 AS has_quotation,
+          ml.delivery_location
         FROM mr_lines ml
         JOIN mr_headers mh ON mh.id = ml.mr_header_id
         JOIN vw_mr_headers vw ON vw.id = mh.id
@@ -83,7 +84,8 @@ export async function POST(req: Request) {
           mh.department_id,
           vw.project_name,
           lpo_pr.value AS progress_name,
-          l.progress_id
+          l.progress_id,
+          ml.delivery_location
         FROM lpo_mr_line lml
         JOIN lpo l ON l.id = lml.lpo_id
         JOIN mr_lines ml ON ml.id = lml.mr_line_id

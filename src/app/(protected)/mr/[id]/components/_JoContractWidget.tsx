@@ -24,12 +24,17 @@ export default function JoContractWidget({
   const { userInfo } = useAuth();
   const userDeptId = userInfo?.departmentID;
   const isManager = userDeptId === 8;
+  const isProcurement = userDeptId === 9;
   const isOwnDepartment = userDeptId === departmentId;
 
-  // Upload only on draft stage
-  const canUpload = progressId === 1;
-  // Delete: own department or manager
-  const canDelete = isOwnDepartment || isManager;
+  // Upload: procurement or manager, from quotations (7) through completed (25)
+  const canUpload =
+    (isManager || isProcurement) &&
+    [7, 10, 11, 25].includes(progressId);
+  // Delete: procurement or manager, same stages
+  const canDelete =
+    (isManager || isProcurement) &&
+    [7, 10, 11, 25].includes(progressId);
   const uploadIcon = "/icons/upload.svg";
   const deleteIcon = "/icons/trash.svg";
 

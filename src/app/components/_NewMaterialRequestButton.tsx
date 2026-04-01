@@ -249,7 +249,7 @@ export default function NewMrButton() {
               gap: "20px",
             }}
           >
-            {/* <label
+            <label
               style={{
                 position: "relative",
                 border: `1px solid ${mode === "job" ? "rgba(0, 163, 93, 1)" : "rgba(217, 217, 217, 1)"}`,
@@ -320,7 +320,7 @@ export default function NewMrButton() {
                   JOB ORDER
                 </span>
               </div>
-            </label> */}
+            </label>
 
             <label
               style={{
@@ -486,10 +486,10 @@ export default function NewMrButton() {
         >
           <div className="input-row full">
             <SingleSelectDropdown
-              label={"SELECT JOB ORDER"}
+              label={"JOB ORDER"}
               selectedValue={selectedJoId}
               onChange={setSelectedJoId}
-              placeholder={"SELECT JOB ORDER TO REFERENCE"}
+              placeholder={"SELECT JOB ORDER"}
               dbData={jobOrders.map((jo: any) => ({
                 id: jo.id,
                 name: `JO-${String(jo.id).padStart(5, "0")} — ${jo.project_name || "No Project"} — ${jo.requested_by}`,

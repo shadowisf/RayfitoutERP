@@ -7,7 +7,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import DownloadLPOButton from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/_DownloadLPOButton";
 import { toast } from "@/app/components/Toast";
-import BoqReferencePopUp from "@/app/(protected)/mr/[id]/components/BoqReferencePopUp";
+import BoqReferencePopUp from "@/app/(protected)/mr/components/BoqReferencePopUp";
 import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import { formatPriceAED } from "@/lib/formatPrice";
@@ -73,8 +73,7 @@ export default function LpoDetailsPopUp({
     fetchLpoDetails();
   }, [lpoId]);
 
-  const formatCurrency = (value: number | string) =>
-    formatPriceAED(value);
+  const formatCurrency = (value: number | string) => formatPriceAED(value);
 
   const formatDate = (value: string | null) => {
     if (!value) return "-";

@@ -38,6 +38,10 @@ export default function EditMrHeaderButton({
 
   const pencilIcon = "/icons/pencil.svg";
 
+  // Purpose IDs specific to each request type
+  const MR_PURPOSE_IDS = [1, 2, 3, 4, 5];
+  const JO_PURPOSE_IDS = [1, 2, 6, 7, 8, 9];
+
   useEffect(function () {
     fetch("/api/mr/getPurposeReasonValues")
       .then((res) => res.json())
@@ -136,7 +140,13 @@ export default function EditMrHeaderButton({
                 selectedValue={purposeReasonID}
                 onChange={setPurposeReasonID}
                 placeholder={"SELECT PURPOSE/REASON"}
-                dbData={purposeReasonValues}
+                dbData={purposeReasonValues.filter((item: any) =>
+                  mrHeader.type === "job"
+                    ? JO_PURPOSE_IDS.includes(item.id)
+                    : mrHeader.type === "material"
+                      ? MR_PURPOSE_IDS.includes(item.id)
+                      : true,
+                )}
                 idField="id"
                 labelField="value"
                 tooltipField="tooltip"
