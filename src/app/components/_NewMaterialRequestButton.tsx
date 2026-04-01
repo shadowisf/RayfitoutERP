@@ -249,7 +249,7 @@ export default function NewMrButton() {
               gap: "20px",
             }}
           >
-            <label
+            {/* <label
               style={{
                 position: "relative",
                 border: `1px solid ${mode === "job" ? "rgba(0, 163, 93, 1)" : "rgba(217, 217, 217, 1)"}`,
@@ -320,7 +320,7 @@ export default function NewMrButton() {
                   JOB ORDER
                 </span>
               </div>
-            </label>
+            </label> */}
 
             <label
               style={{
