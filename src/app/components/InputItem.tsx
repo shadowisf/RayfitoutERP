@@ -89,14 +89,16 @@ export default function InputItem({
               : {}),
           }}
         >
-          <label className="custom">
-            <span>{label}</span>{" "}
-            {!required && !noOptionalLabel && (
-              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                (OPTIONAL)
-              </small>
-            )}
-          </label>
+          {label ? (
+            <label className="custom">
+              <span>{label}</span>
+              {!required && !noOptionalLabel && (
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  (OPTIONAL)
+                </small>
+              )}
+            </label>
+          ) : null}
           <input
             type="text"
             value={value || ""}
