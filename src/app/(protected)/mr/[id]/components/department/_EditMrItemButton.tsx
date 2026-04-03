@@ -422,8 +422,6 @@ export default function EditMrItemButton({
           {/* Preview Table */}
           {selectedRow && (
             <>
-              <br />
-
               <div className="input-row full">
                 <div style={{ width: "100%" }}>
                   <table
@@ -432,19 +430,54 @@ export default function EditMrItemButton({
                   >
                     <thead>
                       <tr>
-                        <th style={{ width: "5%" }}>#</th>
-                        <th style={{ width: "40%" }}>ITEM</th>
-                        <th style={{ width: "15%" }}>BRAND</th>
-                        <th style={{ width: "15%" }}>QTY</th>
-                        <th style={{ width: "15%" }}>UNIT</th>
-                        <th style={{ width: "10%" }}></th>
+                        <th>#</th>
+                        <th>ITEM</th>
+                        <th>BRAND</th>
+                        <th>QTY</th>
+                        <th>UNIT</th>
+                        <th></th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
                         <td>1</td>
-                        <td>{selectedRow.materialDescription}</td>
-                        <td>{selectedRow.brand || "-"}</td>
+                        <td>
+                          <InputItem
+                            label=""
+                            value={selectedRow.materialDescription}
+                            type="text"
+                            placeholder="ITEM"
+                            noOptionalLabel
+                            style={{ width: "500px" }}
+                            onChange={(e) =>
+                              setSelectedRow((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      materialDescription: e.target.value,
+                                    }
+                                  : prev,
+                              )
+                            }
+                          />
+                        </td>
+                        <td>
+                          <InputItem
+                            label=""
+                            value={selectedRow.brand}
+                            type="text"
+                            placeholder="BRAND"
+                            noOptionalLabel
+                            onChange={(e) =>
+                              setSelectedRow((prev) =>
+                                prev
+                                  ? { ...prev, brand: e.target.value }
+                                  : prev,
+                              )
+                            }
+                            style={{ width: "120px" }}
+                          />
+                        </td>
                         <td>
                           <InputItem
                             label=""
