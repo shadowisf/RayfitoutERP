@@ -40,6 +40,7 @@ export default function MultipleSelectBoqItemButton({
   const arrowRight = "/icons/arrow-right.svg";
   const searchIcon = "/icons/search.svg";
   const crossIcon = "/icons/cross-small.svg";
+  const externalLinkIcon = "/icons/external-link.svg";
 
   const { userInfo } = useAuth();
 
@@ -1118,7 +1119,7 @@ export default function MultipleSelectBoqItemButton({
         style={style}
       >
         {currentBoqLineIDs.length > 0 && selectedBoqInfo ? (
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <>
             <span
               style={{
                 maxWidth: "300px",
@@ -1136,9 +1137,17 @@ export default function MultipleSelectBoqItemButton({
               style={{ filter: "invert(1)" }}
               onClick={handleReset}
             />
-          </div>
+          </>
         ) : (
-          "SELECT BOQ ITEMS"
+          <>
+            <span>SELECT BOQ ITEMS</span>
+            <img
+              src={externalLinkIcon}
+              alt="external link"
+              style={{ filter: "invert(1)", marginBottom: "2px" }}
+              onClick={handleReset}
+            />
+          </>
         )}
       </Button>
 

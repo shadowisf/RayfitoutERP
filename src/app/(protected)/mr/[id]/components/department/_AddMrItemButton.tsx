@@ -1,18 +1,25 @@
 "use client";
 
 import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
+import MultipleSelectMaterialItemButton, {
+  PredefinedItem,
+} from "@/app/components/_MultipleSelectMaterialItemButton";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import { UNIT_OPTIONS, mapPredefinedUnit } from "@/constants/units";
 import InputItem from "@/app/components/InputItem";
-import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import CreateCategoryButton from "./_CreateCategoryButton";
-import CreateSubCategoryButton from "./_CreateSubcategoryButton";
+import { useState, useEffect, useRef } from "react";
+
+type SelectedMaterialRow = {
+  predefinedItem: PredefinedItem;
+  quantity: string;
+  unit: string;
+  unitWasNull: boolean;
+};
 
 type AddMrItemButtonProps = {
   mrHeaderID: number;
@@ -33,327 +40,242 @@ export default function AddMrItemButton({
   bgColor = "rgba(239, 239, 239, 1)",
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
-  autoCategoryID,
-  autoSubCategoryIDs,
   children,
   full,
   style,
 }: AddMrItemButtonProps) {
   const router = useRouter();
+  const crossSmallIcon = "/icons/cross-small.svg";
+  const searchIcon = "/icons/search.svg";
+  const arrowRight = "/icons/arrow-right.svg";
+  const pencilIcon = "/icons/pencil.svg";
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const [categoriesManuallySelected, setCategoriesManuallySelected] =
-    useState(false);
-  const [userInitiatedCategorySelection, setUserInitiatedCategorySelection] =
-    useState(false);
+  // Selected material items with qty/unit
+  const [selectedRows, setSelectedRows] = useState<SelectedMaterialRow[]>([]);
+  const [selectedItemIDs, setSelectedItemIDs] = useState<number[]>([]);
 
-  // const [predefinedItems, setPredefinedItems] = useState<any[]>([]);
-  // const [selectedPredefinedItem, setSelectedPredefinedItem] = useState<
-  //   string | number
-  // >("");
+  // Preview filter states
+  const [previewActiveCategory, setPreviewActiveCategory] =
+    useState<string>("ALL");
+  const [previewSearchQuery, setPreviewSearchQuery] = useState("");
+  const previewScrollRef = useRef<HTMLDivElement>(null);
+  const [previewShowLeftArrow, setPreviewShowLeftArrow] = useState(false);
+  const [previewShowRightArrow, setPreviewShowRightArrow] = useState(false);
 
+  // NEW MATERIAL popup state
+  const [showNewMaterial, setShowNewMaterial] = useState(false);
+  const [newMatDescription, setNewMatDescription] = useState("");
+  const [newMatCategoryID, setNewMatCategoryID] = useState<string | number>("");
+  const [newMatSubCategoryID, setNewMatSubCategoryID] = useState<
+    string | number
+  >("");
+  const [newMatUnit, setNewMatUnit] = useState("");
+  const [newMatBrand, setNewMatBrand] = useState("");
   const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
     [],
   );
   const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
     any[]
   >([]);
-  const [locationValues, setLocationValues] = useState<any[]>([]);
 
-  const [materialCategoryID, setMaterialCategoryID] = useState<string | number>(
-    "",
-  );
-  // const [materialSubCategoryID, setMaterialSubCategoryID] = useState<
-  //   string | number
-  // >("");
-  const [materialSubCategoryIDs, setMaterialSubCategoryIDs] = useState<
-    (string | number)[]
-  >([]);
+  // Shared fields
   const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
-  const [materialDescription, setMaterialDescription] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState("");
-  const [notes, setNotes] = useState("");
-  const [brand, setBrand] = useState("");
   const [specification, setSpecification] = useState("");
   const [deliveryLocation, setDeliveryLocation] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [locationValues, setLocationValues] = useState<any[]>([]);
 
-  const [inventoryMatch, setInventoryMatch] = useState<{
-    id: number;
-    description: string;
-  } | null>(null);
-  const [isSearchingInventory, setIsSearchingInventory] = useState(false);
+  // Fetch location values on mount
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, { method: "GET" })
+      .then((res) => res.json())
+      .then((data) => setLocationValues(data.map((item: any) => item.name)))
+      .catch(console.error);
+  }, []);
 
-  async function refreshSubcategories() {
-    if (materialCategoryID && userInitiatedCategorySelection) {
-      // If a category is selected, fetch only its subcategories
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            category_id: materialCategoryID,
-          }),
-        },
-      );
-      const data = await res.json();
-      setMaterialSubCategoryValues(data);
-    } else {
-      // If no category selected, fetch all subcategories
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
-        {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-      const data = await res.json();
-      setMaterialSubCategoryValues(data);
-    }
-  }
-
-  async function getMaterialCategoriesAndSubcategories() {
-    // Fetch categories
+  // Fetch categories + all subcategories when NEW MATERIAL popup opens
+  useEffect(() => {
+    if (!showNewMaterial) return;
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
     )
       .then((res) => res.json())
-      .then((data) => {
-        setMaterialCategoryValues(data);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
+      .then(setMaterialCategoryValues)
+      .catch(console.error);
 
-    // ✅ Use the new refresh function instead of fetching all subcategories
-    await refreshSubcategories();
-  }
-
-  // Fetch initial data
-  useEffect(() => {
-    getMaterialCategoriesAndSubcategories();
-
-    // // Fetch predefined items
-    // fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`)
-    //   .then((res) => res.json())
-    //   .then((data) => setPredefinedItems(data))
-    //   .catch((err) => console.error("Error fetching predefined items:", err));
-
-    // Fetch projects for delivery location
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/projects`, {
-      method: "GET",
-    })
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+      { method: "GET", headers: { "Content-Type": "application/json" } },
+    )
       .then((res) => res.json())
-      .then((data) => {
-        const names = data.map((item: any) => item.name);
-        setLocationValues(names);
-      });
-  }, []);
+      .then(setMaterialSubCategoryValues)
+      .catch(console.error);
+  }, [showNewMaterial]);
 
-  // Set auto-populated values when modal opens
-  useEffect(() => {
-    if (!isOpen) return;
-
-    if (autoCategoryID) {
-      // First fetch the subcategories for this category
-      fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            category_id: autoCategoryID,
-          }),
-        },
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          setMaterialSubCategoryValues(data);
-
-          // Set the category
-          setMaterialCategoryID(autoCategoryID);
-          setCategoriesManuallySelected(true);
-          setUserInitiatedCategorySelection(true);
-
-          // Now set the subcategories - this needs to happen AFTER we have the data
-          if (autoSubCategoryIDs && autoSubCategoryIDs.length > 0) {
-            const idsArray = Array.isArray(autoSubCategoryIDs)
-              ? autoSubCategoryIDs
-              : [autoSubCategoryIDs];
-
-            const normalizedIds = idsArray.map((id) =>
-              typeof id === "string" ? parseInt(id) : id,
-            );
-
-            // IMPORTANT: Set this in the next tick to ensure state is ready
-            setTimeout(() => {
-              setMaterialSubCategoryIDs(normalizedIds);
-            }, 0);
-          }
-        });
-    } else if (autoSubCategoryIDs && autoSubCategoryIDs.length > 0) {
-      // If only subcategories are provided without category
-      const idsArray = Array.isArray(autoSubCategoryIDs)
-        ? autoSubCategoryIDs
-        : [autoSubCategoryIDs];
-
-      const normalizedIds = idsArray.map((id) =>
-        typeof id === "string" ? parseInt(id) : id,
-      );
-
-      setTimeout(() => {
-        setMaterialSubCategoryIDs(normalizedIds);
-      }, 0);
-    }
-  }, [isOpen, autoCategoryID, autoSubCategoryIDs]);
-
-  // Debounced inventory search when user types item description
-  useEffect(() => {
-    if (!materialDescription || materialDescription.trim().length < 3) {
-      setInventoryMatch(null);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setIsSearchingInventory(true);
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory/searchByDescription`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              descriptions: [materialDescription.trim()],
-            }),
-          },
-        );
-        const data = await res.json();
-        if (data.success && data.data) {
-          const match = data.data[materialDescription.trim()];
-          setInventoryMatch(
-            match ? { id: match.id, description: match.description } : null,
-          );
-        } else {
-          setInventoryMatch(null);
-        }
-      } catch {
-        setInventoryMatch(null);
-      } finally {
-        setIsSearchingInventory(false);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [materialDescription]);
-
-  // Filter subcategories based on selected category - only if category was selected by user
-  useEffect(() => {
-    if (materialCategoryID && userInitiatedCategorySelection) {
-      fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            category_id: materialCategoryID,
-          }),
-        },
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          setMaterialSubCategoryValues(data);
-        })
-        .catch((err) => {
-          console.error(err);
-        });
-    } else {
-      // If category is reset, load all subcategories
-      fetch("/api/mr/getMaterialSubCategoryValues", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setMaterialSubCategoryValues(data);
-        });
-    }
-  }, [materialCategoryID, userInitiatedCategorySelection]);
-
-  // Handle subcategory change - auto-select category if needed
-  const handleSubCategoryChange = (selectedIds: (string | number)[]) => {
-    setMaterialSubCategoryIDs(selectedIds);
-
-    // If subcategories are cleared
-    if (selectedIds.length === 0) {
-      if (!categoriesManuallySelected) {
-        setMaterialCategoryID("");
-      }
-      // Reset to all subcategories
-      fetch("/api/mr/getMaterialSubCategoryValues", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setMaterialSubCategoryValues(data);
-        });
-      return;
-    }
-
-    // Get category from first selected subcategory
-    const firstSelectedSubCategory = materialSubCategoryValues.find(
-      (sc: any) => sc.id === selectedIds[0],
-    ) as any;
-
-    if (firstSelectedSubCategory?.category_id) {
-      if (categoriesManuallySelected && materialCategoryID) {
-        // Don't override the manually selected category
-      } else {
-        // Auto-select the category based on subcategory
-        setMaterialCategoryID(firstSelectedSubCategory.category_id);
+  // Handle NEW MATERIAL subcategory selection — auto-fill category
+  const handleNewMatSubCategoryChange = (val: string | number) => {
+    setNewMatSubCategoryID(val);
+    if (val && materialSubCategoryValues.length > 0) {
+      const subCat = materialSubCategoryValues.find((sc: any) => sc.id === val);
+      if (subCat?.category_id && !newMatCategoryID) {
+        setNewMatCategoryID(subCat.category_id);
       }
     }
   };
 
-  // // Handle predefined item selection
-  // const handlePredefinedItemChange = (itemId: string | number) => {
-  //   setSelectedPredefinedItem(itemId);
-  //   if (!itemId) {
-  //     setMaterialDescription("");
-  //     setMaterialCategoryID("");
-  //     setMaterialSubCategoryID("");
-  //     setUnit("");
-  //     setBrand("");
-  //     setCategoriesManuallySelected(false);
-  //     setUserInitiatedCategorySelection(false);
-  //     return;
-  //   }
-  //   const item = predefinedItems.find((p: any) => p.id === itemId);
-  //   if (!item) return;
-  //   setMaterialDescription(item.material_description);
-  //   setMaterialCategoryID(item.category_id);
-  //   setCategoriesManuallySelected(true);
-  //   setUserInitiatedCategorySelection(true);
-  //   fetch(
-  //     `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
-  //     { method: "POST", headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({ category_id: item.category_id }) },
-  //   ).then((res) => res.json()).then((data) => {
-  //     setMaterialSubCategoryValues(data);
-  //     setTimeout(() => { setMaterialSubCategoryID(item.subcategory_id); }, 0);
-  //   });
-  //   if (item.unit) { setUnit(mapPredefinedUnit(item.unit)); } else { setUnit(""); }
-  //   setBrand(item.brand || "");
-  // };
+  // Handle NEW MATERIAL submit
+  const handleNewMaterialSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  // Handle category change
-  const handleCategoryChange = (categoryId: string | number) => {
-    setCategoriesManuallySelected(true);
-    setUserInitiatedCategorySelection(true);
-    setMaterialCategoryID(categoryId);
+    if (!newMatDescription.trim()) return;
+    if (!newMatCategoryID) return;
+    if (!newMatSubCategoryID) return;
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            material_description: newMatDescription.trim(),
+            category_id: Number(newMatCategoryID),
+            subcategory_id: Number(newMatSubCategoryID),
+            unit: newMatUnit || null,
+            brand: newMatBrand || null,
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        toast("Failed to create material", "error");
+        return;
+      }
+
+      const newItem: PredefinedItem = await res.json();
+      toast(`${newItem.material_description} created`, "success");
+
+      // Add to selected rows
+      const newRow: SelectedMaterialRow = {
+        predefinedItem: newItem,
+        quantity: "",
+        unit: newItem.unit ? mapPredefinedUnit(newItem.unit) : "",
+        unitWasNull: !newItem.unit,
+      };
+      setSelectedRows((prev) => [...prev, newRow]);
+      setSelectedItemIDs((prev) => [...prev, newItem.id]);
+
+      // Reset and close
+      setShowNewMaterial(false);
+      setNewMatDescription("");
+      setNewMatCategoryID("");
+      setNewMatSubCategoryID("");
+      setNewMatUnit("");
+      setNewMatBrand("");
+    } catch {
+      toast("Failed to create material", "error");
+    }
+  };
+
+  // Preview category tabs scroll
+  const checkPreviewScroll = () => {
+    if (previewScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = previewScrollRef.current;
+      setPreviewShowLeftArrow(scrollLeft > 0);
+      setPreviewShowRightArrow(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  const scrollPreview = (direction: "left" | "right") => {
+    if (previewScrollRef.current) {
+      previewScrollRef.current.scrollBy({
+        left: direction === "left" ? -300 : 300,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  // Get preview categories from selected rows
+  const previewCategories = [
+    ...new Set(
+      selectedRows.map(
+        (r) => r.predefinedItem.category_name || "Uncategorized",
+      ),
+    ),
+  ];
+
+  // Filter selected rows for preview
+  const filteredPreviewRows = selectedRows.filter((row) => {
+    const matchesCategory =
+      previewActiveCategory === "ALL" ||
+      (row.predefinedItem.category_name || "Uncategorized") ===
+        previewActiveCategory;
+
+    const matchesSearch =
+      !previewSearchQuery.trim() ||
+      row.predefinedItem.material_description
+        ?.toLowerCase()
+        .includes(previewSearchQuery.toLowerCase()) ||
+      row.predefinedItem.item_code
+        ?.toLowerCase()
+        .includes(previewSearchQuery.toLowerCase()) ||
+      row.predefinedItem.brand
+        ?.toLowerCase()
+        .includes(previewSearchQuery.toLowerCase());
+
+    return matchesCategory && matchesSearch;
+  });
+
+  // Handle material items selection from popup
+  const handleMaterialSelect = (items: PredefinedItem[]) => {
+    const newIDs = items.map((i) => i.id);
+    setSelectedItemIDs(newIDs);
+
+    // Keep existing rows that are still selected, add new ones
+    setSelectedRows((prev) => {
+      const existingMap = new Map(prev.map((r) => [r.predefinedItem.id, r]));
+      return items.map((item) => {
+        if (existingMap.has(item.id)) {
+          return existingMap.get(item.id)!;
+        }
+        return {
+          predefinedItem: item,
+          quantity: "",
+          unit: item.unit ? mapPredefinedUnit(item.unit) : "",
+          unitWasNull: !item.unit,
+        };
+      });
+    });
+  };
+
+  // Update row quantity
+  const updateRowQuantity = (index: number, val: string) => {
+    if (val !== "" && !/^\d*\.?\d*$/.test(val)) return;
+    setSelectedRows((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], quantity: val };
+      return updated;
+    });
+  };
+
+  // Update row unit
+  const updateRowUnit = (index: number, val: string) => {
+    setSelectedRows((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], unit: val };
+      return updated;
+    });
+  };
+
+  // Remove row
+  const removeRow = (itemId: number) => {
+    setSelectedRows((prev) => {
+      const updated = prev.filter((r) => r.predefinedItem.id !== itemId);
+      setSelectedItemIDs(updated.map((r) => r.predefinedItem.id));
+      return updated;
+    });
   };
 
   // Handle BOQ selection
@@ -364,15 +286,26 @@ export default function AddMrItemButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    // Validation
-    if (!materialCategoryID) {
-      toast("Please select a material category", "error");
+    if (selectedRows.length === 0) {
+      toast("Please select at least one material item", "error");
       return;
     }
 
-    if (materialSubCategoryIDs.length === 0) {
-      toast("Please select at least one material subcategory", "error");
-      return;
+    for (const row of selectedRows) {
+      if (!row.quantity || Number(row.quantity) <= 0) {
+        toast(
+          `Please enter a quantity for ${row.predefinedItem.material_description}`,
+          "error",
+        );
+        return;
+      }
+      if (!row.unit) {
+        toast(
+          `Please select a unit for ${row.predefinedItem.material_description}`,
+          "error",
+        );
+        return;
+      }
     }
 
     if (boqLineIDs.length === 0) {
@@ -390,89 +323,80 @@ export default function AddMrItemButton({
 
         const uploadRes = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
-          {
-            method: "POST",
-            body: formData,
-          },
+          { method: "POST", body: formData },
         );
 
-        if (!uploadRes.ok) {
-          throw new Error("Failed to upload file");
-        }
-
+        if (!uploadRes.ok) throw new Error("Failed to upload file");
         const uploadResult = await uploadRes.json();
         attachmentUrl = uploadResult.urls[0];
       }
 
-      // // If a predefined item was selected and it had no unit, save the user-selected unit back
-      // if (selectedPredefinedItem && unit) {
-      //   const selectedItem = predefinedItems.find(
-      //     (p: any) => p.id === selectedPredefinedItem,
-      //   );
-      //   if (selectedItem && !selectedItem.unit) {
-      //     await fetch(
-      //       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
-      //       { method: "PUT", headers: { "Content-Type": "application/json" },
-      //         body: JSON.stringify({ id: selectedPredefinedItem, unit }) },
-      //     );
-      //   }
-      // }
+      for (const row of selectedRows) {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "createMrLine",
+            mr_header_id: mrHeaderID,
+            material_category_id: row.predefinedItem.category_id,
+            material_subcategory_ids: [row.predefinedItem.subcategory_id],
+            material_description: row.predefinedItem.material_description,
+            quantity: Number(row.quantity),
+            unit: row.unit,
+            notes: null,
+            brand: row.predefinedItem.brand || null,
+            specification: specification || null,
+            delivery_location: deliveryLocation,
+            boq_line_ids: boqLineIDs,
+            attachment: attachmentUrl ? JSON.stringify(attachmentUrl) : null,
+          }),
+        });
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "createMrLine",
-          mr_header_id: mrHeaderID,
-          material_category_id: materialCategoryID,
-          material_subcategory_ids: materialSubCategoryIDs,
-          material_description: materialDescription,
-          quantity: Number(quantity),
-          unit,
-          notes,
-          brand,
-          specification,
-          delivery_location: deliveryLocation,
-          boq_line_ids: boqLineIDs,
-          attachment: JSON.stringify(attachmentUrl),
-        }),
-      });
+        if (!res.ok) {
+          const errorData = await res.json();
+          toast(
+            errorData.error ||
+              `Failed to add ${row.predefinedItem.material_description}`,
+            "error",
+          );
+          return;
+        }
 
-      if (res.ok) {
-        toast(`${materialDescription} added`, "success");
-
-        // Reset form
-        setIsOpen(false);
-        // setSelectedPredefinedItem("");
-        setMaterialCategoryID("");
-        setMaterialSubCategoryIDs([]);
-        setMaterialDescription("");
-        setQuantity("");
-        setUnit("");
-        setNotes("");
-        setBoqLineIDs([]);
-        setBrand("");
-        setSpecification("");
-        setDeliveryLocation("");
-        setAttachment(null);
-        setCategoriesManuallySelected(false);
-        setUserInitiatedCategorySelection(false);
-        setInventoryMatch(null);
-
-        router.refresh();
-      } else {
-        const errorData = await res.json();
-        toast(
-          errorData.error || "Failed to add material request item",
-          "error",
-        );
+        // Save unit back if it was null
+        if (row.unitWasNull && row.unit) {
+          await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: row.predefinedItem.id,
+                unit: row.unit,
+              }),
+            },
+          );
+        }
       }
+
+      toast(
+        `${selectedRows.length} item${selectedRows.length !== 1 ? "s" : ""} added`,
+        "success",
+      );
+
+      setIsOpen(false);
+      setSelectedRows([]);
+      setSelectedItemIDs([]);
+      setBoqLineIDs([]);
+      setSpecification("");
+      setDeliveryLocation("");
+      setAttachment(null);
+      setPreviewActiveCategory("ALL");
+      setPreviewSearchQuery("");
+
+      router.refresh();
     } catch (error) {
       console.error("Submit error:", error);
-      toast(
-        "Failed to add material request item. Something went wrong",
-        "error",
-      );
+      toast("Failed to add material request items", "error");
     }
   }
 
@@ -497,92 +421,337 @@ export default function AddMrItemButton({
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          {/* Category and Subcategory Row */}
-          <div className="input-row half">
-            <SingleSelectDropdown
-              label={"CATEGORY"}
-              dbData={materialCategoryValues}
-              selectedValue={materialCategoryID}
-              onChange={handleCategoryChange}
-              placeholder="SELECT CATEGORY"
-              required
-              style={{ width: "350px" }}
-              bottomButtonComponent={
-                <CreateCategoryButton
-                  onSuccess={() => {
-                    getMaterialCategoriesAndSubcategories();
+          {/* Material Items Selection */}
+          <div className="input-row full">
+            <div className="input-item" style={{ width: "100%" }}>
+              {selectedRows.length > 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    justifyContent: "space-between",
                   }}
-                />
-              }
-            />
+                >
+                  <label className="custom" style={{ margin: 0 }}>
+                    <span>MATERIAL ITEM(S)</span>
+                  </label>
 
-            <MultiSelectDropdown
-              label={"SUBCATEGORIES"}
-              dbData={materialSubCategoryValues}
-              selectedValues={materialSubCategoryIDs}
-              onChange={handleSubCategoryChange}
-              placeholder="SELECT SUBCATEGORIES"
-              required
-              style={{ width: "350px" }}
-              bottomButtonComponent={
-                <CreateSubCategoryButton
-                  materialCategoryID={Number(materialCategoryID)}
-                  onSuccess={() => {
-                    refreshSubcategories();
-                  }}
-                />
-              }
-            />
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    <Button
+                      componentType={"button"}
+                      bgColor={"black"}
+                      borderColor={"black"}
+                      textColor={"white"}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setShowNewMaterial(true);
+                      }}
+                    >
+                      NEW MATERIAL +
+                    </Button>
 
-            {/* <SingleSelectDropdown
-              label={"SUBCATEGORY"}
-              dbData={materialSubCategoryValues}
-              selectedValue={materialSubCategoryID}
-              onChange={handleSubCategoryChange}
-              placeholder="SELECT SUBCATEGORY"
-              required
-              style={{ width: "350px" }}
-              bottomButtonComponent={
-                <CreateSubCategoryButton
-                  materialCategoryID={Number(materialCategoryID)}
-                  onSuccess={() => {
-                    refreshSubcategories();
-                  }}
-                />
-              }
-            /> */}
+                    <MultipleSelectMaterialItemButton
+                      onSelectItems={handleMaterialSelect}
+                      currentItemIDs={selectedItemIDs}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <label className="custom">
+                    <span>MATERIAL ITEM(S)</span>
+                    <small></small>
+                  </label>
+                  <MultipleSelectMaterialItemButton
+                    onSelectItems={handleMaterialSelect}
+                    currentItemIDs={selectedItemIDs}
+                  />
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Item Selection and BOQ Line Row */}
-          <div className="input-row half">
-            {/* <SingleSelectDropdown
-              label={"ITEM"}
-              dbData={predefinedItems}
-              idField="id"
-              labelField="material_description"
-              selectedValue={selectedPredefinedItem}
-              onChange={handlePredefinedItemChange}
-              placeholder="SELECT ITEM"
-              required
-              style={{ width: "350px" }}
-              formatOptionLabel={(item: any) =>
-                `${item.material_description}${item.brand ? ` — ${item.brand}` : ""}`
-              }
-            /> */}
-            <InputItem
-              label={"ITEM"}
-              value={materialDescription}
-              type={"text"}
-              required
-              onChange={(e) => setMaterialDescription(e.target.value)}
-            />
+          {/* Preview section with category tabs + search */}
+          {selectedRows.length > 0 && (
+            <>
+              <div className="input-row full">
+                <div style={{ width: "100%" }}>
+                  {/* Category grid + search for preview */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "15px",
+                      marginBottom: "15px",
+                    }}
+                  >
+                    {/* Category tabs */}
+                    <div
+                      className="category-grid"
+                      style={{ flex: 1, marginBottom: 0 }}
+                    >
+                      <div
+                        style={{
+                          position: "relative",
+                          flex: 1,
+                        }}
+                      >
+                        {previewShowLeftArrow && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              scrollPreview("left");
+                            }}
+                            style={{
+                              position: "absolute",
+                              left: "5px",
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              zIndex: 10,
+                              backgroundColor: "black",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "8px",
+                              width: "30px",
+                              height: "30px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <img
+                              src={arrowRight}
+                              style={{
+                                transform: "rotate(-180deg)",
+                                width: "10px",
+                              }}
+                              alt="scroll left"
+                            />
+                          </button>
+                        )}
 
+                        <div
+                          ref={previewScrollRef}
+                          onScroll={checkPreviewScroll}
+                          style={{
+                            overflowX: "auto",
+                            scrollbarWidth: "none",
+                            msOverflowStyle: "none",
+                          }}
+                        >
+                          <div style={{ display: "flex", gap: "1px" }}>
+                            <div
+                              className={`item ${previewActiveCategory === "ALL" ? "active" : ""}`}
+                              onClick={() => setPreviewActiveCategory("ALL")}
+                              style={{ flexShrink: 0, cursor: "pointer" }}
+                            >
+                              ALL
+                            </div>
+                            {previewCategories.map((cat) => (
+                              <div
+                                key={cat}
+                                className={`item ${previewActiveCategory === cat ? "active" : ""}`}
+                                onClick={() => setPreviewActiveCategory(cat)}
+                                style={{
+                                  flexShrink: 0,
+                                  cursor: "pointer",
+                                  textTransform: "capitalize",
+                                }}
+                              >
+                                {cat.toUpperCase()}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {previewShowRightArrow && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              scrollPreview("right");
+                            }}
+                            style={{
+                              position: "absolute",
+                              right: "5px",
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              zIndex: 10,
+                              backgroundColor: "black",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "8px",
+                              width: "30px",
+                              height: "30px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <img
+                              src={arrowRight}
+                              style={{ width: "10px" }}
+                              alt="scroll right"
+                            />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Search bar for preview */}
+                    <div
+                      style={{
+                        position: "relative",
+                        flex: "0 0 350px",
+                      }}
+                    >
+                      <input
+                        type="text"
+                        placeholder="SEARCH"
+                        value={previewSearchQuery}
+                        onChange={(e) => setPreviewSearchQuery(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "10px 40px 10px 15px",
+                          borderRadius: "8px",
+                          border: "1px solid rgba(223, 223, 223, 1)",
+                        }}
+                      />
+                      <img
+                        src={searchIcon}
+                        alt="search"
+                        style={{
+                          position: "absolute",
+                          right: "10px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          width: "16px",
+                          height: "16px",
+                          opacity: 0.5,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Preview Table */}
+                  <table
+                    className="items-table two-toned"
+                    style={{ width: "100%" }}
+                  >
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>ITEM</th>
+                        <th>BRAND</th>
+                        <th>QTY</th>
+                        <th>UNIT</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPreviewRows.map((row) => {
+                        // Find the original index in selectedRows for updating
+                        const originalIndex = selectedRows.findIndex(
+                          (r) => r.predefinedItem.id === row.predefinedItem.id,
+                        );
+                        return (
+                          <tr key={row.predefinedItem.id}>
+                            <td>
+                              {selectedRows.findIndex(
+                                (r) =>
+                                  r.predefinedItem.id === row.predefinedItem.id,
+                              ) + 1}
+                            </td>
+                            <td>{row.predefinedItem.material_description}</td>
+                            <td>{row.predefinedItem.brand || "-"}</td>
+                            <td>
+                              <InputItem
+                                label=""
+                                value={row.quantity}
+                                type="text"
+                                placeholder="ENTER QTY"
+                                noOptionalLabel
+                                onChange={(e) =>
+                                  updateRowQuantity(
+                                    originalIndex,
+                                    e.target.value,
+                                  )
+                                }
+                                style={{ width: "150px" }}
+                              />
+                            </td>
+                            <td>
+                              <SingleSelectDropdown
+                                label=""
+                                noLabel
+                                selectOptions={[...UNIT_OPTIONS]}
+                                selectedValue={row.unit}
+                                onChange={(val) =>
+                                  updateRowUnit(originalIndex, String(val))
+                                }
+                                placeholder="SELECT UNIT"
+                                style={{ width: "150px" }}
+                              />
+                            </td>
+                            <td>
+                              <Button
+                                componentType={"button"}
+                                bgColor={"transparent"}
+                                borderColor={"transparent"}
+                                textColor={"black"}
+                                style={{ padding: "0px", marginBottom: "17px" }}
+                              >
+                                <img
+                                  src={crossSmallIcon}
+                                  alt="remove"
+                                  onClick={() =>
+                                    removeRow(row.predefinedItem.id)
+                                  }
+                                />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  {filteredPreviewRows.length === 0 && previewSearchQuery && (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "20px",
+                        color: "rgba(128, 128, 128, 1)",
+                        fontSize: "13px",
+                      }}
+                    >
+                      No items found for &quot;{previewSearchQuery}&quot;
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <br />
+            </>
+          )}
+
+          {/* BOQ REF */}
+          <div className="input-row full">
             <div className="input-item">
               <label className="custom">
                 <span>BOQ REF.</span>
                 <small></small>
               </label>
-
               <MultipleSelectBoqItemButton
                 projectID={projectID}
                 onSelectBoq={handleBoqSelection}
@@ -591,55 +760,17 @@ export default function AddMrItemButton({
             </div>
           </div>
 
-          {/* Quantity and Unit Row */}
-          <div className="input-row half">
-            <InputItem
-              label={"QUANTITY"}
-              value={quantity}
-              type={"text"}
-              placeholder={"ENTER QUANTITY"}
-              required
-              onChange={(e) => {
-                const val = e.target.value;
-
-                if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                  setQuantity(val);
-                }
-              }}
-            />
-
-            <InputItem
-              label={"UNIT"}
-              value={unit}
-              type={"select"}
-              placeholder={"SELECT UNIT"}
-              required
-              onChange={(e) => setUnit(e.target.value)}
-              selectOptions={[...UNIT_OPTIONS]}
-            />
-          </div>
-
-          {/* Brand Row */}
+          {/* Specification */}
           <div className="input-row full">
             <InputItem
-              label={"BRAND"}
-              value={brand}
-              type={"text"}
-              onChange={(e) => setBrand(e.target.value)}
-            />
-          </div>
-
-          {/* Specification Row */}
-          <div className="input-row full">
-            <InputItem
-              label={"SPECIFICATION"}
+              label={"SPECIFICATION / NOTES"}
               value={specification}
               type={"textarea"}
               onChange={(e) => setSpecification(e.target.value)}
             />
           </div>
 
-          {/* Delivery Location Row */}
+          {/* Delivery Location and Attachment */}
           <div className="input-row half">
             <InputItem
               label="DELIVERY LOCATION"
@@ -659,6 +790,65 @@ export default function AddMrItemButton({
               setFileState={setAttachment}
               label={"ATTACHMENT"}
               acceptedFileTypes={".pdf,.png,.jpg,.jpeg"}
+            />
+          </div>
+        </FormPopUp>
+      )}
+
+      {/* NEW MATERIAL popup (separate FormPopUp) */}
+      {showNewMaterial && (
+        <FormPopUp
+          header={"NEW MATERIAL"}
+          setIsOpen={setShowNewMaterial}
+          handleSubmit={handleNewMaterialSubmit}
+          addButtonLabel={"ADD MATERIAL"}
+          style={{ minWidth: "600px" }}
+        >
+          <div className="input-row full">
+            <InputItem
+              label={"DESCRIPTION"}
+              value={newMatDescription}
+              type={"text"}
+              required
+              onChange={(e) => setNewMatDescription(e.target.value)}
+            />
+          </div>
+
+          <div className="input-row half">
+            <SingleSelectDropdown
+              label={"CATEGORY"}
+              dbData={materialCategoryValues}
+              selectedValue={newMatCategoryID}
+              onChange={(val) => setNewMatCategoryID(val)}
+              placeholder="SELECT CATEGORY"
+              required
+              style={{ width: "350px" }}
+            />
+            <SingleSelectDropdown
+              label={"SUBCATEGORY"}
+              dbData={materialSubCategoryValues}
+              selectedValue={newMatSubCategoryID}
+              onChange={handleNewMatSubCategoryChange}
+              placeholder="SELECT SUBCATEGORY"
+              required
+              style={{ width: "350px" }}
+            />
+          </div>
+
+          <div className="input-row half">
+            <InputItem
+              label={"UNIT"}
+              value={newMatUnit}
+              type={"select"}
+              placeholder={"SELECT UNIT"}
+              onChange={(e) => setNewMatUnit(e.target.value)}
+              selectOptions={[...UNIT_OPTIONS]}
+            />
+            <InputItem
+              label={"BRAND"}
+              value={newMatBrand}
+              type={"text"}
+              onChange={(e) => setNewMatBrand(e.target.value)}
             />
           </div>
         </FormPopUp>
