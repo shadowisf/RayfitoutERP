@@ -82,9 +82,123 @@ export default function MultipleSelectBoqItemButton({
     userInfo?.departmentID === 12 ||
     userInfo?.departmentID === 10;
 
-  // Filter BOQ lines based on search query
+  // Category & subcategory filter state
+  const [filterCategories, setFilterCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [filterSubCategories, setFilterSubCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [showFilterPopup, setShowFilterPopup] = useState(false);
+  const [categorySearchQuery, setCategorySearchQuery] = useState("");
+  const [subCategorySearchQuery, setSubCategorySearchQuery] = useState("");
+  const allCategories = Object.keys(groupedBoqLines);
+  const filterIcon = "/icons/filter.svg";
+
+  // Temp filter state (only applied on CONFIRM)
+  const [tempFilterCategories, setTempFilterCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [tempFilterSubCategories, setTempFilterSubCategories] = useState<
+    Set<string>
+  >(new Set());
+
+  // Collapsible state for categories and subcategories in the table
+  const [collapsedCategories, setCollapsedCategories] = useState<
+    Record<string, boolean>
+  >({});
+  const [collapsedSubCategories, setCollapsedSubCategories] = useState<
+    Record<string, boolean>
+  >({});
+
+  // Get all subcategories, optionally filtered by selected categories (uses temp state for popup)
+  const getAvailableSubCategories = (
+    catSet: Set<string> = tempFilterCategories,
+  ): string[] => {
+    const subCats = new Set<string>();
+    Object.entries(groupedBoqLines).forEach(([category, subCategories]) => {
+      if (catSet.size > 0 && !catSet.has(category)) return;
+      Object.keys(subCategories).forEach((subCat) => subCats.add(subCat));
+    });
+    return Array.from(subCats).sort();
+  };
+
+  // Get the parent category of a subcategory
+  const getCategoryForSubCategory = (subCat: string): string | null => {
+    for (const [category, subCategories] of Object.entries(groupedBoqLines)) {
+      if (subCat in subCategories) return category;
+    }
+    return null;
+  };
+
+  const toggleFilterCategory = (category: string) => {
+    setTempFilterCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+        // Remove subcategories belonging to this category
+        const subCatsToRemove = Object.keys(groupedBoqLines[category] || {});
+        setTempFilterSubCategories((prevSub) => {
+          const nextSub = new Set(prevSub);
+          subCatsToRemove.forEach((sc) => nextSub.delete(sc));
+          return nextSub;
+        });
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  const toggleFilterSubCategory = (subCategory: string) => {
+    setTempFilterSubCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(subCategory)) {
+        next.delete(subCategory);
+      } else {
+        next.add(subCategory);
+        // Auto-select the parent category
+        const parentCat = getCategoryForSubCategory(subCategory);
+        if (parentCat) {
+          setTempFilterCategories(
+            (prevCat) => new Set([...prevCat, parentCat]),
+          );
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleFilterOpen = () => {
+    setTempFilterCategories(new Set(filterCategories));
+    setTempFilterSubCategories(new Set(filterSubCategories));
+    setCategorySearchQuery("");
+    setSubCategorySearchQuery("");
+    setShowFilterPopup(true);
+  };
+
+  const handleFilterApply = () => {
+    setFilterCategories(new Set(tempFilterCategories));
+    setFilterSubCategories(new Set(tempFilterSubCategories));
+    setShowFilterPopup(false);
+  };
+
+  const handleFilterReset = () => {
+    setTempFilterCategories(new Set());
+    setTempFilterSubCategories(new Set());
+  };
+
+  const hasActiveFilters =
+    filterCategories.size > 0 || filterSubCategories.size > 0;
+  const totalFilterCount = filterCategories.size + filterSubCategories.size;
+
+  // Filter BOQ lines based on search query and category/subcategory filter
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    const hasSearch = searchQuery.trim().length > 0;
+    const hasCatFilter = filterCategories.size > 0;
+    const hasSubCatFilter = filterSubCategories.size > 0;
+
+    if (!hasSearch && !hasCatFilter && !hasSubCatFilter) {
       setFilteredGroupedBoqLines(groupedBoqLines);
       return;
     }
@@ -93,13 +207,23 @@ export default function MultipleSelectBoqItemButton({
     const filtered: GroupedBoqLines = {};
 
     Object.entries(groupedBoqLines).forEach(([category, subCategories]) => {
+      // Skip categories not in filter (if category filter is active)
+      if (hasCatFilter && !filterCategories.has(category)) return;
+
       Object.entries(subCategories).forEach(([subCategory, items]) => {
-        const filteredItems = items.filter((boq) => {
-          return (
-            boq.item_number?.toLowerCase().includes(query) ||
-            boq.item_name?.toLowerCase().includes(query)
-          );
-        });
+        // Skip subcategories not in filter (if subcategory filter is active)
+        if (hasSubCatFilter && !filterSubCategories.has(subCategory)) return;
+
+        const filteredItems = hasSearch
+          ? items.filter((boq) => {
+              return (
+                boq.item_number?.toLowerCase().includes(query) ||
+                boq.item_name?.toLowerCase().includes(query) ||
+                category.toLowerCase().includes(query) ||
+                subCategory.toLowerCase().includes(query)
+              );
+            })
+          : items;
 
         if (filteredItems.length > 0) {
           if (!filtered[category]) {
@@ -111,7 +235,7 @@ export default function MultipleSelectBoqItemButton({
     });
 
     setFilteredGroupedBoqLines(filtered);
-  }, [searchQuery, groupedBoqLines]);
+  }, [searchQuery, groupedBoqLines, filterCategories, filterSubCategories]);
 
   // Check scroll position for arrows
   const checkScroll = () => {
@@ -362,9 +486,9 @@ export default function MultipleSelectBoqItemButton({
   };
 
   // Check if category is fully selected
-  const isCategorySelected = (category: string) => {
+  /* const isCategorySelected = (category: string) => {
     return selectedCategories.has(category);
-  };
+  }; */
 
   // Check if subcategory is selected
   const isSubCategorySelected = (category: string, subCategory: string) => {
@@ -374,279 +498,234 @@ export default function MultipleSelectBoqItemButton({
   // Create the modal content
   const modalContent = isOpen && (
     <FormPopUp
-      header={"SELECT BILL OF QUANTITY ITEMS"}
+      header={"SELECT BOQ ITEMS"}
       setIsOpen={setIsOpen}
       handleSubmit={handleSubmit}
       addButtonLabel={"CONFIRM"}
-      style={{ minWidth: "1300px", minHeight: "80dvh" }}
+      style={{ width: "75dvw", height: "95dvh" }}
     >
-      {/* Search Bar */}
+      {/* Search Bar + Filter Button */}
       <div
         style={{
-          position: "relative",
-          flex: 1,
-          maxWidth: "400px",
-          backgroundColor: "white",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
         }}
       >
-        <input
-          type="text"
-          placeholder="SEARCH"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+        <div
           style={{
-            width: "400px",
-            padding: "10px 40px 10px 15px",
-            borderRadius: "8px",
-            border: "1px solid rgba(223, 223, 223, 1)",
-            fontSize: "14px",
+            position: "relative",
+            flex: 1,
+            maxWidth: "400px",
+            backgroundColor: "white",
           }}
-        />
-        <img
-          src={searchIcon}
-          alt="search"
+        >
+          <input
+            type="text"
+            placeholder="SEARCH"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "400px",
+              padding: "10px 40px 10px 15px",
+              borderRadius: "8px",
+              border: "1px solid rgba(223, 223, 223, 1)",
+            }}
+          />
+          <img
+            src={searchIcon}
+            alt="search"
+            style={{
+              position: "absolute",
+              right: "15px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: "16px",
+              height: "16px",
+              opacity: 0.5,
+            }}
+          />
+        </div>
+      </div>
+
+      <br />
+
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <Button
+          componentType={"button"}
+          bgColor={"white"}
+          borderColor={"rgba(223, 223, 223, 1)"}
+          textColor={"black"}
+          onClick={(e) => {
+            e.preventDefault();
+            handleFilterOpen();
+          }}
           style={{
-            position: "absolute",
-            right: "15px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: "16px",
-            height: "16px",
-            opacity: 0.5,
+            padding: "7px 20px",
+            borderRadius: "25px",
           }}
-        />
+        >
+          <img src={filterIcon} alt="filter" />
+          FILTER
+        </Button>
+
+        {/* Active Filter Bubbles */}
+        {hasActiveFilters && (
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            {filterCategories.size > 0 && (
+              <Button
+                style={{
+                  borderRadius: "25px",
+                  fontWeight: "600",
+                  textWrap: "nowrap",
+                }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
+              >
+                CATEGORY:{" "}
+                <span style={{ color: "rgba(1, 139, 80, 1)" }}>
+                  {Array.from(filterCategories)[0].toUpperCase()}
+                  {filterCategories.size > 1 &&
+                    `, +${filterCategories.size - 1} MORE`}
+                </span>
+              </Button>
+            )}
+            {filterSubCategories.size > 0 && (
+              <Button
+                style={{
+                  borderRadius: "25px",
+                  fontWeight: "600",
+                  textWrap: "nowrap",
+                }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
+              >
+                SUBCATEGORY:{" "}
+                <span style={{ color: "rgba(1, 139, 80, 1)" }}>
+                  {Array.from(filterSubCategories)[0].toUpperCase()}
+                  {filterSubCategories.size > 1 &&
+                    `, +${filterSubCategories.size - 1} MORE`}
+                </span>
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                setFilterCategories(new Set());
+                setFilterSubCategories(new Set());
+              }}
+              componentType={"button"}
+              bgColor={"transparent"}
+              borderColor={"transparent"}
+              textColor={"black"}
+              style={{ padding: "0px" }}
+            >
+              RESET FILTER
+            </Button>
+          </div>
+        )}
       </div>
 
       <br />
       <br />
 
-      {/* SELECT ALL CATEGORIES checkbox — commented out
-      {!singleSelect && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "20px",
-            marginBottom: "10px",
-          }}
-        >
-          <label
+      {/* Selected Items Bubbles */}
+      {tempSelectedBoqIDs.length > 0 && (
+        <>
+          <h3>ITEM(S) SELECTED ({tempSelectedBoqIDs.length}):</h3>
+          <br />
+          <div
             style={{
               display: "flex",
+              gap: "10px",
               alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "14px",
+              flexWrap: "wrap",
             }}
           >
-            <input
-              type="checkbox"
-              checked={
-                boqCategories.length > 0 &&
-                boqCategories.every((cat) => selectedCategories.has(cat))
-              }
-              onChange={(e) => {
-                const isChecked = e.target.checked;
-                boqCategories.forEach((cat) => {
-                  toggleCategory(cat, isChecked);
-                });
-              }}
-              style={{
-                width: "18px",
-                height: "18px",
-                cursor: "pointer",
-                accentColor: "rgba(0, 163, 93, 1)",
-              }}
-            />
-            SELECT ALL CATEGORIES
-          </label>
-        </div>
+            {tempSelectedBoqIDs.map((id) => {
+              const boq = boqLineValues.find((b) => b.id === id);
+              if (!boq) return null;
+              return (
+                <Button
+                  key={id}
+                  componentType="none"
+                  bgColor="rgba(239, 239, 239, 1)"
+                  borderColor="transparent"
+                  textColor="black"
+                  style={{
+                    borderRadius: "25px",
+                    fontWeight: "600",
+                    textWrap: "nowrap",
+                  }}
+                >
+                  {boq.item_number} - {boq.item_name}
+                  <Button
+                    componentType={"button"}
+                    bgColor={"transparent"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setTempSelectedBoqIDs((prev) =>
+                        prev.filter((i) => i !== id),
+                      );
+                    }}
+                    style={{ padding: "0px" }}
+                  >
+                    <img src={crossIcon} style={{ marginBottom: "2px" }} />
+                  </Button>
+                </Button>
+              );
+            })}
+          </div>
+
+          <br />
+          <br />
+        </>
       )}
-      */}
 
-      <br />
-      <br />
-
-      {/* Category Grid with Select All */}
+      {/* Category Grid — commented out
       <div className="category-grid" style={{ marginBottom: "20px" }}>
         <div style={{ position: "relative", flex: 1, maxWidth: "70dvw" }}>
-          {/* Left Fade Gradient */}
-          {showLeftArrow && (
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: "300px",
-                background:
-                  "linear-gradient(to right, white 0%, rgba(255, 255, 255, 0) 100%)",
-                pointerEvents: "none",
-                zIndex: 5,
-              }}
-            />
-          )}
-
-          {/* Left Arrow Button */}
-          {showLeftArrow && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                scroll("left");
-              }}
-              style={{
-                position: "absolute",
-                left: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: 10,
-                backgroundColor: "black",
-                color: "white",
-                border: "none",
-                borderRadius: "10px",
-                width: "40px",
-                height: "40px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <img
-                src={arrowRight}
-                style={{ transform: "rotate(-180deg)", width: "12px" }}
-                alt="scroll left"
-              />
-            </button>
-          )}
-
           <div
             ref={scrollContainerRef}
             onScroll={checkScroll}
-            style={{
-              overflowX: "auto",
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-            }}
+            style={{ overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
-            <style jsx>{`
-              div::-webkit-scrollbar {
-                display: none;
-              }
-            `}</style>
             <div style={{ display: "flex", gap: "1px" }}>
               <div
-                className={`item ${
-                  activeBoqCategory === "ALL" ? "active" : ""
-                }`}
+                className={`item ${activeBoqCategory === "ALL" ? "active" : ""}`}
                 onClick={() => setActiveBoqCategory("ALL")}
-                style={{
-                  flexShrink: 0,
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                }}
+                style={{ flexShrink: 0, textTransform: "uppercase", cursor: "pointer" }}
               >
                 ALL
               </div>
-
-              {boqCategories.map(function (category) {
-                return (
-                  <div
-                    key={category}
-                    className={`item ${
-                      activeBoqCategory === category ? "active" : ""
-                    }`}
-                    onClick={function () {
-                      setActiveBoqCategory(category);
-                    }}
-                    style={{
-                      flexShrink: 0,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    {/* Category checkbox — commented out
-                    {!singleSelect && (
-                      <input
-                        type="checkbox"
-                        checked={isCategorySelected(category)}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          toggleCategory(category, e.target.checked);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          width: "16px",
-                          height: "16px",
-                          cursor: "pointer",
-                          accentColor: "rgba(0, 163, 93, 1)",
-                        }}
-                      />
-                    )}
-                    */}
-                    {category}
-                  </div>
-                );
-              })}
+              {boqCategories.map((category) => (
+                <div
+                  key={category}
+                  className={`item ${activeBoqCategory === category ? "active" : ""}`}
+                  onClick={() => setActiveBoqCategory(category)}
+                  style={{ flexShrink: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  {category}
+                </div>
+              ))}
             </div>
           </div>
-
-          {/* Right Fade Gradient */}
-          {showRightArrow && (
-            <div
-              style={{
-                position: "absolute",
-                right: 0,
-                top: 0,
-                bottom: 0,
-                width: "300px",
-                background:
-                  "linear-gradient(to left, white 0%, rgba(255, 255, 255, 0) 100%)",
-                pointerEvents: "none",
-                zIndex: 5,
-              }}
-            />
-          )}
-
-          {/* Right Arrow Button */}
-          {showRightArrow && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                scroll("right");
-              }}
-              style={{
-                position: "absolute",
-                right: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: 10,
-                backgroundColor: "black",
-                borderRadius: "10px",
-                color: "white",
-                border: "none",
-                width: "40px",
-                height: "40px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <img
-                src={arrowRight}
-                style={{ width: "12px" }}
-                alt="scroll right"
-              />
-            </button>
-          )}
         </div>
       </div>
+      */}
 
       {/* No Results Message */}
       {searchQuery.trim() && boqCategories.length === 0 && (
@@ -662,7 +741,7 @@ export default function MultipleSelectBoqItemButton({
       )}
 
       {/* BOQ Items Table */}
-      <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+      <div>
         {activeBoqCategory === "ALL"
           ? Object.entries(filteredGroupedBoqLines).map(
               ([category, subCategoriesData], categoryIndex) => (
@@ -673,47 +752,42 @@ export default function MultipleSelectBoqItemButton({
                       display: "flex",
                       alignItems: "center",
                       gap: "15px",
-                      marginBottom: "15px",
+                      marginBottom: collapsedCategories[category]
+                        ? "0px"
+                        : "15px",
                       padding: "10px 0",
                       borderBottom: "2px solid rgba(0, 0, 0, 0.1)",
+                      cursor: "pointer",
+                      userSelect: "none",
                     }}
+                    onClick={() =>
+                      setCollapsedCategories((prev) => ({
+                        ...prev,
+                        [category]: !prev[category],
+                      }))
+                    }
                   >
-                    {/* Category-level checkbox in ALL view — commented out
-                    {!singleSelect && (
-                      <label
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          cursor: "pointer",
-                          fontWeight: 600,
-                          fontSize: "12px",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={
-                            Object.keys(subCategoriesData).length > 0 &&
-                            Object.keys(subCategoriesData).every((subCat) =>
-                              isSubCategorySelected(category, subCat),
-                            )
-                          }
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            Object.keys(subCategoriesData).forEach((subCat) => {
-                              toggleSubCategory(category, subCat, isChecked);
-                            });
-                          }}
-                          style={{
-                            width: "16px",
-                            height: "16px",
-                            cursor: "pointer",
-                            accentColor: "rgba(0, 163, 93, 1)",
-                          }}
-                        />
-                      </label>
-                    )}
-                    */}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{
+                        transition: "transform 0.2s ease",
+                        transform: collapsedCategories[category]
+                          ? "rotate(-90deg)"
+                          : "rotate(0deg)",
+                      }}
+                    >
+                      <path
+                        d="M3.5 5.25L7 8.75L10.5 5.25"
+                        stroke="black"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
 
                     <h2
                       style={{
@@ -724,210 +798,354 @@ export default function MultipleSelectBoqItemButton({
                     >
                       {categoryIndex + 1}. {category}
                     </h2>
+
+                    <div
+                      style={{
+                        backgroundColor: "black",
+                        color: "white",
+                        borderRadius: "50px",
+                        padding: "3px 8px",
+                        fontWeight: "600",
+                        fontSize: "12px",
+                      }}
+                    >
+                      {Object.values(subCategoriesData).reduce(
+                        (sum, items) => sum + items.length,
+                        0,
+                      )}{" "}
+                      Items
+                    </div>
                   </div>
 
-                  {Object.entries(subCategoriesData).map(
-                    ([subCategory, items], subCategoryIndex) => (
-                      <div
-                        key={`${category}-${subCategory}`}
-                        style={{ marginBottom: "20px", marginLeft: "20px" }}
-                      >
-                        {/* Subcategory Header with Checkbox */}
+                  {!collapsedCategories[category] &&
+                    Object.entries(subCategoriesData).map(
+                      ([subCategory, items], subCategoryIndex) => (
                         <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            marginBottom: "10px",
-                          }}
+                          key={`${category}-${subCategory}`}
+                          style={{ marginBottom: "20px", marginLeft: "20px" }}
                         >
-                          <label
+                          {/* Subcategory Header with Checkbox & Collapse */}
+                          <div
                             style={{
                               display: "flex",
                               alignItems: "center",
-                              gap: "8px",
+                              gap: "10px",
+                              marginBottom: collapsedSubCategories[
+                                `${category}::${subCategory}`
+                              ]
+                                ? "0px"
+                                : "10px",
                               cursor: "pointer",
-                              fontWeight: 600,
-                              fontSize: "14px",
+                              userSelect: "none",
+                            }}
+                            onClick={() => {
+                              const key = `${category}::${subCategory}`;
+                              setCollapsedSubCategories((prev) => ({
+                                ...prev,
+                                [key]: !prev[key],
+                              }));
                             }}
                           >
-                            {!singleSelect && (
-                              <input
-                                type="checkbox"
-                                checked={isSubCategorySelected(
-                                  category,
-                                  subCategory,
-                                )}
-                                onChange={(e) =>
-                                  toggleSubCategory(
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 14 14"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              style={{
+                                transition: "transform 0.2s ease",
+                                transform: collapsedSubCategories[
+                                  `${category}::${subCategory}`
+                                ]
+                                  ? "rotate(-90deg)"
+                                  : "rotate(0deg)",
+                              }}
+                            >
+                              <path
+                                d="M3.5 5.25L7 8.75L10.5 5.25"
+                                stroke="black"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+
+                            <span
+                              style={{
+                                fontWeight: 600,
+                                fontSize: "14px",
+                              }}
+                            >
+                              {categoryIndex + 1}.{subCategoryIndex + 1}{" "}
+                              {subCategory}
+                            </span>
+
+                            {/* Subcategory checkbox — commented out
+                            <label
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                cursor: "pointer",
+                                fontWeight: 600,
+                                fontSize: "14px",
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {!singleSelect && (
+                                <input
+                                  type="checkbox"
+                                  checked={isSubCategorySelected(
                                     category,
                                     subCategory,
-                                    e.target.checked,
-                                  )
-                                }
-                                style={{
-                                  width: "18px",
-                                  height: "18px",
-                                  cursor: "pointer",
-                                  accentColor: "rgba(0, 163, 93, 1)",
-                                }}
-                              />
-                            )}
-                            {categoryIndex + 1}.{subCategoryIndex + 1}{" "}
-                            {subCategory}
-                          </label>
-                        </div>
-
-                        <table className="items-table two-toned">
-                          <thead>
-                            <tr>
-                              <th></th>
-                              <th>#</th>
-                              <th>ITEM</th>
-                              <th>QUANTITY</th>
-                              {canSeePrice && (
-                                <>
-                                  <th>RATE</th>
-                                  <th>TOTAL PRICE</th>
-                                </>
+                                  )}
+                                  onChange={(e) =>
+                                    toggleSubCategory(
+                                      category,
+                                      subCategory,
+                                      e.target.checked,
+                                    )
+                                  }
+                                  style={{
+                                    width: "18px",
+                                    height: "18px",
+                                    cursor: "pointer",
+                                    accentColor: "rgba(0, 163, 93, 1)",
+                                  }}
+                                />
                               )}
-                              <th>ATTACHMENTS</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {items.map((boq) => {
-                              const attachmentUrls = parseAttachments(
-                                boq.attachments,
-                              );
+                              {categoryIndex + 1}.{subCategoryIndex + 1}{" "}
+                              {subCategory}
+                            </label>
+                            */}
 
-                              return (
-                                <tr key={boq.id}>
-                                  <td onClick={(e) => e.stopPropagation()}>
-                                    <input
-                                      type={singleSelect ? "radio" : "checkbox"}
-                                      name={
-                                        singleSelect ? "boq-select" : undefined
-                                      }
-                                      checked={tempSelectedBoqIDs.includes(
-                                        boq.id,
-                                      )}
-                                      onChange={() =>
-                                        handleCheckboxToggle(boq.id)
-                                      }
-                                      style={{
-                                        width: "18px",
-                                        height: "18px",
-                                        cursor: "pointer",
-                                        accentColor: "rgba(0, 163, 93, 1)",
-                                      }}
-                                    />
-                                  </td>
-                                  <td style={{ whiteSpace: "nowrap" }}>
-                                    {boq.item_number}
-                                  </td>
-                                  <td>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: "10px",
-                                      }}
-                                    >
-                                      <strong>{boq.item_name}</strong>
+                            <div
+                              style={{
+                                backgroundColor: "rgba(239, 239, 239, 1)",
+                                borderRadius: "50px",
+                                padding: "2px 8px",
+                                fontWeight: "600",
+                                fontSize: "11px",
+                                color: "rgba(100, 100, 100, 1)",
+                              }}
+                            >
+                              {items.length} Items
+                            </div>
+                          </div>
 
-                                      {boq.item_description && (
-                                        <p style={{ whiteSpace: "pre-wrap" }}>
-                                          {boq.item_description}
-                                        </p>
-                                      )}
+                          {!collapsedSubCategories[
+                            `${category}::${subCategory}`
+                          ] && (
+                            <table className="items-table two-toned">
+                              <thead>
+                                <tr>
+                                  <th></th>
+                                  <th>#</th>
+                                  <th>ITEM</th>
+                                  <th>QUANTITY</th>
+                                  {canSeePrice && (
+                                    <>
+                                      <th>RATE</th>
+                                      <th>TOTAL PRICE</th>
+                                    </>
+                                  )}
+                                  <th>ATTACHMENTS</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {items.map((boq) => {
+                                  const attachmentUrls = parseAttachments(
+                                    boq.attachments,
+                                  );
 
-                                      {boq.location && (
+                                  return (
+                                    <tr key={boq.id}>
+                                      <td onClick={(e) => e.stopPropagation()}>
+                                        <input
+                                          type={
+                                            singleSelect ? "radio" : "checkbox"
+                                          }
+                                          name={
+                                            singleSelect
+                                              ? "boq-select"
+                                              : undefined
+                                          }
+                                          checked={tempSelectedBoqIDs.includes(
+                                            boq.id,
+                                          )}
+                                          onChange={() =>
+                                            handleCheckboxToggle(boq.id)
+                                          }
+                                          style={{
+                                            width: "18px",
+                                            height: "18px",
+                                            cursor: "pointer",
+                                            accentColor: "rgba(0, 163, 93, 1)",
+                                          }}
+                                        />
+                                      </td>
+                                      <td style={{ whiteSpace: "nowrap" }}>
+                                        {boq.item_number}
+                                      </td>
+                                      <td>
                                         <div
                                           style={{
                                             display: "flex",
+                                            flexDirection: "column",
                                             gap: "10px",
-                                            alignItems: "center",
                                           }}
                                         >
-                                          <img
-                                            src={locationIcon}
-                                            style={{ width: "16px" }}
-                                            alt="location"
-                                          />
-                                          <span
-                                            style={{
-                                              fontWeight: 600,
-                                              marginTop: "4px",
-                                              color: "rgba(105, 105, 105, 1)",
-                                            }}
-                                          >
-                                            {boq.location}
-                                          </span>
-                                        </div>
-                                      )}
+                                          <strong>{boq.item_name}</strong>
 
-                                      {boq.scope_of_work && (
-                                        <div
-                                          style={{
-                                            backgroundColor:
-                                              "rgba(225, 225, 225, 1)",
-                                            borderRadius: "50px",
-                                            padding: "4px 10px",
-                                            width: "fit-content",
-                                          }}
-                                        >
-                                          <strong>{boq.scope_of_work}</strong>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td>
-                                    {boq.quantity} {boq.unit}
-                                  </td>
+                                          {boq.item_description && (
+                                            <p
+                                              style={{ whiteSpace: "pre-wrap" }}
+                                            >
+                                              {boq.item_description}
+                                            </p>
+                                          )}
 
-                                  {canSeePrice && (
-                                    <>
-                                      <td>
-                                        {formatPrice(boq.rate_per_quantity)}
+                                          {boq.location && (
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                gap: "10px",
+                                                alignItems: "center",
+                                              }}
+                                            >
+                                              <img
+                                                src={locationIcon}
+                                                style={{ width: "16px" }}
+                                                alt="location"
+                                              />
+                                              <span
+                                                style={{
+                                                  fontWeight: 600,
+                                                  marginTop: "4px",
+                                                  color:
+                                                    "rgba(105, 105, 105, 1)",
+                                                }}
+                                              >
+                                                {boq.location}
+                                              </span>
+                                            </div>
+                                          )}
+
+                                          {boq.scope_of_work && (
+                                            <div
+                                              style={{
+                                                backgroundColor:
+                                                  "rgba(225, 225, 225, 1)",
+                                                borderRadius: "50px",
+                                                padding: "4px 10px",
+                                                width: "fit-content",
+                                              }}
+                                            >
+                                              <strong>
+                                                {boq.scope_of_work}
+                                              </strong>
+                                            </div>
+                                          )}
+                                        </div>
                                       </td>
-                                      <td>{formatPriceAED(boq.total_cost)}</td>
-                                    </>
-                                  )}
+                                      <td>
+                                        {boq.quantity} {boq.unit}
+                                      </td>
 
-                                  <td className="attachments">
-                                    <div className="attachments-grid">
-                                      {attachmentUrls.map((url, i) => (
-                                        <img
-                                          key={i}
-                                          src={url}
-                                          alt="attachment"
-                                        />
-                                      ))}
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    ),
-                  )}
+                                      {canSeePrice && (
+                                        <>
+                                          <td>
+                                            {formatPrice(boq.rate_per_quantity)}
+                                          </td>
+                                          <td style={{ textWrap: "nowrap" }}>
+                                            {formatPriceAED(boq.total_cost)}
+                                          </td>
+                                        </>
+                                      )}
+
+                                      <td className="attachments">
+                                        <div className="attachments-grid">
+                                          {attachmentUrls.map((url, i) => (
+                                            <img
+                                              key={i}
+                                              src={url}
+                                              alt="attachment"
+                                            />
+                                          ))}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      ),
+                    )}
                 </div>
               ),
             )
           : Object.entries(boqSubCategories).map(
               ([subCategory, items], index) => (
                 <div key={subCategory} style={{ marginBottom: "30px" }}>
-                  {/* Subcategory Header with Checkbox for single category view */}
+                  {/* Subcategory Header with Checkbox & Collapse for single category view */}
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       gap: "10px",
-                      marginBottom: "10px",
+                      marginBottom: collapsedSubCategories[
+                        `${activeBoqCategory}::${subCategory}`
+                      ]
+                        ? "0px"
+                        : "10px",
+                      cursor: "pointer",
+                      userSelect: "none",
+                    }}
+                    onClick={() => {
+                      const key = `${activeBoqCategory}::${subCategory}`;
+                      setCollapsedSubCategories((prev) => ({
+                        ...prev,
+                        [key]: !prev[key],
+                      }));
                     }}
                   >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{
+                        transition: "transform 0.2s ease",
+                        transform: collapsedSubCategories[
+                          `${activeBoqCategory}::${subCategory}`
+                        ]
+                          ? "rotate(-90deg)"
+                          : "rotate(0deg)",
+                      }}
+                    >
+                      <path
+                        d="M3.5 5.25L7 8.75L10.5 5.25"
+                        stroke="black"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        fontSize: "14px",
+                      }}
+                    >
+                      {boqCategories.indexOf(activeBoqCategory) + 1}.{index + 1}{" "}
+                      {subCategory}
+                    </span>
+
+                    {/* Subcategory checkbox — commented out
                     <label
                       style={{
                         display: "flex",
@@ -937,6 +1155,7 @@ export default function MultipleSelectBoqItemButton({
                         fontWeight: 600,
                         fontSize: "14px",
                       }}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {!singleSelect && (
                         <input
@@ -963,125 +1182,146 @@ export default function MultipleSelectBoqItemButton({
                       {boqCategories.indexOf(activeBoqCategory) + 1}.{index + 1}{" "}
                       {subCategory}
                     </label>
+                    */}
+
+                    <div
+                      style={{
+                        backgroundColor: "rgba(239, 239, 239, 1)",
+                        borderRadius: "50px",
+                        padding: "2px 8px",
+                        fontWeight: "600",
+                        fontSize: "11px",
+                        color: "rgba(100, 100, 100, 1)",
+                      }}
+                    >
+                      {items.length} Items
+                    </div>
                   </div>
 
-                  <table className="items-table two-toned">
-                    <thead>
-                      <tr>
-                        <th></th>
-                        <th>#</th>
-                        <th>ITEM</th>
-                        <th>QUANTITY</th>
-                        {canSeePrice && (
-                          <>
-                            <th>RATE</th>
-                            <th>TOTAL PRICE</th>
-                          </>
-                        )}
-                        <th>ATTACHMENTS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((boq, itemIndex) => {
-                        const attachmentUrls = parseAttachments(
-                          boq.attachments,
-                        );
+                  {!collapsedSubCategories[
+                    `${activeBoqCategory}::${subCategory}`
+                  ] && (
+                    <table className="items-table two-toned">
+                      <thead>
+                        <tr>
+                          <th></th>
+                          <th>#</th>
+                          <th>ITEM</th>
+                          <th>QUANTITY</th>
+                          {canSeePrice && (
+                            <>
+                              <th>RATE</th>
+                              <th>TOTAL PRICE</th>
+                            </>
+                          )}
+                          <th>ATTACHMENTS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((boq, itemIndex) => {
+                          const attachmentUrls = parseAttachments(
+                            boq.attachments,
+                          );
 
-                        return (
-                          <tr key={boq.id}>
-                            <td onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
-                                checked={tempSelectedBoqIDs.includes(boq.id)}
-                                onChange={() => handleCheckboxToggle(boq.id)}
-                                style={{
-                                  width: "18px",
-                                  height: "18px",
-                                  cursor: "pointer",
-                                  accentColor: "rgba(0, 163, 93, 1)",
-                                }}
-                              />
-                            </td>
-                            <td style={{ whiteSpace: "nowrap" }}>
-                              {boqCategories.indexOf(activeBoqCategory) + 1}.
-                              {index + 1}.{itemIndex + 1}
-                            </td>
-                            <td>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "10px",
-                                }}
-                              >
-                                <strong>{boq.item_name}</strong>
+                          return (
+                            <tr key={boq.id}>
+                              <td onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={tempSelectedBoqIDs.includes(boq.id)}
+                                  onChange={() => handleCheckboxToggle(boq.id)}
+                                  style={{
+                                    width: "18px",
+                                    height: "18px",
+                                    cursor: "pointer",
+                                    accentColor: "rgba(0, 163, 93, 1)",
+                                  }}
+                                />
+                              </td>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                {boqCategories.indexOf(activeBoqCategory) + 1}.
+                                {index + 1}.{itemIndex + 1}
+                              </td>
+                              <td>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "10px",
+                                  }}
+                                >
+                                  <strong>{boq.item_name}</strong>
 
-                                {boq.item_description && (
-                                  <p>{boq.item_description}</p>
-                                )}
+                                  {boq.item_description && (
+                                    <p>{boq.item_description}</p>
+                                  )}
 
-                                {boq.location && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      gap: "10px",
-                                      alignItems: "center",
-                                    }}
-                                  >
-                                    <img
-                                      src={locationIcon}
-                                      style={{ width: "16px" }}
-                                      alt="location"
-                                    />
-                                    <span
+                                  {boq.location && (
+                                    <div
                                       style={{
-                                        fontWeight: 600,
-                                        marginTop: "4px",
-                                        color: "rgba(105, 105, 105, 1)",
+                                        display: "flex",
+                                        gap: "10px",
+                                        alignItems: "center",
                                       }}
                                     >
-                                      {boq.location}
-                                    </span>
-                                  </div>
-                                )}
+                                      <img
+                                        src={locationIcon}
+                                        style={{ width: "16px" }}
+                                        alt="location"
+                                      />
+                                      <span
+                                        style={{
+                                          fontWeight: 600,
+                                          marginTop: "4px",
+                                          color: "rgba(105, 105, 105, 1)",
+                                        }}
+                                      >
+                                        {boq.location}
+                                      </span>
+                                    </div>
+                                  )}
 
-                                {boq.scope_of_work && (
-                                  <div
-                                    style={{
-                                      backgroundColor: "rgba(225, 225, 225, 1)",
-                                      borderRadius: "50px",
-                                      padding: "4px 10px",
-                                      width: "fit-content",
-                                    }}
-                                  >
-                                    <strong>{boq.scope_of_work}</strong>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td>
-                              {boq.quantity} {boq.unit}
-                            </td>
+                                  {boq.scope_of_work && (
+                                    <div
+                                      style={{
+                                        backgroundColor:
+                                          "rgba(225, 225, 225, 1)",
+                                        borderRadius: "50px",
+                                        padding: "4px 10px",
+                                        width: "fit-content",
+                                      }}
+                                    >
+                                      <strong>{boq.scope_of_work}</strong>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                {boq.quantity} {boq.unit}
+                              </td>
 
-                            {canSeePrice && (
-                              <>
-                                <td>{formatPrice(boq.rate_per_quantity)}</td>
-                                <td>{formatPriceAED(boq.total_cost)}</td>
-                              </>
-                            )}
+                              {canSeePrice && (
+                                <>
+                                  <td>{formatPrice(boq.rate_per_quantity)}</td>
+                                  <td style={{ textWrap: "nowrap" }}>
+                                    {formatPriceAED(boq.total_cost)}
+                                  </td>
+                                </>
+                              )}
 
-                            <td className="attachments">
-                              <div className="attachments-grid">
-                                {attachmentUrls.map((url, i) => (
-                                  <img key={i} src={url} alt="attachment" />
-                                ))}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              <td className="attachments">
+                                <div className="attachments-grid">
+                                  {attachmentUrls.map((url, i) => (
+                                    <img key={i} src={url} alt="attachment" />
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
 
                   <br />
                   <br />
@@ -1134,7 +1374,7 @@ export default function MultipleSelectBoqItemButton({
             <img
               src={crossIcon}
               alt="cross"
-              style={{ filter: "invert(1)" }}
+              style={{ filter: "invert(1)", marginBottom: "2px" }}
               onClick={handleReset}
             />
           </>
@@ -1154,6 +1394,210 @@ export default function MultipleSelectBoqItemButton({
       {typeof window !== "undefined" &&
         modalContent &&
         createPortal(modalContent, document.body)}
+
+      {typeof window !== "undefined" &&
+        showFilterPopup &&
+        createPortal(
+          <FormPopUp
+            header={"FILTER BOQ ITEMS"}
+            setIsOpen={setShowFilterPopup}
+            handleSubmit={handleFilterApply}
+            addButtonLabel="CONFIRM"
+            style={{ height: "95dvh" }}
+            secondButton={
+              <Button
+                componentType={"button"}
+                bgColor={"white"}
+                borderColor={"black"}
+                textColor={"black"}
+                onClick={handleFilterReset}
+              >
+                RESET
+              </Button>
+            }
+          >
+            {/* Categories */}
+            <div style={{ marginBottom: "30px" }}>
+              <h3
+                style={{
+                  marginBottom: "15px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                CATEGORY
+              </h3>
+              <div
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "10px",
+                }}
+              >
+                <div style={{ position: "relative", marginBottom: "15px" }}>
+                  <input
+                    type="text"
+                    placeholder="SEARCH"
+                    value={categorySearchQuery}
+                    onChange={(e) => setCategorySearchQuery(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 15px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(223, 223, 223, 1)",
+                      fontSize: "14px",
+                      backgroundColor: "rgba(245, 245, 245, 1)",
+                    }}
+                  />
+                  <img
+                    src={searchIcon}
+                    alt="search"
+                    style={{
+                      position: "absolute",
+                      right: "15px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: "16px",
+                      height: "16px",
+                      opacity: 0.5,
+                    }}
+                  />
+                </div>
+                <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                  {allCategories
+                    .filter((c) =>
+                      c
+                        .toLowerCase()
+                        .includes(categorySearchQuery.toLowerCase()),
+                    )
+                    .map((category) => (
+                      <div key={category} style={{ marginBottom: "10px" }}>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={tempFilterCategories.has(category)}
+                            onChange={() => toggleFilterCategory(category)}
+                            style={{
+                              width: "18px",
+                              height: "18px",
+                              cursor: "pointer",
+                              accentColor: "#10b981",
+                            }}
+                          />
+                          <h4>{category}</h4>
+                        </label>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Subcategories */}
+            <div style={{ marginBottom: "30px" }}>
+              <h3
+                style={{
+                  marginBottom: "15px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                SUBCATEGORY
+              </h3>
+              <div
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "10px",
+                }}
+              >
+                <div style={{ position: "relative", marginBottom: "15px" }}>
+                  <input
+                    type="text"
+                    placeholder="SEARCH"
+                    value={subCategorySearchQuery}
+                    onChange={(e) => setSubCategorySearchQuery(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 15px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(223, 223, 223, 1)",
+                      fontSize: "14px",
+                      backgroundColor: "rgba(245, 245, 245, 1)",
+                    }}
+                  />
+                  <img
+                    src={searchIcon}
+                    alt="search"
+                    style={{
+                      position: "absolute",
+                      right: "15px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: "16px",
+                      height: "16px",
+                      opacity: 0.5,
+                    }}
+                  />
+                </div>
+                <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                  {getAvailableSubCategories().length === 0 ? (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "20px",
+                        color: "#888",
+                      }}
+                    >
+                      Select a category to see subcategories
+                    </div>
+                  ) : (
+                    getAvailableSubCategories()
+                      .filter((sc) =>
+                        sc
+                          .toLowerCase()
+                          .includes(subCategorySearchQuery.toLowerCase()),
+                      )
+                      .map((subCategory) => (
+                        <div key={subCategory} style={{ marginBottom: "10px" }}>
+                          <label
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={tempFilterSubCategories.has(subCategory)}
+                              onChange={() =>
+                                toggleFilterSubCategory(subCategory)
+                              }
+                              style={{
+                                width: "18px",
+                                height: "18px",
+                                cursor: "pointer",
+                                accentColor: "#10b981",
+                              }}
+                            />
+                            <h4>{subCategory}</h4>
+                          </label>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </FormPopUp>,
+          document.body,
+        )}
     </>
   );
 }

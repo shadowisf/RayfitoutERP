@@ -244,83 +244,84 @@ export default function NewMrButton() {
         >
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
+              display: "flex",
               gap: "20px",
             }}
           >
-            <label
-              style={{
-                position: "relative",
-                border: `1px solid ${mode === "job" ? "rgba(0, 163, 93, 1)" : "rgba(217, 217, 217, 1)"}`,
-                borderRadius: "10px",
-                padding: "40px 20px",
-                cursor: "pointer",
-                background: mode === "job" ? "#d4f4e7" : "white",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "300px",
-              }}
-              onClick={() => setMode("job")}
-            >
-              <input
-                type="radio"
-                name="requestType"
-                value="job"
-                checked={mode === "job"}
-                onChange={() => setMode("job")}
+            {userInfo?.departmentID === 8 && (
+              <label
                 style={{
-                  position: "absolute",
-                  top: "16px",
-                  left: "16px",
-                  width: "20px",
-                  height: "20px",
+                  position: "relative",
+                  border: `1px solid ${mode === "job" ? "rgba(0, 163, 93, 1)" : "rgba(217, 217, 217, 1)"}`,
+                  borderRadius: "10px",
+                  padding: "40px 20px",
                   cursor: "pointer",
-                  accentColor: "#00aa6c",
-                }}
-              />
-              <div
-                style={{
+                  background: mode === "job" ? "#d4f4e7" : "white",
                   display: "flex",
-                  flexDirection: "column",
                   alignItems: "center",
-                  gap: "20px",
+                  justifyContent: "center",
+                  width: "300px",
                 }}
+                onClick={() => setMode("job")}
               >
+                <input
+                  type="radio"
+                  name="requestType"
+                  value="job"
+                  checked={mode === "job"}
+                  onChange={() => setMode("job")}
+                  style={{
+                    position: "absolute",
+                    top: "16px",
+                    left: "16px",
+                    width: "20px",
+                    height: "20px",
+                    cursor: "pointer",
+                    accentColor: "#00aa6c",
+                  }}
+                />
                 <div
                   style={{
-                    width: "80px",
-                    height: "80px",
                     display: "flex",
+                    flexDirection: "column",
                     alignItems: "center",
-                    justifyContent: "center",
+                    gap: "20px",
                   }}
                 >
-                  <img
-                    src={jobIcon}
-                    alt="Job Order"
+                  <div
                     style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                      filter:
-                        mode === "job" ? "brightness(100) invert(1)" : "none",
+                      width: "80px",
+                      height: "80px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
-                  />
+                  >
+                    <img
+                      src={jobIcon}
+                      alt="Job Order"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                        filter:
+                          mode === "job" ? "brightness(100) invert(1)" : "none",
+                      }}
+                    />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: 600,
+                      textAlign: "center",
+                      color: "black",
+                    }}
+                  >
+                    JOB ORDER
+                  </span>
                 </div>
-                <span
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 600,
-                    textAlign: "center",
-                    color: "black",
-                  }}
-                >
-                  JOB ORDER
-                </span>
-              </div>
-            </label>
+              </label>
+            )}
 
             <label
               style={{

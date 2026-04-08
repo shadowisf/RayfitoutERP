@@ -43,6 +43,14 @@ type MrLineData = {
   approved_total_price: number;
   attachment: string;
   boq_line_ids: string;
+  // JO line fields
+  job_scope_name?: string;
+  job_scope?: string;
+  contract_type?: string;
+  job_description?: string;
+  budget_estimate?: number;
+  boq_line_names?: string;
+  boq_item_numbers?: string;
 };
 
 type DurationInfo = {
@@ -226,35 +234,39 @@ export default function QuickPriceApprovalWidget() {
         }
         setFlatLines(lines);
 
+        const isJob = currentMr.type === "job";
+        const quotationApi = isJob
+          ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor/getAllSubcontractorAndQuotationByJoLineID`
+          : `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`;
+
         // Check existing approval statuses via quotations for each line
         for (const line of lines) {
           try {
-            const qRes = await fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: line.id }),
-              },
-            );
+            const qRes = await fetch(quotationApi, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: line.id }),
+            });
             const qData = await qRes.json();
             if (Array.isArray(qData)) {
               const approved = qData.find(
-                (q: SupplierQuotation) => q.approval_status === "Approved",
+                (q: any) => q.approval_status === "Approved",
               );
               if (approved) {
                 setLineStatuses((prev) => ({
                   ...prev,
                   [line.id]: {
                     status: "approved",
-                    supplierName: approved.supplier_name,
+                    supplierName: isJob
+                      ? approved.subcontractor_name
+                      : approved.supplier_name,
                   },
                 }));
               }
               const allRejected =
                 qData.length > 0 &&
                 qData.every(
-                  (q: SupplierQuotation) => q.approval_status === "Rejected",
+                  (q: any) => q.approval_status === "Rejected",
                 );
               if (allRejected) {
                 setLineStatuses((prev) => ({
@@ -316,14 +328,15 @@ export default function QuickPriceApprovalWidget() {
       setIsQuotationsLoading(true);
       setSelectedQuotationID("");
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: selectingLine!.id }),
-          },
-        );
+        const isJob = currentMr?.type === "job";
+        const quotationApi = isJob
+          ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor/getAllSubcontractorAndQuotationByJoLineID`
+          : `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`;
+        const res = await fetch(quotationApi, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: selectingLine!.id }),
+        });
         const data = await res.json();
         setQuotations(Array.isArray(data) ? data : []);
       } catch {
@@ -400,7 +413,7 @@ export default function QuickPriceApprovalWidget() {
     e.preventDefault();
     if (!selectingLine) return;
 
-    const selected = quotations.find(
+    const selected: any = quotations.find(
       (q) => q.id === Number(selectedQuotationID),
     );
     if (!selected) {
@@ -408,30 +421,41 @@ export default function QuickPriceApprovalWidget() {
       return;
     }
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const isJob = currentMr?.type === "job";
+    const apiUrl = isJob
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`
+      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`;
+    const body = isJob
+      ? {
+          action: "approveSubcontractorQuotation",
+          quotation_id: selected.id,
+          jo_line_id: selectingLine.id,
+        }
+      : {
           action: "approveSupplierAndQuotation",
           quotation_id: selected.id,
           mr_line_id: selectingLine.id,
           supplier_id: selected.supplier_id,
-        }),
-      },
-    );
+        };
+
+    const res = await fetch(apiUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
     if (res.ok) {
-      toast(
-        `Vendor approved for ${selectingLine.material_description}`,
-        "success",
-      );
+      const itemLabel = isJob
+        ? selectingLine.job_description || "item"
+        : selectingLine.material_description;
+      toast(`Vendor approved for ${itemLabel}`, "success");
       setLineStatuses((prev) => ({
         ...prev,
         [selectingLine.id]: {
           status: "approved",
-          supplierName: selected.supplier_name,
+          supplierName: isJob
+            ? selected.subcontractor_name
+            : selected.supplier_name,
         },
       }));
       setSelectingLine(null);
@@ -445,18 +469,27 @@ export default function QuickPriceApprovalWidget() {
     e.preventDefault();
     if (!selectingLine) return;
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const isJob = currentMr?.type === "job";
+    const apiUrl = isJob
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`
+      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`;
+    const body = isJob
+      ? {
+          action: "rejectAllSubcontractorQuotations",
+          reject_comment: rejectText,
+          jo_line_id: selectingLine.id,
+        }
+      : {
           action: "rejectAllSupplierAndQuotation",
           reject_comment: rejectText,
           mr_line_id: selectingLine.id,
-        }),
-      },
-    );
+        };
+
+    const res = await fetch(apiUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
     if (res.ok) {
       toast("All vendors rejected", "success");
@@ -479,54 +512,52 @@ export default function QuickPriceApprovalWidget() {
     const lineStatus = lineStatuses[lineId];
     if (!lineStatus) return;
 
+    const isJob = currentMr?.type === "job";
+    const apiUrl = isJob
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`
+      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`;
+
+    let body: any;
     if (lineStatus.status === "approved") {
-      // Reset via the supplier API
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      const line = flatLines.find((l) => l.id === lineId);
+      body = isJob
+        ? {
+            action: "resetSubcontractorQuotation",
+            jo_line_id: lineId,
+            subcontractor_id: (line as any)?.approved_subcontractor_id,
+          }
+        : {
             action: "resetSupplierAndQuotation",
             mr_line_id: lineId,
-            supplier_id: flatLines.find((l) => l.id === lineId)
-              ?.approved_supplier_id,
-          }),
-        },
-      );
-
-      if (res.ok) {
-        setLineStatuses((prev) => {
-          const next = { ...prev };
-          delete next[lineId];
-          return next;
-        });
-      } else {
-        toast("Failed to reset vendor selection", "error");
-      }
+            supplier_id: line?.approved_supplier_id,
+          };
     } else {
       // For rejected, reset all quotation statuses
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      body = isJob
+        ? {
+            action: "resetAllSubcontractorQuotations",
+            jo_line_id: lineId,
+          }
+        : {
             action: "resetSupplierAndQuotation",
             mr_line_id: lineId,
-          }),
-        },
-      );
+          };
+    }
 
-      if (res.ok) {
-        setLineStatuses((prev) => {
-          const next = { ...prev };
-          delete next[lineId];
-          return next;
-        });
-      } else {
-        toast("Failed to reset vendor selection", "error");
-      }
+    const res = await fetch(apiUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      setLineStatuses((prev) => {
+        const next = { ...prev };
+        delete next[lineId];
+        return next;
+      });
+    } else {
+      toast("Failed to reset vendor selection", "error");
     }
   }
 
@@ -534,19 +565,24 @@ export default function QuickPriceApprovalWidget() {
     if (pendingLines.length === 0) return;
     setIsSmartSelecting(true);
 
+    const isJob = currentMr?.type === "job";
+    const fetchApi = isJob
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor/getAllSubcontractorAndQuotationByJoLineID`
+      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`;
+    const approveApi = isJob
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`
+      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`;
+
     let successful = 0;
     let failed = 0;
 
     for (const line of pendingLines) {
       try {
-        const qRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: line.id }),
-          },
-        );
+        const qRes = await fetch(fetchApi, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: line.id }),
+        });
         const qData = await qRes.json();
         if (!qData || qData.length === 0) {
           failed++;
@@ -557,19 +593,24 @@ export default function QuickPriceApprovalWidget() {
           Number(curr.total_price) < Number(prev.total_price) ? curr : prev,
         );
 
-        const approveRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+        const approveBody = isJob
+          ? {
+              action: "approveSubcontractorQuotation",
+              quotation_id: lowest.id,
+              jo_line_id: line.id,
+            }
+          : {
               action: "approveSupplierAndQuotation",
               quotation_id: lowest.id,
               mr_line_id: line.id,
               supplier_id: lowest.supplier_id,
-            }),
-          },
-        );
+            };
+
+        const approveRes = await fetch(approveApi, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(approveBody),
+        });
 
         if (approveRes.ok) {
           successful++;
@@ -577,7 +618,9 @@ export default function QuickPriceApprovalWidget() {
             ...prev,
             [line.id]: {
               status: "approved",
-              supplierName: lowest.supplier_name,
+              supplierName: isJob
+                ? lowest.subcontractor_name
+                : lowest.supplier_name,
             },
           }));
         } else {
@@ -609,69 +652,90 @@ export default function QuickPriceApprovalWidget() {
     if (!currentMr) return;
     setIsSubmitting(true);
 
-    try {
-      // Get all MR line IDs and fetch approved suppliers
-      const approvedSuppliers: { mr_line_id: number; quotation_id: number }[] =
-        [];
+    const isJob = currentMr.type === "job";
 
-      for (const line of flatLines) {
-        try {
-          const qRes = await fetch(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: line.id }),
-            },
-          );
-          const qData = await qRes.json();
-          const approved = qData?.find(
-            (q: any) => q.approval_status === "Approved",
-          );
-          if (approved) {
-            approvedSuppliers.push({
-              mr_line_id: line.id,
-              quotation_id: approved.quotation_id || approved.id,
-            });
+    try {
+      // For materials only: clean up non-approved quotation files
+      if (!isJob) {
+        const approvedSuppliers: {
+          mr_line_id: number;
+          quotation_id: number;
+        }[] = [];
+
+        for (const line of flatLines) {
+          try {
+            const qRes = await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getAllSupplierAndQuotationByMrLineID`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: line.id }),
+              },
+            );
+            const qData = await qRes.json();
+            const approved = qData?.find(
+              (q: any) => q.approval_status === "Approved",
+            );
+            if (approved) {
+              approvedSuppliers.push({
+                mr_line_id: line.id,
+                quotation_id: approved.quotation_id || approved.id,
+              });
+            }
+          } catch {
+            // skip
           }
-        } catch {
-          // skip
         }
+
+        // Delete non-approved quotation files
+        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "deleteNonApprovedQuotationFiles",
+            approved_suppliers: approvedSuppliers,
+          }),
+        });
       }
 
-      // Delete non-approved quotation files
-      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "deleteNonApprovedQuotationFiles",
-          approved_suppliers: approvedSuppliers,
-        }),
-      });
-
-      // Submit for LPO
+      // Submit for LPO (materials) or Final Completion (jobs)
+      // Jobs at progress 10 go directly to progress 25 (completed), no invoice stage
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "submitForLPO",
+          action: isJob ? "submitJoForFinalCompletion" : "submitForLPO",
           id: currentMr.id,
           changed_by: userInfo?.name,
+          department_id: currentMr.department_id,
         }),
       });
 
       if (res.ok) {
-        toast("Material request submitted for LPO", "success");
+        toast(
+          isJob ? "Job order completed" : "Material request submitted for LPO",
+          "success",
+        );
         setIsSubmitLpoOpen(false);
         setMrHeaders((prev) => prev.filter((_, i) => i !== currentMrIndex));
         if (currentMrIndex >= mrHeaders.length - 1) {
           setCurrentMrIndex(Math.max(0, currentMrIndex - 1));
         }
       } else {
-        toast("Failed to submit material request", "error");
+        toast(
+          isJob
+            ? "Failed to complete job order"
+            : "Failed to submit material request",
+          "error",
+        );
       }
     } catch {
-      toast("Failed to submit material request", "error");
+      toast(
+        isJob
+          ? "Failed to complete job order"
+          : "Failed to submit material request",
+        "error",
+      );
     }
     setIsSubmitting(false);
   }
@@ -957,7 +1021,7 @@ export default function QuickPriceApprovalWidget() {
                     alignItems: "center",
                   }}
                 >
-                  Material
+                  {currentMr.type === "job" ? "Jobs" : "Material"}
                   <span
                     style={{
                       padding: "2px 10px",
@@ -1023,81 +1087,131 @@ export default function QuickPriceApprovalWidget() {
                         padding: "15px",
                       }}
                     >
-                      <div>
-                        <small>ITEM</small>
-                        <h4>{line.material_description || "-"}</h4>
-                      </div>
+                      {currentMr.type === "job" ? (
+                        <>
+                          <div style={{ display: "flex", gap: "50px" }}>
+                            <div>
+                              <small>SCOPE</small>
+                              <h4>{line.job_scope_name || line.job_scope || "-"}</h4>
+                            </div>
+                            <div>
+                              <small>CONTRACT TYPE</small>
+                              <h4>{line.contract_type || "-"}</h4>
+                            </div>
+                          </div>
 
-                      <br />
+                          <br />
 
-                      <div style={{ display: "flex", gap: "50px" }}>
-                        <div>
-                          <small>QTY</small>
-                          <h4>
-                            {formatQuantity(line.quantity)} {line.unit || ""}
-                          </h4>
-                        </div>
+                          <div>
+                            <small>DESCRIPTION</small>
+                            <h4>{line.job_description || "-"}</h4>
+                          </div>
 
-                        <div>
-                          <small>BOQ REF</small>
-                          <h4>
-                            {line.boq_line_ids ? (
-                              <BoqReferencePopUp
-                                mrHeader={buildMrHeaderForBoq()}
-                                item={line as any}
-                              />
-                            ) : (
-                              "-"
-                            )}
-                          </h4>
-                        </div>
+                          <br />
 
-                        <div>
-                          <small>BRAND & SPECS</small>
-                          <h4>
-                            {line.brand || line.specification ? (
-                              <InfoPopUpButton
-                                header={"BRAND & SPECIFICATION"}
-                                text={
-                                  <>
-                                    <small>BRAND</small>
-                                    <h2>{line.brand || "-"}</h2>
-                                    <br />
-                                    <small>SPECIFICATION</small>
-                                    <h2>{line.specification || "-"}</h2>
-                                  </>
-                                }
-                              />
-                            ) : (
-                              "-"
-                            )}
-                          </h4>
-                        </div>
+                          <div style={{ display: "flex", gap: "50px" }}>
+                            <div>
+                              <small>BOQ REF.</small>
+                              <h4>
+                                {line.boq_line_ids ? (
+                                  <BoqReferencePopUp
+                                    mrHeader={buildMrHeaderForBoq()}
+                                    item={line as any}
+                                  />
+                                ) : (
+                                  "-"
+                                )}
+                              </h4>
+                            </div>
+                            <div>
+                              <small>BUDGET</small>
+                              <h4>
+                                {line.budget_estimate != null && Number(line.budget_estimate) > 0
+                                  ? `AED ${Number(line.budget_estimate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                  : "-"}
+                              </h4>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <small>ITEM</small>
+                            <h4>{line.material_description || "-"}</h4>
+                          </div>
 
-                        <div>
-                          <small>ATTACHMENT</small>
-                          <h4>
-                            {line.attachment ? (
-                              <Button
-                                componentType={"link"}
-                                bgColor={"rgba(239, 239, 239, 1)"}
-                                borderColor={"rgba(223, 223, 223, 1)"}
-                                textColor={"black"}
-                                style={{ padding: "7px 7px" }}
-                                href={line.attachment}
-                                target="_blank"
-                              >
-                                <img
-                                  src={externalLinkIcon}
-                                  alt="external link"
-                                />
-                              </Button>
-                            ) : (
-                              "-"
-                            )}
-                          </h4>
-                        </div>
-                      </div>
+                          <br />
+
+                          <div style={{ display: "flex", gap: "50px" }}>
+                            <div>
+                              <small>QTY</small>
+                              <h4>
+                                {formatQuantity(line.quantity)} {line.unit || ""}
+                              </h4>
+                            </div>
+
+                            <div>
+                              <small>BOQ REF.</small>
+                              <h4>
+                                {line.boq_line_ids ? (
+                                  <BoqReferencePopUp
+                                    mrHeader={buildMrHeaderForBoq()}
+                                    item={line as any}
+                                  />
+                                ) : (
+                                  "-"
+                                )}
+                              </h4>
+                            </div>
+
+                            <div>
+                              <small>BRAND & SPECS</small>
+                              <h4>
+                                {line.brand || line.specification ? (
+                                  <InfoPopUpButton
+                                    header={"BRAND & SPECIFICATION"}
+                                    text={
+                                      <>
+                                        <small>BRAND</small>
+                                        <h2>{line.brand || "-"}</h2>
+                                        <br />
+                                        <small>SPECIFICATION</small>
+                                        <h2>{line.specification || "-"}</h2>
+                                      </>
+                                    }
+                                  />
+                                ) : (
+                                  "-"
+                                )}
+                              </h4>
+                            </div>
+
+                            <div>
+                              <small>ATTACHMENT</small>
+                              <h4>
+                                {line.attachment ? (
+                                  <Button
+                                    componentType={"link"}
+                                    bgColor={"rgba(239, 239, 239, 1)"}
+                                    borderColor={"rgba(223, 223, 223, 1)"}
+                                    textColor={"black"}
+                                    style={{ padding: "7px 7px" }}
+                                    href={line.attachment}
+                                    target="_blank"
+                                  >
+                                    <img
+                                      src={externalLinkIcon}
+                                      alt="external link"
+                                    />
+                                  </Button>
+                                ) : (
+                                  "-"
+                                )}
+                              </h4>
+                            </div>
+                          </div>
+                        </>
+                      )}
 
                       <br />
 
@@ -1228,7 +1342,9 @@ export default function QuickPriceApprovalWidget() {
                         padding: "10px 25px",
                       }}
                     >
-                      SUBMIT FOR LOCAL PURCHASE ORDER
+                      {currentMr.type === "job"
+                        ? "SUBMIT FOR COMPLETION"
+                        : "SUBMIT FOR LOCAL PURCHASE ORDER"}
                     </Button>
                   )}
                 </div>
@@ -1272,6 +1388,66 @@ export default function QuickPriceApprovalWidget() {
             >
               No quotations found
             </p>
+          ) : currentMr?.type === "job" ? (
+            <table className="items-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>SUBCONTRACTOR</th>
+                  <th>QUOTATION</th>
+                  <th>TOTAL PRICE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quotations.map((q: any, index) => {
+                  const quotationFiles: string[] = Array.isArray(
+                    q.quotation_file,
+                  )
+                    ? q.quotation_file
+                    : q.quotation_file
+                      ? [q.quotation_file]
+                      : [];
+                  return (
+                    <tr key={index}>
+                      <td>
+                        <input
+                          type="radio"
+                          name="subcontractor"
+                          value={q.id}
+                          onChange={(e) =>
+                            setSelectedQuotationID(e.target.value)
+                          }
+                          required
+                        />
+                      </td>
+                      <td>{q.subcontractor_name || "-"}</td>
+                      <td>
+                        {quotationFiles.length > 0 ? (
+                          <Button
+                            componentType={"link"}
+                            bgColor={"white"}
+                            borderColor={"rgba(207, 207, 207, 1)"}
+                            textColor={"black"}
+                            href={quotationFiles[0]}
+                            target="_blank"
+                            style={{
+                              padding: "7px 20px",
+                              borderRadius: "25px",
+                            }}
+                          >
+                            Quotation
+                            <img src={externalLinkIcon} alt="link" />
+                          </Button>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td>{formatCurrency(q.total_price)} AED</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           ) : (
             <table className="items-table">
               <thead>
@@ -1387,7 +1563,11 @@ export default function QuickPriceApprovalWidget() {
       {/* Submit for LPO confirmation */}
       {isSubmitLpoOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST"}
+          header={
+            currentMr?.type === "job"
+              ? "COMPLETE JOB ORDER"
+              : "SUBMIT MATERIAL REQUEST"
+          }
           setIsOpen={setIsSubmitLpoOpen}
           handleSubmit={(e) => {
             e.preventDefault();
@@ -1395,7 +1575,11 @@ export default function QuickPriceApprovalWidget() {
           }}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this material request?</p>
+          <p>
+            {currentMr?.type === "job"
+              ? "Are you sure you want to submit this job order for completion?"
+              : "Are you sure you want to submit this material request?"}
+          </p>
         </FormPopUp>
       )}
 
@@ -1410,7 +1594,11 @@ export default function QuickPriceApprovalWidget() {
           }}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this material request?</p>
+          <p>
+            {currentMr?.type === "job"
+              ? "Are you sure you want to return this job order for revision?"
+              : "Are you sure you want to return this material request for revision?"}
+          </p>
         </FormPopUp>
       )}
     </div>

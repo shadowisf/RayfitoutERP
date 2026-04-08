@@ -130,7 +130,7 @@ button {
   align-items: center;
   gap: 10px;
   border-radius: 5px;
-  padding: 10px 20px;
+  padding: 7px 20px;
   font-weight: 600;
   font-size: 14px;
 
@@ -550,6 +550,10 @@ label {
     margin-bottom: 15px;
     position: relative; /* Important for dropdown positioning */
     /* z-index: 1; */ /* Base z-index */
+
+    select {
+      padding: 8.5px 3px;
+    }
   }
 }
 
@@ -694,7 +698,6 @@ label {
 
   .native-select {
     width: 100%;
-    padding: 7px 7px;
     border: 1px solid #d9d9d9;
     border-radius: 5px;
     background: #f8f9fb;

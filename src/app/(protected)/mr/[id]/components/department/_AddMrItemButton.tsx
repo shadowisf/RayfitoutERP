@@ -4,6 +4,7 @@ import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItem
 import MultipleSelectMaterialItemButton, {
   PredefinedItem,
 } from "@/app/components/_MultipleSelectMaterialItemButton";
+import CreateNewMaterialButton from "@/app/components/_CreateNewMaterialButton";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import { UNIT_OPTIONS, mapPredefinedUnit } from "@/constants/units";
@@ -13,6 +14,7 @@ import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/app/context/AuthContext";
 
 type SelectedMaterialRow = {
   predefinedItem: PredefinedItem;
@@ -50,6 +52,8 @@ export default function AddMrItemButton({
   const arrowRight = "/icons/arrow-right.svg";
   const pencilIcon = "/icons/pencil.svg";
 
+  const { userInfo } = useAuth();
+
   const [isOpen, setIsOpen] = useState(false);
 
   // Selected material items with qty/unit
@@ -64,24 +68,9 @@ export default function AddMrItemButton({
   const [previewShowLeftArrow, setPreviewShowLeftArrow] = useState(false);
   const [previewShowRightArrow, setPreviewShowRightArrow] = useState(false);
 
-  // NEW MATERIAL popup state
-  const [showNewMaterial, setShowNewMaterial] = useState(false);
-  const [newMatDescription, setNewMatDescription] = useState("");
-  const [newMatCategoryID, setNewMatCategoryID] = useState<string | number>("");
-  const [newMatSubCategoryID, setNewMatSubCategoryID] = useState<
-    string | number
-  >("");
-  const [newMatUnit, setNewMatUnit] = useState("");
-  const [newMatBrand, setNewMatBrand] = useState("");
-  const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
-    [],
-  );
-  const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
-    any[]
-  >([]);
-
   // Shared fields
   const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
+  const [brand, setBrand] = useState("");
   const [specification, setSpecification] = useState("");
   const [deliveryLocation, setDeliveryLocation] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
@@ -95,88 +84,17 @@ export default function AddMrItemButton({
       .catch(console.error);
   }, []);
 
-  // Fetch categories + all subcategories when NEW MATERIAL popup opens
-  useEffect(() => {
-    if (!showNewMaterial) return;
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
-    )
-      .then((res) => res.json())
-      .then(setMaterialCategoryValues)
-      .catch(console.error);
-
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
-      { method: "GET", headers: { "Content-Type": "application/json" } },
-    )
-      .then((res) => res.json())
-      .then(setMaterialSubCategoryValues)
-      .catch(console.error);
-  }, [showNewMaterial]);
-
-  // Handle NEW MATERIAL subcategory selection — auto-fill category
-  const handleNewMatSubCategoryChange = (val: string | number) => {
-    setNewMatSubCategoryID(val);
-    if (val && materialSubCategoryValues.length > 0) {
-      const subCat = materialSubCategoryValues.find((sc: any) => sc.id === val);
-      if (subCat?.category_id && !newMatCategoryID) {
-        setNewMatCategoryID(subCat.category_id);
-      }
-    }
-  };
-
-  // Handle NEW MATERIAL submit
-  const handleNewMaterialSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!newMatDescription.trim()) return;
-    if (!newMatCategoryID) return;
-    if (!newMatSubCategoryID) return;
-
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            material_description: newMatDescription.trim(),
-            category_id: Number(newMatCategoryID),
-            subcategory_id: Number(newMatSubCategoryID),
-            unit: newMatUnit || null,
-            brand: newMatBrand || null,
-          }),
-        },
-      );
-
-      if (!res.ok) {
-        toast("Failed to create material", "error");
-        return;
-      }
-
-      const newItem: PredefinedItem = await res.json();
-      toast(`${newItem.material_description} created`, "success");
-
-      // Add to selected rows
-      const newRow: SelectedMaterialRow = {
-        predefinedItem: newItem,
-        quantity: "",
-        unit: newItem.unit ? mapPredefinedUnit(newItem.unit) : "",
-        unitWasNull: !newItem.unit,
-      };
-      setSelectedRows((prev) => [...prev, newRow]);
-      setSelectedItemIDs((prev) => [...prev, newItem.id]);
-
-      // Reset and close
-      setShowNewMaterial(false);
-      setNewMatDescription("");
-      setNewMatCategoryID("");
-      setNewMatSubCategoryID("");
-      setNewMatUnit("");
-      setNewMatBrand("");
-    } catch {
-      toast("Failed to create material", "error");
-    }
+  // Handle new material created from CreateNewMaterialButton
+  const handleNewMaterialCreated = (newItem: PredefinedItem) => {
+    toast(`${newItem.material_description} created`, "success");
+    const newRow: SelectedMaterialRow = {
+      predefinedItem: newItem,
+      quantity: "",
+      unit: newItem.unit ? mapPredefinedUnit(newItem.unit) : "",
+      unitWasNull: !newItem.unit,
+    };
+    setSelectedRows((prev) => [...prev, newRow]);
+    setSelectedItemIDs((prev) => [...prev, newItem.id]);
   };
 
   // Preview category tabs scroll
@@ -344,7 +262,7 @@ export default function AddMrItemButton({
             quantity: Number(row.quantity),
             unit: row.unit,
             notes: null,
-            brand: row.predefinedItem.brand || null,
+            brand: brand || row.predefinedItem.brand || null,
             specification: specification || null,
             delivery_location: deliveryLocation,
             boq_line_ids: boqLineIDs,
@@ -387,6 +305,7 @@ export default function AddMrItemButton({
       setSelectedRows([]);
       setSelectedItemIDs([]);
       setBoqLineIDs([]);
+      setBrand("");
       setSpecification("");
       setDeliveryLocation("");
       setAttachment(null);
@@ -420,6 +339,7 @@ export default function AddMrItemButton({
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
+          style={{ width: "50dvw", height: "95dvh" }}
         >
           {/* Material Items Selection */}
           <div className="input-row full">
@@ -444,18 +364,12 @@ export default function AddMrItemButton({
                       gap: "10px",
                     }}
                   >
-                    <Button
-                      componentType={"button"}
-                      bgColor={"black"}
-                      borderColor={"black"}
-                      textColor={"white"}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setShowNewMaterial(true);
-                      }}
-                    >
-                      NEW MATERIAL +
-                    </Button>
+                    {(userInfo?.departmentID === 16 ||
+                      userInfo?.departmentID === 8) && (
+                      <CreateNewMaterialButton
+                        onSuccess={handleNewMaterialCreated}
+                      />
+                    )}
 
                     <MultipleSelectMaterialItemButton
                       onSelectItems={handleMaterialSelect}
@@ -622,7 +536,7 @@ export default function AddMrItemButton({
                         onChange={(e) => setPreviewSearchQuery(e.target.value)}
                         style={{
                           width: "100%",
-                          padding: "10px 40px 10px 15px",
+                          padding: "7px 40px 7px 15px",
                           borderRadius: "8px",
                           border: "1px solid rgba(223, 223, 223, 1)",
                         }}
@@ -651,8 +565,8 @@ export default function AddMrItemButton({
                     <thead>
                       <tr>
                         <th>#</th>
+                        <th>SUBCATEGORY</th>
                         <th>ITEM</th>
-                        <th>BRAND</th>
                         <th>QTY</th>
                         <th>UNIT</th>
                         <th></th>
@@ -672,8 +586,10 @@ export default function AddMrItemButton({
                                   r.predefinedItem.id === row.predefinedItem.id,
                               ) + 1}
                             </td>
+                            <td>
+                              {row.predefinedItem.subcategory_name || "-"}
+                            </td>
                             <td>{row.predefinedItem.material_description}</td>
-                            <td>{row.predefinedItem.brand || "-"}</td>
                             <td>
                               <InputItem
                                 label=""
@@ -709,7 +625,7 @@ export default function AddMrItemButton({
                                 bgColor={"transparent"}
                                 borderColor={"transparent"}
                                 textColor={"black"}
-                                style={{ padding: "0px", marginBottom: "17px" }}
+                                style={{ padding: "0px", marginBottom: "2px" }}
                               >
                                 <img
                                   src={crossSmallIcon}
@@ -760,6 +676,17 @@ export default function AddMrItemButton({
             </div>
           </div>
 
+          {/* Brand */}
+          <div className="input-row full">
+            <InputItem
+              label={"BRAND"}
+              value={brand}
+              type={"text"}
+              onChange={(e) => setBrand(e.target.value)}
+              placeholder="ENTER BRAND"
+            />
+          </div>
+
           {/* Specification */}
           <div className="input-row full">
             <InputItem
@@ -790,65 +717,6 @@ export default function AddMrItemButton({
               setFileState={setAttachment}
               label={"ATTACHMENT"}
               acceptedFileTypes={".pdf,.png,.jpg,.jpeg"}
-            />
-          </div>
-        </FormPopUp>
-      )}
-
-      {/* NEW MATERIAL popup (separate FormPopUp) */}
-      {showNewMaterial && (
-        <FormPopUp
-          header={"NEW MATERIAL"}
-          setIsOpen={setShowNewMaterial}
-          handleSubmit={handleNewMaterialSubmit}
-          addButtonLabel={"ADD MATERIAL"}
-          style={{ minWidth: "600px" }}
-        >
-          <div className="input-row full">
-            <InputItem
-              label={"DESCRIPTION"}
-              value={newMatDescription}
-              type={"text"}
-              required
-              onChange={(e) => setNewMatDescription(e.target.value)}
-            />
-          </div>
-
-          <div className="input-row half">
-            <SingleSelectDropdown
-              label={"CATEGORY"}
-              dbData={materialCategoryValues}
-              selectedValue={newMatCategoryID}
-              onChange={(val) => setNewMatCategoryID(val)}
-              placeholder="SELECT CATEGORY"
-              required
-              style={{ width: "350px" }}
-            />
-            <SingleSelectDropdown
-              label={"SUBCATEGORY"}
-              dbData={materialSubCategoryValues}
-              selectedValue={newMatSubCategoryID}
-              onChange={handleNewMatSubCategoryChange}
-              placeholder="SELECT SUBCATEGORY"
-              required
-              style={{ width: "350px" }}
-            />
-          </div>
-
-          <div className="input-row half">
-            <InputItem
-              label={"UNIT"}
-              value={newMatUnit}
-              type={"select"}
-              placeholder={"SELECT UNIT"}
-              onChange={(e) => setNewMatUnit(e.target.value)}
-              selectOptions={[...UNIT_OPTIONS]}
-            />
-            <InputItem
-              label={"BRAND"}
-              value={newMatBrand}
-              type={"text"}
-              onChange={(e) => setNewMatBrand(e.target.value)}
             />
           </div>
         </FormPopUp>

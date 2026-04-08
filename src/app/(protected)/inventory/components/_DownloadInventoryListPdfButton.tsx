@@ -181,9 +181,9 @@ export default function DownloadInventoryListPdfButton({
   return (
     <Button
       componentType={"button"}
-      bgColor={"black"}
-      borderColor={"black"}
-      textColor={"white"}
+      bgColor={"white"}
+      borderColor={"rgba(231, 231, 231, 1)"}
+      textColor={"black"}
       onClick={handleDownload}
       disabled={isProcessing || filteredItems.length === 0}
       style={{
@@ -192,7 +192,7 @@ export default function DownloadInventoryListPdfButton({
       }}
     >
       EXPORT INVENTORY LIST
-      <img src={downloadIcon} alt="download" style={{ filter: "invert(1)" }} />
+      <img src={downloadIcon} alt="download" />
     </Button>
   );
 }

@@ -292,14 +292,13 @@ export function JoRfqPDF({
               <Text style={styles.purposeValue}>{purposeName}</Text>
             </View>
             {submissionDeadline && (
-              <View style={{ alignItems: "flex-end" }}>
+              <View>
                 <Text style={styles.purposeLabel}>SUBMISSION DEADLINE</Text>
                 <Text style={styles.purposeValue}>
                   {(() => {
                     try {
                       return new Date(submissionDeadline).toLocaleDateString(
                         "en-GB",
-                        { day: "2-digit", month: "2-digit", year: "numeric" },
                       );
                     } catch {
                       return submissionDeadline;
@@ -399,7 +398,7 @@ export function JoRfqPDF({
                               </View>
                             )}
 
-                            {boq.scope_of_work && (
+                            {/* {boq.scope_of_work && (
                               <View style={styles.scopeBadge}>
                                 <Text
                                   style={styles.scopeText}
@@ -408,7 +407,7 @@ export function JoRfqPDF({
                                   {boq.scope_of_work}
                                 </Text>
                               </View>
-                            )}
+                            )} */}
                           </View>
                         )}
                       </View>
