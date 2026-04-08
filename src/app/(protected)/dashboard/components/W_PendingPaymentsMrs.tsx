@@ -2,11 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import OverviewHoverPopup from "./OverviewHoverPopup";
 import HoverLoadingCursor from "./HoverLoadingCursor";
 
 type props = {
   filterDays?: number;
+};
+
+type BottleneckStage = {
+  progress_id: number;
+  progress_name: string;
+  mr_count: number;
+  median_minutes: number;
+};
+
+type ProjectAtRisk = {
+  project_name: string;
+  mr_count: number;
 };
 
 export default function PendingPaymentMrsWidget({ filterDays }: props) {
@@ -22,12 +33,20 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [items, setItems] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
+  const [bottleneckStages, setBottleneckStages] = useState<BottleneckStage[]>(
+    [],
+  );
+  const [projectsAtRisk, setProjectsAtRisk] = useState<ProjectAtRisk[]>([]);
 
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const hoverTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Expand states
+  const [expandedBottleneck, setExpandedBottleneck] = useState(false);
+  const [expandedProjects, setExpandedProjects] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
@@ -51,6 +70,8 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
         setLastWeek(lastWeekCount);
         setItems(data.items || []);
         setTotalCount(data.total_count || 0);
+        setBottleneckStages(data.bottleneck_stages || []);
+        setProjectsAtRisk(data.projects_at_risk || []);
 
         if (lastWeekCount === 0) {
           if (thisWeekCount > 0) {
@@ -117,6 +138,8 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
     }
     setShowPopup(false);
     setIsWaiting(false);
+    setExpandedBottleneck(false);
+    setExpandedProjects(false);
   };
 
   const hasNoPendingPayments = thisWeek === 0;
@@ -148,6 +171,44 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
         ? `${changeMagnitude} increase from last ${periodLabel}`
         : `${changeMagnitude} decrease from last ${periodLabel}`;
 
+  // Hover popup positioning
+  const popupWidth = 500;
+  const popupMaxHeight = 500;
+  const offsetX = 20;
+  const offsetY = 20;
+
+  const popupLeft =
+    typeof window !== "undefined" &&
+    mousePosition.x + offsetX + popupWidth > window.innerWidth
+      ? mousePosition.x - popupWidth - 10
+      : mousePosition.x + offsetX;
+
+  const popupTop =
+    typeof window !== "undefined" &&
+    mousePosition.y + offsetY + popupMaxHeight > window.innerHeight
+      ? Math.max(10, mousePosition.y - popupMaxHeight)
+      : mousePosition.y + offsetY;
+
+  // Format helpers (mirrored from W_ActiveMrs)
+  const formatMedianTime = (minutes: number): string => {
+    if (minutes == null || isNaN(minutes)) return "N/A";
+    const mins = Math.round(minutes);
+    if (mins < 60) return `${mins} minutes`;
+    const hours = mins / 60;
+    if (hours < 24) return `${Math.round(hours * 10) / 10} hours`;
+    const days = hours / 24;
+    return `${Math.round(days * 10) / 10} days`;
+  };
+
+  const getMedianColor = (minutes: number): string => {
+    if (minutes == null || isNaN(minutes)) return "#888";
+    const hours = minutes / 60;
+    if (hours < 24) return "rgba(16, 185, 129, 1)"; // green - under a day
+    const days = hours / 24;
+    if (days <= 3) return "rgba(234, 179, 8, 1)"; // yellow - 1-3 days
+    return "rgba(248, 77, 77, 1)"; // red - over 3 days
+  };
+
   return (
     <div
       className="item"
@@ -174,22 +235,218 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
         <HoverLoadingCursor mouseX={mousePosition.x} mouseY={mousePosition.y} />
       )}
 
-      {showPopup && items.length > 0 && (
-        <OverviewHoverPopup
-          mouseX={mousePosition.x}
-          mouseY={mousePosition.y}
-          items={items}
-          totalCount={totalCount}
-          columns={[
-            { key: "display_id", label: "LPO NUMBER" },
-            {
-              key: "amount",
-              label: "AMOUNT",
-              format: (val: number) => `+ AED ${val.toFixed(2)}`,
-            },
-          ]}
-          emptyMessage="No pending payments"
-        />
+      {showPopup && (
+        <div
+          style={{
+            position: "fixed",
+            left: popupLeft,
+            top: popupTop,
+            backgroundColor: "white",
+            color: "black",
+            border: "1px solid rgba(223,223,223,1)",
+            borderRadius: "10px",
+            padding: "20px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            zIndex: 10000,
+            width: `${popupWidth}px`,
+            pointerEvents: "none",
+          }}
+        >
+          {/* Title */}
+          <h3 style={{ fontWeight: 600, margin: 0 }}>Pending Payments</h3>
+
+          {/* Count */}
+          <p
+            style={{
+              fontWeight: 700,
+              color: "rgba(248, 77, 77, 1)",
+              margin: "10px 0",
+            }}
+          >
+            {thisWeek}
+          </p>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Description */}
+          <p
+            style={{
+              color: "#555",
+              lineHeight: "1.4",
+              margin: "0 0 10px 0",
+            }}
+          >
+            Requests that are still in progress and not yet completed. Delays
+            across approval or delivery stages may slow down overall payment
+            processing.
+          </p>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Bottleneck Stages */}
+          <div style={{ marginBottom: "10px" }}>
+            <h4 style={{ margin: "0 0 10px 0" }}>BOTTLENECK STAGES</h4>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+            >
+              {bottleneckStages.length === 0 ? (
+                <span style={{ color: "#aaa" }}>No data</span>
+              ) : (
+                <>
+                  {(expandedBottleneck
+                    ? bottleneckStages
+                    : bottleneckStages.slice(0, 5)
+                  ).map((stage) => (
+                    <div
+                      key={stage.progress_id}
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: "10px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          color: "rgba(248, 77, 77, 1)",
+                        }}
+                      >
+                        {stage.mr_count}
+                      </span>
+                      <span style={{ color: "#333" }}>
+                        from{" "}
+                        <strong>
+                          {stage.progress_name || `Stage ${stage.progress_id}`}
+                        </strong>{" "}
+                        with current median time of{" "}
+                        <span
+                          style={{
+                            color: getMedianColor(stage.median_minutes),
+                            fontStyle: "italic",
+                          }}
+                        >
+                          {formatMedianTime(stage.median_minutes)}
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                  {bottleneckStages.length > 5 && !expandedBottleneck && (
+                    <span
+                      style={{
+                        color: "#555",
+                        textDecoration: "underline",
+                        cursor: "pointer",
+                        pointerEvents: "auto",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedBottleneck(true);
+                      }}
+                    >
+                      ... and {bottleneckStages.length - 5} more stages
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Projects at Risk */}
+          <div style={{ marginBottom: "10px" }}>
+            <h4 style={{ margin: "0 0 10px 0" }}>PROJECTS AT RISK</h4>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+            >
+              {projectsAtRisk.length === 0 ? (
+                <span style={{ color: "#aaa" }}>No data</span>
+              ) : (
+                <>
+                  {(expandedProjects
+                    ? projectsAtRisk
+                    : projectsAtRisk.slice(0, 5)
+                  ).map((project) => (
+                    <div
+                      key={project.project_name}
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: "10px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          color: "rgba(248, 77, 77, 1)",
+                        }}
+                      >
+                        {project.mr_count}
+                      </span>
+                      <span style={{ color: "#333" }}>
+                        from <strong>{project.project_name}</strong>
+                      </span>
+                    </div>
+                  ))}
+                  {projectsAtRisk.length > 5 && !expandedProjects && (
+                    <span
+                      style={{
+                        color: "#555",
+                        textDecoration: "underline",
+                        cursor: "pointer",
+                        pointerEvents: "auto",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedProjects(true);
+                      }}
+                    >
+                      ... and {projectsAtRisk.length - 5} more projects
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Footer */}
+          <p
+            style={{
+              color: "#999",
+              fontStyle: "italic",
+              margin: 0,
+            }}
+          >
+            Based on {thisWeek} pending payment
+            {thisWeek === 1 ? "" : "s"}
+          </p>
+        </div>
       )}
     </div>
   );

@@ -738,19 +738,18 @@ export default function QuickInitialApprovalWidget() {
                           <div style={{ display: "flex", gap: "50px" }}>
                             <div>
                               <small>SCOPE</small>
-                              <h4>{line.job_scope_name || line.job_scope || "-"}</h4>
+                              <h4>
+                                {line.job_scope_name || line.job_scope || "-"}
+                              </h4>
                             </div>
                             <div>
                               <small>CONTRACT TYPE</small>
                               <h4>{line.contract_type || "-"}</h4>
                             </div>
-                          </div>
-
-                          <br />
-
-                          <div>
-                            <small>DESCRIPTION</small>
-                            <h4>{line.job_description || "-"}</h4>
+                            <div>
+                              <small>DESCRIPTION</small>
+                              <h4>{line.job_description || "-"}</h4>
+                            </div>
                           </div>
 
                           <br />
@@ -772,7 +771,8 @@ export default function QuickInitialApprovalWidget() {
                             <div>
                               <small>BUDGET</small>
                               <h4>
-                                {line.budget_estimate != null && Number(line.budget_estimate) > 0
+                                {line.budget_estimate != null &&
+                                Number(line.budget_estimate) > 0
                                   ? `AED ${Number(line.budget_estimate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                   : "-"}
                               </h4>
@@ -792,7 +792,8 @@ export default function QuickInitialApprovalWidget() {
                             <div>
                               <small>QTY</small>
                               <h4>
-                                {formatQuantity(line.quantity)} {line.unit || ""}
+                                {formatQuantity(line.quantity)}{" "}
+                                {line.unit || ""}
                               </h4>
                             </div>
 
@@ -1001,7 +1002,7 @@ export default function QuickInitialApprovalWidget() {
                       onClick={() => setIsSubmitRevisionOpen(true)}
                       style={{
                         borderRadius: "50px",
-                        padding: "10px 25px",
+                        padding: "7px 20px",
                       }}
                     >
                       RETURN FOR REVISION
@@ -1015,7 +1016,7 @@ export default function QuickInitialApprovalWidget() {
                       onClick={() => setIsSubmitQuotationsOpen(true)}
                       style={{
                         borderRadius: "50px",
-                        padding: "10px 25px",
+                        padding: "7px 20px",
                       }}
                     >
                       SUBMIT FOR QUOTATIONS
@@ -1085,7 +1086,7 @@ export default function QuickInitialApprovalWidget() {
         >
           <p>
             {currentMr?.type === "job"
-              ? "Are you sure you want to return this job order for revision?"
+              ? "Are you sure you want to submit this job order?"
               : "Are you sure you want to submit this material request?"}
           </p>
         </FormPopUp>

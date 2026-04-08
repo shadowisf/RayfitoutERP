@@ -258,12 +258,18 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
             style={{
               fontWeight: 700,
               margin: "10px 0",
+              display: "flex",
+              alignItems: "baseline",
+              gap: "10px",
             }}
           >
-            <span style={{ color: "rgba(248, 77, 77, 1)" }}>
-              + {formatCurrency(balance)}
-            </span>{" "}
-            <span style={{ color: "#999" }}>AED</span> <strong>Balance</strong>
+            <span>
+              <span style={{ color: "rgba(248, 77, 77, 1)" }}>
+                +{formatCurrency(balance)}
+              </span>{" "}
+              <span style={{ color: "#999", fontWeight: 400 }}>AED</span>{" "}
+            </span>
+            <strong style={{ color: "#333" }}>Balance</strong>
           </p>
 
           <hr
@@ -319,7 +325,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
                         color: "rgba(248, 77, 77, 1)",
                       }}
                     >
-                      + {formatCurrency(paidTotal)}{" "}
+                      +{formatCurrency(paidTotal)}{" "}
                       <span style={{ color: "#999", fontWeight: 400 }}>
                         AED
                       </span>
@@ -341,7 +347,6 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
                       style={{
                         fontWeight: 700,
                         color: "rgba(248, 77, 77, 1)",
-                        minWidth: "120px",
                       }}
                     >
                       + {formatCurrency(committedTotal)}{" "}
@@ -396,7 +401,6 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
                         style={{
                           fontWeight: 700,
                           color: "rgba(248, 77, 77, 1)",
-                          minWidth: "20px",
                         }}
                       >
                         {project.mr_count}
@@ -468,7 +472,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
                           color: "rgba(248, 77, 77, 1)",
                         }}
                       >
-                        + {formatCurrency(Number(supplier.total_amount))}{" "}
+                        +{formatCurrency(Number(supplier.total_amount))}{" "}
                         <span style={{ color: "#999", fontWeight: 400 }}>
                           AED
                         </span>

@@ -2,11 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import OverviewHoverPopup from "../OverviewHoverPopup";
 import HoverLoadingCursor from "../HoverLoadingCursor";
 
 type props = {
   filterDays?: number;
+};
+
+type DelayedVendor = {
+  supplier_name: string;
+  lpo_count: number;
+};
+
+type ProjectImpact = {
+  project_name: string;
+  mr_count: number;
 };
 
 export default function PendingDeliveryMrsWidget({ filterDays }: props) {
@@ -23,11 +32,24 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
   const [items, setItems] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
 
+  // Hover stats
+  const [itemsDelayed, setItemsDelayed] = useState<number>(0);
+  const [valueImpact, setValueImpact] = useState<number>(0);
+  const [delayedVendors, setDelayedVendors] = useState<DelayedVendor[]>([]);
+  const [projectImpactValue, setProjectImpactValue] = useState<ProjectImpact[]>(
+    [],
+  );
+  const [totalIssuedLpos, setTotalIssuedLpos] = useState<number>(0);
+
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const hoverTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Expand states
+  const [expandedVendors, setExpandedVendors] = useState(false);
+  const [expandedProjects, setExpandedProjects] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
@@ -51,6 +73,11 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
         setLastWeek(lastWeekCount);
         setItems(data.items || []);
         setTotalCount(data.total_count || 0);
+        setItemsDelayed(Number(data.items_delayed) || 0);
+        setValueImpact(Number(data.value_impact) || 0);
+        setDelayedVendors(data.delayed_vendors || []);
+        setProjectImpactValue(data.project_impact_value || []);
+        setTotalIssuedLpos(Number(data.total_issued_lpos) || 0);
 
         if (lastWeekCount === 0) {
           if (thisWeekCount > 0) {
@@ -117,6 +144,8 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
     }
     setShowPopup(false);
     setIsWaiting(false);
+    setExpandedVendors(false);
+    setExpandedProjects(false);
   };
 
   const hasNoPendingDeliveries = thisWeek === 0;
@@ -148,6 +177,33 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
         ? `${changeMagnitude} increase from last ${periodLabel}`
         : `${changeMagnitude} decrease from last ${periodLabel}`;
 
+  // Hover popup positioning
+  const popupWidth = 500;
+  const popupMaxHeight = 500;
+  const offsetX = 20;
+  const offsetY = 20;
+
+  const popupLeft =
+    typeof window !== "undefined" &&
+    mousePosition.x + offsetX + popupWidth > window.innerWidth
+      ? mousePosition.x - popupWidth - 10
+      : mousePosition.x + offsetX;
+
+  const popupTop =
+    typeof window !== "undefined" &&
+    mousePosition.y + offsetY + popupMaxHeight > window.innerHeight
+      ? Math.max(10, mousePosition.y - popupMaxHeight)
+      : mousePosition.y + offsetY;
+
+  // Format value impact as negative number with thousand separators (AED rendered separately)
+  const formatValueImpactNumber = (value: number): string => {
+    const absValue = Math.abs(value);
+    const formatted = absValue.toLocaleString("en-US", {
+      maximumFractionDigits: 0,
+    });
+    return `-${formatted}`;
+  };
+
   return (
     <div
       className="item"
@@ -174,22 +230,265 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
         <HoverLoadingCursor mouseX={mousePosition.x} mouseY={mousePosition.y} />
       )}
 
-      {showPopup && items.length > 0 && (
-        <OverviewHoverPopup
-          mouseX={mousePosition.x}
-          mouseY={mousePosition.y}
-          items={items}
-          totalCount={totalCount}
-          columns={[
-            { key: "display_id", label: "LPO NUMBER" },
-            {
-              key: "item_count",
-              label: "ITEMS",
-              format: (val: number) => `${val} items`,
-            },
-          ]}
-          emptyMessage="No pending deliveries"
-        />
+      {showPopup && (
+        <div
+          style={{
+            position: "fixed",
+            left: popupLeft,
+            top: popupTop,
+            backgroundColor: "white",
+            color: "black",
+            border: "1px solid rgba(223,223,223,1)",
+            borderRadius: "10px",
+            padding: "20px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            zIndex: 10000,
+            width: `${popupWidth}px`,
+            pointerEvents: "none",
+          }}
+        >
+          {/* Title */}
+          <h3 style={{ fontWeight: 600, margin: 0 }}>Pending Delivery</h3>
+
+          {/* Count */}
+          <p
+            style={{
+              fontWeight: 700,
+              color: "rgba(248, 77, 77, 1)",
+              margin: "10px 0",
+            }}
+          >
+            {thisWeek}
+          </p>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Description */}
+          <p
+            style={{
+              color: "#555",
+              lineHeight: "1.4",
+              margin: "0 0 10px 0",
+            }}
+          >
+            This is the total financial risk from all pending deliveries
+            including paid amounts and outstanding credit balances. Cash
+            transactions appear after payment.
+          </p>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Items Delay + Value Impact stats */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+              marginBottom: "10px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: "10px",
+              }}
+            >
+              <span
+                style={{
+                  fontWeight: 700,
+                  color: "rgba(248, 77, 77, 1)",
+                }}
+              >
+                {itemsDelayed}
+              </span>
+              <span style={{ color: "#333", fontWeight: 700 }}>Item Delay</span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: "10px",
+              }}
+            >
+              <span
+                style={{
+                  fontWeight: 700,
+                  color: "rgba(248, 77, 77, 1)",
+                }}
+              >
+                {formatValueImpactNumber(valueImpact)}{" "}
+                <span style={{ color: "#999", fontWeight: 400 }}>AED</span>
+              </span>
+              <span style={{ color: "#333", fontWeight: 700 }}>
+                Value Impact
+              </span>
+            </div>
+          </div>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Delayed Vendors */}
+          <div style={{ marginBottom: "10px" }}>
+            <h4 style={{ margin: "0 0 10px 0" }}>DELAYED VENDORS</h4>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+            >
+              {delayedVendors.length === 0 ? (
+                <span style={{ color: "#aaa" }}>No data</span>
+              ) : (
+                <>
+                  {(expandedVendors
+                    ? delayedVendors
+                    : delayedVendors.slice(0, 5)
+                  ).map((vendor, idx) => (
+                    <div
+                      key={`${vendor.supplier_name}-${idx}`}
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: "10px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          color: "rgba(248, 77, 77, 1)",
+                        }}
+                      >
+                        {vendor.lpo_count}
+                      </span>
+                      <span style={{ color: "#333" }}>
+                        {vendor.supplier_name || "Unknown vendor"}
+                      </span>
+                    </div>
+                  ))}
+                  {delayedVendors.length > 5 && !expandedVendors && (
+                    <span
+                      style={{
+                        color: "#555",
+                        textDecoration: "underline",
+                        cursor: "pointer",
+                        pointerEvents: "auto",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedVendors(true);
+                      }}
+                    >
+                      ... and {delayedVendors.length - 5} more vendors
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Project Impact Value */}
+          <div style={{ marginBottom: "10px" }}>
+            <h4 style={{ margin: "0 0 10px 0" }}>PROJECT IMPACT VALUE</h4>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+            >
+              {projectImpactValue.length === 0 ? (
+                <span style={{ color: "#aaa" }}>No data</span>
+              ) : (
+                <>
+                  {(expandedProjects
+                    ? projectImpactValue
+                    : projectImpactValue.slice(0, 5)
+                  ).map((project, idx) => (
+                    <div
+                      key={`${project.project_name}-${idx}`}
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: "10px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          color: "rgba(248, 77, 77, 1)",
+                        }}
+                      >
+                        {project.mr_count}
+                      </span>
+                      <span style={{ color: "#333" }}>
+                        MR{project.mr_count === 1 ? "" : "s"} delayed for{" "}
+                        <strong>
+                          {project.project_name || "Unknown project"}
+                        </strong>
+                      </span>
+                    </div>
+                  ))}
+                  {projectImpactValue.length > 5 && !expandedProjects && (
+                    <span
+                      style={{
+                        color: "#555",
+                        textDecoration: "underline",
+                        cursor: "pointer",
+                        pointerEvents: "auto",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedProjects(true);
+                      }}
+                    >
+                      ... and {projectImpactValue.length - 5} more projects
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Footer */}
+          <p
+            style={{
+              color: "#999",
+              fontStyle: "italic",
+              margin: 0,
+            }}
+          >
+            Based on {totalIssuedLpos.toLocaleString("en-US")} issued LPO
+            {totalIssuedLpos === 1 ? "" : "s"}
+          </p>
+        </div>
       )}
     </div>
   );
