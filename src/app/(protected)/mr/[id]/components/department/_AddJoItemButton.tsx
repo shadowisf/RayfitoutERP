@@ -10,59 +10,7 @@ import { useState } from "react";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { BoqLine } from "@/app/(protected)/project/[id]/boq/[boqId]/types/boqLine";
 import { formatPriceAED } from "@/lib/formatPrice";
-
-const ATTACHMENT_TYPES = [
-  {
-    key: "design_drawings",
-    label: "DESIGN & DRAWINGS",
-    description: "e.g., Architectural drawings, structural Drawings, etc.",
-    icon: "/icons/attachment-design-and-drawings.svg",
-  },
-  {
-    key: "hse_compliance",
-    label: "HSE & COMPLIANCE",
-    description: "e.g., Site HSE plan, insurance requirements",
-    icon: "/icons/attachment-normal-file.svg",
-  },
-  {
-    key: "scope_pricing",
-    label: "SCOPE & PRICING",
-    description:
-      "e.g., BOQ bid form, scope of work document, rate schedule etc",
-    icon: "/icons/attachment-scope-and-pricing.svg",
-  },
-  {
-    key: "contract_commercial",
-    label: "CONTRACT & COMMERCIAL",
-    description:
-      "e.g., Draft subcontract agreement, payment terms schedule, etc",
-    icon: "/icons/attachment-normal-file.svg",
-  },
-  {
-    key: "technical_specifications",
-    label: "TECHNICAL SPECIFICATIONS",
-    description: "e.g., Project specification, material approval schedule",
-    icon: "/icons/attachment-normal-file.svg",
-  },
-  {
-    key: "surveys_existing_conditions",
-    label: "SURVEYS & EXISTING CONDITIONS",
-    description: "e.g., Topographical survey, soil investigation report",
-    icon: "/icons/attachment-surveys-and-existing-conditions.svg",
-  },
-  {
-    key: "programme_logistics",
-    label: "PROGRAMME & LOGISTICS",
-    description: "e.g., Master programme, subcontract programme",
-    icon: "/icons/attachment-programme-and-logistics.svg",
-  },
-  {
-    key: "prequalification_admin",
-    label: "PRE-QUALIFICATION & ADMIN",
-    description: "e.g., Pre-qualification questionnaire, NDA",
-    icon: "/icons/attachment-prequalification-and-admin.svg",
-  },
-];
+import { ATTACHMENT_TYPES } from "../../types/joLine";
 
 type AttachmentItem = {
   type: string;
@@ -100,6 +48,8 @@ export default function AddJoItemButton({
   borderColor = "black",
   style,
 }: props) {
+  const crossIcon = "/icons/cross-small.svg";
+
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -132,10 +82,22 @@ export default function AddJoItemButton({
       setSelectedBoqLines(lines);
       const newQtys: Record<number, string> = {};
       ids.forEach((id) => {
-        newQtys[id] = subcontractedQtys[id] || "";
+        const boq = lines.find((l) => l.id === id);
+        newQtys[id] =
+          subcontractedQtys[id] || String(boq?.quantity ?? "") || "";
       });
       setSubcontractedQtys(newQtys);
     }
+  };
+
+  const removeBoqLine = (boqId: number) => {
+    setBoqLineIDs((prev) => prev.filter((id) => id !== boqId));
+    setSelectedBoqLines((prev) => prev.filter((boq) => boq.id !== boqId));
+    setSubcontractedQtys((prev) => {
+      const next = { ...prev };
+      delete next[boqId];
+      return next;
+    });
   };
 
   // Handle attachment file upload from popup
@@ -278,7 +240,7 @@ export default function AddJoItemButton({
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
-          style={{ minWidth: "1000px" }}
+          style={{ width: "75dvw", height: "95dvh" }}
         >
           {/* Job Scope + Contract Type */}
           <div className="input-row half">
@@ -323,6 +285,7 @@ export default function AddJoItemButton({
               type={"textarea"}
               required
               onChange={(e) => setJobDescription(e.target.value)}
+              itooltip="Define the exact scope of work including areas, materials, and exclusions. This will be shared with subcontractors for quotation and used as the reference for execution and billing."
             />
           </div>
 
@@ -368,8 +331,9 @@ export default function AddJoItemButton({
                   <tr>
                     <th>#</th>
                     <th>ITEM</th>
-                    <th>QUANTITY</th>
+                    <th>BOQ QTY</th>
                     <th style={{ width: "275px" }}>SUBCONTRACTED QTY</th>
+                    <th style={{ width: "40px" }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -459,6 +423,22 @@ export default function AddJoItemButton({
                           placeholder="ENTER SUBCONTRACTED QTY"
                           style={{ backgroundColor: "white" }}
                         />
+                      </td>
+                      <td>
+                        <Button
+                          componentType={"button"}
+                          bgColor={"transparent"}
+                          borderColor={"transparent"}
+                          textColor={"black"}
+                          style={{ padding: "0px" }}
+                          onClick={() => removeBoqLine(boq.id)}
+                        >
+                          <img
+                            src={crossIcon}
+                            alt="remove"
+                            style={{ marginBottom: "2px" }}
+                          />
+                        </Button>
                       </td>
                     </tr>
                   ))}

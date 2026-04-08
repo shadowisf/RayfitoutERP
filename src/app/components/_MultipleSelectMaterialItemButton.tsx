@@ -3,10 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import FormPopUp from "@/app/components/FormPopup";
-import InputItem from "@/app/components/InputItem";
-import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import Button from "./Button";
-import { UNIT_OPTIONS } from "@/constants/units";
+import CreateNewMaterialButton from "./_CreateNewMaterialButton";
+import { useAuth } from "../context/AuthContext";
 
 export type PredefinedItem = {
   id: number;
@@ -41,10 +40,13 @@ export default function MultipleSelectMaterialItemButton({
   disabled,
   style,
 }: props) {
+  const { userInfo } = useAuth();
+
   const arrowRight = "/icons/arrow-right.svg";
   const searchIcon = "/icons/search.svg";
   const externalLinkIcon = "/icons/external-link.svg";
   const pencilIcon = "/icons/pencil.svg";
+  const crossSmallIcon = "/icons/cross-small.svg";
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -64,6 +66,111 @@ export default function MultipleSelectMaterialItemButton({
     Set<string>
   >(new Set());
 
+  // Category & subcategory filter state
+  const [filterCategories, setFilterCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [filterSubCategories, setFilterSubCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [showFilterPopup, setShowFilterPopup] = useState(false);
+  const [tempFilterCategories, setTempFilterCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [tempFilterSubCategories, setTempFilterSubCategories] = useState<
+    Set<string>
+  >(new Set());
+  const [categorySearchQuery, setCategorySearchQuery] = useState("");
+  const [subCategorySearchQuery, setSubCategorySearchQuery] = useState("");
+  const filterIcon = "/icons/filter.svg";
+
+  const allCategoryNames = Object.keys(groupedItems);
+
+  const getAvailableSubCategories = (
+    catSet: Set<string> = tempFilterCategories,
+  ): string[] => {
+    const subCats = new Set<string>();
+    Object.entries(groupedItems).forEach(([category, subCategories]) => {
+      if (catSet.size > 0 && !catSet.has(category)) return;
+      Object.keys(subCategories).forEach((subCat) => subCats.add(subCat));
+    });
+    return Array.from(subCats).sort();
+  };
+
+  const getCategoryForSubCategory = (subCat: string): string | null => {
+    for (const [category, subCategories] of Object.entries(groupedItems)) {
+      if (subCat in subCategories) return category;
+    }
+    return null;
+  };
+
+  const toggleFilterCategory = (category: string) => {
+    setTempFilterCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+        const subCatsToRemove = Object.keys(groupedItems[category] || {});
+        setTempFilterSubCategories((prevSub) => {
+          const nextSub = new Set(prevSub);
+          subCatsToRemove.forEach((sc) => nextSub.delete(sc));
+          return nextSub;
+        });
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  const toggleFilterSubCategory = (subCategory: string) => {
+    setTempFilterSubCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(subCategory)) {
+        next.delete(subCategory);
+      } else {
+        next.add(subCategory);
+        const parentCat = getCategoryForSubCategory(subCategory);
+        if (parentCat) {
+          setTempFilterCategories(
+            (prevCat) => new Set([...prevCat, parentCat]),
+          );
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleFilterOpen = () => {
+    setTempFilterCategories(new Set(filterCategories));
+    setTempFilterSubCategories(new Set(filterSubCategories));
+    setCategorySearchQuery("");
+    setSubCategorySearchQuery("");
+    setShowFilterPopup(true);
+  };
+
+  const handleFilterApply = () => {
+    setFilterCategories(new Set(tempFilterCategories));
+    setFilterSubCategories(new Set(tempFilterSubCategories));
+    setShowFilterPopup(false);
+  };
+
+  const handleFilterReset = () => {
+    setTempFilterCategories(new Set());
+    setTempFilterSubCategories(new Set());
+  };
+
+  const hasActiveFilters =
+    filterCategories.size > 0 || filterSubCategories.size > 0;
+  const totalFilterCount = filterCategories.size + filterSubCategories.size;
+
+  // Collapsible state for categories and subcategories
+  const [collapsedCategories, setCollapsedCategories] = useState<
+    Record<string, boolean>
+  >({});
+  const [collapsedSubCategories, setCollapsedSubCategories] = useState<
+    Record<string, boolean>
+  >({});
+
   // Category tab states
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -71,22 +178,6 @@ export default function MultipleSelectMaterialItemButton({
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-
-  // NEW MATERIAL popup
-  const [showNewMaterial, setShowNewMaterial] = useState(false);
-  const [newMatDescription, setNewMatDescription] = useState("");
-  const [newMatCategoryID, setNewMatCategoryID] = useState<string | number>("");
-  const [newMatSubCategoryID, setNewMatSubCategoryID] = useState<
-    string | number
-  >("");
-  const [newMatUnit, setNewMatUnit] = useState("");
-  const [newMatBrand, setNewMatBrand] = useState("");
-  const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
-    [],
-  );
-  const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
-    any[]
-  >([]);
 
   const categories = Object.keys(filteredGroupedItems);
 
@@ -127,9 +218,13 @@ export default function MultipleSelectMaterialItemButton({
     return grouped;
   })();
 
-  // Filter items based on search query
+  // Filter items based on search query and category/subcategory filter
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    const hasSearch = searchQuery.trim().length > 0;
+    const hasCatFilter = filterCategories.size > 0;
+    const hasSubCatFilter = filterSubCategories.size > 0;
+
+    if (!hasSearch && !hasCatFilter && !hasSubCatFilter) {
       setFilteredGroupedItems(groupedItems);
       setCurrentPage(1);
       return;
@@ -139,14 +234,22 @@ export default function MultipleSelectMaterialItemButton({
     const filtered: GroupedItems = {};
 
     Object.entries(groupedItems).forEach(([category, subCats]) => {
+      if (hasCatFilter && !filterCategories.has(category)) return;
+
       Object.entries(subCats).forEach(([subCategory, items]) => {
-        const filteredItems = items.filter((item) => {
-          return (
-            item.material_description?.toLowerCase().includes(query) ||
-            item.item_code?.toLowerCase().includes(query) ||
-            item.brand?.toLowerCase().includes(query)
-          );
-        });
+        if (hasSubCatFilter && !filterSubCategories.has(subCategory)) return;
+
+        const filteredItems = hasSearch
+          ? items.filter((item) => {
+              return (
+                item.material_description?.toLowerCase().includes(query) ||
+                item.item_code?.toLowerCase().includes(query) ||
+                item.brand?.toLowerCase().includes(query) ||
+                category.toLowerCase().includes(query) ||
+                subCategory.toLowerCase().includes(query)
+              );
+            })
+          : items;
 
         if (filteredItems.length > 0) {
           if (!filtered[category]) filtered[category] = {};
@@ -157,7 +260,7 @@ export default function MultipleSelectMaterialItemButton({
 
     setFilteredGroupedItems(filtered);
     setCurrentPage(1);
-  }, [searchQuery, groupedItems]);
+  }, [searchQuery, groupedItems, filterCategories, filterSubCategories]);
 
   // Reset page on category change
   useEffect(() => {
@@ -223,26 +326,6 @@ export default function MultipleSelectMaterialItemButton({
         setFilteredGroupedItems({});
       });
   }, [isOpen]);
-
-  // Fetch categories for NEW MATERIAL form
-  useEffect(() => {
-    if (!showNewMaterial) return;
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
-    )
-      .then((res) => res.json())
-      .then(setMaterialCategoryValues)
-      .catch(console.error);
-
-    // Always fetch all subcategories
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
-      { method: "GET", headers: { "Content-Type": "application/json" } },
-    )
-      .then((res) => res.json())
-      .then(setMaterialSubCategoryValues)
-      .catch(console.error);
-  }, [showNewMaterial]);
 
   // Update info text when currentItemIDs change
   useEffect(() => {
@@ -339,84 +422,28 @@ export default function MultipleSelectMaterialItemButton({
   };
 
   // Handle NEW MATERIAL subcategory selection — auto-fill category
-  const handleNewMatSubCategoryChange = (val: string | number) => {
-    setNewMatSubCategoryID(val);
-    if (val && materialSubCategoryValues.length > 0) {
-      const subCat = materialSubCategoryValues.find((sc: any) => sc.id === val);
-      if (subCat?.category_id && !newMatCategoryID) {
-        setNewMatCategoryID(subCat.category_id);
-      }
-    }
-  };
-
-  // Handle NEW MATERIAL submit
-  const handleNewMaterialSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!newMatDescription.trim()) {
-      return;
-    }
-    if (!newMatCategoryID) {
-      return;
-    }
-    if (!newMatSubCategoryID) {
-      return;
-    }
-
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            material_description: newMatDescription.trim(),
-            category_id: Number(newMatCategoryID),
-            subcategory_id: Number(newMatSubCategoryID),
-            unit: newMatUnit || null,
-            brand: newMatBrand || null,
-          }),
-        },
-      );
-
-      if (!res.ok) return;
-
-      const newItem: PredefinedItem = await res.json();
-
-      // Add to allItems and groupedItems
-      setAllItems((prev) => [...prev, newItem]);
-      setGroupedItems((prev) => {
-        const cat = newItem.category_name || "Uncategorized";
-        const sub = newItem.subcategory_name || "General";
-        const updated = { ...prev };
-        if (!updated[cat]) updated[cat] = {};
-        if (!updated[cat][sub]) updated[cat][sub] = [];
-        updated[cat][sub] = [...updated[cat][sub], newItem];
-        return updated;
-      });
-      setFilteredGroupedItems((prev) => {
-        const cat = newItem.category_name || "Uncategorized";
-        const sub = newItem.subcategory_name || "General";
-        const updated = { ...prev };
-        if (!updated[cat]) updated[cat] = {};
-        if (!updated[cat][sub]) updated[cat][sub] = [];
-        updated[cat][sub] = [...updated[cat][sub], newItem];
-        return updated;
-      });
-
-      // Auto-select the new item
-      setTempSelectedIDs((prev) => [...prev, newItem.id]);
-
-      // Reset and close
-      setShowNewMaterial(false);
-      setNewMatDescription("");
-      setNewMatCategoryID("");
-      setNewMatSubCategoryID("");
-      setNewMatUnit("");
-      setNewMatBrand("");
-    } catch {
-      // silent
-    }
+  // Handle new material created from CreateNewMaterialButton
+  const handleNewMaterialCreated = (newItem: PredefinedItem) => {
+    setAllItems((prev) => [...prev, newItem]);
+    setGroupedItems((prev) => {
+      const cat = newItem.category_name || "Uncategorized";
+      const sub = newItem.subcategory_name || "General";
+      const updated = { ...prev };
+      if (!updated[cat]) updated[cat] = {};
+      if (!updated[cat][sub]) updated[cat][sub] = [];
+      updated[cat][sub] = [...updated[cat][sub], newItem];
+      return updated;
+    });
+    setFilteredGroupedItems((prev) => {
+      const cat = newItem.category_name || "Uncategorized";
+      const sub = newItem.subcategory_name || "General";
+      const updated = { ...prev };
+      if (!updated[cat]) updated[cat] = {};
+      if (!updated[cat][sub]) updated[cat][sub] = [];
+      updated[cat][sub] = [...updated[cat][sub], newItem];
+      return updated;
+    });
+    setTempSelectedIDs((prev) => [...prev, newItem.id]);
   };
 
   // Pagination controls
@@ -497,9 +524,8 @@ export default function MultipleSelectMaterialItemButton({
         <thead>
           <tr>
             <th></th>
-            <th>ITEM CODE</th>
-            <th>DESCRIPTION</th>
-            <th>BRAND</th>
+            <th>CODE</th>
+            <th>NAME</th>
             <th>UNIT</th>
           </tr>
         </thead>
@@ -521,7 +547,6 @@ export default function MultipleSelectMaterialItemButton({
               </td>
               <td style={{ whiteSpace: "nowrap" }}>{item.item_code || "-"}</td>
               <td>{item.material_description}</td>
-              <td>{item.brand || "-"}</td>
               <td>{item.unit || "-"}</td>
             </tr>
           ))}
@@ -533,48 +558,108 @@ export default function MultipleSelectMaterialItemButton({
     </>
   );
 
-  // Subcategory header with checkbox
+  // Subcategory header with checkbox & collapse
   const renderSubCategoryHeader = (
     category: string,
     subCategory: string,
     label: string,
-  ) => (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        marginBottom: "10px",
-      }}
-    >
-      <label
+    itemCount: number,
+  ) => {
+    const subKey = `${category}::${subCategory}`;
+    return (
+      <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
+          gap: "10px",
+          marginBottom: collapsedSubCategories[subKey] ? "0px" : "10px",
           cursor: "pointer",
-          fontWeight: 600,
-          fontSize: "14px",
-          textTransform: "capitalize",
+          userSelect: "none",
         }}
+        onClick={() =>
+          setCollapsedSubCategories((prev) => ({
+            ...prev,
+            [subKey]: !prev[subKey],
+          }))
+        }
       >
-        <input
-          type="checkbox"
-          checked={isSubCategorySelected(category, subCategory)}
-          onChange={(e) =>
-            toggleSubCategory(category, subCategory, e.target.checked)
-          }
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 14 14"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
           style={{
-            width: "18px",
-            height: "18px",
-            cursor: "pointer",
-            accentColor: "rgba(0, 163, 93, 1)",
+            transition: "transform 0.2s ease",
+            transform: collapsedSubCategories[subKey]
+              ? "rotate(-90deg)"
+              : "rotate(0deg)",
           }}
-        />
-        {label.toUpperCase()}
-      </label>
-    </div>
-  );
+        >
+          <path
+            d="M3.5 5.25L7 8.75L10.5 5.25"
+            stroke="black"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+
+        <span
+          style={{
+            fontWeight: 600,
+            fontSize: "14px",
+            textTransform: "uppercase",
+          }}
+        >
+          {label.toUpperCase()}
+        </span>
+
+        {/* Subcategory checkbox — commented out
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            cursor: "pointer",
+            fontWeight: 600,
+            fontSize: "14px",
+            textTransform: "capitalize",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={isSubCategorySelected(category, subCategory)}
+            onChange={(e) =>
+              toggleSubCategory(category, subCategory, e.target.checked)
+            }
+            style={{
+              width: "18px",
+              height: "18px",
+              cursor: "pointer",
+              accentColor: "rgba(0, 163, 93, 1)",
+            }}
+          />
+          {label.toUpperCase()}
+        </label>
+        */}
+
+        <div
+          style={{
+            backgroundColor: "rgba(239, 239, 239, 1)",
+            borderRadius: "50px",
+            padding: "2px 8px",
+            fontWeight: "600",
+            fontSize: "11px",
+            color: "rgba(100, 100, 100, 1)",
+          }}
+        >
+          {itemCount} Items
+        </div>
+      </div>
+    );
+  };
 
   // Category tabs renderer (shared between select popup and could be reused)
   const renderCategoryTabs = () => (
@@ -730,15 +815,14 @@ export default function MultipleSelectMaterialItemButton({
       setIsOpen={setIsOpen}
       handleSubmit={handleSubmit}
       addButtonLabel={"CONFIRM"}
-      style={{ minWidth: "1100px", minHeight: "80dvh" }}
+      style={{ width: "75dvw", height: "95dvh" }}
     >
       {/* Search Bar + New Material Button */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "15px",
-          marginBottom: "20px",
+          gap: "10px",
         }}
       >
         <div
@@ -755,8 +839,8 @@ export default function MultipleSelectMaterialItemButton({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
-              width: "100%",
-              padding: "10px 40px 10px 15px",
+              width: "400px",
+              padding: "8px 40px 8px 15px",
               borderRadius: "8px",
               border: "1px solid rgba(223, 223, 223, 1)",
             }}
@@ -776,25 +860,162 @@ export default function MultipleSelectMaterialItemButton({
           />
         </div>
 
+        {(userInfo?.departmentID === 16 || userInfo?.departmentID === 8) && (
+          <CreateNewMaterialButton
+            onSuccess={handleNewMaterialCreated}
+            style={{ padding: "7px 20px" }}
+          />
+        )}
+      </div>
+
+      <br />
+
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         <Button
           componentType={"button"}
-          bgColor={"black"}
-          borderColor={"black"}
-          textColor={"white"}
+          bgColor={"white"}
+          borderColor={"rgba(223, 223, 223, 1)"}
+          textColor={"black"}
           onClick={(e) => {
             e.preventDefault();
-            setShowNewMaterial(true);
+            handleFilterOpen();
           }}
           style={{
             padding: "7px 20px",
+            borderRadius: "25px",
           }}
         >
-          NEW MATERIAL +
+          <img src={filterIcon} alt="filter" />
+          FILTER
         </Button>
+
+        {/* Active Filter Bubbles */}
+        {hasActiveFilters && (
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            {filterCategories.size > 0 && (
+              <Button
+                style={{
+                  borderRadius: "25px",
+                  fontWeight: "600",
+                  textWrap: "nowrap",
+                }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
+              >
+                CATEGORY:{" "}
+                <span style={{ color: "rgba(1, 139, 80, 1)" }}>
+                  {Array.from(filterCategories)[0].toUpperCase()}
+                  {filterCategories.size > 1 &&
+                    `, +${filterCategories.size - 1} MORE`}
+                </span>
+              </Button>
+            )}
+            {filterSubCategories.size > 0 && (
+              <Button
+                style={{
+                  borderRadius: "25px",
+                  fontWeight: "600",
+                  textWrap: "nowrap",
+                }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
+              >
+                SUBCATEGORY:{" "}
+                <span style={{ color: "rgba(1, 139, 80, 1)" }}>
+                  {Array.from(filterSubCategories)[0].toUpperCase()}
+                  {filterSubCategories.size > 1 &&
+                    `, +${filterSubCategories.size - 1} MORE`}
+                </span>
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                setFilterCategories(new Set());
+                setFilterSubCategories(new Set());
+              }}
+              componentType={"button"}
+              bgColor={"transparent"}
+              borderColor={"transparent"}
+              textColor={"black"}
+              style={{ padding: "0px" }}
+            >
+              RESET FILTER
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Category Tabs */}
+      <br />
+      <br />
+
+      {tempSelectedIDs.length > 0 && (
+        <>
+          <h3>ITEM(S) SELECTED ({tempSelectedIDs.length}):</h3>
+          <br />
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            {tempSelectedIDs.map((id) => {
+              const item = allItems.find((i) => i.id === id);
+              if (!item) return null;
+              return (
+                <Button
+                  key={id}
+                  componentType="none"
+                  bgColor="rgba(239, 239, 239, 1)"
+                  borderColor="transparent"
+                  textColor="black"
+                  style={{
+                    borderRadius: "25px",
+                    fontWeight: "600",
+                    textWrap: "nowrap",
+                  }}
+                >
+                  {item.material_description}
+                  <Button
+                    componentType={"button"}
+                    bgColor={"transparent"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setTempSelectedIDs((prev) =>
+                        prev.filter((i) => i !== id),
+                      );
+                    }}
+                    style={{ padding: "0px" }}
+                  >
+                    <img src={crossSmallIcon} style={{ marginBottom: "2px" }} />
+                  </Button>
+                </Button>
+              );
+            })}
+          </div>
+          <br />
+          <br />
+        </>
+      )}
+
+      {/* Category Tabs — commented out
       {renderCategoryTabs()}
+      */}
 
       {/* No Results */}
       {searchQuery.trim() && categories.length === 0 && (
@@ -810,7 +1031,7 @@ export default function MultipleSelectMaterialItemButton({
       )}
 
       {/* Items — paginated */}
-      <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+      <div style={{ overflowY: "auto" }}>
         {activeCategory === "ALL"
           ? Object.entries(paginatedGrouped).map(
               ([category, subCatsData], categoryIndex) => (
@@ -820,11 +1041,43 @@ export default function MultipleSelectMaterialItemButton({
                       display: "flex",
                       alignItems: "center",
                       gap: "15px",
-                      marginBottom: "15px",
+                      marginBottom: collapsedCategories[category]
+                        ? "0px"
+                        : "15px",
                       padding: "10px 0",
                       borderBottom: "2px solid rgba(0, 0, 0, 0.1)",
+                      cursor: "pointer",
+                      userSelect: "none",
                     }}
+                    onClick={() =>
+                      setCollapsedCategories((prev) => ({
+                        ...prev,
+                        [category]: !prev[category],
+                      }))
+                    }
                   >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{
+                        transition: "transform 0.2s ease",
+                        transform: collapsedCategories[category]
+                          ? "rotate(-90deg)"
+                          : "rotate(0deg)",
+                      }}
+                    >
+                      <path
+                        d="M3.5 5.25L7 8.75L10.5 5.25"
+                        stroke="black"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+
                     <h2
                       style={{
                         margin: 0,
@@ -834,23 +1087,44 @@ export default function MultipleSelectMaterialItemButton({
                     >
                       {categoryIndex + 1}. {category.toUpperCase()}
                     </h2>
+
+                    <div
+                      style={{
+                        backgroundColor: "black",
+                        color: "white",
+                        borderRadius: "50px",
+                        padding: "3px 8px",
+                        fontWeight: "600",
+                        fontSize: "12px",
+                      }}
+                    >
+                      {Object.values(subCatsData).reduce(
+                        (sum, items) => sum + items.length,
+                        0,
+                      )}{" "}
+                      Items
+                    </div>
                   </div>
 
-                  {Object.entries(subCatsData).map(
-                    ([subCategory, items], subIndex) => (
-                      <div
-                        key={`${category}-${subCategory}`}
-                        style={{ marginBottom: "20px", marginLeft: "20px" }}
-                      >
-                        {renderSubCategoryHeader(
-                          category,
-                          subCategory,
-                          `${categoryIndex + 1}.${subIndex + 1} ${subCategory}`,
-                        )}
-                        {renderItemsTable(items)}
-                      </div>
-                    ),
-                  )}
+                  {!collapsedCategories[category] &&
+                    Object.entries(subCatsData).map(
+                      ([subCategory, items], subIndex) => (
+                        <div
+                          key={`${category}-${subCategory}`}
+                          style={{ marginBottom: "20px", marginLeft: "20px" }}
+                        >
+                          {renderSubCategoryHeader(
+                            category,
+                            subCategory,
+                            `${categoryIndex + 1}.${subIndex + 1} ${subCategory}`,
+                            items.length,
+                          )}
+                          {!collapsedSubCategories[
+                            `${category}::${subCategory}`
+                          ] && renderItemsTable(items)}
+                        </div>
+                      ),
+                    )}
                 </div>
               ),
             )
@@ -866,8 +1140,10 @@ export default function MultipleSelectMaterialItemButton({
                         category,
                         subCategory,
                         `${categories.indexOf(activeCategory) + 1}.${subIdx + 1} ${subCategory}`,
+                        items.length,
                       )}
-                      {renderItemsTable(items)}
+                      {!collapsedSubCategories[`${category}::${subCategory}`] &&
+                        renderItemsTable(items)}
                     </div>
                   ),
                 ),
@@ -876,67 +1152,6 @@ export default function MultipleSelectMaterialItemButton({
 
       {/* Pagination */}
       <PaginationControls />
-    </FormPopUp>
-  );
-
-  // NEW MATERIAL popup (separate FormPopUp)
-  const newMaterialModal = showNewMaterial && (
-    <FormPopUp
-      header={"CREATE NEW MATERIAL"}
-      setIsOpen={setShowNewMaterial}
-      handleSubmit={handleNewMaterialSubmit}
-      addButtonLabel={"CONFIRM"}
-    >
-      <div className="input-row full">
-        <InputItem
-          label={"DESCRIPTION"}
-          value={newMatDescription}
-          type={"text"}
-          required
-          onChange={(e) => setNewMatDescription(e.target.value)}
-        />
-      </div>
-
-      <div className="input-row half">
-        <SingleSelectDropdown
-          label={"CATEGORY"}
-          dbData={materialCategoryValues}
-          selectedValue={newMatCategoryID}
-          onChange={(val) => {
-            setNewMatCategoryID(val);
-          }}
-          placeholder="SELECT CATEGORY"
-          required
-          style={{ width: "350px" }}
-        />
-        <SingleSelectDropdown
-          label={"SUBCATEGORY"}
-          dbData={materialSubCategoryValues}
-          selectedValue={newMatSubCategoryID}
-          onChange={handleNewMatSubCategoryChange}
-          placeholder="SELECT SUBCATEGORY"
-          required
-          style={{ width: "350px" }}
-        />
-      </div>
-
-      <div className="input-row half">
-        <InputItem
-          label={"UNIT"}
-          value={newMatUnit}
-          type={"select"}
-          placeholder={"SELECT UNIT"}
-          onChange={(e) => setNewMatUnit(e.target.value)}
-          selectOptions={[...UNIT_OPTIONS]}
-          required
-        />
-        <InputItem
-          label={"BRAND"}
-          value={newMatBrand}
-          type={"text"}
-          onChange={(e) => setNewMatBrand(e.target.value)}
-        />
-      </div>
     </FormPopUp>
   );
 
@@ -981,8 +1196,208 @@ export default function MultipleSelectMaterialItemButton({
         createPortal(modalContent, document.body)}
 
       {typeof window !== "undefined" &&
-        newMaterialModal &&
-        createPortal(newMaterialModal, document.body)}
+        showFilterPopup &&
+        createPortal(
+          <FormPopUp
+            header={"FILTER MATERIAL ITEMS"}
+            setIsOpen={setShowFilterPopup}
+            handleSubmit={handleFilterApply}
+            addButtonLabel="CONFIRM"
+            style={{ height: "95dvh" }}
+            secondButton={
+              <Button
+                componentType={"button"}
+                bgColor={"white"}
+                borderColor={"black"}
+                textColor={"black"}
+                onClick={handleFilterReset}
+              >
+                RESET
+              </Button>
+            }
+          >
+            {/* Categories */}
+            <div style={{ marginBottom: "30px" }}>
+              <h3
+                style={{
+                  marginBottom: "15px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                CATEGORY
+              </h3>
+              <div
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "10px",
+                }}
+              >
+                <div style={{ position: "relative", marginBottom: "15px" }}>
+                  <input
+                    type="text"
+                    placeholder="SEARCH"
+                    value={categorySearchQuery}
+                    onChange={(e) => setCategorySearchQuery(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 15px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(223, 223, 223, 1)",
+                      fontSize: "14px",
+                      backgroundColor: "rgba(245, 245, 245, 1)",
+                    }}
+                  />
+                  <img
+                    src={searchIcon}
+                    alt="search"
+                    style={{
+                      position: "absolute",
+                      right: "15px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: "16px",
+                      height: "16px",
+                      opacity: 0.5,
+                    }}
+                  />
+                </div>
+                <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                  {allCategoryNames
+                    .filter((c) =>
+                      c
+                        .toLowerCase()
+                        .includes(categorySearchQuery.toLowerCase()),
+                    )
+                    .map((category) => (
+                      <div key={category} style={{ marginBottom: "10px" }}>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={tempFilterCategories.has(category)}
+                            onChange={() => toggleFilterCategory(category)}
+                            style={{
+                              width: "18px",
+                              height: "18px",
+                              cursor: "pointer",
+                              accentColor: "#10b981",
+                            }}
+                          />
+                          <h4>{category}</h4>
+                        </label>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Subcategories */}
+            <div style={{ marginBottom: "30px" }}>
+              <h3
+                style={{
+                  marginBottom: "15px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                SUBCATEGORY
+              </h3>
+              <div
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "10px",
+                }}
+              >
+                <div style={{ position: "relative", marginBottom: "15px" }}>
+                  <input
+                    type="text"
+                    placeholder="SEARCH"
+                    value={subCategorySearchQuery}
+                    onChange={(e) => setSubCategorySearchQuery(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 15px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(223, 223, 223, 1)",
+                      fontSize: "14px",
+                      backgroundColor: "rgba(245, 245, 245, 1)",
+                    }}
+                  />
+                  <img
+                    src={searchIcon}
+                    alt="search"
+                    style={{
+                      position: "absolute",
+                      right: "15px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: "16px",
+                      height: "16px",
+                      opacity: 0.5,
+                    }}
+                  />
+                </div>
+                <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                  {getAvailableSubCategories().length === 0 ? (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "20px",
+                        color: "#888",
+                      }}
+                    >
+                      Select a category to see subcategories
+                    </div>
+                  ) : (
+                    getAvailableSubCategories()
+                      .filter((sc) =>
+                        sc
+                          .toLowerCase()
+                          .includes(subCategorySearchQuery.toLowerCase()),
+                      )
+                      .map((subCategory) => (
+                        <div key={subCategory} style={{ marginBottom: "10px" }}>
+                          <label
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={tempFilterSubCategories.has(subCategory)}
+                              onChange={() =>
+                                toggleFilterSubCategory(subCategory)
+                              }
+                              style={{
+                                width: "18px",
+                                height: "18px",
+                                cursor: "pointer",
+                                accentColor: "#10b981",
+                              }}
+                            />
+                            <h4>{subCategory}</h4>
+                          </label>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </FormPopUp>,
+          document.body,
+        )}
     </>
   );
 }

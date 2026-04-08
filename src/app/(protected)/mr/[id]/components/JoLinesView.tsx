@@ -72,6 +72,10 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
     userInfo?.departmentID === 10 ||
     userInfo?.departmentID === 16;
 
+  const canSeeWorksValue =
+    userInfo?.departmentID === 8 ||
+    userInfo?.departmentID === 9;
+
   // Check if all items have been reviewed (approved or rejected)
   const allItemsReviewed = joLines.every(
     (item) =>
@@ -318,7 +322,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
               <th>CONTRACT TYPE</th>
               <th>DESCRIPTION</th>
               <th>BOQ REF.</th>
-              {canSeePrice && <th>WORKS VALUE</th>}
+              {canSeeWorksValue && <th>WORKS VALUE</th>}
               {canSeePrice && <th>BUDGET</th>}
               {showTotalPriceColumn && <th>TOTAL PRICE</th>}
               <th>ATTACHMENT(S)</th>
@@ -391,7 +395,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                     )}
                   </td>
 
-                  {canSeePrice && (
+                  {canSeeWorksValue && (
                     <td>
                       {item.subcontracted_works_value != null &&
                       Number(item.subcontracted_works_value) > 0 ? (
@@ -432,30 +436,34 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                             ATTACHMENT_TYPE_LABELS[att.attachment_type] ||
                             att.attachment_type;
                           return (
-                            <div
-                              key={`${item.id}-attachment-${idx}`}
-                              style={{
-                                display: "flex",
-                                gap: "10px",
-                                alignItems: "center",
-                              }}
-                            >
-                              <span>{typeLabel}:</span>
-                              <Button
-                                componentType={"link"}
-                                bgColor={"rgba(239, 239, 239, 1)"}
-                                borderColor={"rgba(223, 223, 223, 1)"}
-                                textColor={"black"}
-                                href={att.file_url}
-                                target="_blank"
-                                style={{ padding: "7px 7px" }}
+                            <>
+                              <div
+                                key={`${item.id}-attachment-${idx}`}
+                                style={{
+                                  display: "flex",
+                                  gap: "10px",
+                                  alignItems: "center",
+                                }}
                               >
-                                <img
-                                  src={externalLinkIcon}
-                                  alt="external link"
-                                />
-                              </Button>
-                            </div>
+                                <span>{typeLabel}:</span>
+                                <Button
+                                  componentType={"link"}
+                                  bgColor={"rgba(239, 239, 239, 1)"}
+                                  borderColor={"rgba(223, 223, 223, 1)"}
+                                  textColor={"black"}
+                                  href={att.file_url}
+                                  target="_blank"
+                                  style={{ padding: "7px 7px" }}
+                                >
+                                  <img
+                                    src={externalLinkIcon}
+                                    alt="external link"
+                                  />
+                                </Button>
+                              </div>
+
+                              <br />
+                            </>
                           );
                         })
                       : "-"}
@@ -529,8 +537,8 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                 }, 0);
                 const hasAnyPrice = liveTotalPrice > 0 || hasAnyApprovedPrice;
 
-                // Columns before SUBCONTRACTOR BUDGET: #, SCOPE, CONTRACT TYPE, DESCRIPTION, BOQ REF, (+ SUB-CONTRACTED WORKS VALUE if canSeePrice)
-                const labelColSpan = 5 + (canSeePrice ? 2 : 0);
+                // Columns before SUBCONTRACTOR BUDGET: #, SCOPE, CONTRACT TYPE, DESCRIPTION, BOQ REF, (+ WORKS VALUE if canSeeWorksValue, + BUDGET if canSeePrice)
+                const labelColSpan = 5 + (canSeeWorksValue ? 1 : 0) + (canSeePrice ? 1 : 0);
                 // Columns after TOTAL PRICE value
                 let trailingCols = 1; // ATTACHMENT
                 if (mrHeader.progress_id === 3) trailingCols += 1;

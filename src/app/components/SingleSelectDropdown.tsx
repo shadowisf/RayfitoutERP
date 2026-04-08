@@ -546,7 +546,11 @@ export default function SingleSelectDropdown({
   );
 
   return (
-    <div className="input-item" ref={containerRef}>
+    <div
+      className="input-item"
+      style={!label ? { marginBottom: 0 } : {}}
+      ref={containerRef}
+    >
       {!noLabel && (
         <label className="custom">
           <span>{label}</span>{" "}

@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { material_description, category_id, subcategory_id, unit, brand } =
+    const { item_code, material_description, category_id, subcategory_id, unit, brand } =
       body;
 
     if (!material_description || !category_id || !subcategory_id) {
@@ -41,12 +41,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate item_code: MAT-XXXXX based on max existing id
-    const [maxRows]: any = await db.query(
-      `SELECT MAX(id) as max_id FROM lut_predefined_items`,
-    );
-    const nextId = (maxRows[0]?.max_id || 0) + 1;
-    const itemCode = `MAT-${String(nextId).padStart(5, "0")}`;
+    // Use provided item_code or auto-generate MAT-XXXXX
+    let itemCode = item_code?.trim();
+    if (!itemCode) {
+      const [maxRows]: any = await db.query(
+        `SELECT MAX(id) as max_id FROM lut_predefined_items`,
+      );
+      const nextId = (maxRows[0]?.max_id || 0) + 1;
+      itemCode = `MAT-${String(nextId).padStart(5, "0")}`;
+    }
 
     const [result] = await db.query<ResultSetHeader>(
       `INSERT INTO lut_predefined_items (item_code, category_id, subcategory_id, material_description, brand, unit)

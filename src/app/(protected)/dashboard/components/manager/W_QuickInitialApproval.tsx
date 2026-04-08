@@ -39,6 +39,14 @@ type MrLineData = {
   reject_comment: string;
   attachment: string;
   boq_line_ids: string;
+  // JO line fields
+  job_scope_name?: string;
+  job_scope?: string;
+  contract_type?: string;
+  job_description?: string;
+  budget_estimate?: number;
+  boq_line_names?: string;
+  boq_item_numbers?: string;
 };
 
 type DurationInfo = {
@@ -294,14 +302,19 @@ export default function QuickInitialApprovalWidget() {
   };
 
   async function handleApprove(line: MrLineData) {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+    const apiPath = currentMr?.type === "job" ? "/api/jo" : "/api/mr";
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}${apiPath}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "approveItem", id: line.id }),
     });
 
     if (res.ok) {
-      toast(`${line.material_description} approved`, "success");
+      const label =
+        currentMr?.type === "job"
+          ? line.job_description || "Item"
+          : line.material_description;
+      toast(`${label} approved`, "success");
       setFlatLines((prev) =>
         prev.map((l) =>
           l.id === line.id ? { ...l, approval_status: "Approved" } : l,
@@ -317,7 +330,8 @@ export default function QuickInitialApprovalWidget() {
     const line = flatLines.find((l) => l.id === rejectingLineId);
     if (!line) return;
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+    const apiPath = currentMr?.type === "job" ? "/api/jo" : "/api/mr";
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}${apiPath}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -328,7 +342,11 @@ export default function QuickInitialApprovalWidget() {
     });
 
     if (res.ok) {
-      toast(`${line.material_description} rejected`, "success");
+      const label =
+        currentMr?.type === "job"
+          ? line.job_description || "Item"
+          : line.material_description;
+      toast(`${label} rejected`, "success");
       setFlatLines((prev) =>
         prev.map((l) =>
           l.id === line.id
@@ -345,7 +363,8 @@ export default function QuickInitialApprovalWidget() {
   }
 
   async function handleReset(line: MrLineData) {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+    const apiPath = currentMr?.type === "job" ? "/api/jo" : "/api/mr";
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}${apiPath}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "resetItem", id: line.id }),
@@ -381,14 +400,24 @@ export default function QuickInitialApprovalWidget() {
     });
 
     if (res.ok) {
-      toast("Material request submitted for quotations", "success");
+      toast(
+        currentMr.type === "job"
+          ? "Job order submitted for quotations"
+          : "Material request submitted for quotations",
+        "success",
+      );
       setIsSubmitQuotationsOpen(false);
       setMrHeaders((prev) => prev.filter((_, i) => i !== currentMrIndex));
       if (currentMrIndex >= mrHeaders.length - 1) {
         setCurrentMrIndex(Math.max(0, currentMrIndex - 1));
       }
     } else {
-      toast("Failed to submit material request", "error");
+      toast(
+        currentMr.type === "job"
+          ? "Failed to submit job order"
+          : "Failed to submit material request",
+        "error",
+      );
     }
     setIsSubmitting(false);
   }
@@ -664,7 +693,7 @@ export default function QuickInitialApprovalWidget() {
                   marginBottom: "10px",
                 }}
               >
-                Material
+                {currentMr.type === "job" ? "Jobs" : "Material"}
                 <span
                   style={{
                     padding: "2px 10px",
@@ -704,81 +733,131 @@ export default function QuickInitialApprovalWidget() {
                         padding: "15px",
                       }}
                     >
-                      <div>
-                        <small>ITEM</small>
-                        <h4>{line.material_description || "-"}</h4>
-                      </div>
+                      {currentMr.type === "job" ? (
+                        <>
+                          <div style={{ display: "flex", gap: "50px" }}>
+                            <div>
+                              <small>SCOPE</small>
+                              <h4>{line.job_scope_name || line.job_scope || "-"}</h4>
+                            </div>
+                            <div>
+                              <small>CONTRACT TYPE</small>
+                              <h4>{line.contract_type || "-"}</h4>
+                            </div>
+                          </div>
 
-                      <br />
+                          <br />
 
-                      <div style={{ display: "flex", gap: "50px" }}>
-                        <div>
-                          <small>QTY</small>
-                          <h4>
-                            {formatQuantity(line.quantity)} {line.unit || ""}
-                          </h4>
-                        </div>
+                          <div>
+                            <small>DESCRIPTION</small>
+                            <h4>{line.job_description || "-"}</h4>
+                          </div>
 
-                        <div>
-                          <small>BOQ REF</small>
-                          <h4>
-                            {line.boq_line_ids ? (
-                              <BoqReferencePopUp
-                                mrHeader={buildMrHeaderForBoq()}
-                                item={line as any}
-                              />
-                            ) : (
-                              "-"
-                            )}
-                          </h4>
-                        </div>
+                          <br />
 
-                        <div>
-                          <small>BRAND & SPECS</small>
-                          <h4>
-                            {line.brand || line.specification ? (
-                              <InfoPopUpButton
-                                header={"BRAND & SPECIFICATION"}
-                                text={
-                                  <>
-                                    <small>BRAND</small>
-                                    <h2>{line.brand || "-"}</h2>
-                                    <br />
-                                    <small>SPECIFICATION</small>
-                                    <h2>{line.specification || "-"}</h2>
-                                  </>
-                                }
-                              />
-                            ) : (
-                              "-"
-                            )}
-                          </h4>
-                        </div>
+                          <div style={{ display: "flex", gap: "50px" }}>
+                            <div>
+                              <small>BOQ REF.</small>
+                              <h4>
+                                {line.boq_line_ids ? (
+                                  <BoqReferencePopUp
+                                    mrHeader={buildMrHeaderForBoq()}
+                                    item={line as any}
+                                  />
+                                ) : (
+                                  "-"
+                                )}
+                              </h4>
+                            </div>
+                            <div>
+                              <small>BUDGET</small>
+                              <h4>
+                                {line.budget_estimate != null && Number(line.budget_estimate) > 0
+                                  ? `AED ${Number(line.budget_estimate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                  : "-"}
+                              </h4>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <small>ITEM</small>
+                            <h4>{line.material_description || "-"}</h4>
+                          </div>
 
-                        <div>
-                          <small>ATTACHMENT</small>
-                          <h4>
-                            {line.attachment ? (
-                              <Button
-                                componentType={"link"}
-                                bgColor={"rgba(239, 239, 239, 1)"}
-                                borderColor={"rgba(223, 223, 223, 1)"}
-                                textColor={"black"}
-                                style={{ padding: "7px 7px" }}
-                                href={line.attachment}
-                                target="_blank"
-                              >
-                                <img
-                                  src={externalLinkIcon}
-                                  alt="external link"
-                                />
-                              </Button>
-                            ) : (
-                              "-"
-                            )}
-                          </h4>
-                        </div>
-                      </div>
+                          <br />
+
+                          <div style={{ display: "flex", gap: "50px" }}>
+                            <div>
+                              <small>QTY</small>
+                              <h4>
+                                {formatQuantity(line.quantity)} {line.unit || ""}
+                              </h4>
+                            </div>
+
+                            <div>
+                              <small>BOQ REF.</small>
+                              <h4>
+                                {line.boq_line_ids ? (
+                                  <BoqReferencePopUp
+                                    mrHeader={buildMrHeaderForBoq()}
+                                    item={line as any}
+                                  />
+                                ) : (
+                                  "-"
+                                )}
+                              </h4>
+                            </div>
+
+                            <div>
+                              <small>BRAND & SPECS</small>
+                              <h4>
+                                {line.brand || line.specification ? (
+                                  <InfoPopUpButton
+                                    header={"BRAND & SPECIFICATION"}
+                                    text={
+                                      <>
+                                        <small>BRAND</small>
+                                        <h2>{line.brand || "-"}</h2>
+                                        <br />
+                                        <small>SPECIFICATION</small>
+                                        <h2>{line.specification || "-"}</h2>
+                                      </>
+                                    }
+                                  />
+                                ) : (
+                                  "-"
+                                )}
+                              </h4>
+                            </div>
+
+                            <div>
+                              <small>ATTACHMENT</small>
+                              <h4>
+                                {line.attachment ? (
+                                  <Button
+                                    componentType={"link"}
+                                    bgColor={"rgba(239, 239, 239, 1)"}
+                                    borderColor={"rgba(223, 223, 223, 1)"}
+                                    textColor={"black"}
+                                    style={{ padding: "7px 7px" }}
+                                    href={line.attachment}
+                                    target="_blank"
+                                  >
+                                    <img
+                                      src={externalLinkIcon}
+                                      alt="external link"
+                                    />
+                                  </Button>
+                                ) : (
+                                  "-"
+                                )}
+                              </h4>
+                            </div>
+                          </div>
+                        </>
+                      )}
 
                       <br />
 
@@ -973,7 +1052,11 @@ export default function QuickInitialApprovalWidget() {
       {/* Submit for quotations confirmation */}
       {isSubmitQuotationsOpen && (
         <FormPopUp
-          header={"SUBMIT MATERIAL REQUEST"}
+          header={
+            currentMr?.type === "job"
+              ? "SUBMIT JOB ORDER"
+              : "SUBMIT MATERIAL REQUEST"
+          }
           setIsOpen={setIsSubmitQuotationsOpen}
           handleSubmit={(e) => {
             e.preventDefault();
@@ -981,7 +1064,11 @@ export default function QuickInitialApprovalWidget() {
           }}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this material request?</p>
+          <p>
+            {currentMr?.type === "job"
+              ? "Are you sure you want to submit this job order?"
+              : "Are you sure you want to submit this material request?"}
+          </p>
         </FormPopUp>
       )}
 
@@ -996,7 +1083,11 @@ export default function QuickInitialApprovalWidget() {
           }}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this material request?</p>
+          <p>
+            {currentMr?.type === "job"
+              ? "Are you sure you want to return this job order for revision?"
+              : "Are you sure you want to submit this material request?"}
+          </p>
         </FormPopUp>
       )}
     </div>

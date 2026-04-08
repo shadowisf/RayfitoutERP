@@ -14,6 +14,7 @@ import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItem
 import MultipleSelectMaterialItemButton, {
   PredefinedItem,
 } from "@/app/components/_MultipleSelectMaterialItemButton";
+import CreateNewMaterialButton from "@/app/components/_CreateNewMaterialButton";
 
 type SelectedMaterialRow = {
   predefinedItem: PredefinedItem | null;
@@ -55,21 +56,8 @@ export default function EditMrItemButton({
   );
   const [selectedItemIDs, setSelectedItemIDs] = useState<number[]>([]);
 
-  // NEW MATERIAL popup state
-  const [showNewMaterial, setShowNewMaterial] = useState(false);
-  const [newMatDescription, setNewMatDescription] = useState("");
-  const [newMatCategoryID, setNewMatCategoryID] = useState<string | number>("");
-  const [newMatSubCategoryID, setNewMatSubCategoryID] = useState<
-    string | number
-  >("");
-  const [newMatUnit, setNewMatUnit] = useState("");
-  const [newMatBrand, setNewMatBrand] = useState("");
-  const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
-    [],
-  );
-  const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
-    any[]
-  >([]);
+  // Brand state
+  const [brand, setBrand] = useState(item.brand ?? "");
 
   // Parse boq_ids from the view (comma-separated string to array)
   const [boqLineIDs, setBoqLineIDs] = useState<number[]>(() => {
@@ -134,91 +122,20 @@ export default function EditMrItemButton({
       .catch(console.error);
   }, []);
 
-  // Fetch categories + all subcategories when NEW MATERIAL popup opens
-  useEffect(() => {
-    if (!showNewMaterial) return;
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
-    )
-      .then((res) => res.json())
-      .then(setMaterialCategoryValues)
-      .catch(console.error);
-
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
-      { method: "GET", headers: { "Content-Type": "application/json" } },
-    )
-      .then((res) => res.json())
-      .then(setMaterialSubCategoryValues)
-      .catch(console.error);
-  }, [showNewMaterial]);
-
-  // Handle NEW MATERIAL subcategory selection — auto-fill category
-  const handleNewMatSubCategoryChange = (val: string | number) => {
-    setNewMatSubCategoryID(val);
-    if (val && materialSubCategoryValues.length > 0) {
-      const subCat = materialSubCategoryValues.find((sc: any) => sc.id === val);
-      if (subCat?.category_id && !newMatCategoryID) {
-        setNewMatCategoryID(subCat.category_id);
-      }
-    }
-  };
-
-  // Handle NEW MATERIAL submit
-  const handleNewMaterialSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!newMatDescription.trim()) return;
-    if (!newMatCategoryID) return;
-    if (!newMatSubCategoryID) return;
-
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            material_description: newMatDescription.trim(),
-            category_id: Number(newMatCategoryID),
-            subcategory_id: Number(newMatSubCategoryID),
-            unit: newMatUnit || null,
-            brand: newMatBrand || null,
-          }),
-        },
-      );
-
-      if (!res.ok) {
-        toast("Failed to create material", "error");
-        return;
-      }
-
-      const newItem: PredefinedItem = await res.json();
-      toast(`${newItem.material_description} created`, "success");
-
-      // Set as current selected item
-      setSelectedItemIDs([newItem.id]);
-      setSelectedRow({
-        predefinedItem: newItem,
-        quantity: selectedRow?.quantity || "",
-        unit: newItem.unit ? mapPredefinedUnit(newItem.unit) : "",
-        unitWasNull: !newItem.unit,
-        materialDescription: newItem.material_description,
-        categoryId: newItem.category_id,
-        subcategoryId: newItem.subcategory_id,
-        brand: newItem.brand || "",
-      });
-
-      // Reset and close
-      setShowNewMaterial(false);
-      setNewMatDescription("");
-      setNewMatCategoryID("");
-      setNewMatSubCategoryID("");
-      setNewMatUnit("");
-      setNewMatBrand("");
-    } catch {
-      toast("Failed to create material", "error");
-    }
+  // Handle new material created via CreateNewMaterialButton
+  const handleNewMaterialCreated = (newItem: PredefinedItem) => {
+    toast(`${newItem.material_description} created`, "success");
+    setSelectedItemIDs([newItem.id]);
+    setSelectedRow({
+      predefinedItem: newItem,
+      quantity: selectedRow?.quantity || "",
+      unit: newItem.unit ? mapPredefinedUnit(newItem.unit) : "",
+      unitWasNull: !newItem.unit,
+      materialDescription: newItem.material_description,
+      categoryId: newItem.category_id,
+      subcategoryId: newItem.subcategory_id,
+      brand: newItem.brand || "",
+    });
   };
 
   // Handle material items selection from popup (take only last selected item for edit)
@@ -296,7 +213,7 @@ export default function EditMrItemButton({
           unit: selectedRow.unit,
           notes: null,
           specification: specification || null,
-          brand: selectedRow.brand || null,
+          brand: brand || selectedRow.brand || null,
           delivery_location: deliveryLocation,
           attachment: attachmentUrl
             ? JSON.stringify(attachmentUrl)
@@ -385,18 +302,9 @@ export default function EditMrItemButton({
                       gap: "10px",
                     }}
                   >
-                    <Button
-                      componentType={"button"}
-                      bgColor={"black"}
-                      borderColor={"black"}
-                      textColor={"white"}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setShowNewMaterial(true);
-                      }}
-                    >
-                      NEW MATERIAL +
-                    </Button>
+                    <CreateNewMaterialButton
+                      onSuccess={handleNewMaterialCreated}
+                    />
 
                     {/* <MultipleSelectMaterialItemButton
                       onSelectItems={handleMaterialSelect}
@@ -423,99 +331,87 @@ export default function EditMrItemButton({
           {selectedRow && (
             <>
               <div className="input-row full">
-                <div style={{ width: "100%" }}>
-                  <table
-                    className="items-table two-toned"
-                    style={{ width: "100%" }}
-                  >
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>ITEM</th>
-                        <th>BRAND</th>
-                        <th>QTY</th>
-                        <th>UNIT</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>1</td>
-                        <td>
-                          <InputItem
-                            label=""
-                            value={selectedRow.materialDescription}
-                            type="text"
-                            placeholder="ITEM"
-                            noOptionalLabel
-                            style={{ width: "500px" }}
-                            onChange={(e) =>
+                <table className="items-table two-toned">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>CATEGORY</th>
+                      <th>SUBCATEGORY</th>
+                      <th>ITEM</th>
+                      <th>QTY</th>
+                      <th>UNIT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>1</td>
+                      <td>
+                        {selectedRow.predefinedItem?.category_name ||
+                          item.material_category ||
+                          "-"}
+                      </td>
+                      <td>
+                        {selectedRow.predefinedItem?.subcategory_name ||
+                          item.material_subcategory ||
+                          "-"}
+                      </td>
+                      <td>
+                        <InputItem
+                          label=""
+                          value={selectedRow.materialDescription}
+                          type="text"
+                          placeholder="ITEM"
+                          noOptionalLabel
+                          style={{ width: "500px" }}
+                          onChange={(e) =>
+                            setSelectedRow((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    materialDescription: e.target.value,
+                                  }
+                                : prev,
+                            )
+                          }
+                        />
+                      </td>
+
+                      <td>
+                        <InputItem
+                          label=""
+                          value={selectedRow.quantity}
+                          type="text"
+                          placeholder="QTY"
+                          noOptionalLabel
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "" || /^\d*\.?\d*$/.test(val)) {
                               setSelectedRow((prev) =>
-                                prev
-                                  ? {
-                                      ...prev,
-                                      materialDescription: e.target.value,
-                                    }
-                                  : prev,
-                              )
+                                prev ? { ...prev, quantity: val } : prev,
+                              );
                             }
-                          />
-                        </td>
-                        <td>
-                          <InputItem
-                            label=""
-                            value={selectedRow.brand}
-                            type="text"
-                            placeholder="BRAND"
-                            noOptionalLabel
-                            onChange={(e) =>
-                              setSelectedRow((prev) =>
-                                prev
-                                  ? { ...prev, brand: e.target.value }
-                                  : prev,
-                              )
-                            }
-                            style={{ width: "120px" }}
-                          />
-                        </td>
-                        <td>
-                          <InputItem
-                            label=""
-                            value={selectedRow.quantity}
-                            type="text"
-                            placeholder="QTY"
-                            noOptionalLabel
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                                setSelectedRow((prev) =>
-                                  prev ? { ...prev, quantity: val } : prev,
-                                );
-                              }
-                            }}
-                            style={{ width: "80px" }}
-                          />
-                        </td>
-                        <td>
-                          <SingleSelectDropdown
-                            label=""
-                            noLabel
-                            selectOptions={[...UNIT_OPTIONS]}
-                            selectedValue={selectedRow.unit}
-                            onChange={(val) =>
-                              setSelectedRow((prev) =>
-                                prev ? { ...prev, unit: String(val) } : prev,
-                              )
-                            }
-                            placeholder="SELECT UNIT"
-                            style={{ width: "120px" }}
-                          />
-                        </td>
-                        <td></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                          }}
+                          style={{ width: "80px" }}
+                        />
+                      </td>
+                      <td>
+                        <SingleSelectDropdown
+                          label=""
+                          noLabel
+                          selectOptions={[...UNIT_OPTIONS]}
+                          selectedValue={selectedRow.unit}
+                          onChange={(val) =>
+                            setSelectedRow((prev) =>
+                              prev ? { ...prev, unit: String(val) } : prev,
+                            )
+                          }
+                          placeholder="SELECT UNIT"
+                          style={{ width: "120px" }}
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
               <br />
@@ -535,6 +431,17 @@ export default function EditMrItemButton({
                 currentBoqLineIDs={boqLineIDs}
               />
             </div>
+          </div>
+
+          {/* Brand */}
+          <div className="input-row full">
+            <InputItem
+              label={"BRAND"}
+              value={brand}
+              type={"text"}
+              onChange={(e) => setBrand(e.target.value)}
+              placeholder="ENTER BRAND"
+            />
           </div>
 
           {/* Specification */}
@@ -568,65 +475,6 @@ export default function EditMrItemButton({
               label={"ATTACHMENT"}
               acceptedFileTypes={".pdf,.png,.jpg,.jpeg"}
               existingFileUrl={item.attachment}
-            />
-          </div>
-        </FormPopUp>
-      )}
-
-      {/* NEW MATERIAL popup (separate FormPopUp) */}
-      {showNewMaterial && (
-        <FormPopUp
-          header={"NEW MATERIAL"}
-          setIsOpen={setShowNewMaterial}
-          handleSubmit={handleNewMaterialSubmit}
-          addButtonLabel={"ADD MATERIAL"}
-          style={{ minWidth: "600px" }}
-        >
-          <div className="input-row full">
-            <InputItem
-              label={"DESCRIPTION"}
-              value={newMatDescription}
-              type={"text"}
-              required
-              onChange={(e) => setNewMatDescription(e.target.value)}
-            />
-          </div>
-
-          <div className="input-row half">
-            <SingleSelectDropdown
-              label={"CATEGORY"}
-              dbData={materialCategoryValues}
-              selectedValue={newMatCategoryID}
-              onChange={(val) => setNewMatCategoryID(val)}
-              placeholder="SELECT CATEGORY"
-              required
-              style={{ width: "350px" }}
-            />
-            <SingleSelectDropdown
-              label={"SUBCATEGORY"}
-              dbData={materialSubCategoryValues}
-              selectedValue={newMatSubCategoryID}
-              onChange={handleNewMatSubCategoryChange}
-              placeholder="SELECT SUBCATEGORY"
-              required
-              style={{ width: "350px" }}
-            />
-          </div>
-
-          <div className="input-row half">
-            <InputItem
-              label={"UNIT"}
-              value={newMatUnit}
-              type={"select"}
-              placeholder={"SELECT UNIT"}
-              onChange={(e) => setNewMatUnit(e.target.value)}
-              selectOptions={[...UNIT_OPTIONS]}
-            />
-            <InputItem
-              label={"BRAND"}
-              value={newMatBrand}
-              type={"text"}
-              onChange={(e) => setNewMatBrand(e.target.value)}
             />
           </div>
         </FormPopUp>

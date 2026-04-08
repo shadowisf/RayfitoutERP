@@ -2,11 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import OverviewHoverPopup from "../OverviewHoverPopup";
 import HoverLoadingCursor from "../HoverLoadingCursor";
 
 type props = {
   filterDays?: number;
+};
+
+type TopProject = {
+  project_name: string;
+  mr_count: number;
+};
+
+type TopSupplier = {
+  supplier_name: string;
+  total_amount: number;
 };
 
 export default function OutboundPaymentMrsWidget({ filterDays }: props) {
@@ -22,12 +31,21 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [items, setItems] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
+  const [paidTotal, setPaidTotal] = useState<number>(0);
+  const [committedTotal, setCommittedTotal] = useState<number>(0);
+  const [topProjects, setTopProjects] = useState<TopProject[]>([]);
+  const [topSuppliers, setTopSuppliers] = useState<TopSupplier[]>([]);
+  const [lpoCount, setLpoCount] = useState<number>(0);
 
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const hoverTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Expand state for sections
+  const [expandedProjects, setExpandedProjects] = useState(false);
+  const [expandedSuppliers, setExpandedSuppliers] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
@@ -51,6 +69,11 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
         setLastWeek(lastWeekCount);
         setItems(data.items || []);
         setTotalCount(data.total_count || 0);
+        setPaidTotal(data.paid_total || 0);
+        setCommittedTotal(data.committed_total || 0);
+        setTopProjects(data.top_projects || []);
+        setTopSuppliers(data.top_suppliers || []);
+        setLpoCount(data.lpo_count || 0);
 
         if (lastWeekCount === 0) {
           if (thisWeekCount > 0) {
@@ -68,7 +91,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
         }
       })
       .catch((err) => {
-        console.error("Error fetching MR data:", err);
+        console.error("Error fetching outbound payment data:", err);
       })
       .finally(() => {
         setIsLoading(false);
@@ -117,6 +140,8 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
     }
     setShowPopup(false);
     setIsWaiting(false);
+    setExpandedProjects(false);
+    setExpandedSuppliers(false);
   };
 
   const hasNoOutboundPayments = thisWeek === 0;
@@ -151,10 +176,30 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   // Helper function to format numbers with commas and 2 decimal places
   const formatCurrency = (value: number) => {
     return value.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
     });
   };
+
+  // Hover popup positioning
+  const popupWidth = 500;
+  const popupMaxHeight = 500;
+  const offsetX = 20;
+  const offsetY = 20;
+
+  const popupLeft =
+    typeof window !== "undefined" &&
+    mousePosition.x + offsetX + popupWidth > window.innerWidth
+      ? mousePosition.x - popupWidth - 10
+      : mousePosition.x + offsetX;
+
+  const popupTop =
+    typeof window !== "undefined" &&
+    mousePosition.y + offsetY + popupMaxHeight > window.innerHeight
+      ? Math.max(10, mousePosition.y - popupMaxHeight)
+      : mousePosition.y + offsetY;
+
+  const balance = paidTotal + committedTotal;
 
   return (
     <div
@@ -188,23 +233,295 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
         <HoverLoadingCursor mouseX={mousePosition.x} mouseY={mousePosition.y} />
       )}
 
-      {showPopup && items.length > 0 && (
-        <OverviewHoverPopup
-          mouseX={mousePosition.x}
-          mouseY={mousePosition.y}
-          items={items}
-          totalCount={totalCount}
-          columns={[
-            { key: "display_id", label: "LPO NUMBER" },
-            {
-              key: "amount",
-              label: "AMOUNT",
-              format: (val: number) =>
-                `+ AED ${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            },
-          ]}
-          emptyMessage="No outbound payments"
-        />
+      {showPopup && (
+        <div
+          style={{
+            position: "fixed",
+            left: popupLeft,
+            top: popupTop,
+            backgroundColor: "white",
+            color: "black",
+            border: "1px solid rgba(223,223,223,1)",
+            borderRadius: "10px",
+            padding: "20px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            zIndex: 10000,
+            width: `${popupWidth}px`,
+            pointerEvents: "none",
+          }}
+        >
+          {/* Title */}
+          <h3 style={{ fontWeight: 600, margin: 0 }}>Outbound Payments</h3>
+
+          {/* Balance */}
+          <p
+            style={{
+              fontWeight: 700,
+              margin: "10px 0",
+            }}
+          >
+            <span style={{ color: "rgba(248, 77, 77, 1)" }}>
+              + {formatCurrency(balance)}
+            </span>{" "}
+            <span style={{ color: "#999" }}>AED</span> <strong>Balance</strong>
+          </p>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Description */}
+          <p
+            style={{
+              color: "#555",
+              lineHeight: "1.4",
+              margin: "0 0 10px 0",
+            }}
+          >
+            Financial exposure from issued LPOs only. Includes paid LPO values
+            and committed outstanding balances for credit suppliers. Cash
+            suppliers are reflected only once payment is released.
+          </p>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Payment Breakdown */}
+          {(paidTotal > 0 || committedTotal > 0) && (
+            <div style={{ marginBottom: "10px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px",
+                }}
+              >
+                {paidTotal > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: "rgba(248, 77, 77, 1)",
+                      }}
+                    >
+                      + {formatCurrency(paidTotal)}{" "}
+                      <span style={{ color: "#999", fontWeight: 400 }}>
+                        AED
+                      </span>
+                    </span>
+                    <span style={{ color: "#333" }}>
+                      <strong>Paid (Cash + Credit)</strong>
+                    </span>
+                  </div>
+                )}
+                {committedTotal > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: "rgba(248, 77, 77, 1)",
+                        minWidth: "120px",
+                      }}
+                    >
+                      + {formatCurrency(committedTotal)}{" "}
+                      <span style={{ color: "#999", fontWeight: 400 }}>
+                        AED
+                      </span>
+                    </span>
+                    <span style={{ color: "#333" }}>
+                      <strong>Committed (Credit)</strong>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Top Projects */}
+          <div style={{ marginBottom: "10px" }}>
+            <h4 style={{ margin: "0 0 10px 0" }}>TOP 5 PROJECTS</h4>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+              }}
+            >
+              {topProjects.length === 0 ? (
+                <span style={{ color: "#aaa" }}>No data</span>
+              ) : (
+                <>
+                  {(expandedProjects
+                    ? topProjects
+                    : topProjects.slice(0, 5)
+                  ).map((project) => (
+                    <div
+                      key={project.project_name}
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: "10px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          color: "rgba(248, 77, 77, 1)",
+                          minWidth: "20px",
+                        }}
+                      >
+                        {project.mr_count}
+                      </span>
+                      <span style={{ color: "#333" }}>
+                        MRs for <strong>{project.project_name}</strong>
+                      </span>
+                    </div>
+                  ))}
+                  {topProjects.length > 5 && !expandedProjects && (
+                    <span
+                      style={{
+                        color: "#555",
+                        textDecoration: "underline",
+                        cursor: "pointer",
+                        pointerEvents: "auto",
+                        fontStyle: "italic",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedProjects(true);
+                      }}
+                    >
+                      ... and {topProjects.length - 5} more projects
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Top Suppliers */}
+          <div style={{ marginBottom: "10px" }}>
+            <h4 style={{ margin: "0 0 10px 0" }}>TOP 5 SUPPLIERS</h4>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+              }}
+            >
+              {topSuppliers.length === 0 ? (
+                <span style={{ color: "#aaa" }}>No data</span>
+              ) : (
+                <>
+                  {(expandedSuppliers
+                    ? topSuppliers
+                    : topSuppliers.slice(0, 5)
+                  ).map((supplier) => (
+                    <div
+                      key={supplier.supplier_name}
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: "10px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          color: "rgba(248, 77, 77, 1)",
+                        }}
+                      >
+                        + {formatCurrency(Number(supplier.total_amount))}{" "}
+                        <span style={{ color: "#999", fontWeight: 400 }}>
+                          AED
+                        </span>
+                      </span>
+                      <span style={{ color: "#333" }}>
+                        from{" "}
+                        <strong>
+                          {supplier.supplier_name || "Unknown Supplier"}
+                        </strong>
+                      </span>
+                    </div>
+                  ))}
+                  {topSuppliers.length > 5 && !expandedSuppliers && (
+                    <span
+                      style={{
+                        color: "#555",
+                        textDecoration: "underline",
+                        cursor: "pointer",
+                        pointerEvents: "auto",
+                        fontStyle: "italic",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedSuppliers(true);
+                      }}
+                    >
+                      ... and {topSuppliers.length - 5} more items
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #eee",
+              margin: "15px 0",
+            }}
+          />
+
+          {/* Footer */}
+          <p
+            style={{
+              color: "#999",
+              fontStyle: "italic",
+              margin: 0,
+            }}
+          >
+            Based on {lpoCount} issued LPOs
+          </p>
+        </div>
       )}
     </div>
   );

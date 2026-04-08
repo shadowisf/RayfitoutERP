@@ -2294,7 +2294,7 @@ export default function MrLinesView({
                       borderColor="black"
                       textColor="white"
                     >
-                      ADD CATEGORY & ITEM +
+                      ADD ITEM +
                     </AddMrItemButton>
                   </>
                 )}
@@ -2303,7 +2303,6 @@ export default function MrLinesView({
         )}
       </div>
 
-      <br />
       <br />
 
       {showByItem &&
@@ -2367,7 +2366,6 @@ export default function MrLinesView({
                           )}
                       </div>
 
-                      <br />
                       <br />
 
                       {Object.entries(suppliers).map(
@@ -3091,68 +3089,9 @@ export default function MrLinesView({
                             </table>
 
                             <br />
-                            <br />
-                            <br />
                           </div>
                         ),
                       )}
-
-                      {(mrHeader.progress_id === 1 ||
-                        mrHeader.progress_id === 5) &&
-                        userInfo?.departmentID === mrHeader.department_id &&
-                        firstItem && (
-                          <>
-                            {/* ALL CATEGORY */}
-                            <AddMrItemButton
-                              projectID={mrHeader.project_id}
-                              mrHeaderID={mrHeader.id}
-                              bgColor="rgba(239, 239, 239, 1)"
-                              borderColor="rgba(239, 239, 239, 1)"
-                              textColor="black"
-                              full
-                              autoCategoryID={String(
-                                firstItem.material_category_id,
-                              )}
-                              autoSubCategoryIDs={(() => {
-                                const subcatId =
-                                  firstItem.material_subcategory_id;
-
-                                // If it's already an array, return it
-                                if (Array.isArray(subcatId)) {
-                                  return subcatId.map((id) =>
-                                    typeof id === "string" ? parseInt(id) : id,
-                                  );
-                                }
-
-                                // If it's a string like "7, 8, 9", split it
-                                if (typeof subcatId === "string") {
-                                  return subcatId
-                                    .split(",")
-                                    .map((id) => id.trim())
-                                    .filter((id) => id && id !== "")
-                                    .map((id) => parseInt(id))
-                                    .filter((id) => !isNaN(id));
-                                }
-
-                                // If it's a single number
-                                if (typeof subcatId === "number") {
-                                  return [subcatId];
-                                }
-
-                                return [];
-                              })()}
-                              style={{ padding: "20px 0px" }}
-                            >
-                              ADD ITEM +
-                            </AddMrItemButton>
-
-                            <br />
-                            <br />
-                            <br />
-                            <br />
-                            <br />
-                          </>
-                        )}
                     </div>
                   );
                 }),
@@ -3213,7 +3152,6 @@ export default function MrLinesView({
                       )}
                   </div>
 
-                  <br />
                   <br />
 
                   {Object.entries(suppliers).map(
@@ -3908,66 +3846,9 @@ export default function MrLinesView({
                         </table>
 
                         <br />
-                        <br />
-                        <br />
                       </div>
                     ),
                   )}
-
-                  {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-                    userInfo?.departmentID === mrHeader.department_id &&
-                    firstItem && (
-                      <>
-                        {/* SPECIFIC CATEGORY */}
-                        <AddMrItemButton
-                          projectID={mrHeader.project_id}
-                          mrHeaderID={mrHeader.id}
-                          bgColor="rgba(239, 239, 239, 1)"
-                          borderColor="rgba(239, 239, 239, 1)"
-                          textColor="black"
-                          full
-                          autoCategoryID={String(
-                            firstItem.material_category_id,
-                          )}
-                          autoSubCategoryIDs={(() => {
-                            const subcatId = firstItem.material_subcategory_id;
-
-                            // If it's already an array, return it
-                            if (Array.isArray(subcatId)) {
-                              return subcatId.map((id) =>
-                                typeof id === "string" ? parseInt(id) : id,
-                              );
-                            }
-
-                            // If it's a string like "7, 8, 9", split it
-                            if (typeof subcatId === "string") {
-                              return subcatId
-                                .split(",")
-                                .map((id) => id.trim())
-                                .filter((id) => id && id !== "")
-                                .map((id) => parseInt(id))
-                                .filter((id) => !isNaN(id));
-                            }
-
-                            // If it's a single number
-                            if (typeof subcatId === "number") {
-                              return [subcatId];
-                            }
-
-                            return [];
-                          })()}
-                          style={{ padding: "20px 0px" }}
-                        >
-                          ADD ITEM +
-                        </AddMrItemButton>
-
-                        <br />
-                        <br />
-                        <br />
-                        <br />
-                        <br />
-                      </>
-                    )}
                 </div>
               );
             }))}
@@ -4413,43 +4294,8 @@ export default function MrLinesView({
             </table>
 
             <br />
-            <br />
-            <br />
           </div>
         ))}
-
-      {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-        userInfo?.departmentID === mrHeader.department_id &&
-        activeCategory !== "ALL" &&
-        showByItem && (
-          <>
-            <br />
-            <br />
-            <br />
-            <br />
-            <br />
-
-            {/* SUBCATEGORY + ITEM */}
-            <AddMrItemButton
-              projectID={mrHeader.project_id}
-              mrHeaderID={mrHeader.id}
-              bgColor="rgba(239, 239, 239, 1)"
-              borderColor="rgba(239, 239, 239, 1)"
-              textColor="black"
-              full
-              autoCategoryID={getActiveCategoryID()}
-              style={{ padding: "40px 0px", backgroundColor: "white" }}
-            >
-              ADD SUBCATEGORY & ITEM +
-            </AddMrItemButton>
-
-            <br />
-            <br />
-            <br />
-            <br />
-            <br />
-          </>
-        )}
 
       <CommentsSection
         mrHeaderId={mrHeader.id}

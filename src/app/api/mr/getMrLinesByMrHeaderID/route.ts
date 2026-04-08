@@ -5,10 +5,39 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
+    // Check if this is a job type MR
+    const [headerRows]: any = await db.query(
+      `SELECT type FROM mr_headers WHERE id = ?`,
+      [Number(body.id)],
+    );
+    const mrType = headerRows[0]?.type || "material";
+
+    // For job type, fetch JO lines instead
+    if (mrType === "job") {
+      const [joRows]: any = await db.query(
+        `SELECT * FROM vw_jo_lines WHERE mr_header_id = ? ORDER BY id ASC`,
+        [Number(body.id)],
+      );
+
+      // Group JO lines under a single "Jobs" category
+      const grouped: any = {
+        Jobs: {
+          "All Scopes": {
+            Unassigned: joRows.map((row: any, index: number) => ({
+              ...row,
+              original_order: index,
+            })),
+          },
+        },
+      };
+
+      return NextResponse.json(grouped, { status: 200 });
+    }
+
     // ✅ Added ORDER BY id ASC to maintain insertion order
     const [rows]: any = await db.query(
       `
-      SELECT * FROM vw_mr_lines 
+      SELECT * FROM vw_mr_lines
       WHERE mr_header_id = ?
       ORDER BY id ASC`,
       [Number(body.id)],

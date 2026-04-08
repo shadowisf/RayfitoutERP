@@ -24,6 +24,7 @@ type InputItemProps = {
   postfixText?: string;
   min?: string; // Add min prop for date inputs
   onBlur?: () => void;
+  itooltip?: string;
 };
 
 export default function InputItem({
@@ -43,8 +44,88 @@ export default function InputItem({
   postfixText,
   min, // Destructure min prop
   onBlur,
+  itooltip,
 }: InputItemProps) {
   const [showPassword, setShowPassword] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const tooltipBubble = itooltip ? (
+    <span
+      style={{
+        position: "relative",
+        display: "inline-flex",
+        alignItems: "center",
+        marginLeft: "6px",
+      }}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      <span
+        style={{
+          width: "16px",
+          height: "16px",
+          borderRadius: "50%",
+          backgroundColor: "rgba(207, 207, 207, 1)",
+          color: "white",
+          fontSize: "9px",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          fontStyle: "normal",
+          paddingTop: "1px",
+        }}
+      >
+        i
+      </span>
+      {showTooltip && (
+        <div
+          style={{
+            position: "fixed",
+            top: "var(--tooltip-top)",
+            left: "var(--tooltip-left)",
+            backgroundColor: "rgba(30, 30, 30, 1)",
+            color: "white",
+            padding: "10px 14px",
+            fontSize: "12px",
+            fontWeight: 400,
+            fontStyle: "normal",
+            lineHeight: "1.5",
+            width: "280px",
+            zIndex: 99999,
+            pointerEvents: "none",
+          }}
+          ref={(el) => {
+            if (el) {
+              const parent = el.previousElementSibling as HTMLElement;
+              if (parent) {
+                const rect = parent.getBoundingClientRect();
+                el.style.setProperty(
+                  "--tooltip-top",
+                  `${rect.top + rect.height / 2}px`,
+                );
+                el.style.setProperty("--tooltip-left", `${rect.right + 12}px`);
+                el.style.transform = `translateY(-50%)`;
+              }
+            }
+          }}
+        >
+          {itooltip}
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "-5px",
+              transform: "translateY(-50%) rotate(45deg)",
+              width: "10px",
+              height: "10px",
+              backgroundColor: "rgba(30, 30, 30, 1)",
+            }}
+          />
+        </div>
+      )}
+    </span>
+  ) : null;
 
   switch (type) {
     case "date":
@@ -87,11 +168,19 @@ export default function InputItem({
                   alignItems: "center",
                 }
               : {}),
+            ...(!label
+              ? {
+                  marginBottom: 0,
+                }
+              : {}),
           }}
         >
           {label ? (
             <label className="custom">
-              <span>{label}</span>
+              <span style={{ display: "inline-flex", alignItems: "center" }}>
+                {label}
+                {tooltipBubble}
+              </span>
               {!required && !noOptionalLabel && (
                 <small style={{ fontStyle: "italic", fontWeight: "100" }}>
                   (OPTIONAL)
@@ -122,6 +211,11 @@ export default function InputItem({
                   display: "grid",
                   gridTemplateColumns: "0.5fr 1fr",
                   alignItems: "center",
+                }
+              : {}),
+            ...(!label
+              ? {
+                  marginBottom: 0,
                 }
               : {}),
           }}
@@ -212,7 +306,10 @@ export default function InputItem({
       return (
         <div className="input-item">
           <label className="custom">
-            <span>{label}</span>{" "}
+            <span style={{ display: "inline-flex", alignItems: "center" }}>
+              {label}
+              {tooltipBubble}
+            </span>{" "}
             {!required && (
               <small style={{ fontStyle: "italic", fontWeight: "100" }}>
                 (OPTIONAL)

@@ -34,3 +34,56 @@ export type JoLineAttachment = {
   file_url: string;
   file_name: string;
 };
+
+export const ATTACHMENT_TYPES = [
+  {
+    key: "design_drawings",
+    label: "DESIGN & DRAWINGS",
+    description: "e.g., Architectural drawings, structural Drawings, etc.",
+    icon: "/icons/attachment-design-and-drawings.svg",
+  },
+  {
+    key: "hse_compliance",
+    label: "HSE & COMPLIANCE",
+    description: "e.g., Site HSE plan, insurance requirements",
+    icon: "/icons/attachment-normal-file.svg",
+  },
+  {
+    key: "scope_pricing",
+    label: "SCOPE & PRICING",
+    description:
+      "e.g., BOQ bid form, scope of work document, rate schedule etc",
+    icon: "/icons/attachment-scope-and-pricing.svg",
+  },
+  {
+    key: "contract_commercial",
+    label: "CONTRACT & COMMERCIAL",
+    description:
+      "e.g., Draft subcontract agreement, payment terms schedule, etc",
+    icon: "/icons/attachment-normal-file.svg",
+  },
+  {
+    key: "technical_specifications",
+    label: "TECHNICAL SPECIFICATIONS",
+    description: "e.g., Project specification, material approval schedule",
+    icon: "/icons/attachment-normal-file.svg",
+  },
+  {
+    key: "surveys_existing_conditions",
+    label: "SURVEYS & EXISTING CONDITIONS",
+    description: "e.g., Topographical survey, soil investigation report",
+    icon: "/icons/attachment-surveys-and-existing-conditions.svg",
+  },
+  {
+    key: "programme_logistics",
+    label: "PROGRAMME & LOGISTICS",
+    description: "e.g., Master programme, subcontract programme",
+    icon: "/icons/attachment-programme-and-logistics.svg",
+  },
+  {
+    key: "prequalification_admin",
+    label: "PRE-QUALIFICATION & ADMIN",
+    description: "e.g., Pre-qualification questionnaire, NDA",
+    icon: "/icons/attachment-prequalification-and-admin.svg",
+  },
+];

@@ -741,14 +741,14 @@ export default function SubcontractorAndQuotationButton({
                             }}
                           >
                             Quotation
-                            <a
+                            {/* <a
                               href={quotation.quotation_url}
                               target="_blank"
                               style={{ display: "flex" }}
                               rel="noreferrer"
                             >
                               <img src={externalLinkIcon} alt="view" />
-                            </a>
+                            </a> */}
                             <img
                               src={closeIcon}
                               alt="remove"
