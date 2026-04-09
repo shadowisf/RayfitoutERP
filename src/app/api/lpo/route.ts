@@ -88,25 +88,58 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "approvePayment") {
+      // Safe numeric parsing: Number(undefined) or Number("") yields NaN,
+      // which the mysql2 driver serializes as the unquoted literal `NaN`,
+      // which MySQL then parses as a column identifier — producing the
+      // cryptic "Unknown column 'NaN' in 'field list'" error. Coerce to
+      // null instead so the driver sends a proper NULL.
+      const toIntOrNull = (v: unknown) => {
+        if (v === null || v === undefined || v === "") return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+      };
+
+      const lpoIdNum = toIntOrNull(body.lpo_id);
+      if (lpoIdNum === null) {
+        return NextResponse.json(
+          { error: "Missing or invalid lpo_id" },
+          { status: 400 },
+        );
+      }
+
       const query = `
-    UPDATE lpo 
+    UPDATE lpo
     SET payment_status = 'Approved', payment_reject_comment = NULL, payment_file = ?, paid_at = NOW()
     WHERE id = ?
   `;
 
-      await db.query(query, [body.payment_file || null, Number(body.lpo_id)]);
+      await db.query(query, [body.payment_file || null, lpoIdNum]);
 
       if (!body.from_lpo_workflow) {
-        await db.query(
-          `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
-          [
-            Number(body.mr_header_id),
-            Number(body.lpo_id),
-            10,
-            "Payment Successful",
-            `A payment (AED ${body.payment_value}) was made against LPO-${String(body.lpo_id).padStart(5, "0")}`,
-          ],
-        );
+        // Fall back to looking up mr_header_id from the LPO row itself
+        // so the notification insert still works if the caller forgot
+        // to include it in the body.
+        let mrHeaderIdNum = toIntOrNull(body.mr_header_id);
+        if (mrHeaderIdNum === null) {
+          const [rows]: any = await db.query(
+            `SELECT mr_header_id FROM lpo WHERE id = ?`,
+            [lpoIdNum],
+          );
+          mrHeaderIdNum = toIntOrNull(rows?.[0]?.mr_header_id);
+        }
+
+        if (mrHeaderIdNum !== null) {
+          await db.query(
+            `INSERT INTO notification (mr_header_id, lpo_id, department_id, header, message) VALUES (?, ?, ?, ?, ?)`,
+            [
+              mrHeaderIdNum,
+              lpoIdNum,
+              10,
+              "Payment Successful",
+              `A payment (AED ${body.payment_value}) was made against LPO-${String(lpoIdNum).padStart(5, "0")}`,
+            ],
+          );
+        }
       }
 
       return NextResponse.json({ success: true });
