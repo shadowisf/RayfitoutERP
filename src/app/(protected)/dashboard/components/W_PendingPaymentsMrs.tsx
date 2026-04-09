@@ -443,7 +443,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
               margin: 0,
             }}
           >
-            Based on {thisWeek} pending payment
+            Based on {thisWeek} issued LPO
             {thisWeek === 1 ? "" : "s"}
           </p>
         </div>

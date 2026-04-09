@@ -22,76 +22,106 @@ export async function POST(request: Request) {
       );
     }
 
-    const hasPaymentFile = `(lpo.payment_file IS NOT NULL AND lpo.payment_file != '' AND lpo.payment_file != '[]')`;
-    const noPaymentFile = `(lpo.payment_file IS NULL OR lpo.payment_file = '' OR lpo.payment_file = '[]')`;
+    // -------------------------------------------------------------------
+    // Shared SQL fragments
+    // -------------------------------------------------------------------
+
+    // An LPO is considered an "outbound payment commitment" once it's
+    // been issued (i.e. no longer in draft). We deliberately do NOT filter
+    // by lpo.payment_status here — credit-supplier LPOs never enter the
+    // payment-approval workflow, so payment_status stays NULL. Filtering
+    // on payment_status='Approved' would drop every credit LPO from the
+    // card which is exactly the bug that was being seen.
+    const lpoIssuedClause = `lpo.progress_id != 1`;
+
+    // JSON column checks. lpo.payment_file is a JSON column, so string
+    // comparisons like "= '' " or "= '[]'" do not work reliably — MySQL
+    // normalizes the stored JSON. JSON_LENGTH() returns NULL for a NULL
+    // value and the element count for an array, which is what we need.
+    const hasPaymentFile = `(lpo.payment_file IS NOT NULL AND JSON_LENGTH(lpo.payment_file) > 0)`;
+    const noPaymentFile = `(lpo.payment_file IS NULL OR JSON_LENGTH(lpo.payment_file) = 0)`;
+
+    // Credit-supplier detection. IFNULL guards against suppliers with a
+    // NULL type column — without it, "NULL LIKE '%credit%'" evaluates to
+    // NULL (unknown) and the supplier falls into no bucket at all.
+    const isCreditSupplier = `IFNULL(LOWER(s.type), '') LIKE '%credit%'`;
+
+    // Bucket rules:
+    //   COMMITTED = credit supplier AND no payment receipt uploaded yet
+    //   PAID      = everything else (cash, marketplace/online, or credit
+    //               with a payment receipt already uploaded)
+    // Paid + Committed always equals the top-line total by construction.
+    const committedClause = `${isCreditSupplier} AND ${noPaymentFile}`;
+    const paidClause = `NOT (${isCreditSupplier} AND ${noPaymentFile})`;
 
     if (filter === 0) {
-      // Total
+      // -----------------------------------------------------------------
+      // Totals (all-time)
+      // -----------------------------------------------------------------
       const [rows]: any = await db.query(
         `SELECT COALESCE(SUM(lpo.total), 0) AS this_week_total, 0 AS last_week_total
-         FROM lpo JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
-         WHERE lpo.payment_status = 'Approved'`,
+         FROM lpo
+         JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
+         LEFT JOIN suppliers s ON s.id = lpo.supplier_id
+         WHERE ${lpoIssuedClause}`,
       );
 
-      // Breakdown: Paid (Cash + Credit) — credit suppliers with payment receipt, or cash/marketplace suppliers
+      // Paid bucket — cash/marketplace OR credit with payment receipt.
       const [paidRows]: any = await db.query(
         `SELECT COALESCE(SUM(lpo.total), 0) AS total
          FROM lpo
          JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
          LEFT JOIN suppliers s ON s.id = lpo.supplier_id
-         WHERE lpo.payment_status = 'Approved'
-           AND (
-             (LOWER(s.type) NOT LIKE '%credit%' )
-             OR (LOWER(s.type) LIKE '%credit%' AND ${hasPaymentFile})
-           )`,
+         WHERE ${lpoIssuedClause}
+           AND ${paidClause}`,
       );
 
-      // Breakdown: Committed (Credit) — credit suppliers WITHOUT payment receipt
+      // Committed bucket — credit supplier WITHOUT payment receipt.
       const [committedRows]: any = await db.query(
         `SELECT COALESCE(SUM(lpo.total), 0) AS total
          FROM lpo
          JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
          LEFT JOIN suppliers s ON s.id = lpo.supplier_id
-         WHERE lpo.payment_status = 'Approved'
-           AND LOWER(s.type) LIKE '%credit%'
-           AND ${noPaymentFile}`,
+         WHERE ${lpoIssuedClause}
+           AND ${committedClause}`,
       );
 
-      // Top projects
+      // Top projects by LPO count.
       const [projectRows]: any = await db.query(
         `SELECT h.project_name, COUNT(DISTINCT lpo.id) AS mr_count
          FROM lpo
          JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
-         WHERE lpo.payment_status = 'Approved'
+         WHERE ${lpoIssuedClause}
          GROUP BY h.project_name
          ORDER BY mr_count DESC`,
       );
 
-      // Top suppliers
+      // Top suppliers by total amount.
       const [supplierRows]: any = await db.query(
         `SELECT s.name AS supplier_name, COALESCE(SUM(lpo.total), 0) AS total_amount
          FROM lpo
          JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
          LEFT JOIN suppliers s ON s.id = lpo.supplier_id
-         WHERE lpo.payment_status = 'Approved'
+         WHERE ${lpoIssuedClause}
          GROUP BY s.id, s.name
          ORDER BY total_amount DESC`,
       );
 
-      // LPO count
+      // LPO count.
       const [countRows]: any = await db.query(
         `SELECT COUNT(*) AS lpo_count
          FROM lpo
          JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
-         WHERE lpo.payment_status = 'Approved'`,
+         WHERE ${lpoIssuedClause}`,
       );
 
+      // LPO items list.
       const [itemRows]: any = await db.query(
         `SELECT lpo.id, lpo.mr_header_id, lpo.total, s.name AS supplier_name
          FROM lpo
          JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
          LEFT JOIN suppliers s ON s.id = lpo.supplier_id
-         WHERE lpo.payment_status = 'Approved'
+         WHERE ${lpoIssuedClause}
          ORDER BY lpo.total DESC LIMIT ?`,
         [maxItems],
       );
@@ -118,76 +148,89 @@ export async function POST(request: Request) {
       );
     }
 
-    // Filtered by days
+    // -------------------------------------------------------------------
+    // Filtered by N days (on h.date_requested)
+    // -------------------------------------------------------------------
+    const dateFilterClause = `h.date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`;
+
     const [rows]: any = await db.query(
       `SELECT
         SUM(CASE WHEN h.date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN COALESCE(lpo.total, 0) ELSE 0 END) AS this_week_total,
         SUM(CASE WHEN h.date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND h.date_requested < DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN COALESCE(lpo.total, 0) ELSE 0 END) AS last_week_total
-      FROM lpo JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
-      WHERE lpo.payment_status = 'Approved'`,
+      FROM lpo
+      JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
+      LEFT JOIN suppliers s ON s.id = lpo.supplier_id
+      WHERE ${lpoIssuedClause}`,
       [filter, filter * 2, filter],
     );
 
-    // Breakdown: Paid (Cash + Credit)
+    // Paid bucket (date-filtered).
     const [paidRows]: any = await db.query(
       `SELECT COALESCE(SUM(lpo.total), 0) AS total
        FROM lpo
        JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
        LEFT JOIN suppliers s ON s.id = lpo.supplier_id
-       WHERE lpo.payment_status = 'Approved'
-         AND (
-           (LOWER(s.type) NOT LIKE '%credit%')
-           OR (LOWER(s.type) LIKE '%credit%' AND ${hasPaymentFile})
-         )`,
+       WHERE ${lpoIssuedClause}
+         AND ${dateFilterClause}
+         AND ${paidClause}`,
+      [filter],
     );
 
-    // Breakdown: Committed (Credit)
+    // Committed bucket (date-filtered).
     const [committedRows]: any = await db.query(
       `SELECT COALESCE(SUM(lpo.total), 0) AS total
        FROM lpo
        JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
        LEFT JOIN suppliers s ON s.id = lpo.supplier_id
-       WHERE lpo.payment_status = 'Approved'
-         AND LOWER(s.type) LIKE '%credit%'
-         AND ${noPaymentFile}`,
+       WHERE ${lpoIssuedClause}
+         AND ${dateFilterClause}
+         AND ${committedClause}`,
+      [filter],
     );
 
-    // Top projects
+    // Top projects (date-filtered).
     const [projectRows]: any = await db.query(
       `SELECT h.project_name, COUNT(DISTINCT lpo.id) AS mr_count
        FROM lpo
        JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
-       WHERE lpo.payment_status = 'Approved'
+       WHERE ${lpoIssuedClause}
+         AND ${dateFilterClause}
        GROUP BY h.project_name
        ORDER BY mr_count DESC`,
+      [filter],
     );
 
-    // Top suppliers
+    // Top suppliers (date-filtered).
     const [supplierRows]: any = await db.query(
       `SELECT s.name AS supplier_name, COALESCE(SUM(lpo.total), 0) AS total_amount
        FROM lpo
        JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
        LEFT JOIN suppliers s ON s.id = lpo.supplier_id
-       WHERE lpo.payment_status = 'Approved'
+       WHERE ${lpoIssuedClause}
+         AND ${dateFilterClause}
        GROUP BY s.id, s.name
        ORDER BY total_amount DESC`,
+      [filter],
     );
 
-    // LPO count
+    // LPO count (date-filtered).
     const [countRows]: any = await db.query(
       `SELECT COUNT(*) AS lpo_count
        FROM lpo
        JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
-       WHERE lpo.payment_status = 'Approved'`,
+       WHERE ${lpoIssuedClause}
+         AND ${dateFilterClause}`,
+      [filter],
     );
 
+    // LPO items list (date-filtered).
     const [itemRows]: any = await db.query(
       `SELECT lpo.id, lpo.mr_header_id, lpo.total, s.name AS supplier_name
        FROM lpo
        JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
        LEFT JOIN suppliers s ON s.id = lpo.supplier_id
-       WHERE lpo.payment_status = 'Approved'
-         AND h.date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       WHERE ${lpoIssuedClause}
+         AND ${dateFilterClause}
        ORDER BY lpo.total DESC LIMIT ?`,
       [filter, maxItems],
     );

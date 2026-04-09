@@ -349,7 +349,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
                         color: "rgba(248, 77, 77, 1)",
                       }}
                     >
-                      + {formatCurrency(committedTotal)}{" "}
+                      +{formatCurrency(committedTotal)}{" "}
                       <span style={{ color: "#999", fontWeight: 400 }}>
                         AED
                       </span>

@@ -198,14 +198,31 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   const [expandedProjects, setExpandedProjects] = useState(false);
   const [expandedMaterials, setExpandedMaterials] = useState(false);
 
+  // Format a duration in minutes as the largest meaningful unit followed by
+  // the immediate next smaller unit when there's a non-zero remainder. Each
+  // unit is pluralized correctly.
+  // Examples:
+  //   45    -> "45 mins"
+  //   60    -> "1 hour"
+  //   90    -> "1 hour 30 mins"
+  //   1440  -> "1 day"
+  //   1500  -> "1 day 1 hour"  (60 remainder minutes rounds up to 1 hour)
+  //   1530  -> "1 day 1 hour 30 mins"
   const formatMedianTime = (minutes: number): string => {
     if (minutes == null || isNaN(minutes)) return "N/A";
-    const mins = Math.round(minutes);
-    if (mins < 60) return `${mins} minutes`;
-    const hours = mins / 60;
-    if (hours < 24) return `${Math.round(hours * 10) / 10} hours`;
-    const days = hours / 24;
-    return `${Math.round(days * 10) / 10} days`;
+    const totalMins = Math.max(0, Math.round(minutes));
+    if (totalMins === 0) return "0 mins";
+
+    const days = Math.floor(totalMins / (60 * 24));
+    const hours = Math.floor((totalMins % (60 * 24)) / 60);
+    const mins = totalMins % 60;
+
+    const parts: string[] = [];
+    if (days > 0) parts.push(`${days} ${days === 1 ? "day" : "days"}`);
+    if (hours > 0) parts.push(`${hours} ${hours === 1 ? "hour" : "hours"}`);
+    if (mins > 0) parts.push(`${mins} ${mins === 1 ? "min" : "mins"}`);
+
+    return parts.join(" ");
   };
 
   const getMedianColor = (minutes: number): string => {
@@ -217,11 +234,22 @@ export default function ActiveMrsWidget({ filterDays }: props) {
     return "rgba(248, 77, 77, 1)"; // red - over 3 days
   };
 
-  // Filter out segregated stage (progress_id 26) from bottleneck display
-  const filteredBottleneckStages = bottleneckStages.filter(
-    (s) => s.progress_id !== 26,
-  );
-  const totalBottleneck = filteredBottleneckStages.reduce(
+  // Convert ALL CAPS or all lowercase strings to Proper Case (e.g.
+  // "JOINERY WORKS" / "joinery works" → "Joinery Works"). Mixed-case
+  // strings are left untouched so curated names like "uPVC Frames" survive.
+  const toProperCase = (value: string): string => {
+    if (!value) return value;
+    const isAllUpper = value === value.toUpperCase();
+    const isAllLower = value === value.toLowerCase();
+    if (!isAllUpper && !isAllLower) return value;
+    return value
+      .toLowerCase()
+      .replace(/\b\w/g, (ch) => ch.toUpperCase());
+  };
+
+  // Show all bottleneck stages (including segregated, progress_id 26) so
+  // the sum matches the active MRs card count exactly.
+  const totalBottleneck = bottleneckStages.reduce(
     (sum, s) => sum + Number(s.mr_count),
     0,
   );
@@ -317,13 +345,13 @@ export default function ActiveMrsWidget({ filterDays }: props) {
             <div
               style={{ display: "flex", flexDirection: "column", gap: "4px" }}
             >
-              {filteredBottleneckStages.length === 0 ? (
+              {bottleneckStages.length === 0 ? (
                 <span style={{ color: "#aaa" }}>No data</span>
               ) : (
                 <>
                   {(expandedBottleneck
-                    ? filteredBottleneckStages
-                    : filteredBottleneckStages.slice(0, 5)
+                    ? bottleneckStages
+                    : bottleneckStages.slice(0, 5)
                   ).map((stage) => (
                     <div
                       key={stage.progress_id}
@@ -359,7 +387,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
                       </span>
                     </div>
                   ))}
-                  {filteredBottleneckStages.length > 5 &&
+                  {bottleneckStages.length > 5 &&
                     !expandedBottleneck && (
                       <span
                         style={{
@@ -373,7 +401,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
                           setExpandedBottleneck(true);
                         }}
                       >
-                        ... and {filteredBottleneckStages.length - 5} more
+                        ... and {bottleneckStages.length - 5} more
                         stages
                       </span>
                     )}
@@ -487,7 +515,8 @@ export default function ActiveMrsWidget({ filterDays }: props) {
                         {sub.item_count}
                       </span>
                       <span style={{ color: "#333" }}>
-                        items from <strong>{sub.subcategory_name}</strong>
+                        items from{" "}
+                        <strong>{toProperCase(sub.subcategory_name)}</strong>
                       </span>
                     </div>
                   ))}

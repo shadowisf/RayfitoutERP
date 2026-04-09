@@ -1531,17 +1531,128 @@ export default function MR() {
                                       >
                                         <div
                                           style={{
-                                            backgroundColor: "black",
-                                            color: "white",
-                                            padding: "4px 10px",
-                                            borderRadius: "50px",
-                                            fontSize: "11px",
-                                            fontWeight: "600",
-                                            width: "fit-content",
-                                            alignItems: "center",
+                                            display: "flex",
+                                            alignItems: "flex-start",
+                                            justifyContent: "space-between",
                                           }}
                                         >
-                                          MATERIAL REQUEST
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "10px",
+                                            }}
+                                          >
+                                            <div
+                                              style={{
+                                                backgroundColor: "black",
+                                                color: "white",
+                                                padding: "4px 10px",
+                                                borderRadius: "50px",
+                                                fontSize: "11px",
+                                                fontWeight: "600",
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                              }}
+                                            >
+                                              MATERIAL REQUEST
+                                            </div>
+
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                alignItems: "flex-end",
+                                                gap: "10px",
+                                              }}
+                                            >
+                                              {lpoCard.progress_id !== 25 &&
+                                                lpoCard.required_date && (
+                                                  <div
+                                                    style={{
+                                                      ...getDaysLeftStyle(
+                                                        lpoCard.required_date,
+                                                      ),
+                                                      padding: "4px 10px",
+                                                      borderRadius: "50px",
+                                                      fontSize: "11px",
+                                                      fontWeight: "600",
+                                                      whiteSpace: "nowrap",
+                                                    }}
+                                                  >
+                                                    {getDaysLeftText(
+                                                      lpoCard.required_date,
+                                                    )}
+                                                  </div>
+                                                )}
+
+                                              {lpoCard.progress_id !== 25 && (
+                                                <div
+                                                  style={{
+                                                    padding: "4px 8px",
+                                                    borderRadius: "50px",
+                                                    fontSize: "11px",
+                                                    fontWeight: "600",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "5px",
+                                                    backgroundColor:
+                                                      "rgba(234, 234, 234, 1)",
+                                                    color:
+                                                      "rgba(89, 89, 89, 1)",
+                                                  }}
+                                                >
+                                                  <svg
+                                                    width="11"
+                                                    height="11"
+                                                    viewBox="0 0 11 11"
+                                                    fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    style={{
+                                                      color:
+                                                        "rgba(89, 89, 89, 1)",
+                                                    }}
+                                                  >
+                                                    <path
+                                                      d="M5.5 2.5V5.5H8.5"
+                                                      stroke="currentColor"
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                    />
+                                                    <path
+                                                      d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+                                                      stroke="currentColor"
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                    />
+                                                  </svg>
+                                                  {dur.duration}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {lpoCard.progress_id !== 25 && (
+                                            <div
+                                              style={{
+                                                alignSelf: "flex-end",
+                                              }}
+                                            >
+                                              <svg
+                                                width="15"
+                                                height="17"
+                                                viewBox="0 0 15 17"
+                                                fill="none"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                              >
+                                                <path
+                                                  d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
+                                                  fill={getFlagColor(
+                                                    dur.hoursDecimal,
+                                                    lpoCard.progress_id,
+                                                  )}
+                                                />
+                                              </svg>
+                                            </div>
+                                          )}
                                         </div>
 
                                         <div>
@@ -1861,11 +1972,11 @@ export default function MR() {
                                             }}
                                           >
                                             {lpoCard.progress_id !== 25 &&
-                                              lpoCard.delivery_date && (
+                                              lpoCard.required_date && (
                                                 <div
                                                   style={{
                                                     ...getDaysLeftStyle(
-                                                      lpoCard.delivery_date,
+                                                      lpoCard.required_date,
                                                     ),
                                                     padding: "4px 10px",
                                                     borderRadius: "50px",
@@ -1875,7 +1986,7 @@ export default function MR() {
                                                   }}
                                                 >
                                                   {getDaysLeftText(
-                                                    lpoCard.delivery_date,
+                                                    lpoCard.required_date,
                                                   )}
                                                 </div>
                                               )}

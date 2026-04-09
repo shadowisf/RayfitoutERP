@@ -22,8 +22,6 @@ export default function Navbar() {
             <img src={logoIcon} alt="rayfitout logo" />
           </a>
 
-          <span style={{ color: "white" }}>PROCUREMENT MANAGEMENT</span>
-
           <SearchBar />
         </div>
 

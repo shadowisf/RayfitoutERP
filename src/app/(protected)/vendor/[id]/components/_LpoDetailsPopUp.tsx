@@ -203,8 +203,10 @@ export default function LpoDetailsPopUp({
         body: JSON.stringify({
           action: "approvePayment",
           lpo_id: lpoId,
+          mr_header_id: lpoData.mr_header_id,
           payment_file: JSON.stringify(uploadedUrl),
           payment_value: lpoData.total,
+          from_lpo_workflow: false,
         }),
       });
       if (!res.ok) throw new Error("Failed to approve payment");

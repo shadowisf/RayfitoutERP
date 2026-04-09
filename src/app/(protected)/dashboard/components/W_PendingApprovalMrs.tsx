@@ -500,7 +500,7 @@ export default function PendingApprovalMrsWidget({ filterDays }: props) {
               margin: 0,
             }}
           >
-            Based on {thisWeek} pending approval
+            Based on {thisWeek} MR
             {thisWeek === 1 ? "" : "s"}
           </p>
         </div>

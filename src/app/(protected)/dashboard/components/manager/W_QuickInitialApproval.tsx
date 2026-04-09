@@ -10,6 +10,7 @@ import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import BoqReferencePopUp from "@/app/(protected)/mr/components/BoqReferencePopUp";
 import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type MrHeaderData = {
   id: number;
@@ -24,6 +25,7 @@ type MrHeaderData = {
   progress_name: string;
   date_requested: string;
   purpose_name: string;
+  payment_jo_reference_id?: number | null;
 };
 
 type MrLineData = {
@@ -47,6 +49,10 @@ type MrLineData = {
   budget_estimate?: number;
   boq_line_names?: string;
   boq_item_numbers?: string;
+  // PR line fields
+  completed_qty?: number;
+  retention?: number;
+  approved_total_price?: number;
 };
 
 type DurationInfo = {
@@ -192,6 +198,25 @@ export default function QuickInitialApprovalWidget() {
     async function fetchLines() {
       setIsLinesLoading(true);
       try {
+        // Payment requests have their own endpoint that resolves PR lines
+        // from the referenced job order.
+        if (currentMr.type === "payment") {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "getPrLines",
+                mr_header_id: currentMr.id,
+              }),
+            },
+          );
+          const data = await res.json();
+          setFlatLines(Array.isArray(data) ? data : []);
+          return;
+        }
+
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMrLinesByMrHeaderID`,
           {
@@ -301,17 +326,29 @@ export default function QuickInitialApprovalWidget() {
     return n % 1 === 0 ? n.toFixed(0) : n.toString();
   };
 
+  // Payment requests use /api/pr with action+pr_line_id;
+  // material/job use /api/mr or /api/jo with action+id.
   async function handleApprove(line: MrLineData) {
-    const apiPath = currentMr?.type === "job" ? "/api/jo" : "/api/mr";
+    const isPayment = currentMr?.type === "payment";
+    const apiPath = isPayment
+      ? "/api/pr"
+      : currentMr?.type === "job"
+        ? "/api/jo"
+        : "/api/mr";
+    const body = isPayment
+      ? { action: "approvePrLine", pr_line_id: line.id }
+      : { action: "approveItem", id: line.id };
+
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}${apiPath}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "approveItem", id: line.id }),
+      body: JSON.stringify(body),
     });
 
     if (res.ok) {
-      const label =
-        currentMr?.type === "job"
+      const label = isPayment
+        ? line.job_description || "Line"
+        : currentMr?.type === "job"
           ? line.job_description || "Item"
           : line.material_description;
       toast(`${label} approved`, "success");
@@ -330,20 +367,34 @@ export default function QuickInitialApprovalWidget() {
     const line = flatLines.find((l) => l.id === rejectingLineId);
     if (!line) return;
 
-    const apiPath = currentMr?.type === "job" ? "/api/jo" : "/api/mr";
+    const isPayment = currentMr?.type === "payment";
+    const apiPath = isPayment
+      ? "/api/pr"
+      : currentMr?.type === "job"
+        ? "/api/jo"
+        : "/api/mr";
+    const body = isPayment
+      ? {
+          action: "rejectPrLine",
+          pr_line_id: line.id,
+          comment: rejectText,
+        }
+      : {
+          action: "rejectItem",
+          id: line.id,
+          comment: rejectText,
+        };
+
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}${apiPath}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "rejectItem",
-        id: line.id,
-        comment: rejectText,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (res.ok) {
-      const label =
-        currentMr?.type === "job"
+      const label = isPayment
+        ? line.job_description || "Line"
+        : currentMr?.type === "job"
           ? line.job_description || "Item"
           : line.material_description;
       toast(`${label} rejected`, "success");
@@ -363,11 +414,20 @@ export default function QuickInitialApprovalWidget() {
   }
 
   async function handleReset(line: MrLineData) {
-    const apiPath = currentMr?.type === "job" ? "/api/jo" : "/api/mr";
+    const isPayment = currentMr?.type === "payment";
+    const apiPath = isPayment
+      ? "/api/pr"
+      : currentMr?.type === "job"
+        ? "/api/jo"
+        : "/api/mr";
+    const body = isPayment
+      ? { action: "resetPrLine", pr_line_id: line.id }
+      : { action: "resetItem", id: line.id };
+
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}${apiPath}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "resetItem", id: line.id }),
+      body: JSON.stringify(body),
     });
 
     if (res.ok) {
@@ -387,23 +447,37 @@ export default function QuickInitialApprovalWidget() {
     if (!currentMr) return;
     setIsSubmitting(true);
 
+    // Payment requests bypass quotations entirely — manager approval at
+    // progress 3 sends them straight to Pending Payment (progress 14).
+    const isPayment = currentMr.type === "payment";
+    const requestBody = isPayment
+      ? {
+          action: "submitPrForPayment",
+          id: currentMr.id,
+          changed_by: userInfo?.name,
+          department_id: currentMr.department_id,
+        }
+      : {
+          action: "submitForQuotations",
+          id: currentMr.id,
+          changed_by: userInfo?.name,
+          department_id: currentMr.department_id,
+          from_progress_id: currentMr.progress_id,
+        };
+
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "submitForQuotations",
-        id: currentMr.id,
-        changed_by: userInfo?.name,
-        department_id: currentMr.department_id,
-        from_progress_id: currentMr.progress_id,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (res.ok) {
       toast(
-        currentMr.type === "job"
-          ? "Job order submitted for quotations"
-          : "Material request submitted for quotations",
+        isPayment
+          ? "Payment request submitted"
+          : currentMr.type === "job"
+            ? "Job order submitted for quotations"
+            : "Material request submitted for quotations",
         "success",
       );
       setIsSubmitQuotationsOpen(false);
@@ -413,9 +487,11 @@ export default function QuickInitialApprovalWidget() {
       }
     } else {
       toast(
-        currentMr.type === "job"
-          ? "Failed to submit job order"
-          : "Failed to submit material request",
+        isPayment
+          ? "Failed to submit payment request"
+          : currentMr.type === "job"
+            ? "Failed to submit job order"
+            : "Failed to submit material request",
         "error",
       );
     }
@@ -457,7 +533,7 @@ export default function QuickInitialApprovalWidget() {
     return {
       mrHeader: currentMr.id,
       id: currentMr.id,
-      type: currentMr.type as "material" | "job",
+      type: currentMr.type as "material" | "job" | "payment",
       project_id: currentMr.project_id,
       project_name: currentMr.project_name,
       department_id: currentMr.department_id,
@@ -475,6 +551,7 @@ export default function QuickInitialApprovalWidget() {
       jo_payment_receipt: "",
       jo_contract_file: null,
       jo_other_docs_file: null,
+      payment_jo_reference_id: currentMr.payment_jo_reference_id ?? null,
     };
   }
 
@@ -556,11 +633,19 @@ export default function QuickInitialApprovalWidget() {
                 >
                   <div>
                     <small>
-                      {currentMr.type === "job" ? "JOB NUMBER" : "MR NUMBER"}
+                      {currentMr.type === "payment"
+                        ? "PR NUMBER"
+                        : currentMr.type === "job"
+                          ? "JOB NUMBER"
+                          : "MR NUMBER"}
                     </small>
                     <h4>
-                      {currentMr.type === "job" ? "JO" : "MR"}-
-                      {String(currentMr.id).padStart(5, "0")}
+                      {currentMr.type === "payment"
+                        ? "PR"
+                        : currentMr.type === "job"
+                          ? "JO"
+                          : "MR"}
+                      -{String(currentMr.id).padStart(5, "0")}
                     </h4>
                   </div>
 
@@ -693,7 +778,11 @@ export default function QuickInitialApprovalWidget() {
                   marginBottom: "10px",
                 }}
               >
-                {currentMr.type === "job" ? "Jobs" : "Material"}
+                {currentMr.type === "payment"
+                  ? "Payment"
+                  : currentMr.type === "job"
+                    ? "Jobs"
+                    : "Material"}
                 <span
                   style={{
                     padding: "2px 10px",
@@ -733,7 +822,66 @@ export default function QuickInitialApprovalWidget() {
                         padding: "15px",
                       }}
                     >
-                      {currentMr.type === "job" ? (
+                      {currentMr.type === "payment" ? (
+                        <>
+                          <div style={{ display: "flex", gap: "50px" }}>
+                            <div>
+                              <small>SCOPE</small>
+                              <h4>{line.job_scope_name || "-"}</h4>
+                            </div>
+                            <div>
+                              <small>DESCRIPTION</small>
+                              <h4>{line.job_description || "-"}</h4>
+                            </div>
+                            <div>
+                              <small>BOQ REF.</small>
+                              <h4>
+                                {line.boq_line_ids ? (
+                                  <BoqReferencePopUp
+                                    mrHeader={buildMrHeaderForBoq()}
+                                    item={line as any}
+                                  />
+                                ) : (
+                                  "-"
+                                )}
+                              </h4>
+                            </div>
+                          </div>
+
+                          <br />
+
+                          <div style={{ display: "flex", gap: "50px" }}>
+                            <div>
+                              <small>ORDERED QTY</small>
+                              <h4>
+                                {formatQuantity(line.quantity)}{" "}
+                                {line.unit || ""}
+                              </h4>
+                            </div>
+                            <div>
+                              <small>COMPLETED QTY</small>
+                              <h4>
+                                {formatQuantity(line.completed_qty || 0)}{" "}
+                                {line.unit || ""}
+                              </h4>
+                            </div>
+                            <div>
+                              <small>RETENTION</small>
+                              <h4>
+                                {Number(line.retention || 0).toFixed(1)}%
+                              </h4>
+                            </div>
+                            <div>
+                              <small>TOTAL PRICE</small>
+                              <h4>
+                                {Number(line.approved_total_price || 0) > 0
+                                  ? formatPriceAED(line.approved_total_price)
+                                  : "-"}
+                              </h4>
+                            </div>
+                          </div>
+                        </>
+                      ) : currentMr.type === "job" ? (
                         <>
                           <div style={{ display: "flex", gap: "50px" }}>
                             <div>
@@ -1019,7 +1167,9 @@ export default function QuickInitialApprovalWidget() {
                         padding: "7px 20px",
                       }}
                     >
-                      SUBMIT FOR QUOTATIONS
+                      {currentMr.type === "payment"
+                        ? "SUBMIT FOR PAYMENT"
+                        : "SUBMIT FOR QUOTATIONS"}
                     </Button>
                   )}
                 </div>
@@ -1054,9 +1204,11 @@ export default function QuickInitialApprovalWidget() {
       {isSubmitQuotationsOpen && (
         <FormPopUp
           header={
-            currentMr?.type === "job"
-              ? "SUBMIT JOB ORDER"
-              : "SUBMIT MATERIAL REQUEST"
+            currentMr?.type === "payment"
+              ? "SUBMIT PAYMENT REQUEST"
+              : currentMr?.type === "job"
+                ? "SUBMIT JOB ORDER"
+                : "SUBMIT MATERIAL REQUEST"
           }
           setIsOpen={setIsSubmitQuotationsOpen}
           handleSubmit={(e) => {
@@ -1066,9 +1218,11 @@ export default function QuickInitialApprovalWidget() {
           addButtonLabel={"CONFIRM"}
         >
           <p>
-            {currentMr?.type === "job"
-              ? "Are you sure you want to submit this job order?"
-              : "Are you sure you want to submit this material request?"}
+            {currentMr?.type === "payment"
+              ? "Are you sure you want to submit this payment request?"
+              : currentMr?.type === "job"
+                ? "Are you sure you want to submit this job order?"
+                : "Are you sure you want to submit this material request?"}
           </p>
         </FormPopUp>
       )}
