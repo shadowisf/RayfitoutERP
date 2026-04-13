@@ -434,6 +434,73 @@ export function BoqPDF({
   const logo = "/icons/logo.jpg";
   const locationIcon = "/icons/location-boq.png";
 
+  // Helper functions for formatting
+  const formatMoney = (amount: number | string | undefined | null): string => {
+    const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+
+    if (numAmount === undefined || numAmount === null || isNaN(numAmount))
+      return "0.00";
+
+    // Check if we need 3 decimals (third decimal is non-zero)
+    const with3Decimals = numAmount.toFixed(3);
+    const thirdDecimal = with3Decimals.split(".")[1]?.[2];
+
+    if (thirdDecimal && thirdDecimal !== "0") {
+      return numAmount.toLocaleString(undefined, {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3,
+      });
+    }
+
+    return numAmount.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const formatQuantity = (
+    quantity: number | string | undefined | null,
+  ): string => {
+    const numQuantity =
+      typeof quantity === "string" ? parseFloat(quantity) : quantity;
+
+    if (numQuantity === undefined || numQuantity === null || isNaN(numQuantity))
+      return "0";
+
+    // Check if it's a whole number
+    if (Number.isInteger(numQuantity)) {
+      return numQuantity.toLocaleString(undefined, {
+        maximumFractionDigits: 0,
+      });
+    }
+
+    // Check if we need 3 decimals
+    const with3Decimals = numQuantity.toFixed(3);
+    const thirdDecimal = with3Decimals.split(".")[1]?.[2];
+
+    if (thirdDecimal && thirdDecimal !== "0") {
+      return numQuantity.toLocaleString(undefined, {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3,
+      });
+    }
+
+    return numQuantity.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  // Calculate line total from rate × quantity
+  const calculateLineTotal = (
+    rate: number | string | undefined,
+    qty: number | string | undefined,
+  ): number => {
+    const numRate = parseFloat(String(rate)) || 0;
+    const numQty = parseFloat(String(qty)) || 0;
+    return numRate * numQty;
+  };
+
   // Calculate totals for each category and subcategory
   const categoryTotals: {
     [category: string]: { [subCategory: string]: number };
@@ -444,7 +511,8 @@ export function BoqPDF({
     categoryTotals[category] = {};
     Object.entries(subCategories).forEach(([subCategory, items]) => {
       const subTotal = items.reduce(
-        (sum, item) => sum + (item.total_cost || 0),
+        (sum, item) =>
+          sum + calculateLineTotal(item.rate_per_quantity, item.quantity),
         0,
       );
       categoryTotals[category][subCategory] = subTotal;
@@ -708,7 +776,7 @@ export function BoqPDF({
                 </Text>
                 {showPrices && (
                   <Text style={styles.tableColAmount}>
-                    {boqHeader.currency} {categoryTotal.toLocaleString()}
+                    {boqHeader.currency} {formatMoney(categoryTotal)}
                   </Text>
                 )}
               </View>
@@ -720,7 +788,7 @@ export function BoqPDF({
           <View style={styles.totalRowAlt}>
             <Text style={styles.totalLabel}>SUBTOTAL</Text>
             <Text style={styles.totalValue}>
-              {boqHeader.currency} {grandTotal.toLocaleString()}
+              {boqHeader.currency} {formatMoney(grandTotal)}
             </Text>
           </View>
         )}
@@ -729,7 +797,7 @@ export function BoqPDF({
           <View style={styles.totalRowAlt}>
             <Text style={styles.totalLabel}>SPECIAL DISCOUNT</Text>
             <Text style={styles.totalValue}>
-              {boqHeader.currency} {boqHeader.discount}
+              {boqHeader.currency} {formatMoney(boqHeader.discount)}
             </Text>
           </View>
         )}
@@ -740,7 +808,7 @@ export function BoqPDF({
             <Text style={styles.totalLabel}>GRAND TOTAL</Text>
             <Text style={styles.totalValue}>
               {boqHeader.currency}{" "}
-              {(grandTotal - (boqHeader.discount || 0)).toLocaleString()}
+              {formatMoney(grandTotal - (Number(boqHeader.discount) || 0))}
             </Text>
           </View>
         )}
@@ -826,7 +894,9 @@ export function BoqPDF({
             {subCategories.map(([subCategory, items], subIndex) => {
               // Calculate subcategory total
               const subCategoryTotal = items.reduce(
-                (sum, item) => sum + (item.total_cost || 0),
+                (sum, item) =>
+                  sum +
+                  calculateLineTotal(item.rate_per_quantity, item.quantity),
                 0,
               );
 
@@ -948,18 +1018,23 @@ export function BoqPDF({
                         </View>
 
                         <Text style={styles.detailColQty}>
-                          {item.quantity} {item.unit}
+                          {formatQuantity(item.quantity)} {item.unit}
                         </Text>
 
                         {/* Show pricing only if not in DN mode and showPrices is true */}
                         {showPrices && !showDN && (
                           <>
                             <Text style={styles.detailColRate}>
-                              {item.rate_per_quantity?.toLocaleString()}
+                              {formatMoney(item.rate_per_quantity)}
                             </Text>
                             <Text style={styles.detailColTotal}>
                               {boqHeader.currency}{" "}
-                              {item.total_cost?.toLocaleString()}
+                              {formatMoney(
+                                calculateLineTotal(
+                                  item.rate_per_quantity,
+                                  item.quantity,
+                                ),
+                              )}
                             </Text>
                           </>
                         )}
@@ -1013,7 +1088,7 @@ export function BoqPDF({
                       <Text style={styles.detailColQty}></Text>
                       <Text style={styles.detailColRate}></Text>
                       <Text style={styles.detailColTotal}>
-                        {boqHeader.currency} {subCategoryTotal.toLocaleString()}
+                        {boqHeader.currency} {formatMoney(subCategoryTotal)}
                       </Text>
                       <Text style={colStyles.attachment}></Text>
                       {hasAnyRemarks && (
