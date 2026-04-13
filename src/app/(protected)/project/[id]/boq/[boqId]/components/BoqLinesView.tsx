@@ -428,7 +428,11 @@ export default function BoqLinesView({
   }, [categories]);
 
   const calculateSubtotal = (items: IndexedBoqLine[]) => {
-    return items.reduce((sum, item) => sum + (item.total_cost || 0), 0);
+    return items.reduce((sum, item) => {
+      const rate = parseFloat(String(item.rate_per_quantity)) || 0;
+      const qty = parseFloat(String(item.quantity)) || 0;
+      return sum + rate * qty;
+    }, 0);
   };
 
   const calculateCategorySubtotal = (category: string) => {
@@ -453,6 +457,62 @@ export default function BoqLinesView({
       }
     }
     return [];
+  };
+
+  const formatMoney = (amount: number | string | undefined | null): string => {
+    const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+
+    if (numAmount === undefined || numAmount === null || isNaN(numAmount))
+      return "0.00";
+
+    // Check if we need 3 decimals (third decimal is non-zero)
+    const with3Decimals = numAmount.toFixed(3);
+    const thirdDecimal = with3Decimals.split(".")[1]?.[2];
+
+    if (thirdDecimal && thirdDecimal !== "0") {
+      return numAmount.toLocaleString(undefined, {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3,
+      });
+    }
+
+    return numAmount.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const formatQuantity = (
+    quantity: number | string | undefined | null,
+  ): string => {
+    const numQuantity =
+      typeof quantity === "string" ? parseFloat(quantity) : quantity;
+
+    if (numQuantity === undefined || numQuantity === null || isNaN(numQuantity))
+      return "0";
+
+    // Check if it's a whole number
+    if (Number.isInteger(numQuantity)) {
+      return numQuantity.toLocaleString(undefined, {
+        maximumFractionDigits: 0,
+      });
+    }
+
+    // Check if we need 3 decimals
+    const with3Decimals = numQuantity.toFixed(3);
+    const thirdDecimal = with3Decimals.split(".")[1]?.[2];
+
+    if (thirdDecimal && thirdDecimal !== "0") {
+      return numQuantity.toLocaleString(undefined, {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3,
+      });
+    }
+
+    return numQuantity.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
   const canSeePrice =
@@ -599,6 +659,9 @@ export default function BoqLinesView({
                 <tbody>
                   {items.map((item: IndexedBoqLine) => {
                     const attachmentUrls = parseAttachments(item.attachments);
+                    const lineTotal =
+                      (parseFloat(String(item.rate_per_quantity)) || 0) *
+                      (parseFloat(String(item.quantity)) || 0);
                     return (
                       <DraggableBoqItem
                         key={item.id}
@@ -661,15 +724,14 @@ export default function BoqLinesView({
                         </td>
 
                         <td>
-                          {item.quantity} {item.unit}
+                          {formatQuantity(item.quantity)} {item.unit}
                         </td>
 
                         {canSeePrice && (
                           <>
-                            <td>{item.rate_per_quantity?.toLocaleString()}</td>
+                            <td>{formatMoney(item.rate_per_quantity)}</td>
                             <td>
-                              {boqHeader.currency}{" "}
-                              {item.total_cost?.toLocaleString()}
+                              {boqHeader.currency} {formatMoney(lineTotal)}
                             </td>
                           </>
                         )}
@@ -713,7 +775,7 @@ export default function BoqLinesView({
                     <td>
                       <h3 style={{ textWrap: "nowrap" }}>
                         {boqHeader.currency}{" "}
-                        {calculateSubtotal(items).toLocaleString()}
+                        {formatMoney(calculateSubtotal(items))}
                       </h3>
                     </td>
                     <td colSpan={canManage ? 3 : 1}></td>
@@ -1160,7 +1222,7 @@ export default function BoqLinesView({
                 <td>{category}</td>
                 <td>
                   {boqHeader.currency}{" "}
-                  {calculateCategorySubtotal(category).toLocaleString()}
+                  {formatMoney(calculateCategorySubtotal(category))}
                 </td>
               </tr>
             ))}
@@ -1175,13 +1237,13 @@ export default function BoqLinesView({
                 <td>
                   <h3>
                     {boqHeader.currency}{" "}
-                    {categories
-                      .reduce(
+                    {formatMoney(
+                      categories.reduce(
                         (total, category) =>
                           total + calculateCategorySubtotal(category),
                         0,
-                      )
-                      .toLocaleString()}
+                      ),
+                    )}
                   </h3>
                 </td>
               </tr>
@@ -1194,7 +1256,7 @@ export default function BoqLinesView({
                 </td>
                 <td>
                   <h3>
-                    {boqHeader.currency} {boqHeader.discount}
+                    {boqHeader.currency} {formatMoney(boqHeader.discount)}
                   </h3>
                 </td>
               </tr>
@@ -1207,13 +1269,13 @@ export default function BoqLinesView({
               <td>
                 <h3>
                   {boqHeader.currency}{" "}
-                  {(
+                  {formatMoney(
                     categories.reduce(
                       (total, category) =>
                         total + calculateCategorySubtotal(category),
                       0,
-                    ) - (boqHeader.discount || 0)
-                  ).toLocaleString()}
+                    ) - (Number(boqHeader.discount) || 0),
+                  )}
                 </h3>
               </td>
             </tr>
