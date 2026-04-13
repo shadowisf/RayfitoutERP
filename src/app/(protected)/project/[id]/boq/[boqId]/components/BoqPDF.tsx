@@ -312,6 +312,30 @@ const styles = StyleSheet.create({
     width: "45%",
     paddingRight: 4,
   },
+  detailColCategoryWithRemarksNoAttach: {
+    width: "57%",
+    paddingRight: 4,
+  },
+  detailColCategoryUnpricedWithRemarksNoAttach: {
+    width: "67%",
+    paddingRight: 4,
+  },
+  detailColCategoryWithDNNoAttach: {
+    width: "50%",
+    paddingRight: 4,
+  },
+  detailColCategoryUnpricedWithDNNoAttach: {
+    width: "60%",
+    paddingRight: 4,
+  },
+  detailColCategoryNoAttach: {
+    width: "67%",
+    paddingRight: 4,
+  },
+  detailColCategoryUnpricedNoAttach: {
+    width: "77%",
+    paddingRight: 4,
+  },
   detailColQty: {
     width: "10%",
     paddingRight: 4,
@@ -338,6 +362,9 @@ const styles = StyleSheet.create({
   },
   detailColRemarks: {
     width: "15%",
+  },
+  detailColRemarksNoAttach: {
+    width: "18%",
   },
   detailColDNNumber: {
     width: "17%",
@@ -529,39 +556,92 @@ export function BoqPDF({
     ),
   );
 
+  // Check if any items have attachments across all categories/subcategories
+  const hasAnyAttachments = Object.values(boqLines).some((subCategories) =>
+    Object.values(subCategories).some((items) =>
+      items.some((item) => {
+        if (!item.attachments) return false;
+        if (Array.isArray(item.attachments)) return item.attachments.length > 0;
+        if (typeof item.attachments === "string") {
+          try {
+            if (item.attachments.trim() === "") return false;
+            const parsed = JSON.parse(item.attachments);
+            return Array.isArray(parsed) && parsed.length > 0;
+          } catch {
+            return false;
+          }
+        }
+        return false;
+      }),
+    ),
+  );
+
   // Get dynamic column styles based on configuration
   const getColStyles = () => {
     // DN mode - no pricing, show DN columns
     if (showDN) {
-      return {
-        category: hasAnyRemarks
-          ? styles.detailColCategoryWithRemarks
-          : styles.detailColCategoryWithDN,
-        attachment: hasAnyRemarks
-          ? styles.detailColAttachmentWithRemarks
-          : styles.detailColAttachmentWithDN,
-      };
+      if (hasAnyAttachments) {
+        return {
+          category: hasAnyRemarks
+            ? styles.detailColCategoryWithRemarks
+            : styles.detailColCategoryWithDN,
+          attachment: hasAnyRemarks
+            ? styles.detailColAttachmentWithRemarks
+            : styles.detailColAttachmentWithDN,
+          remarks: styles.detailColRemarks,
+        };
+      } else {
+        return {
+          category: hasAnyRemarks
+            ? styles.detailColCategoryWithRemarksNoAttach
+            : styles.detailColCategoryWithDNNoAttach,
+          attachment: undefined,
+          remarks: hasAnyRemarks ? styles.detailColRemarksNoAttach : undefined,
+        };
+      }
     }
 
     // Normal priced/unpriced mode
     if (showPrices) {
-      return {
-        category: hasAnyRemarks
-          ? styles.detailColCategoryWithRemarks
-          : styles.detailColCategory,
-        attachment: hasAnyRemarks
-          ? styles.detailColAttachmentWithRemarks
-          : styles.detailColAttachment,
-      };
+      if (hasAnyAttachments) {
+        return {
+          category: hasAnyRemarks
+            ? styles.detailColCategoryWithRemarks
+            : styles.detailColCategory,
+          attachment: hasAnyRemarks
+            ? styles.detailColAttachmentWithRemarks
+            : styles.detailColAttachment,
+          remarks: styles.detailColRemarks,
+        };
+      } else {
+        return {
+          category: hasAnyRemarks
+            ? styles.detailColCategoryWithRemarksNoAttach
+            : styles.detailColCategoryNoAttach,
+          attachment: undefined,
+          remarks: hasAnyRemarks ? styles.detailColRemarksNoAttach : undefined,
+        };
+      }
     } else {
-      return {
-        category: hasAnyRemarks
-          ? styles.detailColCategoryUnpricedWithRemarks
-          : styles.detailColCategoryUnpriced,
-        attachment: hasAnyRemarks
-          ? styles.detailColAttachmentWithRemarks
-          : styles.detailColAttachment,
-      };
+      if (hasAnyAttachments) {
+        return {
+          category: hasAnyRemarks
+            ? styles.detailColCategoryUnpricedWithRemarks
+            : styles.detailColCategoryUnpriced,
+          attachment: hasAnyRemarks
+            ? styles.detailColAttachmentWithRemarks
+            : styles.detailColAttachment,
+          remarks: styles.detailColRemarks,
+        };
+      } else {
+        return {
+          category: hasAnyRemarks
+            ? styles.detailColCategoryUnpricedWithRemarksNoAttach
+            : styles.detailColCategoryUnpricedNoAttach,
+          attachment: undefined,
+          remarks: hasAnyRemarks ? styles.detailColRemarksNoAttach : undefined,
+        };
+      }
     }
   };
 
@@ -933,10 +1013,13 @@ export function BoqPDF({
                         </>
                       )}
 
-                      <Text style={colStyles.attachment}>ATTACHMENT(S)</Text>
+                      {/* Only show attachment column if there are any attachments */}
+                      {hasAnyAttachments && (
+                        <Text style={colStyles.attachment}>ATTACHMENT(S)</Text>
+                      )}
 
                       {hasAnyRemarks && (
-                        <Text style={styles.detailColRemarks}>REMARKS</Text>
+                        <Text style={colStyles.remarks}>REMARKS</Text>
                       )}
                     </View>
                   </View>
@@ -1039,35 +1122,38 @@ export function BoqPDF({
                           </>
                         )}
 
-                        <View style={colStyles.attachment}>
-                          {item.attachments &&
-                            Array.isArray(item.attachments) &&
-                            item.attachments.length > 0 && (
-                              <View style={styles.attachmentContainer}>
-                                {item.attachments.map(
-                                  (base64Url: string, i: number) => {
-                                    if (!base64Url || base64Url.trim() === "")
-                                      return null;
+                        {/* Only show attachment cell if there are any attachments in the entire BOQ */}
+                        {hasAnyAttachments && (
+                          <View style={colStyles.attachment}>
+                            {item.attachments &&
+                              Array.isArray(item.attachments) &&
+                              item.attachments.length > 0 && (
+                                <View style={styles.attachmentContainer}>
+                                  {item.attachments.map(
+                                    (base64Url: string, i: number) => {
+                                      if (!base64Url || base64Url.trim() === "")
+                                        return null;
 
-                                    return (
-                                      <View
-                                        key={i}
-                                        style={styles.attachmentWrapper}
-                                      >
-                                        <Image
-                                          src={base64Url}
-                                          style={styles.attachmentImage}
-                                        />
-                                      </View>
-                                    );
-                                  },
-                                )}
-                              </View>
-                            )}
-                        </View>
+                                      return (
+                                        <View
+                                          key={i}
+                                          style={styles.attachmentWrapper}
+                                        >
+                                          <Image
+                                            src={base64Url}
+                                            style={styles.attachmentImage}
+                                          />
+                                        </View>
+                                      );
+                                    },
+                                  )}
+                                </View>
+                              )}
+                          </View>
+                        )}
 
                         {hasAnyRemarks && (
-                          <Text style={styles.detailColRemarks}>
+                          <Text style={colStyles.remarks}>
                             {item.remarks || ""}
                           </Text>
                         )}
@@ -1090,10 +1176,11 @@ export function BoqPDF({
                       <Text style={styles.detailColTotal}>
                         {boqHeader.currency} {formatMoney(subCategoryTotal)}
                       </Text>
-                      <Text style={colStyles.attachment}></Text>
-                      {hasAnyRemarks && (
-                        <Text style={styles.detailColRemarks}></Text>
+                      {/* Only show attachment cell in subtotal if attachments column exists */}
+                      {hasAnyAttachments && (
+                        <Text style={colStyles.attachment}></Text>
                       )}
+                      {hasAnyRemarks && <Text style={colStyles.remarks}></Text>}
                     </View>
                   )}
                 </View>
