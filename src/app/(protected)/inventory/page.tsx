@@ -15,6 +15,10 @@ import DeleteTransactionButton from "./[id]/components/_DeleteTransactionButton"
 import EditTransactionButton from "./components/_EditTransactionButton";
 import { useAuth } from "@/app/context/AuthContext";
 import DownloadInventoryListPdfButton from "./components/_DownloadInventoryListPdfButton";
+import TransferLogFilterButton, {
+  TransferLogFilters,
+  defaultTransferLogFilters,
+} from "./components/_TransferLogFilterButton";
 
 export default function Inventory() {
   const { userInfo } = useAuth();
@@ -43,7 +47,9 @@ export default function Inventory() {
     "inventory",
   );
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [inventorySearchQuery, setInventorySearchQuery] = useState<string>("");
+  const [transferLogSearchQuery, setTransferLogSearchQuery] =
+    useState<string>("");
   const [sortOrder, setSortOrder] = useState<
     "none" | "high-low" | "low-high" | "newest-oldest" | "oldest-newest"
   >("none");
@@ -52,12 +58,14 @@ export default function Inventory() {
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [filters, setFilters] = useState<{
+    selectedParentCategories: string[];
     selectedCategories: string[];
     selectedLocations: string[];
     selectedProjects: number[];
     stockAddedIn: string;
     selectedStockStatuses: string[];
   }>({
+    selectedParentCategories: [],
     selectedCategories: [],
     selectedLocations: [],
     selectedProjects: [],
@@ -72,6 +80,8 @@ export default function Inventory() {
   >([]);
   const [transferLogTimeFilter, setTransferLogTimeFilter] =
     useState<string>("all");
+  const [transferLogFilters, setTransferLogFilters] =
+    useState<TransferLogFilters>(defaultTransferLogFilters);
 
   // ✅ Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -110,7 +120,11 @@ export default function Inventory() {
     }
 
     if (search) {
-      setSearchQuery(search);
+      if (tab === "transfer-log") {
+        setTransferLogSearchQuery(search);
+      } else {
+        setInventorySearchQuery(search);
+      }
     }
 
     if (tab || search) {
@@ -254,7 +268,8 @@ export default function Inventory() {
     currentPage,
     inventory,
     activeCategory,
-    searchQuery,
+    inventorySearchQuery,
+    filters.selectedParentCategories,
     filters.selectedCategories,
     filters.selectedLocations,
     filters.selectedProjects,
@@ -466,6 +481,10 @@ export default function Inventory() {
     new Set(inventory.map((item) => item.category_name)),
   ).sort();
 
+  const subcategories = Array.from(
+    new Set(inventory.map((item) => item.subcategory_name).filter(Boolean)),
+  ).sort();
+
   useEffect(() => {
     checkScroll();
     window.addEventListener("resize", checkScroll);
@@ -480,9 +499,15 @@ export default function Inventory() {
   const getFilteredInventoryWithoutQuantities = useCallback(() => {
     let processed = inventory;
 
+    if (filters.selectedParentCategories.length > 0) {
+      processed = processed.filter((item) =>
+        filters.selectedParentCategories.includes(item.category_name),
+      );
+    }
+
     if (filters.selectedCategories.length > 0) {
       processed = processed.filter((item) =>
-        filters.selectedCategories.includes(item.category_name),
+        filters.selectedCategories.includes(item.subcategory_name),
       );
     }
 
@@ -537,8 +562,8 @@ export default function Inventory() {
       );
     }
 
-    if (searchQuery.trim() !== "") {
-      const rawQuery = searchQuery.toLowerCase().trim();
+    if (inventorySearchQuery.trim() !== "") {
+      const rawQuery = inventorySearchQuery.toLowerCase().trim();
       const normalizedQuery = rawQuery.replace(/^inv-/, "");
 
       processed = processed.filter((item) => {
@@ -558,12 +583,13 @@ export default function Inventory() {
     return processed;
   }, [
     inventory,
+    filters.selectedParentCategories,
     filters.selectedCategories,
     filters.selectedLocations,
     filters.selectedProjects,
     filters.stockAddedIn,
     activeCategory,
-    searchQuery,
+    inventorySearchQuery,
     stocksByInventoryItem,
   ]);
 
@@ -622,8 +648,8 @@ export default function Inventory() {
     }
 
     // Apply search for quantity if needed
-    if (searchQuery.trim() !== "") {
-      const rawQuery = searchQuery.toLowerCase().trim();
+    if (inventorySearchQuery.trim() !== "") {
+      const rawQuery = inventorySearchQuery.toLowerCase().trim();
 
       processed = processed.filter((item) => {
         // Re-check description/ID
@@ -654,7 +680,7 @@ export default function Inventory() {
     applySorting,
     pageQuantities,
     filters.selectedStockStatuses,
-    searchQuery,
+    inventorySearchQuery,
   ]);
 
   // ✅ Use useMemo to prevent recalculation on every render
@@ -709,8 +735,9 @@ export default function Inventory() {
     quantitiesCache.current = {};
   }, [
     activeCategory,
-    searchQuery,
+    inventorySearchQuery,
     sortOrder,
+    filters.selectedParentCategories,
     filters.selectedCategories,
     filters.selectedLocations,
     filters.selectedProjects,
@@ -785,7 +812,13 @@ export default function Inventory() {
   const getFilteredTransactions = () => {
     let filtered = allTransactions;
 
-    if (transferLogTimeFilter !== "all") {
+    // Apply time filter from dropdown OR from filter button
+    const activeTimeFilter =
+      transferLogFilters.timeRange !== "all"
+        ? transferLogFilters.timeRange
+        : transferLogTimeFilter;
+
+    if (activeTimeFilter !== "all") {
       const now = new Date();
       const timeframes: { [key: string]: number } = {
         "24h": 1,
@@ -796,7 +829,7 @@ export default function Inventory() {
         "90d": 90,
       };
 
-      const daysAgo = timeframes[transferLogTimeFilter];
+      const daysAgo = timeframes[activeTimeFilter];
       if (daysAgo) {
         const cutoffDate = new Date(
           now.getTime() - daysAgo * 24 * 60 * 60 * 1000,
@@ -809,8 +842,46 @@ export default function Inventory() {
       }
     }
 
-    if (searchQuery.trim() !== "") {
-      const rawQuery = searchQuery.toLowerCase().trim();
+    // Apply type filter
+    if (transferLogFilters.selectedTypes.length > 0) {
+      filtered = filtered.filter((transaction) => {
+        const typeLower = (transaction.type || "").toLowerCase();
+        return transferLogFilters.selectedTypes.some((filterType) => {
+          const ft = filterType.toLowerCase();
+          if (ft === "material transfer") return typeLower.includes("transfer");
+          if (ft === "issue for use") return typeLower.includes("issue");
+          return false;
+        });
+      });
+    }
+
+    // Apply status filter
+    if (transferLogFilters.selectedStatuses.length > 0) {
+      filtered = filtered.filter((transaction) => {
+        const status = getTransferStatus(transaction);
+        return transferLogFilters.selectedStatuses.some((filterStatus) => {
+          const fs = filterStatus.toLowerCase();
+          return status.label.toLowerCase().includes(fs.toLowerCase());
+        });
+      });
+    }
+
+    // Apply location filter
+    if (transferLogFilters.selectedLocations.length > 0) {
+      filtered = filtered.filter((transaction) => {
+        return (
+          transferLogFilters.selectedLocations.includes(
+            transaction.to_location,
+          ) ||
+          transferLogFilters.selectedLocations.includes(
+            transaction.from_location,
+          )
+        );
+      });
+    }
+
+    if (transferLogSearchQuery.trim() !== "") {
+      const rawQuery = transferLogSearchQuery.toLowerCase().trim();
       const normalizedQuery = rawQuery.replace(/^ta-/, "");
 
       filtered = filtered.filter((transaction) => {
@@ -833,6 +904,10 @@ export default function Inventory() {
           ?.toLowerCase()
           .includes(rawQuery);
 
+        const recipientMatch =
+          transaction.receiver_name?.toLowerCase().includes(rawQuery) ||
+          transaction.transferee?.toLowerCase().includes(rawQuery);
+
         const quantityUnitMatch = transaction.items?.some((item: any) => {
           const cleanQuantity = parseFloat(item.quantity);
           const quantityUnitString = `${cleanQuantity} ${item.unit || ""}`
@@ -846,6 +921,7 @@ export default function Inventory() {
           locationMatch ||
           transactionIdMatch ||
           projectMatch ||
+          recipientMatch ||
           quantityUnitMatch
         );
       });
@@ -871,7 +947,7 @@ export default function Inventory() {
   // ✅ Reset transaction page when filters change
   useEffect(() => {
     setTransactionCurrentPage(1);
-  }, [transferLogTimeFilter, searchQuery]);
+  }, [transferLogTimeFilter, transferLogSearchQuery, transferLogFilters]);
 
   const getStockAddedLabel = (value: string) => {
     const labels: { [key: string]: string } = {
@@ -887,6 +963,7 @@ export default function Inventory() {
 
   const resetAllFilters = () => {
     setFilters({
+      selectedParentCategories: [],
       selectedCategories: [],
       selectedLocations: [],
       selectedProjects: [],
@@ -898,6 +975,7 @@ export default function Inventory() {
   };
 
   const hasActiveFilters =
+    filters.selectedParentCategories.length > 0 ||
     filters.selectedCategories.length > 0 ||
     filters.selectedLocations.length > 0 ||
     filters.selectedProjects.length > 0 ||
@@ -1121,27 +1199,45 @@ export default function Inventory() {
           </Button>
         </div>
 
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           {activeTab === "transfer-log" && (
-            <select
-              value={transferLogTimeFilter}
-              onChange={(e) => setTransferLogTimeFilter(e.target.value)}
+            <div
               style={{
-                padding: "10px 15px",
-                borderRadius: "50px",
-                border: "1px solid rgba(223, 223, 223, 1)",
+                maxWidth: "300px",
                 backgroundColor: "white",
-                cursor: "pointer",
+                position: "relative",
               }}
             >
-              <option value="all">All Time</option>
-              <option value="24h">Last 24 Hours</option>
-              <option value="3d">Last 3 Days</option>
-              <option value="7d">Last 7 Days</option>
-              <option value="14d">Last 14 Days</option>
-              <option value="30d">Last 30 Days</option>
-              <option value="90d">Last 90 Days</option>
-            </select>
+              <input
+                type="text"
+                placeholder="SEARCH"
+                value={transferLogSearchQuery}
+                onChange={(e) => {
+                  setTransferLogSearchQuery(e.target.value);
+                  setTransactionCurrentPage(1);
+                }}
+                style={{
+                  width: "300px",
+                  padding: "7px 40px 7px 15px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(223, 223, 223, 1)",
+                  fontSize: "14px",
+                }}
+              />
+              <img
+                src={searchIcon}
+                alt="search"
+                style={{
+                  position: "absolute",
+                  right: "15px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "16px",
+                  height: "16px",
+                  opacity: 0.5,
+                }}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -1385,7 +1481,8 @@ export default function Inventory() {
                   />
 
                   <InventoryFilterButton
-                    categories={categories}
+                    parentCategories={categories}
+                    categories={subcategories}
                     onApplyFilters={setFilters}
                     currentFilters={filters}
                   />
@@ -1398,6 +1495,31 @@ export default function Inventory() {
                         alignItems: "center",
                       }}
                     >
+                      {filters.selectedParentCategories.length > 0 && (
+                        <Button
+                          style={{
+                            borderRadius: "50px",
+                            fontWeight: 600,
+                            textWrap: "nowrap",
+                          }}
+                          componentType={"none"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"transparent"}
+                          textColor={"black"}
+                        >
+                          CATEGORY:{" "}
+                          <span
+                            style={{
+                              color: "rgba(16, 185, 129, 1)",
+                            }}
+                          >
+                            {filters.selectedParentCategories[0].toUpperCase()}
+                            {filters.selectedParentCategories.length > 1 &&
+                              `, +${filters.selectedParentCategories.length - 1} MORE`}
+                          </span>
+                        </Button>
+                      )}
+
                       {filters.selectedCategories.length > 0 && (
                         <Button
                           style={{
@@ -1557,11 +1679,11 @@ export default function Inventory() {
                     <input
                       type="text"
                       placeholder="SEARCH"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      value={inventorySearchQuery}
+                      onChange={(e) => setInventorySearchQuery(e.target.value)}
                       style={{
                         width: "300px",
-                        padding: "10px 40px 10px 15px",
+                        padding: "7px 40px 7px 15px",
                         borderRadius: "8px",
                         border: "1px solid rgba(223, 223, 223, 1)",
                         fontSize: "14px",
@@ -1628,15 +1750,15 @@ export default function Inventory() {
               </div>
             ) : currentItems.length > 0 ? (
               <>
-                <table className="items-table alt two-toned">
+                <table className="items-table alt two-toned fixed-layout">
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>ITEM NUMBER</th>
-                      <th>MATERIAL</th>
-                      <th>TOTAL QTY</th>
-                      <th>STATUS</th>
-                      <th></th>
+                      <th style={{ width: "40px" }}>#</th>
+                      <th style={{ width: "140px" }}>ITEM NUMBER</th>
+                      <th style={{ width: "400px" }}>MATERIAL</th>
+                      <th style={{ width: "50px" }}>TOTAL QTY</th>
+                      <th style={{ width: "100px" }}>STATUS</th>
+                      <th style={{ width: "100px" }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1774,7 +1896,8 @@ export default function Inventory() {
               <div
                 style={{ textAlign: "center", padding: "40px", color: "#888" }}
               >
-                {searchQuery.trim() !== "" ||
+                {inventorySearchQuery.trim() !== "" ||
+                filters.selectedParentCategories.length > 0 ||
                 filters.selectedCategories.length > 0 ||
                 filters.selectedLocations.length > 0 ||
                 filters.selectedProjects.length > 0 ||
@@ -1788,6 +1911,158 @@ export default function Inventory() {
       )}
 
       {activeTab === "transfer-log" && (
+        <>
+          <br />
+
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              paddingTop: "30px",
+              borderTop: "1px solid rgba(207, 207, 207, 1)",
+              alignItems: "center",
+            }}
+          >
+            <TransferLogFilterButton
+              locations={
+                Array.from(
+                  new Set(
+                    allTransactions
+                      .flatMap((t) => [t.from_location, t.to_location])
+                      .filter(Boolean),
+                  ),
+                ).sort() as string[]
+              }
+              onApplyFilters={setTransferLogFilters}
+              currentFilters={transferLogFilters}
+            />
+
+            {(transferLogFilters.timeRange !== "all" ||
+              transferLogFilters.selectedTypes.length > 0 ||
+              transferLogFilters.selectedStatuses.length > 0 ||
+              transferLogFilters.selectedLocations.length > 0) && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  alignItems: "center",
+                }}
+              >
+                {transferLogFilters.timeRange !== "all" && (
+                  <Button
+                    style={{
+                      borderRadius: "50px",
+                      fontWeight: 600,
+                      textWrap: "nowrap",
+                    }}
+                    componentType={"none"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                  >
+                    TIME:{" "}
+                    <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                      {transferLogFilters.timeRange === "24h"
+                        ? "LAST 24 HOURS"
+                        : transferLogFilters.timeRange === "3d"
+                          ? "LAST 3 DAYS"
+                          : transferLogFilters.timeRange === "7d"
+                            ? "LAST 7 DAYS"
+                            : transferLogFilters.timeRange === "14d"
+                              ? "LAST 14 DAYS"
+                              : transferLogFilters.timeRange === "30d"
+                                ? "LAST 30 DAYS"
+                                : transferLogFilters.timeRange.toUpperCase()}
+                    </span>
+                  </Button>
+                )}
+
+                {transferLogFilters.selectedTypes.length > 0 && (
+                  <Button
+                    style={{
+                      borderRadius: "50px",
+                      fontWeight: 600,
+                      textWrap: "nowrap",
+                    }}
+                    componentType={"none"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                  >
+                    TYPE:{" "}
+                    <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                      {transferLogFilters.selectedTypes[0].toUpperCase()}
+                      {transferLogFilters.selectedTypes.length > 1 &&
+                        `, +${transferLogFilters.selectedTypes.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
+                {transferLogFilters.selectedStatuses.length > 0 && (
+                  <Button
+                    style={{
+                      borderRadius: "50px",
+                      fontWeight: 600,
+                      textWrap: "nowrap",
+                    }}
+                    componentType={"none"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                  >
+                    STATUS:{" "}
+                    <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                      {transferLogFilters.selectedStatuses[0].toUpperCase()}
+                      {transferLogFilters.selectedStatuses.length > 1 &&
+                        `, +${transferLogFilters.selectedStatuses.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
+                {transferLogFilters.selectedLocations.length > 0 && (
+                  <Button
+                    style={{
+                      borderRadius: "50px",
+                      fontWeight: 600,
+                      textWrap: "nowrap",
+                    }}
+                    componentType={"none"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                  >
+                    LOCATION:{" "}
+                    <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                      {transferLogFilters.selectedLocations[0].toUpperCase()}
+                      {transferLogFilters.selectedLocations.length > 1 &&
+                        `, +${transferLogFilters.selectedLocations.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
+                <Button
+                  componentType={"button"}
+                  bgColor={"transparent"}
+                  borderColor={"transparent"}
+                  textColor={"black"}
+                  onClick={() => {
+                    setTransferLogFilters(defaultTransferLogFilters);
+                    setTransferLogTimeFilter("all");
+                  }}
+                  style={{ padding: "0px" }}
+                >
+                  RESET ALL
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <br />
+          <br />
+        </>
+      )}
+
+      {activeTab === "transfer-log" && (
         <div style={{ overflowX: "auto" }}>
           {isLoadingTransactions ? (
             <div
@@ -1797,17 +2072,21 @@ export default function Inventory() {
             </div>
           ) : currentTransactions.length > 0 ? (
             <>
-              <table className="items-table two-toned">
+              <table className="items-table two-toned fixed-layout">
                 <thead>
                   <tr>
-                    <th>DATE</th>
-                    <th></th>
-                    <th style={{ paddingLeft: "5px" }}>ID</th>
-                    <th style={{ minWidth: "500px" }}>MATERIAL(S)</th>
-                    <th>TYPE</th>
-                    <th>STATUS</th>
+                    <th style={{ width: "75px" }}>DATE</th>
+                    <th style={{ width: "5px" }}></th>
+                    <th style={{ width: "100px", paddingLeft: "5px" }}>
+                      TRANSACTION NUMBER
+                    </th>
+                    <th style={{ width: "300px" }}>MATERIAL(S)</th>
+                    <th style={{ width: "150px" }}>TYPE</th>
+                    <th style={{ width: "150px" }}>STATUS</th>
                     {(userInfo?.departmentID === 8 ||
-                      userInfo?.departmentID === 16) && <th></th>}
+                      userInfo?.departmentID === 16) && (
+                      <th style={{ width: "100px" }}></th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -1941,7 +2220,7 @@ export default function Inventory() {
             <div
               style={{ textAlign: "center", padding: "40px", color: "#888" }}
             >
-              {searchQuery.trim() !== ""
+              {transferLogSearchQuery.trim() !== ""
                 ? "No transactions found matching your search"
                 : "No transactions found"}
             </div>
@@ -1950,10 +2229,7 @@ export default function Inventory() {
       )}
 
       {isWaiting && !showPopup && (
-        <HoverLoadingCursor
-          mouseX={mousePosition.x}
-          mouseY={mousePosition.y}
-        />
+        <HoverLoadingCursor mouseX={mousePosition.x} mouseY={mousePosition.y} />
       )}
 
       {showPopup && hoveredItemId !== null && (

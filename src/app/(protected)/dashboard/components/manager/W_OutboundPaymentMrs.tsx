@@ -10,7 +10,7 @@ type props = {
 
 type TopProject = {
   project_name: string;
-  mr_count: number;
+  total_amount: number;
 };
 
 type TopSupplier = {
@@ -42,10 +42,37 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   const [isWaiting, setIsWaiting] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const hoverTimer = useRef<NodeJS.Timeout | null>(null);
+  const hideTimer = useRef<NodeJS.Timeout | null>(null);
+  const widgetRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   // Expand state for sections
   const [expandedProjects, setExpandedProjects] = useState(false);
   const [expandedSuppliers, setExpandedSuppliers] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowPopup(false);
+    };
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, []);
+
+  useEffect(() => {
+    const handleCloseAll = (e: Event) => {
+      const customE = e as CustomEvent;
+      if (customE.detail?.source !== "outbound-payment") {
+        setShowPopup(false);
+        setIsWaiting(false);
+        if (hoverTimer.current) {
+          clearTimeout(hoverTimer.current);
+          hoverTimer.current = null;
+        }
+      }
+    };
+    window.addEventListener("close-all-hover-popups", handleCloseAll);
+    return () => window.removeEventListener("close-all-hover-popups", handleCloseAll);
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -98,16 +125,38 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
       });
   }, [filterDays]);
 
+  // Start a delayed hide – cancelled if user re-enters widget or popup
+  const startHideTimer = () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => {
+      setShowPopup(false);
+      setExpandedProjects(false);
+      setExpandedSuppliers(false);
+    }, 2500);
+  };
+
+  const cancelHideTimer = () => {
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+  };
+
   // Hover handlers
   const handleMouseEnter = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("button, a, [role='button']")) return;
+    window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "outbound-payment" } }));
+    cancelHideTimer();
     setMousePosition({ x: e.clientX, y: e.clientY });
-    setIsWaiting(true);
-    hoverTimer.current = setTimeout(() => {
-      setIsWaiting(false);
-      setShowPopup(true);
-    }, 2000);
+    if (!showPopup) {
+      setIsWaiting(true);
+      hoverTimer.current = setTimeout(() => {
+        setIsWaiting(false);
+        setShowPopup(true);
+        window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "outbound-payment" } }));
+      }, 2000);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -118,13 +167,15 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
         hoverTimer.current = null;
       }
       setIsWaiting(false);
-      setShowPopup(false);
       return;
     }
-    setMousePosition({ x: e.clientX, y: e.clientY });
+    if (!showPopup) {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    }
   };
 
-  const handleMouseDown = () => {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (popupRef.current?.contains(e.target as Node)) return;
     if (hoverTimer.current) {
       clearTimeout(hoverTimer.current);
       hoverTimer.current = null;
@@ -138,10 +189,19 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
       clearTimeout(hoverTimer.current);
       hoverTimer.current = null;
     }
-    setShowPopup(false);
     setIsWaiting(false);
-    setExpandedProjects(false);
-    setExpandedSuppliers(false);
+    if (showPopup) {
+      startHideTimer();
+    }
+  };
+
+  // Popup hover handlers
+  const handlePopupMouseEnter = () => {
+    cancelHideTimer();
+  };
+
+  const handlePopupMouseLeave = () => {
+    startHideTimer();
   };
 
   const hasNoOutboundPayments = thisWeek === 0;
@@ -181,28 +241,24 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
     });
   };
 
-  // Hover popup positioning
+  // Hover popup positioning – stationary, anchored to widget
   const popupWidth = 500;
-  const popupMaxHeight = 500;
-  const offsetX = 20;
-  const offsetY = 20;
 
-  const popupLeft =
-    typeof window !== "undefined" &&
-    mousePosition.x + offsetX + popupWidth > window.innerWidth
-      ? mousePosition.x - popupWidth - 10
-      : mousePosition.x + offsetX;
-
-  const popupTop =
-    typeof window !== "undefined" &&
-    mousePosition.y + offsetY + popupMaxHeight > window.innerHeight
-      ? Math.max(10, mousePosition.y - popupMaxHeight)
-      : mousePosition.y + offsetY;
+  const getPopupPosition = () => {
+    if (!widgetRef.current) return { left: 0, top: 10 };
+    const rect = widgetRef.current.getBoundingClientRect();
+    const spaceRight = window.innerWidth - rect.right;
+    const left = spaceRight >= popupWidth + 10
+      ? rect.right + 10
+      : rect.left - popupWidth - 10;
+    return { left: Math.max(10, left), top: 10 };
+  };
 
   const balance = paidTotal + committedTotal;
 
   return (
     <div
+      ref={widgetRef}
       className="item"
       style={{ cursor: "pointer" }}
       onClick={() => router.push("/dashboard/details/outbound-payments")}
@@ -235,10 +291,14 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
 
       {showPopup && (
         <div
+          ref={popupRef}
+          onMouseEnter={handlePopupMouseEnter}
+          onMouseLeave={handlePopupMouseLeave}
+          onClick={(e) => e.stopPropagation()}
           style={{
             position: "fixed",
-            left: popupLeft,
-            top: popupTop,
+            left: getPopupPosition().left,
+            top: getPopupPosition().top,
             backgroundColor: "white",
             color: "black",
             border: "1px solid rgba(223,223,223,1)",
@@ -247,7 +307,11 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             zIndex: 10000,
             width: `${popupWidth}px`,
-            pointerEvents: "none",
+            maxHeight: "calc(100vh - 20px)",
+            overflowY: "auto",
+            pointerEvents: "auto",
+            cursor: "default",
+            userSelect: "text",
           }}
         >
           {/* Title */}
@@ -403,10 +467,13 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
                           color: "rgba(248, 77, 77, 1)",
                         }}
                       >
-                        {project.mr_count}
+                        +{formatCurrency(Number(project.total_amount))}{" "}
+                        <span style={{ color: "#999", fontWeight: 400 }}>
+                          AED
+                        </span>
                       </span>
                       <span style={{ color: "#333" }}>
-                        MRs for <strong>{project.project_name}</strong>
+                        for <strong>{project.project_name}</strong>
                       </span>
                     </div>
                   ))}

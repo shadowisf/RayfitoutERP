@@ -8,6 +8,9 @@ type OverviewHoverPopupProps = {
   columns: { key: string; label: string; format?: (val: any) => string }[];
   isLoading?: boolean;
   emptyMessage?: string;
+  anchorRect?: DOMRect | null;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 };
 
 export default function OverviewHoverPopup({
@@ -18,26 +21,43 @@ export default function OverviewHoverPopup({
   columns,
   isLoading,
   emptyMessage = "No items found",
+  anchorRect,
+  onMouseEnter,
+  onMouseLeave,
 }: OverviewHoverPopupProps) {
   const popupWidth = 360;
-  const popupMaxHeight = 350;
-  const offsetX = 20;
-  const offsetY = 20;
 
-  const left =
-    mouseX + offsetX + popupWidth > window.innerWidth
+  let left: number;
+  let top: number;
+
+  if (anchorRect) {
+    // Stationary positioning anchored to widget
+    const spaceRight = window.innerWidth - anchorRect.right;
+    left = spaceRight >= popupWidth + 10
+      ? anchorRect.right + 10
+      : anchorRect.left - popupWidth - 10;
+    left = Math.max(10, left);
+    top = 10;
+  } else {
+    // Legacy mouse-following positioning
+    const offsetX = 20;
+    const offsetY = 20;
+    const popupMaxHeight = 350;
+    left = mouseX + offsetX + popupWidth > window.innerWidth
       ? mouseX - popupWidth - 10
       : mouseX + offsetX;
-
-  const top =
-    mouseY + offsetY + popupMaxHeight > window.innerHeight
+    top = mouseY + offsetY + popupMaxHeight > window.innerHeight
       ? Math.max(10, mouseY - popupMaxHeight)
       : mouseY + offsetY;
+  }
 
   const remaining = totalCount - items.length;
 
   return (
     <div
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onClick={(e) => e.stopPropagation()}
       style={{
         position: "fixed",
         left,
@@ -51,7 +71,11 @@ export default function OverviewHoverPopup({
         zIndex: 10000,
         minWidth: "280px",
         maxWidth: `${popupWidth}px`,
-        pointerEvents: "none",
+        maxHeight: anchorRect ? "calc(100vh - 20px)" : undefined,
+        overflowY: anchorRect ? "auto" : undefined,
+        pointerEvents: anchorRect ? "auto" : "none",
+        cursor: "default",
+        userSelect: "text",
       }}
     >
       {isLoading ? (

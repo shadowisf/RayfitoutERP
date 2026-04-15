@@ -249,7 +249,11 @@ export default function MR() {
             const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
             const minutes = totalMinutes % 60;
 
-            const durationString = `${String(days).padStart(2, "0")}:${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+            const durationParts: string[] = [];
+            if (days > 0) durationParts.push(`${days}d`);
+            if (hours > 0) durationParts.push(`${hours}h`);
+            if (minutes > 0 || durationParts.length === 0) durationParts.push(`${minutes}m`);
+            const durationString = durationParts.join(" ");
 
             let durationStyle = {
               color: "black",
@@ -284,7 +288,7 @@ export default function MR() {
               err,
             );
             durationsMap[`lpo-${lpoCard.id}-${lpoCard.progress_id}`] = {
-              duration: "00:00:00",
+              duration: "0m",
               hoursDecimal: 0,
               style: {
                 color: "black",
@@ -341,7 +345,11 @@ export default function MR() {
             const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
             const minutes = totalMinutes % 60;
 
-            const durationString = `${String(days).padStart(2, "0")}:${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+            const durationParts: string[] = [];
+            if (days > 0) durationParts.push(`${days}d`);
+            if (hours > 0) durationParts.push(`${hours}h`);
+            if (minutes > 0 || durationParts.length === 0) durationParts.push(`${minutes}m`);
+            const durationString = durationParts.join(" ");
 
             let durationStyle = {
               color: "black",
@@ -373,7 +381,7 @@ export default function MR() {
           } catch (err) {
             console.error(`Error fetching duration for MR ${mr.id}:`, err);
             durationsMap[`${mr.id}-${mr.progress_id}`] = {
-              duration: "00:00:00",
+              duration: "0m",
               hoursDecimal: 0,
               style: {
                 color: "black",
@@ -1506,7 +1514,7 @@ export default function MR() {
                                   {lpos.map((lpoCard) => {
                                     const key = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
                                     const dur = lpoDurations[key] || {
-                                      duration: "00:00:00",
+                                      duration: "0m",
                                       hoursDecimal: 0,
                                       style: {
                                         color: "black",
@@ -1754,7 +1762,7 @@ export default function MR() {
                                   {mrs.map((mr) => {
                                     const key = `${mr.id}-${mr.progress_id}`;
                                     const dur = mrDurations[key] || {
-                                      duration: "00:00:00",
+                                      duration: "0m",
                                       hoursDecimal: 0,
                                       style: {
                                         color: "black",
@@ -1914,7 +1922,7 @@ export default function MR() {
                                 lpos.map((lpoCard) => {
                                   const key = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
                                   const dur = lpoDurations[key] || {
-                                    duration: "00:00:00",
+                                    duration: "0m",
                                     hoursDecimal: 0,
                                     style: {
                                       color: "black",
@@ -2165,7 +2173,7 @@ export default function MR() {
                                 mrs.map((mr) => {
                                   const key = `${mr.id}-${mr.progress_id}`;
                                   const dur = mrDurations[key] || {
-                                    duration: "00:00:00",
+                                    duration: "0m",
                                     hoursDecimal: 0,
                                     style: {
                                       color: "black",
@@ -2677,13 +2685,17 @@ function TableView({
       0,
     );
     if (total === 0) return "";
-    const units = items.map((i) => i.unit).filter(Boolean);
-    const unit = units.length > 0 ? units[0] : "";
-    const allSameUnit = units.every((u) => u === unit);
+    const uniqueUnits = [...new Set(items.map((i) => i.unit).filter(Boolean))];
     const formatted = Number.isInteger(total)
       ? total
       : parseFloat(total.toFixed(3));
-    return `${formatted} ${allSameUnit ? unit : "ITEMS"}`;
+    const unitStr =
+      uniqueUnits.length === 1
+        ? uniqueUnits[0]
+        : uniqueUnits.length > 1
+          ? uniqueUnits.join(" + ")
+          : "";
+    return `${formatted} ${unitStr}`;
   }
 
   function getItemLink(item: TableItem): string {
@@ -2741,13 +2753,6 @@ function TableView({
       items: filterItems(tableItems.job),
     });
   }
-  if (filters.requestType === "all" || filters.requestType === "payment") {
-    sections.push({
-      type: "payment",
-      label: "PAYMENT REQUESTS",
-      items: filterItems(tableItems.payment),
-    });
-  }
 
   if (tableLoading) {
     return (
@@ -2794,8 +2799,11 @@ function TableView({
                     {totalItems} Items
                   </div>
                 </div>
-                {section.type === "material" && selectedItems.length > 0 && (
-                  <ExportItemsButton selectedItems={selectedItems} />
+                {section.type === "material" && (
+                  <ExportItemsButton
+                    selectedItems={selectedItems}
+                    disabled={selectedItems.length === 0}
+                  />
                 )}
               </div>
 
@@ -2812,38 +2820,33 @@ function TableView({
                   No items found
                 </div>
               ) : (
-                <table
-                  className="items-table alt two-toned"
-                  style={{ width: "100%", tableLayout: "fixed" }}
-                >
+                <table className="items-table alt two-toned fixed-layout">
                   <thead>
                     <tr>
-                      <th style={{ width: "30px" }}></th>
+                      <th style={{ width: "30px", padding: "0" }}></th>
                       <th
                         style={{
-                          width: section.type === "material" ? "22%" : "26%",
+                          width:
+                            section.type === "material" ? "600px" : "600px",
                         }}
                       >
                         {section.type === "job"
                           ? "BOQ"
-                          : section.type === "payment"
-                            ? "JOB ORDER"
-                            : "CATEGORY"}
+                          : "CATEGORY"}
                       </th>
-                      <th style={{ width: "10%" }}>REQ. QTY</th>
-                      <th style={{ width: "14%" }}>REFERENCE</th>
-                      <th style={{ width: "14%" }}>REQUESTER</th>
+                      <th style={{ width: "300px" }}>REQ. QTY</th>
+                      <th style={{ width: "175px" }}>REFERENCE</th>
+                      <th style={{ width: "200px" }}>REQUESTER</th>
                       <th
                         style={{
-                          width: section.type === "material" ? "18%" : "22%",
+                          width:
+                            section.type === "material" ? "200px" : "200px",
                         }}
                       >
                         PROJECT
                       </th>
-                      <th style={{ width: "12%" }}>STAGE</th>
-                      {section.type === "material" && (
-                        <th style={{ width: "10%" }}>QUOTATION</th>
-                      )}
+                      <th style={{ width: "150px" }}>STAGE</th>
+                      <th style={{ width: "100px" }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2872,8 +2875,7 @@ function TableView({
                               style={{
                                 width: "30px",
                                 textAlign: "center",
-                                paddingTop: "18px",
-                                paddingBottom: "18px",
+                                padding: "18px 0",
                               }}
                             >
                               <svg
@@ -2898,19 +2900,12 @@ function TableView({
                                 />
                               </svg>
                             </td>
-                            <td
-                              style={{
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
+                            <td>
                               <div
                                 style={{
                                   display: "flex",
                                   alignItems: "center",
                                   gap: "10px",
-                                  overflow: "hidden",
                                 }}
                               >
                                 {categoryHasQuotationItems(catItems) && (
@@ -2941,18 +2936,13 @@ function TableView({
                                       display: "flex",
                                       alignItems: "center",
                                       gap: "8px",
+                                      flexWrap: "wrap",
                                     }}
                                   >
                                     <strong>{catName}</strong>
                                     {catItems[0]?.boq_description && (
                                       <span>
-                                        -{" "}
-                                        {catItems[0].boq_description.length > 50
-                                          ? catItems[0].boq_description.substring(
-                                              0,
-                                              50,
-                                            ) + "…"
-                                          : catItems[0].boq_description}
+                                        - {catItems[0].boq_description}
                                       </span>
                                     )}
                                   </div>
@@ -2964,9 +2954,11 @@ function TableView({
                             <td>
                               <strong>{catTotalQty}</strong>
                             </td>
-                            <td
-                              colSpan={section.type === "material" ? 6 : 5}
-                            ></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
                           </tr>
 
                           {/* Individual items */}
@@ -2976,10 +2968,7 @@ function TableView({
                                 <td></td>
                                 <td
                                   style={{
-                                    paddingLeft: "30px",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
+                                    paddingLeft: "57px",
                                   }}
                                 >
                                   <div
@@ -2987,7 +2976,6 @@ function TableView({
                                       display: "flex",
                                       alignItems: "center",
                                       gap: "10px",
-                                      overflow: "hidden",
                                     }}
                                   >
                                     {isQuotationStage(item) && (
@@ -3008,13 +2996,7 @@ function TableView({
                                         }}
                                       />
                                     )}
-                                    <span
-                                      style={{
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                      }}
-                                    >
+                                    <span>
                                       {item.material_description || "-"}
                                     </span>
                                   </div>
@@ -3056,19 +3038,12 @@ function TableView({
                                     </Button>
                                   </div>
                                 </td>
-                                <td
-                                  style={{
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
+                                <td>
                                   <div
                                     style={{
                                       display: "flex",
                                       alignItems: "center",
                                       gap: "8px",
-                                      overflow: "hidden",
                                     }}
                                   >
                                     <div
@@ -3095,26 +3070,10 @@ function TableView({
                                             .slice(0, 2)
                                         : "?"}
                                     </div>
-                                    <span
-                                      style={{
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                      }}
-                                    >
-                                      {item.requested_by || "-"}
-                                    </span>
+                                    <span>{item.requested_by || "-"}</span>
                                   </div>
                                 </td>
-                                <td
-                                  style={{
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
-                                  {item.project_name || "-"}
-                                </td>
+                                <td>{item.project_name || "-"}</td>
                                 <td>
                                   <span
                                     style={{
@@ -3129,7 +3088,7 @@ function TableView({
                                     {item.progress_name}
                                   </span>
                                 </td>
-                                {section.type === "material" && (
+                                {section.type === "material" ? (
                                   <td>
                                     {isQuotationStage(item) &&
                                       !!item.has_quotation && (
@@ -3153,6 +3112,8 @@ function TableView({
                                         />
                                       )}
                                   </td>
+                                ) : (
+                                  <td></td>
                                 )}
                               </tr>
                             ))}

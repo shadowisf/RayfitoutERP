@@ -11,13 +11,19 @@ import DownloadPlPdfButton from "./_DownloadPlPdfButton";
 type TransactionDetailsPopUpButtonProps = {
   transferID: number;
   onSuccess?: () => void;
+  /** When true, the popup opens immediately and no trigger button is rendered. */
+  autoOpen?: boolean;
+  /** Called when the popup is closed (only relevant when autoOpen is true). */
+  onClose?: () => void;
 };
 
 export default function TransactionDetailsPopUpButton({
   transferID,
   onSuccess,
+  autoOpen,
+  onClose,
 }: TransactionDetailsPopUpButtonProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(autoOpen ?? false);
 
   const [transaction, setTransaction] = useState<any | null>(null);
 
@@ -58,22 +64,31 @@ export default function TransactionDetailsPopUpButton({
 
   return (
     <>
-      <Button
-        componentType="button"
-        bgColor={"rgba(239, 239, 239, 1)"}
-        borderColor={"rgba(223, 223, 223, 1)"}
-        textColor={"black"}
-        onClick={(e) => {
-          e.preventDefault();
-          setIsOpen(true);
-        }}
-        style={{ padding: "7px 7px" }}
-      >
-        <img src={externalLinkIcon} alt="batch details" />
-      </Button>
+      {!autoOpen && (
+        <Button
+          componentType="button"
+          bgColor={"rgba(239, 239, 239, 1)"}
+          borderColor={"rgba(223, 223, 223, 1)"}
+          textColor={"black"}
+          onClick={(e) => {
+            e.preventDefault();
+            setIsOpen(true);
+          }}
+          style={{ padding: "7px 7px" }}
+        >
+          <img src={externalLinkIcon} alt="batch details" />
+        </Button>
+      )}
 
       {isOpen && (
-        <FormPopUp header={"TRANSACTION DETAILS"} setIsOpen={setIsOpen}>
+        <FormPopUp
+          header={"TRANSACTION DETAILS"}
+          setIsOpen={(openOrFn) => {
+            setIsOpen(openOrFn);
+            // When the popup is dismissed, openOrFn is always `false`
+            if (openOrFn === false && onClose) onClose();
+          }}
+        >
           <div
             style={{
               backgroundColor: "rgba(243, 243, 243, 1)",

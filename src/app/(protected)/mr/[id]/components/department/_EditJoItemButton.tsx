@@ -37,6 +37,12 @@ type props = {
 };
 
 export default function EditJoItemButton({ item, projectID }: props) {
+  const formatQty = (val: any) => {
+    const num = Number(val);
+    if (isNaN(num)) return val;
+    return num % 1 === 0 ? num.toFixed(0) : parseFloat(num.toFixed(2)).toString();
+  };
+
   const crossIcon = "/icons/cross-small.svg";
 
   const router = useRouter();
@@ -114,7 +120,7 @@ export default function EditJoItemButton({ item, projectID }: props) {
             const qtys: Record<number, string> = {};
             data.forEach((row) => {
               const qty = Number(row.subcontracted_qty);
-              qtys[row.boq_line_id] = qty ? String(qty) : "";
+              qtys[row.boq_line_id] = qty ? formatQty(qty) : "";
             });
             setSubcontractedQtys(qtys);
           }
@@ -172,7 +178,7 @@ export default function EditJoItemButton({ item, projectID }: props) {
       ids.forEach((id) => {
         const boq = lines.find((l) => l.id === id);
         newQtys[id] =
-          subcontractedQtys[id] || String(boq?.quantity ?? "") || "";
+          subcontractedQtys[id] || (boq?.quantity != null ? formatQty(boq.quantity) : "") || "";
       });
       setSubcontractedQtys(newQtys);
     }
@@ -490,7 +496,7 @@ export default function EditJoItemButton({ item, projectID }: props) {
                         </div>
                       </td>
                       <td>
-                        {boq.quantity} {boq.unit}
+                        {formatQty(boq.quantity)} {boq.unit}
                       </td>
                       <td>
                         <InputItem

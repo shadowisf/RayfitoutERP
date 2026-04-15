@@ -5,24 +5,28 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 
 type InventoryFilterButtonProps = {
+  parentCategories: string[];
   categories: string[];
   onApplyFilters: (filters: {
+    selectedParentCategories: string[];
     selectedCategories: string[];
     selectedLocations: string[];
     selectedProjects: number[];
     stockAddedIn: string;
-    selectedStockStatuses: string[]; // ✅ New
+    selectedStockStatuses: string[];
   }) => void;
   currentFilters: {
+    selectedParentCategories: string[];
     selectedCategories: string[];
     selectedLocations: string[];
     selectedProjects: number[];
     stockAddedIn: string;
-    selectedStockStatuses: string[]; // ✅ New
+    selectedStockStatuses: string[];
   };
 };
 
 export default function InventoryFilterButton({
+  parentCategories,
   categories,
   onApplyFilters,
   currentFilters,
@@ -31,6 +35,9 @@ export default function InventoryFilterButton({
   const filterIcon = "/icons/filter.svg";
 
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedParentCategories, setSelectedParentCategories] = useState<string[]>(
+    currentFilters.selectedParentCategories,
+  );
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     currentFilters.selectedCategories,
   );
@@ -46,6 +53,7 @@ export default function InventoryFilterButton({
   const [selectedStockStatuses, setSelectedStockStatuses] = useState<string[]>(
     currentFilters.selectedStockStatuses, // ✅ New
   );
+  const [parentCategorySearchQuery, setParentCategorySearchQuery] = useState("");
   const [categorySearchQuery, setCategorySearchQuery] = useState("");
   const [locationSearchQuery, setLocationSearchQuery] = useState("");
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
@@ -120,37 +128,58 @@ export default function InventoryFilterButton({
   }, [isOpen]);
 
   const handleOpen = () => {
+    setSelectedParentCategories(currentFilters.selectedParentCategories);
     setSelectedCategories(currentFilters.selectedCategories);
     setSelectedLocations(currentFilters.selectedLocations);
     setSelectedProjects(currentFilters.selectedProjects);
     setStockAddedIn(currentFilters.stockAddedIn);
-    setSelectedStockStatuses(currentFilters.selectedStockStatuses); // ✅ New
+    setSelectedStockStatuses(currentFilters.selectedStockStatuses);
     setIsOpen(true);
   };
 
   const handleApply = () => {
     onApplyFilters({
+      selectedParentCategories,
       selectedCategories,
       selectedLocations,
       selectedProjects,
       stockAddedIn,
-      selectedStockStatuses, // ✅ New
+      selectedStockStatuses,
     });
     setIsOpen(false);
   };
 
   const handleReset = () => {
+    setSelectedParentCategories([]);
     setSelectedCategories([]);
     setSelectedLocations([]);
     setSelectedProjects([]);
     setStockAddedIn("all");
-    setSelectedStockStatuses([]); // ✅ New
+    setSelectedStockStatuses([]);
+    setParentCategorySearchQuery("");
     setCategorySearchQuery("");
     setLocationSearchQuery("");
     setProjectSearchQuery("");
   };
 
-  // Category handlers
+  // Parent Category handlers
+  const handleSelectAllParentCategories = (checked: boolean) => {
+    if (checked) {
+      setSelectedParentCategories(parentCategories);
+    } else {
+      setSelectedParentCategories([]);
+    }
+  };
+
+  const handleParentCategoryChange = (category: string, checked: boolean) => {
+    if (checked) {
+      setSelectedParentCategories([...selectedParentCategories, category]);
+    } else {
+      setSelectedParentCategories(selectedParentCategories.filter((c) => c !== category));
+    }
+  };
+
+  // Category handlers (subcategories)
   const handleSelectAllCategories = (checked: boolean) => {
     if (checked) {
       setSelectedCategories(categories);
@@ -223,6 +252,8 @@ export default function InventoryFilterButton({
   };
 
   // Check if all items are selected
+  const isAllParentCategoriesSelected =
+    selectedParentCategories.length === parentCategories.length;
   const isAllCategoriesSelected =
     selectedCategories.length === categories.length;
   const isAllLocationsSelected =
@@ -232,7 +263,11 @@ export default function InventoryFilterButton({
   const isAllStockStatusesSelected =
     selectedStockStatuses.length === stockStatusOptions.length; // ✅ New
 
-  // Filter categories, locations, and projects based on search
+  // Filter parent categories, categories, locations, and projects based on search
+  const filteredParentCategories = parentCategories.filter((category) =>
+    category.toLowerCase().includes(parentCategorySearchQuery.toLowerCase()),
+  );
+
   const filteredCategories = categories.filter((category) =>
     category.toLowerCase().includes(categorySearchQuery.toLowerCase()),
   );
@@ -262,7 +297,7 @@ export default function InventoryFilterButton({
         <FormPopUp
           header={"FILTER INVENTORY"}
           setIsOpen={setIsOpen}
-          addButtonLabel="APPLY FILTER"
+          addButtonLabel="CONFIRM"
           handleSubmit={handleApply}
           style={{ minWidth: "600px" }}
           secondButton={
@@ -273,10 +308,117 @@ export default function InventoryFilterButton({
               textColor={"black"}
               onClick={handleReset}
             >
-              RESET FILTER
+              RESET
             </Button>
           }
         >
+          {/* Categories Section */}
+          <div style={{ marginBottom: "30px" }}>
+            <h3
+              style={{
+                marginBottom: "15px",
+                fontSize: "14px",
+                fontWeight: "600",
+              }}
+            >
+              CATEGORIES
+            </h3>
+
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: "8px",
+                padding: "10px",
+              }}
+            >
+              <div style={{ position: "relative", marginBottom: "15px" }}>
+                <input
+                  type="text"
+                  placeholder="Search"
+                  value={parentCategorySearchQuery}
+                  onChange={(e) => setParentCategorySearchQuery(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 40px 10px 15px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(223, 223, 223, 1)",
+                    fontSize: "14px",
+                    backgroundColor: "rgba(245, 245, 245, 1)",
+                  }}
+                />
+                <img
+                  src={searchIcon}
+                  alt="search"
+                  style={{
+                    position: "absolute",
+                    right: "15px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: "16px",
+                    height: "16px",
+                    opacity: 0.5,
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: "10px" }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isAllParentCategoriesSelected}
+                    onChange={(e) =>
+                      handleSelectAllParentCategories(e.target.checked)
+                    }
+                    style={{
+                      width: "18px",
+                      height: "18px",
+                      cursor: "pointer",
+                      accentColor: "#10b981",
+                    }}
+                  />
+                  <h4>Select All</h4>
+                </label>
+              </div>
+
+              <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                {filteredParentCategories.map((category) => (
+                  <div key={category} style={{ marginBottom: "10px" }}>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedParentCategories.includes(category)}
+                        onChange={(e) =>
+                          handleParentCategoryChange(category, e.target.checked)
+                        }
+                        style={{
+                          width: "18px",
+                          height: "18px",
+                          cursor: "pointer",
+                          accentColor: "#10b981",
+                        }}
+                      />
+                      <h4>{category}</h4>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Subcategories Section */}
           <div style={{ marginBottom: "30px" }}>
             <h3

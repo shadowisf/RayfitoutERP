@@ -52,6 +52,12 @@ export default function SingleSelectBoqItemButton({
   const [searchQuery, setSearchQuery] = useState("");
 
   // BOQ Category states
+  const formatQty = (val: any) => {
+    const num = Number(val);
+    if (isNaN(num)) return val;
+    return num % 1 === 0 ? num.toFixed(0) : parseFloat(num.toFixed(2)).toString();
+  };
+
   const [activeBoqCategory, setActiveBoqCategory] = useState<string>("ALL");
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
@@ -557,7 +563,7 @@ export default function SingleSelectBoqItemButton({
                                   </div>
                                 </td>
                                 <td>
-                                  {boq.quantity} {boq.unit}
+                                  {formatQty(boq.quantity)} {boq.unit}
                                 </td>
 
                                 {canSeePrice && (
@@ -694,7 +700,7 @@ export default function SingleSelectBoqItemButton({
                               </div>
                             </td>
                             <td>
-                              {boq.quantity} {boq.unit}
+                              {formatQty(boq.quantity)} {boq.unit}
                             </td>
 
                             {canSeePrice && (

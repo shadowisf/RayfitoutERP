@@ -2371,23 +2371,23 @@ export default function MrLinesView({
                       {Object.entries(suppliers).map(
                         ([supplier, items], supplierIndex) => (
                           <div key={supplier} style={{ marginBottom: "2rem" }}>
-                            <table className="items-table two-toned">
+                            <table className="items-table two-toned fixed-layout">
                               <thead>
                                 <tr>
-                                  <th>#</th>
-                                  <th>ITEM</th>
+                                  <th style={{ width: "50px" }}>#</th>
+                                  <th style={{ width: "150px" }}>ITEM</th>
                                   {mrHeader.progress_id >= 9 ? (
                                     <>
-                                      <th>QTY USE</th>
-                                      <th>QTY STOCKS</th>
-                                      <th>TOTAL QTY</th>
+                                      <th style={{ width: "100px" }}>QTY USE</th>
+                                      <th style={{ width: "110px" }}>QTY STOCKS</th>
+                                      <th style={{ width: "100px" }}>TOTAL QTY</th>
                                     </>
                                   ) : (
-                                    <th>REQUESTED QTY</th>
+                                    <th style={{ width: "130px" }}>REQUESTED QTY</th>
                                   )}
-                                  <th>BOQ REF.</th>
-                                  <th>BRAND & SPECS</th>
-                                  <th>ATTACHMENT</th>
+                                  <th style={{ width: "110px" }}>BOQ REF.</th>
+                                  <th style={{ width: "140px" }}>BRAND & SPECS</th>
+                                  <th style={{ width: "120px" }}>ATTACHMENT</th>
                                   {((mrHeader.progress_id === 5 &&
                                     (userInfo?.departmentID ===
                                       mrHeader.department_id ||
@@ -2401,36 +2401,36 @@ export default function MrLinesView({
                                       userInfo?.departmentID ===
                                         mrHeader.department_id &&
                                       userInfo?.departmentID !== 16)) && (
-                                    <th>APPROVAL STATUS</th>
+                                    <th style={{ width: "160px" }}>APPROVAL STATUS</th>
                                   )}
                                   {(mrHeader.progress_id === 1 ||
                                     mrHeader.progress_id === 5 ||
                                     mrHeader.progress_id === 11) &&
                                     userInfo?.departmentID ===
                                       mrHeader.department_id && (
-                                      <th>ACTIONS</th>
+                                      <th style={{ width: "140px" }}>ACTIONS</th>
                                     )}
                                   {mrHeader.progress_id === 11 &&
                                     userInfo?.departmentID === 9 && (
-                                      <th>ACTIONS</th>
+                                      <th style={{ width: "140px" }}>ACTIONS</th>
                                     )}
                                   {mrHeader.progress_id === 3 &&
                                     (userInfo?.departmentID === 8 ||
                                       userInfo?.departmentID ===
                                         mrHeader.department_id) && (
-                                      <th>QS REVIEW</th>
+                                      <th style={{ width: "140px" }}>QS REVIEW</th>
                                     )}
                                   {mrHeader.progress_id === 3 &&
                                     userInfo?.departmentID === 8 && (
-                                      <th>ACTIONS</th>
+                                      <th style={{ width: "140px" }}>ACTIONS</th>
                                     )}
                                   {mrHeader.progress_id === 2 &&
                                     userInfo?.departmentID === 16 && (
-                                      <th>ACTIONS</th>
+                                      <th style={{ width: "140px" }}>ACTIONS</th>
                                     )}
                                   {mrHeader.progress_id >= 10 &&
                                     mrHeader.progress_id !== 11 && (
-                                      <th>
+                                      <th style={{ width: "200px" }}>
                                         <div
                                           style={{
                                             display: "flex",
@@ -2450,37 +2450,37 @@ export default function MrLinesView({
                                     )}
                                   {mrHeader.progress_id === 7 &&
                                     userInfo?.departmentID === 9 && (
-                                      <th>VENDOR & QUOTATION</th>
+                                      <th style={{ width: "200px" }}>VENDOR & QUOTATION</th>
                                     )}
                                   {mrHeader.progress_id === 9 &&
                                     userInfo?.departmentID === 16 && (
-                                      <th>VENDOR & QUOTATION</th>
+                                      <th style={{ width: "200px" }}>VENDOR & QUOTATION</th>
                                     )}
                                   {mrHeader.progress_id >= 10 &&
-                                    canSeePrice && <th>UNIT PRICE</th>}
+                                    canSeePrice && <th style={{ width: "120px" }}>UNIT PRICE</th>}
                                   {mrHeader.progress_id >= 10 &&
-                                    canSeePrice && <th>TOTAL PRICE</th>}
+                                    canSeePrice && <th style={{ width: "120px" }}>TOTAL PRICE</th>}
                                   {userInfo?.departmentID === 11 &&
                                     mrHeader.progress_id === 4 && (
-                                      <th>STOCK TRANSFER</th>
+                                      <th style={{ width: "160px" }}>STOCK TRANSFER</th>
                                     )}
                                   {userInfo?.departmentID === 12 &&
                                     mrHeader.progress_id === 21 && (
-                                      <th>QUALITY CONTROL</th>
+                                      <th style={{ width: "160px" }}>QUALITY CONTROL</th>
                                     )}
                                   {userInfo?.departmentID === 11 &&
                                     mrHeader.progress_id === 24 && (
-                                      <th>STOCKS</th>
+                                      <th style={{ width: "120px" }}>STOCKS</th>
                                     )}
                                   {userInfo?.departmentID === 9 &&
                                     mrHeader.progress_id === 23 && (
-                                      <th>RESOLUTION</th>
+                                      <th style={{ width: "140px" }}>RESOLUTION</th>
                                     )}
                                   {(mrHeader.progress_id === 9 ||
                                     mrHeader.progress_id === 10) &&
                                     (userInfo?.departmentID === 8 ||
                                       userInfo?.departmentID === 16) && (
-                                      <th>ACTIONS</th>
+                                      <th style={{ width: "140px" }}>ACTIONS</th>
                                     )}
                                 </tr>
                               </thead>
@@ -3157,23 +3157,23 @@ export default function MrLinesView({
                   {Object.entries(suppliers).map(
                     ([supplier, items], supplierIndex) => (
                       <div key={supplier} style={{ marginBottom: "2rem" }}>
-                        <table className="items-table two-toned">
+                        <table className="items-table two-toned fixed-layout">
                           <thead>
                             <tr>
-                              <th>#</th>
-                              <th>ITEM</th>
+                              <th style={{ width: "50px" }}>#</th>
+                              <th style={{ width: "150px" }}>ITEM</th>
                               {mrHeader.progress_id >= 9 ? (
                                 <>
-                                  <th>QTY USE</th>
-                                  <th>QTY STOCKS</th>
-                                  <th>TOTAL QTY</th>
+                                  <th style={{ width: "100px" }}>QTY USE</th>
+                                  <th style={{ width: "110px" }}>QTY STOCKS</th>
+                                  <th style={{ width: "100px" }}>TOTAL QTY</th>
                                 </>
                               ) : (
-                                <th>REQUESTED QTY</th>
+                                <th style={{ width: "130px" }}>REQUESTED QTY</th>
                               )}
-                              <th>BOQ REF.</th>
-                              <th>BRAND & SPECS</th>
-                              <th>ATTACHMENT</th>
+                              <th style={{ width: "110px" }}>BOQ REF.</th>
+                              <th style={{ width: "140px" }}>BRAND & SPECS</th>
+                              <th style={{ width: "120px" }}>ATTACHMENT</th>
                               {((mrHeader.progress_id === 5 &&
                                 (userInfo?.departmentID ===
                                   mrHeader.department_id ||
@@ -3187,34 +3187,34 @@ export default function MrLinesView({
                                   userInfo?.departmentID ===
                                     mrHeader.department_id &&
                                   userInfo?.departmentID !== 16)) && (
-                                <th>APPROVAL STATUS</th>
+                                <th style={{ width: "160px" }}>APPROVAL STATUS</th>
                               )}
                               {(mrHeader.progress_id === 1 ||
                                 mrHeader.progress_id === 5 ||
                                 mrHeader.progress_id === 11) &&
                                 userInfo?.departmentID ===
-                                  mrHeader.department_id && <th>ACTIONS</th>}
+                                  mrHeader.department_id && <th style={{ width: "140px" }}>ACTIONS</th>}
                               {mrHeader.progress_id === 11 &&
                                 userInfo?.departmentID === 9 && (
-                                  <th>ACTIONS</th>
+                                  <th style={{ width: "140px" }}>ACTIONS</th>
                                 )}
                               {mrHeader.progress_id === 3 &&
                                 (userInfo?.departmentID === 8 ||
                                   userInfo?.departmentID ===
                                     mrHeader.department_id) && (
-                                  <th>QS REVIEW</th>
+                                  <th style={{ width: "140px" }}>QS REVIEW</th>
                                 )}
                               {mrHeader.progress_id === 3 &&
                                 userInfo?.departmentID === 8 && (
-                                  <th>ACTIONS</th>
+                                  <th style={{ width: "140px" }}>ACTIONS</th>
                                 )}
                               {mrHeader.progress_id === 2 &&
                                 userInfo?.departmentID === 16 && (
-                                  <th>ACTIONS</th>
+                                  <th style={{ width: "140px" }}>ACTIONS</th>
                                 )}
                               {mrHeader.progress_id >= 10 &&
                                 mrHeader.progress_id !== 11 && (
-                                  <th>
+                                  <th style={{ width: "200px" }}>
                                     <div
                                       style={{
                                         display: "flex",
@@ -3234,38 +3234,38 @@ export default function MrLinesView({
                                 )}
                               {mrHeader.progress_id === 7 &&
                                 userInfo?.departmentID === 9 && (
-                                  <th>VENDOR & QUOTATION</th>
+                                  <th style={{ width: "200px" }}>VENDOR & QUOTATION</th>
                                 )}
                               {mrHeader.progress_id === 9 &&
                                 userInfo?.departmentID === 16 && (
-                                  <th>VENDOR & QUOTATION</th>
+                                  <th style={{ width: "200px" }}>VENDOR & QUOTATION</th>
                                 )}
                               {mrHeader.progress_id >= 10 && canSeePrice && (
-                                <th>UNIT PRICE</th>
+                                <th style={{ width: "120px" }}>UNIT PRICE</th>
                               )}
                               {mrHeader.progress_id >= 10 && canSeePrice && (
-                                <th>TOTAL PRICE</th>
+                                <th style={{ width: "120px" }}>TOTAL PRICE</th>
                               )}
                               {userInfo?.departmentID === 12 &&
                                 mrHeader.progress_id === 21 && (
-                                  <th>QUALITY CONTROL</th>
+                                  <th style={{ width: "160px" }}>QUALITY CONTROL</th>
                                 )}
                               {userInfo?.departmentID === 11 &&
-                                mrHeader.progress_id === 24 && <th>STOCKS</th>}
+                                mrHeader.progress_id === 24 && <th style={{ width: "120px" }}>STOCKS</th>}
                               {userInfo?.departmentID === 9 &&
                                 mrHeader.progress_id === 23 && (
-                                  <th>RESOLUTION</th>
+                                  <th style={{ width: "140px" }}>RESOLUTION</th>
                                 )}
                               {(userInfo?.departmentID === 11 ||
                                 userInfo?.departmentID === 8) &&
                                 mrHeader.progress_id === 4 && (
-                                  <th>STOCK TRANSFER</th>
+                                  <th style={{ width: "160px" }}>STOCK TRANSFER</th>
                                 )}
                               {(mrHeader.progress_id === 9 ||
                                 mrHeader.progress_id === 10) &&
                                 (userInfo?.departmentID === 8 ||
                                   userInfo?.departmentID === 16) && (
-                                  <th>ACTIONS</th>
+                                  <th style={{ width: "140px" }}>ACTIONS</th>
                                 )}
                             </tr>
                           </thead>
@@ -4016,38 +4016,38 @@ export default function MrLinesView({
 
             <br />
 
-            <table className="items-table two-toned">
+            <table className="items-table two-toned fixed-layout">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>CATEGORY</th>
-                  <th>SUBCATEGORY</th>
-                  <th>ITEM</th>
+                  <th style={{ width: "50px" }}>#</th>
+                  <th style={{ width: "150px" }}>CATEGORY</th>
+                  <th style={{ width: "150px" }}>SUBCATEGORY</th>
+                  <th style={{ width: "150px" }}>ITEM</th>
                   {mrHeader.progress_id >= 9 ? (
                     <>
-                      <th>QTY USE</th>
-                      <th>QTY STOCKS</th>
-                      <th>TOTAL QTY</th>
+                      <th style={{ width: "100px" }}>QTY USE</th>
+                      <th style={{ width: "110px" }}>QTY STOCKS</th>
+                      <th style={{ width: "100px" }}>TOTAL QTY</th>
                     </>
                   ) : (
-                    <th>REQUESTED QTY</th>
+                    <th style={{ width: "130px" }}>REQUESTED QTY</th>
                   )}
-                  <th>BOQ REF.</th>
-                  <th>BRAND & SPECS</th>
+                  <th style={{ width: "110px" }}>BOQ REF.</th>
+                  <th style={{ width: "140px" }}>BRAND & SPECS</th>
                   {/* {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>} */}
-                  <th>ATTACHMENT</th>
+                  <th style={{ width: "120px" }}>ATTACHMENT</th>
                   {mrHeader.progress_id >= 10 && canSeePrice && (
-                    <th>UNIT PRICE</th>
+                    <th style={{ width: "120px" }}>UNIT PRICE</th>
                   )}
                   {mrHeader.progress_id >= 10 && canSeePrice && (
-                    <th>TOTAL PRICE</th>
+                    <th style={{ width: "120px" }}>TOTAL PRICE</th>
                   )}
                   {userInfo?.departmentID === 12 &&
-                    mrHeader.progress_id === 21 && <th>QUALITY CONTROL</th>}
+                    mrHeader.progress_id === 21 && <th style={{ width: "160px" }}>QUALITY CONTROL</th>}
                   {mrHeader.progress_id === 24 &&
-                    userInfo?.departmentID === 11 && <th>STOCKS</th>}
+                    userInfo?.departmentID === 11 && <th style={{ width: "120px" }}>STOCKS</th>}
                   {mrHeader.progress_id === 23 &&
-                    userInfo?.departmentID === 9 && <th>RESOLUTION</th>}
+                    userInfo?.departmentID === 9 && <th style={{ width: "140px" }}>RESOLUTION</th>}
                 </tr>
               </thead>
               <tbody>

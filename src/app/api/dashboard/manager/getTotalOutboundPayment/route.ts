@@ -86,14 +86,14 @@ export async function POST(request: Request) {
            AND ${committedClause}`,
       );
 
-      // Top projects by LPO count.
+      // Top projects by total LPO amount.
       const [projectRows]: any = await db.query(
-        `SELECT h.project_name, COUNT(DISTINCT lpo.id) AS mr_count
+        `SELECT h.project_name, COALESCE(SUM(lpo.total), 0) AS total_amount
          FROM lpo
          JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
          WHERE ${lpoIssuedClause}
          GROUP BY h.project_name
-         ORDER BY mr_count DESC`,
+         ORDER BY total_amount DESC`,
       );
 
       // Top suppliers by total amount.
@@ -188,15 +188,15 @@ export async function POST(request: Request) {
       [filter],
     );
 
-    // Top projects (date-filtered).
+    // Top projects by total LPO amount (date-filtered).
     const [projectRows]: any = await db.query(
-      `SELECT h.project_name, COUNT(DISTINCT lpo.id) AS mr_count
+      `SELECT h.project_name, COALESCE(SUM(lpo.total), 0) AS total_amount
        FROM lpo
        JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
        WHERE ${lpoIssuedClause}
          AND ${dateFilterClause}
        GROUP BY h.project_name
-       ORDER BY mr_count DESC`,
+       ORDER BY total_amount DESC`,
       [filter],
     );
 

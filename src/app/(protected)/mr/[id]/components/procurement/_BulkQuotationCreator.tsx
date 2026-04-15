@@ -48,17 +48,30 @@ export default function BulkQuotationCreator({
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [quotationRows, setQuotationRows] = useState<QuotationRow[]>([]);
 
-  const totalSelectedQty = selectedItems.reduce(
-    (sum, item) => sum + Number(item.quantity || 0),
-    0,
-  );
-
   const formatNumber = (value: unknown): string => {
     const num = Number(value);
     if (isNaN(num)) return "";
     if (Number.isInteger(num)) return num.toString();
     return parseFloat(num.toFixed(3)).toString();
   };
+
+  const qtyByUnit = selectedItems.reduce(
+    (acc, item) => {
+      const unit = (item.unit || "").toUpperCase();
+      acc[unit] = (acc[unit] || 0) + Number(item.quantity || 0);
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  const formattedQty = Object.entries(qtyByUnit)
+    .map(([unit, qty]) => `${formatNumber(qty)} ${unit}`)
+    .join(" + ");
+
+  const totalSelectedQty = selectedItems.reduce(
+    (sum, item) => sum + Number(item.quantity || 0),
+    0,
+  );
 
   async function fetchSuppliers() {
     try {
@@ -360,7 +373,7 @@ export default function BulkQuotationCreator({
                         />
                       )}
                     </td>
-                    <td>{formatNumber(totalSelectedQty)}</td>
+                    <td>{formattedQty}</td>
                     <td style={{ minWidth: "250px" }}>
                       <div className="input-prefix right">
                         <span>AED</span>

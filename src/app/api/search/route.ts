@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const searchTerm = `%${query}%`;
 
     // Extract numeric ID from patterns like MR-00001, LPO-00012, BOQ-00003, PR-00001
-    const idMatch = query.match(/^(?:MR|JO|PR|LPO|BOQ|RAY|DN)-?(\d+)$/i);
+    const idMatch = query.match(/^(?:MR|JO|PR|LPO|BOQ|RAY|DN|TA)-?(\d+)$/i);
     const numericId = idMatch ? parseInt(idMatch[1], 10) : null;
 
     // Also try parsing as a plain number
@@ -271,6 +271,32 @@ export async function GET(req: NextRequest) {
       [searchTerm, searchTerm, searchTerm, searchTerm, numericId || plainNumber || -1],
     );
 
+    // 8. Search Transactions (stocks_transfer_issue)
+    const [transactionRows]: any = await db.query(
+      `SELECT
+        sti.id,
+        CONCAT('TA-', LPAD(sti.id, 5, '0')) as display_id,
+        sti.type,
+        sti.transferee,
+        sti.receiver_name,
+        sti.from_location,
+        sti.to_location,
+        sti.purpose,
+        sti.created_on,
+        p.name as project_name
+      FROM stocks_transfer_issue sti
+      LEFT JOIN projects p ON sti.project_id = p.id
+      WHERE
+        CONCAT('TA-', LPAD(sti.id, 5, '0')) LIKE ?
+        OR sti.transferee LIKE ?
+        OR sti.receiver_name LIKE ?
+        OR p.name LIKE ?
+        OR sti.id = ?
+      ORDER BY sti.created_on DESC
+      LIMIT 5`,
+      [searchTerm, searchTerm, searchTerm, searchTerm, numericId || plainNumber || -1],
+    );
+
     // Parse document rows into individual document entries
     const parseFiles = (val: any): string[] => {
       if (!val) return [];
@@ -421,6 +447,11 @@ export async function GET(req: NextRequest) {
           ...row,
           category: "INVENTORY",
           url: `/inventory/${row.id}`,
+        })),
+        transactions: transactionRows.map((row: any) => ({
+          ...row,
+          category: "TRANSACTION",
+          url: `__transaction__${row.id}`,
         })),
         documents: documents.slice(0, 15),
       },

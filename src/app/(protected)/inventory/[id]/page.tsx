@@ -5,6 +5,7 @@ import TransactionTimeline from "./components/TransactionTimeline";
 import ManualAddToStockButton from "./components/_ManualAddStockButton";
 import TransferIssueStocksButton from "./components/_TransferIssueStockButton";
 import StockLocationChart from "./components/StockLocationChart";
+import StockHistoryWidget from "./components/StockHistoryWidget";
 import QrCodePrintButton from "./components/_QrCodePrintButton";
 import EditInventoryItemButton from "../components/_EditInventoryItemButton";
 import TopSuppliersChart from "./components/TopSuppliersChart";
@@ -301,6 +302,15 @@ export default async function InventoryItemWithID({
 
           <div className="widget-container">
             <StockLocationChart
+              stocks={stockData.stocks}
+              stocksTransferIssue={stockData.stocksTransferIssue}
+              unit={inventoryItem.unit}
+            />
+          </div>
+          <br />
+          <br />
+          <div className="widget-container">
+            <StockHistoryWidget
               stocks={stockData.stocks}
               stocksTransferIssue={stockData.stocksTransferIssue}
               unit={inventoryItem.unit}

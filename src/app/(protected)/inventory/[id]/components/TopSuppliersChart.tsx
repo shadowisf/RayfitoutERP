@@ -90,7 +90,7 @@ export default function TopSuppliersChart({
 
     // Add initial stock quantities by supplier
     stocks.forEach((stock) => {
-      const supplier = stock.supplier_name || "Others";
+      const supplier = stock.supplier_name || "Unspecified";
       if (!supplierMap[supplier]) {
         supplierMap[supplier] = 0;
       }
@@ -108,7 +108,7 @@ export default function TopSuppliersChart({
           const originalStock = stocks.find(
             (s) => s.location === transaction.from_location,
           );
-          const supplier = originalStock?.supplier_name || "Others";
+          const supplier = originalStock?.supplier_name || "Unspecified";
 
           if (supplierMap[supplier]) {
             const quantity = toNumber(transaction.quantity);
@@ -143,7 +143,7 @@ export default function TopSuppliersChart({
     "#87CEEB", // Light Blue
     "#FFD700", // Gold
     "#FF6B6B", // Red
-    "#D3D3D3", // Gray - Others (typically last)
+    "#D3D3D3", // Gray - Unspecified (typically last)
   ];
 
   // Transform data for the chart - ensure value is number

@@ -886,6 +886,17 @@ label {
     }
   }
 
+  &.fixed-layout {
+    table-layout: fixed;
+    width: 100%;
+
+    td {
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+    }
+  }
+
   &.popup-hover {
     th {
       background-color: transparent;

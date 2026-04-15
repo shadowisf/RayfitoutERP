@@ -331,7 +331,6 @@ export default function EditSubcontractorButton({
               value={trn}
               type={"text"}
               onChange={(e) => setTrn(e.target.value)}
-              required
             />
           </div>
 
