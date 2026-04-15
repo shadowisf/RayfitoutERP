@@ -17,7 +17,11 @@ type props = {
   iconOnly?: boolean;
 };
 
-export default function EditSupplierButton({ supplier, onSuccess, iconOnly }: props) {
+export default function EditSupplierButton({
+  supplier,
+  onSuccess,
+  iconOnly,
+}: props) {
   const router = useRouter();
 
   const pencilIcon = "/icons/pencil.svg";
@@ -286,9 +290,7 @@ export default function EditSupplierButton({ supplier, onSuccess, iconOnly }: pr
         onClick={() => setIsOpen(true)}
         full={!iconOnly}
         style={
-          iconOnly
-            ? { padding: "7px 7px" }
-            : { justifyContent: "flex-start" }
+          iconOnly ? { padding: "7px 7px" } : { justifyContent: "flex-start" }
         }
       >
         <img src={pencilIcon} alt="pencil" />
@@ -435,7 +437,6 @@ export default function EditSupplierButton({ supplier, onSuccess, iconOnly }: pr
                     value={trn}
                     type={"text"}
                     onChange={(e) => setTrn(e.target.value)}
-                    required
                   />
                 </div>
               )}

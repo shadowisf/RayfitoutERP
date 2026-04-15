@@ -292,12 +292,13 @@ const TransactionCard = ({
                       inventoryItem={inventoryItem}
                       batchID={transaction.batch_id}
                     />
-                    {userInfo?.departmentID === 8 && (
-                      <DeleteTransactionButton
-                        transferID={transaction.id}
-                        type="stock"
-                      />
-                    )}
+                    {userInfo?.departmentID === 8 ||
+                      (userInfo?.departmentID === 16 && (
+                        <DeleteTransactionButton
+                          transferID={transaction.id}
+                          type="stock"
+                        />
+                      ))}
                   </div>
 
                   {/* {transaction.location && (

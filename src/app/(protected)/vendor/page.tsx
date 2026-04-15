@@ -398,7 +398,7 @@ export default function VendorManagement() {
               }
               style={{
                 width: "400px",
-                padding: "10px 40px 10px 15px",
+                padding: "7px 40px 7px 15px",
                 borderRadius: "8px",
                 border: "1px solid rgba(223, 223, 223, 1)",
                 fontSize: "14px",

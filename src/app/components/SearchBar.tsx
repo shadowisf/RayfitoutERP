@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import TransactionDetailsPopUpButton from "@/app/(protected)/inventory/[id]/components/_IssueDetailsPopUpButton";
 
 interface SearchResult {
   id: number | string;
@@ -43,6 +44,7 @@ interface SearchResults {
   boqs: SearchResult[];
   projects: SearchResult[];
   inventory: SearchResult[];
+  transactions: SearchResult[];
   documents: SearchResult[];
 }
 
@@ -150,6 +152,8 @@ function getSubtitle(item: SearchResult): string {
       return [item.name].filter(Boolean).join(" - ");
     case "DOCUMENT":
       return [item.supplier_name].filter(Boolean).join(" - ");
+    case "TRANSACTION":
+      return [item.type, item.project_name].filter(Boolean).join(" - ");
     case "INVENTORY":
       return [item.description].filter(Boolean).join(" - ");
     default:
@@ -163,6 +167,7 @@ export default function SearchBar() {
   const [results, setResults] = useState<SearchResults | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
+  const [openTransferPopupId, setOpenTransferPopupId] = useState<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -253,7 +258,9 @@ export default function SearchBar() {
     setIsOpen(false);
     setQuery("");
     setResults(null);
-    if (item.category === "DOCUMENT" && item.file_name) {
+    if (item.category === "TRANSACTION") {
+      setOpenTransferPopupId(item.id as number);
+    } else if (item.category === "DOCUMENT" && item.file_name) {
       window.open(item.file_name, "_blank");
     } else {
       router.push(item.url);
@@ -293,6 +300,7 @@ export default function SearchBar() {
       results.boqs.length > 0 ||
       results.projects.length > 0 ||
       (results.inventory?.length || 0) > 0 ||
+      (results.transactions?.length || 0) > 0 ||
       (results.documents?.length || 0) > 0);
 
   const totalResults = results
@@ -301,6 +309,7 @@ export default function SearchBar() {
       results.boqs.length +
       results.projects.length +
       (results.inventory?.length || 0) +
+      (results.transactions?.length || 0) +
       (results.documents?.length || 0)
     : 0;
 
@@ -331,6 +340,12 @@ export default function SearchBar() {
       categorizedResults.push({
         category: "INVENTORY",
         items: results.inventory,
+      });
+    }
+    if (results.transactions?.length > 0) {
+      categorizedResults.push({
+        category: "TRANSACTION",
+        items: results.transactions,
       });
     }
     if (results.documents?.length > 0) {
@@ -476,6 +491,13 @@ export default function SearchBar() {
             </div>
           )}
         </div>
+      )}
+      {openTransferPopupId !== null && (
+        <TransactionDetailsPopUpButton
+          transferID={openTransferPopupId}
+          autoOpen
+          onClose={() => setOpenTransferPopupId(null)}
+        />
       )}
     </div>
   );

@@ -24,11 +24,44 @@ export default function AlertsAndRiskMrsWidget() {
   const [showCriticalPopup, setShowCriticalPopup] = useState(false);
   const [criticalMousePos, setCriticalMousePos] = useState({ x: 0, y: 0 });
   const criticalHoverTimer = useRef<NodeJS.Timeout | null>(null);
+  const criticalHideTimer = useRef<NodeJS.Timeout | null>(null);
+  const criticalWidgetRef = useRef<HTMLDivElement>(null);
 
   // Hover popup state for Late Deliveries
   const [showLatePopup, setShowLatePopup] = useState(false);
   const [lateMousePos, setLateMousePos] = useState({ x: 0, y: 0 });
   const lateHoverTimer = useRef<NodeJS.Timeout | null>(null);
+  const lateHideTimer = useRef<NodeJS.Timeout | null>(null);
+  const lateWidgetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowCriticalPopup(false);
+      setShowLatePopup(false);
+    };
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, []);
+
+  useEffect(() => {
+    const handleCloseAll = (e: Event) => {
+      const customE = e as CustomEvent;
+      if (customE.detail?.source !== "alerts-risks") {
+        setShowCriticalPopup(false);
+        setShowLatePopup(false);
+        if (criticalHoverTimer.current) {
+          clearTimeout(criticalHoverTimer.current);
+          criticalHoverTimer.current = null;
+        }
+        if (lateHoverTimer.current) {
+          clearTimeout(lateHoverTimer.current);
+          lateHoverTimer.current = null;
+        }
+      }
+    };
+    window.addEventListener("close-all-hover-popups", handleCloseAll);
+    return () => window.removeEventListener("close-all-hover-popups", handleCloseAll);
+  }, []);
 
   useEffect(() => {
     fetch(
@@ -64,38 +97,64 @@ export default function AlertsAndRiskMrsWidget() {
 
   // Hover handlers for Critical MRs
   const handleCriticalMouseEnter = (e: React.MouseEvent) => {
+    window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "alerts-risks" } }));
+    if (criticalHideTimer.current) { clearTimeout(criticalHideTimer.current); criticalHideTimer.current = null; }
     setCriticalMousePos({ x: e.clientX, y: e.clientY });
-    criticalHoverTimer.current = setTimeout(() => {
-      setShowCriticalPopup(true);
-    }, 2000);
+    if (!showCriticalPopup) {
+      criticalHoverTimer.current = setTimeout(() => {
+        setShowCriticalPopup(true);
+        window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "alerts-risks" } }));
+      }, 2000);
+    }
   };
   const handleCriticalMouseMove = (e: React.MouseEvent) => {
-    setCriticalMousePos({ x: e.clientX, y: e.clientY });
+    if (!showCriticalPopup) setCriticalMousePos({ x: e.clientX, y: e.clientY });
   };
   const handleCriticalMouseLeave = () => {
     if (criticalHoverTimer.current) {
       clearTimeout(criticalHoverTimer.current);
       criticalHoverTimer.current = null;
     }
-    setShowCriticalPopup(false);
+    if (showCriticalPopup) {
+      criticalHideTimer.current = setTimeout(() => setShowCriticalPopup(false), 2500);
+    }
+  };
+  const handleCriticalPopupEnter = () => {
+    if (criticalHideTimer.current) { clearTimeout(criticalHideTimer.current); criticalHideTimer.current = null; }
+  };
+  const handleCriticalPopupLeave = () => {
+    criticalHideTimer.current = setTimeout(() => setShowCriticalPopup(false), 2500);
   };
 
   // Hover handlers for Late Deliveries
   const handleLateMouseEnter = (e: React.MouseEvent) => {
+    window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "alerts-risks" } }));
+    if (lateHideTimer.current) { clearTimeout(lateHideTimer.current); lateHideTimer.current = null; }
     setLateMousePos({ x: e.clientX, y: e.clientY });
-    lateHoverTimer.current = setTimeout(() => {
-      setShowLatePopup(true);
-    }, 2000);
+    if (!showLatePopup) {
+      lateHoverTimer.current = setTimeout(() => {
+        setShowLatePopup(true);
+        window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "alerts-risks" } }));
+      }, 2000);
+    }
   };
   const handleLateMouseMove = (e: React.MouseEvent) => {
-    setLateMousePos({ x: e.clientX, y: e.clientY });
+    if (!showLatePopup) setLateMousePos({ x: e.clientX, y: e.clientY });
   };
   const handleLateMouseLeave = () => {
     if (lateHoverTimer.current) {
       clearTimeout(lateHoverTimer.current);
       lateHoverTimer.current = null;
     }
-    setShowLatePopup(false);
+    if (showLatePopup) {
+      lateHideTimer.current = setTimeout(() => setShowLatePopup(false), 2500);
+    }
+  };
+  const handleLatePopupEnter = () => {
+    if (lateHideTimer.current) { clearTimeout(lateHideTimer.current); lateHideTimer.current = null; }
+  };
+  const handleLatePopupLeave = () => {
+    lateHideTimer.current = setTimeout(() => setShowLatePopup(false), 2500);
   };
 
   const formatDaysOverdue = (dateStr: string) => {
@@ -120,6 +179,7 @@ export default function AlertsAndRiskMrsWidget() {
       >
         {/* Critical MRs */}
         <div
+          ref={criticalWidgetRef}
           style={{
             backgroundColor: "rgba(255, 226, 226, 1)",
             cursor: "pointer",
@@ -148,6 +208,9 @@ export default function AlertsAndRiskMrsWidget() {
             <OverviewHoverPopup
               mouseX={criticalMousePos.x}
               mouseY={criticalMousePos.y}
+              anchorRect={criticalWidgetRef.current?.getBoundingClientRect() ?? null}
+              onMouseEnter={handleCriticalPopupEnter}
+              onMouseLeave={handleCriticalPopupLeave}
               items={criticalItems}
               totalCount={criticalTotalCount}
               columns={[
@@ -165,6 +228,7 @@ export default function AlertsAndRiskMrsWidget() {
 
         {/* Late Deliveries */}
         <div
+          ref={lateWidgetRef}
           style={{
             backgroundColor: "rgba(255, 226, 226, 1)",
             cursor: "pointer",
@@ -193,6 +257,9 @@ export default function AlertsAndRiskMrsWidget() {
             <OverviewHoverPopup
               mouseX={lateMousePos.x}
               mouseY={lateMousePos.y}
+              anchorRect={lateWidgetRef.current?.getBoundingClientRect() ?? null}
+              onMouseEnter={handleLatePopupEnter}
+              onMouseLeave={handleLatePopupLeave}
               items={lateItems}
               totalCount={lateTotalCount}
               columns={[

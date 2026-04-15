@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       // Add source identifier and handle null suppliers
       const stocksWithSource = stocksRows.map((row) => ({
         ...row,
-        supplier_name: row.supplier_name || "Others",
+        supplier_name: row.supplier_name || "Unspecified",
         source_table: "stocks",
       }));
 

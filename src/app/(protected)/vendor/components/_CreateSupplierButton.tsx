@@ -405,7 +405,6 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
                     value={trn}
                     type={"text"}
                     onChange={(e) => setTrn(e.target.value)}
-                    required
                   />
                 </div>
               )}

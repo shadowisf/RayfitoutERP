@@ -24,6 +24,8 @@ export const UNIT_OPTIONS = [
   "GLB",
   "CFT",
   "SHEET",
+  "CARTON",
+  "PACK",
 ] as const;
 
 export type UnitType = (typeof UNIT_OPTIONS)[number];

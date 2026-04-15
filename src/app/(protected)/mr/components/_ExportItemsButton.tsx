@@ -8,9 +8,10 @@ import RequestedItemsPDF, { RequestedItem } from "./RequestedItemsPDF";
 
 type Props = {
   selectedItems: RequestedItem[];
+  disabled?: boolean;
 };
 
-export default function ExportItemsButton({ selectedItems }: Props) {
+export default function ExportItemsButton({ selectedItems, disabled }: Props) {
   const [showPopup, setShowPopup] = useState(false);
   const [exportMrRef, setExportMrRef] = useState(false);
   const [exportRequester, setExportRequester] = useState(false);
@@ -53,17 +54,22 @@ export default function ExportItemsButton({ selectedItems }: Props) {
     <>
       <Button
         componentType={"button"}
-        bgColor={"black"}
-        borderColor={"black"}
-        textColor={"white"}
-        onClick={() => setShowPopup(true)}
-        style={{ padding: "7px 20px" }}
+        bgColor={disabled ? "rgba(200, 200, 200, 1)" : "black"}
+        borderColor={disabled ? "rgba(200, 200, 200, 1)" : "black"}
+        textColor={disabled ? "rgba(150, 150, 150, 1)" : "white"}
+        onClick={() => !disabled && setShowPopup(true)}
+        style={{
+          padding: "7px 20px",
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.6 : 1,
+        }}
+        disabled={disabled}
       >
         EXPORT ITEMS{" "}
         <img
           src={downloadIcon}
           alt="download"
-          style={{ filter: "invert(1)" }}
+          style={{ filter: disabled ? "invert(0.6)" : "invert(1)" }}
         />
       </Button>
 

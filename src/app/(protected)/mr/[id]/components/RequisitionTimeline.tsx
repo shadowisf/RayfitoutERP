@@ -539,7 +539,7 @@ export default function RequisitionTimeline({
                       textAlign: "left",
                     }}
                   >
-                    {stage.isRollback ? "ROLLED BACK BY" : "SUBMITTED BY"}
+                    {stage.isRollback ? "ROLLED BACK BY" : stage.isRejection ? "REJECTED BY" : "SUBMITTED BY"}
                   </p>
                   <p
                     style={{

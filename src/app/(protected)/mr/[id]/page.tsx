@@ -121,7 +121,11 @@ export default async function MrWithID({
       const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
       const minutes = totalMinutes % 60;
 
-      const durationString = `${String(days).padStart(2, "0")}:${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+      const durationParts: string[] = [];
+      if (days > 0) durationParts.push(`${days}d`);
+      if (hours > 0) durationParts.push(`${hours}h`);
+      if (minutes > 0 || durationParts.length === 0) durationParts.push(`${minutes}m`);
+      const durationString = durationParts.join(" ");
 
       let durationStyle = {
         color: "black",

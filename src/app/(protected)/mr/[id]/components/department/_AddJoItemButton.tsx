@@ -52,6 +52,12 @@ export default function AddJoItemButton({
 
   const router = useRouter();
 
+  const formatQty = (val: any) => {
+    const num = Number(val);
+    if (isNaN(num)) return val;
+    return num % 1 === 0 ? num.toFixed(0) : parseFloat(num.toFixed(2)).toString();
+  };
+
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -84,7 +90,7 @@ export default function AddJoItemButton({
       ids.forEach((id) => {
         const boq = lines.find((l) => l.id === id);
         newQtys[id] =
-          subcontractedQtys[id] || String(boq?.quantity ?? "") || "";
+          subcontractedQtys[id] || (boq?.quantity != null ? formatQty(boq.quantity) : "") || "";
       });
       setSubcontractedQtys(newQtys);
     }
@@ -403,7 +409,7 @@ export default function AddJoItemButton({
                         </div>
                       </td>
                       <td>
-                        {boq.quantity} {boq.unit}
+                        {formatQty(boq.quantity)} {boq.unit}
                       </td>
                       <td>
                         <InputItem

@@ -36,12 +36,14 @@ export default function InventoryArchive() {
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
   const [filters, setFilters] = useState<{
+    selectedParentCategories: string[];
     selectedCategories: string[];
     selectedLocations: string[];
     selectedProjects: number[];
     stockAddedIn: string;
     selectedStockStatuses: string[];
   }>({
+    selectedParentCategories: [],
     selectedCategories: [],
     selectedLocations: [],
     selectedProjects: [],
@@ -364,6 +366,10 @@ export default function InventoryArchive() {
     new Set(inventory.map((item) => item.category_name)),
   ).sort();
 
+  const subcategories = Array.from(
+    new Set(inventory.map((item) => item.subcategory_name).filter(Boolean)),
+  ).sort();
+
   useEffect(() => {
     checkScroll();
     window.addEventListener("resize", checkScroll);
@@ -377,9 +383,15 @@ export default function InventoryArchive() {
   const getProcessedInventory = () => {
     let processed = inventory;
 
+    if (filters.selectedParentCategories.length > 0) {
+      processed = processed.filter((item) =>
+        filters.selectedParentCategories.includes(item.category_name),
+      );
+    }
+
     if (filters.selectedCategories.length > 0) {
       processed = processed.filter((item) =>
-        filters.selectedCategories.includes(item.category_name),
+        filters.selectedCategories.includes(item.subcategory_name),
       );
     }
 
@@ -556,6 +568,7 @@ export default function InventoryArchive() {
 
   const resetAllFilters = () => {
     setFilters({
+      selectedParentCategories: [],
       selectedCategories: [],
       selectedLocations: [],
       selectedProjects: [],
@@ -565,6 +578,7 @@ export default function InventoryArchive() {
   };
 
   const hasActiveFilters =
+    filters.selectedParentCategories.length > 0 ||
     filters.selectedCategories.length > 0 ||
     filters.selectedLocations.length > 0 ||
     filters.selectedProjects.length > 0 ||
@@ -917,7 +931,8 @@ export default function InventoryArchive() {
             ></div>
 
             <InventoryFilterButton
-              categories={categories}
+              parentCategories={categories}
+              categories={subcategories}
               onApplyFilters={setFilters}
               currentFilters={filters}
             />
@@ -930,6 +945,31 @@ export default function InventoryArchive() {
                   alignItems: "center",
                 }}
               >
+                {filters.selectedParentCategories.length > 0 && (
+                  <Button
+                    style={{
+                      borderRadius: "50px",
+                      fontWeight: 600,
+                      textWrap: "nowrap",
+                    }}
+                    componentType={"none"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                  >
+                    CATEGORY:{" "}
+                    <span
+                      style={{
+                        color: "rgba(16, 185, 129, 1)",
+                      }}
+                    >
+                      {filters.selectedParentCategories[0].toUpperCase()}
+                      {filters.selectedParentCategories.length > 1 &&
+                        `, +${filters.selectedParentCategories.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
                 {filters.selectedCategories.length > 0 && (
                   <Button
                     style={{
@@ -1345,6 +1385,7 @@ export default function InventoryArchive() {
         ) : (
           <div style={{ textAlign: "center", padding: "40px", color: "#888" }}>
             {searchQuery.trim() !== "" ||
+            filters.selectedParentCategories.length > 0 ||
             filters.selectedCategories.length > 0 ||
             filters.selectedLocations.length > 0 ||
             filters.selectedProjects.length > 0 ||

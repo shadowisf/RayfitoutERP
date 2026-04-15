@@ -265,7 +265,6 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
               value={trn}
               type={"text"}
               onChange={(e) => setTrn(e.target.value)}
-              required
             />
           </div>
 
