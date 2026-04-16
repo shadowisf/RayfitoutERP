@@ -79,7 +79,8 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
       }
     };
     window.addEventListener("close-all-hover-popups", handleCloseAll);
-    return () => window.removeEventListener("close-all-hover-popups", handleCloseAll);
+    return () =>
+      window.removeEventListener("close-all-hover-popups", handleCloseAll);
   }, []);
 
   useEffect(() => {
@@ -109,9 +110,7 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
         setDelayedVendors(data.delayed_vendors || []);
         setProjectImpactValue(data.project_impact_value || []);
         setTotalIssuedLpos(Number(data.total_issued_lpos) || 0);
-        setDateRange(
-          data.date_range || { earliest: null, latest: null },
-        );
+        setDateRange(data.date_range || { earliest: null, latest: null });
 
         if (lastWeekCount === 0) {
           if (thisWeekCount > 0) {
@@ -157,7 +156,11 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
   const handleMouseEnter = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("button, a, [role='button']")) return;
-    window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "pending-delivery" } }));
+    window.dispatchEvent(
+      new CustomEvent("close-all-hover-popups", {
+        detail: { source: "pending-delivery" },
+      }),
+    );
     cancelHideTimer();
     setMousePosition({ x: e.clientX, y: e.clientY });
     if (!showPopup) {
@@ -165,7 +168,11 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
       hoverTimer.current = setTimeout(() => {
         setIsWaiting(false);
         setShowPopup(true);
-        window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "pending-delivery" } }));
+        window.dispatchEvent(
+          new CustomEvent("close-all-hover-popups", {
+            detail: { source: "pending-delivery" },
+          }),
+        );
       }, 2000);
     }
   };
@@ -251,9 +258,10 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
     if (!widgetRef.current) return { left: 0, top: 10 };
     const rect = widgetRef.current.getBoundingClientRect();
     const spaceRight = window.innerWidth - rect.right;
-    const left = spaceRight >= popupWidth + 10
-      ? rect.right + 10
-      : rect.left - popupWidth - 10;
+    const left =
+      spaceRight >= popupWidth + 10
+        ? rect.right + 10
+        : rect.left - popupWidth - 10;
     return { left: Math.max(10, left), top: 10 };
   };
 
@@ -261,19 +269,9 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
   // DD MMM YYYY"). Returns null when either bound is missing.
   const formatDateRange = (): string | null => {
     if (!dateRange.earliest || !dateRange.latest) return null;
-    const opts: Intl.DateTimeFormatOptions = {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    };
-    const earliest = new Date(dateRange.earliest).toLocaleDateString(
-      "en-GB",
-      opts,
-    );
-    const latest = new Date(dateRange.latest).toLocaleDateString(
-      "en-GB",
-      opts,
-    );
+
+    const earliest = new Date(dateRange.earliest).toLocaleDateString("en-GB");
+    const latest = new Date(dateRange.latest).toLocaleDateString("en-GB");
     return `from ${earliest} to ${latest}`;
   };
   const dateRangeText = formatDateRange();
@@ -578,13 +576,7 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
             }}
           >
             Based on {totalIssuedLpos.toLocaleString("en-US")} issued LPO
-            {totalIssuedLpos === 1 ? "" : "s"}
-            {dateRangeText && (
-              <>
-                <br />
-                {dateRangeText}
-              </>
-            )}
+            {totalIssuedLpos === 1 ? "" : "s"} {dateRangeText && dateRangeText}
           </p>
         </div>
       )}

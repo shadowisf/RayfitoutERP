@@ -80,7 +80,8 @@ export default function ActiveMrsWidget({ filterDays }: props) {
       }
     };
     window.addEventListener("close-all-hover-popups", handleCloseAll);
-    return () => window.removeEventListener("close-all-hover-popups", handleCloseAll);
+    return () =>
+      window.removeEventListener("close-all-hover-popups", handleCloseAll);
   }, []);
 
   useEffect(() => {
@@ -108,9 +109,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
         setBottleneckStages(data.bottleneck_stages || []);
         setProjectsAtRisk(data.projects_at_risk || []);
         setMostRequestedSubcategories(data.most_requested_subcategories || []);
-        setDateRange(
-          data.date_range || { earliest: null, latest: null },
-        );
+        setDateRange(data.date_range || { earliest: null, latest: null });
 
         // Calculate percentage change
         if (lastWeekCount === 0) {
@@ -158,7 +157,11 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   const handleMouseEnter = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("button, a, [role='button']")) return;
-    window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "active-mrs" } }));
+    window.dispatchEvent(
+      new CustomEvent("close-all-hover-popups", {
+        detail: { source: "active-mrs" },
+      }),
+    );
     cancelHideTimer();
     setMousePosition({ x: e.clientX, y: e.clientY });
     if (!showPopup) {
@@ -166,7 +169,11 @@ export default function ActiveMrsWidget({ filterDays }: props) {
       hoverTimer.current = setTimeout(() => {
         setIsWaiting(false);
         setShowPopup(true);
-        window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "active-mrs" } }));
+        window.dispatchEvent(
+          new CustomEvent("close-all-hover-popups", {
+            detail: { source: "active-mrs" },
+          }),
+        );
       }, 2000);
     }
   };
@@ -250,9 +257,10 @@ export default function ActiveMrsWidget({ filterDays }: props) {
     if (!widgetRef.current) return { left: 0, top: 10 };
     const rect = widgetRef.current.getBoundingClientRect();
     const spaceRight = window.innerWidth - rect.right;
-    const left = spaceRight >= popupWidth + 10
-      ? rect.right + 10
-      : rect.left - popupWidth - 10;
+    const left =
+      spaceRight >= popupWidth + 10
+        ? rect.right + 10
+        : rect.left - popupWidth - 10;
     return { left: Math.max(10, left), top: 10 };
   };
 
@@ -319,19 +327,9 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   // subtext can be omitted entirely.
   const formatDateRange = (): string | null => {
     if (!dateRange.earliest || !dateRange.latest) return null;
-    const opts: Intl.DateTimeFormatOptions = {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    };
-    const earliest = new Date(dateRange.earliest).toLocaleDateString(
-      "en-GB",
-      opts,
-    );
-    const latest = new Date(dateRange.latest).toLocaleDateString(
-      "en-GB",
-      opts,
-    );
+
+    const earliest = new Date(dateRange.earliest).toLocaleDateString("en-GB");
+    const latest = new Date(dateRange.latest).toLocaleDateString("en-GB");
     return `from ${earliest} to ${latest}`;
   };
   const dateRangeText = formatDateRange();
@@ -643,13 +641,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
               margin: 0,
             }}
           >
-            Based on {thisWeek} active MRs
-            {dateRangeText && (
-              <>
-                <br />
-                {dateRangeText}
-              </>
-            )}
+            Based on {thisWeek} active MRs {dateRangeText && dateRangeText}
           </p>
         </div>
       )}
