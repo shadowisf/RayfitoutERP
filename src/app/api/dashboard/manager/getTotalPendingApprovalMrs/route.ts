@@ -1,6 +1,65 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+// Median of a numeric array (matches getAvgTimeSpentPerStage's algorithm)
+function getMedian(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+  }
+  return sorted[mid];
+}
+
+// Build a map of progress_id -> median historical duration (minutes) by
+// running the EXACT same query logic as Active MRs. This makes the
+// bottleneck "median time" values match the "Median Time Spent Per Stage"
+// widget for any given stage.
+async function buildStageMediansMap(
+  db: any,
+  filter: number,
+): Promise<Record<number, number>> {
+  const whereClause =
+    filter > 0
+      ? `WHERE pl1.changed_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`
+      : "";
+  const query = `
+    SELECT
+      pl1.progress_id,
+      TIMESTAMPDIFF(
+        MINUTE,
+        pl1.changed_at,
+        COALESCE(pl2.changed_at, NOW())
+      ) AS duration_minutes
+    FROM mr_header_progress_log pl1
+    LEFT JOIN mr_header_progress_log pl2
+      ON pl1.mr_header_id = pl2.mr_header_id
+      AND pl2.id = (
+        SELECT MIN(id)
+        FROM mr_header_progress_log
+        WHERE mr_header_id = pl1.mr_header_id
+        AND id > pl1.id
+      )
+    ${whereClause}
+  `;
+  const params = filter > 0 ? [filter] : [];
+  const [rows]: any = await db.query(query, params);
+
+  const durationsByStage: Record<number, number[]> = {};
+  for (const row of rows) {
+    const pid = Number(row.progress_id);
+    if (!durationsByStage[pid]) durationsByStage[pid] = [];
+    durationsByStage[pid].push(Math.round(row.duration_minutes || 0));
+  }
+
+  const medians: Record<number, number> = {};
+  for (const [pid, durs] of Object.entries(durationsByStage)) {
+    medians[Number(pid)] = getMedian(durs);
+  }
+  return medians;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -63,15 +122,23 @@ export async function POST(request: Request) {
         type: "mr",
       }));
 
-      // Bottleneck stages: group pending approvals by current progress stage with avg time in stage
-      const [bottleneckRows]: any = await db.query(
-        `SELECT progress_id, progress_name, COUNT(*) AS mr_count,
-           AVG(TIMESTAMPDIFF(MINUTE, date_requested, NOW())) AS median_minutes
+      // Bottleneck stages: count per progress_id (current state),
+      // and use HISTORICAL median from mr_header_progress_log (same as Active MRs).
+      const [bottleneckCountRows]: any = await db.query(
+        `SELECT progress_id, progress_name, COUNT(*) AS mr_count
          FROM vw_mr_headers
          WHERE ${pendingClause}
          GROUP BY progress_id, progress_name
          ORDER BY mr_count DESC`,
       );
+
+      const stageMediansMap = await buildStageMediansMap(db, filter);
+      const bottleneckRows = bottleneckCountRows.map((r: any) => ({
+        progress_id: Number(r.progress_id),
+        progress_name: r.progress_name,
+        mr_count: Number(r.mr_count),
+        median_minutes: stageMediansMap[Number(r.progress_id)] || 0,
+      }));
 
       // Projects at risk: group pending approvals by project
       const [projectRows]: any = await db.query(
@@ -80,6 +147,15 @@ export async function POST(request: Request) {
          WHERE ${pendingClause}
          GROUP BY project_name
          ORDER BY mr_count DESC`,
+      );
+
+      // Date range: earliest and latest creation date within the current scope
+      const [dateRangeRows]: any = await db.query(
+        `SELECT
+           MIN(date_requested) AS earliest,
+           MAX(date_requested) AS latest
+         FROM vw_mr_headers
+         WHERE ${pendingClause}`,
       );
 
       const count = Number(breakdownRows[0].this_week) || 0;
@@ -94,6 +170,10 @@ export async function POST(request: Request) {
           payment_count: Number(breakdownRows[0].payment_count) || 0,
           bottleneck_stages: bottleneckRows,
           projects_at_risk: projectRows,
+          date_range: {
+            earliest: dateRangeRows[0]?.earliest || null,
+            latest: dateRangeRows[0]?.latest || null,
+          },
         },
         { status: 200 },
       );
@@ -134,10 +214,10 @@ export async function POST(request: Request) {
       type: "mr",
     }));
 
-    // Bottleneck stages with avg time in stage (filtered by date)
-    const [bottleneckRows]: any = await db.query(
-      `SELECT progress_id, progress_name, COUNT(*) AS mr_count,
-         AVG(TIMESTAMPDIFF(MINUTE, date_requested, NOW())) AS median_minutes
+    // Bottleneck stages (date-filtered) — count grouped by current progress,
+    // median comes from historical log via buildStageMediansMap.
+    const [bottleneckCountRows]: any = await db.query(
+      `SELECT progress_id, progress_name, COUNT(*) AS mr_count
        FROM vw_mr_headers
        WHERE ${pendingClause}
          AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
@@ -145,6 +225,14 @@ export async function POST(request: Request) {
        ORDER BY mr_count DESC`,
       [filter],
     );
+
+    const stageMediansMap = await buildStageMediansMap(db, filter);
+    const bottleneckRows = bottleneckCountRows.map((r: any) => ({
+      progress_id: Number(r.progress_id),
+      progress_name: r.progress_name,
+      mr_count: Number(r.mr_count),
+      median_minutes: stageMediansMap[Number(r.progress_id)] || 0,
+    }));
 
     // Projects at risk (filtered by date)
     const [projectRows]: any = await db.query(
@@ -154,6 +242,17 @@ export async function POST(request: Request) {
          AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
        GROUP BY project_name
        ORDER BY mr_count DESC`,
+      [filter],
+    );
+
+    // Date range (filtered by date)
+    const [dateRangeRows]: any = await db.query(
+      `SELECT
+         MIN(date_requested) AS earliest,
+         MAX(date_requested) AS latest
+       FROM vw_mr_headers
+       WHERE ${pendingClause}
+         AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
       [filter],
     );
 
@@ -169,6 +268,10 @@ export async function POST(request: Request) {
         payment_count: Number(rows[0].payment_count) || 0,
         bottleneck_stages: bottleneckRows,
         projects_at_risk: projectRows,
+        date_range: {
+          earliest: dateRangeRows[0]?.earliest || null,
+          latest: dateRangeRows[0]?.latest || null,
+        },
       },
       { status: 200 },
     );

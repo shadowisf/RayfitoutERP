@@ -67,11 +67,31 @@ export async function POST(request: Request) {
       })),
     ].slice(0, maxItems);
 
+    // Date range: earliest/latest creation date across critical MRs and LPOs
+    const [dateRangeRows]: any = await db.query(`
+      SELECT MIN(created_at) AS earliest, MAX(created_at) AS latest FROM (
+        SELECT date_requested AS created_at
+        FROM vw_mr_headers
+        WHERE required_date < CURDATE()
+          AND progress_id < 26 AND progress_id != 25
+        UNION ALL
+        SELECT l.created_at
+        FROM lpo l
+        WHERE l.progress_id > 12
+          AND l.delivery_date < CURDATE()
+          AND l.progress_id != 25
+      ) AS combined
+    `);
+
     return NextResponse.json(
       {
         overdue_count: totalOverdue,
         items,
         total_count: totalOverdue,
+        date_range: {
+          earliest: dateRangeRows[0]?.earliest || null,
+          latest: dateRangeRows[0]?.latest || null,
+        },
       },
       { status: 200 },
     );

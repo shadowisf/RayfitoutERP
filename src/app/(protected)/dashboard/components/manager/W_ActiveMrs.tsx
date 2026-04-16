@@ -45,6 +45,10 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   const [mostRequestedSubcategories, setMostRequestedSubcategories] = useState<
     RequestedSubcategory[]
   >([]);
+  const [dateRange, setDateRange] = useState<{
+    earliest: string | null;
+    latest: string | null;
+  }>({ earliest: null, latest: null });
 
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
@@ -104,6 +108,9 @@ export default function ActiveMrsWidget({ filterDays }: props) {
         setBottleneckStages(data.bottleneck_stages || []);
         setProjectsAtRisk(data.projects_at_risk || []);
         setMostRequestedSubcategories(data.most_requested_subcategories || []);
+        setDateRange(
+          data.date_range || { earliest: null, latest: null },
+        );
 
         // Calculate percentage change
         if (lastWeekCount === 0) {
@@ -306,6 +313,28 @@ export default function ActiveMrsWidget({ filterDays }: props) {
     (sum, s) => sum + Number(s.mr_count),
     0,
   );
+
+  // Format the date range footer ("from DD MMM YYYY to DD MMM YYYY")
+  // using en-GB locale. Returns null when either bound is missing so the
+  // subtext can be omitted entirely.
+  const formatDateRange = (): string | null => {
+    if (!dateRange.earliest || !dateRange.latest) return null;
+    const opts: Intl.DateTimeFormatOptions = {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    };
+    const earliest = new Date(dateRange.earliest).toLocaleDateString(
+      "en-GB",
+      opts,
+    );
+    const latest = new Date(dateRange.latest).toLocaleDateString(
+      "en-GB",
+      opts,
+    );
+    return `from ${earliest} to ${latest}`;
+  };
+  const dateRangeText = formatDateRange();
 
   return (
     <div
@@ -615,6 +644,12 @@ export default function ActiveMrsWidget({ filterDays }: props) {
             }}
           >
             Based on {thisWeek} active MRs
+            {dateRangeText && (
+              <>
+                <br />
+                {dateRangeText}
+              </>
+            )}
           </p>
         </div>
       )}

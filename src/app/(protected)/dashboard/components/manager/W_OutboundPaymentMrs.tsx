@@ -36,6 +36,10 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   const [topProjects, setTopProjects] = useState<TopProject[]>([]);
   const [topSuppliers, setTopSuppliers] = useState<TopSupplier[]>([]);
   const [lpoCount, setLpoCount] = useState<number>(0);
+  const [dateRange, setDateRange] = useState<{
+    earliest: string | null;
+    latest: string | null;
+  }>({ earliest: null, latest: null });
 
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
@@ -101,6 +105,9 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
         setTopProjects(data.top_projects || []);
         setTopSuppliers(data.top_suppliers || []);
         setLpoCount(data.lpo_count || 0);
+        setDateRange(
+          data.date_range || { earliest: null, latest: null },
+        );
 
         if (lastWeekCount === 0) {
           if (thisWeekCount > 0) {
@@ -255,6 +262,27 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   };
 
   const balance = paidTotal + committedTotal;
+
+  // Format the date range footer using en-GB locale ("from DD MMM YYYY to
+  // DD MMM YYYY"). Returns null when either bound is missing.
+  const formatDateRange = (): string | null => {
+    if (!dateRange.earliest || !dateRange.latest) return null;
+    const opts: Intl.DateTimeFormatOptions = {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    };
+    const earliest = new Date(dateRange.earliest).toLocaleDateString(
+      "en-GB",
+      opts,
+    );
+    const latest = new Date(dateRange.latest).toLocaleDateString(
+      "en-GB",
+      opts,
+    );
+    return `from ${earliest} to ${latest}`;
+  };
+  const dateRangeText = formatDateRange();
 
   return (
     <div
@@ -591,6 +619,12 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
             }}
           >
             Based on {lpoCount} issued LPOs
+            {dateRangeText && (
+              <>
+                <br />
+                {dateRangeText}
+              </>
+            )}
           </p>
         </div>
       )}

@@ -12,10 +12,18 @@ export default function AlertsAndRiskMrsWidget() {
   const [totalCriticalMrs, setTotalCriticalMrs] = useState<number>(0);
   const [criticalItems, setCriticalItems] = useState<any[]>([]);
   const [criticalTotalCount, setCriticalTotalCount] = useState<number>(0);
+  const [criticalDateRange, setCriticalDateRange] = useState<{
+    earliest: string | null;
+    latest: string | null;
+  }>({ earliest: null, latest: null });
 
   const [totalLateDeliveries, setTotalLateDeliveries] = useState<number>(0);
   const [lateItems, setLateItems] = useState<any[]>([]);
   const [lateTotalCount, setLateTotalCount] = useState<number>(0);
+  const [lateDateRange, setLateDateRange] = useState<{
+    earliest: string | null;
+    latest: string | null;
+  }>({ earliest: null, latest: null });
 
   const [totalPendingResolutions, setTotalPendingResolutions] =
     useState<number>(0);
@@ -77,6 +85,9 @@ export default function AlertsAndRiskMrsWidget() {
         setTotalCriticalMrs(data.overdue_count || 0);
         setCriticalItems(data.items || []);
         setCriticalTotalCount(data.total_count || 0);
+        setCriticalDateRange(
+          data.date_range || { earliest: null, latest: null },
+        );
       });
 
     fetch(
@@ -92,6 +103,9 @@ export default function AlertsAndRiskMrsWidget() {
         setTotalLateDeliveries(data.overdue_count || 0);
         setLateItems(data.items || []);
         setLateTotalCount(data.total_count || 0);
+        setLateDateRange(
+          data.date_range || { earliest: null, latest: null },
+        );
       });
   }, []);
 
@@ -222,6 +236,7 @@ export default function AlertsAndRiskMrsWidget() {
                 },
               ]}
               emptyMessage="No critical MRs"
+              dateRange={criticalDateRange}
             />
           )}
         </div>
@@ -271,6 +286,7 @@ export default function AlertsAndRiskMrsWidget() {
                 },
               ]}
               emptyMessage="No late deliveries"
+              dateRange={lateDateRange}
             />
           )}
         </div>

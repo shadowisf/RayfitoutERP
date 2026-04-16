@@ -196,6 +196,14 @@ export async function POST(request: Request) {
          ORDER BY item_count DESC`,
       );
 
+      // Date range: earliest/latest MR creation within current scope
+      const [dateRangeRows]: any = await db.query(
+        `SELECT
+           MIN(date_requested) AS earliest,
+           MAX(date_requested) AS latest
+         FROM vw_mr_headers ${activeWhere}`,
+      );
+
       return NextResponse.json(
         {
           this_week: thisWeek,
@@ -205,6 +213,10 @@ export async function POST(request: Request) {
           bottleneck_stages: bottleneckRows,
           projects_at_risk: projectRows,
           most_requested_subcategories: subcategoryRows,
+          date_range: {
+            earliest: dateRangeRows[0]?.earliest || null,
+            latest: dateRangeRows[0]?.latest || null,
+          },
         },
         { status: 200 },
       );
@@ -298,6 +310,14 @@ export async function POST(request: Request) {
        ORDER BY item_count DESC`,
     );
 
+    // Date range (date-filtered)
+    const [dateRangeRows]: any = await db.query(
+      `SELECT
+         MIN(date_requested) AS earliest,
+         MAX(date_requested) AS latest
+       FROM vw_mr_headers ${activeWhere}`,
+    );
+
     return NextResponse.json(
       {
         this_week: thisWeek,
@@ -307,6 +327,10 @@ export async function POST(request: Request) {
         bottleneck_stages: bottleneckRows,
         projects_at_risk: projectRows,
         most_requested_subcategories: subcategoryRows,
+        date_range: {
+          earliest: dateRangeRows[0]?.earliest || null,
+          latest: dateRangeRows[0]?.latest || null,
+        },
       },
       { status: 200 },
     );
