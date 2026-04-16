@@ -40,6 +40,10 @@ export default function PendingApprovalMrsWidget({ filterDays }: props) {
     [],
   );
   const [projectsAtRisk, setProjectsAtRisk] = useState<ProjectAtRisk[]>([]);
+  const [dateRange, setDateRange] = useState<{
+    earliest: string | null;
+    latest: string | null;
+  }>({ earliest: null, latest: null });
 
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
@@ -106,6 +110,7 @@ export default function PendingApprovalMrsWidget({ filterDays }: props) {
         setPaymentCount(data.payment_count || 0);
         setBottleneckStages(data.bottleneck_stages || []);
         setProjectsAtRisk(data.projects_at_risk || []);
+        setDateRange(data.date_range || { earliest: null, latest: null });
 
         if (lastWeekCount === 0) {
           if (thisWeekCount > 0) {
@@ -151,7 +156,11 @@ export default function PendingApprovalMrsWidget({ filterDays }: props) {
   const handleMouseEnter = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("button, a, [role='button']")) return;
-    window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "pending-approvals" } }));
+    window.dispatchEvent(
+      new CustomEvent("close-all-hover-popups", {
+        detail: { source: "pending-approvals" },
+      }),
+    );
     cancelHideTimer();
     setMousePosition({ x: e.clientX, y: e.clientY });
     if (!showPopup) {
@@ -289,6 +298,17 @@ export default function PendingApprovalMrsWidget({ filterDays }: props) {
     { count: Number(joCount) || 0, label: "Job Orders" },
     { count: Number(paymentCount) || 0, label: "Payment Requests" },
   ].filter((entry) => entry.count > 0);
+
+  // Format the date range footer ("from DD MMM YYYY to DD MMM YYYY")
+  // using en-GB locale. Returns null when either bound is missing.
+  const formatDateRange = (): string | null => {
+    if (!dateRange.earliest || !dateRange.latest) return null;
+
+    const earliest = new Date(dateRange.earliest).toLocaleDateString("en-GB");
+    const latest = new Date(dateRange.latest).toLocaleDateString("en-GB");
+    return `from ${earliest} to ${latest}`;
+  };
+  const dateRangeText = formatDateRange();
 
   // Filter bottleneck stages to only show approval-related stages
   const approvalStages = bottleneckStages.filter((stage) => {
@@ -584,7 +604,7 @@ export default function PendingApprovalMrsWidget({ filterDays }: props) {
             }}
           >
             Based on {thisWeek} MR
-            {thisWeek === 1 ? "" : "s"}
+            {thisWeek === 1 ? "" : "s"} {dateRangeText && dateRangeText}
           </p>
         </div>
       )}

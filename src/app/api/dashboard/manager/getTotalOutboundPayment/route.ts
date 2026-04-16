@@ -133,6 +133,16 @@ export async function POST(request: Request) {
         type: "lpo",
       }));
 
+      // Date range: earliest/latest LPO creation within current scope
+      const [dateRangeRows]: any = await db.query(
+        `SELECT
+           MIN(lpo.created_at) AS earliest,
+           MAX(lpo.created_at) AS latest
+         FROM lpo
+         JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
+         WHERE ${lpoIssuedClause}`,
+      );
+
       return NextResponse.json(
         {
           ...rows[0],
@@ -143,6 +153,10 @@ export async function POST(request: Request) {
           top_projects: projectRows,
           top_suppliers: supplierRows,
           lpo_count: Number(countRows[0]?.lpo_count) || 0,
+          date_range: {
+            earliest: dateRangeRows[0]?.earliest || null,
+            latest: dateRangeRows[0]?.latest || null,
+          },
         },
         { status: 200 },
       );
@@ -242,6 +256,19 @@ export async function POST(request: Request) {
       type: "lpo",
     }));
 
+    // Date range (date-filtered) — uses h.date_requested to match all other
+    // date-filtered sections in this endpoint.
+    const [dateRangeRows]: any = await db.query(
+      `SELECT
+         MIN(h.date_requested) AS earliest,
+         MAX(h.date_requested) AS latest
+       FROM lpo
+       JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
+       WHERE ${lpoIssuedClause}
+         AND ${dateFilterClause}`,
+      [filter],
+    );
+
     return NextResponse.json(
       {
         ...rows[0],
@@ -252,6 +279,10 @@ export async function POST(request: Request) {
         top_projects: projectRows,
         top_suppliers: supplierRows,
         lpo_count: Number(countRows[0]?.lpo_count) || 0,
+        date_range: {
+          earliest: dateRangeRows[0]?.earliest || null,
+          latest: dateRangeRows[0]?.latest || null,
+        },
       },
       { status: 200 },
     );

@@ -36,6 +36,10 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   const [topProjects, setTopProjects] = useState<TopProject[]>([]);
   const [topSuppliers, setTopSuppliers] = useState<TopSupplier[]>([]);
   const [lpoCount, setLpoCount] = useState<number>(0);
+  const [dateRange, setDateRange] = useState<{
+    earliest: string | null;
+    latest: string | null;
+  }>({ earliest: null, latest: null });
 
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
@@ -71,7 +75,8 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
       }
     };
     window.addEventListener("close-all-hover-popups", handleCloseAll);
-    return () => window.removeEventListener("close-all-hover-popups", handleCloseAll);
+    return () =>
+      window.removeEventListener("close-all-hover-popups", handleCloseAll);
   }, []);
 
   useEffect(() => {
@@ -101,6 +106,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
         setTopProjects(data.top_projects || []);
         setTopSuppliers(data.top_suppliers || []);
         setLpoCount(data.lpo_count || 0);
+        setDateRange(data.date_range || { earliest: null, latest: null });
 
         if (lastWeekCount === 0) {
           if (thisWeekCount > 0) {
@@ -146,7 +152,11 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   const handleMouseEnter = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("button, a, [role='button']")) return;
-    window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "outbound-payment" } }));
+    window.dispatchEvent(
+      new CustomEvent("close-all-hover-popups", {
+        detail: { source: "outbound-payment" },
+      }),
+    );
     cancelHideTimer();
     setMousePosition({ x: e.clientX, y: e.clientY });
     if (!showPopup) {
@@ -154,7 +164,11 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
       hoverTimer.current = setTimeout(() => {
         setIsWaiting(false);
         setShowPopup(true);
-        window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "outbound-payment" } }));
+        window.dispatchEvent(
+          new CustomEvent("close-all-hover-popups", {
+            detail: { source: "outbound-payment" },
+          }),
+        );
       }, 2000);
     }
   };
@@ -248,13 +262,25 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
     if (!widgetRef.current) return { left: 0, top: 10 };
     const rect = widgetRef.current.getBoundingClientRect();
     const spaceRight = window.innerWidth - rect.right;
-    const left = spaceRight >= popupWidth + 10
-      ? rect.right + 10
-      : rect.left - popupWidth - 10;
+    const left =
+      spaceRight >= popupWidth + 10
+        ? rect.right + 10
+        : rect.left - popupWidth - 10;
     return { left: Math.max(10, left), top: 10 };
   };
 
   const balance = paidTotal + committedTotal;
+
+  // Format the date range footer using en-GB locale ("from DD MMM YYYY to
+  // DD MMM YYYY"). Returns null when either bound is missing.
+  const formatDateRange = (): string | null => {
+    if (!dateRange.earliest || !dateRange.latest) return null;
+
+    const earliest = new Date(dateRange.earliest).toLocaleDateString("en-GB");
+    const latest = new Date(dateRange.latest).toLocaleDateString("en-GB");
+    return `from ${earliest} to ${latest}`;
+  };
+  const dateRangeText = formatDateRange();
 
   return (
     <div
@@ -590,7 +616,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
               margin: 0,
             }}
           >
-            Based on {lpoCount} issued LPOs
+            Based on {lpoCount} issued LPOs {dateRangeText && dateRangeText}
           </p>
         </div>
       )}

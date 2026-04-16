@@ -90,6 +90,15 @@ export async function POST(request: Request) {
         `SELECT COUNT(*) AS total_issued FROM lpo WHERE progress_id != 1`,
       );
 
+      // Date range: earliest/latest LPO creation within current scope
+      const [dateRangeRows]: any = await db.query(
+        `SELECT
+           MIN(l.created_at) AS earliest,
+           MAX(l.created_at) AS latest
+         FROM lpo l
+         WHERE ${deliveryClause}`,
+      );
+
       const count = rows[0].this_week || 0;
       return NextResponse.json(
         {
@@ -102,6 +111,10 @@ export async function POST(request: Request) {
           delayed_vendors: vendorRows,
           project_impact_value: projectRows,
           total_issued_lpos: Number(issuedRows[0].total_issued) || 0,
+          date_range: {
+            earliest: dateRangeRows[0]?.earliest || null,
+            latest: dateRangeRows[0]?.latest || null,
+          },
         },
         { status: 200 },
       );
@@ -181,6 +194,17 @@ export async function POST(request: Request) {
       `SELECT COUNT(*) AS total_issued FROM lpo WHERE progress_id != 1`,
     );
 
+    // Date range (date-filtered)
+    const [dateRangeRows]: any = await db.query(
+      `SELECT
+         MIN(l.created_at) AS earliest,
+         MAX(l.created_at) AS latest
+       FROM lpo l
+       WHERE ${deliveryClause}
+         AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
+      [filter],
+    );
+
     const thisWeek = rows[0].this_week || 0;
     return NextResponse.json(
       {
@@ -192,6 +216,10 @@ export async function POST(request: Request) {
         delayed_vendors: vendorRows,
         project_impact_value: projectRows,
         total_issued_lpos: Number(issuedRows[0].total_issued) || 0,
+        date_range: {
+          earliest: dateRangeRows[0]?.earliest || null,
+          latest: dateRangeRows[0]?.latest || null,
+        },
       },
       { status: 200 },
     );

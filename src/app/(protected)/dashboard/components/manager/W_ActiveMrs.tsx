@@ -45,6 +45,10 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   const [mostRequestedSubcategories, setMostRequestedSubcategories] = useState<
     RequestedSubcategory[]
   >([]);
+  const [dateRange, setDateRange] = useState<{
+    earliest: string | null;
+    latest: string | null;
+  }>({ earliest: null, latest: null });
 
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
@@ -76,7 +80,8 @@ export default function ActiveMrsWidget({ filterDays }: props) {
       }
     };
     window.addEventListener("close-all-hover-popups", handleCloseAll);
-    return () => window.removeEventListener("close-all-hover-popups", handleCloseAll);
+    return () =>
+      window.removeEventListener("close-all-hover-popups", handleCloseAll);
   }, []);
 
   useEffect(() => {
@@ -104,6 +109,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
         setBottleneckStages(data.bottleneck_stages || []);
         setProjectsAtRisk(data.projects_at_risk || []);
         setMostRequestedSubcategories(data.most_requested_subcategories || []);
+        setDateRange(data.date_range || { earliest: null, latest: null });
 
         // Calculate percentage change
         if (lastWeekCount === 0) {
@@ -151,7 +157,11 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   const handleMouseEnter = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("button, a, [role='button']")) return;
-    window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "active-mrs" } }));
+    window.dispatchEvent(
+      new CustomEvent("close-all-hover-popups", {
+        detail: { source: "active-mrs" },
+      }),
+    );
     cancelHideTimer();
     setMousePosition({ x: e.clientX, y: e.clientY });
     if (!showPopup) {
@@ -159,7 +169,11 @@ export default function ActiveMrsWidget({ filterDays }: props) {
       hoverTimer.current = setTimeout(() => {
         setIsWaiting(false);
         setShowPopup(true);
-        window.dispatchEvent(new CustomEvent("close-all-hover-popups", { detail: { source: "active-mrs" } }));
+        window.dispatchEvent(
+          new CustomEvent("close-all-hover-popups", {
+            detail: { source: "active-mrs" },
+          }),
+        );
       }, 2000);
     }
   };
@@ -243,9 +257,10 @@ export default function ActiveMrsWidget({ filterDays }: props) {
     if (!widgetRef.current) return { left: 0, top: 10 };
     const rect = widgetRef.current.getBoundingClientRect();
     const spaceRight = window.innerWidth - rect.right;
-    const left = spaceRight >= popupWidth + 10
-      ? rect.right + 10
-      : rect.left - popupWidth - 10;
+    const left =
+      spaceRight >= popupWidth + 10
+        ? rect.right + 10
+        : rect.left - popupWidth - 10;
     return { left: Math.max(10, left), top: 10 };
   };
 
@@ -306,6 +321,18 @@ export default function ActiveMrsWidget({ filterDays }: props) {
     (sum, s) => sum + Number(s.mr_count),
     0,
   );
+
+  // Format the date range footer ("from DD MMM YYYY to DD MMM YYYY")
+  // using en-GB locale. Returns null when either bound is missing so the
+  // subtext can be omitted entirely.
+  const formatDateRange = (): string | null => {
+    if (!dateRange.earliest || !dateRange.latest) return null;
+
+    const earliest = new Date(dateRange.earliest).toLocaleDateString("en-GB");
+    const latest = new Date(dateRange.latest).toLocaleDateString("en-GB");
+    return `from ${earliest} to ${latest}`;
+  };
+  const dateRangeText = formatDateRange();
 
   return (
     <div
@@ -614,7 +641,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
               margin: 0,
             }}
           >
-            Based on {thisWeek} active MRs
+            Based on {thisWeek} active MRs {dateRangeText && dateRangeText}
           </p>
         </div>
       )}

@@ -11,6 +11,21 @@ type OverviewHoverPopupProps = {
   anchorRect?: DOMRect | null;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  dateRange?: { earliest: string | null; latest: string | null } | null;
+};
+
+const formatDateRange = (
+  range: { earliest: string | null; latest: string | null } | null | undefined,
+): string | null => {
+  if (!range || !range.earliest || !range.latest) return null;
+  const opts: Intl.DateTimeFormatOptions = {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  };
+  const earliest = new Date(range.earliest).toLocaleDateString("en-GB", opts);
+  const latest = new Date(range.latest).toLocaleDateString("en-GB", opts);
+  return `from ${earliest} to ${latest}`;
 };
 
 export default function OverviewHoverPopup({
@@ -24,7 +39,9 @@ export default function OverviewHoverPopup({
   anchorRect,
   onMouseEnter,
   onMouseLeave,
+  dateRange,
 }: OverviewHoverPopupProps) {
+  const dateRangeText = formatDateRange(dateRange);
   const popupWidth = 360;
 
   let left: number;
@@ -139,6 +156,18 @@ export default function OverviewHoverPopup({
             }}
           >
             CLICK WIDGET TO VIEW DETAILS
+            {dateRangeText && (
+              <div
+                style={{
+                  fontStyle: "italic",
+                  fontWeight: 400,
+                  color: "#999",
+                  marginTop: "4px",
+                }}
+              >
+                {dateRangeText}
+              </div>
+            )}
           </div>
         </>
       ) : (

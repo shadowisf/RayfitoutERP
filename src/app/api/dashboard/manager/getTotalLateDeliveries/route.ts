@@ -35,11 +35,23 @@ export async function POST(request: Request) {
 
     const count = rows[0].overdue_count || 0;
 
+    // Date range: earliest/latest LPO creation for overdue deliveries
+    const [dateRangeRows]: any = await db.query(`
+      SELECT MIN(l.created_at) AS earliest, MAX(l.created_at) AS latest
+      FROM lpo l
+      WHERE l.delivery_date < CURDATE()
+        AND l.progress_id != 25 AND l.progress_id = 17
+    `);
+
     return NextResponse.json(
       {
         overdue_count: count,
         items,
         total_count: count,
+        date_range: {
+          earliest: dateRangeRows[0]?.earliest || null,
+          latest: dateRangeRows[0]?.latest || null,
+        },
       },
       { status: 200 },
     );
