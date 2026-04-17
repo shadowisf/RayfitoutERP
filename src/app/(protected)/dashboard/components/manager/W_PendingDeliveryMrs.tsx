@@ -54,9 +54,6 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
   const widgetRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
 
-  // Expand states
-  const [expandedVendors, setExpandedVendors] = useState(false);
-  const [expandedProjects, setExpandedProjects] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -140,8 +137,6 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
       setShowPopup(false);
-      setExpandedVendors(false);
-      setExpandedProjects(false);
     }, 2500);
   };
 
@@ -446,10 +441,7 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
                 <span style={{ color: "#aaa" }}>No data</span>
               ) : (
                 <>
-                  {(expandedVendors
-                    ? delayedVendors
-                    : delayedVendors.slice(0, 5)
-                  ).map((vendor, idx) => (
+                  {delayedVendors.slice(0, 5).map((vendor, idx) => (
                     <div
                       key={`${vendor.supplier_name}-${idx}`}
                       style={{
@@ -471,19 +463,8 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
                       </span>
                     </div>
                   ))}
-                  {delayedVendors.length > 5 && !expandedVendors && (
-                    <span
-                      style={{
-                        color: "#555",
-                        textDecoration: "underline",
-                        cursor: "pointer",
-                        pointerEvents: "auto",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedVendors(true);
-                      }}
-                    >
+                  {delayedVendors.length > 5 && (
+                    <span style={{ color: "#555" }}>
                       ... and {delayedVendors.length - 5} more vendors
                     </span>
                   )}
@@ -510,10 +491,7 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
                 <span style={{ color: "#aaa" }}>No data</span>
               ) : (
                 <>
-                  {(expandedProjects
-                    ? projectImpactValue
-                    : projectImpactValue.slice(0, 5)
-                  ).map((project, idx) => (
+                  {projectImpactValue.slice(0, 5).map((project, idx) => (
                     <div
                       key={`${project.project_name}-${idx}`}
                       style={{
@@ -538,19 +516,8 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
                       </span>
                     </div>
                   ))}
-                  {projectImpactValue.length > 5 && !expandedProjects && (
-                    <span
-                      style={{
-                        color: "#555",
-                        textDecoration: "underline",
-                        cursor: "pointer",
-                        pointerEvents: "auto",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedProjects(true);
-                      }}
-                    >
+                  {projectImpactValue.length > 5 && (
+                    <span style={{ color: "#555" }}>
                       ... and {projectImpactValue.length - 5} more projects
                     </span>
                   )}

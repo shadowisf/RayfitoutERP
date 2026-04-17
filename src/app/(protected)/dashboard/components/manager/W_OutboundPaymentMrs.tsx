@@ -50,9 +50,6 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
   const widgetRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
 
-  // Expand state for sections
-  const [expandedProjects, setExpandedProjects] = useState(false);
-  const [expandedSuppliers, setExpandedSuppliers] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -136,8 +133,6 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
       setShowPopup(false);
-      setExpandedProjects(false);
-      setExpandedSuppliers(false);
     }, 2500);
   };
 
@@ -475,10 +470,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
                 <span style={{ color: "#aaa" }}>No data</span>
               ) : (
                 <>
-                  {(expandedProjects
-                    ? topProjects
-                    : topProjects.slice(0, 5)
-                  ).map((project) => (
+                  {topProjects.slice(0, 5).map((project) => (
                     <div
                       key={project.project_name}
                       style={{
@@ -503,20 +495,8 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
                       </span>
                     </div>
                   ))}
-                  {topProjects.length > 5 && !expandedProjects && (
-                    <span
-                      style={{
-                        color: "#555",
-                        textDecoration: "underline",
-                        cursor: "pointer",
-                        pointerEvents: "auto",
-                        fontStyle: "italic",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedProjects(true);
-                      }}
-                    >
+                  {topProjects.length > 5 && (
+                    <span style={{ color: "#555" }}>
                       ... and {topProjects.length - 5} more projects
                     </span>
                   )}
@@ -547,10 +527,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
                 <span style={{ color: "#aaa" }}>No data</span>
               ) : (
                 <>
-                  {(expandedSuppliers
-                    ? topSuppliers
-                    : topSuppliers.slice(0, 5)
-                  ).map((supplier) => (
+                  {topSuppliers.slice(0, 5).map((supplier) => (
                     <div
                       key={supplier.supplier_name}
                       style={{
@@ -578,21 +555,9 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
                       </span>
                     </div>
                   ))}
-                  {topSuppliers.length > 5 && !expandedSuppliers && (
-                    <span
-                      style={{
-                        color: "#555",
-                        textDecoration: "underline",
-                        cursor: "pointer",
-                        pointerEvents: "auto",
-                        fontStyle: "italic",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedSuppliers(true);
-                      }}
-                    >
-                      ... and {topSuppliers.length - 5} more items
+                  {topSuppliers.length > 5 && (
+                    <span style={{ color: "#555" }}>
+                      ... and {topSuppliers.length - 5} more suppliers
                     </span>
                   )}
                 </>

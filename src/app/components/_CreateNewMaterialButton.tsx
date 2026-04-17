@@ -12,7 +12,7 @@ import CreateCategoryButton from "../(protected)/mr/[id]/components/department/_
 import CreateSubCategoryButton from "../(protected)/mr/[id]/components/department/_CreateSubcategoryButton";
 
 type CreateNewMaterialButtonProps = {
-  onSuccess: (newItem: PredefinedItem) => void;
+  onSuccess?: (newItem: PredefinedItem) => void;
   style?: React.CSSProperties;
 };
 
@@ -95,7 +95,7 @@ export default function CreateNewMaterialButton({
 
       const newItem: PredefinedItem = await res.json();
 
-      onSuccess(newItem);
+      onSuccess && onSuccess(newItem);
 
       // Reset and close
       setShowNewMaterial(false);
@@ -156,7 +156,9 @@ export default function CreateNewMaterialButton({
           required
           style={{ width: "350px" }}
           bottomButtonComponent={
-            <CreateSubCategoryButton materialCategoryID={Number(newMatCategoryID)} />
+            <CreateSubCategoryButton
+              materialCategoryID={Number(newMatCategoryID)}
+            />
           }
         />
       </div>

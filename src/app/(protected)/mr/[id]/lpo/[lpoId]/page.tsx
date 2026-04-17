@@ -94,7 +94,8 @@ export default async function LpoWithID({
       const durationParts: string[] = [];
       if (days > 0) durationParts.push(`${days}d`);
       if (hours > 0) durationParts.push(`${hours}h`);
-      if (minutes > 0 || durationParts.length === 0) durationParts.push(`${minutes}m`);
+      if (minutes > 0 || durationParts.length === 0)
+        durationParts.push(`${minutes}m`);
       const durationString = durationParts.join(" ");
 
       let durationStyle = {
@@ -440,6 +441,13 @@ export default async function LpoWithID({
             <h2>{mrHeader.department_name}</h2>
           </div>
 
+          <div>
+            <small>CREATION DATE</small>
+            <h2>
+              {new Date(mrHeader.date_requested).toLocaleDateString("en-GB")}
+            </h2>
+          </div>
+
           {mrHeader.required_date && (
             <div
               style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}
@@ -505,7 +513,7 @@ export default async function LpoWithID({
 
           {!isCompleted && (
             <div>
-              <small>CURRENT PROGRESS DURATION</small>
+              <small>CURRENT STAGE DURATION</small>
               <div
                 style={{
                   padding: "4px 8px",

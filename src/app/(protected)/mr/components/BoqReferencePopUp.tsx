@@ -8,7 +8,7 @@ import Button from "@/app/components/Button";
 import { MrHeader } from "../[id]/types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import DownloadBoqButton from "@/app/(protected)/project/[id]/boq/[boqId]/components/manager/_DownloadBoqButton";
-import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type BoqReferencePopUpProps = {
   mrHeader: MrHeader;
@@ -440,7 +440,34 @@ export default function BoqReferencePopUp({
 
       {isOpen && (
         <FormPopUp
-          header="BILL OF QUANTITY REFERENCE"
+          header={(() => {
+            const uniqueBoqIds = [
+              ...new Set(boqItems.map((b) => b.boq_header_id)),
+            ];
+            if (uniqueBoqIds.length === 1 && uniqueBoqIds[0]) {
+              return (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    alignItems: "center",
+                  }}
+                >
+                  BOQ-{uniqueBoqIds[0].toString().padStart(5, "0")}
+                  <Button
+                    componentType={"link"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"rgba(223, 223, 223, 1)"}
+                    textColor={"black"}
+                    href={`/project/${mrHeader.project_id}/boq/${uniqueBoqIds[0]}`}
+                    style={{ padding: "7px 7px" }}
+                  >
+                    <img src={externalLinkIcon} alt="Open BOQ" />
+                  </Button>
+                </div>
+              );
+            }
+          })()}
           setIsOpen={setIsOpen}
           style={{
             whiteSpace: "pre-wrap",
@@ -1005,7 +1032,8 @@ export default function BoqReferencePopUp({
                                   backgroundColor: bgColor,
                                 }}
                               >
-                                {formatQuantity(boqItem.quantity)} {boqItem.unit}
+                                {formatQuantity(boqItem.quantity)}{" "}
+                                {boqItem.unit}
                               </td>
                               {canSeePrice && (
                                 <td
@@ -1302,7 +1330,8 @@ export default function BoqReferencePopUp({
                                     backgroundColor: bgColor,
                                   }}
                                 >
-                                  {formatQuantity(boqItem.quantity)} {boqItem.unit}
+                                  {formatQuantity(boqItem.quantity)}{" "}
+                                  {boqItem.unit}
                                 </td>
                                 {canSeePrice && (
                                   <td

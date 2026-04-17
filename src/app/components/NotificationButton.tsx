@@ -1221,6 +1221,11 @@ export default function NotificationDropdown() {
           onOpen={() => {
             setToastNotification(null);
             setIsOpen(true);
+            // Mirror the manual-click behavior so clicking the toast to open
+            // the dropdown also marks everything as read.
+            if (notifications.some((n) => !n.is_read)) {
+              markAllAsRead();
+            }
           }}
           getNotificationStyle={getNotificationStyle}
         />
@@ -1259,7 +1264,16 @@ export default function NotificationDropdown() {
           }}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            const nextOpen = !isOpen;
+            setIsOpen(nextOpen);
+            // Auto-mark every notification as read the moment the dropdown
+            // opens — matches the user's expectation that simply viewing the
+            // list clears the unread indicator.
+            if (nextOpen && notifications.some((n) => !n.is_read)) {
+              markAllAsRead();
+            }
+          }}
         >
           <img
             src={notificationIcon}

@@ -9,6 +9,8 @@ import { useState } from "react";
 import AttachQuotationButton from "./_AttachQuotationButton";
 import CreateSupplierButton from "../../../../vendor/components/_CreateSupplierButton";
 import { useAuth } from "@/app/context/AuthContext";
+import { pdf } from "@react-pdf/renderer";
+import RequestedItemsPDF from "../../../components/RequestedItemsPDF";
 
 export type BulkQuotationItem = {
   line_id: number;
@@ -18,6 +20,12 @@ export type BulkQuotationItem = {
   unit: string;
   progress_id: number;
   type: string;
+  // Additional fields used for PDF export
+  delivery_location?: string;
+  progress_name?: string;
+  requested_by?: string;
+  project_name?: string;
+  lpo_id?: number | null;
 };
 
 type QuotationRow = {
@@ -47,6 +55,54 @@ export default function BulkQuotationCreator({
   const [quotationPopupOpen, setQuotationPopupOpen] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [quotationRows, setQuotationRows] = useState<QuotationRow[]>([]);
+
+  // Export selected items state
+  const [showExportPopup, setShowExportPopup] = useState(false);
+  const [exportMrRef, setExportMrRef] = useState(false);
+  const [exportRequester, setExportRequester] = useState(false);
+  const [exportProject, setExportProject] = useState(false);
+
+  const downloadIcon = "/icons/download.svg";
+
+  async function handleExportSelected() {
+    if (selectedItems.length === 0) return;
+    try {
+      const exportDate = new Date().toLocaleDateString("en-GB");
+      const pdfItems = selectedItems.map((item) => ({
+        line_id: item.line_id,
+        mr_header_id: item.mr_header_id,
+        material_description: item.material_description,
+        quantity: item.quantity,
+        unit: item.unit,
+        delivery_location: item.delivery_location || "",
+        progress_name: item.progress_name || "",
+        requested_by: item.requested_by || "",
+        project_name: item.project_name || "",
+        lpo_id: item.lpo_id,
+        type: item.type,
+      }));
+      const blob = await pdf(
+        <RequestedItemsPDF
+          items={pdfItems}
+          showMrRef={exportMrRef}
+          showRequester={exportRequester}
+          showProject={exportProject}
+          exportDate={exportDate}
+        />,
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Selected-Items-${exportDate.replace(/\//g, "-")}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setShowExportPopup(false);
+    } catch (err) {
+      console.error("Export failed", err);
+    }
+  }
 
   const formatNumber = (value: unknown): string => {
     const num = Number(value);
@@ -277,6 +333,20 @@ export default function BulkQuotationCreator({
           </Button>
           <Button
             componentType="button"
+            bgColor="black"
+            borderColor="white"
+            textColor="white"
+            onClick={() => setShowExportPopup(true)}
+          >
+            EXPORT SELECTED ITEM(S){" "}
+            <img
+              src={downloadIcon}
+              alt="download"
+              style={{ filter: "invert(1)" }}
+            />
+          </Button>
+          <Button
+            componentType="button"
             bgColor="white"
             borderColor="white"
             textColor="black"
@@ -445,6 +515,91 @@ export default function BulkQuotationCreator({
 
             <br />
           </>
+        </FormPopUp>
+      )}
+
+      {/* Export selected items popup */}
+      {showExportPopup && (
+        <FormPopUp
+          header={"EXPORT SELECTED ITEM(S)"}
+          setIsOpen={setShowExportPopup}
+          handleSubmit={async (e) => {
+            e.preventDefault();
+            await handleExportSelected();
+          }}
+          addButtonLabel={"CONFIRM"}
+        >
+          <h4>SHOW ON TABLE</h4>
+          <br />
+          <div
+            style={{
+              display: "flex",
+              gap: "20px",
+            }}
+          >
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={exportMrRef}
+                onChange={(e) => setExportMrRef(e.target.checked)}
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  accentColor: "rgba(0, 163, 93, 1)",
+                }}
+              />
+              <h3 style={{ fontWeight: "normal" }}>MR Ref.</h3>
+            </label>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={exportRequester}
+                onChange={(e) => setExportRequester(e.target.checked)}
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  accentColor: "rgba(0, 163, 93, 1)",
+                }}
+              />
+              <h3 style={{ fontWeight: "normal" }}>Requester</h3>
+            </label>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={exportProject}
+                onChange={(e) => setExportProject(e.target.checked)}
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  accentColor: "rgba(0, 163, 93, 1)",
+                }}
+              />
+              <h3 style={{ fontWeight: "normal" }}>Project</h3>
+            </label>
+          </div>
         </FormPopUp>
       )}
     </>

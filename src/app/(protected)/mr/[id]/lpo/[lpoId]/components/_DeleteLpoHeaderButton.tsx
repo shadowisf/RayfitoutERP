@@ -49,7 +49,8 @@ export default function DeleteLpoHeaderButton({ mrHeader, LpoHeader }: props) {
   if (
     userInfo?.departmentID === mrHeader.department_id ||
     userInfo?.departmentID === 8 ||
-    userInfo?.departmentID === 9
+    userInfo?.departmentID === 9 ||
+    userInfo?.departmentID === 16
   ) {
     return (
       <>
