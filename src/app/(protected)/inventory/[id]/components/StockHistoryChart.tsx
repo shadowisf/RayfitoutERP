@@ -20,7 +20,7 @@ interface StockHistoryChartProps {
   inventoryItemCreatedAt: string;
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload, isMonthly }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
 
@@ -46,6 +46,63 @@ const CustomTooltip = ({ active, payload }: any) => {
       );
     }
 
+    // Monthly view — only show transaction numbers
+    if (isMonthly) {
+      const allTransactions = [
+        ...(data.addedTransactions || []).map((t: any) => ({
+          id: `TA-${String(t.id).padStart(5, "0")}`,
+          type: "added",
+        })),
+        ...(data.removedTransactions || []).map((t: any) => ({
+          id: `TA-${String(t.id).padStart(5, "0")}`,
+          type: "removed",
+        })),
+      ];
+
+      return (
+        <div
+          style={{
+            backgroundColor: "white",
+            border: "2px solid #00804C",
+            padding: "12px",
+            borderRadius: "8px",
+            fontSize: "12px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            minWidth: "160px",
+          }}
+        >
+          <div style={{ fontWeight: "600", marginBottom: "8px" }}>
+            {data.displayDate}
+          </div>
+          {allTransactions.length > 0 ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "3px",
+              }}
+            >
+              {allTransactions.map((t: any, i: number) => (
+                <div
+                  key={i}
+                  style={{
+                    fontSize: "11px",
+                    color: t.type === "added" ? "#00804C" : "#C50C0F",
+                    fontWeight: "600",
+                  }}
+                >
+                  {t.id}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ color: "#737373" }}>No transactions</div>
+          )}
+        </div>
+      );
+    }
+
+    // Daily view — full tooltip
     return (
       <div
         style={{
@@ -83,7 +140,7 @@ const CustomTooltip = ({ active, payload }: any) => {
                   marginLeft: "8px",
                 }}
               >
-                • TA-{String(transaction.batch_id).padStart(5, "0")}:{" "}
+                • TA-{String(transaction.id).padStart(5, "0")}:{" "}
                 {transaction.quantity} {data.unit}
               </div>
             ))}
@@ -241,6 +298,7 @@ export default function StockHistoryChart({
 
       dataMap[key].added += stock.quantity;
       dataMap[key].addedTransactions.push({
+        id: stock.id,
         batch_id: stock.batch_id,
         quantity: stock.quantity,
       });
@@ -290,9 +348,9 @@ export default function StockHistoryChart({
     return dataWithCumulative;
   };
 
-  // Determine if we should group by day
-  const isSpecificMonth =
-    timePeriod !== "all" && timePeriod !== "12months" && timePeriod !== "";
+  // Periods that group by month (not day)
+  const monthlyPeriods = ["all", "12months", "6months", "3months"];
+  const isMonthlyView = monthlyPeriods.includes(timePeriod);
 
   // Get all data (monthly)
   const allMonthlyData = transformData(false);
@@ -307,6 +365,34 @@ export default function StockHistoryChart({
       const now = new Date();
       const cutoffDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
       return transformData(false).filter(
+        (item) => item.timestamp >= cutoffDate.getTime()
+      );
+    }
+
+    if (timePeriod === "6months") {
+      const now = new Date();
+      const cutoffDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      return transformData(false).filter(
+        (item) => item.timestamp >= cutoffDate.getTime()
+      );
+    }
+
+    if (timePeriod === "3months") {
+      const now = new Date();
+      const cutoffDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      return transformData(false).filter(
+        (item) => item.timestamp >= cutoffDate.getTime()
+      );
+    }
+
+    if (timePeriod === "30days") {
+      const now = new Date();
+      const cutoffDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 30
+      );
+      return transformData(true).filter(
         (item) => item.timestamp >= cutoffDate.getTime()
       );
     }
@@ -386,6 +472,9 @@ export default function StockHistoryChart({
           >
             <option value="all">ALL TIME</option>
             <option value="12months">LAST 12 MONTHS</option>
+            <option value="6months">LAST 6 MONTHS</option>
+            <option value="3months">LAST 3 MONTHS</option>
+            <option value="30days">LAST 30 DAYS</option>
             <option disabled>───────────</option>
             {availableMonths.map((month) => (
               <option key={month.value} value={month.value}>
@@ -430,7 +519,7 @@ export default function StockHistoryChart({
             />
 
             <Tooltip
-              content={<CustomTooltip />}
+              content={<CustomTooltip isMonthly={isMonthlyView} />}
               cursor={{ fill: "rgba(0,0,0,0.05)" }}
             />
 

@@ -8,7 +8,7 @@ import type { MrLine } from "./[id]/types/mrLine";
 import MrFilterButton from "./components/_MrFilterButton";
 import BulkQuotationCreator from "./[id]/components/procurement/_BulkQuotationCreator";
 import SupplierAndQuotationButton from "./[id]/components/procurement/_SupplierAndQuotationButton";
-import ExportItemsButton from "./components/_ExportItemsButton";
+import ExportItemsButton from "./components/_ExportAllItemsButton";
 
 type TableItem = {
   line_id: number;
@@ -252,7 +252,8 @@ export default function MR() {
             const durationParts: string[] = [];
             if (days > 0) durationParts.push(`${days}d`);
             if (hours > 0) durationParts.push(`${hours}h`);
-            if (minutes > 0 || durationParts.length === 0) durationParts.push(`${minutes}m`);
+            if (minutes > 0 || durationParts.length === 0)
+              durationParts.push(`${minutes}m`);
             const durationString = durationParts.join(" ");
 
             let durationStyle = {
@@ -348,7 +349,8 @@ export default function MR() {
             const durationParts: string[] = [];
             if (days > 0) durationParts.push(`${days}d`);
             if (hours > 0) durationParts.push(`${hours}h`);
-            if (minutes > 0 || durationParts.length === 0) durationParts.push(`${minutes}m`);
+            if (minutes > 0 || durationParts.length === 0)
+              durationParts.push(`${minutes}m`);
             const durationString = durationParts.join(" ");
 
             let durationStyle = {
@@ -2680,22 +2682,29 @@ function TableView({
   }
 
   function getCategoryTotalQty(items: TableItem[]): string {
-    const total = items.reduce(
-      (sum, item) => sum + Number(item.quantity || 0),
-      0,
-    );
-    if (total === 0) return "";
-    const uniqueUnits = [...new Set(items.map((i) => i.unit).filter(Boolean))];
-    const formatted = Number.isInteger(total)
-      ? total
-      : parseFloat(total.toFixed(3));
-    const unitStr =
-      uniqueUnits.length === 1
-        ? uniqueUnits[0]
-        : uniqueUnits.length > 1
-          ? uniqueUnits.join(" + ")
-          : "";
-    return `${formatted} ${unitStr}`;
+    // Sum quantities per unit instead of lumping every quantity into a single
+    // number. Items sharing the same unit are added together; items with
+    // different units are kept as separate segments. Result format example:
+    //   "23 BOX + 48 BAG + 3 NOS"
+    const totalsByUnit: Record<string, number> = {};
+    for (const item of items) {
+      const qty = Number(item.quantity || 0);
+      if (!qty) continue;
+      const unit = (item.unit || "").trim();
+      const key = unit || "__NO_UNIT__";
+      totalsByUnit[key] = (totalsByUnit[key] || 0) + qty;
+    }
+
+    const parts = Object.entries(totalsByUnit)
+      .filter(([, total]) => total > 0)
+      .map(([unit, total]) => {
+        const formatted = Number.isInteger(total)
+          ? total
+          : parseFloat(total.toFixed(3));
+        return unit === "__NO_UNIT__" ? `${formatted}` : `${formatted} ${unit}`;
+      });
+
+    return parts.join(" + ");
   }
 
   function getItemLink(item: TableItem): string {
@@ -2801,8 +2810,8 @@ function TableView({
                 </div>
                 {section.type === "material" && (
                   <ExportItemsButton
-                    selectedItems={selectedItems}
-                    disabled={selectedItems.length === 0}
+                    selectedItems={section.items}
+                    disabled={section.items.length === 0}
                   />
                 )}
               </div>
@@ -2830,9 +2839,7 @@ function TableView({
                             section.type === "material" ? "600px" : "600px",
                         }}
                       >
-                        {section.type === "job"
-                          ? "BOQ"
-                          : "CATEGORY"}
+                        {section.type === "job" ? "BOQ" : "CATEGORY"}
                       </th>
                       <th style={{ width: "300px" }}>REQ. QTY</th>
                       <th style={{ width: "175px" }}>REFERENCE</th>

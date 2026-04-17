@@ -140,9 +140,6 @@ export default function ActiveMrsWidget({ filterDays }: props) {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
       setShowPopup(false);
-      setExpandedBottleneck(false);
-      setExpandedProjects(false);
-      setExpandedMaterials(false);
     }, 2500);
   };
 
@@ -263,10 +260,6 @@ export default function ActiveMrsWidget({ filterDays }: props) {
         : rect.left - popupWidth - 10;
     return { left: Math.max(10, left), top: 10 };
   };
-
-  const [expandedBottleneck, setExpandedBottleneck] = useState(false);
-  const [expandedProjects, setExpandedProjects] = useState(false);
-  const [expandedMaterials, setExpandedMaterials] = useState(false);
 
   // Format a duration in minutes as the largest meaningful unit followed by
   // the immediate next smaller unit when there's a non-zero remainder. Each
@@ -438,10 +431,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
                 <span style={{ color: "#aaa" }}>No data</span>
               ) : (
                 <>
-                  {(expandedBottleneck
-                    ? bottleneckStages
-                    : bottleneckStages.slice(0, 5)
-                  ).map((stage) => (
+                  {bottleneckStages.slice(0, 5).map((stage) => (
                     <div
                       key={stage.progress_id}
                       style={{
@@ -471,19 +461,8 @@ export default function ActiveMrsWidget({ filterDays }: props) {
                       </span>
                     </div>
                   ))}
-                  {bottleneckStages.length > 5 && !expandedBottleneck && (
-                    <span
-                      style={{
-                        color: "#555",
-                        textDecoration: "underline",
-                        cursor: "pointer",
-                        pointerEvents: "auto",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedBottleneck(true);
-                      }}
-                    >
+                  {bottleneckStages.length > 5 && (
+                    <span style={{ color: "#555" }}>
                       ... and {bottleneckStages.length - 5} more stages
                     </span>
                   )}
@@ -510,10 +489,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
                 <span style={{ color: "#aaa" }}>No data</span>
               ) : (
                 <>
-                  {(expandedProjects
-                    ? projectsAtRisk
-                    : projectsAtRisk.slice(0, 5)
-                  ).map((project) => (
+                  {projectsAtRisk.slice(0, 5).map((project) => (
                     <div
                       key={project.project_name}
                       style={{
@@ -536,19 +512,8 @@ export default function ActiveMrsWidget({ filterDays }: props) {
                       </span>
                     </div>
                   ))}
-                  {projectsAtRisk.length > 5 && !expandedProjects && (
-                    <span
-                      style={{
-                        color: "#555",
-                        textDecoration: "underline",
-                        cursor: "pointer",
-                        pointerEvents: "auto",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedProjects(true);
-                      }}
-                    >
+                  {projectsAtRisk.length > 5 && (
+                    <span style={{ color: "#555" }}>
                       ... and {projectsAtRisk.length - 5} more projects
                     </span>
                   )}
@@ -575,10 +540,7 @@ export default function ActiveMrsWidget({ filterDays }: props) {
                 <span style={{ color: "#aaa" }}>No data</span>
               ) : (
                 <>
-                  {(expandedMaterials
-                    ? mostRequestedSubcategories
-                    : mostRequestedSubcategories.slice(0, 5)
-                  ).map((sub) => (
+                  {mostRequestedSubcategories.slice(0, 5).map((sub) => (
                     <div
                       key={sub.subcategory_name}
                       style={{
@@ -602,24 +564,12 @@ export default function ActiveMrsWidget({ filterDays }: props) {
                       </span>
                     </div>
                   ))}
-                  {mostRequestedSubcategories.length > 5 &&
-                    !expandedMaterials && (
-                      <span
-                        style={{
-                          color: "#555",
-                          textDecoration: "underline",
-                          cursor: "pointer",
-                          pointerEvents: "auto",
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setExpandedMaterials(true);
-                        }}
-                      >
-                        ... and {mostRequestedSubcategories.length - 5} more
-                        sub-categories
-                      </span>
-                    )}
+                  {mostRequestedSubcategories.length > 5 && (
+                    <span style={{ color: "#555" }}>
+                      ... and {mostRequestedSubcategories.length - 5} more
+                      sub-categories
+                    </span>
+                  )}
                 </>
               )}
             </div>

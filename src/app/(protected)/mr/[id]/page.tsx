@@ -124,7 +124,8 @@ export default async function MrWithID({
       const durationParts: string[] = [];
       if (days > 0) durationParts.push(`${days}d`);
       if (hours > 0) durationParts.push(`${hours}h`);
-      if (minutes > 0 || durationParts.length === 0) durationParts.push(`${minutes}m`);
+      if (minutes > 0 || durationParts.length === 0)
+        durationParts.push(`${minutes}m`);
       const durationString = durationParts.join(" ");
 
       let durationStyle = {
@@ -498,6 +499,13 @@ export default async function MrWithID({
               <h2>{mrHeader.department_name}</h2>
             </div>
 
+            <div>
+              <small>CREATION DATE</small>
+              <h2>
+                {new Date(mrHeader.date_requested).toLocaleDateString("en-GB")}
+              </h2>
+            </div>
+
             <div
               style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}
             >
@@ -529,7 +537,7 @@ export default async function MrWithID({
 
             {mrHeader.progress_id !== 1 && mrHeader.progress_id !== 25 && (
               <div>
-                <small>CURRENT PROGRESS DURATION</small>
+                <small>CURRENT STAGE DURATION</small>
                 <div
                   style={{
                     padding: "4px 8px",

@@ -51,9 +51,6 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
   const widgetRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
 
-  // Expand states
-  const [expandedBottleneck, setExpandedBottleneck] = useState(false);
-  const [expandedProjects, setExpandedProjects] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -134,8 +131,6 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
       setShowPopup(false);
-      setExpandedBottleneck(false);
-      setExpandedProjects(false);
     }, 2500);
   };
 
@@ -413,10 +408,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
                 <span style={{ color: "#aaa" }}>No data</span>
               ) : (
                 <>
-                  {(expandedBottleneck
-                    ? paymentStages
-                    : paymentStages.slice(0, 5)
-                  ).map((stage) => (
+                  {paymentStages.slice(0, 5).map((stage) => (
                     <div
                       key={stage.progress_id}
                       style={{
@@ -445,19 +437,8 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
                       </span>
                     </div>
                   ))}
-                  {paymentStages.length > 5 && !expandedBottleneck && (
-                    <span
-                      style={{
-                        color: "#555",
-                        textDecoration: "underline",
-                        cursor: "pointer",
-                        pointerEvents: "auto",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedBottleneck(true);
-                      }}
-                    >
+                  {paymentStages.length > 5 && (
+                    <span style={{ color: "#555" }}>
                       ... and {paymentStages.length - 5} more stages
                     </span>
                   )}
@@ -484,10 +465,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
                 <span style={{ color: "#aaa" }}>No data</span>
               ) : (
                 <>
-                  {(expandedProjects
-                    ? projectsAtRisk
-                    : projectsAtRisk.slice(0, 5)
-                  ).map((project) => (
+                  {projectsAtRisk.slice(0, 5).map((project) => (
                     <div
                       key={project.project_name}
                       style={{
@@ -509,19 +487,8 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
                       </span>
                     </div>
                   ))}
-                  {projectsAtRisk.length > 5 && !expandedProjects && (
-                    <span
-                      style={{
-                        color: "#555",
-                        textDecoration: "underline",
-                        cursor: "pointer",
-                        pointerEvents: "auto",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedProjects(true);
-                      }}
-                    >
+                  {projectsAtRisk.length > 5 && (
+                    <span style={{ color: "#555" }}>
                       ... and {projectsAtRisk.length - 5} more projects
                     </span>
                   )}

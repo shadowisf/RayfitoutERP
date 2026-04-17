@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "../context/AuthContext";
+import CreateNewMaterialButton from "./_CreateNewMaterialButton";
 
 import NewMrButton from "./_NewMaterialRequestButton";
 import NewProjectButton from "./_NewProjectButton";
@@ -26,11 +27,14 @@ export default function Navbar() {
         </div>
 
         <div className="right">
-          <NewMrButton />
-
           {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
-            <NewProjectButton />
+            <>
+              <CreateNewMaterialButton style={{ border: "1px solid white" }} />
+              <NewProjectButton />
+            </>
           )}
+
+          <NewMrButton />
 
           <NotificationDropdown />
 

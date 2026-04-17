@@ -1068,6 +1068,7 @@ label {
   position: relative;
   display: flex;
   align-items: center;
+  z-index: 1001;
 
   .search-bar-icon {
     position: absolute;

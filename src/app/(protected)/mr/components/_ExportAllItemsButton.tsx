@@ -16,13 +16,11 @@ export default function ExportItemsButton({ selectedItems, disabled }: Props) {
   const [exportMrRef, setExportMrRef] = useState(false);
   const [exportRequester, setExportRequester] = useState(false);
   const [exportProject, setExportProject] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
 
   const downloadIcon = "/icons/download.svg";
 
   async function handleExport() {
     if (selectedItems.length === 0) return;
-    setIsExporting(true);
     try {
       const exportDate = new Date().toLocaleDateString("en-GB");
       const blob = await pdf(
@@ -37,7 +35,7 @@ export default function ExportItemsButton({ selectedItems, disabled }: Props) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Requested-Items-${exportDate.replace(/\//g, "-")}.pdf`;
+      link.download = `All-Requested-Items-${exportDate.replace(/\//g, "-")}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -45,8 +43,6 @@ export default function ExportItemsButton({ selectedItems, disabled }: Props) {
       setShowPopup(false);
     } catch (err) {
       console.error("Export failed", err);
-    } finally {
-      setIsExporting(false);
     }
   }
 
@@ -54,18 +50,16 @@ export default function ExportItemsButton({ selectedItems, disabled }: Props) {
     <>
       <Button
         componentType={"button"}
-        bgColor={disabled ? "rgba(200, 200, 200, 1)" : "black"}
-        borderColor={disabled ? "rgba(200, 200, 200, 1)" : "black"}
-        textColor={disabled ? "rgba(150, 150, 150, 1)" : "white"}
+        bgColor={"black"}
+        borderColor={"black"}
+        textColor={"white"}
         onClick={() => !disabled && setShowPopup(true)}
         style={{
           padding: "7px 20px",
-          cursor: disabled ? "not-allowed" : "pointer",
-          opacity: disabled ? 0.6 : 1,
         }}
         disabled={disabled}
       >
-        EXPORT ITEMS{" "}
+        EXPORT ALL ITEMS{" "}
         <img
           src={downloadIcon}
           alt="download"
@@ -75,7 +69,7 @@ export default function ExportItemsButton({ selectedItems, disabled }: Props) {
 
       {showPopup && (
         <FormPopUp
-          header={"EXPORT ITEMS"}
+          header={"EXPORT ALL ITEMS"}
           setIsOpen={setShowPopup}
           handleSubmit={async (e) => {
             e.preventDefault();
