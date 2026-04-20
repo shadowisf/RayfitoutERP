@@ -68,6 +68,24 @@ export default function InventoryArchive() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Close hover popup on scroll or when window loses focus
+  useEffect(() => {
+    const handleCloseHover = () => {
+      setShowPopup(false);
+      setHoveredItemId(null);
+      setHoverTimer((prev) => {
+        if (prev) clearTimeout(prev);
+        return null;
+      });
+    };
+    window.addEventListener("scroll", handleCloseHover, true);
+    window.addEventListener("blur", handleCloseHover);
+    return () => {
+      window.removeEventListener("scroll", handleCloseHover, true);
+      window.removeEventListener("blur", handleCloseHover);
+    };
+  }, []);
+
   async function getInventoryItems() {
     try {
       const response = await fetch(
@@ -1128,7 +1146,7 @@ export default function InventoryArchive() {
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: "300px",
-                padding: "10px 40px 10px 15px",
+                padding: "7px 40px 7px 15px",
                 borderRadius: "8px",
                 border: "1px solid rgba(223, 223, 223, 1)",
                 fontSize: "14px",

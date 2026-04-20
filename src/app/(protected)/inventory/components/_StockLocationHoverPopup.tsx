@@ -8,6 +8,7 @@ type StockLocationHoverPopupProps = {
   mouseY: number;
   unit: string;
   prefetchedData?: any;
+  anchorRect?: DOMRect | null;
 };
 
 type LocationData = {
@@ -71,6 +72,7 @@ export default function StockLocationHoverPopup({
   mouseY,
   unit,
   prefetchedData,
+  anchorRect,
 }: StockLocationHoverPopupProps) {
   const [locationData, setLocationData] = useState<LocationData[]>([]);
   const [totalStock, setTotalStock] = useState(0);
@@ -113,19 +115,40 @@ export default function StockLocationHoverPopup({
   const formatNumber = (value: number) =>
     value % 1 === 0 ? value : Number(value.toFixed(3));
 
+  // Compute static position anchored to the material column cell
+  const popupWidth = 320;
+  let left: number;
+  let top: number;
+
+  if (anchorRect && typeof window !== "undefined") {
+    // Prefer right of the cell; fall back to left if not enough space
+    const spaceRight = window.innerWidth - anchorRect.right;
+    left =
+      spaceRight >= popupWidth + 15
+        ? anchorRect.right + 15
+        : anchorRect.left - popupWidth - 15;
+    left = Math.max(10, Math.min(left, window.innerWidth - popupWidth - 10));
+    // Vertically center the popup on the cell
+    const cellMidY = anchorRect.top + anchorRect.height / 2;
+    top = Math.max(10, Math.min(cellMidY - 60, window.innerHeight - 250));
+  } else {
+    left = mouseX + 20;
+    top = mouseY + 20;
+  }
+
   return (
     <div
       style={{
         position: "fixed",
-        left: mouseX + 20,
-        top: mouseY + 20,
+        left,
+        top,
         backgroundColor: "white",
         border: "1px solid rgba(223,223,223,1)",
         borderRadius: "10px",
         padding: "15px",
         boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
         zIndex: 10000,
-        minWidth: "300px",
+        width: `${popupWidth}px`,
         pointerEvents: "none",
       }}
     >

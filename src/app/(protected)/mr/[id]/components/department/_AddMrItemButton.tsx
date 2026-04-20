@@ -21,6 +21,15 @@ type SelectedMaterialRow = {
   quantity: string;
   unit: string;
   unitWasNull: boolean;
+  // Per-row overrides (only used if explicitly set)
+  descriptionOverride?: string;
+  brandOverride?: string;
+  specificationOverride?: string;
+  deliveryLocationOverride?: string;
+  categoryIdOverride?: number | string;
+  subcategoryIdOverride?: number | string;
+  categoryNameOverride?: string;
+  subcategoryNameOverride?: string;
 };
 
 type AddMrItemButtonProps = {
@@ -67,6 +76,19 @@ export default function AddMrItemButton({
   const previewScrollRef = useRef<HTMLDivElement>(null);
   const [previewShowLeftArrow, setPreviewShowLeftArrow] = useState(false);
   const [previewShowRightArrow, setPreviewShowRightArrow] = useState(false);
+
+  // Per-row edit popup state
+  const [editingRowId, setEditingRowId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<{
+    description: string;
+    brand: string;
+    specification: string;
+    deliveryLocation: string;
+    categoryId: number | string;
+    subcategoryId: number | string;
+  } | null>(null);
+  const [editCategoryValues, setEditCategoryValues] = useState<any[]>([]);
+  const [editSubcategoryValues, setEditSubcategoryValues] = useState<any[]>([]);
 
   // Shared fields
   const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
@@ -196,6 +218,117 @@ export default function AddMrItemButton({
     });
   };
 
+  // Open the per-row edit popup — also fetches category/subcategory data
+  const openRowEdit = (row: SelectedMaterialRow) => {
+    setEditingRowId(row.predefinedItem.id);
+
+    const initCategoryId =
+      row.categoryIdOverride ?? row.predefinedItem.category_id ?? "";
+    const initSubcategoryId =
+      row.subcategoryIdOverride ?? row.predefinedItem.subcategory_id ?? "";
+
+    setEditDraft({
+      description:
+        row.descriptionOverride ??
+        row.predefinedItem.material_description ??
+        "",
+      brand: row.brandOverride ?? row.predefinedItem.brand ?? "",
+      specification: row.specificationOverride ?? "",
+      deliveryLocation: row.deliveryLocationOverride ?? "",
+      categoryId: initCategoryId,
+      subcategoryId: initSubcategoryId,
+    });
+
+    // Fetch categories
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
+    )
+      .then((res) => res.json())
+      .then((data) => setEditCategoryValues(data))
+      .catch(console.error);
+
+    // Fetch subcategories filtered by initial category if present
+    if (initCategoryId) {
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category_id: initCategoryId }),
+        },
+      )
+        .then((res) => res.json())
+        .then((data) => setEditSubcategoryValues(data))
+        .catch(console.error);
+    } else {
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+      )
+        .then((res) => res.json())
+        .then((data) => setEditSubcategoryValues(data))
+        .catch(console.error);
+    }
+  };
+
+  // When category changes in edit draft, refetch subcategories
+  const handleEditCategoryChange = (val: string | number) => {
+    setEditDraft((d) => (d ? { ...d, categoryId: val, subcategoryId: "" } : d));
+    if (val) {
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category_id: val }),
+        },
+      )
+        .then((res) => res.json())
+        .then((data) => setEditSubcategoryValues(data))
+        .catch(console.error);
+    } else {
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+      )
+        .then((res) => res.json())
+        .then((data) => setEditSubcategoryValues(data))
+        .catch(console.error);
+    }
+  };
+
+  // Save edits back to the row
+  const saveRowEdit = () => {
+    if (editingRowId === null || !editDraft) return;
+
+    // Resolve names from the loaded dropdown data
+    const categoryName = editDraft.categoryId
+      ? editCategoryValues.find((c) => c.id === editDraft.categoryId)?.value
+      : undefined;
+    const subcategoryName = editDraft.subcategoryId
+      ? editSubcategoryValues.find((s) => s.id === editDraft.subcategoryId)
+          ?.value
+      : undefined;
+
+    setSelectedRows((prev) =>
+      prev.map((r) =>
+        r.predefinedItem.id === editingRowId
+          ? {
+              ...r,
+              descriptionOverride: editDraft.description,
+              brandOverride: editDraft.brand,
+              specificationOverride: editDraft.specification,
+              deliveryLocationOverride: editDraft.deliveryLocation,
+              categoryIdOverride: editDraft.categoryId || undefined,
+              subcategoryIdOverride: editDraft.subcategoryId || undefined,
+              categoryNameOverride: categoryName,
+              subcategoryNameOverride: subcategoryName,
+            }
+          : r,
+      ),
+    );
+    setEditingRowId(null);
+    setEditDraft(null);
+  };
+
   // Handle BOQ selection
   const handleBoqSelection = (boqIDs: number[]) => {
     setBoqLineIDs(boqIDs);
@@ -256,15 +389,30 @@ export default function AddMrItemButton({
           body: JSON.stringify({
             action: "createMrLine",
             mr_header_id: mrHeaderID,
-            material_category_id: row.predefinedItem.category_id,
-            material_subcategory_ids: [row.predefinedItem.subcategory_id],
-            material_description: row.predefinedItem.material_description,
+            material_category_id:
+              row.categoryIdOverride ?? row.predefinedItem.category_id,
+            material_subcategory_ids: [
+              row.subcategoryIdOverride ?? row.predefinedItem.subcategory_id,
+            ],
+            material_description:
+              row.descriptionOverride?.trim() ||
+              row.predefinedItem.material_description,
             quantity: Number(row.quantity),
             unit: row.unit,
             notes: null,
-            brand: brand || row.predefinedItem.brand || null,
-            specification: specification || null,
-            delivery_location: deliveryLocation,
+            brand:
+              row.brandOverride !== undefined
+                ? row.brandOverride || null
+                : brand || row.predefinedItem.brand || null,
+            specification:
+              row.specificationOverride !== undefined
+                ? row.specificationOverride || null
+                : specification || null,
+            delivery_location:
+              row.deliveryLocationOverride !== undefined &&
+              row.deliveryLocationOverride !== ""
+                ? row.deliveryLocationOverride
+                : deliveryLocation,
             boq_line_ids: boqLineIDs,
             attachment: attachmentUrl ? JSON.stringify(attachmentUrl) : null,
           }),
@@ -335,11 +483,11 @@ export default function AddMrItemButton({
 
       {isOpen && (
         <FormPopUp
-          header={"CREATE MATERIAL REQUEST ITEM"}
+          header={"CREATE MATERIAL REQUEST ITEM(S)"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
-          style={{ width: "50dvw", height: "95dvh" }}
+          style={{ width: "75dvw", height: "95dvh" }}
         >
           {/* Material Items Selection */}
           <div className="input-row full">
@@ -565,6 +713,7 @@ export default function AddMrItemButton({
                     <thead>
                       <tr>
                         <th>#</th>
+                        <th>CATEGORY</th>
                         <th>SUBCATEGORY</th>
                         <th>ITEM</th>
                         <th>QTY</th>
@@ -587,9 +736,19 @@ export default function AddMrItemButton({
                               ) + 1}
                             </td>
                             <td>
-                              {row.predefinedItem.subcategory_name || "-"}
+                              {row.categoryNameOverride ||
+                                row.predefinedItem.category_name ||
+                                "-"}
                             </td>
-                            <td>{row.predefinedItem.material_description}</td>
+                            <td>
+                              {row.subcategoryNameOverride ||
+                                row.predefinedItem.subcategory_name ||
+                                "-"}
+                            </td>
+                            <td>
+                              {row.descriptionOverride?.trim() ||
+                                row.predefinedItem.material_description}
+                            </td>
                             <td>
                               <InputItem
                                 label=""
@@ -603,7 +762,10 @@ export default function AddMrItemButton({
                                     e.target.value,
                                   )
                                 }
-                                style={{ width: "150px" }}
+                                style={{
+                                  width: "150px",
+                                  backgroundColor: "white",
+                                }}
                               />
                             </td>
                             <td>
@@ -619,22 +781,47 @@ export default function AddMrItemButton({
                                 style={{ width: "150px" }}
                               />
                             </td>
+
                             <td>
-                              <Button
-                                componentType={"button"}
-                                bgColor={"transparent"}
-                                borderColor={"transparent"}
-                                textColor={"black"}
-                                style={{ padding: "0px", marginBottom: "2px" }}
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "10px",
+                                  alignItems: "center",
+                                }}
                               >
-                                <img
-                                  src={crossSmallIcon}
-                                  alt="remove"
-                                  onClick={() =>
-                                    removeRow(row.predefinedItem.id)
-                                  }
-                                />
-                              </Button>
+                                <Button
+                                  componentType={"button"}
+                                  bgColor={"rgba(239,239,239,1)"}
+                                  borderColor={"rgba(223,223,223,1)"}
+                                  textColor={"black"}
+                                  style={{ padding: "7px 7px" }}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    openRowEdit(row);
+                                  }}
+                                >
+                                  <img src={pencilIcon} alt="edit" />
+                                </Button>
+                                <Button
+                                  componentType={"button"}
+                                  bgColor={"transparent"}
+                                  borderColor={"transparent"}
+                                  textColor={"black"}
+                                  style={{
+                                    padding: "0px",
+                                    marginBottom: "2px",
+                                  }}
+                                >
+                                  <img
+                                    src={crossSmallIcon}
+                                    alt="remove"
+                                    onClick={() =>
+                                      removeRow(row.predefinedItem.id)
+                                    }
+                                  />
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -717,6 +904,58 @@ export default function AddMrItemButton({
               setFileState={setAttachment}
               label={"ATTACHMENT"}
               acceptedFileTypes={".pdf,.png,.jpg,.jpeg"}
+            />
+          </div>
+        </FormPopUp>
+      )}
+
+      {/* Per-row edit popup — sibling to main FormPopUp to avoid nested <form> */}
+      {editingRowId !== null && editDraft && (
+        <FormPopUp
+          header={"UPDATE MATERIAL REQUEST ITEM DETAILS"}
+          setIsOpen={() => {
+            setEditingRowId(null);
+            setEditDraft(null);
+          }}
+          handleSubmit={(e) => {
+            e.preventDefault();
+            saveRowEdit();
+          }}
+          addButtonLabel={"CONFIRM"}
+        >
+          <div className="input-row half">
+            <SingleSelectDropdown
+              label={"CATEGORY"}
+              dbData={editCategoryValues}
+              selectedValue={editDraft.categoryId}
+              onChange={handleEditCategoryChange}
+              placeholder="SELECT CATEGORY"
+              required
+            />
+
+            <SingleSelectDropdown
+              label={"SUBCATEGORY"}
+              dbData={editSubcategoryValues}
+              selectedValue={editDraft.subcategoryId}
+              onChange={(val) =>
+                setEditDraft((d) => (d ? { ...d, subcategoryId: val } : d))
+              }
+              placeholder="SELECT SUBCATEGORY"
+              required
+            />
+          </div>
+
+          <div className="input-row full">
+            <InputItem
+              label={"ITEM"}
+              value={editDraft.description}
+              type={"textarea"}
+              onChange={(e) =>
+                setEditDraft((d) =>
+                  d ? { ...d, description: e.target.value } : d,
+                )
+              }
+              required
             />
           </div>
         </FormPopUp>

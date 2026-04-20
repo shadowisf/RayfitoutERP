@@ -6,11 +6,11 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import AttachQuotationButton from "./_AttachQuotationButton";
-import CreateSupplierButton from "../../../../vendor/components/_CreateSupplierButton";
+import AttachQuotationButton from "../[id]/components/procurement/_AttachQuotationButton";
+import CreateSupplierButton from "../../vendor/components/_CreateSupplierButton";
 import { useAuth } from "@/app/context/AuthContext";
 import { pdf } from "@react-pdf/renderer";
-import RequestedItemsPDF from "../../../components/RequestedItemsPDF";
+import RequestedItemsPDF from "./RequestedItemsPDF";
 
 export type BulkQuotationItem = {
   line_id: number;

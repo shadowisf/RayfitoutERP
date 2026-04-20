@@ -12,6 +12,7 @@ interface DraggableBoqItemProps {
   categoryIndex: number;
   subCategoryIndex: number;
   itemIndex: number;
+  checkboxCell?: ReactNode;
 }
 
 export function DraggableBoqItem({
@@ -21,6 +22,7 @@ export function DraggableBoqItem({
   categoryIndex,
   subCategoryIndex,
   itemIndex,
+  checkboxCell,
 }: DraggableBoqItemProps) {
   const {
     attributes,
@@ -43,6 +45,7 @@ export function DraggableBoqItem({
 
   return (
     <tr ref={setNodeRef} style={style}>
+      {checkboxCell}
       <td>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           {isDragEnabled && (

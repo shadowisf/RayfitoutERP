@@ -7,16 +7,8 @@ import { InventoryListPdf } from "./InventoryListPdf";
 import { InventoryItem } from "../types/inventoryItem";
 import { toast } from "@/app/components/Toast";
 
-type ActiveFilters = {
-  subcategories?: string[];
-  stockAddedIn?: string;
-  stockStatuses?: string[];
-  projects?: string[];
-  locations?: string[];
-};
-
 type Props = {
-  filteredItems: InventoryItem[];
+  selectedItems: InventoryItem[];
   pageQuantities: {
     [itemId: number]: {
       available_quantity: number;
@@ -24,13 +16,13 @@ type Props = {
       total_issued: number;
     };
   };
-  activeFilters: ActiveFilters;
+  onClearSelection: () => void;
 };
 
-export default function DownloadInventoryListPdfButton({
-  filteredItems,
+export default function DownloadSelectedInventoryButton({
+  selectedItems,
   pageQuantities,
-  activeFilters,
+  onClearSelection,
 }: Props) {
   const downloadIcon = "/icons/download.svg";
   const [isProcessing, setIsProcessing] = useState(false);
@@ -45,7 +37,6 @@ export default function DownloadInventoryListPdfButton({
           body: JSON.stringify({ url }),
         },
       );
-
       const data = await response.json();
       return data.success && data.dataUrl ? data.dataUrl : "";
     } catch (error) {
@@ -55,12 +46,10 @@ export default function DownloadInventoryListPdfButton({
   }
 
   async function handleDownload() {
-    if (isProcessing || filteredItems.length === 0) return;
-
+    if (isProcessing || selectedItems.length === 0) return;
     setIsProcessing(true);
 
     try {
-      // Fetch ALL quantities for filtered items (not just current page)
       const allQuantities: {
         [itemId: number]: {
           available_quantity: number;
@@ -69,8 +58,8 @@ export default function DownloadInventoryListPdfButton({
         };
       } = { ...pageQuantities };
 
-      // Fetch quantities for items not in pageQuantities
-      const missingItems = filteredItems.filter(
+      // Fetch quantities for selected items not already in pageQuantities
+      const missingItems = selectedItems.filter(
         (item) => !allQuantities[item.id],
       );
 
@@ -113,16 +102,14 @@ export default function DownloadInventoryListPdfButton({
               };
             }),
           );
-
           results.forEach((r) => {
             allQuantities[r.itemId] = r.quantity;
           });
         }
       }
 
-      // Convert images to base64 (limit to first 5 per batch for performance)
       const pdfItems = await Promise.all(
-        filteredItems.map(async (item) => {
+        selectedItems.map(async (item) => {
           let imageBase64: string | null = null;
           if (item.image) {
             try {
@@ -133,7 +120,6 @@ export default function DownloadInventoryListPdfButton({
           }
 
           const qty = allQuantities[item.id];
-
           return {
             id: item.id,
             description: item.description,
@@ -157,7 +143,7 @@ export default function DownloadInventoryListPdfButton({
       const blob = await pdf(
         <InventoryListPdf
           items={pdfItems}
-          activeFilters={activeFilters}
+          activeFilters={{}}
           generatedDate={generatedDate}
         />,
       ).toBlob();
@@ -165,7 +151,7 @@ export default function DownloadInventoryListPdfButton({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `INV-LIST-${new Date().toISOString().split("T")[0]}.pdf`;
+      link.download = `INV-SELECTED-${new Date().toISOString().split("T")[0]}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -178,21 +164,37 @@ export default function DownloadInventoryListPdfButton({
     }
   }
 
+  if (selectedItems.length === 0) return null;
+
   return (
-    <Button
-      componentType={"button"}
-      bgColor={"white"}
-      borderColor={"rgba(231, 231, 231, 1)"}
-      textColor={"black"}
-      onClick={handleDownload}
-      disabled={isProcessing || filteredItems.length === 0}
-      style={{
-        opacity: isProcessing ? 0.5 : 1,
-        cursor: isProcessing ? "not-allowed" : "pointer",
-      }}
-    >
-      EXPORT INVENTORY LIST
-      <img src={downloadIcon} alt="download" />
-    </Button>
+    <div className="bottom-nav">
+      <div></div>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <Button
+          componentType={"button"}
+          bgColor={"black"}
+          borderColor={"white"}
+          textColor={"white"}
+          onClick={onClearSelection}
+        >
+          CANCEL
+        </Button>
+        <Button
+          componentType={"button"}
+          bgColor={"white"}
+          borderColor={"white"}
+          textColor={"black"}
+          onClick={handleDownload}
+          disabled={isProcessing}
+          style={{
+            opacity: isProcessing ? 0.5 : 1,
+            cursor: isProcessing ? "not-allowed" : "pointer",
+          }}
+        >
+          EXPORT SELECTED INVENTORY ITEM(S)
+          <img src={downloadIcon} alt="download" />
+        </Button>
+      </div>
+    </div>
   );
 }

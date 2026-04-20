@@ -525,7 +525,7 @@ export default function MultipleSelectMaterialItemButton({
           <tr>
             <th></th>
             <th>CODE</th>
-            <th>NAME</th>
+            <th>ITEM</th>
             <th>UNIT</th>
           </tr>
         </thead>

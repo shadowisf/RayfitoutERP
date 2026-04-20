@@ -129,9 +129,6 @@ export default function InitialApprovalButtons({
         style={{ backgroundColor: "gray", color: "white" }}
       >
         <span style={{ textWrap: "nowrap" }}>Pending Manager Approval</span>
-        <div
-          style={{ display: "flex", gap: "12px", alignItems: "center" }}
-        ></div>
       </div>
     );
   }

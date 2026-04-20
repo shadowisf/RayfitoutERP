@@ -6,7 +6,7 @@ import React, { useEffect, useState } from "react";
 import { MrHeader } from "./[id]/types/mrHeader";
 import type { MrLine } from "./[id]/types/mrLine";
 import MrFilterButton from "./components/_MrFilterButton";
-import BulkQuotationCreator from "./[id]/components/procurement/_BulkQuotationCreator";
+import BulkQuotationCreator from "./components/_BulkQuotationCreator";
 import SupplierAndQuotationButton from "./[id]/components/procurement/_SupplierAndQuotationButton";
 import ExportItemsButton from "./components/_ExportAllItemsButton";
 

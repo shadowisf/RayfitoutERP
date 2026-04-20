@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   DndContext,
   closestCenter,
@@ -39,6 +39,7 @@ import DuplicateBoqItemButton from "./manager/_DuplicateBoqItemButton";
 import EditBoqItemButton from "./manager/_EditBoqItemButton";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import { DeleteBoqHeaderButton } from "./manager/_DeleteBoqHeaderButton";
+import DownloadSelectedBoqButton from "./manager/_DownloadSelectedBoqButton";
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -214,6 +215,46 @@ export default function BoqLinesView({
   const [originalBoqLines, setOriginalBoqLines] =
     useState<GroupedIndexedBoqLines>({});
   const [boqLines, setBoqLines] = useState<GroupedIndexedBoqLines>({});
+
+  // Selection state for download selected
+  const [selectedBoqLineIds, setSelectedBoqLineIds] = useState<Set<number>>(
+    new Set(),
+  );
+
+  const toggleItem = (id: number) => {
+    setSelectedBoqLineIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllInSubcategory = (
+    items: IndexedBoqLine[],
+    checked: boolean,
+  ) => {
+    setSelectedBoqLineIds((prev) => {
+      const next = new Set(prev);
+      items.forEach((item) => {
+        if (checked) next.add(item.id);
+        else next.delete(item.id);
+      });
+      return next;
+    });
+  };
+
+  const selectedLines = useMemo(() => {
+    const all: BoqLine[] = [];
+    Object.values(boqLines).forEach((subCats) => {
+      Object.values(subCats).forEach((items) => {
+        items.forEach((item) => {
+          if (selectedBoqLineIds.has(item.id)) all.push(item);
+        });
+      });
+    });
+    return all;
+  }, [boqLines, selectedBoqLineIds]);
 
   useEffect(() => {
     const indexed = addOriginalIndices(initialBoqLines);
@@ -546,6 +587,9 @@ export default function BoqLinesView({
     activeCategory,
     handleItemDragEnd,
     parseAttachments,
+    selectedBoqLineIds,
+    onToggleItem,
+    onToggleAll,
   }: any) => {
     const sortableId =
       activeCategory === "ALL" ? `${category}___${subCategory}` : subCategory;
@@ -599,6 +643,24 @@ export default function BoqLinesView({
                   ⋮⋮
                 </span>
               )}
+              <input
+                type="checkbox"
+                checked={
+                  items.length > 0 &&
+                  items.every((item: IndexedBoqLine) =>
+                    selectedBoqLineIds.has(item.id),
+                  )
+                }
+                onChange={(e) => onToggleAll(items, e.target.checked)}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: "16px",
+                  height: "16px",
+                  cursor: "pointer",
+                  accentColor: "#10b981",
+                  flexShrink: 0,
+                }}
+              />
               <span style={{ marginRight: "15px" }}>
                 {originalCategoryIndex + 1}.{originalSubCategoryIndex + 1}
               </span>
@@ -636,6 +698,7 @@ export default function BoqLinesView({
             <table className="items-table two-toned">
               <thead>
                 <tr>
+                  <th style={{ width: "40px" }}></th>
                   <th>#</th>
                   <th>DN NUMBER & DATE</th>
                   <th>ITEM</th>
@@ -670,6 +733,24 @@ export default function BoqLinesView({
                         categoryIndex={item.originalCategoryIndex}
                         subCategoryIndex={item.originalSubCategoryIndex}
                         itemIndex={item.originalItemIndex}
+                        checkboxCell={
+                          <td
+                            style={{ textAlign: "center", width: "40px" }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedBoqLineIds.has(item.id)}
+                              onChange={() => onToggleItem(item.id)}
+                              style={{
+                                width: "16px",
+                                height: "16px",
+                                cursor: "pointer",
+                                accentColor: "#10b981",
+                              }}
+                            />
+                          </td>
+                        }
                       >
                         <td>{item.dn_number_and_date || "-"}</td>
 
@@ -768,17 +849,18 @@ export default function BoqLinesView({
                   <tr>
                     <td></td>
                     <td></td>
+                    <td></td>
                     <td>
                       <h3>SUBTOTAL</h3>
                     </td>
-                    <td colSpan={canSeePrice ? 2 : 1}></td>
+                    <td colSpan={2}></td>
                     <td>
                       <h3 style={{ textWrap: "nowrap" }}>
                         {boqHeader.currency}{" "}
                         {formatMoney(calculateSubtotal(items))}
                       </h3>
                     </td>
-                    <td colSpan={canManage ? 3 : 1}></td>
+                    <td colSpan={canManage ? 3 : 2}></td>
                   </tr>
                 </tfoot>
               )}
@@ -788,7 +870,7 @@ export default function BoqLinesView({
                   style={{ borderTop: "1px solid rgba(232, 223, 223, 1)" }}
                 >
                   <tr>
-                    <td colSpan={9}>
+                    <td colSpan={20}>
                       <AddBoqItemButton
                         boqHeaderID={boqHeader.id}
                         bgColor="rgba(239, 239, 239, 1)"
@@ -839,6 +921,9 @@ export default function BoqLinesView({
         activeCategory={activeCategory}
         handleItemDragEnd={handleItemDragEnd}
         parseAttachments={parseAttachments}
+        selectedBoqLineIds={selectedBoqLineIds}
+        onToggleItem={toggleItem}
+        onToggleAll={toggleAllInSubcategory}
       />
     );
   };
@@ -1152,7 +1237,14 @@ export default function BoqLinesView({
         </div>
 
         {/* Right side buttons - fixed width, no shrink */}
-        <div style={{ display: "flex", gap: "10px", flexShrink: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            flexShrink: 0,
+            alignItems: "center",
+          }}
+        >
           <div
             style={{
               width: "300px",
@@ -1167,7 +1259,7 @@ export default function BoqLinesView({
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: "100%",
-                padding: "10px 40px 10px 15px",
+                padding: "7px 40px 7px 15px",
                 borderRadius: "8px",
                 border: "1px solid rgba(223, 223, 223, 1)",
                 fontSize: "14px",
@@ -1331,6 +1423,12 @@ export default function BoqLinesView({
             ADD SUBCATEGORY & ITEM +
           </AddBoqItemButton>
         )}
+
+      <DownloadSelectedBoqButton
+        boqHeader={boqHeader}
+        selectedLines={selectedLines}
+        onClearSelection={() => setSelectedBoqLineIds(new Set())}
+      />
     </div>
   );
 }

@@ -83,6 +83,8 @@ export default function EditMrItemButton({
   );
   const [attachment, setAttachment] = useState<File | null>(null);
   const [locationValues, setLocationValues] = useState<any[]>([]);
+  const [categoryValues, setCategoryValues] = useState<any[]>([]);
+  const [subcategoryValues, setSubcategoryValues] = useState<any[]>([]);
 
   // Initialize the selected row from the existing item
   useEffect(() => {
@@ -94,25 +96,85 @@ export default function EditMrItemButton({
           ? String(Math.round(num))
           : String(num);
 
+      const initCategoryId = item.material_category_id;
+      const initSubcategoryId =
+        typeof item.material_subcategory_id === "number"
+          ? item.material_subcategory_id
+          : typeof item.material_subcategory_id === "string"
+            ? Number(item.material_subcategory_id.split(",")[0])
+            : Array.isArray(item.material_subcategory_id)
+              ? item.material_subcategory_id[0]
+              : 0;
+
       setSelectedRow({
         predefinedItem: null,
         quantity: qtyStr,
         unit: item.unit || "",
         unitWasNull: false,
         materialDescription: item.material_description,
-        categoryId: item.material_category_id,
-        subcategoryId:
-          typeof item.material_subcategory_id === "number"
-            ? item.material_subcategory_id
-            : typeof item.material_subcategory_id === "string"
-              ? Number(item.material_subcategory_id.split(",")[0])
-              : Array.isArray(item.material_subcategory_id)
-                ? item.material_subcategory_id[0]
-                : 0,
+        categoryId: initCategoryId,
+        subcategoryId: initSubcategoryId,
         brand: item.brand ?? "",
       });
+
+      // Fetch categories
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
+      )
+        .then((res) => res.json())
+        .then((data) => setCategoryValues(data))
+        .catch(console.error);
+
+      // Fetch subcategories for the current category
+      if (initCategoryId) {
+        fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ category_id: initCategoryId }),
+          },
+        )
+          .then((res) => res.json())
+          .then((data) => setSubcategoryValues(data))
+          .catch(console.error);
+      } else {
+        fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+        )
+          .then((res) => res.json())
+          .then((data) => setSubcategoryValues(data))
+          .catch(console.error);
+      }
     }
   }, [isOpen]);
+
+  // When a new predefined item is selected, also refresh subcategories for its category
+  const handleCategoryChange = (val: string | number) => {
+    setSelectedRow((prev) =>
+      prev ? { ...prev, categoryId: Number(val), subcategoryId: 0 } : prev,
+    );
+    if (val) {
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category_id: val }),
+        },
+      )
+        .then((res) => res.json())
+        .then((data) => setSubcategoryValues(data))
+        .catch(console.error);
+    } else {
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+      )
+        .then((res) => res.json())
+        .then((data) => setSubcategoryValues(data))
+        .catch(console.error);
+    }
+  };
 
   // Fetch locations
   useEffect(() => {
@@ -121,6 +183,23 @@ export default function EditMrItemButton({
       .then((data) => setLocationValues(data.map((d: any) => d.name)))
       .catch(console.error);
   }, []);
+
+  // Refresh subcategories for a given category ID
+  const refreshSubcategoriesForCategory = (categoryId: number) => {
+    if (categoryId) {
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category_id: categoryId }),
+        },
+      )
+        .then((res) => res.json())
+        .then((data) => setSubcategoryValues(data))
+        .catch(console.error);
+    }
+  };
 
   // Handle new material created via CreateNewMaterialButton
   const handleNewMaterialCreated = (newItem: PredefinedItem) => {
@@ -136,6 +215,7 @@ export default function EditMrItemButton({
       subcategoryId: newItem.subcategory_id,
       brand: newItem.brand || "",
     });
+    refreshSubcategoriesForCategory(newItem.category_id);
   };
 
   // Handle material items selection from popup (take only last selected item for edit)
@@ -157,6 +237,7 @@ export default function EditMrItemButton({
       subcategoryId: lastItem.subcategory_id,
       brand: lastItem.brand || "",
     });
+    refreshSubcategoriesForCategory(lastItem.category_id);
   };
 
   const handleBoqSelection = (boqIDs: number[]) => {
@@ -278,6 +359,7 @@ export default function EditMrItemButton({
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
+          style={{ minWidth: "95dvw", height: "95dvh" }}
         >
           {/* Material Items Selection */}
           <div className="input-row full">
@@ -295,7 +377,7 @@ export default function EditMrItemButton({
                     <span>MATERIAL ITEM(S)</span>
                   </label>
 
-                  <div
+                  {/* <div
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -306,11 +388,11 @@ export default function EditMrItemButton({
                       onSuccess={handleNewMaterialCreated}
                     />
 
-                    {/* <MultipleSelectMaterialItemButton
+                    <MultipleSelectMaterialItemButton
                       onSelectItems={handleMaterialSelect}
                       currentItemIDs={selectedItemIDs}
-                    /> */}
-                  </div>
+                    />
+                  </div> */}
                 </div>
               ) : (
                 <>
@@ -346,14 +428,32 @@ export default function EditMrItemButton({
                     <tr>
                       <td>1</td>
                       <td>
-                        {selectedRow.predefinedItem?.category_name ||
-                          item.material_category ||
-                          "-"}
+                        <SingleSelectDropdown
+                          label=""
+                          noLabel
+                          dbData={categoryValues}
+                          selectedValue={selectedRow.categoryId}
+                          onChange={handleCategoryChange}
+                          placeholder="SELECT CATEGORY"
+                          style={{ width: "250px" }}
+                        />
                       </td>
                       <td>
-                        {selectedRow.predefinedItem?.subcategory_name ||
-                          item.material_subcategory ||
-                          "-"}
+                        <SingleSelectDropdown
+                          label=""
+                          noLabel
+                          dbData={subcategoryValues}
+                          selectedValue={selectedRow.subcategoryId}
+                          onChange={(val) =>
+                            setSelectedRow((prev) =>
+                              prev
+                                ? { ...prev, subcategoryId: Number(val) }
+                                : prev,
+                            )
+                          }
+                          placeholder="SELECT SUBCATEGORY"
+                          style={{ width: "250px" }}
+                        />
                       </td>
                       <td>
                         <InputItem

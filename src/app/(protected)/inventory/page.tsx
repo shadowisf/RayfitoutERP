@@ -15,6 +15,7 @@ import DeleteTransactionButton from "./[id]/components/_DeleteTransactionButton"
 import EditTransactionButton from "./components/_EditTransactionButton";
 import { useAuth } from "@/app/context/AuthContext";
 import DownloadInventoryListPdfButton from "./components/_DownloadInventoryListPdfButton";
+import DownloadSelectedInventoryButton from "./components/_DownloadSelectedInventoryButton";
 import TransferLogFilterButton, {
   TransferLogFilters,
   defaultTransferLogFilters,
@@ -95,8 +96,11 @@ export default function Inventory() {
   const [showPopup, setShowPopup] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
   const [prefetchedStockData, setPrefetchedStockData] = useState<any>(null);
+  const [hoveredRowRect, setHoveredRowRect] = useState<DOMRect | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isScrollingRef = useRef(false);
+  const scrollTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // ✅ NEW: Cache for quantities to avoid refetching when going back to previous pages
   const quantitiesCache = useRef<{
@@ -108,6 +112,15 @@ export default function Inventory() {
       };
     };
   }>({});
+
+  // ✅ Track known empty items globally for cross-page empty-stock sorting
+  const knownEmptyIdsRef = useRef<Set<number>>(new Set());
+  const [knownEmptyVersion, setKnownEmptyVersion] = useState(0);
+
+  // ✅ Selection state for checkboxes
+  const [selectedInventoryIds, setSelectedInventoryIds] = useState<Set<number>>(
+    new Set(),
+  );
 
   useEffect(() => {
     // Check URL parameters
@@ -159,7 +172,13 @@ export default function Inventory() {
       // Get only current page items
       const startIndex = (currentPage - 1) * itemsPerPage;
       const endIndex = startIndex + itemsPerPage;
-      const currentPageItems = sortedItems.slice(startIndex, endIndex);
+      // Apply global empty-stock sort before slicing so empty items land on later pages
+      const globalSorted = [...sortedItems].sort((a, b) => {
+        const emptyA = knownEmptyIdsRef.current.has(a.id) ? 1 : 0;
+        const emptyB = knownEmptyIdsRef.current.has(b.id) ? 1 : 0;
+        return emptyA - emptyB;
+      });
+      const currentPageItems = globalSorted.slice(startIndex, endIndex);
 
       if (currentPageItems.length === 0) {
         setPageQuantities({});
@@ -253,6 +272,26 @@ export default function Inventory() {
         // Cache the results
         quantitiesCache.current[cacheKey] = quantitiesMap;
         setPageQuantities(quantitiesMap);
+
+        // Track known empty items so we can sort them to the end globally
+        let hasNewEmptyChanges = false;
+        Object.entries(quantitiesMap).forEach(([itemId, qty]) => {
+          const id = Number(itemId);
+          if (
+            qty.available_quantity === 0 &&
+            !knownEmptyIdsRef.current.has(id)
+          ) {
+            knownEmptyIdsRef.current.add(id);
+            hasNewEmptyChanges = true;
+          } else if (
+            qty.available_quantity > 0 &&
+            knownEmptyIdsRef.current.has(id)
+          ) {
+            knownEmptyIdsRef.current.delete(id);
+            hasNewEmptyChanges = true;
+          }
+        });
+        if (hasNewEmptyChanges) setKnownEmptyVersion((v) => v + 1);
       } catch (error) {
         console.error("Error fetching page quantities:", error);
       } finally {
@@ -276,6 +315,7 @@ export default function Inventory() {
     filters.stockAddedIn,
     sortOrder,
     activeTab,
+    knownEmptyVersion,
   ]);
 
   useEffect(() => {
@@ -471,7 +511,7 @@ export default function Inventory() {
 
   const getLoadingStatus = () => {
     return {
-      label: "LOADING...",
+      label: "LOADING",
       bgColor: "rgba(231, 231, 231, 1)",
       textColor: "rgba(107, 107, 107, 1)",
     };
@@ -490,6 +530,54 @@ export default function Inventory() {
     window.addEventListener("resize", checkScroll);
     return () => window.removeEventListener("resize", checkScroll);
   }, [categories]);
+
+  // Close hover popup whenever the user clicks anywhere (buttons, forms, etc.)
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      if (showPopup || isWaiting) {
+        if (hoverTimer) clearTimeout(hoverTimer);
+        setHoverTimer(null);
+        setShowPopup(false);
+        setIsWaiting(false);
+        setHoveredItemId(null);
+        setHoveredRowRect(null);
+        setPrefetchedStockData(null);
+      }
+    };
+    window.addEventListener("click", handleGlobalClick, true);
+    window.addEventListener("blur", handleGlobalClick);
+    return () => {
+      window.removeEventListener("click", handleGlobalClick, true);
+      window.removeEventListener("blur", handleGlobalClick);
+    };
+  }, [showPopup, isWaiting, hoverTimer]);
+
+  // Detect scrolling — close popup immediately and block hover until scrolling stops
+  useEffect(() => {
+    const handleScroll = () => {
+      isScrollingRef.current = true;
+      // Close any active popup/loading cursor immediately
+      setShowPopup(false);
+      setIsWaiting(false);
+      setHoveredItemId(null);
+      setHoveredRowRect(null);
+      setPrefetchedStockData(null);
+      setHoverTimer((prev) => {
+        if (prev) clearTimeout(prev);
+        return null;
+      });
+      // Unblock hover 200ms after scrolling stops
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+      scrollTimerRef.current = setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 200);
+    };
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    };
+  }, []);
 
   const getCategoryCount = (category: string) => {
     return inventory.filter((item) => item.category_name === category).length;
@@ -684,10 +772,18 @@ export default function Inventory() {
   ]);
 
   // ✅ Use useMemo to prevent recalculation on every render
-  const processedInventory = useMemo(
-    () => getProcessedInventory(),
-    [getProcessedInventory],
-  );
+  // knownEmptyVersion triggers re-sort when empty items are discovered globally
+  const processedInventory = useMemo(() => {
+    const items = getProcessedInventory();
+    if (knownEmptyIdsRef.current.size === 0) return items;
+    // Sort known empty items to end globally so they land on the last pages
+    return [...items].sort((a, b) => {
+      const emptyA = knownEmptyIdsRef.current.has(a.id) ? 1 : 0;
+      const emptyB = knownEmptyIdsRef.current.has(b.id) ? 1 : 0;
+      return emptyA - emptyB;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getProcessedInventory, knownEmptyVersion]);
 
   // ✅ Pagination calculations
   const totalPages = Math.ceil(processedInventory.length / itemsPerPage);
@@ -695,6 +791,7 @@ export default function Inventory() {
   const endIndex = startIndex + itemsPerPage;
 
   // ✅ For display, we need to re-sort current page items if sorting by quantity
+  // Empty-stock global sort is handled in processedInventory above
   const currentItems = useMemo(() => {
     let items = processedInventory.slice(startIndex, endIndex);
 
@@ -712,19 +809,6 @@ export default function Inventory() {
       });
     }
 
-    // Always sort empty stock to end for current page
-    items = [...items].sort((a, b) => {
-      const qtyA = pageQuantities[a.id]?.available_quantity ?? 0;
-      const qtyB = pageQuantities[b.id]?.available_quantity ?? 0;
-
-      const isEmptyA = qtyA === 0;
-      const isEmptyB = qtyB === 0;
-
-      if (isEmptyA === isEmptyB) return 0;
-      if (isEmptyA && !isEmptyB) return 1;
-      return -1;
-    });
-
     return items;
   }, [processedInventory, startIndex, endIndex, sortOrder, pageQuantities]);
 
@@ -733,6 +817,10 @@ export default function Inventory() {
     setCurrentPage(1);
     // Clear cache when filters change significantly
     quantitiesCache.current = {};
+    // Reset global empty-stock tracking and selection
+    knownEmptyIdsRef.current = new Set();
+    setKnownEmptyVersion((v) => v + 1);
+    setSelectedInventoryIds(new Set());
   }, [
     activeCategory,
     inventorySearchQuery,
@@ -1062,9 +1150,50 @@ export default function Inventory() {
     );
   };
 
+  const toggleInventoryItem = (id: number) => {
+    setSelectedInventoryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllCurrentPage = (checked: boolean) => {
+    setSelectedInventoryIds((prev) => {
+      const next = new Set(prev);
+      currentItems.forEach((item) => {
+        if (checked) next.add(item.id);
+        else next.delete(item.id);
+      });
+      return next;
+    });
+  };
+
+  const selectedInventoryItems = processedInventory.filter((item) =>
+    selectedInventoryIds.has(item.id),
+  );
+
   const handleMouseEnter = (itemId: number, event: React.MouseEvent) => {
+    // Don't trigger while user is scrolling
+    if (isScrollingRef.current) return;
+
     const target = event.target as HTMLElement;
     if (target.closest("button, a, [role='button']")) return;
+
+    // Clear any in-progress hover from a previous row immediately
+    if (hoverTimer) {
+      clearTimeout(hoverTimer);
+      setHoverTimer(null);
+    }
+    setShowPopup(false);
+    setHoveredItemId(null);
+
+    // Capture the row's bounding rect for static (non-following) popup placement
+    const rowRect = (
+      event.currentTarget as HTMLElement
+    ).getBoundingClientRect();
+    setHoveredRowRect(rowRect);
 
     setMousePosition({ x: event.clientX, y: event.clientY });
     setIsWaiting(true);
@@ -1746,13 +1875,33 @@ export default function Inventory() {
           <div style={{ overflowX: "auto" }}>
             {isLoadingPageQuantities && currentItems.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
-                Loading...
+                Loading
               </div>
             ) : currentItems.length > 0 ? (
               <>
                 <table className="items-table alt two-toned fixed-layout">
                   <thead>
                     <tr>
+                      <th style={{ width: "40px" }}>
+                        <input
+                          type="checkbox"
+                          checked={
+                            currentItems.length > 0 &&
+                            currentItems.every((item) =>
+                              selectedInventoryIds.has(item.id),
+                            )
+                          }
+                          onChange={(e) =>
+                            toggleAllCurrentPage(e.target.checked)
+                          }
+                          style={{
+                            width: "16px",
+                            height: "16px",
+                            cursor: "pointer",
+                            accentColor: "#10b981",
+                          }}
+                        />
+                      </th>
                       <th style={{ width: "40px" }}>#</th>
                       <th style={{ width: "140px" }}>ITEM NUMBER</th>
                       <th style={{ width: "400px" }}>MATERIAL</th>
@@ -1773,21 +1922,34 @@ export default function Inventory() {
                       );
 
                       return (
-                        <tr
-                          key={item.id}
-                          onMouseEnter={(e) => handleMouseEnter(item.id, e)}
-                          onMouseMove={handleMouseMove}
-                          onMouseLeave={handleMouseLeave}
-                          onMouseDown={handleMouseDown}
-                          style={{ position: "relative" }}
-                        >
+                        <tr key={item.id} style={{ position: "relative" }}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={selectedInventoryIds.has(item.id)}
+                              onChange={() => toggleInventoryItem(item.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                width: "16px",
+                                height: "16px",
+                                cursor: "pointer",
+                                accentColor: "#10b981",
+                              }}
+                            />
+                          </td>
                           <td>{startIndex + index + 1}</td>
                           <td
                             style={{ whiteSpace: "nowrap", fontWeight: "600" }}
                           >
                             INV-{String(item.id).padStart(5, "0")}
                           </td>
-                          <td style={{ fontWeight: "600" }}>
+                          <td
+                            style={{ fontWeight: "600", cursor: "default" }}
+                            onMouseEnter={(e) => handleMouseEnter(item.id, e)}
+                            onMouseMove={handleMouseMove}
+                            onMouseLeave={handleMouseLeave}
+                            onMouseDown={handleMouseDown}
+                          >
                             <div
                               style={{
                                 display: "flex",
@@ -1826,7 +1988,7 @@ export default function Inventory() {
 
                           <td style={{ fontWeight: "600" }}>
                             {isLoadingPageQuantities && !quantityData ? (
-                              <span style={{ color: "#888" }}>Loading...</span>
+                              <span style={{ color: "#888" }}>Loading</span>
                             ) : (
                               `${availableQty} ${item.unit || ""}`
                             )}
@@ -1840,7 +2002,7 @@ export default function Inventory() {
                                   color: "rgba(107, 107, 107, 1)",
                                 }}
                               >
-                                LOADING...
+                                LOADING
                               </div>
                             ) : (
                               <div
@@ -1855,29 +2017,31 @@ export default function Inventory() {
                             )}
                           </td>
                           <td>
-                            <div style={{ display: "flex", gap: "10px" }}>
-                              <EditInventoryItemButton inventoryItem={item} />
+                            {isLoadingPageQuantities && !quantityData ? null : (
+                              <div style={{ display: "flex", gap: "10px" }}>
+                                <EditInventoryItemButton inventoryItem={item} />
 
-                              {availableQty === 0 && (
-                                <ArchiveInventoryItemButton
-                                  inventoryItem={item}
-                                />
-                              )}
+                                {availableQty === 0 && (
+                                  <ArchiveInventoryItemButton
+                                    inventoryItem={item}
+                                  />
+                                )}
 
-                              <Button
-                                componentType={"link"}
-                                bgColor={"rgba(239, 239, 239, 1)"}
-                                borderColor={"rgba(223, 223, 223, 1)"}
-                                textColor={"white"}
-                                style={{ padding: "7px 7px" }}
-                                href={`/inventory/${item.id}`}
-                              >
-                                <img
-                                  src={externalLinkIcon}
-                                  alt="external link"
-                                />
-                              </Button>
-                            </div>
+                                <Button
+                                  componentType={"link"}
+                                  bgColor={"rgba(239, 239, 239, 1)"}
+                                  borderColor={"rgba(223, 223, 223, 1)"}
+                                  textColor={"white"}
+                                  style={{ padding: "7px 7px" }}
+                                  href={`/inventory/${item.id}`}
+                                >
+                                  <img
+                                    src={externalLinkIcon}
+                                    alt="external link"
+                                  />
+                                </Button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
@@ -1907,6 +2071,12 @@ export default function Inventory() {
               </div>
             )}
           </div>
+
+          <DownloadSelectedInventoryButton
+            selectedItems={selectedInventoryItems}
+            pageQuantities={pageQuantities}
+            onClearSelection={() => setSelectedInventoryIds(new Set())}
+          />
         </>
       )}
 
@@ -2237,6 +2407,7 @@ export default function Inventory() {
           inventoryItemId={hoveredItemId}
           mouseX={mousePosition.x}
           mouseY={mousePosition.y}
+          anchorRect={hoveredRowRect}
           unit={
             currentItems.find((item) => item.id === hoveredItemId)?.unit || ""
           }
