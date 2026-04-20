@@ -343,7 +343,7 @@ export default function DownloadBoqButton({
         textColor={"black"}
         onClick={handleOpen}
       >
-        {isReference ? "EXPORT BOQ REFERENCE" : "EXPORT BOQ"}
+        {isReference ? "EXPORT BOQ REFERENCE" : "EXPORT BOQ IN GROUPS"}
         <img src={downloadIcon} alt="download" />
       </Button>
 
@@ -352,7 +352,7 @@ export default function DownloadBoqButton({
           header={
             isReference
               ? "EXPORT BILL OF QUANTITY REFERENCE"
-              : "EXPORT BILL OF QUANTITY"
+              : "EXPORT BILL OF QUANTITY IN GROUPS"
           }
           setIsOpen={setIsOpen}
           addButtonLabel="CONFIRM"

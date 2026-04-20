@@ -129,7 +129,8 @@ const styles = StyleSheet.create({
 
   // Status pills
   statusPill: {
-    paddingVertical: 3,
+    paddingBottom: 3,
+    paddingTop: 5,
     paddingHorizontal: 10,
     borderRadius: 15,
     fontSize: 7,

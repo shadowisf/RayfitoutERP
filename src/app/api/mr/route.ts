@@ -359,25 +359,65 @@ export async function PUT(req: Request) {
       const lpoId = body.lpo_id ? Number(body.lpo_id) : null;
 
       if (lpoId) {
-        // LPO-level rollback: update the LPO's progress, not the MR header
-        await db.query(`UPDATE lpo SET progress_id = ? WHERE id = ?`, [
-          body.rollback_progress_id,
-          lpoId,
-        ]);
+        const rollbackId = Number(body.rollback_progress_id);
 
-        await db.query(
-          `INSERT INTO mr_header_progress_log
+        if (rollbackId >= 14) {
+          // Rolling back within LPO stages (14, 17, 24): only update LPO's progress_id
+          await db.query(`UPDATE lpo SET progress_id = ? WHERE id = ?`, [
+            rollbackId,
+            lpoId,
+          ]);
+
+          await db.query(
+            `INSERT INTO mr_header_progress_log
      (mr_header_id, lpo_id, progress_id, from_progress_id, changed_by, rollback_reason, is_rollback)
      VALUES (?, ?, ?, ?, ?, ?, 1)`,
-          [
+            [
+              body.id,
+              lpoId,
+              rollbackId,
+              body.current_progress_id || null,
+              body.changed_by,
+              body.rollback_reason,
+            ],
+          );
+        } else {
+          // Rolling back past LPO start (< 14): reset LPO to 12, update MR to rollback stage
+          await db.query(`UPDATE lpo SET progress_id = 12 WHERE id = ?`, [lpoId]);
+          await db.query(`UPDATE mr_headers SET progress_id = ? WHERE id = ?`, [
+            rollbackId,
             body.id,
-            lpoId,
-            body.rollback_progress_id,
-            body.current_progress_id || null,
-            body.changed_by,
-            body.rollback_reason,
-          ],
-        );
+          ]);
+
+          // Log LPO reset to 12
+          await db.query(
+            `INSERT INTO mr_header_progress_log
+     (mr_header_id, lpo_id, progress_id, from_progress_id, changed_by, rollback_reason, is_rollback)
+     VALUES (?, ?, ?, ?, ?, ?, 1)`,
+            [
+              body.id,
+              lpoId,
+              12,
+              body.current_progress_id || null,
+              body.changed_by,
+              body.rollback_reason,
+            ],
+          );
+
+          // Log MR rollback to target stage
+          await db.query(
+            `INSERT INTO mr_header_progress_log
+     (mr_header_id, progress_id, from_progress_id, changed_by, rollback_reason, is_rollback)
+     VALUES (?, ?, ?, ?, ?, 1)`,
+            [
+              body.id,
+              rollbackId,
+              body.current_progress_id || null,
+              body.changed_by,
+              body.rollback_reason,
+            ],
+          );
+        }
       } else {
         // MR-level rollback: update the MR header's progress
         await db.query(`UPDATE mr_headers SET progress_id = ? WHERE id = ?`, [

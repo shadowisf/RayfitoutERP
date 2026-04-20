@@ -30,6 +30,23 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
   const hoverTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    const handleCloseHover = () => {
+      setShowPopup(false);
+      setIsWaiting(false);
+      if (hoverTimer.current) {
+        clearTimeout(hoverTimer.current);
+        hoverTimer.current = null;
+      }
+    };
+    window.addEventListener("scroll", handleCloseHover, true);
+    window.addEventListener("blur", handleCloseHover);
+    return () => {
+      window.removeEventListener("scroll", handleCloseHover, true);
+      window.removeEventListener("blur", handleCloseHover);
+    };
+  }, []);
+
+  useEffect(() => {
     setIsLoading(true);
 
     fetch(

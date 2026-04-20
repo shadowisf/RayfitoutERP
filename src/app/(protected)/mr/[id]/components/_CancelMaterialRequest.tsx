@@ -129,11 +129,8 @@ export default function CancelMaterialRequestButton({
     const userDeptId = userInfo?.departmentID;
 
     // Use appropriate flow based on context
-    const progressFlow = lpoId
-      ? lpoProgressFlow
-      : type === "job"
-        ? joProgressFlow
-        : fullProgressFlow;
+    // LPO context still uses fullProgressFlow so users can roll back past LPO & Invoice
+    const progressFlow = type === "job" ? joProgressFlow : fullProgressFlow;
 
     // Find the current progress index
     const currentIndex = progressFlow.indexOf(currentProgressId);

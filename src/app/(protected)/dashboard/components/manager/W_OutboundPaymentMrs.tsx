@@ -52,11 +52,20 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
 
 
   useEffect(() => {
-    const handleScroll = () => {
+    const handleCloseHover = () => {
       setShowPopup(false);
+      setIsWaiting(false);
+      if (hoverTimer.current) {
+        clearTimeout(hoverTimer.current);
+        hoverTimer.current = null;
+      }
     };
-    window.addEventListener("scroll", handleScroll, true);
-    return () => window.removeEventListener("scroll", handleScroll, true);
+    window.addEventListener("scroll", handleCloseHover, true);
+    window.addEventListener("blur", handleCloseHover);
+    return () => {
+      window.removeEventListener("scroll", handleCloseHover, true);
+      window.removeEventListener("blur", handleCloseHover);
+    };
   }, []);
 
   useEffect(() => {
