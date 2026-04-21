@@ -125,33 +125,30 @@ export default function CancelMaterialRequestButton({
   // JO flow (no QS stages, no LPO/invoice/delivery)
   const joProgressFlow = [1, 3, 7, 10];
 
-  useEffect(() => {
-    const userDeptId = userInfo?.departmentID;
+  // Maps rejected/failed progress_ids to the last valid stage before rejection
+  const rejectedToCutoff: { [key: number]: number } = {
+    5: 3, // Request Rejected → roll back up to Manager Approval
+    11: 10, // Price Approval Rejected → roll back up to Manager Price Approval
+    13: 12, // Payment Rejected → roll back up to LPO & Invoice
+    16: 14, // GRN Failed → roll back up to Pending Payments
+  };
 
-    // Use appropriate flow based on context
-    // LPO context still uses fullProgressFlow so users can roll back past LPO & Invoice
+  useEffect(() => {
     const progressFlow = type === "job" ? joProgressFlow : fullProgressFlow;
 
-    // Find the current progress index
-    const currentIndex = progressFlow.indexOf(currentProgressId);
+    const cutoff = rejectedToCutoff[currentProgressId];
 
-    if (currentIndex === -1) {
-      setAvailableStages([]);
-      return;
-    }
-
-    // Get all previous stages based on user's department
     let stagesToShow: number[];
 
-    if (userDeptId === 8 || userDeptId === 9) {
-      // Management (8) and Procurement (9) can rollback to ANY previous stage
-      stagesToShow = progressFlow.slice(0, currentIndex);
+    if (cutoff !== undefined) {
+      stagesToShow = fullProgressFlow.filter((id) => id <= cutoff);
     } else {
-      // All other departments can only rollback to the first stage in flow
-      const firstStage = progressFlow[0];
-      stagesToShow = progressFlow
-        .slice(0, currentIndex)
-        .filter((id) => id === firstStage);
+      const currentIndex = progressFlow.indexOf(currentProgressId);
+      if (currentIndex === -1) {
+        setAvailableStages([]);
+        return;
+      }
+      stagesToShow = progressFlow.slice(0, currentIndex);
     }
 
     const previousStages = stagesToShow.map((id) => {
@@ -165,7 +162,7 @@ export default function CancelMaterialRequestButton({
     });
 
     setAvailableStages(previousStages);
-  }, [currentProgressId, userInfo, lpoId, type]);
+  }, [currentProgressId, lpoId, type]);
 
   const handleOpen = () => {
     setSelectedStage(null);
@@ -216,163 +213,166 @@ export default function CancelMaterialRequestButton({
     }
   }
 
-  if (userInfo?.departmentID === 8 || userInfo?.departmentID === 9) {
-    return (
-      <>
-        <Button
-          componentType="button"
-          bgColor={bgColor}
-          borderColor={borderColor}
-          textColor={textColor}
-          onClick={handleOpen}
-          style={{ padding: "7px 20px" }}
+  if (
+    userInfo?.departmentID !== 8 &&
+    userInfo?.departmentID !== 9 &&
+    userInfo?.departmentID !== 16 &&
+    userInfo?.departmentID !== 10
+  ) {
+    return null;
+  }
+
+  return (
+    <>
+      <Button
+        componentType="button"
+        bgColor={bgColor}
+        borderColor={borderColor}
+        textColor={textColor}
+        onClick={handleOpen}
+        style={{ padding: "7px 20px" }}
+      >
+        {children}
+      </Button>
+
+      {isOpen && (
+        <FormPopUp
+          header={
+            type === "job"
+              ? "ROLL BACK JOB ORDER"
+              : "ROLL BACK MATERIAL REQUEST"
+          }
+          setIsOpen={setIsOpen}
+          handleSubmit={handleSubmit}
+          addButtonLabel={"CONFIRM"}
+          style={{ width: "600px" }}
         >
-          {children}
-        </Button>
+          {/* Roll Back To Stage Section */}
+          <div>
+            {availableStages.length === 0 ? (
+              <p style={{ color: "rgba(107, 114, 128, 1)", margin: 0 }}>
+                No previous stages available for rollback.
+              </p>
+            ) : (
+              <>
+                <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                  {availableStages.map((stage) => {
+                    const departmentStyle = getDepartmentStyle(
+                      stage.departmentId,
+                    );
 
-        {isOpen && (
-          <FormPopUp
-            header={
-              type === "job"
-                ? "ROLL BACK JOB ORDER"
-                : "ROLL BACK MATERIAL REQUEST"
-            }
-            setIsOpen={setIsOpen}
-            handleSubmit={handleSubmit}
-            addButtonLabel={"CONFIRM"}
-            style={{ width: "600px" }}
-          >
-            {/* Roll Back To Stage Section */}
-            <div>
-              {availableStages.length === 0 ? (
-                <div>
-                  <p style={{ color: "rgba(107, 114, 128, 1)", margin: 0 }}>
-                    No previous stages available for rollback.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div style={{ maxHeight: "400px", overflowY: "auto" }}>
-                    {availableStages.map((stage) => {
-                      const departmentStyle = getDepartmentStyle(
-                        stage.departmentId,
-                      );
-
-                      return (
-                        <div key={stage.id} style={{ marginBottom: "5px" }}>
-                          <label
+                    return (
+                      <div key={stage.id} style={{ marginBottom: "5px" }}>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            cursor: "pointer",
+                            padding: "10px",
+                            borderRadius: "10px",
+                            backgroundColor:
+                              selectedStage === stage.id
+                                ? "rgba(168, 238, 208, 1)"
+                                : "rgba(245, 240, 240, 1)",
+                          }}
+                        >
+                          <div
                             style={{
                               display: "flex",
                               alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: "10px",
-                              cursor: "pointer",
-                              padding: "10px",
-                              borderRadius: "10px",
-                              backgroundColor:
-                                selectedStage === stage.id
-                                  ? "rgba(168, 238, 208, 1)"
-                                  : "rgba(245, 240, 240, 1)",
+                              gap: "5px",
+                              flex: 1,
                             }}
                           >
-                            <div
+                            <input
+                              type="radio"
+                              name="rollbackStage"
+                              value={stage.id}
+                              checked={selectedStage === stage.id}
+                              onChange={() => setSelectedStage(stage.id)}
                               style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "5px",
+                                width: "18px",
+                                height: "18px",
+                                cursor: "pointer",
+                                accentColor: "black",
+                                marginRight: "10px",
+                                flexShrink: 0,
+                              }}
+                            />
+                            <h4
+                              style={{
+                                margin: 0,
+                                textTransform: "uppercase",
                                 flex: 1,
                               }}
                             >
-                              <input
-                                type="radio"
-                                name="rollbackStage"
-                                value={stage.id}
-                                checked={selectedStage === stage.id}
-                                onChange={() => setSelectedStage(stage.id)}
-                                style={{
-                                  width: "18px",
-                                  height: "18px",
-                                  cursor: "pointer",
-                                  accentColor: "black",
-                                  marginRight: "10px",
-                                  flexShrink: 0,
-                                }}
-                              />
-                              <h4
-                                style={{
-                                  margin: 0,
-                                  textTransform: "uppercase",
-                                  flex: 1,
-                                }}
-                              >
-                                {stage.name}
-                              </h4>
-                            </div>
+                              {stage.name}
+                            </h4>
+                          </div>
 
-                            {stage.department && (
-                              <small
-                                style={{
-                                  backgroundColor:
-                                    departmentStyle.backgroundColor,
-                                  color: departmentStyle.color,
-                                  textTransform: "uppercase",
-                                  padding: "5px 12px",
-                                  borderRadius: "50px",
-                                  fontSize: "10px",
-                                  fontWeight: "600",
-                                  whiteSpace: "nowrap",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "6px",
-                                }}
-                              >
-                                <span style={{ scale: 2.5 }}>•</span>
-                                {stage.department}
-                              </small>
-                            )}
-                          </label>
-                        </div>
-                      );
-                    })}
-                  </div>
+                          {stage.department && (
+                            <small
+                              style={{
+                                backgroundColor:
+                                  departmentStyle.backgroundColor,
+                                color: departmentStyle.color,
+                                textTransform: "uppercase",
+                                padding: "5px 12px",
+                                borderRadius: "50px",
+                                fontSize: "10px",
+                                fontWeight: "600",
+                                whiteSpace: "nowrap",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                              }}
+                            >
+                              <span style={{ scale: 2.5 }}>•</span>
+                              {stage.department}
+                            </small>
+                          )}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
 
-                  <br />
-                  <br />
+                <br />
+                <br />
 
-                  <div className="input-row full">
-                    <InputItem
-                      label={"REASON"}
-                      value={reason}
-                      type={"textarea"}
-                      onChange={(e) => setReason(e.target.value)}
-                      required
-                    />
-                  </div>
+                <div className="input-row full">
+                  <InputItem
+                    label={"REASON"}
+                    value={reason}
+                    type={"textarea"}
+                    onChange={(e) => setReason(e.target.value)}
+                    required
+                  />
+                </div>
 
-                  <br />
-                  <br />
+                <br />
+                <br />
 
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "10px",
-                      alignItems: "center",
-                    }}
-                  >
-                    <img src={warningIcon} alt="warning" />
-                    <p style={{ color: "red" }}>
-                      This action cannot be undone and will update the current
-                      workflow status.
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-          </FormPopUp>
-        )}
-      </>
-    );
-  } else {
-    return null;
-  }
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    alignItems: "center",
+                  }}
+                >
+                  <img src={warningIcon} alt="warning" />
+                  <p style={{ color: "red" }}>
+                    This action cannot be undone and will update the current
+                    workflow status.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </FormPopUp>
+      )}
+    </>
+  );
 }

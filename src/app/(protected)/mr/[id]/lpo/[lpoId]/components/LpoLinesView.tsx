@@ -24,7 +24,8 @@ import CreateGRNButton from "./storekeeper/_CreateGRNButton";
 import SubmitForQCButton from "./storekeeper/_SubmitForQCButton";
 import AddToInventoryButton from "./storekeeper/_AddStockButton";
 import CommentsSection from "@/app/components/CommentsSection";
-import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
+import { formatPriceAED } from "@/lib/formatPrice";
+import DocumentsPopup from "./storekeeper/_DocumentPopUpButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -699,51 +700,60 @@ export default function LpoLinesView({
           </div>
 
           <div className="right">
-            {progressId >= 12 && (
-              <IssueLPOButton mrHeader={lpoAsMrHeader} mrLines={allItems} />
-            )}
+            {/* At Stock Entry stage (24) show the unified Documents popup */}
+            {progressId === 24 ? (
+              <DocumentsPopup lpoId={lpoId} />
+            ) : (
+              <>
+                {progressId >= 12 && (
+                  <IssueLPOButton mrHeader={lpoAsMrHeader} mrLines={allItems} />
+                )}
 
-            {(userInfo?.departmentID === 10 || userInfo?.departmentID === 11) &&
-              (progressId === 13 || progressId === 14) && (
-                <PaymentButtons
-                  mrHeader={lpoAsMrHeader}
-                  mrLine={allItems[0]}
-                  supplierId={allItems[0]?.approved_supplier_id}
-                />
-              )}
+                {(userInfo?.departmentID === 10 ||
+                  userInfo?.departmentID === 11) &&
+                  (progressId === 13 || progressId === 14) && (
+                    <PaymentButtons
+                      mrHeader={lpoAsMrHeader}
+                      mrLine={allItems[0]}
+                      supplierId={allItems[0]?.approved_supplier_id}
+                    />
+                  )}
 
-            {(userInfo?.departmentID === 8 || userInfo?.departmentID === 9) &&
-              progressId === 13 && (
-                <PaymentButtons
-                  mrHeader={lpoAsMrHeader}
-                  mrLine={allItems[0]}
-                  supplierId={allItems[0]?.approved_supplier_id}
-                />
-              )}
+                {(userInfo?.departmentID === 8 ||
+                  userInfo?.departmentID === 9) &&
+                  progressId === 13 && (
+                    <PaymentButtons
+                      mrHeader={lpoAsMrHeader}
+                      mrLine={allItems[0]}
+                      supplierId={allItems[0]?.approved_supplier_id}
+                    />
+                  )}
 
-            {progressId > 14 && (
-              <PaymentButtons
-                mrHeader={lpoAsMrHeader}
-                mrLine={allItems[0]}
-                supplierId={allItems[0]?.approved_supplier_id}
-              />
-            )}
+                {progressId > 14 && (
+                  <PaymentButtons
+                    mrHeader={lpoAsMrHeader}
+                    mrLine={allItems[0]}
+                    supplierId={allItems[0]?.approved_supplier_id}
+                  />
+                )}
 
-            {(progressId === 16 || progressId === 17) &&
-              userInfo?.departmentID === 11 && (
-                <CreateGRNButton
-                  mrHeader={lpoAsMrHeader}
-                  mrLines={allItems}
-                  progress_id={progressId}
-                />
-              )}
+                {(progressId === 16 || progressId === 17) &&
+                  userInfo?.departmentID === 11 && (
+                    <CreateGRNButton
+                      mrHeader={lpoAsMrHeader}
+                      mrLines={allItems}
+                      progress_id={progressId}
+                    />
+                  )}
 
-            {progressId >= 18 && (
-              <CreateGRNButton
-                mrHeader={lpoAsMrHeader}
-                mrLines={allItems}
-                progress_id={progressId}
-              />
+                {progressId >= 18 && (
+                  <CreateGRNButton
+                    mrHeader={lpoAsMrHeader}
+                    mrLines={allItems}
+                    progress_id={progressId}
+                  />
+                )}
+              </>
             )}
           </div>
         </div>

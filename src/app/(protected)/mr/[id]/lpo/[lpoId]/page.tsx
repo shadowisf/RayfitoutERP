@@ -5,6 +5,7 @@ import DeleteLpoHeaderButton from "./components/_DeleteLpoHeaderButton";
 import CancelMaterialRequestButton from "../../components/_CancelMaterialRequest";
 import RequisitionTimeline from "../../components/RequisitionTimeline";
 import DownloadCompletedMrLpoPDFButton from "./components/_DownloadCompletedMrLpoPDFButton";
+import DocumentsPopup from "./components/storekeeper/_DocumentPopUpButton";
 
 export default async function LpoWithID({
   params,
@@ -302,13 +303,16 @@ export default async function LpoWithID({
           {String(lpoId).padStart(5, "0")}
         </h1>
 
-        {lpo.progress_id === 25 && (
-          <DownloadCompletedMrLpoPDFButton
-            mrHeader={mrHeader}
-            lpo={lpo}
-            flatLines={lpoData.flatLines}
-          />
-        )}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {lpo.progress_id === 24 && <DocumentsPopup lpoId={lpo.id} />}
+          {lpo.progress_id === 25 && (
+            <DownloadCompletedMrLpoPDFButton
+              mrHeader={mrHeader}
+              lpo={lpo}
+              flatLines={lpoData.flatLines}
+            />
+          )}
+        </div>
       </div>
 
       <br />

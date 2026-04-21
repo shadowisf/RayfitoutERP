@@ -18,11 +18,9 @@ export async function POST(request: Request) {
       let params: any[];
 
       if (lpoId) {
-        // LPO-specific comments + pre-segregation comments (lpo_id IS NULL)
         query = `SELECT * FROM mr_comments WHERE mr_header_id = ? AND (lpo_id = ? OR lpo_id IS NULL) ORDER BY created_at ASC`;
         params = [body.mr_header_id, lpoId];
       } else {
-        // MR-level comments only (no lpo_id)
         query = `SELECT * FROM mr_comments WHERE mr_header_id = ? AND lpo_id IS NULL ORDER BY created_at ASC`;
         params = [body.mr_header_id];
       }
@@ -40,12 +38,16 @@ export async function POST(request: Request) {
         author_department_name,
         message,
         stage_name,
-        mentioned_department_ids,
+        mentioned_users,          // { cognito_id: string, department_id: number | null }[]
+        mentioned_department_ids, // number[]
       } = body;
 
-      // Insert the comment
+      const mentionedCognitoIds = (mentioned_users ?? []).map((u: any) => u.cognito_id);
+
       await db.query(
-        `INSERT INTO mr_comments (mr_header_id, lpo_id, author_name, author_department_id, author_department_name, message, stage_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO mr_comments
+          (mr_header_id, lpo_id, author_name, author_department_id, author_department_name, message, stage_name, mentioned_user_cognito_ids)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           mr_header_id,
           lpo_id || null,
@@ -54,12 +56,14 @@ export async function POST(request: Request) {
           author_department_name,
           message,
           stage_name,
+          mentionedCognitoIds.length > 0 ? JSON.stringify(mentionedCognitoIds) : null,
         ],
       );
 
-      // Create notifications for mentioned departments
-      if (mentioned_department_ids && mentioned_department_ids.length > 0) {
-        // Get display_id for notification message
+      const hasMentions =
+        (mentioned_users?.length > 0) || (mentioned_department_ids?.length > 0);
+
+      if (hasMentions) {
         const [mrRows]: any = await db.query(
           `SELECT type, id FROM mr_headers WHERE id = ?`,
           [mr_header_id],
@@ -68,15 +72,39 @@ export async function POST(request: Request) {
         const prefix =
           mrType === "job" ? "JO" : mrType === "payment" ? "PR" : "MR";
         const formattedId = `${prefix}-${String(mr_header_id).padStart(5, "0")}`;
+        const preview =
+          message.length > 80 ? message.substring(0, 80) + "..." : message;
 
-        for (const deptId of mentioned_department_ids) {
+        // User-specific notifications (targeted by cognito sub)
+        for (const mu of mentioned_users ?? []) {
+          if (!mu.department_id) continue;
           await db.query(
-            `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+            `INSERT INTO notification
+              (mr_header_id, lpo_id, department_id, user_cognito_id, header, message)
+             VALUES (?, ?, ?, ?, ?, ?)`,
             [
               mr_header_id,
+              lpo_id || null,
+              mu.department_id,
+              mu.cognito_id,
+              `Mentioned in ${formattedId}`,
+              `${author_name} mentioned you in a comment on ${formattedId}: "${preview}"`,
+            ],
+          );
+        }
+
+        // Department-wide notifications (no user_cognito_id)
+        for (const deptId of mentioned_department_ids ?? []) {
+          await db.query(
+            `INSERT INTO notification
+              (mr_header_id, lpo_id, department_id, header, message)
+             VALUES (?, ?, ?, ?, ?)`,
+            [
+              mr_header_id,
+              lpo_id || null,
               deptId,
               `Mentioned in ${formattedId}`,
-              `${author_name} mentioned your department in a comment on ${formattedId}: "${message.length > 80 ? message.substring(0, 80) + "..." : message}"`,
+              `${author_name} mentioned your department in a comment on ${formattedId}: "${preview}"`,
             ],
           );
         }

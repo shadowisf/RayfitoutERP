@@ -2446,7 +2446,7 @@ export default function MrLinesView({
                                     )}
                                   {mrHeader.progress_id === 2 &&
                                     userInfo?.departmentID === 16 && (
-                                      <th style={{ width: "160px" }}>
+                                      <th style={{ width: "320px" }}>
                                         ACTIONS
                                       </th>
                                     )}
@@ -3258,7 +3258,7 @@ export default function MrLinesView({
                                 )}
                               {mrHeader.progress_id === 2 &&
                                 userInfo?.departmentID === 16 && (
-                                  <th style={{ width: "160px" }}>ACTIONS</th>
+                                  <th style={{ width: "320px" }}>ACTIONS</th>
                                 )}
                               {mrHeader.progress_id >= 10 &&
                                 mrHeader.progress_id !== 11 && (

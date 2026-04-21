@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
 import SingleSelectInventoryItem from "./_SingleSelectInventoryItem";
+import ReplaceMaterialButton from "./_ReplaceMaterialButton";
 
 type Props = {
   item: MrLine;
@@ -205,6 +206,7 @@ export default function QSReviewButton({
     <>
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         <div style={{ display: "flex", gap: "8px", width: "280px" }}>
+          {/* Item Available temporarily disabled
           <Button
             componentType={"button"}
             bgColor={"white"}
@@ -218,6 +220,8 @@ export default function QSReviewButton({
           >
             Item Available
           </Button>
+          */}
+
           <Button
             componentType={"button"}
             bgColor={"white"}
@@ -231,6 +235,7 @@ export default function QSReviewButton({
           >
             Need Order
           </Button>
+          <ReplaceMaterialButton item={item} />
         </div>
         {inventoryMatch && (
           <div
