@@ -412,6 +412,11 @@ export default function EditMrItemButton({
           {/* Preview Table */}
           {selectedRow && (
             <>
+              {/* Hidden inputs to enforce required fields via form.checkValidity() */}
+              <input type="text" required value={selectedRow.categoryId > 0 ? String(selectedRow.categoryId) : ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
+              <input type="text" required value={selectedRow.subcategoryId > 0 ? String(selectedRow.subcategoryId) : ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
+              <input type="text" required value={selectedRow.quantity && Number(selectedRow.quantity) > 0 ? selectedRow.quantity : ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
+              <input type="text" required value={selectedRow.unit ?? ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
               <div className="input-row full">
                 <table className="items-table two-toned">
                   <thead>

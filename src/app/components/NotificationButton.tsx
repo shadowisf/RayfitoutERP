@@ -843,7 +843,10 @@ export default function NotificationDropdown() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ department_id: userInfo?.departmentID }),
+          body: JSON.stringify({
+            department_id: userInfo?.departmentID,
+            user_cognito_id: userInfo?.sub,
+          }),
         },
       );
 
@@ -901,7 +904,10 @@ export default function NotificationDropdown() {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ department_id: userInfo?.departmentID }),
+          body: JSON.stringify({
+            department_id: userInfo?.departmentID,
+            user_cognito_id: userInfo?.sub,
+          }),
         },
       );
 

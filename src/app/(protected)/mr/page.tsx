@@ -67,7 +67,15 @@ export default function MR() {
 
   const [mrHeaders, setMrHeaders] = useState<MrHeader[]>([]);
   const [lpoCards, setLpoCards] = useState<LpoCard[]>([]);
-  const [filterRelevant, setFilterRelevant] = useState(false);
+  const [filterRelevant, setFilterRelevant] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const saved = localStorage.getItem("pt_filterRelevant");
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
   const [mrDurations, setMrDurations] = useState<{
     [key: string]: { duration: string; hoursDecimal: number; style: any };
   }>({});
@@ -95,19 +103,38 @@ export default function MR() {
   const [collapsedGroups, setCollapsedGroups] = useState<
     Record<string, boolean>
   >({});
+  const defaultFilters = {
+    itemsRequestedIn: "all",
+    selectedDepartments: [] as number[],
+    selectedProjects: [] as number[],
+    requestType: "all",
+    selectedStages: [] as number[],
+  };
+
   const [filters, setFilters] = useState<{
     itemsRequestedIn: string;
     selectedDepartments: number[];
     selectedProjects: number[];
     requestType: string;
     selectedStages: number[];
-  }>({
-    itemsRequestedIn: "all",
-    selectedDepartments: [],
-    selectedProjects: [],
-    requestType: "all",
-    selectedStages: [],
+  }>(() => {
+    if (typeof window === "undefined") return defaultFilters;
+    try {
+      const saved = localStorage.getItem("pt_filters");
+      return saved ? JSON.parse(saved) : defaultFilters;
+    } catch {
+      return defaultFilters;
+    }
   });
+
+  // Persist filter state to localStorage
+  useEffect(() => {
+    localStorage.setItem("pt_filterRelevant", JSON.stringify(filterRelevant));
+  }, [filterRelevant]);
+
+  useEffect(() => {
+    localStorage.setItem("pt_filters", JSON.stringify(filters));
+  }, [filters]);
 
   const getFlagColor = (hours: number, progress_id: number): string => {
     if (hours == null || isNaN(hours) || hours < 0) return "#ECCF28";
@@ -528,10 +555,10 @@ export default function MR() {
         { name: "Manager Approval", progress_id: 3 },
       ],
     },
-    {
-      name: "Existing Stock",
-      statuses: [{ name: "Stock Transfer", progress_id: 4 }],
-    },
+    // {
+    //   name: "Existing Stock",
+    //   statuses: [{ name: "Stock Transfer", progress_id: 4 }],
+    // },
     {
       name: "Commercial Validation",
       statuses: [
@@ -552,7 +579,7 @@ export default function MR() {
       statuses: [
         { name: "Awaiting Delivery", progress_id: 17 },
         // TEMPORARILY DISABLED QC: { name: "QC Check", progress_id: 21 },
-        { name: "Stock Entry", progress_id: 24 },
+        // { name: "Stock Entry", progress_id: 24 },
       ],
     },
     {
@@ -980,11 +1007,32 @@ export default function MR() {
       <div
         style={{
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "space-between",
         }}
       >
-        <h1>PROCUREMENT TRACKER</h1>
+        <div>
+          <h1>PROCUREMENT TRACKER</h1>
+
+          <br />
+
+          <div
+            className="widget-container"
+            style={{
+              width: "300px",
+              height: "150px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              borderRadius: "15px",
+            }}
+          >
+            <h4>Total MRs</h4>
+            <h4 style={{ fontSize: "24px" }}>{mrHeaders.length}</h4>
+          </div>
+
+          <br />
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
           {/* View toggle */}
@@ -3012,9 +3060,7 @@ function TableView({
                                   {item.quantity &&
                                   Number(item.quantity) !== 0 ? (
                                     <>
-                                      {Number.isInteger(Number(item.quantity))
-                                        ? Number(item.quantity)
-                                        : Number(item.quantity).toFixed(2)}{" "}
+                                      {parseFloat(Number(item.quantity).toFixed(3))}{" "}
                                       {item.unit}
                                     </>
                                   ) : (

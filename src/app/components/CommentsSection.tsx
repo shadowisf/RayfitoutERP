@@ -15,12 +15,22 @@ type Comment = {
   created_at: string;
 };
 
+type CognitoUser = {
+  sub: string;
+  name: string;
+  role: string;
+  departmentID: number | null;
+};
+
 type Department = {
   id: number;
   value: string;
 };
 
-// Get first letter of author name for avatar
+type MentionItem =
+  | { kind: "user"; sub: string; name: string; role: string; departmentID: number | null }
+  | { kind: "department"; id: number; name: string };
+
 function getNameLetter(name: string): string {
   return (name || "U").charAt(0).toUpperCase();
 }
@@ -38,6 +48,7 @@ export default function CommentsSection({
 }: CommentsSectionProps) {
   const { userInfo } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
+  const [users, setUsers] = useState<CognitoUser[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [message, setMessage] = useState("");
   const [showMentionDropdown, setShowMentionDropdown] = useState(false);
@@ -50,19 +61,27 @@ export default function CommentsSection({
 
   useEffect(() => {
     fetchComments();
+    fetchUsers();
     fetchDepartments();
   }, [mrHeaderId, lpoId]);
 
+  async function fetchUsers() {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/cognito`);
+      const data = await res.json();
+      if (data.success) setUsers(data.users);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+    }
+  }
+
   async function fetchDepartments() {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/comments`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "getDepartments" }),
-        },
-      );
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "getDepartments" }),
+      });
       const data = await res.json();
       setDepartments(data);
     } catch (err) {
@@ -72,18 +91,15 @@ export default function CommentsSection({
 
   async function fetchComments() {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/comments`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "getComments",
-            mr_header_id: mrHeaderId,
-            lpo_id: lpoId || null,
-          }),
-        },
-      );
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "getComments",
+          mr_header_id: mrHeaderId,
+          lpo_id: lpoId || null,
+        }),
+      });
       const data = await res.json();
       setComments(data);
     } catch (err) {
@@ -91,15 +107,30 @@ export default function CommentsSection({
     }
   }
 
-  // Extract mentioned department IDs from message
-  function extractMentionedDepts(msg: string): number[] {
-    const mentionedIds: number[] = [];
-    for (const dept of departments) {
-      if (msg.includes(`@${dept.value}`)) {
-        mentionedIds.push(dept.id);
+  // ── mention extraction ────────────────────────────────────────────────────
+
+  function extractMentions(msg: string): {
+    mentioned_users: { cognito_id: string; department_id: number | null }[];
+    mentioned_department_ids: number[];
+  } {
+    const seenUsers = new Set<string>();
+    const seenDepts = new Set<number>();
+    const mentioned_users: { cognito_id: string; department_id: number | null }[] = [];
+    const mentioned_department_ids: number[] = [];
+
+    for (const user of users) {
+      if (msg.includes(`@${user.name}`) && !seenUsers.has(user.sub)) {
+        seenUsers.add(user.sub);
+        mentioned_users.push({ cognito_id: user.sub, department_id: user.departmentID });
       }
     }
-    return mentionedIds;
+    for (const dept of departments) {
+      if (msg.includes(`@${dept.value}`) && !seenDepts.has(dept.id)) {
+        seenDepts.add(dept.id);
+        mentioned_department_ids.push(dept.id);
+      }
+    }
+    return { mentioned_users, mentioned_department_ids };
   }
 
   async function handleSend() {
@@ -107,8 +138,7 @@ export default function CommentsSection({
 
     setIsSending(true);
     try {
-      const mentionedDeptIds = extractMentionedDepts(message);
-
+      const { mentioned_users, mentioned_department_ids } = extractMentions(message);
       const deptInfo = departments.find((d) => d.id === userInfo.departmentID);
 
       await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/comments`, {
@@ -120,11 +150,11 @@ export default function CommentsSection({
           lpo_id: lpoId || null,
           author_name: userInfo.name || "Unknown",
           author_department_id: userInfo.departmentID,
-          author_department_name:
-            deptInfo?.value || userInfo.role || "Department",
+          author_department_name: deptInfo?.value || userInfo.role || "Department",
           message: message.trim(),
           stage_name: stageName,
-          mentioned_department_ids: mentionedDeptIds,
+          mentioned_users,
+          mentioned_department_ids,
         }),
       });
 
@@ -138,7 +168,8 @@ export default function CommentsSection({
     }
   }
 
-  // Save and restore cursor position in contentEditable
+  // ── cursor helpers ────────────────────────────────────────────────────────
+
   function saveCursorPosition(): number {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || !editorRef.current) return 0;
@@ -154,7 +185,6 @@ export default function CommentsSection({
     if (!el) return;
     const sel = window.getSelection();
     if (!sel) return;
-
     let currentPos = 0;
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     let node: Text | null;
@@ -170,7 +200,6 @@ export default function CommentsSection({
       }
       currentPos += nodeLen;
     }
-    // If pos is at the very end
     const range = document.createRange();
     range.selectNodeContents(el);
     range.collapse(false);
@@ -178,50 +207,7 @@ export default function CommentsSection({
     sel.addRange(range);
   }
 
-  // Re-render contentEditable innerHTML with green mentions
-  function updateEditorHighlight() {
-    const el = editorRef.current;
-    if (!el) return;
-    const cursorPos = saveCursorPosition();
-    const text = el.textContent || "";
-    setMessage(text);
-
-    // Build highlighted HTML
-    let html = "";
-    let remaining = text;
-    while (remaining.length > 0) {
-      let earliestIndex = -1;
-      let matchedDept: Department | null = null;
-
-      for (const dept of departments) {
-        const idx = remaining.indexOf(`@${dept.value}`);
-        if (idx !== -1 && (earliestIndex === -1 || idx < earliestIndex)) {
-          earliestIndex = idx;
-          matchedDept = dept;
-        }
-      }
-
-      if (earliestIndex === -1 || !matchedDept) {
-        html += escapeHtml(remaining);
-        break;
-      }
-
-      if (earliestIndex > 0) {
-        html += escapeHtml(remaining.substring(0, earliestIndex));
-      }
-      html += `<span style="color: rgba(1, 161, 92, 1); font-weight: 600;">@${escapeHtml(matchedDept.value)}</span>`;
-      remaining = remaining.substring(
-        earliestIndex + matchedDept.value.length + 1,
-      );
-    }
-
-    // Only update innerHTML if it actually changed (avoid cursor jump on every keystroke)
-    const currentText = el.textContent || "";
-    if (currentText === text && el.innerHTML !== html) {
-      el.innerHTML = html || "<br>";
-      restoreCursorPosition(cursorPos);
-    }
-  }
+  // ── highlight helpers ─────────────────────────────────────────────────────
 
   function escapeHtml(str: string): string {
     return str
@@ -230,13 +216,63 @@ export default function CommentsSection({
       .replace(/>/g, "&gt;");
   }
 
+  // All mentionable names (users + departments) for scanning
+  function allMentionNames(): string[] {
+    return [
+      ...users.map((u) => u.name),
+      ...departments.map((d) => d.value),
+    ];
+  }
+
+  function buildHighlightedHtml(text: string): string {
+    let html = "";
+    let remaining = text;
+    const names = allMentionNames();
+
+    while (remaining.length > 0) {
+      let earliestIndex = -1;
+      let matchedName = "";
+
+      for (const name of names) {
+        const idx = remaining.indexOf(`@${name}`);
+        if (idx !== -1 && (earliestIndex === -1 || idx < earliestIndex)) {
+          earliestIndex = idx;
+          matchedName = name;
+        }
+      }
+
+      if (earliestIndex === -1 || !matchedName) {
+        html += escapeHtml(remaining);
+        break;
+      }
+      if (earliestIndex > 0) html += escapeHtml(remaining.substring(0, earliestIndex));
+      html += `<span style="color: rgba(1, 161, 92, 1); font-weight: 600;">@${escapeHtml(matchedName)}</span>`;
+      remaining = remaining.substring(earliestIndex + matchedName.length + 1);
+    }
+    return html;
+  }
+
+  function updateEditorHighlight() {
+    const el = editorRef.current;
+    if (!el) return;
+    const cursorPos = saveCursorPosition();
+    const text = el.textContent || "";
+    setMessage(text);
+    const html = buildHighlightedHtml(text);
+    if (el.textContent === text && el.innerHTML !== html) {
+      el.innerHTML = html || "<br>";
+      restoreCursorPosition(cursorPos);
+    }
+  }
+
+  // ── editor event handlers ─────────────────────────────────────────────────
+
   function handleEditorInput() {
     const el = editorRef.current;
     if (!el) return;
     const text = el.textContent || "";
     setMessage(text);
 
-    // Check for mention trigger
     const cursorPos = saveCursorPosition();
     const textBeforeCursor = text.substring(0, cursorPos);
     const lastAtIndex = textBeforeCursor.lastIndexOf("@");
@@ -244,20 +280,23 @@ export default function CommentsSection({
     if (lastAtIndex !== -1) {
       const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
       const charBeforeAt = lastAtIndex > 0 ? text[lastAtIndex - 1] : " ";
-      const isCompletedMention = departments.some(
-        (d) =>
-          text.substring(lastAtIndex) === `@${d.value}` ||
-          text.substring(lastAtIndex).startsWith(`@${d.value} `),
-      );
+      const tail = text.substring(lastAtIndex);
+
+      const isCompletedMention =
+        allMentionNames().some(
+          (name) =>
+            tail === `@${name}` ||
+            tail.startsWith(`@${name} `) ||
+            tail.startsWith(`@${name}\n`),
+        );
+
       if (
         !isCompletedMention &&
-        (charBeforeAt === " " || charBeforeAt === "\n" || lastAtIndex === 0) &&
-        !textAfterAt.includes(" ")
+        (charBeforeAt === " " || charBeforeAt === "\n" || lastAtIndex === 0)
       ) {
         setShowMentionDropdown(true);
         setMentionFilter(textAfterAt.toLowerCase());
         setMentionStartIndex(lastAtIndex);
-        // Apply highlighting after mention detection
         updateEditorHighlight();
         return;
       }
@@ -268,44 +307,22 @@ export default function CommentsSection({
     updateEditorHighlight();
   }
 
-  function handleSelectMention(dept: Department) {
+  function handleSelectMention(item: MentionItem) {
     const el = editorRef.current;
     if (!el) return;
     const text = el.textContent || "";
     const cursorPos = saveCursorPosition();
+    const name = item.kind === "user" ? item.name : item.name;
     const beforeMention = text.substring(0, mentionStartIndex);
     const afterMention = text.substring(cursorPos);
-    const newMessage = `${beforeMention}@${dept.value} ${afterMention}`;
+    const newMessage = `${beforeMention}@${name} ${afterMention}`;
     setMessage(newMessage);
     setShowMentionDropdown(false);
     setMentionFilter("");
 
-    // Update innerHTML with highlighting
-    let html = "";
-    let remaining = newMessage;
-    while (remaining.length > 0) {
-      let earliestIdx = -1;
-      let matched: Department | null = null;
-      for (const d of departments) {
-        const idx = remaining.indexOf(`@${d.value}`);
-        if (idx !== -1 && (earliestIdx === -1 || idx < earliestIdx)) {
-          earliestIdx = idx;
-          matched = d;
-        }
-      }
-      if (earliestIdx === -1 || !matched) {
-        html += escapeHtml(remaining);
-        break;
-      }
-      if (earliestIdx > 0)
-        html += escapeHtml(remaining.substring(0, earliestIdx));
-      html += `<span style="color: rgba(1, 161, 92, 1); font-weight: 600;">@${escapeHtml(matched.value)}</span>`;
-      remaining = remaining.substring(earliestIdx + matched.value.length + 1);
-    }
+    const html = buildHighlightedHtml(newMessage);
     el.innerHTML = html || "<br>";
-    // Place cursor after the inserted mention
-    const newCursorPos = mentionStartIndex + dept.value.length + 2; // @name + space
-    restoreCursorPosition(newCursorPos);
+    restoreCursorPosition(mentionStartIndex + name.length + 2);
     el.focus();
   }
 
@@ -314,59 +331,52 @@ export default function CommentsSection({
       e.preventDefault();
       handleSend();
     }
-    if (e.key === "Escape") {
-      setShowMentionDropdown(false);
-    }
+    if (e.key === "Escape") setShowMentionDropdown(false);
   }
 
+  // ── filtered dropdown items ───────────────────────────────────────────────
+
+  const filteredUsers = users.filter((u) =>
+    u.name.toLowerCase().includes(mentionFilter),
+  );
   const filteredDepts = departments.filter((d) =>
     d.value.toLowerCase().includes(mentionFilter),
   );
+  const hasDropdownItems = filteredUsers.length > 0 || filteredDepts.length > 0;
 
-  // Render message with highlighted mentions
+  // ── render message with highlighted @mentions ────────────────────────────
+
   function renderMessage(msg: string) {
     const parts: React.ReactNode[] = [];
     let remaining = msg;
     let key = 0;
+    const names = allMentionNames();
 
     while (remaining.length > 0) {
       let earliestIndex = -1;
-      let matchedDept: Department | null = null;
+      let matchedName = "";
 
-      for (const dept of departments) {
-        const idx = remaining.indexOf(`@${dept.value}`);
+      for (const name of names) {
+        const idx = remaining.indexOf(`@${name}`);
         if (idx !== -1 && (earliestIndex === -1 || idx < earliestIndex)) {
           earliestIndex = idx;
-          matchedDept = dept;
+          matchedName = name;
         }
       }
 
-      if (earliestIndex === -1 || !matchedDept) {
+      if (earliestIndex === -1 || !matchedName) {
         parts.push(<span key={key++}>{remaining}</span>);
         break;
       }
-
       if (earliestIndex > 0) {
-        parts.push(
-          <span key={key++}>{remaining.substring(0, earliestIndex)}</span>,
-        );
+        parts.push(<span key={key++}>{remaining.substring(0, earliestIndex)}</span>);
       }
-
       parts.push(
-        <span
-          key={key++}
-          style={{
-            color: "rgba(1, 161, 92, 1)",
-            fontWeight: "600",
-          }}
-        >
-          @{matchedDept.value}
+        <span key={key++} style={{ color: "rgba(1, 161, 92, 1)", fontWeight: "600" }}>
+          @{matchedName}
         </span>,
       );
-
-      remaining = remaining.substring(
-        earliestIndex + matchedDept.value.length + 1,
-      );
+      remaining = remaining.substring(earliestIndex + matchedName.length + 1);
     }
 
     return parts;
@@ -374,9 +384,7 @@ export default function CommentsSection({
 
   function formatDate(dateStr: string) {
     const date = new Date(dateStr);
-    const day = date.getDate();
-    const month = date.toLocaleString("en-US", { month: "short" });
-    return `${day} ${month}`;
+    return `${date.getDate()} ${date.toLocaleString("en-US", { month: "short" })}`;
   }
 
   return (
@@ -393,18 +401,11 @@ export default function CommentsSection({
       <br />
 
       {/* Comments list */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          position: "relative",
-        }}
-      >
+      <div style={{ display: "flex", flexDirection: "column", position: "relative" }}>
         {comments.length === 0 && (
           <p style={{ color: "#9ca3af" }}>No comments yet.</p>
         )}
 
-        {/* Single continuous connecting line behind all avatars */}
         {comments.length > 1 && (
           <div
             style={{
@@ -421,12 +422,7 @@ export default function CommentsSection({
         )}
 
         {comments.map((comment, index) => (
-          <div
-            key={comment.id}
-            ref={(el) => {
-              commentRefs.current[index] = el;
-            }}
-          >
+          <div key={comment.id} ref={(el) => { commentRefs.current[index] = el; }}>
             <div
               style={{
                 display: "flex",
@@ -437,7 +433,6 @@ export default function CommentsSection({
                 position: "relative",
               }}
             >
-              {/* Avatar */}
               <div
                 style={{
                   width: "36px",
@@ -458,7 +453,6 @@ export default function CommentsSection({
                 {getNameLetter(comment.author_name)}
               </div>
 
-              {/* Content */}
               <div style={{ flex: 1 }}>
                 <div
                   style={{
@@ -472,32 +466,18 @@ export default function CommentsSection({
                     {comment.author_name} - {comment.author_department_name}
                   </span>
                   <span style={{ color: "#9ca3af", scale: "2" }}>•</span>
-                  <span style={{ color: "#9ca3af" }}>
-                    {formatDate(comment.created_at)}
-                  </span>
+                  <span style={{ color: "#9ca3af" }}>{formatDate(comment.created_at)}</span>
                   <span style={{ color: "#9ca3af", scale: "2" }}>•</span>
-                  <span
-                    style={{
-                      color: "#9ca3af",
-                      fontStyle: "italic",
-                    }}
-                  >
-                    {comment.stage_name}
-                  </span>
+                  <span style={{ color: "#9ca3af", fontStyle: "italic" }}>{comment.stage_name}</span>
                 </div>
                 <div style={{ fontSize: "14px", lineHeight: "1.5" }}>
                   {renderMessage(comment.message)}
                 </div>
               </div>
             </div>
-            {/* Border bottom separator */}
+
             {index < comments.length - 1 && (
-              <div
-                style={{
-                  borderBottom: "1px solid #e5e7eb",
-                  marginLeft: "48px",
-                }}
-              />
+              <div style={{ borderBottom: "1px solid #e5e7eb", marginLeft: "48px" }} />
             )}
           </div>
         ))}
@@ -522,7 +502,7 @@ export default function CommentsSection({
             suppressContentEditableWarning
             onInput={handleEditorInput}
             onKeyDown={handleKeyDown}
-            data-placeholder="Write a comment... Use @ to mention a department"
+            data-placeholder="Write a comment… Use @ to mention someone or a department"
             style={{
               width: "100%",
               border: "none",
@@ -537,7 +517,7 @@ export default function CommentsSection({
           />
 
           {/* Mention dropdown */}
-          {showMentionDropdown && filteredDepts.length > 0 && (
+          {showMentionDropdown && hasDropdownItems && (
             <div
               ref={dropdownRef}
               style={{
@@ -548,78 +528,167 @@ export default function CommentsSection({
                 border: "1px solid #e5e7eb",
                 borderRadius: "8px",
                 boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                padding: "4px",
+                padding: "4px 0",
                 zIndex: 10,
-                minWidth: "220px",
+                minWidth: "260px",
+                maxHeight: "260px",
+                overflowY: "auto",
               }}
             >
-              {filteredDepts.map((dept) => (
-                <div
-                  key={dept.id}
-                  onClick={() => handleSelectMention(dept)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    padding: "8px 12px",
-                    cursor: "pointer",
-                    borderRadius: "6px",
-                    fontSize: "14px",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#f3f4f6")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "transparent")
-                  }
-                >
-                  <span style={{ fontWeight: "500" }}>@{dept.value}</span>
-                </div>
-              ))}
+              {/* People section */}
+              {filteredUsers.length > 0 && (
+                <>
+                  <div
+                    style={{
+                      padding: "6px 12px 4px",
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.6px",
+                      color: "#9ca3af",
+                    }}
+                  >
+                    People
+                  </div>
+                  {filteredUsers.map((user) => (
+                    <div
+                      key={user.sub}
+                      onClick={() =>
+                        handleSelectMention({ kind: "user", ...user })
+                      }
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "7px 12px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#f3f4f6")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "transparent")
+                      }
+                    >
+                      <div
+                        style={{
+                          width: "28px",
+                          height: "28px",
+                          borderRadius: "50%",
+                          backgroundColor: "#1a1a1a",
+                          color: "white",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: "700",
+                          fontSize: "12px",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {getNameLetter(user.name)}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: "600" }}>{user.name}</div>
+                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>{user.role}</div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* Divider between sections */}
+              {filteredUsers.length > 0 && filteredDepts.length > 0 && (
+                <div style={{ borderTop: "1px solid #f0f0f0", margin: "4px 0" }} />
+              )}
+
+              {/* Departments section */}
+              {filteredDepts.length > 0 && (
+                <>
+                  <div
+                    style={{
+                      padding: "6px 12px 4px",
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.6px",
+                      color: "#9ca3af",
+                    }}
+                  >
+                    Departments
+                  </div>
+                  {filteredDepts.map((dept) => (
+                    <div
+                      key={dept.id}
+                      onClick={() =>
+                        handleSelectMention({ kind: "department", id: dept.id, name: dept.value })
+                      }
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "7px 12px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#f3f4f6")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "transparent")
+                      }
+                    >
+                      <div
+                        style={{
+                          width: "28px",
+                          height: "28px",
+                          borderRadius: "8px",
+                          backgroundColor: "#eef0fd",
+                          color: "#4f6ef7",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: "700",
+                          fontSize: "12px",
+                          flexShrink: 0,
+                        }}
+                      >
+                        #
+                      </div>
+                      <div style={{ fontWeight: "600" }}>{dept.value}</div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              alignItems: "center",
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span
+            style={{ cursor: "pointer", fontSize: "18px", color: "black" }}
+            title="Mention someone or a department"
+            onClick={() => {
+              const el = editorRef.current;
+              if (el) {
+                const text = el.textContent || "";
+                el.textContent = text + "@";
+                setMessage(text + "@");
+                setShowMentionDropdown(true);
+                setMentionFilter("");
+                setMentionStartIndex(text.length);
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                range.collapse(false);
+                const sel = window.getSelection();
+                sel?.removeAllRanges();
+                sel?.addRange(range);
+                el.focus();
+              }
             }}
           >
-            <span
-              style={{ cursor: "pointer", fontSize: "18px", color: "black" }}
-              onClick={() => {
-                const el = editorRef.current;
-                if (el) {
-                  const text = el.textContent || "";
-                  el.textContent = text + "@";
-                  setMessage(text + "@");
-                  setShowMentionDropdown(true);
-                  setMentionFilter("");
-                  setMentionStartIndex(text.length);
-                  // Place cursor at end
-                  const range = document.createRange();
-                  range.selectNodeContents(el);
-                  range.collapse(false);
-                  const sel = window.getSelection();
-                  sel?.removeAllRanges();
-                  sel?.addRange(range);
-                  el.focus();
-                }
-              }}
-              title="Mention a department"
-            >
-              @
-            </span>
-          </div>
+            @
+          </span>
 
           <Button
             componentType={"button"}

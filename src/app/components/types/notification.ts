@@ -7,6 +7,7 @@ type Notif = {
   transfer_id: number;
   progress_id: number;
   department_id: number;
+  user_cognito_id: string | null;
   header: string;
   message: string;
   is_read: boolean;
