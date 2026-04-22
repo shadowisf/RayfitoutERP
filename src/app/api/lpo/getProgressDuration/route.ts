@@ -156,7 +156,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     // Transient DB error — log quietly and return null so the UI continues working
     console.log(
-      `[lpo/getProgressDuration] DB error for lpo_id=${lpo_id}, progress_id=${progress_id}:`,
+      `[lpo/getProgressDuration] DB error:`,
       err.sqlMessage || err.message,
     );
     return NextResponse.json(null, { status: 200 });
