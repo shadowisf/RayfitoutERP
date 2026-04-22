@@ -248,7 +248,8 @@ export default function NewMrButton() {
               gap: "20px",
             }}
           >
-            {userInfo?.departmentID === 8 && (
+            {(userInfo?.departmentID === 8 ||
+              userInfo?.departmentID === 16) && (
               <label
                 style={{
                   position: "relative",
