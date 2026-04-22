@@ -48,7 +48,7 @@ export default function CancelMaterialRequestButton({
   const allProgressStages: { [key: number]: string } = {
     1: "Draft",
     2: "QS Review",
-    // 3: "Manager Approval", // Manager Approval stage commented out
+    3: "Manager Approval", // Used by JOs and PRs (MRs skip this stage)
     7: "Quotations",
     9: "QS Price Check",
     10: "Manager Price Approval",
@@ -62,7 +62,7 @@ export default function CancelMaterialRequestButton({
   const progressToResponsibleDepartment: { [key: number]: number } = {
     1: 0,
     2: 16, // Awaiting QS initial approval → QS
-    // 3: 8, // Awaiting manager initial approval → Management (stage commented out)
+    3: 8, // Awaiting manager initial approval → Management (JOs and PRs only)
     7: 9, // Awaiting quotations → Procurement
     9: 16, // Awaiting QS price approval → QS
     10: 8, // Awaiting manager price approval → Management
@@ -116,32 +116,42 @@ export default function CancelMaterialRequestButton({
     );
   };
 
-  // Progress flow order (MR-level before segregation)
-  const mrProgressFlow = [1, 2, /* 3, */ 7, 9, 10, 12]; // 3 = Manager Approval commented out
-  // LPO-level progress flow (after segregation)
+  // MR flow: skips Manager Approval (3) entirely
+  const mrProgressFlow = [1, 2, 7, 9, 10, 12];
+  // LPO-level progress flow (after MR segregation)
   const lpoProgressFlow = [12, 14, 17, 24];
-  // Combined flow for non-LPO contexts
-  const fullProgressFlow = [1, 2, /* 3, */ 7, 9, 10, 12, 14, 17, 24]; // 3 = Manager Approval commented out
-  // JO flow (no QS stages, no LPO/invoice/delivery)
-  const joProgressFlow = [1, /* 3, */ 7, 10]; // 3 = Manager Approval commented out
+  // Full MR flow for LPO context (no Manager Approval for MRs)
+  const fullProgressFlow = [1, 2, 7, 9, 10, 12, 14, 17, 24];
+  // JO flow: Draft → Manager Approval → Quotations → Price Approval
+  const joProgressFlow = [1, 3, 7, 10];
+  // PR flow: Draft → QS Review → Manager Approval → Payment
+  const prProgressFlow = [1, 2, 3, 14];
 
   // Maps rejected/failed progress_ids to the last valid stage before rejection
+  // JOs and PRs go through Manager Approval (3), so their rejection cutoff is 3.
+  // MRs skip Manager Approval, so their rejection cutoff is 2 (QS Review).
   const rejectedToCutoff: { [key: number]: number } = {
-    5: 2, // Request Rejected → roll back up to QS Review (Manager Approval stage removed)
+    5: type === "job" || type === "payment" ? 3 : 2, // Request Rejected → back to last valid stage
     11: 10, // Price Approval Rejected → roll back up to Manager Price Approval
     13: 12, // Payment Rejected → roll back up to LPO & Invoice
     16: 14, // GRN Failed → roll back up to Pending Payments
   };
 
   useEffect(() => {
-    const progressFlow = type === "job" ? joProgressFlow : fullProgressFlow;
+    const progressFlow =
+      type === "job"
+        ? joProgressFlow
+        : type === "payment"
+          ? prProgressFlow
+          : fullProgressFlow;
 
     const cutoff = rejectedToCutoff[currentProgressId];
 
     let stagesToShow: number[];
 
     if (cutoff !== undefined) {
-      stagesToShow = fullProgressFlow.filter((id) => id <= cutoff);
+      // Filter using the type-specific flow so stage 3 appears for JOs/PRs
+      stagesToShow = progressFlow.filter((id) => id <= cutoff);
     } else {
       const currentIndex = progressFlow.indexOf(currentProgressId);
       if (currentIndex === -1) {

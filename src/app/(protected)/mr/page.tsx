@@ -552,7 +552,7 @@ export default function MR() {
       name: "Approval",
       statuses: [
         { name: "QS Review", progress_id: 2 },
-        // { name: "Manager Approval", progress_id: 3 }, // Manager Approval stage commented out
+        { name: "Manager Approval", progress_id: 3 }, // Only for JOs and PRs
       ],
     },
     // {

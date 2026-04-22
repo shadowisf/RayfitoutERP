@@ -36,6 +36,7 @@ export default function SubmitForInitialApprovalButton({
       body: JSON.stringify({
         action: "submitForInitialApproval",
         id: mrHeader.id,
+        type: mrHeader.type,
         changed_by: userInfo?.name,
         department_id: mrHeader.department_id,
         from_progress_id: progressId || mrHeader.progress_id,
@@ -65,7 +66,9 @@ export default function SubmitForInitialApprovalButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        SUBMIT FOR QUOTATIONS
+        {mrHeader.type === "job" || mrHeader.type === "payment"
+          ? "SUBMIT FOR MANAGER APPROVAL"
+          : "SUBMIT FOR QUOTATIONS"}
       </Button>
 
       {isOpen && (

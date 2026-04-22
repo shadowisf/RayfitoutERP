@@ -662,9 +662,201 @@ export function BoqPDF({
     }
   };
 
+  // Helper: renders all subcategories + items for a given category
+  const renderCategoryContent = (category: string, categoryIndex: number) => {
+    const subCategories = Object.entries(boqLines[category]);
+
+    return subCategories.map(([subCategory, items], subIndex) => {
+      const subCategoryTotal = items.reduce(
+        (sum, item) =>
+          sum + calculateLineTotal(item.rate_per_quantity, item.quantity),
+        0,
+      );
+
+      return (
+        <View key={subIndex}>
+          {/* Subcategory Title + Table Header — kept together */}
+          <View wrap={false}>
+            <Text
+              style={styles.subCategoryTitle}
+              hyphenationCallback={(word) => [word]}
+            >
+              {categoryIndex + 1}.{subIndex + 1}{" "}
+              {category.toUpperCase()} / {subCategory.toUpperCase()}
+            </Text>
+
+            <View style={styles.detailTableHeader}>
+              <Text style={styles.detailColItemNo}>#</Text>
+
+              {showDN && (
+                <Text style={styles.detailColDNNumber}>DN NUMBER & DATE</Text>
+              )}
+
+              <Text style={colStyles.category}>ITEM</Text>
+              <Text style={styles.detailColQty}>QTY</Text>
+
+              {showPrices && !showDN && (
+                <>
+                  <Text style={styles.detailColRate}>RATE</Text>
+                  <Text style={styles.detailColTotal}>TOTAL PRICE</Text>
+                </>
+              )}
+
+              {hasAnyAttachments && (
+                <Text style={colStyles.attachment}>ATTACHMENT(S)</Text>
+              )}
+
+              {hasAnyRemarks && (
+                <Text style={colStyles.remarks}>REMARKS</Text>
+              )}
+            </View>
+          </View>
+
+          {/* BOQ Line Items */}
+          {items.map((item, itemIndex) => {
+            const rowStyle =
+              itemIndex % 2 === 0
+                ? styles.detailTableRowOdd
+                : styles.detailTableRowEven;
+
+            return (
+              <View key={item.id} style={rowStyle} wrap={false}>
+                <Text style={styles.detailColItemNo}>
+                  {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
+                </Text>
+
+                {showDN && (
+                  <Text style={styles.detailColDNNumber}>
+                    {item.dn_number_and_date || "-"}
+                  </Text>
+                )}
+
+                <View style={colStyles.category}>
+                  <Text
+                    style={{ fontFamily: "Mont-Bold", marginBottom: 5 }}
+                    hyphenationCallback={(word) => [word]}
+                  >
+                    {item.item_name}
+                  </Text>
+
+                  {item.item_description && (
+                    <Text
+                      style={{ marginBottom: 5 }}
+                      hyphenationCallback={(word) => [word]}
+                    >
+                      {item.item_description}
+                    </Text>
+                  )}
+
+                  {(item.location || item.scope_of_work) && (
+                    <View style={styles.locationScopeRow}>
+                      {item.location && (
+                        <View style={styles.locationContainer}>
+                          <Image src={locationIcon} style={styles.locationIcon} />
+                          <Text
+                            style={styles.locationText}
+                            hyphenationCallback={(word) => [word]}
+                          >
+                            {item.location}
+                          </Text>
+                        </View>
+                      )}
+                      {item.scope_of_work && (
+                        <View style={styles.scopeBadge}>
+                          <Text
+                            style={styles.scopeText}
+                            hyphenationCallback={(word) => [word]}
+                          >
+                            {item.scope_of_work}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                <Text style={styles.detailColQty}>
+                  {formatQuantity(item.quantity)} {item.unit}
+                </Text>
+
+                {showPrices && !showDN && (
+                  <>
+                    <Text style={styles.detailColRate}>
+                      {formatMoney(item.rate_per_quantity)}
+                    </Text>
+                    <Text style={styles.detailColTotal}>
+                      {boqHeader.currency}{" "}
+                      {formatMoney(
+                        calculateLineTotal(item.rate_per_quantity, item.quantity),
+                      )}
+                    </Text>
+                  </>
+                )}
+
+                {hasAnyAttachments && (
+                  <View style={colStyles.attachment}>
+                    {item.attachments &&
+                      Array.isArray(item.attachments) &&
+                      item.attachments.length > 0 && (
+                        <View style={styles.attachmentContainer}>
+                          {item.attachments.map(
+                            (base64Url: string, i: number) => {
+                              if (!base64Url || base64Url.trim() === "")
+                                return null;
+                              return (
+                                <View key={i} style={styles.attachmentWrapper}>
+                                  <Image
+                                    src={base64Url}
+                                    style={styles.attachmentImage}
+                                  />
+                                </View>
+                              );
+                            },
+                          )}
+                        </View>
+                      )}
+                  </View>
+                )}
+
+                {hasAnyRemarks && (
+                  <Text style={colStyles.remarks}>{item.remarks || ""}</Text>
+                )}
+              </View>
+            );
+          })}
+
+          {/* Subtotal Row — priced mode only */}
+          {showPrices && !showDN && (
+            <View style={styles.subtotalRow} wrap={false}>
+              <Text style={styles.detailColItemNo}></Text>
+              <Text
+                style={colStyles.category}
+                hyphenationCallback={(word) => [word]}
+              >
+                SUBTOTAL
+              </Text>
+              <Text style={styles.detailColQty}></Text>
+              <Text style={styles.detailColRate}></Text>
+              <Text style={styles.detailColTotal}>
+                {boqHeader.currency} {formatMoney(subCategoryTotal)}
+              </Text>
+              {hasAnyAttachments && <Text style={colStyles.attachment}></Text>}
+              {hasAnyRemarks && <Text style={colStyles.remarks}></Text>}
+            </View>
+          )}
+        </View>
+      );
+    });
+  };
+
+  // When unpriced/DN: items start on page 1 (no summary page).
+  // When priced: summary is page 1, items each get their own page.
+  const detailCategories = showPrices ? categories : categories.slice(1);
+  const firstCategoryForPage1 = !showPrices && categories.length > 0 ? categories[0] : null;
+
   return (
     <Document>
-      {/* Summary Page */}
+      {/* Page 1 — Header + Document Info + (priced: Summary | unpriced: first category items) */}
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
@@ -682,9 +874,8 @@ export function BoqPDF({
           </Text>
         </View>
 
-        {/* Document Info - Conditional based on isReference */}
+        {/* Document Info */}
         {isReference && mrHeader ? (
-          // MR Reference Mode - Show MR Header Details
           <>
             <View style={styles.infoRow}>
               <View style={styles.infoItem}>
@@ -710,9 +901,7 @@ export function BoqPDF({
                 <Text style={styles.infoLabel}>DATE</Text>
                 <Text style={styles.infoValue}>
                   {mrHeader.date_requested
-                    ? new Date(mrHeader.date_requested).toLocaleDateString(
-                        "en-GB",
-                      )
+                    ? new Date(mrHeader.date_requested).toLocaleDateString("en-GB")
                     : new Date().toLocaleDateString("en-GB")}
                 </Text>
               </View>
@@ -747,9 +936,7 @@ export function BoqPDF({
                 <Text style={styles.infoLabel}>REQUIRED DATE</Text>
                 <Text style={styles.infoValue}>
                   {mrHeader.required_date
-                    ? new Date(mrHeader.required_date).toLocaleDateString(
-                        "en-GB",
-                      )
+                    ? new Date(mrHeader.required_date).toLocaleDateString("en-GB")
                     : "-"}
                 </Text>
               </View>
@@ -760,7 +947,6 @@ export function BoqPDF({
             </View>
           </>
         ) : (
-          // Standard BOQ Mode - Show BOQ Header Details
           <>
             <View style={styles.infoRow}>
               <View style={styles.infoItem}>
@@ -798,395 +984,137 @@ export function BoqPDF({
           </>
         )}
 
-        {/* Items Table - Summary - Only Categories */}
-        <View style={styles.table}>
-          <Text style={styles.summaryTitle}>SUMMARY</Text>
+        {/* ── PRICED: Summary table + totals + terms ── */}
+        {showPrices && (
+          <>
+            <View style={styles.table}>
+              <Text style={styles.summaryTitle}>SUMMARY</Text>
 
-          <View style={styles.tableHeader}>
-            <Text
-              style={
-                showPrices
-                  ? styles.tableColItemNo
-                  : styles.tableColItemNoUnpriced
-              }
-            >
-              ITEM NO
-            </Text>
-            <Text
-              style={
-                showPrices
-                  ? styles.tableColDescription
-                  : styles.tableColDescriptionUnpriced
-              }
-            >
-              CATEGORY
-            </Text>
-            {showPrices && <Text style={styles.tableColAmount}>AMOUNT</Text>}
-          </View>
+              <View style={styles.tableHeader}>
+                <Text style={styles.tableColItemNo}>ITEM NO</Text>
+                <Text style={styles.tableColDescription}>CATEGORY</Text>
+                <Text style={styles.tableColAmount}>AMOUNT</Text>
+              </View>
 
-          {categories.map((category, categoryIndex) => {
-            const categoryTotal = Object.values(
-              categoryTotals[category],
-            ).reduce((sum, val) => sum + val, 0);
+              {categories.map((category, categoryIndex) => {
+                const categoryTotal = Object.values(
+                  categoryTotals[category],
+                ).reduce((sum, val) => sum + val, 0);
 
-            const rowStyle =
-              categoryIndex % 2 === 0
-                ? styles.tableRowOdd
-                : styles.tableRowEven;
+                const rowStyle =
+                  categoryIndex % 2 === 0
+                    ? styles.tableRowOdd
+                    : styles.tableRowEven;
 
-            return (
-              <View key={categoryIndex} style={rowStyle}>
-                <Text
-                  style={
-                    showPrices
-                      ? styles.tableColItemNo
-                      : styles.tableColItemNoUnpriced
-                  }
-                >
-                  {categoryIndex + 1}.0
+                return (
+                  <View key={categoryIndex} style={rowStyle} wrap={false}>
+                    <Text style={styles.tableColItemNo}>
+                      {categoryIndex + 1}.0
+                    </Text>
+                    <Text style={styles.tableColDescription}>
+                      {category.toUpperCase()}
+                    </Text>
+                    <Text style={styles.tableColAmount}>
+                      {boqHeader.currency} {formatMoney(categoryTotal)}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+
+            {/* Keep all total rows together — advance as a unit if they don't fit */}
+            <View wrap={false}>
+              <View style={styles.totalRowAlt}>
+                <Text style={styles.totalLabel}>SUBTOTAL</Text>
+                <Text style={styles.totalValue}>
+                  {boqHeader.currency} {formatMoney(grandTotal)}
                 </Text>
-                <Text
-                  style={
-                    showPrices
-                      ? styles.tableColDescription
-                      : styles.tableColDescriptionUnpriced
-                  }
-                >
-                  {category.toUpperCase()}
-                </Text>
-                {showPrices && (
-                  <Text style={styles.tableColAmount}>
-                    {boqHeader.currency} {formatMoney(categoryTotal)}
+              </View>
+
+              {Number(boqHeader.discount) > 0 && (
+                <View style={styles.totalRowAlt}>
+                  <Text style={styles.totalLabel}>SPECIAL DISCOUNT</Text>
+                  <Text style={styles.totalValue}>
+                    {boqHeader.currency} {formatMoney(boqHeader.discount)}
                   </Text>
+                </View>
+              )}
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>GRAND TOTAL</Text>
+                <Text style={styles.totalValue}>
+                  {boqHeader.currency}{" "}
+                  {formatMoney(grandTotal - (Number(boqHeader.discount) || 0))}
+                </Text>
+              </View>
+            </View>
+
+            {/* Terms — only in standard (non-reference) mode */}
+            {!isReference && (
+              <View style={styles.bottomSection}>
+                {boqHeader.payment_terms && (
+                  <View style={styles.termsSection}>
+                    <Text style={styles.termsTitle}>PAYMENT TERMS</Text>
+                    <Text style={styles.termsText}>{boqHeader.payment_terms}</Text>
+                  </View>
+                )}
+                {boqHeader.validity_terms && (
+                  <View style={styles.termsSection}>
+                    <Text style={styles.termsTitle}>VALIDITY TERMS</Text>
+                    <Text style={styles.termsText}>{boqHeader.validity_terms}</Text>
+                  </View>
+                )}
+                {boqHeader.warranty && (
+                  <View style={styles.termsSection}>
+                    <Text style={styles.termsTitle}>WARRANTY</Text>
+                    <Text style={styles.termsText}>{boqHeader.warranty}</Text>
+                  </View>
+                )}
+                {boqHeader.completion && (
+                  <View style={styles.termsSection}>
+                    <Text style={styles.termsTitle}>COMPLETION</Text>
+                    <Text style={styles.termsText}>{boqHeader.completion}</Text>
+                  </View>
+                )}
+                {boqHeader.exclusion && (
+                  <View style={styles.termsSection}>
+                    <Text style={styles.termsTitle}>EXCLUSIONS</Text>
+                    <Text style={styles.termsText}>{boqHeader.exclusion}</Text>
+                  </View>
+                )}
+                {boqHeader.terms_and_conditions && (
+                  <View style={styles.termsSection}>
+                    <Text style={styles.termsTitle}>TERMS & CONDITIONS</Text>
+                    <Text style={styles.termsText}>
+                      {boqHeader.terms_and_conditions}
+                    </Text>
+                  </View>
                 )}
               </View>
-            );
-          })}
-        </View>
-
-        {showPrices && (
-          <View style={styles.totalRowAlt}>
-            <Text style={styles.totalLabel}>SUBTOTAL</Text>
-            <Text style={styles.totalValue}>
-              {boqHeader.currency} {formatMoney(grandTotal)}
-            </Text>
-          </View>
+            )}
+          </>
         )}
 
-        {showPrices && boqHeader.discount && (
-          <View style={styles.totalRowAlt}>
-            <Text style={styles.totalLabel}>SPECIAL DISCOUNT</Text>
-            <Text style={styles.totalValue}>
-              {boqHeader.currency} {formatMoney(boqHeader.discount)}
-            </Text>
-          </View>
-        )}
-
-        {/* Total Row - Only show if showPrices is true */}
-        {showPrices && (
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>GRAND TOTAL</Text>
-            <Text style={styles.totalValue}>
-              {boqHeader.currency}{" "}
-              {formatMoney(grandTotal - (Number(boqHeader.discount) || 0))}
-            </Text>
-          </View>
-        )}
-
-        {/* Bottom Section - Terms - Only show if NOT in reference mode */}
-        {!isReference && (
-          <View style={styles.bottomSection}>
-            {/* Payment Terms */}
-            {boqHeader.payment_terms && (
-              <View style={styles.termsSection}>
-                <Text style={styles.termsTitle}>PAYMENT TERMS</Text>
-                <Text style={styles.termsText}>
-                  {boqHeader.payment_terms || "-"}
-                </Text>
-              </View>
-            )}
-
-            {/* Validity */}
-            {boqHeader.validity_terms && (
-              <View style={styles.termsSection}>
-                <Text style={styles.termsTitle}>VALIDITY TERMS</Text>
-                <Text style={styles.termsText}>
-                  {boqHeader.validity_terms || "-"}
-                </Text>
-              </View>
-            )}
-
-            {/* Warranty */}
-            {boqHeader.warranty && (
-              <View style={styles.termsSection}>
-                <Text style={styles.termsTitle}>WARRANTY</Text>
-                <Text style={styles.termsText}>
-                  {boqHeader.warranty || "-"}
-                </Text>
-              </View>
-            )}
-
-            {/* Completion */}
-            {boqHeader.completion && (
-              <View style={styles.termsSection}>
-                <Text style={styles.termsTitle}>COMPLETION</Text>
-                <Text style={styles.termsText}>
-                  {boqHeader.completion || "-"}
-                </Text>
-              </View>
-            )}
-
-            {/* Exclusion */}
-            {boqHeader.exclusion && (
-              <View style={styles.termsSection}>
-                <Text style={styles.termsTitle}>EXCLUSIONS</Text>
-                <Text style={styles.termsText}>
-                  {boqHeader.exclusion || "-"}
-                </Text>
-              </View>
-            )}
-
-            {/* Terms and Conditions */}
-            {boqHeader.terms_and_conditions && (
-              <View style={styles.termsSection}>
-                <Text style={styles.termsTitle}>TERMS & CONDITIONS</Text>
-                <Text style={styles.termsText}>
-                  {boqHeader.terms_and_conditions || "-"}
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
+        {/* ── UNPRICED / DN: first category items start directly on page 1 ── */}
+        {firstCategoryForPage1 &&
+          renderCategoryContent(firstCategoryForPage1, 0)}
 
         <Text
           style={styles.pageNumber}
           render={({ pageNumber }) => `${String(pageNumber).padStart(2, "0")}`}
+          fixed
         />
       </Page>
 
-      {/* Detail Pages - Each category on a new page */}
-      {categories.map((category, categoryIndex) => {
-        const subCategories = Object.entries(boqLines[category]);
+      {/* Detail Pages — all categories (priced) or categories[1+] (unpriced/DN) */}
+      {detailCategories.map((category, idx) => {
+        // For priced: categoryIndex = idx (0-based over all categories)
+        // For unpriced: categoryIndex = idx + 1 (categories[0] was on page 1)
+        const categoryIndex = showPrices ? idx : idx + 1;
 
         return (
           <Page key={categoryIndex} size="A4" style={styles.page}>
-            {/* Loop through subcategories */}
-            {subCategories.map(([subCategory, items], subIndex) => {
-              // Calculate subcategory total
-              const subCategoryTotal = items.reduce(
-                (sum, item) =>
-                  sum +
-                  calculateLineTotal(item.rate_per_quantity, item.quantity),
-                0,
-              );
-
-              return (
-                <View key={subIndex}>
-                  {/* Subcategory Title */}
-                  <View wrap={false}>
-                    <Text
-                      style={styles.subCategoryTitle}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {categoryIndex + 1}.{subIndex + 1}{" "}
-                      {category.toUpperCase()} / {subCategory.toUpperCase()}
-                    </Text>
-
-                    {/* Table Header */}
-                    <View style={styles.detailTableHeader}>
-                      <Text style={styles.detailColItemNo}>#</Text>
-
-                      {showDN && (
-                        <Text style={styles.detailColDNNumber}>
-                          DN NUMBER & DATE
-                        </Text>
-                      )}
-
-                      <Text style={colStyles.category}>ITEM</Text>
-                      <Text style={styles.detailColQty}>QTY</Text>
-
-                      {/* Show pricing columns only if not in DN mode and showPrices is true */}
-                      {showPrices && !showDN && (
-                        <>
-                          <Text style={styles.detailColRate}>RATE</Text>
-                          <Text style={styles.detailColTotal}>TOTAL PRICE</Text>
-                        </>
-                      )}
-
-                      {/* Only show attachment column if there are any attachments */}
-                      {hasAnyAttachments && (
-                        <Text style={colStyles.attachment}>ATTACHMENT(S)</Text>
-                      )}
-
-                      {hasAnyRemarks && (
-                        <Text style={colStyles.remarks}>REMARKS</Text>
-                      )}
-                    </View>
-                  </View>
-
-                  {/* BOQ Line Items */}
-                  {items.map((item, itemIndex) => {
-                    const rowStyle =
-                      itemIndex % 2 === 0
-                        ? styles.detailTableRowOdd
-                        : styles.detailTableRowEven;
-
-                    return (
-                      <View key={item.id} style={rowStyle} wrap={false}>
-                        <Text style={styles.detailColItemNo}>
-                          {categoryIndex + 1}.{subIndex + 1}.{itemIndex + 1}
-                        </Text>
-
-                        {/* Show DN columns when in DN mode */}
-                        {showDN && (
-                          <Text style={styles.detailColDNNumber}>
-                            {item.dn_number_and_date || "-"}
-                          </Text>
-                        )}
-
-                        <View style={colStyles.category}>
-                          {/* Item Name */}
-                          <Text
-                            style={{
-                              fontFamily: "Mont-Bold",
-                              marginBottom: 5,
-                            }}
-                            hyphenationCallback={(word) => [word]}
-                          >
-                            {item.item_name}
-                          </Text>
-
-                          {/* Item Description */}
-                          {item.item_description && (
-                            <Text
-                              style={{ marginBottom: 5 }}
-                              hyphenationCallback={(word) => [word]}
-                            >
-                              {item.item_description}
-                            </Text>
-                          )}
-
-                          {/* Location and Scope on same line */}
-                          {(item.location || item.scope_of_work) && (
-                            <View style={styles.locationScopeRow}>
-                              {/* Location with Icon */}
-                              {item.location && (
-                                <View style={styles.locationContainer}>
-                                  <Image
-                                    src={locationIcon}
-                                    style={styles.locationIcon}
-                                  />
-                                  <Text
-                                    style={styles.locationText}
-                                    hyphenationCallback={(word) => [word]}
-                                  >
-                                    {item.location}
-                                  </Text>
-                                </View>
-                              )}
-
-                              {/* Scope of Work Badge */}
-                              {item.scope_of_work && (
-                                <View style={styles.scopeBadge}>
-                                  <Text
-                                    style={styles.scopeText}
-                                    hyphenationCallback={(word) => [word]}
-                                  >
-                                    {item.scope_of_work}
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                          )}
-                        </View>
-
-                        <Text style={styles.detailColQty}>
-                          {formatQuantity(item.quantity)} {item.unit}
-                        </Text>
-
-                        {/* Show pricing only if not in DN mode and showPrices is true */}
-                        {showPrices && !showDN && (
-                          <>
-                            <Text style={styles.detailColRate}>
-                              {formatMoney(item.rate_per_quantity)}
-                            </Text>
-                            <Text style={styles.detailColTotal}>
-                              {boqHeader.currency}{" "}
-                              {formatMoney(
-                                calculateLineTotal(
-                                  item.rate_per_quantity,
-                                  item.quantity,
-                                ),
-                              )}
-                            </Text>
-                          </>
-                        )}
-
-                        {/* Only show attachment cell if there are any attachments in the entire BOQ */}
-                        {hasAnyAttachments && (
-                          <View style={colStyles.attachment}>
-                            {item.attachments &&
-                              Array.isArray(item.attachments) &&
-                              item.attachments.length > 0 && (
-                                <View style={styles.attachmentContainer}>
-                                  {item.attachments.map(
-                                    (base64Url: string, i: number) => {
-                                      if (!base64Url || base64Url.trim() === "")
-                                        return null;
-
-                                      return (
-                                        <View
-                                          key={i}
-                                          style={styles.attachmentWrapper}
-                                        >
-                                          <Image
-                                            src={base64Url}
-                                            style={styles.attachmentImage}
-                                          />
-                                        </View>
-                                      );
-                                    },
-                                  )}
-                                </View>
-                              )}
-                          </View>
-                        )}
-
-                        {hasAnyRemarks && (
-                          <Text style={colStyles.remarks}>
-                            {item.remarks || ""}
-                          </Text>
-                        )}
-                      </View>
-                    );
-                  })}
-
-                  {/* Subtotal Row - Only show if showPrices is true and not in DN mode */}
-                  {showPrices && !showDN && (
-                    <View style={styles.subtotalRow} wrap={false}>
-                      <Text style={styles.detailColItemNo}></Text>
-                      <Text
-                        style={colStyles.category}
-                        hyphenationCallback={(word) => [word]}
-                      >
-                        SUBTOTAL
-                      </Text>
-                      <Text style={styles.detailColQty}></Text>
-                      <Text style={styles.detailColRate}></Text>
-                      <Text style={styles.detailColTotal}>
-                        {boqHeader.currency} {formatMoney(subCategoryTotal)}
-                      </Text>
-                      {/* Only show attachment cell in subtotal if attachments column exists */}
-                      {hasAnyAttachments && (
-                        <Text style={colStyles.attachment}></Text>
-                      )}
-                      {hasAnyRemarks && <Text style={colStyles.remarks}></Text>}
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-
+            {renderCategoryContent(category, categoryIndex)}
             <Text
               style={styles.pageNumber}
               render={({ pageNumber }) =>
