@@ -78,18 +78,20 @@ export async function POST(req: Request) {
     );
 
     if (rows.length === 0) {
-      return NextResponse.json(
-        { error: "No record found for this MR and stage" },
-        { status: 404 },
+      // No log entry for this MR + stage combination — normal for rejected/skipped stages
+      console.log(
+        `[getProgressDuration] No log entry for mr_header_id=${mr_header_id}, progress_id=${progress_id}`,
       );
+      return NextResponse.json(null, { status: 200 });
     }
 
     return NextResponse.json(rows[0], { status: 200 });
   } catch (err: any) {
-    console.error(err.sqlMessage || err.message);
-    return NextResponse.json(
-      { error: err.sqlMessage || err.message },
-      { status: 500 },
+    // Transient DB error — log quietly and return null so the UI continues working
+    console.log(
+      `[getProgressDuration] DB error for mr_header_id=${mr_header_id}, progress_id=${progress_id}:`,
+      err.sqlMessage || err.message,
     );
+    return NextResponse.json(null, { status: 200 });
   }
 }

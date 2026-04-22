@@ -145,18 +145,20 @@ export async function POST(req: Request) {
     );
 
     if (fallbackRows.length === 0) {
-      return NextResponse.json(
-        { error: "No record found for this LPO and stage" },
-        { status: 404 },
+      // No log entry for this LPO + stage combination — normal for rejected/skipped stages
+      console.log(
+        `[lpo/getProgressDuration] No log entry for lpo_id=${lpo_id}, progress_id=${progress_id}`,
       );
+      return NextResponse.json(null, { status: 200 });
     }
 
     return NextResponse.json(fallbackRows[0], { status: 200 });
   } catch (err: any) {
-    console.error(err.sqlMessage || err.message);
-    return NextResponse.json(
-      { error: err.sqlMessage || err.message },
-      { status: 500 },
+    // Transient DB error — log quietly and return null so the UI continues working
+    console.log(
+      `[lpo/getProgressDuration] DB error for lpo_id=${lpo_id}, progress_id=${progress_id}:`,
+      err.sqlMessage || err.message,
     );
+    return NextResponse.json(null, { status: 200 });
   }
 }

@@ -48,7 +48,7 @@ export default function CancelMaterialRequestButton({
   const allProgressStages: { [key: number]: string } = {
     1: "Draft",
     2: "QS Review",
-    3: "Manager Approval",
+    // 3: "Manager Approval", // Manager Approval stage commented out
     7: "Quotations",
     9: "QS Price Check",
     10: "Manager Price Approval",
@@ -62,7 +62,7 @@ export default function CancelMaterialRequestButton({
   const progressToResponsibleDepartment: { [key: number]: number } = {
     1: 0,
     2: 16, // Awaiting QS initial approval → QS
-    3: 8, // Awaiting manager initial approval → Management
+    // 3: 8, // Awaiting manager initial approval → Management (stage commented out)
     7: 9, // Awaiting quotations → Procurement
     9: 16, // Awaiting QS price approval → QS
     10: 8, // Awaiting manager price approval → Management
@@ -117,17 +117,17 @@ export default function CancelMaterialRequestButton({
   };
 
   // Progress flow order (MR-level before segregation)
-  const mrProgressFlow = [1, 2, 3, 7, 9, 10, 12];
+  const mrProgressFlow = [1, 2, /* 3, */ 7, 9, 10, 12]; // 3 = Manager Approval commented out
   // LPO-level progress flow (after segregation)
   const lpoProgressFlow = [12, 14, 17, 24];
   // Combined flow for non-LPO contexts
-  const fullProgressFlow = [1, 2, 3, 7, 9, 10, 12, 14, 17, 24];
+  const fullProgressFlow = [1, 2, /* 3, */ 7, 9, 10, 12, 14, 17, 24]; // 3 = Manager Approval commented out
   // JO flow (no QS stages, no LPO/invoice/delivery)
-  const joProgressFlow = [1, 3, 7, 10];
+  const joProgressFlow = [1, /* 3, */ 7, 10]; // 3 = Manager Approval commented out
 
   // Maps rejected/failed progress_ids to the last valid stage before rejection
   const rejectedToCutoff: { [key: number]: number } = {
-    5: 3, // Request Rejected → roll back up to Manager Approval
+    5: 2, // Request Rejected → roll back up to QS Review (Manager Approval stage removed)
     11: 10, // Price Approval Rejected → roll back up to Manager Price Approval
     13: 12, // Payment Rejected → roll back up to LPO & Invoice
     16: 14, // GRN Failed → roll back up to Pending Payments

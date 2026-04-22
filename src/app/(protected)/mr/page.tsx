@@ -552,7 +552,7 @@ export default function MR() {
       name: "Approval",
       statuses: [
         { name: "QS Review", progress_id: 2 },
-        { name: "Manager Approval", progress_id: 3 },
+        // { name: "Manager Approval", progress_id: 3 }, // Manager Approval stage commented out
       ],
     },
     // {
@@ -1368,6 +1368,9 @@ export default function MR() {
               );
             }, 0);
 
+            // When searching, hide entire group if no matching cards
+            if (searchQuery.trim() && totalCount === 0) return null;
+
             return (
               <div key={group.name}>
                 <div
@@ -1462,6 +1465,10 @@ export default function MR() {
                           : useLpoCards
                             ? lpos.length
                             : mrs.length;
+
+                      // When searching, hide empty status columns
+                      if (searchQuery.trim() && cardCount === 0) return null;
+
                       const dept = getResponsibleDepartment(status.name);
                       const deptStyle = getDepartmentStyle(dept.id);
                       const isEmpty = cardCount === 0;
