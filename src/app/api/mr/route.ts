@@ -623,21 +623,22 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitForInitialApproval") {
-      await db.query(`UPDATE mr_headers SET progress_id = 3 WHERE id = ?`, [
+      // Manager Approval stage (3) commented out — QS now submits directly to Quotations (7)
+      await db.query(`UPDATE mr_headers SET progress_id = 7 WHERE id = ?`, [
         body.id,
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 3, ?, ?)`,
-        [body.id, body.from_progress_id || 1, body.changed_by],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 7, ?, ?)`,
+        [body.id, body.from_progress_id || 2, body.changed_by],
       );
 
       await db.query(
         `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
         [
           body.id,
-          8,
-          "Manager Initial Approval Required",
+          9,
+          "Quotations Required",
           `${formattedId} is awaiting your review`,
         ],
       );
@@ -648,7 +649,7 @@ export async function PUT(req: Request) {
           body.id,
           body.department_id,
           `${prefix} Submitted`,
-          `Your ${formattedId} is awaiting manager approval`,
+          `Your ${formattedId} is awaiting quotations`,
         ],
       );
 
@@ -1085,8 +1086,8 @@ export async function PUT(req: Request) {
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason) VALUES (?, 5, 3, ?, ?)`,
-        [body.id, body.changed_by, rejectReason],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason) VALUES (?, 5, ?, ?, ?)`,
+        [body.id, body.from_progress_id || 2, body.changed_by, rejectReason],
       );
 
       await db.query(
