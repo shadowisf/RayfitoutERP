@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     // Also try parsing as a plain number
     const plainNumber = /^\d+$/.test(query) ? parseInt(query, 10) : null;
 
-    // 1. Search Material Requests (only progress_id <= 12)
+    // 1. Search Material Requests (progress_id <= 12) and Job Orders (all stages — JOs don't generate LPOs)
     const [mrRows]: any = await db.query(
       `SELECT
         id,
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
         required_date
       FROM vw_mr_headers
       WHERE
-        progress_id <= 12
+        (type = 'job' OR progress_id <= 12)
         AND (
           CONCAT(
             CASE

@@ -1320,7 +1320,7 @@ export default function BoqLinesView({
             ))}
           </tbody>
           <tfoot style={{ borderTop: "1px solid rgba(232, 223, 223, 1)" }}>
-            {boqHeader?.discount && boqHeader?.discount > 0 && (
+            {Number(boqHeader?.discount) > 0 && (
               <tr>
                 <td></td>
                 <td>
@@ -1340,7 +1340,7 @@ export default function BoqLinesView({
                 </td>
               </tr>
             )}
-            {boqHeader?.discount && boqHeader?.discount > 0 && (
+            {Number(boqHeader?.discount) > 0 && (
               <tr>
                 <td></td>
                 <td>

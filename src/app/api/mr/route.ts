@@ -623,35 +623,64 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitForInitialApproval") {
-      // Manager Approval stage (3) commented out — QS now submits directly to Quotations (7)
-      await db.query(`UPDATE mr_headers SET progress_id = 7 WHERE id = ?`, [
-        body.id,
-      ]);
+      // JOs and PRs go through Manager Approval (3); MRs skip it and go directly to Quotations (7)
+      const isManagerApprovalType =
+        body.type === "job" || body.type === "payment";
+      const nextProgressId = isManagerApprovalType ? 3 : 7;
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 7, ?, ?)`,
-        [body.id, body.from_progress_id || 2, body.changed_by],
+        `UPDATE mr_headers SET progress_id = ? WHERE id = ?`,
+        [nextProgressId, body.id],
       );
 
       await db.query(
-        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
-        [
-          body.id,
-          9,
-          "Quotations Required",
-          `${formattedId} is awaiting your review`,
-        ],
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, ?, ?, ?)`,
+        [body.id, nextProgressId, body.from_progress_id || (isManagerApprovalType ? 1 : 2), body.changed_by],
       );
 
-      await db.query(
-        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
-        [
-          body.id,
-          body.department_id,
-          `${prefix} Submitted`,
-          `Your ${formattedId} is awaiting quotations`,
-        ],
-      );
+      if (isManagerApprovalType) {
+        // Notify management for JO/PR initial approval
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            8,
+            "Manager Initial Approval Required",
+            `${formattedId} is awaiting your review`,
+          ],
+        );
+
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            body.department_id,
+            `${prefix} Submitted`,
+            `Your ${formattedId} is awaiting manager approval`,
+          ],
+        );
+      } else {
+        // MR: skip Manager Approval, notify Procurement directly
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            9,
+            "Quotations Required",
+            `${formattedId} is awaiting your review`,
+          ],
+        );
+
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            body.department_id,
+            `${prefix} Submitted`,
+            `Your ${formattedId} is awaiting quotations`,
+          ],
+        );
+      }
 
       return NextResponse.json({ status: 200 });
     }
