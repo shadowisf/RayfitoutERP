@@ -823,6 +823,21 @@ export default function MR() {
   const filteredMRs = getFilteredMRs();
   const filteredLPOs = getFilteredLPOs();
 
+  // Active MR count: exclude progress_id 26 (segregation), and exclude MRs
+  // whose associated LPOs are ALL completed (progress_id 26). MRs with at
+  // least one pending LPO are still considered active.
+  const activeMrCount = filteredMRs.filter((mr) => {
+    if (mr.progress_id === 26) return false;
+    const mrLpos = lpoCards.filter((lpo) => lpo.mr_header_id === mr.id);
+    if (mrLpos.length === 0) return true;
+    return mrLpos.some((lpo) => lpo.progress_id !== 26);
+  }).length;
+
+  // Active LPO count: exclude completed LPOs (progress_id 25).
+  const activeLpoCount = filteredLPOs.filter(
+    (lpo) => lpo.progress_id !== 25,
+  ).length;
+
   const groupedMRs = filteredMRs.reduce(
     (acc: Record<string, MrHeader[]>, mr) => {
       const status = mr.progress_name || "Unknown";
@@ -1015,21 +1030,11 @@ export default function MR() {
           <h1>PROCUREMENT TRACKER</h1>
 
           <br />
+          <br />
 
-          <div
-            className="widget-container"
-            style={{
-              width: "300px",
-              height: "150px",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              borderRadius: "15px",
-            }}
-          >
-            <h4>Total MRs</h4>
-            <h4 style={{ fontSize: "24px" }}>{mrHeaders.length}</h4>
-          </div>
+          <h2 style={{ color: "rgba(120, 120, 120, 1)" }}>
+            Showing {activeMrCount} MRs & {activeLpoCount} LPOs
+          </h2>
 
           <br />
         </div>
@@ -3067,7 +3072,9 @@ function TableView({
                                   {item.quantity &&
                                   Number(item.quantity) !== 0 ? (
                                     <>
-                                      {parseFloat(Number(item.quantity).toFixed(3))}{" "}
+                                      {parseFloat(
+                                        Number(item.quantity).toFixed(3),
+                                      )}{" "}
                                       {item.unit}
                                     </>
                                   ) : (

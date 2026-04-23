@@ -5,6 +5,7 @@ import DeleteLpoHeaderButton from "./components/_DeleteLpoHeaderButton";
 import CancelMaterialRequestButton from "../../components/_CancelMaterialRequest";
 import RequisitionTimeline from "../../components/RequisitionTimeline";
 import DownloadCompletedMrLpoPDFButton from "./components/_DownloadCompletedMrLpoPDFButton";
+import DownloadLPOButton from "./components/_DownloadLPOButton";
 import DocumentsPopup from "./components/storekeeper/_DocumentPopUpButton";
 
 export default async function LpoWithID({
@@ -311,6 +312,17 @@ export default async function LpoWithID({
               lpo={lpo}
               flatLines={lpoData.flatLines}
             />
+          )}
+          {mrHeader.type === "job" && (
+            <DownloadLPOButton
+              lpoID={lpo.id}
+              bgColor="black"
+              borderColor="black"
+              textColor="white"
+              style={{ padding: "7px 20px", borderRadius: "25px" }}
+            >
+              DOWNLOAD LPO
+            </DownloadLPOButton>
           )}
         </div>
       </div>

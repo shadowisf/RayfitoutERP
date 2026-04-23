@@ -13,10 +13,16 @@ export async function POST(request: NextRequest) {
     s.name as supplier_name,
     s.address as supplier_address,
     s.trn_number as supplier_trn_number,
+    sub.name as subcontractor_name,
+    sub.trn_number as subcontractor_trn_number,
+    sub.address as subcontractor_address,
+    sub.contact_person_name as subcontractor_contact_person,
+    sub.email as subcontractor_email,
     p.name as project_name,
     mh.date_requested
   FROM lpo l
   LEFT JOIN suppliers s ON l.supplier_id = s.id
+  LEFT JOIN subcontractors sub ON l.subcontractor_id = sub.id
   LEFT JOIN projects p ON l.project_id = p.id
   LEFT JOIN mr_headers mh ON l.mr_header_id = mh.id
   WHERE l.id = ?
@@ -36,7 +42,7 @@ export async function POST(request: NextRequest) {
     const lpoData = lpoRows[0];
 
     const linesQuery = `
-      SELECT 
+      SELECT
         lml.id,
         lml.lpo_id,
         lml.mr_line_id,
@@ -56,9 +62,28 @@ export async function POST(request: NextRequest) {
       Number(lpo_id),
     ]);
 
+    const joLinesQuery = `
+      SELECT
+        ljl.id,
+        ljl.lpo_id,
+        ljl.jo_line_id,
+        ljl.approved_total_price,
+        vjl.job_scope_name,
+        vjl.job_description,
+        vjl.approved_subcontractor_name
+      FROM lpo_jo_line ljl
+      JOIN vw_jo_lines vjl ON ljl.jo_line_id = vjl.id
+      WHERE ljl.lpo_id = ?
+    `;
+
+    const [joLinesRows] = await db.query<RowDataPacket[]>(joLinesQuery, [
+      Number(lpo_id),
+    ]);
+
     const completeData = {
       ...lpoData,
       lpo_mr_lines: linesRows || [],
+      lpo_jo_lines: joLinesRows || [],
     };
 
     return NextResponse.json(

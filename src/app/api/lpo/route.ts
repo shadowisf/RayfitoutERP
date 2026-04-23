@@ -7,19 +7,20 @@ export async function POST(req: Request) {
 
     if (body.action === "createLPO") {
       const lpoQuery = `
-      INSERT INTO lpo 
-      (project_id, mr_header_id, supplier_id, progress_id, quotation_code, supplier_contact_person_name, supplier_email, delivery_date, payment_terms, delivery_terms, subtotal, discount, vat_rate, vat, shipping_and_handling, total)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO lpo
+      (project_id, mr_header_id, supplier_id, subcontractor_id, progress_id, quotation_code, supplier_contact_person_name, supplier_email, delivery_date, payment_terms, delivery_terms, subtotal, discount, vat_rate, vat, shipping_and_handling, total)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const lpoValues = [
         Number(body.project_id) || null,
         Number(body.mr_header_id),
-        Number(body.supplier_id),
+        body.supplier_id ? Number(body.supplier_id) : null,
+        body.subcontractor_id ? Number(body.subcontractor_id) : null,
         12,
         body.quotation_code,
-        body.supplier_contact_person_name,
-        body.supplier_email,
+        body.supplier_contact_person_name || "",
+        body.supplier_email || "",
         body.delivery_date,
         body.payment_terms,
         body.delivery_terms,
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
 
       if (body.lpo_mr_lines && body.lpo_mr_lines.length > 0) {
         const mrLineQuery = `
-            INSERT INTO lpo_mr_line 
+            INSERT INTO lpo_mr_line
             (lpo_id, mr_line_id, unit_price, total_price)
             VALUES (?, ?, ?, ?)
           `;
@@ -47,6 +48,20 @@ export async function POST(req: Request) {
             Number(line.mr_line_id),
             Number(line.unit_price),
             Number(line.total_price),
+          ]);
+        }
+      }
+
+      if (body.lpo_jo_lines && body.lpo_jo_lines.length > 0) {
+        const joLineQuery = `
+          INSERT INTO lpo_jo_line (lpo_id, jo_line_id, approved_total_price)
+          VALUES (?, ?, ?)
+        `;
+        for (const line of body.lpo_jo_lines) {
+          await db.query(joLineQuery, [
+            lpoId,
+            Number(line.jo_line_id),
+            Number(line.approved_total_price) || 0,
           ]);
         }
       }
@@ -203,22 +218,24 @@ export async function PUT(req: Request) {
           lpo_id,
         ]);
 
-        // Update LPO MR Lines
-        for (const line of lpo_mr_lines) {
-          const updateLineQuery = `
-        UPDATE lpo_mr_line 
-        SET 
-          unit_price = ?,
-          total_price = ?
-        WHERE id = ?
-      `;
-
-          await db.query(updateLineQuery, [
-            line.unit_price,
-            line.total_price,
-            line.id,
-          ]);
+        // Update LPO MR Lines (MR LPOs only)
+        if (lpo_mr_lines && lpo_mr_lines.length > 0) {
+          for (const line of lpo_mr_lines) {
+            const updateLineQuery = `
+          UPDATE lpo_mr_line
+          SET
+            unit_price = ?,
+            total_price = ?
+          WHERE id = ?
+        `;
+            await db.query(updateLineQuery, [
+              line.unit_price,
+              line.total_price,
+              line.id,
+            ]);
+          }
         }
+        // JO LPO lines: prices are frozen from approval — no line update needed
 
         return NextResponse.json(
           { success: true, message: "LPO updated successfully" },

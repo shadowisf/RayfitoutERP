@@ -98,11 +98,26 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const { project_id, jo_line_id } = body;
 
-    const [rows]: any = await db.query(
-      `SELECT * FROM vw_boq_lines WHERE project_id = ?`,
-      [body.project_id],
-    );
+    let rows: any;
+
+    if (jo_line_id) {
+      // When viewing from a JO, join junction table to get subcontracted_qty per BOQ line
+      [rows] = await db.query(
+        `SELECT bl.*, COALESCE(jjbl.subcontracted_qty, 0) AS subcontracted_qty
+         FROM vw_boq_lines bl
+         LEFT JOIN jt_jo_lines_boq_lines jjbl
+           ON jjbl.boq_line_id = bl.id AND jjbl.jo_line_id = ?
+         WHERE bl.project_id = ?`,
+        [jo_line_id, project_id],
+      );
+    } else {
+      [rows] = await db.query(
+        `SELECT * FROM vw_boq_lines WHERE project_id = ?`,
+        [project_id],
+      );
+    }
 
     // Track numbering per project
     const projectCategories = new Map();
@@ -176,6 +191,7 @@ export async function POST(req: Request) {
         item_number: fullItemNumber,
         category_number: categoryNumber,
         subcategory_number: subCategoryNumber,
+        subcontracted_qty: jo_line_id ? Number(row.subcontracted_qty) || 0 : undefined,
       };
     });
 
