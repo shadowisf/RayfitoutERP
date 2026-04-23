@@ -174,6 +174,28 @@ const styles = StyleSheet.create({
     width: "17.5%",
     paddingRight: 4,
   },
+  // JO LPO table columns
+  tableColIndex: {
+    width: "5%",
+    paddingRight: 4,
+  },
+  tableColScope: {
+    width: "18%",
+    paddingRight: 4,
+  },
+  tableColJobDescription: {
+    width: "37%",
+    paddingRight: 4,
+  },
+  tableColSubcontractor: {
+    width: "25%",
+    paddingRight: 4,
+  },
+  tableColJobTotal: {
+    width: "15%",
+    paddingRight: 4,
+    textAlign: "right",
+  },
 
   // Bottom Section - Two columns
   bottomSection: {
@@ -309,15 +331,20 @@ export function LpoPDF({ lpo, mr }: LpoPDFProps) {
     });
   };
 
+  const isJoLpo = !!lpo.lpo_jo_lines?.length;
+
   const vatRate = Number(lpo.vat_rate) || 0;
   const discountRate = Number(lpo.discount) || 0;
   const shipping = Number(lpo.shipping_and_handling) || 0;
 
-  const subtotal = lpo.lpo_mr_lines.reduce((sum, item) => {
-    const unitPrice = Number(item.unit_price) || 0;
-    const quantity = Number(item.approved_proposed_quantity) || 0;
-    return sum + unitPrice * quantity;
-  }, 0);
+  // For JO LPOs use stored header values; for MR LPOs compute from lines
+  const subtotal = isJoLpo
+    ? Number(lpo.subtotal) || 0
+    : lpo.lpo_mr_lines.reduce((sum, item) => {
+        const unitPrice = Number(item.unit_price) || 0;
+        const quantity = Number(item.approved_proposed_quantity) || 0;
+        return sum + unitPrice * quantity;
+      }, 0);
 
   const discountAmount = subtotal * (discountRate / 100);
   const subtotalAfterDiscount = subtotal - discountAmount;
@@ -325,12 +352,21 @@ export function LpoPDF({ lpo, mr }: LpoPDFProps) {
   const vatAmount = subtotalWithShipping * (vatRate / 100);
   const total = subtotalWithShipping + vatAmount;
 
-  // Check if any line has brand or specification
-  const hasAnyBrandOrSpecs = lpo.lpo_mr_lines.some(
+  // Check if any MR line has brand or specification (MR LPOs only)
+  const hasAnyBrandOrSpecs = !isJoLpo && lpo.lpo_mr_lines.some(
     (item) =>
       (item.brand && item.brand.trim() !== "") ||
       (item.specification && item.specification.trim() !== ""),
   );
+
+  // Vendor display — subcontractor for JO LPOs, supplier for MR LPOs
+  const vendorName = isJoLpo ? lpo.subcontractor_name : lpo.supplier_name;
+  const vendorContact = isJoLpo
+    ? lpo.subcontractor_contact_person
+    : lpo.supplier_contact_person_name;
+  const vendorAddress = isJoLpo ? lpo.subcontractor_address : lpo.supplier_address;
+  const vendorEmail = isJoLpo ? lpo.subcontractor_email : lpo.supplier_email;
+  const vendorTrn = isJoLpo ? lpo.subcontractor_trn_number : lpo.supplier_trn_number;
 
   return (
     <Document>
@@ -366,9 +402,7 @@ export function LpoPDF({ lpo, mr }: LpoPDFProps) {
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>TRN</Text>
-            <Text style={styles.infoValue}>
-              {lpo.supplier_trn_number || "-"}
-            </Text>
+            <Text style={styles.infoValue}>{vendorTrn || "-"}</Text>
           </View>
         </View>
 
@@ -397,12 +431,16 @@ export function LpoPDF({ lpo, mr }: LpoPDFProps) {
         {/* Vendor and Ship To Content */}
         <View style={styles.twoColumn}>
           <View style={styles.column}>
-            <Text style={styles.partyName}>{lpo.supplier_name}</Text>
-            <Text style={styles.partyContact}>
-              {lpo.supplier_contact_person_name}
-            </Text>
-            <Text style={styles.partyContact}>{lpo.supplier_address}</Text>
-            <Text style={styles.partyContact}>{lpo.supplier_email}</Text>
+            <Text style={styles.partyName}>{vendorName || "-"}</Text>
+            {vendorContact ? (
+              <Text style={styles.partyContact}>{vendorContact}</Text>
+            ) : null}
+            {vendorAddress ? (
+              <Text style={styles.partyContact}>{vendorAddress}</Text>
+            ) : null}
+            {vendorEmail ? (
+              <Text style={styles.partyContact}>{vendorEmail}</Text>
+            ) : null}
           </View>
           <View style={styles.column}>
             <Text style={styles.partyName}>RAY FITOUT CONTRACTING LLC</Text>
@@ -430,30 +468,38 @@ export function LpoPDF({ lpo, mr }: LpoPDFProps) {
 
         {/* Items Table */}
         <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text
-              style={
-                hasAnyBrandOrSpecs
-                  ? styles.tableColDescription
-                  : styles.tableColDescriptionWide
-              }
-            >
-              ITEM
-            </Text>
-            {hasAnyBrandOrSpecs && (
-              <Text style={styles.tableColBrandAndSpecs}>BRAND & SPECS</Text>
-            )}
-            <Text style={styles.tableColQty}>QTY</Text>
-            <Text style={styles.tableColUnitPrice}>UNIT PRICE</Text>
-            <Text style={styles.tableColTotalPrice}>TOTAL PRICE</Text>
-          </View>
-          {lpo.lpo_mr_lines.map((item, index) => {
-            const unitPrice = Number(item.unit_price) || 0;
-            const quantity = Number(item.approved_proposed_quantity) || 0;
-            const lineTotal = unitPrice * quantity;
-
-            return (
-              <View key={index} style={styles.tableRow}>
+          {isJoLpo ? (
+            <>
+              {/* JO LPO: Scope / Description / Subcontractor / Total Price */}
+              <View style={styles.tableHeader}>
+                <Text style={styles.tableColIndex}>#</Text>
+                <Text style={styles.tableColScope}>SCOPE</Text>
+                <Text style={styles.tableColJobDescription}>DESCRIPTION</Text>
+                <Text style={styles.tableColSubcontractor}>SUBCONTRACTOR</Text>
+                <Text style={styles.tableColJobTotal}>TOTAL PRICE</Text>
+              </View>
+              {(lpo.lpo_jo_lines ?? []).map((item, index) => (
+                <View key={index} style={styles.tableRow}>
+                  <Text style={styles.tableColIndex}>{index + 1}</Text>
+                  <Text style={styles.tableColScope}>
+                    {item.job_scope_name || "-"}
+                  </Text>
+                  <Text style={styles.tableColJobDescription}>
+                    {item.job_description || "-"}
+                  </Text>
+                  <Text style={styles.tableColSubcontractor}>
+                    {item.approved_subcontractor_name || "-"}
+                  </Text>
+                  <Text style={styles.tableColJobTotal}>
+                    AED {formatMoney(Number(item.approved_total_price))}
+                  </Text>
+                </View>
+              ))}
+            </>
+          ) : (
+            <>
+              {/* MR LPO: Item / (Brand & Specs) / Qty / Unit Price / Total Price */}
+              <View style={styles.tableHeader}>
                 <Text
                   style={
                     hasAnyBrandOrSpecs
@@ -461,31 +507,55 @@ export function LpoPDF({ lpo, mr }: LpoPDFProps) {
                       : styles.tableColDescriptionWide
                   }
                 >
-                  {item.material_description}
+                  ITEM
                 </Text>
                 {hasAnyBrandOrSpecs && (
-                  <Text style={styles.tableColBrandAndSpecs}>
-                    {item.brand && item.specification
-                      ? `Brand: ${item.brand}, Specification: ${item.specification}`
-                      : item.brand
-                        ? `Brand: ${item.brand}`
-                        : item.specification
-                          ? `Specification: ${item.specification}`
-                          : "-"}
-                  </Text>
+                  <Text style={styles.tableColBrandAndSpecs}>BRAND & SPECS</Text>
                 )}
-                <Text style={styles.tableColQty}>
-                  {formatQuantity(quantity)} {item.unit}
-                </Text>
-                <Text style={styles.tableColUnitPrice}>
-                  AED {formatMoney(unitPrice)}
-                </Text>
-                <Text style={styles.tableColTotalPrice}>
-                  AED {formatMoney(lineTotal)}
-                </Text>
+                <Text style={styles.tableColQty}>QTY</Text>
+                <Text style={styles.tableColUnitPrice}>UNIT PRICE</Text>
+                <Text style={styles.tableColTotalPrice}>TOTAL PRICE</Text>
               </View>
-            );
-          })}
+              {lpo.lpo_mr_lines.map((item, index) => {
+                const unitPrice = Number(item.unit_price) || 0;
+                const quantity = Number(item.approved_proposed_quantity) || 0;
+                const lineTotal = unitPrice * quantity;
+                return (
+                  <View key={index} style={styles.tableRow}>
+                    <Text
+                      style={
+                        hasAnyBrandOrSpecs
+                          ? styles.tableColDescription
+                          : styles.tableColDescriptionWide
+                      }
+                    >
+                      {item.material_description}
+                    </Text>
+                    {hasAnyBrandOrSpecs && (
+                      <Text style={styles.tableColBrandAndSpecs}>
+                        {item.brand && item.specification
+                          ? `Brand: ${item.brand}, Specification: ${item.specification}`
+                          : item.brand
+                            ? `Brand: ${item.brand}`
+                            : item.specification
+                              ? `Specification: ${item.specification}`
+                              : "-"}
+                      </Text>
+                    )}
+                    <Text style={styles.tableColQty}>
+                      {formatQuantity(quantity)} {item.unit}
+                    </Text>
+                    <Text style={styles.tableColUnitPrice}>
+                      AED {formatMoney(unitPrice)}
+                    </Text>
+                    <Text style={styles.tableColTotalPrice}>
+                      AED {formatMoney(lineTotal)}
+                    </Text>
+                  </View>
+                );
+              })}
+            </>
+          )}
         </View>
 
         {/* Bottom Section - Terms on Left, Summary + Signature on Right */}

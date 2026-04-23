@@ -1,11 +1,12 @@
 import { LPOMrLine } from "./lpoMrLine";
+import { LPOJoLine } from "./lpoJoLine";
 
 export type LpoHeader = {
   id: number;
   project_id: number;
   project_name: string;
   mr_header_id: number;
-  supplier_id: number;
+  supplier_id: number | null;
   quotation_code: string;
   supplier_contact_person_name: string;
   supplier_email: string;
@@ -29,4 +30,12 @@ export type LpoHeader = {
   supplier_trn_number: string;
   created_at: string;
   date_requested?: string;
+  // JO LPO fields
+  subcontractor_id?: number;
+  subcontractor_name?: string;
+  subcontractor_trn_number?: string;
+  subcontractor_address?: string;
+  subcontractor_contact_person?: string;
+  subcontractor_email?: string;
+  lpo_jo_lines?: LPOJoLine[];
 };

@@ -8,19 +8,18 @@ import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../types/mrHeader";
 
-type SubmitForJoFinalCompletionButtonProps = {
+type SubmitJoFromLpoButtonProps = {
   mrHeader: MrHeader;
   disabled?: boolean;
   style?: React.CSSProperties;
 };
 
-export default function SubmitForJoCompletionButton({
+export default function SubmitJoFromLpoButton({
   mrHeader,
   disabled,
   style,
-}: SubmitForJoFinalCompletionButtonProps) {
+}: SubmitJoFromLpoButtonProps) {
   const router = useRouter();
-
   const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -32,7 +31,7 @@ export default function SubmitForJoCompletionButton({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitJoToLpoAndInvoice",
+        action: "submitJoForFinalCompletion",
         id: mrHeader.id,
         changed_by: userInfo?.name,
         department_id: mrHeader.department_id,
@@ -41,9 +40,7 @@ export default function SubmitForJoCompletionButton({
 
     if (res.ok) {
       toast("Job order submitted", "success");
-
       setIsOpen(false);
-
       router.refresh();
       router.replace(`/mr/`);
     } else {
@@ -62,12 +59,12 @@ export default function SubmitForJoCompletionButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        SUBMIT FOR LPO & INVOICE
+        SUBMIT FOR COMPLETION
       </Button>
 
       {isOpen && (
         <FormPopUp
-          header={"SUBMIT FOR LPO & INVOICE"}
+          header={"SUBMIT JOB ORDER"}
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}

@@ -19,6 +19,8 @@ import JoPriceApprovalButton from "./manager/_JoPriceApprovalButton";
 import SubmitForJoPriceApprovalButton from "./procurement/_SubmitForJoPriceApprovalButton";
 import SubmitForPricingResubmissionButton from "./manager/_SubmitForPriceResubmissionButton";
 import SubmitForJoCompletionButton from "./procurement/_SubmitForJoCompletionButton";
+import IssueJoLpoButton from "./procurement/_IssueJoLpoButton";
+import SubmitJoFromLpoButton from "./procurement/_SubmitJoFromLpoButton";
 import CommentsSection from "@/app/components/CommentsSection";
 import { formatPriceAED } from "@/lib/formatPrice";
 import JoRfqButton from "./procurement/_JoRfqButton";
@@ -72,9 +74,6 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
     userInfo?.departmentID === 10 ||
     userInfo?.departmentID === 16;
 
-  const canSeeWorksValue =
-    userInfo?.departmentID === 8 ||
-    userInfo?.departmentID === 9;
 
   // Check if all items have been reviewed (approved or rejected)
   const allItemsReviewed = joLines.every(
@@ -118,6 +117,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
 
   // Track live prices when manager selects/changes quotation (before page refresh)
   const [livePrices, setLivePrices] = useState<Record<number, number>>({});
+  const [lpoId, setLpoId] = useState<number | null>(null);
 
   const handleTotalPriceChange = (joLineId: number, totalPrice: number) => {
     setLivePrices((prev) => ({ ...prev, [joLineId]: totalPrice }));
@@ -125,6 +125,9 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
 
   // Show total price column from manager price approval stage onwards
   const showTotalPriceColumn = mrHeader.progress_id >= 10 && canSeePrice;
+
+  // Show subcontractor column from LPO & Invoice stage onwards (12 = LPO & Invoice, 25 = Completed)
+  const showSubcontractorColumn = mrHeader.progress_id >= 12;
 
   // ────────────────────────────────────────────────
   // NEW: Check if ANY line has a REJECTED quotation
@@ -287,6 +290,17 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                 }}
               />
             )}
+
+            {/* LPO & Invoice (12) — Issue / View / Edit / Delete LPO (procurement only) */}
+            {/* Completed (25) — View / Download LPO only (all users) */}
+            {(mrHeader.progress_id === 12 && userInfo?.departmentID === 9) ||
+            mrHeader.progress_id === 25 ? (
+              <IssueJoLpoButton
+                mrHeader={mrHeader}
+                joLines={joLines}
+                onLpoCreated={(id) => setLpoId(id)}
+              />
+            ) : null}
           </div>
         </div>
 
@@ -322,7 +336,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
               <th>CONTRACT TYPE</th>
               <th>DESCRIPTION</th>
               <th>BOQ REF.</th>
-              {canSeeWorksValue && <th>WORKS VALUE</th>}
+              {showSubcontractorColumn && <th>SUBCONTRACTOR</th>}
               {canSeePrice && <th>BUDGET</th>}
               {showTotalPriceColumn && <th>TOTAL PRICE</th>}
               <th>ATTACHMENT(S)</th>
@@ -389,21 +403,18 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                   </td>
                   <td>
                     {item.boq_line_ids ? (
-                      <BoqReferencePopUp item={item} mrHeader={mrHeader} />
+                      <BoqReferencePopUp
+                        item={item}
+                        mrHeader={mrHeader}
+                        joLine={item}
+                      />
                     ) : (
                       "-"
                     )}
                   </td>
 
-                  {canSeeWorksValue && (
-                    <td>
-                      {item.subcontracted_works_value != null &&
-                      Number(item.subcontracted_works_value) > 0 ? (
-                        <>{formatPriceAED(item.subcontracted_works_value)}</>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
+                  {showSubcontractorColumn && (
+                    <td>{item.approved_subcontractor_name || "-"}</td>
                   )}
 
                   {canSeePrice && (
@@ -537,8 +548,8 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                 }, 0);
                 const hasAnyPrice = liveTotalPrice > 0 || hasAnyApprovedPrice;
 
-                // Columns before SUBCONTRACTOR BUDGET: #, SCOPE, CONTRACT TYPE, DESCRIPTION, BOQ REF, (+ WORKS VALUE if canSeeWorksValue, + BUDGET if canSeePrice)
-                const labelColSpan = 5 + (canSeeWorksValue ? 1 : 0) + (canSeePrice ? 1 : 0);
+                // Columns before TOTAL PRICE: #, SCOPE, CONTRACT TYPE, DESCRIPTION, BOQ REF, (+ SUBCONTRACTOR if showSubcontractorColumn, + BUDGET if canSeePrice)
+                const labelColSpan = 5 + (showSubcontractorColumn ? 1 : 0) + (canSeePrice ? 1 : 0);
                 // Columns after TOTAL PRICE value
                 let trailingCols = 1; // ATTACHMENT
                 if (mrHeader.progress_id === 3) trailingCols += 1;
@@ -722,7 +733,22 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
           </div>
         )}
 
-      {/* REMOVED: Stage 12 (LPO & Invoice / Upload Invoice) - JO flow now goes directly from 10 to 25 (Completed) */}
+      {/* LPO & Invoice (12) — Procurement submits to completion once LPO is issued */}
+      {mrHeader.progress_id === 12 &&
+        userInfo?.departmentID === 9 && (
+          <div className="bottom-nav">
+            <div></div>
+            <SubmitJoFromLpoButton
+              mrHeader={mrHeader}
+              disabled={!lpoId}
+              style={{
+                opacity: lpoId ? "1" : "0.5",
+                cursor: lpoId ? "pointer" : "not-allowed",
+                pointerEvents: lpoId ? "auto" : "none",
+              }}
+            />
+          </div>
+        )}
     </>
   );
 }

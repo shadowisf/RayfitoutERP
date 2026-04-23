@@ -122,8 +122,8 @@ export default function CancelMaterialRequestButton({
   const lpoProgressFlow = [12, 14, 17, 24];
   // Full MR flow for LPO context (no Manager Approval for MRs)
   const fullProgressFlow = [1, 2, 7, 9, 10, 12, 14, 17, 24];
-  // JO flow: Draft → Manager Approval → Quotations → Price Approval
-  const joProgressFlow = [1, 3, 7, 10];
+  // JO flow: Draft → Manager Approval → Quotations → Price Approval → LPO & Invoice
+  const joProgressFlow = [1, 3, 7, 10, 12];
   // PR flow: Draft → QS Review → Manager Approval → Payment
   const prProgressFlow = [1, 2, 3, 14];
 

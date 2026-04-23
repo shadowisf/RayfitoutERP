@@ -1515,6 +1515,30 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "submitJoToLpoAndInvoice") {
+      await db.query(`UPDATE mr_headers SET progress_id = 12 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 12, 10, ?)`,
+        [body.id, body.changed_by],
+      );
+
+      // Notify Procurement to create the LPO
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          9,
+          "Job Order Awaiting LPO",
+          `JO-${String(body.id).padStart(5, "0")} is ready for LPO issuance`,
+        ],
+      );
+
+      return NextResponse.json({ status: 200 });
+    }
+
     if (body.action === "submitJoForFinalCompletion") {
       await db.query(`UPDATE mr_headers SET progress_id = 25 WHERE id = ?`, [
         body.id,
