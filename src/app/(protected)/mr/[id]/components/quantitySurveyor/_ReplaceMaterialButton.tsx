@@ -11,6 +11,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import CreateNewMaterialButton from "@/app/components/_CreateNewMaterialButton";
 import { UNIT_OPTIONS, mapPredefinedUnit } from "@/constants/units";
 import { MrLine } from "../../types/mrLine";
+import { useAuth } from "@/app/context/AuthContext";
 
 type PredefinedItem = {
   id: number;
@@ -46,6 +47,7 @@ export default function ReplaceMaterialButton({
   directSubmit = false,
 }: Props) {
   const router = useRouter();
+  const { userInfo } = useAuth();
 
   const arrowRight = "/icons/arrow-right.svg";
   const searchIcon = "/icons/search.svg";
@@ -75,6 +77,9 @@ export default function ReplaceMaterialButton({
   const [unitWasNull, setUnitWasNull] = useState(false);
   const [categoryValues, setCategoryValues] = useState<any[]>([]);
   const [subcategoryValues, setSubcategoryValues] = useState<any[]>([]);
+
+  // Replace reason
+  const [replaceReason, setReplaceReason] = useState("");
 
   // Picker popup state
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -403,11 +408,20 @@ export default function ReplaceMaterialButton({
         return;
       }
 
-      // Reset QS review so QS can re-review the replaced item
+      // Mark the line as replaced (stores reason + original description in db,
+      // and inserts a QS replacement note into the progress log)
       await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "resetQSReview", id: item.id }),
+        body: JSON.stringify({
+          action: "setQSReplaced",
+          id: item.id,
+          mr_header_id: item.mr_header_id,
+          qs_replace_reason: replaceReason.trim() || null,
+          qs_original_material_description: item.material_description,
+          replacement_description: tempSelected.material_description,
+          changed_by: userInfo?.name || userInfo?.email || "QS",
+        }),
       });
 
       if (!tempSelected.unit && mappedUnit) {
@@ -423,6 +437,7 @@ export default function ReplaceMaterialButton({
 
       toast(`Replaced with ${tempSelected.material_description}`, "success");
       setIsPickerOpen(false);
+      setReplaceReason("");
       router.refresh();
       return;
     }
@@ -476,27 +491,43 @@ export default function ReplaceMaterialButton({
       return;
     }
 
-    const resetRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "resetQSReview", id: item.id }),
-    });
+    // Mark as replaced (stores reason + original description, inserts timeline note)
+    const replacedRes = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "setQSReplaced",
+          id: item.id,
+          mr_header_id: item.mr_header_id,
+          qs_replace_reason: replaceReason.trim() || null,
+          qs_original_material_description: item.material_description,
+          replacement_description: previewDescription,
+          changed_by: userInfo?.name || userInfo?.email || "QS",
+        }),
+      },
+    );
 
-    if (!resetRes.ok) {
-      toast("Material updated but failed to reset QS review", "error");
+    if (!replacedRes.ok) {
+      toast("Material updated but failed to mark as replaced", "error");
       return;
     }
 
     if (unitWasNull && previewUnit && selectedItem) {
-      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selectedItem.id, unit: previewUnit }),
-      });
+      await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: selectedItem.id, unit: previewUnit }),
+        },
+      );
     }
 
     toast(`Replaced with ${previewDescription}`, "success");
     setIsMainOpen(false);
+    setReplaceReason("");
     router.refresh();
   }
 
@@ -930,6 +961,23 @@ export default function ReplaceMaterialButton({
             )}
       </div>
 
+      {/* Replace reason */}
+      <br />
+      <div className="input-row full">
+        <InputItem
+          label="REPLACE REASON"
+          value={replaceReason}
+          type="textarea"
+          placeholder="ENTER REPLACE REASON"
+          noOptionalLabel
+          onChange={(e) =>
+            setReplaceReason(
+              (e as React.ChangeEvent<HTMLTextAreaElement>).target.value,
+            )
+          }
+        />
+      </div>
+
       {/* Pagination */}
       {totalPages > 1 && (
         <div
@@ -1172,6 +1220,7 @@ export default function ReplaceMaterialButton({
     setSearchQuery("");
     setActiveCategory("ALL");
     setCurrentPage(1);
+    setReplaceReason("");
     setIsPickerOpen(true);
   };
 
@@ -1410,6 +1459,22 @@ export default function ReplaceMaterialButton({
               value={notes}
               type="textarea"
               onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+
+          {/* Replace reason */}
+          <div className="input-row full">
+            <InputItem
+              label="REPLACE REASON"
+              value={replaceReason}
+              type="textarea"
+              placeholder="ENTER REPLACE REASON"
+              noOptionalLabel
+              onChange={(e) =>
+                setReplaceReason(
+                  (e as React.ChangeEvent<HTMLTextAreaElement>).target.value,
+                )
+              }
             />
           </div>
         </FormPopUp>

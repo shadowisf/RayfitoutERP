@@ -963,9 +963,57 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
+    if (body.action === "setQSReplaced") {
+      // Persist replacement data on the line
+      await db.query(
+        `UPDATE mr_lines
+         SET qs_review_type = 'replaced',
+             qs_approval_status = 'Replaced',
+             qs_replace_reason = ?,
+             qs_original_material_description = ?,
+             qs_replaced_by = ?
+         WHERE id = ?`,
+        [
+          body.qs_replace_reason || null,
+          body.qs_original_material_description || null,
+          body.changed_by || null,
+          Number(body.id),
+        ],
+      );
+
+      // Insert a QS replacement note into the progress log so it appears in the timeline
+      if (body.mr_header_id && body.changed_by) {
+        const noteData = JSON.stringify({
+          type: "qs_replacement_note",
+          items: [
+            {
+              original: body.qs_original_material_description || "",
+              replacement: body.replacement_description || "",
+              reason: body.qs_replace_reason || "",
+            },
+          ],
+        });
+        await db.query(
+          `INSERT INTO mr_header_progress_log
+             (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason)
+           VALUES (?, 2, 2, ?, ?)`,
+          [Number(body.mr_header_id), body.changed_by, noteData],
+        );
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "resetQSReview") {
       await db.query(
-        `UPDATE mr_lines SET qs_review_type = NULL, linked_inventory_item_id = NULL, qs_approval_status = NULL WHERE id = ?`,
+        `UPDATE mr_lines
+         SET qs_review_type = NULL,
+             linked_inventory_item_id = NULL,
+             qs_approval_status = NULL,
+             qs_replace_reason = NULL,
+             qs_original_material_description = NULL,
+             qs_replaced_by = NULL
+         WHERE id = ?`,
         [body.id],
       );
 
@@ -1708,6 +1756,23 @@ export async function PUT(req: Request) {
 
       return NextResponse.json({ success: true });
     }
+
+    if (body.action === "updateMrLineQuantity") {
+      await db.query(
+        `UPDATE mr_lines SET quantity = ?, unit = ? WHERE id = ?`,
+        [Number(body.quantity), body.unit || null, Number(body.id)],
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "updateMrLineBrandSpec") {
+      await db.query(
+        `UPDATE mr_lines SET brand = ?, specification = ? WHERE id = ?`,
+        [body.brand || null, body.specification || null, Number(body.id)],
+      );
+      return NextResponse.json({ success: true });
+    }
+
     return NextResponse.json(
       { error: `Unknown action: ${body.action}` },
       { status: 400 },
@@ -1759,22 +1824,6 @@ export async function DELETE(req: Request) {
 
       await db.query("DELETE FROM mr_headers WHERE id = ?", [Number(body.id)]);
 
-      return NextResponse.json({ success: true });
-    }
-
-    if (body.action === "updateMrLineQuantity") {
-      await db.query(
-        `UPDATE mr_lines SET quantity = ?, unit = ? WHERE id = ?`,
-        [Number(body.quantity), body.unit || null, Number(body.id)],
-      );
-      return NextResponse.json({ success: true });
-    }
-
-    if (body.action === "updateMrLineBrandSpec") {
-      await db.query(
-        `UPDATE mr_lines SET brand = ?, specification = ? WHERE id = ?`,
-        [body.brand || null, body.specification || null, Number(body.id)],
-      );
       return NextResponse.json({ success: true });
     }
 
