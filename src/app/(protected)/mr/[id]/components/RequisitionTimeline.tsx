@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import FormPopUp from "@/app/components/FormPopup";
+import Button from "@/app/components/Button";
 
 type ProgressLogEntry = {
   id: number;
@@ -115,7 +117,12 @@ const FULL_LPO_STAGES = [1, 2, 4, 7, 9, 10, 12, 14, 17, 24, 25];
 
 type ReplacementItem = {
   original: string;
+  original_category?: string;
+  original_subcategory?: string;
   replacement: string;
+  replacement_item_code?: string;
+  replacement_category?: string;
+  replacement_subcategory?: string;
   reason: string;
 };
 
@@ -126,6 +133,7 @@ type TimelineStage = {
   isRollback: boolean;
   isReplacementNote: boolean;
   replacementItems?: ReplacementItem[];
+  replacedItems?: ReplacementItem[]; // aggregated from all replacement notes on QS REVIEW
   arrivedEntry: ProgressLogEntry | null;
   departedEntry: ProgressLogEntry | null;
 };
@@ -141,6 +149,12 @@ export default function RequisitionTimeline({
   const [hasItemAvailable, setHasItemAvailable] = useState<boolean>(false);
   const [hasNeedOrder, setHasNeedOrder] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [replacementsPopup, setReplacementsPopup] = useState<
+    ReplacementItem[] | null
+  >(null);
+
+  const noImage = "/icons/no-image.jpg";
+  const externalLinkIcon = "/icons/external-link.svg";
 
   useEffect(() => {
     async function fetchData() {
@@ -253,7 +267,10 @@ export default function RequisitionTimeline({
     if (!isRb && !isRej && entry.reject_reason) {
       try {
         const parsed = JSON.parse(entry.reject_reason);
-        if (parsed?.type === "qs_replacement_note" && Array.isArray(parsed.items)) {
+        if (
+          parsed?.type === "qs_replacement_note" &&
+          Array.isArray(parsed.items)
+        ) {
           isReplacementNote = true;
           replacementItems = parsed.items as ReplacementItem[];
         }
@@ -277,35 +294,47 @@ export default function RequisitionTimeline({
     visitedSequence[i].departedEntry = visitedSequence[i + 1].arrivedEntry;
   }
 
+  // Collect replacement notes separately and attach them to the QS REVIEW stage
+  const allReplacedItems: ReplacementItem[] = [];
+  const filteredVisited = visitedSequence.filter((v) => {
+    if (v.isReplacementNote) {
+      if (v.replacementItems) allReplacedItems.push(...v.replacementItems);
+      return false;
+    }
+    return true;
+  });
+
   const timelineStages: TimelineStage[] = [];
-  const visitedStageIds = new Set(visitedSequence.map((v) => v.stageId));
+  const visitedStageIds = new Set(filteredVisited.map((v) => v.stageId));
   let highestVisitedBaseIndex = -1;
 
-  for (const v of visitedSequence) {
+  for (const v of filteredVisited) {
     const idx = baseStageIds.indexOf(v.stageId);
     if (idx > highestVisitedBaseIndex) {
       highestVisitedBaseIndex = idx;
     }
   }
 
-  for (const visit of visitedSequence) {
+  for (const visit of filteredVisited) {
     timelineStages.push({
       id: visit.stageId,
       label: visit.isRollback
         ? "ROLLED BACK"
-        : visit.isReplacementNote
-          ? "ITEM REPLACED"
-          : visit.isRejection
-            ? REJECTION_LABELS[visit.stageId] ||
-              stageLabels[visit.stageId] ||
-              "REJECTED"
-            : stageLabels[visit.stageId] ||
-              STAGE_LABELS[visit.stageId] ||
-              `Stage ${visit.stageId}`,
+        : visit.isRejection
+          ? REJECTION_LABELS[visit.stageId] ||
+            stageLabels[visit.stageId] ||
+            "REJECTED"
+          : stageLabels[visit.stageId] ||
+            STAGE_LABELS[visit.stageId] ||
+            `Stage ${visit.stageId}`,
       isRejection: visit.isRejection,
       isRollback: visit.isRollback,
-      isReplacementNote: visit.isReplacementNote,
+      isReplacementNote: false,
       replacementItems: visit.replacementItems,
+      replacedItems:
+        visit.stageId === 2 && allReplacedItems.length > 0
+          ? allReplacedItems
+          : undefined,
       arrivedEntry: visit.arrivedEntry,
       departedEntry: visit.departedEntry,
     });
@@ -381,7 +410,11 @@ export default function RequisitionTimeline({
           // Current stage should NOT show details
           let detailEntry: ProgressLogEntry | null = null;
 
-          if (stage.isRejection || stage.isRollback || stage.isReplacementNote) {
+          if (
+            stage.isRejection ||
+            stage.isRollback ||
+            stage.isReplacementNote
+          ) {
             // For rejections/rollbacks/replacement notes, show arrival details
             detailEntry = stage.arrivedEntry;
           } else if (isCompleted && !isCurrent) {
@@ -510,23 +543,26 @@ export default function RequisitionTimeline({
                   </svg>
                 )}
 
-                {isCompleted && !stage.isRejection && !stage.isRollback && !stage.isReplacementNote && (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M2.5 7L5.5 10L11.5 4"
-                      stroke="white"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
+                {isCompleted &&
+                  !stage.isRejection &&
+                  !stage.isRollback &&
+                  !stage.isReplacementNote && (
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M2.5 7L5.5 10L11.5 4"
+                        stroke="white"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
               </div>
 
               <p
@@ -614,6 +650,43 @@ export default function RequisitionTimeline({
                     }}
                   >
                     {detailEntry.changed_by}
+                  </p>
+                </div>
+              )}
+
+              {/* Show rollback target stage */}
+              {stage.isRollback && detailEntry && (
+                <div
+                  style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
+                >
+                  <p
+                    style={{
+                      fontSize: "9px",
+                      color: "rgba(255, 153, 36, 1)",
+                      textTransform: "uppercase",
+                      fontWeight: "600",
+                      letterSpacing: "0.5px",
+                      textAlign: "left",
+                    }}
+                  >
+                    STAGE
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "10px",
+                      color: "black",
+                      fontWeight: "500",
+                      maxWidth: "120px",
+                      wordBreak: "break-word",
+                      textAlign: "left",
+                    }}
+                  >
+                    {detailEntry.progress_id === 1
+                      ? "Draft"
+                      : stageLabels[detailEntry.progress_id] ||
+                        STAGE_LABELS[detailEntry.progress_id] ||
+                        detailEntry.progress_name ||
+                        `Stage ${detailEntry.progress_id}`}
                   </p>
                 </div>
               )}
@@ -752,85 +825,269 @@ export default function RequisitionTimeline({
                   }
                 })()}
 
-              {/* Show replacement note items if available */}
-              {stage.isReplacementNote &&
-                stage.replacementItems &&
-                stage.replacementItems.length > 0 && (
-                  <div
-                    style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
+              {/* Show "{N} items replaced" amber pill for QS REVIEW stage */}
+              {stage.replacedItems && stage.replacedItems.length > 0 && (
+                <div
+                  style={{ marginTop: "8px", textAlign: "left", width: "100%" }}
+                >
+                  <span
+                    className="approval-pill"
+                    onClick={() => setReplacementsPopup(stage.replacedItems!)}
+                    style={{
+                      backgroundColor: "rgba(209, 157, 90, 1)",
+                      color: "white",
+                      fontSize: "11px",
+                      fontStyle: "italic",
+                      cursor: "pointer",
+                      display: "flex",
+                      gap: "10px",
+                    }}
                   >
-                    <p
-                      style={{
-                        fontSize: "9px",
-                        color: "rgba(209, 157, 90, 1)",
-                        textTransform: "uppercase",
-                        fontWeight: "600",
-                        letterSpacing: "0.5px",
-                        textAlign: "left",
-                        marginBottom: "4px",
-                      }}
-                    >
-                      REPLACED ITEMS
-                    </p>
-                    {stage.replacementItems.map((r, i) => (
-                      <div
-                        key={i}
-                        style={{ marginTop: i > 0 ? "6px" : "2px" }}
-                      >
-                        {r.original && (
-                          <p
-                            style={{
-                              fontSize: "9px",
-                              color: "rgba(85, 80, 80, 1)",
-                              fontWeight: "400",
-                              maxWidth: "120px",
-                              wordBreak: "break-word",
-                              textAlign: "left",
-                              textDecoration: "line-through",
-                              fontStyle: "italic",
-                            }}
-                          >
-                            {r.original}
-                          </p>
-                        )}
-                        {r.replacement && (
-                          <p
-                            style={{
-                              fontSize: "10px",
-                              color: "black",
-                              fontWeight: "500",
-                              maxWidth: "120px",
-                              wordBreak: "break-word",
-                              textAlign: "left",
-                            }}
-                          >
-                            {r.replacement}
-                          </p>
-                        )}
-                        {r.reason && (
-                          <p
-                            style={{
-                              fontSize: "9px",
-                              color: "rgba(85, 80, 80, 1)",
-                              fontWeight: "400",
-                              maxWidth: "120px",
-                              wordBreak: "break-word",
-                              textAlign: "left",
-                              fontStyle: "italic",
-                            }}
-                          >
-                            {r.reason}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                    <span>
+                      {stage.replacedItems.length} item
+                      {stage.replacedItems.length !== 1 ? "s" : ""} replaced
+                    </span>
+                    <img
+                      src={externalLinkIcon}
+                      style={{ filter: "invert(1)" }}
+                    />
+                  </span>
+                </div>
+              )}
               <br />
             </div>
           );
         })}
       </div>
+
+      {/* Replaced items popup — uses FormPopUp for uniform styling */}
+      {replacementsPopup && (
+        <FormPopUp
+          header={"REPLACEMENT DETAILS"}
+          setIsOpen={() => setReplacementsPopup(null)}
+          style={{ width: "65dvw" }}
+        >
+          {replacementsPopup.map((r, i) => (
+            <div
+              key={i}
+              style={{
+                marginTop: i > 0 ? "32px" : 0,
+                paddingTop: i > 0 ? "32px" : 0,
+                borderTop: i > 0 ? "1px solid rgba(228,228,228,1)" : "none",
+              }}
+            >
+              {/* Two-panel row */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "stretch",
+                  position: "relative",
+                  gap: "15px",
+                }}
+              >
+                {/* Left panel — original */}
+                <div
+                  style={{
+                    flex: 1,
+                    backgroundColor: "rgba(246, 246, 246, 1)",
+                    borderRadius: "5px",
+                    padding: "20px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "25px",
+                    }}
+                  >
+                    <img
+                      src={noImage}
+                      style={{ borderRadius: "15px", maxHeight: "75px" }}
+                    />
+
+                    <div>
+                      <span
+                        style={{
+                          backgroundColor: "rgba(255, 250, 189, 1)",
+                          fontSize: "10px",
+                          color: "rgba(134, 83, 47, 1)",
+                        }}
+                        className="approval-pill normal-text"
+                      >
+                        MATERIAL REQUEST
+                      </span>
+                      <br />
+                      <p
+                        style={{
+                          fontSize: "18px",
+                          fontWeight: "600",
+                          color: "black",
+
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {r.original || "-"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <br />
+                  <br />
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "24px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {[
+                      { label: "ITEM CODE", value: "-" },
+                      { label: "CATEGORY", value: r.original_category || "-" },
+                      {
+                        label: "SUBCATEGORY",
+                        value: r.original_subcategory || "-",
+                      },
+                    ].map(({ label, value }) => (
+                      <div key={label}>
+                        <small>{label}</small>
+                        <h3>{value}</h3>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Center swap icon */}
+                <div
+                  style={{
+                    position: "absolute",
+                    left: "50%",
+                    top: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(209, 157, 90, 1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 2,
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M7 16H17M17 16L14 13M17 16L14 19M17 8H7M7 8L10 5M7 8L10 11"
+                      stroke="white"
+                      strokeWidth="1"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+
+                {/* Right panel — replacement */}
+                <div
+                  style={{
+                    flex: 1,
+                    backgroundColor: "rgba(246, 246, 246, 1)",
+                    borderRadius: "5px",
+                    padding: "20px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "25px",
+                    }}
+                  >
+                    <img
+                      src={noImage}
+                      style={{ borderRadius: "15px", maxHeight: "75px" }}
+                    />
+
+                    <div>
+                      <span
+                        style={{
+                          backgroundColor: "rgba(209, 157, 90, 1)",
+                          fontSize: "10px",
+                          color: "white",
+                        }}
+                        className="approval-pill normal-text"
+                      >
+                        REPLACED WITH
+                      </span>
+                      <br />
+                      <p
+                        style={{
+                          fontSize: "18px",
+                          fontWeight: "600",
+                          color: "black",
+                          wordBreak: "break-word",
+                          marginBottom: "20px",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {r.replacement || "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <br />
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "25px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {[
+                      {
+                        label: "ITEM CODE",
+                        value: r.replacement_item_code || "-",
+                      },
+                      {
+                        label: "CATEGORY",
+                        value: r.replacement_category || "-",
+                      },
+                      {
+                        label: "SUBCATEGORY",
+                        value: r.replacement_subcategory || "-",
+                      },
+                    ].map(({ label, value }) => (
+                      <div key={label}>
+                        <small>{label}</small>
+                        <h2>{value}</h2>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <br />
+              <br />
+
+              {/* Replace Reason */}
+              {r.reason && (
+                <div>
+                  <small>REPLACE REASON</small>
+                  <h2>{r.reason}</h2>
+                </div>
+              )}
+            </div>
+          ))}
+        </FormPopUp>
+      )}
     </div>
   );
 }

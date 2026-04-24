@@ -5,7 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { MrLine } from "../../types/mrLine";
-import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
+import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 
 type RenameMrSubCategoryButtonProps = {
@@ -29,67 +29,49 @@ export default function RenameMrSubCategoryButton({
     any[]
   >([]);
 
-  // Parse the existing subcategory IDs
-  const [materialSubCategoryIDs, setMaterialSubCategoryIDs] = useState<
-    (string | number)[]
-  >(() => {
-    if (subCategoryID) {
-      if (typeof subCategoryID === "string") {
-        const ids = subCategoryID
-          .split(",")
-          .map((id) => id.trim())
-          .filter((id) => id && id !== "")
-          .map((id) => Number(id))
-          .filter((id) => !isNaN(id));
-        return ids;
-      }
-      if (Array.isArray(subCategoryID)) {
-        return subCategoryID.map((id) => Number(id)).filter((id) => !isNaN(id));
-      }
-      if (typeof subCategoryID === "number") {
-        return [subCategoryID];
-      }
+  // Resolve initial single subcategory ID
+  const resolveInitialId = (): string | number => {
+    if (!subCategoryID) return "";
+    if (typeof subCategoryID === "number") return subCategoryID;
+    if (typeof subCategoryID === "string") {
+      const first = subCategoryID.split(",")[0].trim();
+      const num = Number(first);
+      return isNaN(num) ? "" : num;
     }
-    return [];
-  });
+    if (Array.isArray(subCategoryID)) {
+      const num = Number(subCategoryID[0]);
+      return isNaN(num) ? "" : num;
+    }
+    return "";
+  };
+
+  const [selectedSubCategoryID, setSelectedSubCategoryID] = useState<
+    string | number
+  >(resolveInitialId);
 
   useEffect(() => {
     if (isOpen) {
       fetch("/api/mr/getMaterialSubCategoryValuesByCategoryID", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category_id: categoryID,
-        }),
+        body: JSON.stringify({ category_id: categoryID }),
       })
         .then((res) => res.json())
-        .then((data) => {
-          setMaterialSubCategoryValues(data);
-        })
-        .catch((err) => {
-          console.error(err);
-        });
+        .then((data) => setMaterialSubCategoryValues(data))
+        .catch(console.error);
     }
   }, [categoryID, isOpen]);
-
-  const handleSubCategoryChange = (selectedIds: (string | number)[]) => {
-    setMaterialSubCategoryIDs(selectedIds);
-  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (materialSubCategoryIDs.length === 0) {
-      toast("Please select at least one subcategory", "error");
+    if (!selectedSubCategoryID) {
+      toast("Please select a subcategory", "error");
       return;
     }
 
-    // Clean the subcategory IDs
-    const cleanedSubcategoryIds = materialSubCategoryIDs
-      .filter((id) => id && !isNaN(Number(id)))
-      .map((id) => Number(id));
-
-    if (cleanedSubcategoryIds.length === 0) {
+    const cleanedId = Number(selectedSubCategoryID);
+    if (isNaN(cleanedId)) {
       toast("Invalid subcategory selection", "error");
       return;
     }
@@ -99,7 +81,7 @@ export default function RenameMrSubCategoryButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "updateSubCategory",
-        new_material_subcategory_ids: cleanedSubcategoryIds, // Array of IDs
+        new_material_subcategory_ids: [cleanedId],
         old_material_subcategory_id: subCategoryID,
         item_ids: items.map((item) => item.id),
       }),
@@ -107,14 +89,14 @@ export default function RenameMrSubCategoryButton({
 
     if (res.ok) {
       toast("Material request subcategory updated", "success");
-      setMaterialSubCategoryIDs([]);
+      setSelectedSubCategoryID("");
       setIsOpen(false);
       router.refresh();
     } else {
       const errorData = await res.json();
       toast(
         errorData.error || "Failed to update material request subcategory",
-        "error"
+        "error",
       );
     }
   }
@@ -140,12 +122,12 @@ export default function RenameMrSubCategoryButton({
           addButtonLabel={"CONFIRM"}
         >
           <div className="input-row full">
-            <MultiSelectDropdown
-              label={"SUBCATEGORIES"}
+            <SingleSelectDropdown
+              label={"SUBCATEGORY"}
               dbData={materialSubCategoryValues}
-              selectedValues={materialSubCategoryIDs}
-              onChange={handleSubCategoryChange}
-              placeholder="SELECT SUBCATEGORIES"
+              selectedValue={selectedSubCategoryID}
+              onChange={(val) => setSelectedSubCategoryID(val)}
+              placeholder="SELECT SUBCATEGORY"
               required
             />
           </div>

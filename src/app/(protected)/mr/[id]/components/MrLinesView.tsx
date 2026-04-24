@@ -228,6 +228,23 @@ export default function MrLinesView({
     return false;
   }, [mrLines]);
 
+  // Check if any item has QTY STOCKS (approved_proposed_quantity > quantity)
+  const hasAnyQtyStocks = useMemo(() => {
+    if (mrHeader.progress_id < 9) return false;
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          for (const item of mrLines[category][subCategory][supplier]) {
+            const proposedQty = Number(item.approved_proposed_quantity) || 0;
+            const requestedQty = Number(item.quantity) || 0;
+            if (proposedQty > requestedQty) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }, [mrLines, mrHeader.progress_id]);
+
   // QS Review — selected item IDs (shared across tables and QSActionsButton)
   const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(
     new Set(),
@@ -242,8 +259,8 @@ export default function MrLinesView({
 
     // #, ITEM
     count += 2;
-    // QTY columns: progress >= 9 means 3 cols, else 1
-    count += pid >= 9 ? 3 : 1;
+    // QTY columns: progress >= 9 means 3 cols (or 2 if QTY STOCKS hidden), else 1
+    count += pid >= 9 ? (hasAnyQtyStocks ? 3 : 2) : 1;
     // BOQ REF, BRAND & SPECS, ATTACHMENT
     count += 3;
     // APPROVAL STATUS (only at progress 2, 3, 5 — not at >= 10)
@@ -262,8 +279,8 @@ export default function MrLinesView({
     let count = 0;
     // #, CATEGORY, SUBCATEGORY, ITEM
     count += 4;
-    // QTY columns: progress >= 9 means 3 cols, else 1
-    count += pid >= 9 ? 3 : 1;
+    // QTY columns: progress >= 9 means 3 cols (or 2 if QTY STOCKS hidden), else 1
+    count += pid >= 9 ? (hasAnyQtyStocks ? 3 : 2) : 1;
     // BOQ REF, BRAND & SPECS, ATTACHMENT
     count += 3;
     return count;
@@ -1668,30 +1685,18 @@ export default function MrLinesView({
   }
 
   function hasQSRejectedItems() {
-    let hasRejected = false;
-    let allItemsReviewed = true;
-
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
         for (const supplier in mrLines[category][subCategory]) {
           const items = mrLines[category][subCategory][supplier];
-
           for (const item of items) {
-            const status = item.qs_approval_status?.toLowerCase();
-
-            if (status === "rejected") {
-              hasRejected = true;
-            }
-
-            if (!status || status === "pending") {
-              allItemsReviewed = false;
-            }
+            if (item.qs_approval_status?.toLowerCase() === "rejected")
+              return true;
           }
         }
       }
     }
-
-    return allItemsReviewed && hasRejected;
+    return false;
   }
 
   function hasQSRejectedSuppliers() {
@@ -1802,40 +1807,29 @@ export default function MrLinesView({
   }
 
   function allItemsQSApproved() {
-    let allReviewed = true;
-    let allApproved = true;
-
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
         for (const supplier in mrLines[category][subCategory]) {
           const items = mrLines[category][subCategory][supplier];
-
           for (const item of items) {
             const status = item.qs_approval_status?.toLowerCase();
-
-            if (!status || status === "pending") {
-              allReviewed = false;
-            }
-
-            if (status !== "approved") {
-              allApproved = false;
-            }
+            // Approved or Replaced both count as reviewed+approved
+            if (status !== "approved" && status !== "replaced") return false;
           }
         }
       }
     }
-
-    return allReviewed && allApproved;
+    return true;
   }
 
-  // Check if all items have qs_review_type set (for QS submit button)
+  // All items have a QS status set (Approved, Replaced, or Rejected)
   function allItemsQSReviewed() {
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
         for (const supplier in mrLines[category][subCategory]) {
           const items = mrLines[category][subCategory][supplier];
           for (const item of items) {
-            if (!item.qs_review_type) return false;
+            if (!item.qs_approval_status) return false;
           }
         }
       }
@@ -2457,31 +2451,31 @@ export default function MrLinesView({
                                       />
                                     </th>
                                   )}
-                                  <th style={{ width: "50px" }}>#</th>
-                                  <th style={{ width: "150px" }}>ITEM</th>
+                                  <th style={{ width: "40px" }}>#</th>
+                                  <th style={{ width: "130px" }}>ITEM</th>
                                   {mrHeader.progress_id >= 9 ? (
                                     <>
-                                      <th style={{ width: "100px" }}>
-                                        QTY USE
-                                      </th>
-                                      <th style={{ width: "110px" }}>
-                                        QTY STOCKS
-                                      </th>
-                                      <th style={{ width: "100px" }}>
+                                      <th style={{ width: "80px" }}>QTY USE</th>
+                                      {hasAnyQtyStocks && (
+                                        <th style={{ width: "90px" }}>
+                                          QTY STOCKS
+                                        </th>
+                                      )}
+                                      <th style={{ width: "80px" }}>
                                         TOTAL QTY
                                       </th>
                                     </>
                                   ) : (
-                                    <th style={{ width: "130px" }}>
+                                    <th style={{ width: "120px" }}>
                                       REQUESTED QTY
                                     </th>
                                   )}
-                                  <th style={{ width: "110px" }}>BOQ REF.</th>
-                                  <th style={{ width: "140px" }}>
+                                  <th style={{ width: "95px" }}>BOQ REF.</th>
+                                  <th style={{ width: "120px" }}>
                                     BRAND & SPECS
                                   </th>
                                   {hasAnyAttachment && (
-                                    <th style={{ width: "120px" }}>
+                                    <th style={{ width: "100px" }}>
                                       ATTACHMENT
                                     </th>
                                   )}
@@ -2539,7 +2533,14 @@ export default function MrLinesView({
                                     )}
                                   {mrHeader.progress_id >= 10 &&
                                     mrHeader.progress_id !== 11 && (
-                                      <th style={{ width: "200px" }}>
+                                      <th
+                                        style={
+                                          userInfo?.departmentID === 8 &&
+                                          mrHeader.progress_id === 10
+                                            ? { width: "275px" }
+                                            : { width: "160px" }
+                                        }
+                                      >
                                         <div
                                           style={{
                                             display: "flex",
@@ -2559,25 +2560,25 @@ export default function MrLinesView({
                                     )}
                                   {mrHeader.progress_id === 7 &&
                                     userInfo?.departmentID === 9 && (
-                                      <th style={{ width: "200px" }}>
+                                      <th style={{ width: "160px" }}>
                                         VENDOR & QUOTATION
                                       </th>
                                     )}
                                   {mrHeader.progress_id === 9 &&
                                     userInfo?.departmentID === 16 && (
-                                      <th style={{ width: "200px" }}>
+                                      <th style={{ width: "160px" }}>
                                         VENDOR & QUOTATION
                                       </th>
                                     )}
                                   {mrHeader.progress_id >= 10 &&
                                     canSeePrice && (
-                                      <th style={{ width: "120px" }}>
+                                      <th style={{ width: "100px" }}>
                                         UNIT PRICE
                                       </th>
                                     )}
                                   {mrHeader.progress_id >= 10 &&
                                     canSeePrice && (
-                                      <th style={{ width: "120px" }}>
+                                      <th style={{ width: "100px" }}>
                                         TOTAL PRICE
                                       </th>
                                     )}
@@ -2607,7 +2608,7 @@ export default function MrLinesView({
                                     mrHeader.progress_id === 10) &&
                                     (userInfo?.departmentID === 8 ||
                                       userInfo?.departmentID === 16) && (
-                                      <th style={{ width: "140px" }}>
+                                      <th style={{ width: "120px" }}>
                                         ACTIONS
                                       </th>
                                     )}
@@ -2683,23 +2684,26 @@ export default function MrLinesView({
                                               {formatNumber(item?.quantity)}{" "}
                                               {item.unit}
                                             </td>
-                                            <td>
-                                              {(() => {
-                                                const proposedQty =
-                                                  Number(
-                                                    item.approved_proposed_quantity,
-                                                  ) || 0;
-                                                const requestedQty =
-                                                  Number(item.quantity) || 0;
-                                                const stockQty =
-                                                  proposedQty > requestedQty
-                                                    ? proposedQty - requestedQty
-                                                    : 0;
-                                                return stockQty > 0
-                                                  ? `${formatNumber(stockQty)} ${item.unit}`
-                                                  : "-";
-                                              })()}
-                                            </td>
+                                            {hasAnyQtyStocks && (
+                                              <td>
+                                                {(() => {
+                                                  const proposedQty =
+                                                    Number(
+                                                      item.approved_proposed_quantity,
+                                                    ) || 0;
+                                                  const requestedQty =
+                                                    Number(item.quantity) || 0;
+                                                  const stockQty =
+                                                    proposedQty > requestedQty
+                                                      ? proposedQty -
+                                                        requestedQty
+                                                      : 0;
+                                                  return stockQty > 0
+                                                    ? `${formatNumber(stockQty)} ${item.unit}`
+                                                    : "-";
+                                                })()}
+                                              </td>
+                                            )}
                                             <td>
                                               {formatNumber(
                                                 item?.approved_proposed_quantity,
@@ -2843,9 +2847,8 @@ export default function MrLinesView({
                                                     />
                                                   )}
 
-                                                {/* Show Manager approval buttons */}
-                                                {(mrHeader.progress_id === 5 ||
-                                                  mrHeader.progress_id === 3) &&
+                                                {/* Show Manager approval buttons (not when rejected) */}
+                                                {mrHeader.progress_id === 3 &&
                                                   (userInfo?.departmentID ===
                                                     mrHeader.department_id ||
                                                     userInfo?.departmentID ===
@@ -3366,23 +3369,27 @@ export default function MrLinesView({
                                   />
                                 </th>
                               )}
-                              <th style={{ width: "50px" }}>#</th>
-                              <th style={{ width: "150px" }}>ITEM</th>
+                              <th style={{ width: "40px" }}>#</th>
+                              <th style={{ width: "130px" }}>ITEM</th>
                               {mrHeader.progress_id >= 9 ? (
                                 <>
-                                  <th style={{ width: "100px" }}>QTY USE</th>
-                                  <th style={{ width: "110px" }}>QTY STOCKS</th>
-                                  <th style={{ width: "100px" }}>TOTAL QTY</th>
+                                  <th style={{ width: "80px" }}>QTY USE</th>
+                                  {hasAnyQtyStocks && (
+                                    <th style={{ width: "90px" }}>
+                                      QTY STOCKS
+                                    </th>
+                                  )}
+                                  <th style={{ width: "80px" }}>TOTAL QTY</th>
                                 </>
                               ) : (
-                                <th style={{ width: "130px" }}>
+                                <th style={{ width: "120px" }}>
                                   REQUESTED QTY
                                 </th>
                               )}
-                              <th style={{ width: "110px" }}>BOQ REF.</th>
-                              <th style={{ width: "140px" }}>BRAND & SPECS</th>
+                              <th style={{ width: "95px" }}>BOQ REF.</th>
+                              <th style={{ width: "120px" }}>BRAND & SPECS</th>
                               {hasAnyAttachment && (
-                                <th style={{ width: "120px" }}>ATTACHMENT</th>
+                                <th style={{ width: "100px" }}>ATTACHMENT</th>
                               )}
                               {((mrHeader.progress_id === 5 &&
                                 (userInfo?.departmentID ===
@@ -3428,7 +3435,14 @@ export default function MrLinesView({
                                 )}
                               {mrHeader.progress_id >= 10 &&
                                 mrHeader.progress_id !== 11 && (
-                                  <th style={{ width: "200px" }}>
+                                  <th
+                                    style={
+                                      userInfo?.departmentID === 8 &&
+                                      mrHeader.progress_id === 10
+                                        ? { width: "275px" }
+                                        : { width: "160px" }
+                                    }
+                                  >
                                     <div
                                       style={{
                                         display: "flex",
@@ -3448,21 +3462,21 @@ export default function MrLinesView({
                                 )}
                               {mrHeader.progress_id === 7 &&
                                 userInfo?.departmentID === 9 && (
-                                  <th style={{ width: "200px" }}>
+                                  <th style={{ width: "160px" }}>
                                     VENDOR & QUOTATION
                                   </th>
                                 )}
                               {mrHeader.progress_id === 9 &&
                                 userInfo?.departmentID === 16 && (
-                                  <th style={{ width: "200px" }}>
+                                  <th style={{ width: "160px" }}>
                                     VENDOR & QUOTATION
                                   </th>
                                 )}
                               {mrHeader.progress_id >= 10 && canSeePrice && (
-                                <th style={{ width: "120px" }}>UNIT PRICE</th>
+                                <th style={{ width: "100px" }}>UNIT PRICE</th>
                               )}
                               {mrHeader.progress_id >= 10 && canSeePrice && (
-                                <th style={{ width: "120px" }}>TOTAL PRICE</th>
+                                <th style={{ width: "100px" }}>TOTAL PRICE</th>
                               )}
                               {userInfo?.departmentID === 12 &&
                                 mrHeader.progress_id === 21 && (
@@ -3489,7 +3503,7 @@ export default function MrLinesView({
                                 mrHeader.progress_id === 10) &&
                                 (userInfo?.departmentID === 8 ||
                                   userInfo?.departmentID === 16) && (
-                                  <th style={{ width: "140px" }}>ACTIONS</th>
+                                  <th style={{ width: "120px" }}>ACTIONS</th>
                                 )}
                             </tr>
                           </thead>
@@ -3559,23 +3573,25 @@ export default function MrLinesView({
                                           {formatNumber(item?.quantity)}{" "}
                                           {item.unit}
                                         </td>
-                                        <td>
-                                          {(() => {
-                                            const proposedQty =
-                                              Number(
-                                                item.approved_proposed_quantity,
-                                              ) || 0;
-                                            const requestedQty =
-                                              Number(item.quantity) || 0;
-                                            const stockQty =
-                                              proposedQty > requestedQty
-                                                ? proposedQty - requestedQty
-                                                : 0;
-                                            return stockQty > 0
-                                              ? `${formatNumber(stockQty)} ${item.unit}`
-                                              : "-";
-                                          })()}
-                                        </td>
+                                        {hasAnyQtyStocks && (
+                                          <td>
+                                            {(() => {
+                                              const proposedQty =
+                                                Number(
+                                                  item.approved_proposed_quantity,
+                                                ) || 0;
+                                              const requestedQty =
+                                                Number(item.quantity) || 0;
+                                              const stockQty =
+                                                proposedQty > requestedQty
+                                                  ? proposedQty - requestedQty
+                                                  : 0;
+                                              return stockQty > 0
+                                                ? `${formatNumber(stockQty)} ${item.unit}`
+                                                : "-";
+                                            })()}
+                                          </td>
+                                        )}
                                         <td>
                                           {formatNumber(
                                             item?.approved_proposed_quantity,
@@ -3713,9 +3729,8 @@ export default function MrLinesView({
                                                 />
                                               )}
 
-                                            {/* Show Manager approval buttons */}
-                                            {(mrHeader.progress_id === 5 ||
-                                              mrHeader.progress_id === 3) &&
+                                            {/* Show Manager approval buttons (not when rejected) */}
+                                            {mrHeader.progress_id === 3 &&
                                               (userInfo?.departmentID ===
                                                 mrHeader.department_id ||
                                                 userInfo?.departmentID ===
@@ -4290,28 +4305,30 @@ export default function MrLinesView({
             <table className="items-table two-toned fixed-layout">
               <thead>
                 <tr>
-                  <th style={{ width: "50px" }}>#</th>
-                  <th style={{ width: "150px" }}>CATEGORY</th>
-                  <th style={{ width: "150px" }}>SUBCATEGORY</th>
-                  <th style={{ width: "150px" }}>ITEM</th>
+                  <th style={{ width: "40px" }}>#</th>
+                  <th style={{ width: "120px" }}>CATEGORY</th>
+                  <th style={{ width: "120px" }}>SUBCATEGORY</th>
+                  <th style={{ width: "120px" }}>ITEM</th>
                   {mrHeader.progress_id >= 9 ? (
                     <>
-                      <th style={{ width: "100px" }}>QTY USE</th>
-                      <th style={{ width: "110px" }}>QTY STOCKS</th>
-                      <th style={{ width: "100px" }}>TOTAL QTY</th>
+                      <th style={{ width: "80px" }}>QTY USE</th>
+                      {hasAnyQtyStocks && (
+                        <th style={{ width: "90px" }}>QTY STOCKS</th>
+                      )}
+                      <th style={{ width: "80px" }}>TOTAL QTY</th>
                     </>
                   ) : (
-                    <th style={{ width: "130px" }}>REQUESTED QTY</th>
+                    <th style={{ width: "120px" }}>REQUESTED QTY</th>
                   )}
-                  <th style={{ width: "110px" }}>BOQ REF.</th>
-                  <th style={{ width: "140px" }}>BRAND & SPECS</th>
+                  <th style={{ width: "90px" }}>BOQ REF.</th>
+                  <th style={{ width: "110px" }}>BRAND & SPECS</th>
                   {/* {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>} */}
-                  <th style={{ width: "120px" }}>ATTACHMENT</th>
+                  <th style={{ width: "90px" }}>ATTACHMENT</th>
                   {mrHeader.progress_id >= 10 && canSeePrice && (
-                    <th style={{ width: "120px" }}>UNIT PRICE</th>
+                    <th style={{ width: "100px" }}>UNIT PRICE</th>
                   )}
                   {mrHeader.progress_id >= 10 && canSeePrice && (
-                    <th style={{ width: "120px" }}>TOTAL PRICE</th>
+                    <th style={{ width: "100px" }}>TOTAL PRICE</th>
                   )}
                   {userInfo?.departmentID === 12 &&
                     mrHeader.progress_id === 21 && (
@@ -4368,20 +4385,22 @@ export default function MrLinesView({
                         <td>
                           {formatNumber(item?.quantity)} {item.unit}
                         </td>
-                        <td>
-                          {(() => {
-                            const proposedQty =
-                              Number(item.approved_proposed_quantity) || 0;
-                            const requestedQty = Number(item.quantity) || 0;
-                            const stockQty =
-                              proposedQty > requestedQty
-                                ? proposedQty - requestedQty
-                                : 0;
-                            return stockQty > 0
-                              ? `${formatNumber(stockQty)} ${item.unit}`
-                              : "-";
-                          })()}
-                        </td>
+                        {hasAnyQtyStocks && (
+                          <td>
+                            {(() => {
+                              const proposedQty =
+                                Number(item.approved_proposed_quantity) || 0;
+                              const requestedQty = Number(item.quantity) || 0;
+                              const stockQty =
+                                proposedQty > requestedQty
+                                  ? proposedQty - requestedQty
+                                  : 0;
+                              return stockQty > 0
+                                ? `${formatNumber(stockQty)} ${item.unit}`
+                                : "-";
+                            })()}
+                          </td>
+                        )}
                         <td>
                           {formatNumber(item?.approved_proposed_quantity)}{" "}
                           {item.unit}
@@ -4679,27 +4698,22 @@ export default function MrLinesView({
 
       {userInfo?.departmentID === 16 && mrHeader.progress_id === 2 && (
         <div className="bottom-nav">
-          {/* <CancelMaterialRequestButton
-      mrHeaderID={mrHeader.id}
-      bgColor="black"
-      borderColor="white"
-      textColor="white"
-    >
-      CANCEL MATERIAL REQUEST
-    </CancelMaterialRequestButton> */}
-
           <div></div>
 
-          <SubmitForInitialApprovalButton
-            mrHeader={mrHeader}
-            progressId={mrHeader.progress_id}
-            disabled={!allItemsQSReviewed()}
-            style={{
-              opacity: !allItemsQSReviewed() ? "0.5" : "1",
-              cursor: !allItemsQSReviewed() ? "not-allowed" : "pointer",
-              pointerEvents: !allItemsQSReviewed() ? "none" : "auto",
-            }}
-          />
+          {hasQSRejectedItems() ? (
+            <SubmitForResubmissionButton mrHeader={mrHeader} />
+          ) : (
+            <SubmitForInitialApprovalButton
+              mrHeader={mrHeader}
+              progressId={mrHeader.progress_id}
+              disabled={!allItemsQSApproved()}
+              style={{
+                opacity: !allItemsQSApproved() ? "0.5" : "1",
+                cursor: !allItemsQSApproved() ? "not-allowed" : "pointer",
+                pointerEvents: !allItemsQSApproved() ? "none" : "auto",
+              }}
+            />
+          )}
         </div>
       )}
 

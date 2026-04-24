@@ -164,8 +164,12 @@ export async function POST(req: Request) {
       }
     }
 
-    // If header exists and no progress_id 1 in results, add synthetic entry
-    const hasCreatedEntry = result.some((row: any) => row.progress_id === 1);
+    // If header exists and no real (non-rollback) progress_id 1 in results, add synthetic entry.
+    // Rollback-to-draft entries (is_rollback=1, progress_id=1) must NOT block this —
+    // they render as "ROLLED BACK" nodes, not as the original creation event.
+    const hasCreatedEntry = result.some(
+      (row: any) => row.progress_id === 1 && row.is_rollback === 0,
+    );
 
     if (!hasCreatedEntry && headerRows.length > 0) {
       const header = headerRows[0];

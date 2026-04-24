@@ -14,7 +14,6 @@ import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItem
 import MultipleSelectMaterialItemButton, {
   PredefinedItem,
 } from "@/app/components/_MultipleSelectMaterialItemButton";
-import CreateNewMaterialButton from "@/app/components/_CreateNewMaterialButton";
 
 type SelectedMaterialRow = {
   predefinedItem: PredefinedItem | null;
@@ -213,7 +212,7 @@ export default function EditMrItemButton({
       materialDescription: newItem.material_description,
       categoryId: newItem.category_id,
       subcategoryId: newItem.subcategory_id,
-      brand: newItem.brand || "",
+      brand: "",
     });
     refreshSubcategoriesForCategory(newItem.category_id);
   };
@@ -235,7 +234,7 @@ export default function EditMrItemButton({
       materialDescription: lastItem.material_description,
       categoryId: lastItem.category_id,
       subcategoryId: lastItem.subcategory_id,
-      brand: lastItem.brand || "",
+      brand: "",
     });
     refreshSubcategoriesForCategory(lastItem.category_id);
   };
@@ -294,7 +293,7 @@ export default function EditMrItemButton({
           unit: selectedRow.unit,
           notes: null,
           specification: specification || null,
-          brand: brand || selectedRow.brand || null,
+          brand: brand || null,
           delivery_location: deliveryLocation,
           attachment: attachmentUrl
             ? JSON.stringify(attachmentUrl)
@@ -413,10 +412,74 @@ export default function EditMrItemButton({
           {selectedRow && (
             <>
               {/* Hidden inputs to enforce required fields via form.checkValidity() */}
-              <input type="text" required value={selectedRow.categoryId > 0 ? String(selectedRow.categoryId) : ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
-              <input type="text" required value={selectedRow.subcategoryId > 0 ? String(selectedRow.subcategoryId) : ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
-              <input type="text" required value={selectedRow.quantity && Number(selectedRow.quantity) > 0 ? selectedRow.quantity : ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
-              <input type="text" required value={selectedRow.unit ?? ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
+              <input
+                type="text"
+                required
+                value={
+                  selectedRow.categoryId > 0
+                    ? String(selectedRow.categoryId)
+                    : ""
+                }
+                onChange={() => {}}
+                style={{
+                  position: "absolute",
+                  opacity: 0,
+                  width: 0,
+                  height: 0,
+                  pointerEvents: "none",
+                }}
+                tabIndex={-1}
+              />
+              <input
+                type="text"
+                required
+                value={
+                  selectedRow.subcategoryId > 0
+                    ? String(selectedRow.subcategoryId)
+                    : ""
+                }
+                onChange={() => {}}
+                style={{
+                  position: "absolute",
+                  opacity: 0,
+                  width: 0,
+                  height: 0,
+                  pointerEvents: "none",
+                }}
+                tabIndex={-1}
+              />
+              <input
+                type="text"
+                required
+                value={
+                  selectedRow.quantity && Number(selectedRow.quantity) > 0
+                    ? selectedRow.quantity
+                    : ""
+                }
+                onChange={() => {}}
+                style={{
+                  position: "absolute",
+                  opacity: 0,
+                  width: 0,
+                  height: 0,
+                  pointerEvents: "none",
+                }}
+                tabIndex={-1}
+              />
+              <input
+                type="text"
+                required
+                value={selectedRow.unit ?? ""}
+                onChange={() => {}}
+                style={{
+                  position: "absolute",
+                  opacity: 0,
+                  width: 0,
+                  height: 0,
+                  pointerEvents: "none",
+                }}
+                tabIndex={-1}
+              />
               <div className="input-row full">
                 <table className="items-table two-toned">
                   <thead>
@@ -440,7 +503,7 @@ export default function EditMrItemButton({
                           selectedValue={selectedRow.categoryId}
                           onChange={handleCategoryChange}
                           placeholder="SELECT CATEGORY"
-                          style={{ width: "250px" }}
+                          style={{ width: "200px" }}
                         />
                       </td>
                       <td>
@@ -457,7 +520,7 @@ export default function EditMrItemButton({
                             )
                           }
                           placeholder="SELECT SUBCATEGORY"
-                          style={{ width: "250px" }}
+                          style={{ width: "200px" }}
                         />
                       </td>
                       <td>

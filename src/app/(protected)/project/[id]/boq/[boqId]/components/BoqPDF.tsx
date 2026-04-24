@@ -681,8 +681,8 @@ export function BoqPDF({
               style={styles.subCategoryTitle}
               hyphenationCallback={(word) => [word]}
             >
-              {categoryIndex + 1}.{subIndex + 1}{" "}
-              {category.toUpperCase()} / {subCategory.toUpperCase()}
+              {categoryIndex + 1}.{subIndex + 1} {category.toUpperCase()} /{" "}
+              {subCategory.toUpperCase()}
             </Text>
 
             <View style={styles.detailTableHeader}>
@@ -706,9 +706,7 @@ export function BoqPDF({
                 <Text style={colStyles.attachment}>ATTACHMENT(S)</Text>
               )}
 
-              {hasAnyRemarks && (
-                <Text style={colStyles.remarks}>REMARKS</Text>
-              )}
+              {hasAnyRemarks && <Text style={colStyles.remarks}>REMARKS</Text>}
             </View>
           </View>
 
@@ -752,7 +750,10 @@ export function BoqPDF({
                     <View style={styles.locationScopeRow}>
                       {item.location && (
                         <View style={styles.locationContainer}>
-                          <Image src={locationIcon} style={styles.locationIcon} />
+                          <Image
+                            src={locationIcon}
+                            style={styles.locationIcon}
+                          />
                           <Text
                             style={styles.locationText}
                             hyphenationCallback={(word) => [word]}
@@ -787,7 +788,10 @@ export function BoqPDF({
                     <Text style={styles.detailColTotal}>
                       {boqHeader.currency}{" "}
                       {formatMoney(
-                        calculateLineTotal(item.rate_per_quantity, item.quantity),
+                        calculateLineTotal(
+                          item.rate_per_quantity,
+                          item.quantity,
+                        ),
                       )}
                     </Text>
                   </>
@@ -852,7 +856,8 @@ export function BoqPDF({
   // When unpriced/DN: items start on page 1 (no summary page).
   // When priced: summary is page 1, items each get their own page.
   const detailCategories = showPrices ? categories : categories.slice(1);
-  const firstCategoryForPage1 = !showPrices && categories.length > 0 ? categories[0] : null;
+  const firstCategoryForPage1 =
+    !showPrices && categories.length > 0 ? categories[0] : null;
 
   return (
     <Document>
@@ -901,7 +906,9 @@ export function BoqPDF({
                 <Text style={styles.infoLabel}>DATE</Text>
                 <Text style={styles.infoValue}>
                   {mrHeader.date_requested
-                    ? new Date(mrHeader.date_requested).toLocaleDateString("en-GB")
+                    ? new Date(mrHeader.date_requested).toLocaleDateString(
+                        "en-GB",
+                      )
                     : new Date().toLocaleDateString("en-GB")}
                 </Text>
               </View>
@@ -936,7 +943,9 @@ export function BoqPDF({
                 <Text style={styles.infoLabel}>REQUIRED DATE</Text>
                 <Text style={styles.infoValue}>
                   {mrHeader.required_date
-                    ? new Date(mrHeader.required_date).toLocaleDateString("en-GB")
+                    ? new Date(mrHeader.required_date).toLocaleDateString(
+                        "en-GB",
+                      )
                     : "-"}
                 </Text>
               </View>
@@ -966,12 +975,6 @@ export function BoqPDF({
               <View style={styles.infoItem}>
                 <Text style={styles.infoLabel}>PROJECT</Text>
                 <Text style={styles.infoValue}>{boqHeader.project_name}</Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoLabel}>CLIENT</Text>
-                <Text style={styles.infoValue}>
-                  {boqHeader.client_name || "-"}
-                </Text>
               </View>
             </View>
 
@@ -1055,13 +1058,17 @@ export function BoqPDF({
                 {boqHeader.payment_terms && (
                   <View style={styles.termsSection}>
                     <Text style={styles.termsTitle}>PAYMENT TERMS</Text>
-                    <Text style={styles.termsText}>{boqHeader.payment_terms}</Text>
+                    <Text style={styles.termsText}>
+                      {boqHeader.payment_terms}
+                    </Text>
                   </View>
                 )}
                 {boqHeader.validity_terms && (
                   <View style={styles.termsSection}>
                     <Text style={styles.termsTitle}>VALIDITY TERMS</Text>
-                    <Text style={styles.termsText}>{boqHeader.validity_terms}</Text>
+                    <Text style={styles.termsText}>
+                      {boqHeader.validity_terms}
+                    </Text>
                   </View>
                 )}
                 {boqHeader.warranty && (

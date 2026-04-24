@@ -232,7 +232,7 @@ export default function AddMrItemButton({
         row.descriptionOverride ??
         row.predefinedItem.material_description ??
         "",
-      brand: row.brandOverride ?? row.predefinedItem.brand ?? "",
+      brand: row.brandOverride ?? "",
       specification: row.specificationOverride ?? "",
       deliveryLocation: row.deliveryLocationOverride ?? "",
       categoryId: initCategoryId,
@@ -403,7 +403,7 @@ export default function AddMrItemButton({
             brand:
               row.brandOverride !== undefined
                 ? row.brandOverride || null
-                : brand || row.predefinedItem.brand || null,
+                : brand || null,
             specification:
               row.specificationOverride !== undefined
                 ? row.specificationOverride || null

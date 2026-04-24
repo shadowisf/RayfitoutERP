@@ -655,11 +655,10 @@ export default function MR() {
     if (userDeptId === 8) {
       // Manager
       if (isFilterRelevant) {
-        // Only show stages the manager is responsible for
-        // Manager Approval (3), Manager Price Approval (10): show all MRs
+        // Active stages manager must act on — show all MRs
         if ([3, 10].includes(mr.progress_id)) return true;
-        // Request Rejected (5): show only own dept
-        if (mr.progress_id === 5) return mr.department_id === 8;
+        // Draft, Rejected, Completed — show own dept's MRs (collapsed by default)
+        if ([1, 5, 25].includes(mr.progress_id)) return mr.department_id === 8;
         // All other stages: hide
         return false;
       }
@@ -874,17 +873,19 @@ export default function MR() {
 
     const useLpoCards = LPO_STAGE_IDS.includes(status.progress_id);
 
-    // For Completed stage, check LPOs, JOs, and Payment Requests
+    // For Completed stage, check LPOs, JOs, Payment Requests, and material MRs
     if (status.progress_id === 25) {
       const lpos = groupedLPOs[status.progress_id] || [];
-      const completedMrs = (groupedMRs[status.name] || []).filter(
+      const allCompletedMrs = groupedMRs[status.name] || [];
+      const completedMrs = allCompletedMrs.filter(
         (mr: any) => mr.type === "job" || mr.type === "payment",
       );
 
       if (userDeptId === 8 && filterRelevant) {
+        // Include LPOs, job/payment MRs, and regular material MRs from own dept
         return (
           lpos.some((l) => l.department_id === 8) ||
-          completedMrs.some((mr: any) => mr.department_id === 8)
+          allCompletedMrs.some((mr: any) => mr.department_id === 8)
         );
       }
       return (
@@ -904,9 +905,12 @@ export default function MR() {
 
       if (userDeptId === 8) {
         if (filterRelevant) {
-          if (status.progress_id === 14) {
-            return false; // hide Pending Payments section completely for managers
-          }
+          // Only show LPO stages where manager is the responsible department.
+          // No LPO stages (13,14,16,17,24) map to dept 8, so all are hidden —
+          // managers don't act at any LPO operational stage.
+          const responsibleForStage =
+            progressToResponsibleDepartment[status.progress_id];
+          if (responsibleForStage !== 8) return false;
           return lpos.some((l) => l.department_id === 8);
         }
         // Managers see all LPO stages when filter is off

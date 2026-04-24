@@ -205,7 +205,7 @@ export default function QSActionsButton({
 
   return (
     <>
-      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
         {/* ── Actions dropdown ───────────────────────────────────────────── */}
         <div ref={actionsRef} style={{ position: "relative" }}>
           <Button
@@ -268,17 +268,27 @@ export default function QSActionsButton({
         <div ref={downloadRef} style={{ position: "relative" }}>
           <Button
             componentType={"button"}
-            bgColor={"white"}
-            borderColor={"rgba(211, 211, 211, 1)"}
-            textColor={"black"}
-            style={{ padding: "7px 7px" }}
+            bgColor={selectedItemIds.size === 0 ? "white" : "black"}
+            borderColor={
+              selectedItemIds.size === 0 ? "rgba(211, 211, 211, 1)" : "black"
+            }
+            textColor={selectedItemIds.size === 0 ? "black" : "white"}
+            style={{ padding: "9px 9px" }}
             disabled={isDownloading}
             onClick={() => {
               setDownloadOpen((v) => !v);
               setActionsOpen(false);
             }}
           >
-            <img src={downloadIcon} alt="download" />
+            <img
+              src={downloadIcon}
+              alt="download"
+              style={
+                selectedItemIds.size === 0
+                  ? { filter: "invert(0)" }
+                  : { filter: "invert(1)" }
+              }
+            />
           </Button>
 
           {downloadOpen && (
