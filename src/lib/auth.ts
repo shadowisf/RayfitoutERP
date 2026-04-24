@@ -13,88 +13,124 @@ const poolData = {
 const userPool = new CognitoUserPool(poolData);
 
 // --------------------------------------------------
-// LOGIN FUNCTION
+// RETRY HELPER
+// Retries on transient Cognito 500 / network errors only.
+// Genuine auth failures (wrong password, user not found, etc.) are NOT retried.
 // --------------------------------------------------
-export function login(username: string, password: string) {
-  const authDetails = new AuthenticationDetails({
-    Username: username,
-    Password: password,
-  });
+const NON_RETRYABLE_CODES = new Set([
+  "NotAuthorizedException",
+  "UserNotFoundException",
+  "UserNotConfirmedException",
+  "PasswordResetRequiredException",
+  "InvalidParameterException",
+  "InvalidPasswordException",
+  "CodeMismatchException",
+  "ExpiredCodeException",
+  "LimitExceededException",
+  "TooManyRequestsException",
+]);
 
-  const user = new CognitoUser({
-    Username: username,
-    Pool: userPool,
-  });
-
-  return new Promise((resolve, reject) => {
-    user.authenticateUser(authDetails, {
-      onSuccess: (session) => {
-        resolve({
-          status: "SUCCESS",
-          idToken: session.getIdToken().getJwtToken(),
-          accessToken: session.getAccessToken().getJwtToken(),
-          refreshToken: session.getRefreshToken().getToken(),
-          user,
-        });
-      },
-
-      onFailure: (err) => {
-        reject(err);
-      },
-
-      // Handle new password required
-      newPasswordRequired: (userAttributes, requiredAttributes) => {
-        // Clean up attributes that Cognito doesn't allow to be modified
-        delete userAttributes.email_verified;
-        delete userAttributes.phone_number_verified;
-        
-        console.log("User Attributes:", userAttributes);
-        console.log("Required Attributes:", requiredAttributes);
-        
-        resolve({
-          status: "NEW_PASSWORD_REQUIRED",
-          user,
-          userAttributes,
-          requiredAttributes,
-        });
-      },
-    });
-  });
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelayMs = 600,
+): Promise<T> {
+  let lastError: any;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      const code: string = err?.code ?? err?.name ?? "";
+      const isNonRetryable = NON_RETRYABLE_CODES.has(code);
+      if (isNonRetryable || attempt === maxRetries - 1) throw err;
+      // Exponential backoff: 600 ms → 1200 ms → 2400 ms
+      const delay = baseDelayMs * Math.pow(2, attempt);
+      await new Promise((res) => setTimeout(res, delay));
+    }
+  }
+  throw lastError;
 }
 
 // --------------------------------------------------
-// COMPLETE NEW PASSWORD CHALLENGE
+// LOGIN FUNCTION
 // --------------------------------------------------
+export function login(username: string, password: string) {
+  // Each retry needs a fresh CognitoUser instance (the object is stateful)
+  const attempt = () => {
+    const authDetails = new AuthenticationDetails({
+      Username: username,
+      Password: password,
+    });
+
+    const user = new CognitoUser({
+      Username: username,
+      Pool: userPool,
+    });
+
+    return new Promise<any>((resolve, reject) => {
+      user.authenticateUser(authDetails, {
+        onSuccess: (session) => {
+          resolve({
+            status: "SUCCESS",
+            idToken: session.getIdToken().getJwtToken(),
+            accessToken: session.getAccessToken().getJwtToken(),
+            refreshToken: session.getRefreshToken().getToken(),
+            user,
+          });
+        },
+
+        onFailure: (err) => {
+          reject(err);
+        },
+
+        // Handle new password required
+        newPasswordRequired: (userAttributes, requiredAttributes) => {
+          // Clean up attributes that Cognito doesn't allow to be modified
+          delete userAttributes.email_verified;
+          delete userAttributes.phone_number_verified;
+
+          resolve({
+            status: "NEW_PASSWORD_REQUIRED",
+            user,
+            userAttributes,
+            requiredAttributes,
+          });
+        },
+      });
+    });
+  };
+
+  return withRetry(attempt);
+}
+
 // --------------------------------------------------
 // COMPLETE NEW PASSWORD CHALLENGE
 // --------------------------------------------------
 export function completeNewPassword(
   user: CognitoUser,
   newPassword: string,
-  attributes: Record<string, string> = {}
+  attributes: Record<string, string> = {},
 ) {
   return new Promise((resolve, reject) => {
     // List of attributes that should NOT be modified
     const readOnlyAttributes = [
-      'email_verified',
-      'phone_number_verified',
-      'email', // Add email to read-only list
-      'phone_number', // Add phone_number to read-only list
-      'sub', // User ID should never be modified
+      "email_verified",
+      "phone_number_verified",
+      "email",
+      "phone_number",
+      "sub",
     ];
 
-    // Filter out read-only attributes and add prefix to remaining ones
-    const attributesWithPrefix: Record<string, string> = {};
-    
+    const filteredAttributes: Record<string, string> = {};
+
     Object.keys(attributes).forEach((key) => {
       if (!readOnlyAttributes.includes(key)) {
-        attributesWithPrefix[key] = attributes[key];
+        filteredAttributes[key] = attributes[key];
       }
     });
 
-    console.log("Sending attributes:", attributesWithPrefix);
-
-    user.completeNewPasswordChallenge(newPassword, attributesWithPrefix, {
+    user.completeNewPasswordChallenge(newPassword, filteredAttributes, {
       onSuccess: (session) => {
         resolve({
           status: "SUCCESS",
@@ -124,20 +160,37 @@ export function logout() {
 // --------------------------------------------------
 export function getSession(): Promise<any> {
   const user = userPool.getCurrentUser();
+  if (!user) return Promise.resolve(null);
 
-  return new Promise((resolve, reject) => {
-    if (!user) return resolve(null);
-
-    user.getSession((err: any, session: any) => {
-      if (err || !session || !session.isValid()) {
-        resolve(null);
-      } else {
+  const attempt = () =>
+    new Promise<any>((resolve, reject) => {
+      user.getSession((err: any, session: any) => {
+        if (err) {
+          // Treat session expiry as null (user just needs to log in again)
+          // only surface real errors for retry
+          const code: string = err?.code ?? err?.name ?? "";
+          const isSessionExpiry =
+            code === "NotAuthorizedException" ||
+            code === "UserNotFoundException";
+          if (isSessionExpiry) {
+            resolve(null);
+          } else {
+            reject(err);
+          }
+          return;
+        }
+        if (!session || !session.isValid()) {
+          resolve(null);
+          return;
+        }
         resolve({
           idToken: session.getIdToken().getJwtToken(),
           accessToken: session.getAccessToken().getJwtToken(),
           refreshToken: session.getRefreshToken().getToken(),
         });
-      }
+      });
     });
-  });
+
+  // Retry transient Cognito 500s; fall back to null if all retries fail
+  return withRetry(attempt).catch(() => null);
 }

@@ -8,8 +8,8 @@ export async function POST(req: Request) {
 
     if (!mr_header_id) {
       return NextResponse.json(
-        { error: "mr_header_id is required", hasBoqReference: false },
-        { status: 400 },
+        { hasBoqReference: false, hasItemAvailable: false, hasNeedOrder: false },
+        { status: 200 },
       );
     }
 

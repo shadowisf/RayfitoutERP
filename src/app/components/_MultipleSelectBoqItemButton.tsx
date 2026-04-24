@@ -69,7 +69,9 @@ export default function MultipleSelectBoqItemButton({
   const formatQty = (val: any) => {
     const num = Number(val);
     if (isNaN(num)) return val;
-    return num % 1 === 0 ? num.toFixed(0) : parseFloat(num.toFixed(2)).toString();
+    return num % 1 === 0
+      ? num.toFixed(0)
+      : parseFloat(num.toFixed(2)).toString();
   };
 
   // BOQ Category states
@@ -876,17 +878,6 @@ export default function MultipleSelectBoqItemButton({
                               />
                             </svg>
 
-                            <span
-                              style={{
-                                fontWeight: 600,
-                                fontSize: "14px",
-                              }}
-                            >
-                              {categoryIndex + 1}.{subCategoryIndex + 1}{" "}
-                              {subCategory}
-                            </span>
-
-                            {/* Subcategory checkbox — commented out
                             <label
                               style={{
                                 display: "flex",
@@ -923,7 +914,6 @@ export default function MultipleSelectBoqItemButton({
                               {categoryIndex + 1}.{subCategoryIndex + 1}{" "}
                               {subCategory}
                             </label>
-                            */}
 
                             <div
                               style={{
@@ -1086,6 +1076,8 @@ export default function MultipleSelectBoqItemButton({
                               </tbody>
                             </table>
                           )}
+
+                          <br />
                         </div>
                       ),
                     )}
@@ -1366,22 +1358,11 @@ export default function MultipleSelectBoqItemButton({
       >
         {currentBoqLineIDs.length > 0 && selectedBoqInfo ? (
           <>
-            <span
-              style={{
-                maxWidth: "300px",
-                display: "inline-block",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {selectedBoqInfo}
-            </span>
+            <span>EDIT</span>
             <img
-              src={crossIcon}
-              alt="cross"
+              src="/icons/pencil.svg"
+              alt="edit"
               style={{ filter: "invert(1)", marginBottom: "2px" }}
-              onClick={handleReset}
             />
           </>
         ) : (

@@ -8,7 +8,7 @@ import Button from "@/app/components/Button";
 import { MrHeader } from "../[id]/types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import DownloadBoqButton from "@/app/(protected)/project/[id]/boq/[boqId]/components/manager/_DownloadBoqButton";
-import { formatPriceAED } from "@/lib/formatPrice";
+import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 
 type BoqReferencePopUpProps = {
   mrHeader: MrHeader;
@@ -395,7 +395,9 @@ export default function BoqReferencePopUp({
       .flatMap((g) => g.items)
       .reduce(
         (sum, i) =>
-          sum + (Number(i.subcontracted_qty) || 0) * (Number(i.rate_per_quantity) || 0),
+          sum +
+          (Number(i.subcontracted_qty) || 0) *
+            (Number(i.rate_per_quantity) || 0),
         0,
       );
   }, [filteredByCategory, showJoColumns]);
@@ -1156,7 +1158,7 @@ export default function BoqReferencePopUp({
                                 }}
                               >
                                 {Number(boqItem.rate_per_quantity) > 0
-                                  ? formatPriceAED(boqItem.rate_per_quantity)
+                                  ? formatPrice(boqItem.rate_per_quantity)
                                   : "-"}
                               </td>
                               <td
@@ -1206,7 +1208,9 @@ export default function BoqReferencePopUp({
                                   }}
                                 >
                                   {itemSubcontractedWorksValue > 0
-                                    ? formatPriceAED(itemSubcontractedWorksValue)
+                                    ? formatPriceAED(
+                                        itemSubcontractedWorksValue,
+                                      )
                                     : "-"}
                                 </td>
                               )}
@@ -1253,7 +1257,12 @@ export default function BoqReferencePopUp({
                         >
                           <tr>
                             {/* # col spacer */}
-                            <td style={{ padding: "25px 30px", backgroundColor: "white" }}></td>
+                            <td
+                              style={{
+                                padding: "25px 30px",
+                                backgroundColor: "white",
+                              }}
+                            ></td>
                             {/* ITEM col: label */}
                             <td
                               style={{
@@ -1266,9 +1275,19 @@ export default function BoqReferencePopUp({
                               <h3>SUBTOTAL</h3>
                             </td>
                             {/* RATE col spacer */}
-                            <td style={{ padding: "25px 30px", backgroundColor: "white" }}></td>
+                            <td
+                              style={{
+                                padding: "25px 30px",
+                                backgroundColor: "white",
+                              }}
+                            ></td>
                             {/* QUANTITY col spacer */}
-                            <td style={{ padding: "25px 30px", backgroundColor: "white" }}></td>
+                            <td
+                              style={{
+                                padding: "25px 30px",
+                                backgroundColor: "white",
+                              }}
+                            ></td>
                             {/* TOTAL PRICE col: value */}
                             {canSeePrice && (
                               <td
@@ -1286,7 +1305,12 @@ export default function BoqReferencePopUp({
                             )}
                             {/* SUBCONTRACTED QTY col spacer */}
                             {showJoColumns && (
-                              <td style={{ padding: "25px 30px", backgroundColor: "white" }}></td>
+                              <td
+                                style={{
+                                  padding: "25px 30px",
+                                  backgroundColor: "white",
+                                }}
+                              ></td>
                             )}
                             {/* SUBCONTRACTED WORKS VALUE col: value */}
                             {showJoColumns && canSeeWorksValue && (
@@ -1304,7 +1328,12 @@ export default function BoqReferencePopUp({
                               </td>
                             )}
                             {/* ATTACHMENT col spacer */}
-                            <td style={{ padding: "25px 30px", backgroundColor: "white" }}></td>
+                            <td
+                              style={{
+                                padding: "25px 30px",
+                                backgroundColor: "white",
+                              }}
+                            ></td>
                           </tr>
                         </tfoot>
                       )}
@@ -1599,7 +1628,9 @@ export default function BoqReferencePopUp({
                                     }}
                                   >
                                     {itemSubcontractedWorksValue > 0
-                                      ? formatPriceAED(itemSubcontractedWorksValue)
+                                      ? formatPriceAED(
+                                          itemSubcontractedWorksValue,
+                                        )
                                       : "-"}
                                   </td>
                                 )}
@@ -1638,7 +1669,8 @@ export default function BoqReferencePopUp({
                             );
                           })}
                         </tbody>
-                        {(canSeePrice || (showJoColumns && canSeeWorksValue)) && (
+                        {(canSeePrice ||
+                          (showJoColumns && canSeeWorksValue)) && (
                           <tfoot
                             style={{
                               borderTop: "1px solid rgba(232, 223, 223, 1)",
@@ -1646,7 +1678,12 @@ export default function BoqReferencePopUp({
                           >
                             <tr>
                               {/* # col spacer */}
-                              <td style={{ padding: "25px 30px", backgroundColor: "white" }}></td>
+                              <td
+                                style={{
+                                  padding: "25px 30px",
+                                  backgroundColor: "white",
+                                }}
+                              ></td>
                               {/* ITEM col: label */}
                               <td
                                 style={{
@@ -1659,9 +1696,19 @@ export default function BoqReferencePopUp({
                                 <h3 style={{ fontSize: "14px" }}>SUBTOTAL</h3>
                               </td>
                               {/* RATE col spacer */}
-                              <td style={{ padding: "25px 30px", backgroundColor: "white" }}></td>
+                              <td
+                                style={{
+                                  padding: "25px 30px",
+                                  backgroundColor: "white",
+                                }}
+                              ></td>
                               {/* QUANTITY col spacer */}
-                              <td style={{ padding: "25px 30px", backgroundColor: "white" }}></td>
+                              <td
+                                style={{
+                                  padding: "25px 30px",
+                                  backgroundColor: "white",
+                                }}
+                              ></td>
                               {/* TOTAL PRICE col: value */}
                               {canSeePrice && (
                                 <td
@@ -1672,14 +1719,24 @@ export default function BoqReferencePopUp({
                                     backgroundColor: "white",
                                   }}
                                 >
-                                  <h3 style={{ textWrap: "nowrap", fontSize: "14px" }}>
+                                  <h3
+                                    style={{
+                                      textWrap: "nowrap",
+                                      fontSize: "14px",
+                                    }}
+                                  >
                                     {formatPriceAED(subCatTotal)}
                                   </h3>
                                 </td>
                               )}
                               {/* SUBCONTRACTED QTY col spacer */}
                               {showJoColumns && (
-                                <td style={{ padding: "25px 30px", backgroundColor: "white" }}></td>
+                                <td
+                                  style={{
+                                    padding: "25px 30px",
+                                    backgroundColor: "white",
+                                  }}
+                                ></td>
                               )}
                               {/* SUBCONTRACTED WORKS VALUE col: value */}
                               {showJoColumns && canSeeWorksValue && (
@@ -1691,13 +1748,25 @@ export default function BoqReferencePopUp({
                                     backgroundColor: "white",
                                   }}
                                 >
-                                  <h3 style={{ textWrap: "nowrap", fontSize: "14px" }}>
-                                    {formatPriceAED(subCatSubcontractedWorksValue)}
+                                  <h3
+                                    style={{
+                                      textWrap: "nowrap",
+                                      fontSize: "14px",
+                                    }}
+                                  >
+                                    {formatPriceAED(
+                                      subCatSubcontractedWorksValue,
+                                    )}
                                   </h3>
                                 </td>
                               )}
                               {/* ATTACHMENT col spacer */}
-                              <td style={{ padding: "25px 30px", backgroundColor: "white" }}></td>
+                              <td
+                                style={{
+                                  padding: "25px 30px",
+                                  backgroundColor: "white",
+                                }}
+                              ></td>
                             </tr>
                           </tfoot>
                         )}

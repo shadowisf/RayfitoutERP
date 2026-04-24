@@ -25,6 +25,10 @@ import AvgPaymentTimeWidget from "./components/finance/W_AvgPaymentTime";
 import RisksAndExceptionFlagsWidget from "./components/finance/W_RisksAndExceptionFlags";
 import TopMaterialsBySpendingChart from "./components/finance/W_TopMaterialsBySpend";
 import PriceTrendSignalsWidget from "./components/finance/W_PriceTrendSignals";
+import FinanceTotalSpentWidget from "./components/finance/W_Finance_TotalSpent";
+import FinanceOutstandingPayablesWidget from "./components/finance/W_Finance_OutstandingPayables";
+import FinanceMedianPaymentDelayWidget from "./components/finance/W_Finance_MedianPaymentDelay";
+import FinanceRecentTransactionsWidget from "./components/finance/W_Finance_RecentTransactions";
 import QuickInitialApprovalWidget from "./components/manager/W_QuickInitialApproval";
 import QuickPriceApprovalWidget from "./components/manager/W_QuickPriceApproval";
 
@@ -277,6 +281,7 @@ export default function Dashboard() {
       {/* FINANCE */}
       {userInfo?.departmentID === 10 && (
         <>
+          {/* Time filter commented out
           <div
             style={{
               display: "flex",
@@ -301,12 +306,26 @@ export default function Dashboard() {
             </select>
           </div>
           <br />
-          <div className="widget-grid overview four-col">
-            <TotalSpentWidget filterDays={overviewFilter} />
-            <PendingPaymentMrsWidget filterDays={overviewFilter} />
-            <AvgPaymentTimeWidget filterDays={overviewFilter} />
-            <PendingDeliveryMrsWidget filterDays={overviewFilter} />
+          */}
+
+          <h2>Financial Overview</h2>
+          <br />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2fr 1.2fr 2.2fr",
+              gap: "16px",
+              alignItems: "stretch",
+            }}
+          >
+            <FinanceTotalSpentWidget />
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <FinanceOutstandingPayablesWidget />
+              <FinanceMedianPaymentDelayWidget />
+            </div>
+            <FinanceRecentTransactionsWidget />
           </div>
+
           <br />
           <br />
           <br />

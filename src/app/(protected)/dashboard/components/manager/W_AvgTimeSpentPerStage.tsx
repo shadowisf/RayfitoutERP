@@ -21,7 +21,7 @@ export default function AvgTimeSpentPerStageWidget() {
 
   // ✅ Define MR stage order
   const stageOrder = [
-    "Draft",
+    // "Draft",
     "QS Review",
     "Manager Approval",
     "Requested Rejected",

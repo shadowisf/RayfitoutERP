@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
         required_date
       FROM vw_mr_headers
       WHERE
-        (type = 'job' OR progress_id <= 12)
+        progress_id >= 2
         AND (
           CONCAT(
             CASE

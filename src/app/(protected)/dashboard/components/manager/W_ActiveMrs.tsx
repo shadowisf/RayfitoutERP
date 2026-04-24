@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import HoverLoadingCursor from "../HoverLoadingCursor";
+// import HoverLoadingCursor from "../HoverLoadingCursor";
 
 type props = {
   filterDays?: number;
@@ -52,22 +52,12 @@ export default function ActiveMrsWidget({ filterDays }: props) {
 
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
-  const [isWaiting, setIsWaiting] = useState(false);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const hoverTimer = useRef<NodeJS.Timeout | null>(null);
   const hideTimer = useRef<NodeJS.Timeout | null>(null);
   const widgetRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleCloseHover = () => {
-      setShowPopup(false);
-      setIsWaiting(false);
-      if (hoverTimer.current) {
-        clearTimeout(hoverTimer.current);
-        hoverTimer.current = null;
-      }
-    };
+    const handleCloseHover = () => setShowPopup(false);
     window.addEventListener("scroll", handleCloseHover, true);
     window.addEventListener("blur", handleCloseHover);
     return () => {
@@ -79,18 +69,26 @@ export default function ActiveMrsWidget({ filterDays }: props) {
   useEffect(() => {
     const handleCloseAll = (e: Event) => {
       const customE = e as CustomEvent;
-      if (customE.detail?.source !== "active-mrs") {
-        setShowPopup(false);
-        setIsWaiting(false);
-        if (hoverTimer.current) {
-          clearTimeout(hoverTimer.current);
-          hoverTimer.current = null;
-        }
-      }
+      if (customE.detail?.source !== "active-mrs") setShowPopup(false);
     };
     window.addEventListener("close-all-hover-popups", handleCloseAll);
     return () =>
       window.removeEventListener("close-all-hover-popups", handleCloseAll);
+  }, []);
+
+  // Close when clicking outside widget and popup
+  useEffect(() => {
+    const handleDocumentMouseDown = (e: MouseEvent) => {
+      if (
+        widgetRef.current?.contains(e.target as Node) ||
+        popupRef.current?.contains(e.target as Node)
+      )
+        return;
+      setShowPopup(false);
+    };
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    return () =>
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
   }, []);
 
   useEffect(() => {
@@ -144,12 +142,12 @@ export default function ActiveMrsWidget({ filterDays }: props) {
       });
   }, [filterDays]);
 
-  // Start a delayed hide – cancelled if user re-enters widget or popup
+  // Short grace-period so cursor can travel from widget edge to popup
   const startHideTimer = () => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
       setShowPopup(false);
-    }, 2500);
+    }, 120);
   };
 
   const cancelHideTimer = () => {
@@ -159,74 +157,33 @@ export default function ActiveMrsWidget({ filterDays }: props) {
     }
   };
 
-  // Hover handlers
+  // Hover handlers — popup shows immediately, hides when cursor leaves both widget and popup
   const handleMouseEnter = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("button, a, [role='button']")) return;
     window.dispatchEvent(
-      new CustomEvent("close-all-hover-popups", {
-        detail: { source: "active-mrs" },
-      }),
+      new CustomEvent("close-all-hover-popups", { detail: { source: "active-mrs" } }),
     );
     cancelHideTimer();
-    setMousePosition({ x: e.clientX, y: e.clientY });
-    if (!showPopup) {
-      setIsWaiting(true);
-      hoverTimer.current = setTimeout(() => {
-        setIsWaiting(false);
-        setShowPopup(true);
-        window.dispatchEvent(
-          new CustomEvent("close-all-hover-popups", {
-            detail: { source: "active-mrs" },
-          }),
-        );
-      }, 2000);
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest("button, a, [role='button']")) {
-      if (hoverTimer.current) {
-        clearTimeout(hoverTimer.current);
-        hoverTimer.current = null;
-      }
-      setIsWaiting(false);
-      return;
-    }
-    if (!showPopup) {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    }
+    setShowPopup(true);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (popupRef.current?.contains(e.target as Node)) return;
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
-    setIsWaiting(false);
     setShowPopup(false);
   };
 
   const handleMouseLeave = () => {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
-    setIsWaiting(false);
-    if (showPopup) {
-      startHideTimer();
-    }
+    startHideTimer();
   };
 
-  // Popup hover handlers
+  // Popup hover handlers — stay visible while cursor is inside popup
   const handlePopupMouseEnter = () => {
     cancelHideTimer();
   };
 
   const handlePopupMouseLeave = () => {
-    startHideTimer();
+    setShowPopup(false);
   };
 
   const hasNoActiveMRs = thisWeek === 0;
@@ -343,7 +300,6 @@ export default function ActiveMrsWidget({ filterDays }: props) {
       style={{ backgroundColor, cursor: "pointer" }}
       onClick={() => router.push("/dashboard/details/active-mrs")}
       onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onMouseDown={handleMouseDown}
     >
@@ -358,10 +314,6 @@ export default function ActiveMrsWidget({ filterDays }: props) {
         <br />
         <span>{isLoading ? "Loading..." : changeText}</span>
       </div>
-
-      {isWaiting && !showPopup && (
-        <HoverLoadingCursor mouseX={mousePosition.x} mouseY={mousePosition.y} />
-      )}
 
       {showPopup && (
         <div

@@ -83,7 +83,7 @@ export default function CommentsSection({
         body: JSON.stringify({ action: "getDepartments" }),
       });
       const data = await res.json();
-      setDepartments(data);
+      setDepartments(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching departments:", err);
     }
@@ -101,7 +101,7 @@ export default function CommentsSection({
         }),
       });
       const data = await res.json();
-      setComments(data);
+      setComments(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching comments:", err);
     }
