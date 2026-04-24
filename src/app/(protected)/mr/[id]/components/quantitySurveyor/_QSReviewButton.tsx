@@ -1,13 +1,13 @@
 "use client";
 
-import Button from "@/app/components/Button";
-import { toast } from "@/app/components/Toast";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
-import SingleSelectInventoryItem from "./_SingleSelectInventoryItem";
 import ReplaceMaterialButton from "./_ReplaceMaterialButton";
+import FormPopUp from "@/app/components/FormPopup";
+import InputItem from "@/app/components/InputItem";
+import Button from "@/app/components/Button";
 
 type Props = {
   item: MrLine;
@@ -18,169 +18,135 @@ type Props = {
   } | null;
 };
 
-type ReviewStatus = "pending" | "item_available" | "need_order";
+type ReviewStatus = "pending" | "item_available" | "need_order" | "rejected";
 
-export default function QSReviewButton({
-  item,
-  progressID,
-  inventoryMatch,
-}: Props) {
+export default function QSReviewButton({ item, progressID }: Props) {
   const router = useRouter();
   const { userInfo } = useAuth();
 
+  const checkIcon = "/icons/check.svg";
+  const crossSmallIcon = "/icons/cross-small.svg";
+  const rewindIcon = "/icons/rewind-two-arrows.svg";
   const crossIcon = "/icons/cross.svg";
   const externalLinkIcon = "/icons/external-link.svg";
 
   const [status, setStatus] = useState<ReviewStatus>(getInitialStatus());
-  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [rejectText, setRejectText] = useState("");
 
   useEffect(() => {
     setStatus(getInitialStatus());
-  }, [item.qs_review_type]);
+  }, [item.qs_review_type, item.qs_approval_status]);
 
   function getInitialStatus(): ReviewStatus {
     if (item.qs_review_type === "item_available") return "item_available";
     if (item.qs_review_type === "need_order") return "need_order";
+    if (item.qs_approval_status?.toLowerCase() === "rejected")
+      return "rejected";
     return "pending";
   }
 
   async function handleNeedOrder() {
     setStatus("need_order");
-
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "setQSReviewNeedOrder",
-        id: item.id,
-      }),
+      body: JSON.stringify({ action: "setQSReviewNeedOrder", id: item.id }),
     });
-
     if (res.ok) {
-      toast(`${item.material_description} marked as Need Order`, "success");
       router.refresh();
     } else {
-      toast("Failed to mark item", "error");
       setStatus("pending");
     }
   }
 
-  async function handleItemAvailableConfirm(inventoryItemId: number) {
-    setStatus("item_available");
-    setIsInventoryOpen(false);
-
+  async function handleReject() {
+    setStatus("rejected");
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "setQSReviewItemAvailable",
+        action: "rejectItemQS",
         id: item.id,
-        linked_inventory_item_id: inventoryItemId,
+        comment: rejectText,
       }),
     });
-
     if (res.ok) {
-      toast(`${item.material_description} linked to inventory`, "success");
+      setRejectText("");
+      setIsRejectOpen(false);
       router.refresh();
     } else {
-      toast("Failed to link item to inventory", "error");
       setStatus("pending");
     }
   }
 
   async function handleReset() {
     setStatus("pending");
-
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+    // Reset both review type and QS approval status
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "resetQSReview",
-        id: item.id,
-      }),
+      body: JSON.stringify({ action: "resetQSReview", id: item.id }),
     });
-
-    if (res.ok) {
-      router.refresh();
-    } else {
-      toast("Failed to reset review", "error");
-    }
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "resetItemQS", id: item.id }),
+    });
+    router.refresh();
   }
 
-  // Read-only pill for non-QS users or non-stage-2
   const isQSAtStage2 = userInfo?.departmentID === 16 && progressID === 2;
 
-  // Show "Need Order" pill
+  // ── Need Order pill ───────────────────────────────────────────────────────
   if (status === "need_order") {
     return (
       <div
         className="approval-pill"
-        style={{
-          backgroundColor: "rgba(34, 150, 100, 1)",
-          color: "white",
-        }}
+        style={{ backgroundColor: "rgba(34, 150, 100, 1)", color: "white" }}
       >
-        <span style={{ textWrap: "nowrap" }}>Need Order</span>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          {isQSAtStage2 && (
-            <img
-              src={crossIcon}
-              alt="reset"
-              style={{
-                filter: "invert(1)",
-                cursor: "pointer",
-                width: "12px",
-              }}
-              onClick={handleReset}
-            />
-          )}
-        </div>
+        <span style={{ textWrap: "nowrap" }}>Approved</span>
+        {isQSAtStage2 && (
+          <img
+            src={crossIcon}
+            alt="reset"
+            style={{ filter: "invert(1)", cursor: "pointer", width: "12px" }}
+            onClick={handleReset}
+          />
+        )}
       </div>
     );
   }
 
-  // Show "Item Available" pill with linked item name
+  // ── Item Available pill ───────────────────────────────────────────────────
   if (status === "item_available") {
     return (
       <div
         className="approval-pill"
-        style={{
-          backgroundColor: "rgba(34, 150, 100, 1)",
-          color: "white",
-        }}
+        style={{ backgroundColor: "rgba(34, 150, 100, 1)", color: "white" }}
       >
         <span style={{ textWrap: "nowrap" }}>
           {item.linked_inventory_item_description || "Item Available"}
         </span>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           {item.linked_inventory_item_id && (
-            <Button
-              componentType="link"
-              bgColor={"transparent"}
-              borderColor={"transparent"}
-              textColor={"black"}
+            <a
               href={`/inventory/${item.linked_inventory_item_id}`}
-              style={{ padding: "0px" }}
+              target="_blank"
+              rel="noopener noreferrer"
             >
               <img
                 src={externalLinkIcon}
                 alt="view"
-                style={{
-                  filter: "invert(1)",
-                  cursor: "pointer",
-                }}
+                style={{ filter: "invert(1)", cursor: "pointer" }}
               />
-            </Button>
+            </a>
           )}
           {isQSAtStage2 && (
             <img
               src={crossIcon}
               alt="reset"
-              style={{
-                filter: "invert(1)",
-                cursor: "pointer",
-                width: "12px",
-              }}
+              style={{ filter: "invert(1)", cursor: "pointer", width: "12px" }}
               onClick={handleReset}
             />
           )}
@@ -189,7 +155,27 @@ export default function QSReviewButton({
     );
   }
 
-  // Pending state — only QS at stage 2 can act
+  // ── QS Rejected pill ─────────────────────────────────────────────────────
+  if (status === "rejected") {
+    return (
+      <div
+        className="approval-pill"
+        style={{ backgroundColor: "rgba(185, 28, 28, 1)", color: "white" }}
+      >
+        <span style={{ textWrap: "nowrap" }}>Rejected</span>
+        {isQSAtStage2 && (
+          <img
+            src={crossIcon}
+            alt="reset"
+            style={{ filter: "invert(1)", cursor: "pointer", width: "12px" }}
+            onClick={handleReset}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // ── Read-only pending pill for non-QS or wrong stage ─────────────────────
   if (!isQSAtStage2) {
     return (
       <div
@@ -201,80 +187,81 @@ export default function QSReviewButton({
     );
   }
 
-  // QS at stage 2 — show action buttons
   return (
     <>
-      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-        <div style={{ display: "flex", gap: "8px", width: "280px" }}>
-          {/* Item Available temporarily disabled
-          <Button
-            componentType={"button"}
-            bgColor={"white"}
-            borderColor={"rgba(207, 207, 207, 1)"}
-            textColor={"black"}
-            onClick={() => setIsInventoryOpen(true)}
-            style={{
-              borderRadius: "25px",
-              padding: "7px 20px",
-            }}
-          >
-            Item Available
-          </Button>
-          */}
+      <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+        {/* Approve → Need Order */}
+        <Button
+          onClick={handleNeedOrder}
+          componentType={"button"}
+          bgColor={"white"}
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
+          style={{ borderRadius: "25px", padding: "7px 20px" }}
+        >
+          <img src={checkIcon} alt="approve" />
+        </Button>
 
-          <Button
-            componentType={"button"}
-            bgColor={"white"}
-            borderColor={"rgba(207, 207, 207, 1)"}
-            textColor={"black"}
-            onClick={handleNeedOrder}
-            style={{
-              borderRadius: "25px",
-              padding: "7px 20px",
-            }}
-          >
-            Need Order
-          </Button>
-          <ReplaceMaterialButton item={item} />
-        </div>
-        {inventoryMatch && (
-          <div
-            style={{
-              fontSize: "10px",
-              color: "rgba(100, 100, 100, 1)",
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "10px",
-              fontStyle: "italic",
-            }}
-          >
-            <span>
-              Possible match:{" "}
-              <span style={{ color: "black" }}>
-                "{inventoryMatch.description}"
-              </span>
-            </span>
-            <a
-              href={`/inventory/${inventoryMatch.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
+        {/* Reject */}
+        <Button
+          onClick={() => setIsRejectOpen(true)}
+          componentType={"button"}
+          bgColor={"white"}
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
+          style={{ borderRadius: "25px", padding: "7px 20px" }}
+        >
+          <img src={crossSmallIcon} alt="reject" />
+        </Button>
+
+        {/* Replace Material — direct to picker */}
+        <ReplaceMaterialButton
+          item={item}
+          directSubmit
+          renderTrigger={(openPicker) => (
+            <Button
+              onClick={openPicker}
+              componentType={"button"}
+              bgColor={"white"}
+              borderColor={"rgba(207, 207, 207, 1)"}
+              textColor={"black"}
+              style={{ borderRadius: "25px", padding: "7px 20px" }}
             >
-              <img
-                src={externalLinkIcon}
-                alt="view"
-                style={{ width: "12px", cursor: "pointer" }}
-              />
-            </a>
-          </div>
-        )}
+              <img src={rewindIcon} alt="replace" style={{ width: "13px" }} />
+            </Button>
+          )}
+        />
       </div>
 
-      {isInventoryOpen && (
-        <SingleSelectInventoryItem
-          setIsOpen={setIsInventoryOpen}
-          onConfirm={handleItemAvailableConfirm}
-          initialSearchQuery={item.material_description}
-        />
+      {/* Possible match — commented out
+      {inventoryMatch && (
+        <div style={{ fontSize: "10px", color: "rgba(100, 100, 100, 1)", display: "flex", alignItems: "flex-start", gap: "10px", fontStyle: "italic" }}>
+          <span>Possible match: <span style={{ color: "black" }}>"{inventoryMatch.description}"</span></span>
+          <a href={`/inventory/${inventoryMatch.id}`} target="_blank" rel="noopener noreferrer">
+            <img src={externalLinkIcon} alt="view" style={{ width: "12px", cursor: "pointer" }} />
+          </a>
+        </div>
+      )}
+      */}
+
+      {isRejectOpen && (
+        <FormPopUp
+          header="REJECT MATERIAL REQUEST ITEM"
+          setIsOpen={setIsRejectOpen}
+          handleSubmit={handleReject}
+          addButtonLabel="CONFIRM"
+        >
+          <div className="input-row full">
+            <InputItem
+              label={"COMMENTS"}
+              value={rejectText}
+              type={"textarea"}
+              placeholder={"ENTER COMMENTS"}
+              required
+              onChange={(e) => setRejectText(e.target.value)}
+            />
+          </div>
+        </FormPopUp>
       )}
     </>
   );

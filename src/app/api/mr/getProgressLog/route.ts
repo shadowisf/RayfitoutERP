@@ -7,10 +7,7 @@ export async function POST(req: Request) {
     const { mr_header_id, lpo_id } = body;
 
     if (!mr_header_id) {
-      return NextResponse.json(
-        { error: "mr_header_id is required" },
-        { status: 400 },
-      );
+      return NextResponse.json([], { status: 200 });
     }
 
     let query = "";

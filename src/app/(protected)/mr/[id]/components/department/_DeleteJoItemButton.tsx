@@ -2,7 +2,7 @@ import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { SetStateAction, useState } from "react";
+import { useState } from "react";
 
 type props = {
   itemId: number;

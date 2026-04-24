@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { BoqLine } from "@/app/(protected)/project/[id]/boq/[boqId]/types/boqLine";
-import { formatPriceAED } from "@/lib/formatPrice";
+import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 import { ATTACHMENT_TYPES } from "../../types/joLine";
 
 type AttachmentItem = {
@@ -55,7 +55,9 @@ export default function AddJoItemButton({
   const formatQty = (val: any) => {
     const num = Number(val);
     if (isNaN(num)) return val;
-    return num % 1 === 0 ? num.toFixed(0) : parseFloat(num.toFixed(2)).toString();
+    return num % 1 === 0
+      ? num.toFixed(0)
+      : parseFloat(num.toFixed(2)).toString();
   };
 
   const [isOpen, setIsOpen] = useState(false);
@@ -90,7 +92,9 @@ export default function AddJoItemButton({
       ids.forEach((id) => {
         const boq = lines.find((l) => l.id === id);
         newQtys[id] =
-          subcontractedQtys[id] || (boq?.quantity != null ? formatQty(boq.quantity) : "") || "";
+          subcontractedQtys[id] ||
+          (boq?.quantity != null ? formatQty(boq.quantity) : "") ||
+          "";
       });
       setSubcontractedQtys(newQtys);
     }
@@ -337,8 +341,10 @@ export default function AddJoItemButton({
                   <tr>
                     <th>#</th>
                     <th>ITEM</th>
+                    <th>BOQ RATE</th>
                     <th>BOQ QTY</th>
                     <th style={{ width: "275px" }}>SUBCONTRACTED QTY</th>
+                    <th>BOQ TOTAL PRICE</th>
                     <th style={{ width: "40px" }}></th>
                   </tr>
                 </thead>
@@ -408,9 +414,13 @@ export default function AddJoItemButton({
                           )}
                         </div>
                       </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {formatPrice(boq.rate_per_quantity)}
+                      </td>
                       <td>
                         {formatQty(boq.quantity)} {boq.unit}
                       </td>
+
                       <td>
                         <InputItem
                           label={""}
@@ -429,6 +439,9 @@ export default function AddJoItemButton({
                           placeholder="ENTER SUBCONTRACTED QTY"
                           style={{ backgroundColor: "white" }}
                         />
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {formatPriceAED(boq.total_cost)}
                       </td>
                       <td>
                         <Button
@@ -488,8 +501,32 @@ export default function AddJoItemButton({
             />
           </div>
 
+          <div className="input-row half">
+            <div></div>
+            {Number(subcontractorBudget) > 0 &&
+              subcontractedWorksValue > 0 &&
+              Number(subcontractorBudget) > subcontractedWorksValue && (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    alignItems: "center",
+                  }}
+                >
+                  <img src="/icons/warning.svg" alt="warning" />
+                  <p style={{ color: "red" }}>
+                    Subcontractor budget is higher than the subcontracted works
+                    value.
+                  </p>
+                </div>
+              )}
+          </div>
+
+          <br />
+          <br />
+
           {/* Attachments Section */}
-          <div style={{ marginTop: "10px" }}>
+          <div>
             <label>ATTACHMENT</label>
 
             {attachments.length > 0 && (

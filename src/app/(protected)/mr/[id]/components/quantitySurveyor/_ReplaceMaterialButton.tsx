@@ -32,11 +32,19 @@ type GroupedItems = {
 
 type Props = {
   item: MrLine;
+  /** Render a custom trigger button instead of the default one */
+  renderTrigger?: (openPicker: () => void) => React.ReactNode;
+  /** When true, picker confirmation submits directly (no intermediate form) */
+  directSubmit?: boolean;
 };
 
 const ITEMS_PER_PAGE = 50;
 
-export default function ReplaceMaterialButton({ item }: Props) {
+export default function ReplaceMaterialButton({
+  item,
+  renderTrigger,
+  directSubmit = false,
+}: Props) {
   const router = useRouter();
 
   const arrowRight = "/icons/arrow-right.svg";
@@ -353,9 +361,73 @@ export default function ReplaceMaterialButton({ item }: Props) {
   };
 
   // ── Picker confirm ────────────────────────────────────────────────────
-  function handlePickerConfirm(e: React.FormEvent) {
+  async function handlePickerConfirm(e: React.FormEvent) {
     e.preventDefault();
     if (!tempSelected) return;
+
+    if (directSubmit) {
+      // Skip the main form — submit directly using existing item values
+      const mappedUnit = tempSelected.unit
+        ? mapPredefinedUnit(tempSelected.unit)
+        : (item.unit ?? "");
+
+      const updateRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "updateAll",
+            id: item.id,
+            material_category_id: tempSelected.category_id,
+            material_subcategory_id: [tempSelected.subcategory_id],
+            material_description: tempSelected.material_description,
+            quantity: Number(item.quantity),
+            unit: mappedUnit || item.unit || "",
+            notes: item.notes || null,
+            specification: item.specification || null,
+            brand: item.brand || null,
+            delivery_location: item.delivery_location,
+            boq_line_ids: item.boq_line_ids
+              ? typeof item.boq_line_ids === "string"
+                ? item.boq_line_ids.split(",").map(Number).filter(Boolean)
+                : [item.boq_line_ids]
+              : [],
+          }),
+        },
+      );
+
+      if (!updateRes.ok) {
+        toast("Failed to replace material", "error");
+        setIsPickerOpen(false);
+        return;
+      }
+
+      // Reset QS review so QS can re-review the replaced item
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "resetQSReview", id: item.id }),
+      });
+
+      if (!tempSelected.unit && mappedUnit) {
+        await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: tempSelected.id, unit: mappedUnit }),
+          },
+        );
+      }
+
+      toast(`Replaced with ${tempSelected.material_description}`, "success");
+      setIsPickerOpen(false);
+      router.refresh();
+      return;
+    }
+
+    // Normal flow: populate main form and show it
     setSelectedItem(tempSelected);
     setPreviewDescription(tempSelected.material_description);
     setPreviewCategoryId(tempSelected.category_id);
@@ -365,6 +437,7 @@ export default function ReplaceMaterialButton({ item }: Props) {
     setUnitWasNull(!tempSelected.unit);
     refreshSubcategories(tempSelected.category_id);
     setIsPickerOpen(false);
+    setIsMainOpen(true);
   }
 
   // ── Main confirm ──────────────────────────────────────────────────────
@@ -1093,26 +1166,39 @@ export default function ReplaceMaterialButton({ item }: Props) {
     </FormPopUp>
   );
 
+  // When directSubmit=true, the picker is triggered directly without isMainOpen
+  const openPickerDirectly = () => {
+    setTempSelected(null);
+    setSearchQuery("");
+    setActiveCategory("ALL");
+    setCurrentPage(1);
+    setIsPickerOpen(true);
+  };
+
   return (
     <>
-      <Button
-        componentType={"button"}
-        onClick={() => setIsMainOpen(true)}
-        bgColor={"white"}
-        borderColor={"rgba(207, 207, 207, 1)"}
-        textColor={"black"}
-        style={{
-          borderRadius: "25px",
-          padding: "7px 20px",
-        }}
-      >
-        Replace Material Item
-        <img
-          src={rewindIcon}
-          alt="replace"
-          style={{ width: "16px", height: "16px" }}
-        />
-      </Button>
+      {renderTrigger ? (
+        renderTrigger(openPickerDirectly)
+      ) : (
+        <Button
+          componentType={"button"}
+          onClick={() => setIsMainOpen(true)}
+          bgColor={"white"}
+          borderColor={"rgba(207, 207, 207, 1)"}
+          textColor={"black"}
+          style={{
+            borderRadius: "25px",
+            padding: "7px 20px",
+          }}
+        >
+          Replace Material Item
+          <img
+            src={rewindIcon}
+            alt="replace"
+            style={{ width: "16px", height: "16px" }}
+          />
+        </Button>
+      )}
 
       {isMainOpen && (
         <FormPopUp
@@ -1329,7 +1415,9 @@ export default function ReplaceMaterialButton({ item }: Props) {
         </FormPopUp>
       )}
 
+      {/* Picker portal renders whenever isPickerOpen (even without isMainOpen for directSubmit mode) */}
       {typeof window !== "undefined" &&
+        isPickerOpen &&
         pickerModal &&
         createPortal(pickerModal, document.body)}
       {typeof window !== "undefined" &&

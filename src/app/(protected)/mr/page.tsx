@@ -132,6 +132,17 @@ export default function MR() {
     localStorage.setItem("pt_filterRelevant", JSON.stringify(filterRelevant));
   }, [filterRelevant]);
 
+  // When "Only Related Cards" is on, collapse Draft, Rejected & Completed by default;
+  // restore them to expanded when it's turned off
+  useEffect(() => {
+    setCollapsedGroups((prev) => ({
+      ...prev,
+      Draft: filterRelevant,
+      Rejected: filterRelevant,
+      Completed: filterRelevant,
+    }));
+  }, [filterRelevant]);
+
   useEffect(() => {
     localStorage.setItem("pt_filters", JSON.stringify(filters));
   }, [filters]);
@@ -218,7 +229,6 @@ export default function MR() {
   }, [userInfo]);
 
   useEffect(() => {
-    if (viewMode !== "table") return;
     setTableLoading(true);
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "POST",
@@ -234,7 +244,7 @@ export default function MR() {
         console.error("Error fetching table items:", err);
         setTableLoading(false);
       });
-  }, [viewMode, tableRefreshKey]);
+  }, [tableRefreshKey]);
 
   useEffect(() => {
     if (lpoCards.length === 0) return;
@@ -552,7 +562,7 @@ export default function MR() {
       name: "Approval",
       statuses: [
         { name: "QS Review", progress_id: 2 },
-        { name: "Manager Approval", progress_id: 3 }, // Only for JOs and PRs
+        // { name: "Manager Approval", progress_id: 3 },
       ],
     },
     // {
@@ -579,7 +589,7 @@ export default function MR() {
       statuses: [
         { name: "Awaiting Delivery", progress_id: 17 },
         // TEMPORARILY DISABLED QC: { name: "QC Check", progress_id: 21 },
-        // { name: "Stock Entry", progress_id: 24 },
+        { name: "Stock Entry", progress_id: 24 },
       ],
     },
     {
@@ -1340,7 +1350,11 @@ export default function MR() {
       {viewMode === "kanban" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
           {stageGroups.map((group) => {
-            if (filterRelevant && !shouldShowGroupWhenFiltering(group))
+            if (
+              filterRelevant &&
+              group.name !== "Draft" &&
+              !shouldShowGroupWhenFiltering(group)
+            )
               return null;
 
             const totalCount = group.statuses.reduce((sum, status) => {

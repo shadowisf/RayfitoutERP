@@ -130,17 +130,17 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       icon: "/icons/mr.svg",
       count: mrActionCount,
     },
-    { label: "Projects", path: "/project", icon: "/icons/projects.svg" },
-    {
+    /* { label: "Projects", path: "/project", icon: "/icons/projects.svg" }, */
+    /* {
       label: "Local Purchase Orders",
       path: "/lpo",
       icon: "/icons/lpo.svg",
-    },
-    {
+    }, */
+    /* {
       label: "Bill of Quantities",
       path: "/boq",
       icon: "/icons/boq.svg",
-    },
+    }, */
     {
       label: "Vendors & Subcontractors",
       path: "/vendor",

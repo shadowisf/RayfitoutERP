@@ -23,6 +23,20 @@ export default function DeleteMrHeaderButton({
 
   const trashIcon = "/icons/trash.svg";
 
+  const dialogHeader =
+    mrHeader.type === "job"
+      ? "DELETE JOB ORDER"
+      : mrHeader.type === "payment"
+        ? "DELETE PAYMENT REQUEST"
+        : "DELETE MATERIAL REQUEST";
+
+  const dialogMessage =
+    mrHeader.type === "job"
+      ? "Are you sure you want to delete this job order?"
+      : mrHeader.type === "payment"
+        ? "Are you sure you want to delete this payment request?"
+        : "Are you sure you want to delete this material request?";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -66,12 +80,12 @@ export default function DeleteMrHeaderButton({
 
         {isOpen && (
           <FormPopUp
-            header={"DELETE MATERIAL REQUEST"}
+            header={dialogHeader}
             setIsOpen={setIsOpen}
             handleSubmit={handleSubmit}
             addButtonLabel={"CONFIRM"}
           >
-            Are you sure you want to delete this material request?
+            {dialogMessage}
           </FormPopUp>
         )}
       </>

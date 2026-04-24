@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import OverviewHoverPopup from "../OverviewHoverPopup";
-import HoverLoadingCursor from "../HoverLoadingCursor";
+// import OverviewHoverPopup from "../OverviewHoverPopup";
+// import HoverLoadingCursor from "../HoverLoadingCursor";
 
 type props = {
   filterDays?: number;
@@ -23,28 +23,28 @@ export default function TotalSpentWidget({ filterDays }: props) {
   const [items, setItems] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
 
-  // Hover popup state
-  const [showPopup, setShowPopup] = useState(false);
-  const [isWaiting, setIsWaiting] = useState(false);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const hoverTimer = useRef<NodeJS.Timeout | null>(null);
+  // Hover popup state — commented out
+  // const [showPopup, setShowPopup] = useState(false);
+  // const [isWaiting, setIsWaiting] = useState(false);
+  // const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  // const hoverTimer = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    const handleCloseHover = () => {
-      setShowPopup(false);
-      setIsWaiting(false);
-      if (hoverTimer.current) {
-        clearTimeout(hoverTimer.current);
-        hoverTimer.current = null;
-      }
-    };
-    window.addEventListener("scroll", handleCloseHover, true);
-    window.addEventListener("blur", handleCloseHover);
-    return () => {
-      window.removeEventListener("scroll", handleCloseHover, true);
-      window.removeEventListener("blur", handleCloseHover);
-    };
-  }, []);
+  // useEffect(() => {
+  //   const handleCloseHover = () => {
+  //     setShowPopup(false);
+  //     setIsWaiting(false);
+  //     if (hoverTimer.current) {
+  //       clearTimeout(hoverTimer.current);
+  //       hoverTimer.current = null;
+  //     }
+  //   };
+  //   window.addEventListener("scroll", handleCloseHover, true);
+  //   window.addEventListener("blur", handleCloseHover);
+  //   return () => {
+  //     window.removeEventListener("scroll", handleCloseHover, true);
+  //     window.removeEventListener("blur", handleCloseHover);
+  //   };
+  // }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -92,49 +92,11 @@ export default function TotalSpentWidget({ filterDays }: props) {
       });
   }, [filterDays]);
 
-  // Hover handlers
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest("button, a, [role='button']")) return;
-    setMousePosition({ x: e.clientX, y: e.clientY });
-    setIsWaiting(true);
-    hoverTimer.current = setTimeout(() => {
-      setIsWaiting(false);
-      setShowPopup(true);
-    }, 2000);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest("button, a, [role='button']")) {
-      if (hoverTimer.current) {
-        clearTimeout(hoverTimer.current);
-        hoverTimer.current = null;
-      }
-      setIsWaiting(false);
-      setShowPopup(false);
-      return;
-    }
-    setMousePosition({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleMouseDown = () => {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
-    setIsWaiting(false);
-    setShowPopup(false);
-  };
-
-  const handleMouseLeave = () => {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
-    setShowPopup(false);
-    setIsWaiting(false);
-  };
+  // Hover handlers — commented out
+  // const handleMouseEnter = (e: React.MouseEvent) => { ... };
+  // const handleMouseMove = (e: React.MouseEvent) => { ... };
+  // const handleMouseDown = () => { ... };
+  // const handleMouseLeave = () => { ... };
 
   const hasNoTotalSpent = thisWeek === 0;
 
@@ -166,9 +128,6 @@ export default function TotalSpentWidget({ filterDays }: props) {
       className="item"
       style={{ backgroundColor, color: "white", cursor: "pointer" }}
       onClick={() => router.push("/dashboard/details/total-spent")}
-      onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
     >
       <div className="top">
         <span>Spend</span>
@@ -191,6 +150,7 @@ export default function TotalSpentWidget({ filterDays }: props) {
         <span>{isLoading ? "Loading..." : changeText}</span>
       </div>
 
+      {/* Hover popup — commented out
       {isWaiting && !showPopup && (
         <HoverLoadingCursor mouseX={mousePosition.x} mouseY={mousePosition.y} />
       )}
@@ -212,6 +172,7 @@ export default function TotalSpentWidget({ filterDays }: props) {
           emptyMessage="No spend data"
         />
       )}
+      */}
     </div>
   );
 }

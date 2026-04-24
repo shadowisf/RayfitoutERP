@@ -1761,6 +1761,23 @@ export async function DELETE(req: Request) {
 
       return NextResponse.json({ success: true });
     }
+
+    if (body.action === "updateMrLineQuantity") {
+      await db.query(
+        `UPDATE mr_lines SET quantity = ?, unit = ? WHERE id = ?`,
+        [Number(body.quantity), body.unit || null, Number(body.id)],
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "updateMrLineBrandSpec") {
+      await db.query(
+        `UPDATE mr_lines SET brand = ?, specification = ? WHERE id = ?`,
+        [body.brand || null, body.specification || null, Number(body.id)],
+      );
+      return NextResponse.json({ success: true });
+    }
+
   } catch (err: any) {
     console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });

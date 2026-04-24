@@ -68,13 +68,14 @@ export async function POST(request: Request) {
 
     const [lifespanRows]: any = await db.query(
       `
-      SELECT 
+      SELECT
         mr_header_id,
         MIN(changed_at) as start_time,
         MAX(changed_at) as end_time,
         TIMESTAMPDIFF(HOUR, MIN(changed_at), MAX(changed_at)) as lifespan_hours
       FROM mr_header_progress_log
       WHERE mr_header_id IN (?)
+        AND progress_id != 1
       GROUP BY mr_header_id
       `,
       [mrIds],
@@ -118,10 +119,11 @@ export async function POST(request: Request) {
 
       const [prevLifespanRows]: any = await db.query(
         `
-        SELECT 
+        SELECT
           TIMESTAMPDIFF(HOUR, MIN(changed_at), MAX(changed_at)) as lifespan_hours
         FROM mr_header_progress_log
         WHERE mr_header_id IN (?)
+          AND progress_id != 1
         GROUP BY mr_header_id
         `,
         [prevMrIds],

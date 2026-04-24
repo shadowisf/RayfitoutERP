@@ -58,11 +58,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name: "TEST",
       email: "test@test.com",
       sub: "test-sub",
-      role: "Management",
-      departmentID: 8,
+      role: "Temporary Access",
+      departmentID: 67,
     });
     setIsLoading(false);
     return; */
+
     // END TEMPORARY
 
     /* FINANCE = 10
