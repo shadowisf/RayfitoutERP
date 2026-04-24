@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import AddMrItemButton from "./department/_AddMrItemButton";
 import { MrLine } from "../types/mrLine";
@@ -44,9 +44,9 @@ import MrUploadSignedDnButton from "./storekeeper/_MrUploadSignedDnButton";
 import SubmitForStockTransferCompletion from "./storekeeper/_SubmitForStockTransferCompletion";
 import CommentsSection from "@/app/components/CommentsSection";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
-import FormPopUp from "@/app/components/FormPopup";
-import InputItem from "@/app/components/InputItem";
-import { UNIT_OPTIONS } from "@/constants/units";
+import QSActionsButton from "./quantitySurveyor/_QSActionsButton";
+import QSEditQtyButton from "./quantitySurveyor/_QSEditQtyButton";
+import QSEditBrandSpecButton from "./quantitySurveyor/_QSEditBrandSpecButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -228,128 +228,10 @@ export default function MrLinesView({
     return false;
   }, [mrLines]);
 
-  // QS Review — selected item IDs and bulk action state
+  // QS Review — selected item IDs (shared across tables and QSActionsButton)
   const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(
     new Set(),
   );
-  const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
-  const [bulkRejectText, setBulkRejectText] = useState("");
-  const [actionsDropdownKey, setActionsDropdownKey] = useState<string | null>(
-    null,
-  );
-  const actionsDropdownRef = useRef<HTMLDivElement>(null);
-
-  // QS Review — qty editing popup
-  const [editingQtyItemId, setEditingQtyItemId] = useState<number | null>(null);
-  const [editingQtyValue, setEditingQtyValue] = useState<string>("");
-  const [editingQtyUnit, setEditingQtyUnit] = useState<string>("");
-
-  // QS Review — brand & specs editing
-  const [editingBrandSpecItemId, setEditingBrandSpecItemId] = useState<
-    number | null
-  >(null);
-  const [editingBrandValue, setEditingBrandValue] = useState<string>("");
-  const [editingSpecValue, setEditingSpecValue] = useState<string>("");
-
-  // Close actions dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        actionsDropdownRef.current &&
-        !actionsDropdownRef.current.contains(e.target as Node)
-      ) {
-        setActionsDropdownKey(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  async function handleBulkApprove() {
-    const ids = Array.from(selectedItemIds);
-    await Promise.all(
-      ids.map((id) =>
-        fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "setQSReviewNeedOrder", id }),
-        }),
-      ),
-    );
-    setSelectedItemIds(new Set());
-    setActionsDropdownKey(null);
-    router.refresh();
-  }
-
-  async function handleBulkReject() {
-    const ids = Array.from(selectedItemIds);
-    await Promise.all(
-      ids.map((id) =>
-        fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "rejectItemQS",
-            id,
-            comment: bulkRejectText,
-          }),
-        }),
-      ),
-    );
-    setSelectedItemIds(new Set());
-    setBulkRejectOpen(false);
-    setBulkRejectText("");
-    setActionsDropdownKey(null);
-    router.refresh();
-  }
-
-  async function handleBulkDelete() {
-    const ids = Array.from(selectedItemIds);
-    await Promise.all(
-      ids.map((id) =>
-        fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "deleteItem", id }),
-        }),
-      ),
-    );
-    setSelectedItemIds(new Set());
-    setActionsDropdownKey(null);
-    router.refresh();
-  }
-
-  async function handleSaveQty() {
-    if (!editingQtyItemId) return;
-    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "updateMrLineQuantity",
-        id: editingQtyItemId,
-        quantity: Number(editingQtyValue),
-        unit: editingQtyUnit,
-      }),
-    });
-    setEditingQtyItemId(null);
-    router.refresh();
-  }
-
-  async function handleSaveBrandSpec() {
-    if (!editingBrandSpecItemId) return;
-    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "updateMrLineBrandSpec",
-        id: editingBrandSpecItemId,
-        brand: editingBrandValue,
-        specification: editingSpecValue,
-      }),
-    });
-    setEditingBrandSpecItemId(null);
-    router.refresh();
-  }
 
   // Compute columns before TOTAL PRICE and columns after it for subtotal alignment
   // Subtotal only renders when progress_id >= 10 && canSeePrice
@@ -2446,6 +2328,31 @@ export default function MrLinesView({
                     </AddMrItemButton>
                   </>
                 )}
+
+              {/* QS Review — ACTIONS + DOWNLOAD inline with category tabs */}
+              {isQSReview && (
+                <QSActionsButton
+                  selectedItemIds={selectedItemIds}
+                  setSelectedItemIds={setSelectedItemIds}
+                  allCategoryItems={(() => {
+                    const source =
+                      activeCategory === "ALL"
+                        ? regroupedMrLines
+                        : { [activeCategory]: subCategories };
+                    const flat: MrLine[] = [];
+                    Object.values(source).forEach((subCats) =>
+                      Object.values(subCats).forEach((suppliers) =>
+                        Object.values(suppliers).forEach((items) =>
+                          (items as MrLine[]).forEach((i) => flat.push(i)),
+                        ),
+                      ),
+                    );
+                    return flat;
+                  })()}
+                  mrHeader={mrHeader}
+                  category={activeCategory}
+                />
+              )}
             </div>
           </div>
         )}
@@ -2512,113 +2419,6 @@ export default function MrLinesView({
                               />
                             </div>
                           )}
-
-                        {/* QS Review — ACTIONS dropdown */}
-                        {isQSReview &&
-                          (() => {
-                            const subCatKey = `${category}::${subCategory}`;
-                            return (
-                              <div
-                                ref={
-                                  actionsDropdownKey === subCatKey
-                                    ? actionsDropdownRef
-                                    : undefined
-                                }
-                                style={{
-                                  position: "relative",
-                                  marginLeft: "auto",
-                                }}
-                              >
-                                <Button
-                                  type="button"
-                                  disabled={selectedItemIds.size === 0}
-                                  onClick={() =>
-                                    setActionsDropdownKey(
-                                      actionsDropdownKey === subCatKey
-                                        ? null
-                                        : subCatKey,
-                                    )
-                                  }
-                                  componentType={"button"}
-                                  bgColor={"white"}
-                                  borderColor={"rgba(211, 211, 211, 1)"}
-                                  textColor={"black"}
-                                >
-                                  ACTIONS
-                                </Button>
-                                {actionsDropdownKey === subCatKey && (
-                                  <div
-                                    style={{
-                                      position: "absolute",
-                                      top: "calc(100% + 4px)",
-                                      right: 0,
-                                      backgroundColor: "white",
-                                      border:
-                                        "1px solid rgba(207, 207, 207, 1)",
-                                      borderRadius: "8px",
-                                      boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-                                      zIndex: 100,
-                                      minWidth: "140px",
-                                      overflow: "hidden",
-                                    }}
-                                  >
-                                    {[
-                                      {
-                                        label: "Approve",
-                                        onClick: handleBulkApprove,
-                                        color: "black",
-                                      },
-                                      {
-                                        label: "Reject",
-                                        onClick: () => {
-                                          setBulkRejectOpen(true);
-                                          setActionsDropdownKey(null);
-                                        },
-                                        color: "black",
-                                      },
-                                      {
-                                        label: "Delete",
-                                        onClick: handleBulkDelete,
-                                        color: "black",
-                                      },
-                                    ].map((opt) => (
-                                      <button
-                                        key={opt.label}
-                                        type="button"
-                                        onClick={opt.onClick}
-                                        style={{
-                                          display: "block",
-                                          width: "100%",
-                                          padding: "10px 16px",
-                                          textAlign: "left",
-                                          background: "none",
-                                          border: "none",
-                                          cursor: "pointer",
-                                          color: opt.color,
-                                          fontWeight: "600",
-                                          fontSize: "13px",
-                                        }}
-                                        onMouseEnter={(e) =>
-                                          ((
-                                            e.target as HTMLElement
-                                          ).style.backgroundColor =
-                                            "rgba(245,245,245,1)")
-                                        }
-                                        onMouseLeave={(e) =>
-                                          ((
-                                            e.target as HTMLElement
-                                          ).style.backgroundColor =
-                                            "transparent")
-                                        }
-                                      >
-                                        {opt.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
                       </div>
 
                       <br />
@@ -2630,7 +2430,7 @@ export default function MrLinesView({
                               <thead>
                                 <tr>
                                   {isQSReview && (
-                                    <th style={{ width: "40px" }}>
+                                    <th style={{ width: "24px" }}>
                                       <input
                                         type="checkbox"
                                         checked={
@@ -2909,7 +2709,6 @@ export default function MrLinesView({
                                           </>
                                         ) : (
                                           <td>
-                                            {/* QS Review — qty editing */}
                                             <div
                                               style={{
                                                 display: "flex",
@@ -2919,43 +2718,9 @@ export default function MrLinesView({
                                             >
                                               {formatNumber(item?.quantity)}{" "}
                                               {item.unit}
-                                              {/* {isQSReview && (
-                                                <Button
-                                                  componentType={"button"}
-                                                  bgColor={
-                                                    "rgba(239, 239, 239, 1)"
-                                                  }
-                                                  borderColor={
-                                                    "rgba(223, 223, 223, 1)"
-                                                  }
-                                                  textColor={"black"}
-                                                  style={{
-                                                    padding: "7px 7px",
-                                                  }}
-                                                  onClick={() => {
-                                                    setEditingQtyItemId(
-                                                      item.id,
-                                                    );
-                                                    setEditingQtyValue(
-                                                      String(
-                                                        parseFloat(
-                                                          Number(
-                                                            item.quantity,
-                                                          ).toFixed(3),
-                                                        ),
-                                                      ),
-                                                    );
-                                                    setEditingQtyUnit(
-                                                      item.unit || "",
-                                                    );
-                                                  }}
-                                                >
-                                                  <img
-                                                    src={pencilIcon}
-                                                    alt="edit qty"
-                                                  />
-                                                </Button>
-                                              )} */}
+                                              {isQSReview && (
+                                                <QSEditQtyButton item={item} />
+                                              )}
                                             </div>
                                           </td>
                                         )}
@@ -2998,33 +2763,9 @@ export default function MrLinesView({
                                               <span>-</span>
                                             ) : null}
                                             {isQSReview && (
-                                              <Button
-                                                componentType={"button"}
-                                                bgColor={
-                                                  "rgba(239, 239, 239, 1)"
-                                                }
-                                                borderColor={
-                                                  "rgba(223, 223, 223, 1)"
-                                                }
-                                                textColor={"black"}
-                                                style={{ padding: "7px 7px" }}
-                                                onClick={() => {
-                                                  setEditingBrandSpecItemId(
-                                                    item.id,
-                                                  );
-                                                  setEditingBrandValue(
-                                                    item.brand ?? "",
-                                                  );
-                                                  setEditingSpecValue(
-                                                    item.specification ?? "",
-                                                  );
-                                                }}
-                                              >
-                                                <img
-                                                  src={pencilIcon}
-                                                  alt="edit brand/spec"
-                                                />
-                                              </Button>
+                                              <QSEditBrandSpecButton
+                                                item={item}
+                                              />
                                             )}
                                           </div>
                                         </td>
@@ -3600,6 +3341,31 @@ export default function MrLinesView({
                         <table className="items-table two-toned fixed-layout">
                           <thead>
                             <tr>
+                              {isQSReview && (
+                                <th style={{ width: "40px" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      items.length > 0 &&
+                                      items.every((i) =>
+                                        selectedItemIds.has(i.id),
+                                      )
+                                    }
+                                    onChange={(e) => {
+                                      const newSet = new Set(selectedItemIds);
+                                      items.forEach((i) => {
+                                        if (e.target.checked) newSet.add(i.id);
+                                        else newSet.delete(i.id);
+                                      });
+                                      setSelectedItemIds(newSet);
+                                    }}
+                                    style={{
+                                      cursor: "pointer",
+                                      accentColor: "black",
+                                    }}
+                                  />
+                                </th>
+                              )}
                               <th style={{ width: "50px" }}>#</th>
                               <th style={{ width: "150px" }}>ITEM</th>
                               {mrHeader.progress_id >= 9 ? (
@@ -3732,6 +3498,27 @@ export default function MrLinesView({
                               items.map(function (item, itemIndex) {
                                 return (
                                   <tr key={item.id}>
+                                    {isQSReview && (
+                                      <td>
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedItemIds.has(item.id)}
+                                          onChange={(e) => {
+                                            const newSet = new Set(
+                                              selectedItemIds,
+                                            );
+                                            if (e.target.checked)
+                                              newSet.add(item.id);
+                                            else newSet.delete(item.id);
+                                            setSelectedItemIds(newSet);
+                                          }}
+                                          style={{
+                                            cursor: "pointer",
+                                            accentColor: "black",
+                                          }}
+                                        />
+                                      </td>
+                                    )}
                                     <td>{itemIndex + 1}</td>
                                     <td>
                                       {item.material_description}
@@ -3798,8 +3585,19 @@ export default function MrLinesView({
                                       </>
                                     ) : (
                                       <td>
-                                        {formatNumber(item?.quantity)}{" "}
-                                        {item.unit}
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            gap: "10px",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          {formatNumber(item?.quantity)}{" "}
+                                          {item.unit}
+                                          {isQSReview && (
+                                            <QSEditQtyButton item={item} />
+                                          )}
+                                        </div>
                                       </td>
                                     )}
                                     <td>
@@ -3813,26 +3611,37 @@ export default function MrLinesView({
                                       )}
                                     </td>
                                     <td>
-                                      {item.brand || item.specification ? (
-                                        <InfoPopUpButton
-                                          text={
-                                            <>
-                                              <small>BRAND</small>
-                                              <h2>{item.brand || "-"}</h2>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          gap: "8px",
+                                          alignItems: "center",
+                                        }}
+                                      >
+                                        {item.brand || item.specification ? (
+                                          <InfoPopUpButton
+                                            text={
+                                              <>
+                                                <small>BRAND</small>
+                                                <h2>{item.brand || "-"}</h2>
 
-                                              <br />
+                                                <br />
 
-                                              <small>SPECIFICATION</small>
-                                              <h2>
-                                                {item.specification || "-"}
-                                              </h2>
-                                            </>
-                                          }
-                                          header="BRAND & SPECIFICATION"
-                                        />
-                                      ) : (
-                                        "-"
-                                      )}
+                                                <small>SPECIFICATION</small>
+                                                <h2>
+                                                  {item.specification || "-"}
+                                                </h2>
+                                              </>
+                                            }
+                                            header="BRAND & SPECIFICATION"
+                                          />
+                                        ) : !isQSReview ? (
+                                          <span>-</span>
+                                        ) : null}
+                                        {isQSReview && (
+                                          <QSEditBrandSpecButton item={item} />
+                                        )}
+                                      </div>
                                     </td>
 
                                     {hasAnyAttachment && (
@@ -5082,98 +4891,6 @@ export default function MrLinesView({
             );
           })()}
         </div>
-      )}
-
-      {/* QS Review — Bulk Reject popup */}
-      {bulkRejectOpen && (
-        <FormPopUp
-          header="REJECT SELECTED ITEMS"
-          setIsOpen={setBulkRejectOpen}
-          handleSubmit={handleBulkReject}
-          addButtonLabel="CONFIRM"
-        >
-          <div className="input-row full">
-            <InputItem
-              label={"COMMENTS"}
-              value={bulkRejectText}
-              type={"textarea"}
-              placeholder={"ENTER REJECT REASON"}
-              required
-              onChange={(e) => setBulkRejectText(e.target.value)}
-            />
-          </div>
-        </FormPopUp>
-      )}
-
-      {/* QS Review — Qty edit popup */}
-      {/* {editingQtyItemId !== null && (
-        <FormPopUp
-          header="EDIT REQUESTED QUANTITY"
-          setIsOpen={(open) => {
-            if (!open) setEditingQtyItemId(null);
-          }}
-          handleSubmit={handleSaveQty}
-          addButtonLabel="CONFIRM"
-        >
-          <div className="input-row full">
-            <InputItem
-              label={"QUANTITY"}
-              value={editingQtyValue}
-              type={"number"}
-              placeholder={"ENTER QUANTITY"}
-              required
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "" || /^\d*\.?\d*$/.test(v)) setEditingQtyValue(v);
-              }}
-            />
-          </div>
-          <div className="input-row full">
-            <InputItem
-              label={"UNIT"}
-              value={editingQtyUnit}
-              type={"dropdown"}
-              placeholder={"SELECT UNIT"}
-              required
-              dropdownOptions={UNIT_OPTIONS.map((u) => ({
-                label: u,
-                value: u,
-              }))}
-              onChange={(val) => setEditingQtyUnit(String(val))}
-            />
-          </div>
-        </FormPopUp>
-      )} */}
-
-      {/* QS Review — Brand & Specs edit popup */}
-      {editingBrandSpecItemId !== null && (
-        <FormPopUp
-          header="EDIT BRAND & SPECIFICATION"
-          setIsOpen={(open) => {
-            if (!open) setEditingBrandSpecItemId(null);
-          }}
-          handleSubmit={handleSaveBrandSpec}
-          addButtonLabel="CONFIRM"
-        >
-          <div className="input-row full">
-            <InputItem
-              label={"BRAND"}
-              value={editingBrandValue}
-              type={"text"}
-              placeholder={"ENTER BRAND"}
-              onChange={(e) => setEditingBrandValue(e.target.value)}
-            />
-          </div>
-          <div className="input-row full">
-            <InputItem
-              label={"SPECIFICATION"}
-              value={editingSpecValue}
-              type={"textarea"}
-              placeholder={"ENTER SPECIFICATION"}
-              onChange={(e) => setEditingSpecValue(e.target.value)}
-            />
-          </div>
-        </FormPopUp>
       )}
     </>
   );

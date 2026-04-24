@@ -18,7 +18,12 @@ type Props = {
   } | null;
 };
 
-type ReviewStatus = "pending" | "item_available" | "need_order" | "rejected";
+type ReviewStatus =
+  | "pending"
+  | "item_available"
+  | "need_order"
+  | "rejected"
+  | "replaced";
 
 export default function QSReviewButton({ item, progressID }: Props) {
   const router = useRouter();
@@ -33,14 +38,17 @@ export default function QSReviewButton({ item, progressID }: Props) {
   const [status, setStatus] = useState<ReviewStatus>(getInitialStatus());
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [rejectText, setRejectText] = useState("");
+  const [isReplacementDetailOpen, setIsReplacementDetailOpen] = useState(false);
 
   useEffect(() => {
     setStatus(getInitialStatus());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.qs_review_type, item.qs_approval_status]);
 
   function getInitialStatus(): ReviewStatus {
     if (item.qs_review_type === "item_available") return "item_available";
     if (item.qs_review_type === "need_order") return "need_order";
+    if (item.qs_review_type === "replaced") return "replaced";
     if (item.qs_approval_status?.toLowerCase() === "rejected")
       return "rejected";
     return "pending";
@@ -172,6 +180,175 @@ export default function QSReviewButton({ item, progressID }: Props) {
           />
         )}
       </div>
+    );
+  }
+
+  // ── Replaced pill ─────────────────────────────────────────────────────────
+  if (status === "replaced") {
+    return (
+      <>
+        <div
+          className="approval-pill"
+          style={{ backgroundColor: "rgba(209, 157, 90, 1)", color: "white" }}
+        >
+          <span style={{ textWrap: "nowrap" }}>Replaced</span>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <img
+              src={externalLinkIcon}
+              alt="view replacement"
+              style={{ filter: "invert(1)", cursor: "pointer" }}
+              onClick={() => setIsReplacementDetailOpen(true)}
+            />
+            {isQSAtStage2 && (
+              <img
+                src={crossIcon}
+                alt="reset"
+                style={{
+                  filter: "invert(1)",
+                  cursor: "pointer",
+                  width: "12px",
+                }}
+                onClick={handleReset}
+              />
+            )}
+          </div>
+        </div>
+
+        {isReplacementDetailOpen && (
+          <FormPopUp
+            header="REPLACEMENT DETAILS"
+            setIsOpen={setIsReplacementDetailOpen}
+            handleSubmit={(e) => {
+              e.preventDefault();
+              setIsReplacementDetailOpen(false);
+            }}
+            addButtonLabel="CLOSE"
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {/* Original material */}
+              <div>
+                <p
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: "600",
+                    color: "rgba(100,100,100,1)",
+                    textTransform: "uppercase",
+                    marginBottom: "6px",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Original Material
+                </p>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "rgba(185, 28, 28, 1)",
+                    padding: "10px 14px",
+                    backgroundColor: "rgba(254,242,242,1)",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(252,165,165,1)",
+                  }}
+                >
+                  {item.qs_original_material_description || "—"}
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <div style={{ textAlign: "center", fontSize: "18px", color: "rgba(150,150,150,1)" }}>
+                ↓
+              </div>
+
+              {/* Replacement material */}
+              <div>
+                <p
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: "600",
+                    color: "rgba(100,100,100,1)",
+                    textTransform: "uppercase",
+                    marginBottom: "6px",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Replaced With
+                </p>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "rgba(21,128,61,1)",
+                    padding: "10px 14px",
+                    backgroundColor: "rgba(240,253,244,1)",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(134,239,172,1)",
+                  }}
+                >
+                  {item.material_description || "—"}
+                </p>
+              </div>
+
+              {/* Reason */}
+              {item.qs_replace_reason && (
+                <div>
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      color: "rgba(100,100,100,1)",
+                      textTransform: "uppercase",
+                      marginBottom: "6px",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Reason
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "14px",
+                      color: "rgba(50,50,50,1)",
+                      padding: "10px 14px",
+                      backgroundColor: "rgba(249,250,251,1)",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(229,231,235,1)",
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {item.qs_replace_reason}
+                  </p>
+                </div>
+              )}
+
+              {/* Replaced by */}
+              {item.qs_replaced_by && (
+                <div>
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      color: "rgba(100,100,100,1)",
+                      textTransform: "uppercase",
+                      marginBottom: "6px",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Replaced By
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "14px",
+                      color: "rgba(50,50,50,1)",
+                      fontWeight: "500",
+                    }}
+                  >
+                    {item.qs_replaced_by}
+                  </p>
+                </div>
+              )}
+            </div>
+          </FormPopUp>
+        )}
+      </>
     );
   }
 

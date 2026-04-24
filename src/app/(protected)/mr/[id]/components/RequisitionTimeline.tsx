@@ -113,11 +113,19 @@ const BASE_LPO_STAGES = [1, 7, 10, 12, 14, 17, 24, 25];
 // Full LPO stages (with QS) - MRs skip Manager Approval (3); TEMPORARILY DISABLED QC: removed 21 (QC Check)
 const FULL_LPO_STAGES = [1, 2, 4, 7, 9, 10, 12, 14, 17, 24, 25];
 
+type ReplacementItem = {
+  original: string;
+  replacement: string;
+  reason: string;
+};
+
 type TimelineStage = {
   id: number;
   label: string;
   isRejection: boolean;
   isRollback: boolean;
+  isReplacementNote: boolean;
+  replacementItems?: ReplacementItem[];
   arrivedEntry: ProgressLogEntry | null;
   departedEntry: ProgressLogEntry | null;
 };
@@ -228,6 +236,8 @@ export default function RequisitionTimeline({
     departedEntry: ProgressLogEntry | null;
     isRejection: boolean;
     isRollback: boolean;
+    isReplacementNote: boolean;
+    replacementItems?: ReplacementItem[];
   };
 
   const visitedSequence: VisitRecord[] = [];
@@ -237,12 +247,29 @@ export default function RequisitionTimeline({
     // Use appropriate rejection set based on type
     const isRej = rejectionIds.has(entry.progress_id) && !isRb;
 
+    // Detect QS replacement notes stored in reject_reason
+    let isReplacementNote = false;
+    let replacementItems: ReplacementItem[] | undefined;
+    if (!isRb && !isRej && entry.reject_reason) {
+      try {
+        const parsed = JSON.parse(entry.reject_reason);
+        if (parsed?.type === "qs_replacement_note" && Array.isArray(parsed.items)) {
+          isReplacementNote = true;
+          replacementItems = parsed.items as ReplacementItem[];
+        }
+      } catch {
+        // not JSON or not a replacement note
+      }
+    }
+
     visitedSequence.push({
       stageId: entry.progress_id,
       arrivedEntry: entry,
       departedEntry: null,
       isRejection: isRej,
       isRollback: isRb,
+      isReplacementNote,
+      replacementItems,
     });
   }
 
@@ -266,15 +293,19 @@ export default function RequisitionTimeline({
       id: visit.stageId,
       label: visit.isRollback
         ? "ROLLED BACK"
-        : visit.isRejection
-          ? REJECTION_LABELS[visit.stageId] ||
-            stageLabels[visit.stageId] ||
-            "REJECTED"
-          : stageLabels[visit.stageId] ||
-            STAGE_LABELS[visit.stageId] ||
-            `Stage ${visit.stageId}`,
+        : visit.isReplacementNote
+          ? "ITEM REPLACED"
+          : visit.isRejection
+            ? REJECTION_LABELS[visit.stageId] ||
+              stageLabels[visit.stageId] ||
+              "REJECTED"
+            : stageLabels[visit.stageId] ||
+              STAGE_LABELS[visit.stageId] ||
+              `Stage ${visit.stageId}`,
       isRejection: visit.isRejection,
       isRollback: visit.isRollback,
+      isReplacementNote: visit.isReplacementNote,
+      replacementItems: visit.replacementItems,
       arrivedEntry: visit.arrivedEntry,
       departedEntry: visit.departedEntry,
     });
@@ -289,6 +320,7 @@ export default function RequisitionTimeline({
           stageLabels[stageId] || STAGE_LABELS[stageId] || `Stage ${stageId}`,
         isRejection: false,
         isRollback: false,
+        isReplacementNote: false,
         arrivedEntry: null,
         departedEntry: null,
       });
@@ -345,11 +377,12 @@ export default function RequisitionTimeline({
 
           // FIXED: Only show details for completed stages (stages we've departed from)
           // OR for rejection/rollback stages (show arrival details)
+          // OR for replacement-note stages (show arrival details)
           // Current stage should NOT show details
           let detailEntry: ProgressLogEntry | null = null;
 
-          if (stage.isRejection || stage.isRollback) {
-            // For rejections/rollbacks, show arrival details
+          if (stage.isRejection || stage.isRollback || stage.isReplacementNote) {
+            // For rejections/rollbacks/replacement notes, show arrival details
             detailEntry = stage.arrivedEntry;
           } else if (isCompleted && !isCurrent) {
             // For completed normal stages, show departure details (when we left)
@@ -378,6 +411,8 @@ export default function RequisitionTimeline({
             circleColor = "rgba(248, 77, 77, 1)";
           } else if (stage.isRollback) {
             circleColor = "rgba(255, 153, 36, 1)";
+          } else if (stage.isReplacementNote) {
+            circleColor = "rgba(209, 157, 90, 1)";
           } else if (isCompleted) {
             circleColor = "rgba(26, 216, 135, 1)";
           } else if (isYellow) {
@@ -389,6 +424,8 @@ export default function RequisitionTimeline({
             labelColor = "rgba(248, 77, 77, 1)";
           } else if (stage.isRollback) {
             labelColor = "rgba(255, 153, 36, 1)";
+          } else if (stage.isReplacementNote) {
+            labelColor = "rgba(209, 157, 90, 1)";
           } else if (isFuture) {
             labelColor = "rgba(217, 217, 217, 1)";
           }
@@ -454,7 +491,26 @@ export default function RequisitionTimeline({
                   </svg>
                 )}
 
-                {isCompleted && !stage.isRejection && !stage.isRollback && (
+                {stage.isReplacementNote && (
+                  /* swap/replace arrow icon */
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M7 16H17M17 16L14 13M17 16L14 19M17 8H7M7 8L10 5M7 8L10 11"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+
+                {isCompleted && !stage.isRejection && !stage.isRollback && !stage.isReplacementNote && (
                   <svg
                     width="14"
                     height="14"
@@ -539,7 +595,13 @@ export default function RequisitionTimeline({
                       textAlign: "left",
                     }}
                   >
-                    {stage.isRollback ? "ROLLED BACK BY" : stage.isRejection ? "REJECTED BY" : "SUBMITTED BY"}
+                    {stage.isRollback
+                      ? "ROLLED BACK BY"
+                      : stage.isRejection
+                        ? "REJECTED BY"
+                        : stage.isReplacementNote
+                          ? "REPLACED BY"
+                          : "SUBMITTED BY"}
                   </p>
                   <p
                     style={{
@@ -689,6 +751,81 @@ export default function RequisitionTimeline({
                     );
                   }
                 })()}
+
+              {/* Show replacement note items if available */}
+              {stage.isReplacementNote &&
+                stage.replacementItems &&
+                stage.replacementItems.length > 0 && (
+                  <div
+                    style={{ marginTop: "4px", textAlign: "left", width: "100%" }}
+                  >
+                    <p
+                      style={{
+                        fontSize: "9px",
+                        color: "rgba(209, 157, 90, 1)",
+                        textTransform: "uppercase",
+                        fontWeight: "600",
+                        letterSpacing: "0.5px",
+                        textAlign: "left",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      REPLACED ITEMS
+                    </p>
+                    {stage.replacementItems.map((r, i) => (
+                      <div
+                        key={i}
+                        style={{ marginTop: i > 0 ? "6px" : "2px" }}
+                      >
+                        {r.original && (
+                          <p
+                            style={{
+                              fontSize: "9px",
+                              color: "rgba(85, 80, 80, 1)",
+                              fontWeight: "400",
+                              maxWidth: "120px",
+                              wordBreak: "break-word",
+                              textAlign: "left",
+                              textDecoration: "line-through",
+                              fontStyle: "italic",
+                            }}
+                          >
+                            {r.original}
+                          </p>
+                        )}
+                        {r.replacement && (
+                          <p
+                            style={{
+                              fontSize: "10px",
+                              color: "black",
+                              fontWeight: "500",
+                              maxWidth: "120px",
+                              wordBreak: "break-word",
+                              textAlign: "left",
+                            }}
+                          >
+                            {r.replacement}
+                          </p>
+                        )}
+                        {r.reason && (
+                          <p
+                            style={{
+                              fontSize: "9px",
+                              color: "rgba(85, 80, 80, 1)",
+                              fontWeight: "400",
+                              maxWidth: "120px",
+                              wordBreak: "break-word",
+                              textAlign: "left",
+                              fontStyle: "italic",
+                            }}
+                          >
+                            {r.reason}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               <br />
             </div>
           );
