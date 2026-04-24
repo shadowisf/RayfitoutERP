@@ -161,7 +161,7 @@ export default function Dashboard() {
           <h2>QUICK APPROVALS</h2>
           <br />
           <div className="widget-grid overview two-col">
-            <QuickInitialApprovalWidget />
+            {/* <QuickInitialApprovalWidget /> */}
             <QuickPriceApprovalWidget />
           </div>
           <br />
@@ -319,7 +319,9 @@ export default function Dashboard() {
             }}
           >
             <FinanceTotalSpentWidget />
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+            >
               <FinanceOutstandingPayablesWidget />
               <FinanceMedianPaymentDelayWidget />
             </div>

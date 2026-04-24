@@ -58,7 +58,7 @@ export default function QSEditBrandSpecButton({ item }: Props) {
           header="EDIT BRAND & SPECIFICATION"
           setIsOpen={setIsOpen}
           handleSubmit={handleSave}
-          addButtonLabel="SAVE"
+          addButtonLabel="CONFIRM"
         >
           <div className="input-row full">
             <InputItem
@@ -66,7 +66,6 @@ export default function QSEditBrandSpecButton({ item }: Props) {
               value={brandValue}
               type={"text"}
               placeholder={"ENTER BRAND"}
-              noOptionalLabel
               onChange={(e) =>
                 setBrandValue(
                   (e as React.ChangeEvent<HTMLInputElement>).target.value,
@@ -80,7 +79,6 @@ export default function QSEditBrandSpecButton({ item }: Props) {
               value={specValue}
               type={"textarea"}
               placeholder={"ENTER SPECIFICATION"}
-              noOptionalLabel
               onChange={(e) =>
                 setSpecValue(
                   (e as React.ChangeEvent<HTMLTextAreaElement>).target.value,

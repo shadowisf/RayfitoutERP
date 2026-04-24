@@ -638,6 +638,35 @@ export async function PUT(req: Request) {
         [body.id, nextProgressId, body.from_progress_id || (isManagerApprovalType ? 1 : 2), body.changed_by],
       );
 
+      // Create a single consolidated replacement note for all replaced lines
+      const [replacedLines]: any = await db.query(
+        `SELECT ml.material_description, ml.qs_original_material_description,
+                ml.qs_replace_reason, mc.value AS category_name
+         FROM mr_lines ml
+         JOIN lut_material_categories mc ON mc.id = ml.material_category_id
+         WHERE ml.mr_header_id = ? AND ml.qs_approval_status = 'Replaced'
+           AND ml.qs_original_material_description IS NOT NULL`,
+        [body.id],
+      );
+      if (replacedLines.length > 0) {
+        const noteData = JSON.stringify({
+          type: "qs_replacement_note",
+          items: replacedLines.map((l: any) => ({
+            original: l.qs_original_material_description || "",
+            original_category: l.category_name || "",
+            replacement: l.material_description || "",
+            replacement_category: l.category_name || "",
+            reason: l.qs_replace_reason || "",
+          })),
+        });
+        await db.query(
+          `INSERT INTO mr_header_progress_log
+             (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason)
+           VALUES (?, 2, 2, ?, ?)`,
+          [body.id, body.changed_by, noteData],
+        );
+      }
+
       if (isManagerApprovalType) {
         // Notify management for JO/PR initial approval
         await db.query(
@@ -967,8 +996,7 @@ export async function PUT(req: Request) {
       // Persist replacement data on the line
       await db.query(
         `UPDATE mr_lines
-         SET qs_review_type = 'replaced',
-             qs_approval_status = 'Replaced',
+         SET qs_approval_status = 'Replaced',
              qs_replace_reason = ?,
              qs_original_material_description = ?,
              qs_replaced_by = ?
@@ -981,33 +1009,14 @@ export async function PUT(req: Request) {
         ],
       );
 
-      // Insert a QS replacement note into the progress log so it appears in the timeline
-      if (body.mr_header_id && body.changed_by) {
-        const noteData = JSON.stringify({
-          type: "qs_replacement_note",
-          items: [
-            {
-              original: body.qs_original_material_description || "",
-              replacement: body.replacement_description || "",
-              reason: body.qs_replace_reason || "",
-            },
-          ],
-        });
-        await db.query(
-          `INSERT INTO mr_header_progress_log
-             (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason)
-           VALUES (?, 2, 2, ?, ?)`,
-          [Number(body.mr_header_id), body.changed_by, noteData],
-        );
-      }
-
       return NextResponse.json({ success: true });
     }
 
     if (body.action === "resetQSReview") {
       await db.query(
         `UPDATE mr_lines
-         SET qs_review_type = NULL,
+         SET material_description = COALESCE(qs_original_material_description, material_description),
+             qs_review_type = NULL,
              linked_inventory_item_id = NULL,
              qs_approval_status = NULL,
              qs_replace_reason = NULL,

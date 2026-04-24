@@ -353,20 +353,26 @@ export function LpoPDF({ lpo, mr }: LpoPDFProps) {
   const total = subtotalWithShipping + vatAmount;
 
   // Check if any MR line has brand or specification (MR LPOs only)
-  const hasAnyBrandOrSpecs = !isJoLpo && lpo.lpo_mr_lines.some(
-    (item) =>
-      (item.brand && item.brand.trim() !== "") ||
-      (item.specification && item.specification.trim() !== ""),
-  );
+  const hasAnyBrandOrSpecs =
+    !isJoLpo &&
+    lpo.lpo_mr_lines.some(
+      (item) =>
+        (item.brand && item.brand.trim() !== "") ||
+        (item.specification && item.specification.trim() !== ""),
+    );
 
   // Vendor display — subcontractor for JO LPOs, supplier for MR LPOs
   const vendorName = isJoLpo ? lpo.subcontractor_name : lpo.supplier_name;
   const vendorContact = isJoLpo
     ? lpo.subcontractor_contact_person
     : lpo.supplier_contact_person_name;
-  const vendorAddress = isJoLpo ? lpo.subcontractor_address : lpo.supplier_address;
+  const vendorAddress = isJoLpo
+    ? lpo.subcontractor_address
+    : lpo.supplier_address;
   const vendorEmail = isJoLpo ? lpo.subcontractor_email : lpo.supplier_email;
-  const vendorTrn = isJoLpo ? lpo.subcontractor_trn_number : lpo.supplier_trn_number;
+  const vendorTrn = isJoLpo
+    ? lpo.subcontractor_trn_number
+    : lpo.supplier_trn_number;
 
   return (
     <Document>
@@ -403,6 +409,12 @@ export function LpoPDF({ lpo, mr }: LpoPDFProps) {
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>TRN</Text>
             <Text style={styles.infoValue}>{vendorTrn || "-"}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Project Number</Text>
+            <Text style={styles.infoValue}>
+              RAY-{String(mr.project_id).padStart(5, "0")}
+            </Text>
           </View>
         </View>
 
@@ -510,7 +522,9 @@ export function LpoPDF({ lpo, mr }: LpoPDFProps) {
                   ITEM
                 </Text>
                 {hasAnyBrandOrSpecs && (
-                  <Text style={styles.tableColBrandAndSpecs}>BRAND & SPECS</Text>
+                  <Text style={styles.tableColBrandAndSpecs}>
+                    BRAND & SPECS
+                  </Text>
                 )}
                 <Text style={styles.tableColQty}>QTY</Text>
                 <Text style={styles.tableColUnitPrice}>UNIT PRICE</Text>

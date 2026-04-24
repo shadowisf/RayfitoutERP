@@ -74,7 +74,6 @@ export default function ReplaceMaterialButton({
   });
   const [previewUnit, setPreviewUnit] = useState(item.unit ?? "");
 
-  const [unitWasNull, setUnitWasNull] = useState(false);
   const [categoryValues, setCategoryValues] = useState<any[]>([]);
   const [subcategoryValues, setSubcategoryValues] = useState<any[]>([]);
 
@@ -370,6 +369,11 @@ export default function ReplaceMaterialButton({
     e.preventDefault();
     if (!tempSelected) return;
 
+    if (!replaceReason) {
+      toast("Please enter a reason for replacing material", "error");
+      return;
+    }
+
     if (directSubmit) {
       // Skip the main form — submit directly using existing item values
       const mappedUnit = tempSelected.unit
@@ -419,21 +423,9 @@ export default function ReplaceMaterialButton({
           mr_header_id: item.mr_header_id,
           qs_replace_reason: replaceReason.trim() || null,
           qs_original_material_description: item.material_description,
-          replacement_description: tempSelected.material_description,
           changed_by: userInfo?.name || userInfo?.email || "QS",
         }),
       });
-
-      if (!tempSelected.unit && mappedUnit) {
-        await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: tempSelected.id, unit: mappedUnit }),
-          },
-        );
-      }
 
       toast(`Replaced with ${tempSelected.material_description}`, "success");
       setIsPickerOpen(false);
@@ -447,9 +439,10 @@ export default function ReplaceMaterialButton({
     setPreviewDescription(tempSelected.material_description);
     setPreviewCategoryId(tempSelected.category_id);
     setPreviewSubcategoryId(tempSelected.subcategory_id);
-    const mappedUnit = tempSelected.unit ? mapPredefinedUnit(tempSelected.unit) : "";
+    const mappedUnit = tempSelected.unit
+      ? mapPredefinedUnit(tempSelected.unit)
+      : "";
     setPreviewUnit(mappedUnit);
-    setUnitWasNull(!tempSelected.unit);
     refreshSubcategories(tempSelected.category_id);
     setIsPickerOpen(false);
     setIsMainOpen(true);
@@ -503,7 +496,6 @@ export default function ReplaceMaterialButton({
           mr_header_id: item.mr_header_id,
           qs_replace_reason: replaceReason.trim() || null,
           qs_original_material_description: item.material_description,
-          replacement_description: previewDescription,
           changed_by: userInfo?.name || userInfo?.email || "QS",
         }),
       },
@@ -512,17 +504,6 @@ export default function ReplaceMaterialButton({
     if (!replacedRes.ok) {
       toast("Material updated but failed to mark as replaced", "error");
       return;
-    }
-
-    if (unitWasNull && previewUnit && selectedItem) {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: selectedItem.id, unit: previewUnit }),
-        },
-      );
     }
 
     toast(`Replaced with ${previewDescription}`, "success");
@@ -830,6 +811,23 @@ export default function ReplaceMaterialButton({
         </>
       )}
 
+      {/* Replace reason */}
+      <div className="input-row full">
+        <InputItem
+          label="REPLACE REASON"
+          value={replaceReason}
+          type="textarea"
+          noOptionalLabel
+          onChange={(e) =>
+            setReplaceReason(
+              (e as React.ChangeEvent<HTMLTextAreaElement>).target.value,
+            )
+          }
+        />
+      </div>
+
+      <br />
+
       {/* No results */}
       {searchQuery.trim() && categories.length === 0 && (
         <div
@@ -959,23 +957,6 @@ export default function ReplaceMaterialButton({
                   ),
                 ),
             )}
-      </div>
-
-      {/* Replace reason */}
-      <br />
-      <div className="input-row full">
-        <InputItem
-          label="REPLACE REASON"
-          value={replaceReason}
-          type="textarea"
-          placeholder="ENTER REPLACE REASON"
-          noOptionalLabel
-          onChange={(e) =>
-            setReplaceReason(
-              (e as React.ChangeEvent<HTMLTextAreaElement>).target.value,
-            )
-          }
-        />
       </div>
 
       {/* Pagination */}
@@ -1339,10 +1320,68 @@ export default function ReplaceMaterialButton({
           {selectedItem && (
             <>
               {/* Hidden inputs to enforce required fields via form.checkValidity() */}
-              <input type="text" required value={previewCategoryId > 0 ? String(previewCategoryId) : ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
-              <input type="text" required value={previewSubcategoryId > 0 ? String(previewSubcategoryId) : ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
-              <input type="text" required value={previewQuantity && Number(previewQuantity) > 0 ? previewQuantity : ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
-              <input type="text" required value={previewUnit ?? ""} onChange={() => {}} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }} tabIndex={-1} />
+              <input
+                type="text"
+                required
+                value={previewCategoryId > 0 ? String(previewCategoryId) : ""}
+                onChange={() => {}}
+                style={{
+                  position: "absolute",
+                  opacity: 0,
+                  width: 0,
+                  height: 0,
+                  pointerEvents: "none",
+                }}
+                tabIndex={-1}
+              />
+              <input
+                type="text"
+                required
+                value={
+                  previewSubcategoryId > 0 ? String(previewSubcategoryId) : ""
+                }
+                onChange={() => {}}
+                style={{
+                  position: "absolute",
+                  opacity: 0,
+                  width: 0,
+                  height: 0,
+                  pointerEvents: "none",
+                }}
+                tabIndex={-1}
+              />
+              <input
+                type="text"
+                required
+                value={
+                  previewQuantity && Number(previewQuantity) > 0
+                    ? previewQuantity
+                    : ""
+                }
+                onChange={() => {}}
+                style={{
+                  position: "absolute",
+                  opacity: 0,
+                  width: 0,
+                  height: 0,
+                  pointerEvents: "none",
+                }}
+                tabIndex={-1}
+              />
+              <input
+                type="text"
+                required
+                value={previewUnit ?? ""}
+                onChange={() => {}}
+                style={{
+                  position: "absolute",
+                  opacity: 0,
+                  width: 0,
+                  height: 0,
+                  pointerEvents: "none",
+                }}
+                tabIndex={-1}
+              />
             </>
           )}
           {selectedItem && (

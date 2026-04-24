@@ -34,7 +34,7 @@ export type MrLine = {
   reject_comment: string;
   qs_approval_status: string;
   qs_reject_comment: string;
-  qs_review_type: "item_available" | "need_order" | "replaced" | null;
+  qs_review_type: "item_available" | "need_order" | null;
   qs_replace_reason: string | null;
   qs_original_material_description: string | null;
   qs_replaced_by: string | null;
