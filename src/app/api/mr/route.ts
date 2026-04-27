@@ -11,7 +11,17 @@ export async function GET() {
           WHEN vw.type = 'job' THEN (SELECT COUNT(*) FROM jo_lines jl WHERE jl.mr_header_id = vw.id)
           WHEN vw.type = 'payment' THEN (SELECT COUNT(*) FROM pr_lines pl WHERE pl.mr_header_id = vw.id)
           ELSE (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw.id)
-        END AS item_count
+        END AS item_count,
+        (
+          SELECT CONCAT(bl.sub_category, ' - ', COUNT(*), ' ITEM(S)')
+          FROM mr_lines ml2
+          JOIN jt_mr_lines_boq_lines jbl ON jbl.mr_line_id = ml2.id
+          JOIN boq_lines bl ON bl.id = jbl.boq_line_id
+          WHERE ml2.mr_header_id = vw.id
+          GROUP BY bl.id, bl.sub_category
+          ORDER BY bl.total_cost DESC
+          LIMIT 1
+        ) AS identifier
       FROM vw_mr_headers vw
       LEFT JOIN mr_headers mh ON mh.id = vw.id
     `);
@@ -1800,16 +1810,23 @@ export async function DELETE(req: Request) {
     const body = await req.json();
 
     if (body.action === "deleteItem") {
-      // ✅ Cascading deletes will handle junction table entries automatically
-      const query = "DELETE FROM mr_lines WHERE id = ?";
-      await db.query(query, [Number(body.id)]);
+      const lineId = Number(body.id);
+      // Explicitly clean up junction tables before deleting the line
+      await db.query(`DELETE FROM jt_mr_lines_boq_lines WHERE mr_line_id = ?`, [lineId]);
+      await db.query(`DELETE FROM jt_mr_line_material_subcategory WHERE mr_line_id = ?`, [lineId]);
+      await db.query("DELETE FROM mr_lines WHERE id = ?", [lineId]);
       return NextResponse.json({ success: true });
     }
 
     if (body.action === "deleteSubCategory") {
-      // ✅ Cascading deletes will handle junction table entries automatically
+      const itemIds: number[] = body.item_ids.map(Number);
+      // Explicitly clean up junction tables for each line before deleting
+      for (const lineId of itemIds) {
+        await db.query(`DELETE FROM jt_mr_lines_boq_lines WHERE mr_line_id = ?`, [lineId]);
+        await db.query(`DELETE FROM jt_mr_line_material_subcategory WHERE mr_line_id = ?`, [lineId]);
+      }
       const query = `
-    DELETE FROM mr_lines 
+    DELETE FROM mr_lines
     WHERE id IN (?)
   `;
 

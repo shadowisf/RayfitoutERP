@@ -54,6 +54,7 @@ type LpoCard = {
   department_name: string;
   progress_name: string;
   item_count?: number;
+  identifier?: string | null;
 };
 
 // Progress IDs that use LPO cards instead of MR cards
@@ -1777,9 +1778,9 @@ export default function MR() {
                                         </div>
 
                                         <div>
-                                          <small>ITEM COUNT</small>
+                                          <small>IDENTIFIER</small>
                                           <h3>
-                                            {lpoCard.item_count ?? 0} ITEMS
+                                            {lpoCard.identifier ?? "-"}
                                           </h3>
                                         </div>
 
@@ -1931,8 +1932,8 @@ export default function MR() {
                                         </div>
 
                                         <div>
-                                          <small>ITEM COUNT</small>
-                                          <h3>{mr.item_count ?? 0} ITEMS</h3>
+                                          <small>IDENTIFIER</small>
+                                          <h3>{mr.identifier ?? "-"}</h3>
                                         </div>
 
                                         <div>
@@ -2176,8 +2177,8 @@ export default function MR() {
                                       </div>
 
                                       <div>
-                                        <small>ITEM COUNT</small>
-                                        <h3>{lpoCard.item_count ?? 0} ITEMS</h3>
+                                        <small>IDENTIFIER</small>
+                                        <h3>{lpoCard.identifier ?? "-"}</h3>
                                       </div>
 
                                       <div>
@@ -2443,8 +2444,8 @@ export default function MR() {
                                       </div>
 
                                       <div>
-                                        <small>ITEM COUNT</small>
-                                        <h3>{mr.item_count ?? 0} ITEMS</h3>
+                                        <small>IDENTIFIER</small>
+                                        <h3>{mr.identifier ?? "-"}</h3>
                                       </div>
 
                                       <div>

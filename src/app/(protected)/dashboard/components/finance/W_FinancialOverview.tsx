@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import FinanceSpendingByProjectWidget from "./W_Finance_SpendingByProject";
 
 type RecentTransaction = {
   display_id: string;
@@ -27,11 +28,14 @@ function formatMillions(val: number): string {
     const k = val / 1_000;
     return `${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}K`;
   }
-  return val.toLocaleString("en-US");
+  return val.toLocaleString("en-GB");
 }
 
 function formatAED(val: number): string {
-  return val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return val.toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export default function FinancialOverviewWidget() {
@@ -39,7 +43,9 @@ export default function FinancialOverviewWidget() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/finance/getFinancialOverview`)
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/finance/getFinancialOverview`,
+    )
       .then((res) => res.json())
       .then((d) => setData(d))
       .catch(console.error)
@@ -72,11 +78,28 @@ export default function FinancialOverviewWidget() {
             minHeight: "180px",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <span style={{ fontSize: "13px", fontWeight: 600, opacity: 0.85, letterSpacing: "0.05em" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "13px",
+                fontWeight: 600,
+                opacity: 0.85,
+                letterSpacing: "0.05em",
+              }}
+            >
               Total Spent
             </span>
-            <img src="/icons/spent-inverted.svg" alt="spent" style={{ width: "22px", opacity: 0.85 }} />
+            <img
+              src="/icons/spent-inverted.svg"
+              alt="spent"
+              style={{ width: "22px", opacity: 0.85 }}
+            />
           </div>
 
           <div>
@@ -110,14 +133,38 @@ export default function FinancialOverviewWidget() {
               flex: 1,
             }}
           >
-            <p style={{ fontSize: "12px", fontWeight: 600, color: "rgba(120,120,120,1)", marginBottom: "8px", letterSpacing: "0.04em" }}>
+            <p
+              style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "rgba(120,120,120,1)",
+                marginBottom: "8px",
+                letterSpacing: "0.04em",
+              }}
+            >
               Outstanding Payables
             </p>
-            <p style={{ fontSize: "22px", fontWeight: 700, margin: 0, color: "rgba(20,20,20,1)" }}>
-              {isLoading ? "..." : `${formatAED(data?.outstanding_amount ?? 0)} AED`}
+            <p
+              style={{
+                fontSize: "22px",
+                fontWeight: 700,
+                margin: 0,
+                color: "rgba(20,20,20,1)",
+              }}
+            >
+              {isLoading
+                ? "..."
+                : `${formatAED(data?.outstanding_amount ?? 0)} AED`}
             </p>
-            <p style={{ fontSize: "11px", color: "rgba(150,150,150,1)", marginTop: "6px" }}>
-              Based on {isLoading ? "—" : data?.outstanding_count ?? 0} LPOs (including credit)
+            <p
+              style={{
+                fontSize: "11px",
+                color: "rgba(150,150,150,1)",
+                marginTop: "6px",
+              }}
+            >
+              Based on {isLoading ? "—" : (data?.outstanding_count ?? 0)} LPOs
+              (including credit)
             </p>
           </div>
 
@@ -131,14 +178,36 @@ export default function FinancialOverviewWidget() {
               flex: 1,
             }}
           >
-            <p style={{ fontSize: "12px", fontWeight: 600, color: "rgba(120,120,120,1)", marginBottom: "8px", letterSpacing: "0.04em" }}>
+            <p
+              style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "rgba(120,120,120,1)",
+                marginBottom: "8px",
+                letterSpacing: "0.04em",
+              }}
+            >
               Median Payment Delay
             </p>
-            <p style={{ fontSize: "22px", fontWeight: 700, margin: 0, color: "rgba(20,20,20,1)" }}>
+            <p
+              style={{
+                fontSize: "22px",
+                fontWeight: 700,
+                margin: 0,
+                color: "rgba(20,20,20,1)",
+              }}
+            >
               {isLoading ? "..." : `${data?.avg_payment_days ?? 0} Days`}
             </p>
-            <p style={{ fontSize: "11px", color: "rgba(150,150,150,1)", marginTop: "6px" }}>
-              Based on {isLoading ? "—" : data?.paid_count ?? 0} LPOs (including credit)
+            <p
+              style={{
+                fontSize: "11px",
+                color: "rgba(150,150,150,1)",
+                marginTop: "6px",
+              }}
+            >
+              Based on {isLoading ? "—" : (data?.paid_count ?? 0)} LPOs
+              (including credit)
             </p>
           </div>
         </div>
@@ -160,18 +229,30 @@ export default function FinancialOverviewWidget() {
               marginBottom: "16px",
             }}
           >
-            <p style={{ fontWeight: 700, fontSize: "14px", margin: 0 }}>Recent Transaction</p>
+            <p style={{ fontWeight: 700, fontSize: "14px", margin: 0 }}>
+              Recent Transaction
+            </p>
             {/* <button style={{ fontSize: "12px", fontWeight: 600, background: "none", border: "none", cursor: "pointer", color: "rgba(80,80,80,1)" }}>
               VIEW FULL REPORT &gt;
             </button> */}
           </div>
 
           {isLoading ? (
-            <p style={{ fontSize: "13px", color: "rgba(150,150,150,1)" }}>Loading...</p>
+            <p style={{ fontSize: "13px", color: "rgba(150,150,150,1)" }}>
+              Loading...
+            </p>
           ) : !data?.recent_transactions?.length ? (
-            <p style={{ fontSize: "13px", color: "rgba(150,150,150,1)" }}>No transactions yet</p>
+            <p style={{ fontSize: "13px", color: "rgba(150,150,150,1)" }}>
+              No transactions yet
+            </p>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: "12px",
+              }}
+            >
               <thead>
                 <tr style={{ borderBottom: "1px solid rgba(230,230,230,1)" }}>
                   {["LPO", "VENDOR", "PAYMENT TYPE", "AMOUNT"].map((col) => (
@@ -200,7 +281,13 @@ export default function FinancialOverviewWidget() {
                       borderBottom: "1px solid rgba(245,245,245,1)",
                     }}
                   >
-                    <td style={{ padding: "8px 8px", fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <td
+                      style={{
+                        padding: "8px 8px",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {tx.display_id}
                     </td>
                     <td
@@ -215,10 +302,18 @@ export default function FinancialOverviewWidget() {
                     >
                       {tx.vendor_name}
                     </td>
-                    <td style={{ padding: "8px 8px", color: "rgba(80,80,80,1)" }}>
+                    <td
+                      style={{ padding: "8px 8px", color: "rgba(80,80,80,1)" }}
+                    >
                       {tx.payment_type}
                     </td>
-                    <td style={{ padding: "8px 8px", fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <td
+                      style={{
+                        padding: "8px 8px",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {formatAED(tx.amount)} AED
                     </td>
                   </tr>
@@ -228,6 +323,9 @@ export default function FinancialOverviewWidget() {
           )}
         </div>
       </div>
+
+      {/* ── BOTTOM: Spending by Project Chart ── */}
+      <FinanceSpendingByProjectWidget />
     </div>
   );
 }

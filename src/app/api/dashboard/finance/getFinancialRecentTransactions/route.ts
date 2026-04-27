@@ -8,9 +8,9 @@ export async function GET() {
       `SELECT
         l.id,
         l.total,
-        l.payment_terms,
         l.paid_at,
-        COALESCE(s.name, sub.name) AS vendor_name
+        COALESCE(s.name, sub.name) AS vendor_name,
+        s.type AS supplier_type
        FROM lpo l
        LEFT JOIN suppliers s ON l.supplier_id = s.id
        LEFT JOIN subcontractors sub ON l.subcontractor_id = sub.id
@@ -20,10 +20,10 @@ export async function GET() {
     );
 
     const transactions = (rows as any[]).map((row) => ({
-      display_id: `LPO-${String(row.id).padStart(4, "0")}`,
+      display_id: `LPO-${String(row.id).padStart(5, "0")}`,
       vendor_name: row.vendor_name || "—",
-      payment_type: row.payment_terms
-        ? String(row.payment_terms).toUpperCase()
+      payment_type: row.supplier_type
+        ? String(row.supplier_type).toUpperCase()
         : "—",
       amount: Number(row.total) || 0,
     }));

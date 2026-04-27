@@ -11,7 +11,7 @@ function formatMillions(val: number): string {
     const k = val / 1_000;
     return `${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}K`;
   }
-  return val.toLocaleString("en-US");
+  return val.toLocaleString("en-GB");
 }
 
 export default function FinanceTotalSpentWidget() {
@@ -32,7 +32,7 @@ export default function FinanceTotalSpentWidget() {
     <div
       style={{
         backgroundColor: "rgba(12, 143, 87, 1)",
-        borderRadius: "12px",
+        borderRadius: "15px",
         padding: "28px 32px",
         color: "white",
         display: "flex",
@@ -45,15 +45,13 @@ export default function FinanceTotalSpentWidget() {
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "flex-start",
+          alignItems: "center",
         }}
       >
         <span
           style={{
             fontSize: "13px",
             fontWeight: 600,
-            opacity: 0.85,
-            letterSpacing: "0.05em",
           }}
         >
           Total Spent
@@ -61,7 +59,7 @@ export default function FinanceTotalSpentWidget() {
         <img
           src="/icons/spent-inverted.svg"
           alt="spent"
-          style={{ width: "22px", opacity: 0.85 }}
+          style={{ width: "22px" }}
         />
       </div>
 
@@ -69,17 +67,14 @@ export default function FinanceTotalSpentWidget() {
         <p
           style={{
             fontSize: "40px",
-            fontWeight: 800,
-            margin: 0,
-            lineHeight: 1.1,
-            letterSpacing: "-0.02em",
+            fontWeight: 600,
           }}
         >
           {isLoading ? "..." : formatMillions(totalSpent)}{" "}
           <span style={{ fontSize: "20px", fontWeight: 500 }}>AED</span>
         </p>
-        <p style={{ fontSize: "12px", opacity: 0.75, marginTop: "8px" }}>
-          Total value of all active and completed LPOs
+        <p style={{ marginTop: "8px" }}>
+          Represents the total amount spent from x - y
         </p>
       </div>
     </div>

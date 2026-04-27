@@ -24,42 +24,46 @@ export default function FinanceMedianPaymentDelayWidget() {
     <div
       style={{
         backgroundColor: "white",
-        borderRadius: "12px",
-        padding: "20px 24px",
-        border: "1px solid rgba(230,230,230,1)",
+        borderRadius: "15px",
+        padding: "28px 32px",
         flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        minHeight: "180px",
       }}
     >
-      <p
+      <span
         style={{
-          fontSize: "12px",
+          fontSize: "13px",
           fontWeight: 600,
-          color: "rgba(120,120,120,1)",
-          marginBottom: "8px",
-          letterSpacing: "0.04em",
+          color: "rgba(74, 85, 101, 1)",
         }}
       >
         Median Payment Delay
-      </p>
-      <p
-        style={{
-          fontSize: "22px",
-          fontWeight: 700,
-          margin: 0,
-          color: "rgba(20,20,20,1)",
-        }}
-      >
-        {isLoading ? "..." : `${avgDays} Days`}
-      </p>
-      <p
-        style={{
-          fontSize: "11px",
-          color: "rgba(150,150,150,1)",
-          marginTop: "6px",
-        }}
-      >
-        Based on {isLoading ? "—" : paidCount} paid LPOs
-      </p>
+      </span>
+
+      <div>
+        <p
+          style={{
+            fontSize: "28px",
+            fontWeight: 600,
+            margin: 0,
+          }}
+        >
+          {isLoading ? "..." : `${avgDays} Days`}
+        </p>
+        <p
+          style={{
+            fontSize: "11px",
+            color: "rgba(74, 85, 101, 1)",
+            marginTop: "8px",
+            margin: 0,
+          }}
+        >
+          Based on {isLoading ? "—" : paidCount} paid LPOs
+        </p>
+      </div>
     </div>
   );
 }
