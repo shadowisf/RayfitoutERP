@@ -113,13 +113,45 @@ export default function LpoLinesView({
     userInfo?.departmentID === 10 ||
     userInfo?.departmentID === 16;
 
+  const formatNumber = (value: unknown): string => {
+    const num = Number(value);
+    if (isNaN(num)) return "";
+    if (Number.isInteger(num)) return num.toString();
+    return parseFloat(num.toFixed(3)).toString();
+  };
+
+  // Get all items flattened from lpoLines
+  const allItems: MrLine[] = [];
+  for (const category in lpoLines) {
+    for (const subCategory in lpoLines[category]) {
+      for (const supplier in lpoLines[category][subCategory]) {
+        allItems.push(...lpoLines[category][subCategory][supplier]);
+      }
+    }
+  }
+
+  // Conditionally hide columns when all rows have no value
+  const hasAnyAttachment = allItems.some((item) => !!item.attachment);
+  const hasAnyBrandSpecs = allItems.some(
+    (item) => !!(item.brand || item.specification),
+  );
+  const hasAnyQtyStocks = allItems.some((item) => {
+    const proposedQty = Number(item.approved_proposed_quantity) || 0;
+    const requestedQty = Number(item.quantity) || 0;
+    return proposedQty > requestedQty;
+  });
+
   // ============================================
   // DYNAMIC COLUMN CALCULATION FOR ALIGNMENT
   // ============================================
 
-  // Base columns that are always visible:
-  // #, CATEGORY, SUBCATEGORY, ITEM, QTY FOR USE, QTY FOR STOCKS, TOTAL QTY, BOQ REF, BRAND & SPECS, ATTACHMENT = 10 columns
-  const BASE_COLUMN_COUNT = 10;
+  // Base columns: #, CATEGORY, SUBCATEGORY, ITEM, QTY USE, [QTY STOCKS], TOTAL QTY, BOQ REF, [BRAND & SPECS], [ATTACHMENT]
+  // Minimum always-visible: #, CATEGORY, SUBCATEGORY, ITEM, QTY USE, TOTAL QTY, BOQ REF = 7
+  const BASE_COLUMN_COUNT =
+    7 +
+    (hasAnyQtyStocks ? 1 : 0) +
+    (hasAnyBrandSpecs ? 1 : 0) +
+    (hasAnyAttachment ? 1 : 0);
 
   // Price columns visibility
   const hasPriceColumns = canSeePrice;
@@ -146,23 +178,6 @@ export default function LpoLinesView({
   const summaryTrailingColSpan = actionColumnCount > 0 ? actionColumnCount : 0;
 
   // ============================================
-
-  const formatNumber = (value: unknown): string => {
-    const num = Number(value);
-    if (isNaN(num)) return "";
-    if (Number.isInteger(num)) return num.toString();
-    return parseFloat(num.toFixed(3)).toString();
-  };
-
-  // Get all items flattened from lpoLines
-  const allItems: MrLine[] = [];
-  for (const category in lpoLines) {
-    for (const subCategory in lpoLines[category]) {
-      for (const supplier in lpoLines[category][subCategory]) {
-        allItems.push(...lpoLines[category][subCategory][supplier]);
-      }
-    }
-  }
 
   // Filter out failed QC items at stock entry stage and beyond
   const displayItems: MrLine[] =
@@ -768,11 +783,11 @@ export default function LpoLinesView({
               <th>SUBCATEGORY</th>
               <th>ITEM</th>
               <th>QTY USE</th>
-              <th>QTY STOCKS</th>
+              {hasAnyQtyStocks && <th>QTY STOCKS</th>}
               <th>TOTAL QTY</th>
               <th>BOQ REF.</th>
-              <th>BRAND & SPECS</th>
-              <th>ATTACHMENT</th>
+              {hasAnyBrandSpecs && <th>BRAND & SPECS</th>}
+              {hasAnyAttachment && <th>ATTACHMENT</th>}
               {canSeePrice && <th>UNIT PRICE</th>}
               {canSeePrice && <th>TOTAL PRICE</th>}
               {/* TEMPORARILY DISABLED QC/CR
@@ -843,11 +858,13 @@ export default function LpoLinesView({
                   <td>
                     {formatNumber(item?.quantity)} {item.unit}
                   </td>
-                  <td>
-                    {qtyForStocks > 0
-                      ? `${formatNumber(qtyForStocks)} ${item.unit}`
-                      : "-"}
-                  </td>
+                  {hasAnyQtyStocks && (
+                    <td>
+                      {qtyForStocks > 0
+                        ? `${formatNumber(qtyForStocks)} ${item.unit}`
+                        : "-"}
+                    </td>
+                  )}
                   <td>
                     {formatNumber(totalQty)} {item.unit}
                   </td>
@@ -858,44 +875,47 @@ export default function LpoLinesView({
                       "-"
                     )}
                   </td>
-                  <td>
-                    {item.brand || item.specification ? (
-                      <InfoPopUpButton
-                        text={
-                          <>
-                            <small>BRAND</small>
-                            <h2>{item.brand || "-"}</h2>
+                  {hasAnyBrandSpecs && (
+                    <td>
+                      {item.brand || item.specification ? (
+                        <InfoPopUpButton
+                          text={
+                            <>
+                              <small>BRAND</small>
+                              <h2>{item.brand || "-"}</h2>
 
-                            <br />
+                              <br />
 
-                            <small>SPECIFICATION</small>
-                            <h2>{item.specification || "-"}</h2>
-                          </>
-                        }
-                        header="BRAND & SPECIFICATION"
-                      />
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-
-                  <td>
-                    {item.attachment ? (
-                      <Button
-                        componentType={"link"}
-                        bgColor={"rgba(239, 239, 239, 1)"}
-                        borderColor={"rgba(223, 223, 223, 1)"}
-                        textColor={"black"}
-                        style={{ padding: "7px 7px" }}
-                        href={item.attachment}
-                        target="_blank"
-                      >
-                        <img src={externalLinkIcon} alt="external link" />
-                      </Button>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
+                              <small>SPECIFICATION</small>
+                              <h2>{item.specification || "-"}</h2>
+                            </>
+                          }
+                          header="BRAND & SPECIFICATION"
+                        />
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  )}
+                  {hasAnyAttachment && (
+                    <td>
+                      {item.attachment ? (
+                        <Button
+                          componentType={"link"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"rgba(223, 223, 223, 1)"}
+                          textColor={"black"}
+                          style={{ padding: "7px 7px" }}
+                          href={item.attachment}
+                          target="_blank"
+                        >
+                          <img src={externalLinkIcon} alt="external link" />
+                        </Button>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  )}
 
                   {canSeePrice && <td>{formatPriceAED(unitPrice)}</td>}
 

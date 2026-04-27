@@ -34,23 +34,20 @@ export default function FinanceRecentTransactionsWidget() {
     <div
       style={{
         backgroundColor: "white",
-        borderRadius: "12px",
+        borderRadius: "15px",
         padding: "20px 24px",
-        border: "1px solid rgba(230,230,230,1)",
       }}
     >
-      <div
+      <p
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          fontWeight: 600,
+          fontSize: "13px",
+          color: "rgba(74, 85, 101, 1)",
           marginBottom: "16px",
         }}
       >
-        <p style={{ fontWeight: 700, fontSize: "14px", margin: 0 }}>
-          Recent Transactions
-        </p>
-      </div>
+        Recent Transactions
+      </p>
 
       {isLoading ? (
         <p style={{ fontSize: "13px", color: "rgba(150,150,150,1)" }}>
@@ -61,70 +58,84 @@ export default function FinanceRecentTransactionsWidget() {
           No transactions yet
         </p>
       ) : (
-        <table
-          style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}
-        >
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid rgba(230,230,230,1)" }}>
-              {["LPO", "VENDOR", "PAYMENT TYPE", "AMOUNT"].map((col) => (
+            <tr style={{ backgroundColor: "rgba(245, 246, 248, 1)" }}>
+              {[
+                { label: "LPO", width: "15%" },
+                { label: "VENDOR", width: "40%" },
+                { label: "PAYMENT TYPE", width: "22%" },
+                { label: "AMOUNT", width: "23%" },
+              ].map(({ label, width }) => (
                 <th
-                  key={col}
+                  key={label}
                   style={{
                     textAlign: "left",
-                    padding: "6px 8px",
+                    padding: "9px 12px",
+                    fontSize: "10px",
                     fontWeight: 700,
-                    color: "rgba(100,100,100,1)",
-                    fontSize: "11px",
-                    letterSpacing: "0.04em",
-                    whiteSpace: "nowrap",
+                    width,
                   }}
                 >
-                  {col}
+                  {label}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {transactions.map((tx, i) => (
-              <tr
-                key={i}
-                style={{ borderBottom: "1px solid rgba(245,245,245,1)" }}
-              >
-                <td
+            {transactions.map((tx, i) => {
+              return (
+                <tr
+                  key={i}
                   style={{
-                    padding: "8px 8px",
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
+                    borderBottom: "1px solid rgba(243, 244, 246, 1)",
                   }}
                 >
-                  {tx.display_id}
-                </td>
-                <td
-                  style={{
-                    padding: "8px 8px",
-                    color: "rgba(60,60,60,1)",
-                    maxWidth: "140px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {tx.vendor_name}
-                </td>
-                <td style={{ padding: "8px 8px", color: "rgba(80,80,80,1)" }}>
-                  {tx.payment_type}
-                </td>
-                <td
-                  style={{
-                    padding: "8px 8px",
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {formatAED(tx.amount)} AED
-                </td>
-              </tr>
-            ))}
+                  <td
+                    style={{
+                      padding: "10px 12px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "rgba(30,30,30,1)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {tx.display_id}
+                  </td>
+                  <td
+                    style={{
+                      padding: "10px 12px",
+                      fontSize: "12px",
+                      maxWidth: "0",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {tx.vendor_name}
+                  </td>
+                  <td
+                    style={{
+                      padding: "10px 12px",
+                      fontSize: "12px",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {tx.payment_type}
+                  </td>
+                  <td
+                    style={{
+                      padding: "10px 12px",
+                      fontSize: "12px",
+                      color: "rgba(30,30,30,1)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {formatAED(tx.amount)} AED
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

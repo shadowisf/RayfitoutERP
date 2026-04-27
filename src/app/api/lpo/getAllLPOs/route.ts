@@ -24,6 +24,16 @@ export async function GET() {
         d.value as department_name,
         pr.value as progress_name,
         (SELECT COUNT(*) FROM lpo_mr_line lml WHERE lml.lpo_id = l.id) AS item_count,
+        (
+          SELECT CONCAT(bl.sub_category, ' - ', COUNT(*), ' ITEM(S)')
+          FROM lpo_mr_line lml2
+          JOIN jt_mr_lines_boq_lines jbl ON jbl.mr_line_id = lml2.mr_line_id
+          JOIN boq_lines bl ON bl.id = jbl.boq_line_id
+          WHERE lml2.lpo_id = l.id
+          GROUP BY bl.id, bl.sub_category
+          ORDER BY bl.total_cost DESC
+          LIMIT 1
+        ) AS identifier,
         (SELECT GROUP_CONCAT(DISTINCT CONCAT(inv.id, ':::', inv.description) SEPARATOR ' | ')
          FROM lpo_mr_line lml2
          JOIN stocks st ON st.mr_line_id = lml2.mr_line_id

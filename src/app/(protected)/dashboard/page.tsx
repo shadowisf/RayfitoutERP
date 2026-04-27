@@ -31,6 +31,7 @@ import FinanceMedianPaymentDelayWidget from "./components/finance/W_Finance_Medi
 import FinanceRecentTransactionsWidget from "./components/finance/W_Finance_RecentTransactions";
 import QuickInitialApprovalWidget from "./components/manager/W_QuickInitialApproval";
 import QuickPriceApprovalWidget from "./components/manager/W_QuickPriceApproval";
+import FinanceSpendingByProjectWidget from "./components/finance/W_Finance_SpendingByProject";
 
 export default function Dashboard() {
   const bannerBackground = "/images/welcome-banner.jpg";
@@ -327,6 +328,8 @@ export default function Dashboard() {
             </div>
             <FinanceRecentTransactionsWidget />
           </div>
+
+          <FinanceSpendingByProjectWidget />
 
           <br />
           <br />

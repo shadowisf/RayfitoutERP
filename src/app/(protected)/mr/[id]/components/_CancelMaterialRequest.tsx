@@ -225,7 +225,7 @@ export default function CancelMaterialRequestButton({
 
   if (
     userInfo?.departmentID !== 8 &&
-    userInfo?.departmentID !== 9 &&
+    /*     userInfo?.departmentID !== 9 && */
     userInfo?.departmentID !== 16 &&
     userInfo?.departmentID !== 10
   ) {

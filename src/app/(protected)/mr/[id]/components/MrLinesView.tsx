@@ -228,6 +228,20 @@ export default function MrLinesView({
     return false;
   }, [mrLines]);
 
+  // Check if any item has a brand or specification set
+  const hasAnyBrandSpecs = useMemo(() => {
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          for (const item of mrLines[category][subCategory][supplier]) {
+            if (item.brand || item.specification) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }, [mrLines]);
+
   // Check if any item has QTY STOCKS (approved_proposed_quantity > quantity)
   const hasAnyQtyStocks = useMemo(() => {
     if (mrHeader.progress_id < 9) return false;
@@ -261,8 +275,8 @@ export default function MrLinesView({
     count += 2;
     // QTY columns: progress >= 9 means 3 cols (or 2 if QTY STOCKS hidden), else 1
     count += pid >= 9 ? (hasAnyQtyStocks ? 3 : 2) : 1;
-    // BOQ REF, BRAND & SPECS, ATTACHMENT
-    count += 3;
+    // BOQ REF (always) + BRAND & SPECS (conditional) + ATTACHMENT (conditional)
+    count += 1 + (hasAnyBrandSpecs ? 1 : 0) + (hasAnyAttachment ? 1 : 0);
     // APPROVAL STATUS (only at progress 2, 3, 5 — not at >= 10)
     // ACTIONS columns before price (progress 1, 5, 11, 3, 2 — mostly not at >= 10 except 11)
     if (pid === 11 && dept === mrHeader.department_id) count += 1; // ACTIONS
@@ -281,8 +295,8 @@ export default function MrLinesView({
     count += 4;
     // QTY columns: progress >= 9 means 3 cols (or 2 if QTY STOCKS hidden), else 1
     count += pid >= 9 ? (hasAnyQtyStocks ? 3 : 2) : 1;
-    // BOQ REF, BRAND & SPECS, ATTACHMENT
-    count += 3;
+    // BOQ REF (always) + BRAND & SPECS (conditional) + ATTACHMENT (conditional)
+    count += 1 + (hasAnyBrandSpecs ? 1 : 0) + (hasAnyAttachment ? 1 : 0);
     return count;
   })();
 
@@ -2471,9 +2485,11 @@ export default function MrLinesView({
                                     </th>
                                   )}
                                   <th style={{ width: "95px" }}>BOQ REF.</th>
-                                  <th style={{ width: "120px" }}>
-                                    BRAND & SPECS
-                                  </th>
+                                  {hasAnyBrandSpecs && (
+                                    <th style={{ width: "120px" }}>
+                                      BRAND & SPECS
+                                    </th>
+                                  )}
                                   {hasAnyAttachment && (
                                     <th style={{ width: "100px" }}>
                                       ATTACHMENT
@@ -2738,6 +2754,7 @@ export default function MrLinesView({
                                             "-"
                                           )}
                                         </td>
+                                        {hasAnyBrandSpecs && (
                                         <td>
                                           <div
                                             style={{
@@ -2773,6 +2790,7 @@ export default function MrLinesView({
                                             )}
                                           </div>
                                         </td>
+                                        )}
                                         {hasAnyAttachment && (
                                           <td>
                                             {item.attachment ? (
@@ -3387,7 +3405,9 @@ export default function MrLinesView({
                                 </th>
                               )}
                               <th style={{ width: "95px" }}>BOQ REF.</th>
-                              <th style={{ width: "120px" }}>BRAND & SPECS</th>
+                              {hasAnyBrandSpecs && (
+                                <th style={{ width: "120px" }}>BRAND & SPECS</th>
+                              )}
                               {hasAnyAttachment && (
                                 <th style={{ width: "100px" }}>ATTACHMENT</th>
                               )}
@@ -3626,6 +3646,7 @@ export default function MrLinesView({
                                         "-"
                                       )}
                                     </td>
+                                    {hasAnyBrandSpecs && (
                                     <td>
                                       <div
                                         style={{
@@ -3659,6 +3680,7 @@ export default function MrLinesView({
                                         )}
                                       </div>
                                     </td>
+                                    )}
 
                                     {hasAnyAttachment && (
                                       <td>
@@ -4321,9 +4343,13 @@ export default function MrLinesView({
                     <th style={{ width: "120px" }}>REQUESTED QTY</th>
                   )}
                   <th style={{ width: "90px" }}>BOQ REF.</th>
-                  <th style={{ width: "110px" }}>BRAND & SPECS</th>
+                  {hasAnyBrandSpecs && (
+                    <th style={{ width: "110px" }}>BRAND & SPECS</th>
+                  )}
                   {/* {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>} */}
-                  <th style={{ width: "90px" }}>ATTACHMENT</th>
+                  {hasAnyAttachment && (
+                    <th style={{ width: "90px" }}>ATTACHMENT</th>
+                  )}
                   {mrHeader.progress_id >= 10 && canSeePrice && (
                     <th style={{ width: "100px" }}>UNIT PRICE</th>
                   )}
@@ -4418,26 +4444,28 @@ export default function MrLinesView({
                         "-"
                       )}
                     </td>
-                    <td>
-                      {item.brand || item.specification ? (
-                        <InfoPopUpButton
-                          text={
-                            <>
-                              <small>BRAND</small>
-                              <h2>{item.brand || "-"}</h2>
+                    {hasAnyBrandSpecs && (
+                      <td>
+                        {item.brand || item.specification ? (
+                          <InfoPopUpButton
+                            text={
+                              <>
+                                <small>BRAND</small>
+                                <h2>{item.brand || "-"}</h2>
 
-                              <br />
+                                <br />
 
-                              <small>SPECIFICATION</small>
-                              <h2>{item.specification || "-"}</h2>
-                            </>
-                          }
-                          header="BRAND & SPECIFICATION"
-                        />
-                      ) : (
-                        "-"
-                      )}
-                    </td>
+                                <small>SPECIFICATION</small>
+                                <h2>{item.specification || "-"}</h2>
+                              </>
+                            }
+                            header="BRAND & SPECIFICATION"
+                          />
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    )}
 
                     {/* {mrHeader.progress_id >= 12 && (
                       <td>

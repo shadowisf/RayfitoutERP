@@ -22,4 +22,5 @@ export type MrHeader = {
   payment_jo_reference_id?: number | null;
   pr_payment_receipt?: string | null;
   item_count?: number;
+  identifier?: string | null;
 };

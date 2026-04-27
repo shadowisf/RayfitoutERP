@@ -218,7 +218,11 @@ export default function BoqReferencePopUp({
       }
 
       grouped[catKey].items.push(boqItem);
-      grouped[catKey].totalPrice += boqItem.total_cost || 0;
+      const itemCost =
+        Number(boqItem.total_cost) ||
+        Number(boqItem.rate_per_quantity) * Number(boqItem.quantity) ||
+        0;
+      grouped[catKey].totalPrice += itemCost;
 
       if (!grouped[catKey].subCategories.includes(boqItem.sub_category)) {
         grouped[catKey].subCategories.push(boqItem.sub_category);
@@ -253,7 +257,10 @@ export default function BoqReferencePopUp({
       }
 
       grouped[key].items.push(boqItem);
-      grouped[key].totalPrice += boqItem.total_cost || 0;
+      grouped[key].totalPrice +=
+        Number(boqItem.total_cost) ||
+        Number(boqItem.rate_per_quantity) * Number(boqItem.quantity) ||
+        0;
     });
 
     return Object.entries(grouped)
@@ -291,7 +298,11 @@ export default function BoqReferencePopUp({
           ...group,
           items: matchingItems,
           totalPrice: matchingItems.reduce(
-            (sum, item) => sum + (item.total_cost || 0),
+            (sum, item) =>
+              sum +
+              (Number(item.total_cost) ||
+                Number(item.rate_per_quantity) * Number(item.quantity) ||
+                0),
             0,
           ),
           subCategories: [
@@ -325,7 +336,11 @@ export default function BoqReferencePopUp({
           ...group,
           items: matchingItems,
           totalPrice: matchingItems.reduce(
-            (sum, item) => sum + (item.total_cost || 0),
+            (sum, item) =>
+              sum +
+              (Number(item.total_cost) ||
+                Number(item.rate_per_quantity) * Number(item.quantity) ||
+                0),
             0,
           ),
         };
@@ -1181,7 +1196,12 @@ export default function BoqReferencePopUp({
                                     backgroundColor: bgColor,
                                   }}
                                 >
-                                  {formatPriceAED(boqItem.total_cost)}
+                                  {formatPriceAED(
+                                    Number(boqItem.total_cost) ||
+                                      Number(boqItem.rate_per_quantity) *
+                                        Number(boqItem.quantity) ||
+                                      0,
+                                  )}
                                 </td>
                               )}
                               {showJoColumns && (
@@ -1358,7 +1378,12 @@ export default function BoqReferencePopUp({
 
                   const firstItem = subCatItems[0];
                   const subCatTotal = subCatItems.reduce(
-                    (sum, item) => sum + (item.total_cost || 0),
+                    (sum, item) =>
+                      sum +
+                      (Number(item.total_cost) ||
+                        Number(item.rate_per_quantity) *
+                          Number(item.quantity) ||
+                        0),
                     0,
                   );
                   const subCatSubcontractedWorksValue = subCatItems.reduce(
@@ -1578,7 +1603,7 @@ export default function BoqReferencePopUp({
                                   }}
                                 >
                                   {Number(boqItem.rate_per_quantity) > 0
-                                    ? formatPriceAED(boqItem.rate_per_quantity)
+                                    ? formatPrice(boqItem.rate_per_quantity)
                                     : "-"}
                                 </td>
                                 <td
@@ -1601,7 +1626,12 @@ export default function BoqReferencePopUp({
                                       backgroundColor: bgColor,
                                     }}
                                   >
-                                    {formatPriceAED(boqItem.total_cost)}
+                                    {formatPriceAED(
+                                      Number(boqItem.total_cost) ||
+                                        Number(boqItem.rate_per_quantity) *
+                                          Number(boqItem.quantity) ||
+                                        0,
+                                    )}
                                   </td>
                                 )}
                                 {showJoColumns && (
