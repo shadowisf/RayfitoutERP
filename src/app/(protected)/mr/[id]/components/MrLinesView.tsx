@@ -34,7 +34,7 @@ import QCRecheckButton from "./procurement/_QCRecheckButton";
 import ResolutionButton from "./procurement/_AddResolutionButton";
 import QSInitialApprovalButtons from "./quantitySurveyor/_InitialApprovalButton";
 import QSReviewButton from "./quantitySurveyor/_QSReviewButton";
-import SubmitForQSPricingApprovalButton from "./procurement/_SubmitForQSPricingApprovalButton";
+// import SubmitForQSPricingApprovalButton from "./procurement/_SubmitForQSPricingApprovalButton"; // disabled — QS Price Check stage bypassed
 import CheckPricesButton from "./quantitySurveyor/_CheckPricesButton";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import SubmitForQSApprovalButton from "./department/_SubmitForQSApprovalButton";
@@ -4758,69 +4758,37 @@ export default function MrLinesView({
         )}
 
       {/* Awaiting Quotations / Price Approval Rejected (Progress 7 or 11) - Procurement Submit for Pricing Approval */}
+      {/* QS Price Check stage is disabled — all MRs go directly to Manager Price Approval */}
       {userInfo?.departmentID === 9 &&
         (mrHeader.progress_id === 7 || mrHeader.progress_id === 11) && (
           <div className="bottom-nav">
             <div></div>
 
-            {/* ✅ Check if any item has BOQ reference */}
-            {hasAnyItemWithBoqReference() ? (
-              // If any item has BOQ → Submit for QS Price Approval
-              <SubmitForQSPricingApprovalButton
-                mrHeaderID={mrHeader.id}
-                disabled={
+            {/* Always submit directly to Manager Price Approval (QS Price Check bypassed) */}
+            <SubmitForPricingApprovalButton
+              mrHeaderID={mrHeader.id}
+              progressId={mrHeader.progress_id}
+              disabled={
+                !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+              }
+              style={{
+                opacity:
                   !allItemsHaveSupplierQuotations() ||
-                  hasAnyRejectedSuppliers() ||
-                  hasAnyQSRejectedSuppliers()
-                }
-                style={{
-                  opacity:
-                    !allItemsHaveSupplierQuotations() ||
-                    hasAnyRejectedSuppliers() ||
-                    hasAnyQSRejectedSuppliers()
-                      ? "0.5"
-                      : "1",
-                  cursor:
-                    !allItemsHaveSupplierQuotations() ||
-                    hasAnyRejectedSuppliers() ||
-                    hasAnyQSRejectedSuppliers()
-                      ? "not-allowed"
-                      : "pointer",
-                  pointerEvents:
-                    !allItemsHaveSupplierQuotations() ||
-                    hasAnyRejectedSuppliers() ||
-                    hasAnyQSRejectedSuppliers()
-                      ? "none"
-                      : "auto",
-                }}
-              />
-            ) : (
-              // If no items have BOQ → Submit directly to Manager Price Approval
-              <SubmitForPricingApprovalButton
-                mrHeaderID={mrHeader.id}
-                progressId={mrHeader.progress_id}
-                disabled={
-                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
-                }
-                style={{
-                  opacity:
-                    !allItemsHaveSupplierQuotations() ||
-                    hasAnyRejectedSuppliers()
-                      ? "0.5"
-                      : "1",
-                  cursor:
-                    !allItemsHaveSupplierQuotations() ||
-                    hasAnyRejectedSuppliers()
-                      ? "not-allowed"
-                      : "pointer",
-                  pointerEvents:
-                    !allItemsHaveSupplierQuotations() ||
-                    hasAnyRejectedSuppliers()
-                      ? "none"
-                      : "auto",
-                }}
-              />
-            )}
+                  hasAnyRejectedSuppliers()
+                    ? "0.5"
+                    : "1",
+                cursor:
+                  !allItemsHaveSupplierQuotations() ||
+                  hasAnyRejectedSuppliers()
+                    ? "not-allowed"
+                    : "pointer",
+                pointerEvents:
+                  !allItemsHaveSupplierQuotations() ||
+                  hasAnyRejectedSuppliers()
+                    ? "none"
+                    : "auto",
+              }}
+            />
           </div>
         )}
 
