@@ -38,7 +38,7 @@ export default function FinanceTotalSpentWidget() {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        minHeight: "180px",
+        minHeight: "150px",
       }}
     >
       <div

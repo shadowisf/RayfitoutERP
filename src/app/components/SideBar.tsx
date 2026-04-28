@@ -122,8 +122,14 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
   }, [userInfo]);
   */
 
-  const menuItems = [
-    { label: "Dashboard", path: "/dashboard", icon: "/icons/dashboard.svg" },
+  const menuItems: {
+    label: string;
+    path: string;
+    icon: string;
+    count?: number;
+    extraPaths?: string[];
+  }[] = [
+    { label: "Dashboard", path: "/dashboard", icon: "/icons/dashboard.svg", extraPaths: ["/finance"] },
     {
       label: "Procurement Tracker",
       path: "/mr",
@@ -168,9 +174,14 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
     },
   ];
 
-  const isActive = (path: string) => {
-    if (pathname === path) return true;
-    if (pathname.startsWith(path + "/")) return true;
+  const isActive = (item: { path: string; extraPaths?: string[] }) => {
+    if (pathname === item.path) return true;
+    if (pathname.startsWith(item.path + "/")) return true;
+    if (item.extraPaths) {
+      return item.extraPaths.some(
+        (ep) => pathname === ep || pathname.startsWith(ep + "/"),
+      );
+    }
     return false;
   };
 
@@ -216,7 +227,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
             {menuItems.map((item) => (
               <button
                 key={item.label}
-                className={isActive(item.path) ? "nav-active" : ""}
+                className={isActive(item) ? "nav-active" : ""}
                 onClick={() => router.push(item.path)}
                 style={{ textWrap: "nowrap" }}
               >
@@ -272,7 +283,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: isActive(item.path) ? "black" : "none",
+                background: isActive(item) ? "black" : "none",
                 border: "none",
                 borderRadius: "10px",
                 cursor: "pointer",
@@ -285,7 +296,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
                 style={{
                   width: "18px",
                   height: "18px",
-                  filter: isActive(item.path) ? "invert(1)" : "none",
+                  filter: isActive(item) ? "invert(1)" : "none",
                 }}
               />
               {item.count !== undefined && item.count > 0 && (

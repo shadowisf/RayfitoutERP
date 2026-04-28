@@ -37,7 +37,7 @@ export default function FinanceOutstandingPayablesWidget() {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        minHeight: "180px",
+        minHeight: "150px",
       }}
     >
       <span

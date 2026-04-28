@@ -32,6 +32,8 @@ import FinanceRecentTransactionsWidget from "./components/finance/W_Finance_Rece
 import QuickInitialApprovalWidget from "./components/manager/W_QuickInitialApproval";
 import QuickPriceApprovalWidget from "./components/manager/W_QuickPriceApproval";
 import FinanceSpendingByProjectWidget from "./components/finance/W_Finance_SpendingByProject";
+import FinanceTopVendorsBySpendWidget from "./components/finance/W_Finance_TopVendorsBySpend";
+import FinanceTopMaterialsBySpendWidget from "./components/finance/W_Finance_TopMaterialsBySpend";
 
 export default function Dashboard() {
   const bannerBackground = "/images/welcome-banner.jpg";
@@ -329,18 +331,30 @@ export default function Dashboard() {
             <FinanceRecentTransactionsWidget />
           </div>
 
+          <br />
+          <br />
+          <br />
           <FinanceSpendingByProjectWidget />
 
           <br />
           <br />
           <br />
+          <FinanceTopVendorsBySpendWidget />
+
+          <br />
+          <br />
+          <br />
+          <FinanceTopMaterialsBySpendWidget />
+
+          {/* <br />
+          <br />
+          <br />
           <div className="widget-grid overview two-col">
             <RisksAndExceptionFlagsWidget />
-            <TopMaterialsBySpendingChart />
             <TopVendorsBySpendWidget />
             <PriceTrendSignalsWidget />
-          </div>
-          <br />
+          </div> */}
+          {/* <br />
           <br />
           <br />
           <div
@@ -367,7 +381,7 @@ export default function Dashboard() {
             {projects.slice(0, 3).map((proj: any, index) => (
               <ProjectCard project={proj} key={index} />
             ))}
-          </div>
+          </div> */}
         </>
       )}
 
