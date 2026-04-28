@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type TopVendor = {
   supplier_id: number;
@@ -33,8 +34,29 @@ export default function FinanceTopVendorsBySpendWidget() {
 
   return (
     <>
-      <h2>Top Vendors By Spend</h2>
-      <br />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Top Vendors By Spend</h2>
+        <Link
+          href="/finance/vendors"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "7px 14px",
+            borderRadius: 50,
+            border: "1px solid rgba(223,223,223,1)",
+            backgroundColor: "white",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "rgba(30,30,30,1)",
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          VIEW FULL REPORT
+          <span style={{ fontSize: 14, lineHeight: 1 }}>›</span>
+        </Link>
+      </div>
       <div
         style={{
           backgroundColor: "white",

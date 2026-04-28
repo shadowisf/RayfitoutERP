@@ -574,7 +574,7 @@ export default function MR() {
       name: "Commercial Validation",
       statuses: [
         { name: "Quotations", progress_id: 7 },
-        { name: "QS Price Check", progress_id: 9 },
+        // { name: "QS Price Check", progress_id: 9 }, // disabled — skipped in favour of direct Manager Price Approval
         { name: "Manager Price Approval", progress_id: 10 },
       ],
     },
@@ -1779,9 +1779,7 @@ export default function MR() {
 
                                         <div>
                                           <small>IDENTIFIER</small>
-                                          <h3>
-                                            {lpoCard.identifier ?? "-"}
-                                          </h3>
+                                          <h3>{lpoCard.identifier ?? "-"}</h3>
                                         </div>
 
                                         <div>
@@ -2543,7 +2541,7 @@ export default function MR() {
                                   minHeight: "660px",
                                 }}
                               >
-                                No items
+                                No requests
                               </div>
                             )}
                           </div>
@@ -2905,7 +2903,7 @@ function TableView({
                     borderRadius: "12px",
                   }}
                 >
-                  No items found
+                  No requests
                 </div>
               ) : (
                 <table className="items-table alt two-toned fixed-layout">

@@ -208,6 +208,44 @@ export default function Dashboard() {
           <br />
           <br />
           <ExpectedDeliveriesWidget />
+
+          <br />
+          <br />
+          <br />
+          <h2>Financial Overview</h2>
+          <br />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2fr 1.2fr 2.2fr",
+              gap: "16px",
+              alignItems: "stretch",
+            }}
+          >
+            <FinanceTotalSpentWidget />
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+            >
+              <FinanceOutstandingPayablesWidget />
+              <FinanceMedianPaymentDelayWidget />
+            </div>
+            <FinanceRecentTransactionsWidget />
+          </div>
+
+          <br />
+          <br />
+          <br />
+          <FinanceSpendingByProjectWidget />
+
+          <br />
+          <br />
+          <br />
+          <FinanceTopVendorsBySpendWidget />
+
+          <br />
+          <br />
+          <br />
+          <FinanceTopMaterialsBySpendWidget />
         </>
       )}
 
