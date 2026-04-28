@@ -117,16 +117,14 @@ const CustomTooltip = ({ active, payload, label, unit, isMonthly }: any) => {
   return (
     <div
       style={{
-        backgroundColor: "white",
-        padding: "10px 14px",
-        borderRadius: "10px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-        border: "1px solid #e0e0e0",
-        fontSize: "12px",
+        backgroundColor: "rgba(20,20,20,1)",
+        padding: "12px 16px",
+        borderRadius: 10,
+        boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
       }}
     >
-      <div style={{ fontWeight: 600, marginBottom: "4px" }}>{label}</div>
-      <div style={{ color: "rgb(138, 168, 23)" }}>
+      <div style={{ fontSize: 11, color: "rgba(180,180,180,1)", marginBottom: 4, fontWeight: 400 }}>{label}</div>
+      <div style={{ fontSize: 16, color: "white", fontWeight: 700 }}>
         {formatNumber(payload[0].value)} {unit}
       </div>
     </div>
@@ -311,9 +309,9 @@ export default function StockHistoryWidget({
               stroke="rgb(138, 168, 23)"
               strokeWidth={2}
               fill="url(#stockGreenFill)"
-              dot={{ r: 3, fill: "rgb(138, 168, 23)", strokeWidth: 0 }}
+              dot={{ r: 5, fill: "rgb(138, 168, 23)", strokeWidth: 0 }}
               activeDot={{
-                r: 5,
+                r: 7,
                 fill: "rgb(138, 168, 23)",
                 strokeWidth: 2,
                 stroke: "#fff",

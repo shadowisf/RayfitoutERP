@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type RecentTransaction = {
   display_id: string;
@@ -38,16 +39,45 @@ export default function FinanceRecentTransactionsWidget() {
         padding: "20px 24px",
       }}
     >
-      <p
+      <div
         style={{
-          fontWeight: 600,
-          fontSize: "13px",
-          color: "rgba(74, 85, 101, 1)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
           marginBottom: "16px",
         }}
       >
-        Recent Transactions
-      </p>
+        <p
+          style={{
+            fontWeight: 600,
+            fontSize: "13px",
+            color: "rgba(74, 85, 101, 1)",
+            margin: 0,
+          }}
+        >
+          Recent Transactions
+        </p>
+        <Link
+          href="/finance/transactions"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "7px 14px",
+            borderRadius: 50,
+            border: "1px solid rgba(223,223,223,1)",
+            backgroundColor: "white",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "rgba(30,30,30,1)",
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          VIEW FULL REPORT
+          <span style={{ fontSize: 14, lineHeight: 1 }}>›</span>
+        </Link>
+      </div>
 
       {isLoading ? (
         <p style={{ fontSize: "13px", color: "rgba(150,150,150,1)" }}>
@@ -131,7 +161,7 @@ export default function FinanceRecentTransactionsWidget() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {formatAED(tx.amount)} AED
+                    AED {formatAED(tx.amount)}
                   </td>
                 </tr>
               );

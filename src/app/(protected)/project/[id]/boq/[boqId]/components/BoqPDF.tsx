@@ -976,6 +976,12 @@ export function BoqPDF({
                 <Text style={styles.infoLabel}>PROJECT</Text>
                 <Text style={styles.infoValue}>{boqHeader.project_name}</Text>
               </View>
+              {showPrices && (
+                <View style={styles.infoItem}>
+                  <Text style={styles.infoLabel}>CLIENT</Text>
+                  <Text style={styles.infoValue}>{boqHeader.client_name}</Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.infoRow}>
