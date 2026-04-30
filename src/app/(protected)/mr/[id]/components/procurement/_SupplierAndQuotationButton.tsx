@@ -6,7 +6,6 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import AttachQuotationButton from "./_AttachQuotationButton";
 import RejectCommentPopUp from "../manager/RejectCommentPopUp";
 import { MrHeader } from "../../types/mrHeader";
 import { MrLine } from "../../types/mrLine";
@@ -35,11 +34,15 @@ type SupplierQuotation = {
 type SupplierAndQuotationButtonProps = {
   mrHeader: MrHeader;
   mrLine: MrLine;
+  initialOpen?: boolean;
+  noTrigger?: boolean;
 };
 
 export default function SupplierAndQuotationButton({
   mrHeader,
   mrLine,
+  initialOpen = false,
+  noTrigger = false,
 }: SupplierAndQuotationButtonProps) {
   const router = useRouter();
   const { userInfo } = useAuth();
@@ -47,9 +50,8 @@ export default function SupplierAndQuotationButton({
   const pencilIcon = "/icons/pencil.svg";
   const plusIcon = "/icons/plus.svg";
   const trashIcon = "/icons/trash.svg";
-  const closeIcon = "/icons/cross-small.svg";
 
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(initialOpen);
   const [mode, setMode] = useState<"add" | "edit">("add");
   const [allSuppliersRejected, setAllSuppliersRejected] =
     useState<boolean>(false);
@@ -89,6 +91,7 @@ export default function SupplierAndQuotationButton({
   ]);
 
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const formatNumber = (value: unknown): string => {
     const num = Number(value);
@@ -97,6 +100,12 @@ export default function SupplierAndQuotationButton({
       return num.toString();
     }
     return parseFloat(num.toFixed(3)).toString();
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}kb`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)}mb`;
   };
 
   async function fetchSuppliers() {
@@ -117,6 +126,15 @@ export default function SupplierAndQuotationButton({
   useEffect(() => {
     checkExistingQuotations();
   }, [mrLine.id]);
+
+  useEffect(() => {
+    function handleQuotationsCreated() {
+      checkExistingQuotations();
+    }
+    window.addEventListener("quotations-created", handleQuotationsCreated);
+    return () =>
+      window.removeEventListener("quotations-created", handleQuotationsCreated);
+  }, []);
 
   async function checkExistingQuotations() {
     try {
@@ -619,105 +637,17 @@ export default function SupplierAndQuotationButton({
 
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          gap: "10px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {mrHeader.progress_id === 11 && allSuppliersRejected && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "15px",
-                padding: "5px 10px 5px 15px",
-                backgroundColor: "rgba(185, 28, 28, 1)",
-                color: "white",
-                borderRadius: "25px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <span>All Vendors Rejected</span>
-              <RejectCommentPopUp text={rejectComments} />
-            </div>
-          )}
-
-          {(mrHeader.progress_id === 11 || mrHeader.progress_id === 10) &&
-            allSuppliersPending &&
-            !allSuppliersRejected && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "10px",
-                  padding: "5px 15px",
-                  backgroundColor: "rgba(128, 128, 128, 1)",
-                  color: "white",
-                  borderRadius: "25px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <span>Manager Pending Approval</span>
-              </div>
-            )}
-
-          {[10, 11].includes(mrHeader.progress_id) && hasApprovedSupplier && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "10px",
-                padding: "5px 15px",
-                backgroundColor: "rgba(34, 150, 100, 1)",
-                color: "white",
-                borderRadius: "25px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <span>{approvedSupplierName}</span>
-            </div>
-          )}
-
-          {(mrHeader.progress_id === 11 || mrHeader.progress_id === 7) &&
-            (mode === "edit" ? (
-              <Button
-                componentType="button"
-                bgColor="rgba(239, 239, 239, 1)"
-                borderColor="rgba(223, 223, 223, 1)"
-                textColor="black"
-                onClick={() => setIsOpen(true)}
-                style={{
-                  padding: "7px 7px",
-                }}
-              >
-                <img src={pencilIcon} alt="pencil" />
-              </Button>
-            ) : (
-              <Button
-                componentType="button"
-                bgColor="rgba(239, 239, 239, 1)"
-                textColor="white"
-                borderColor="rgba(223, 223, 223, 1)"
-                onClick={() => setIsOpen(true)}
-                style={{
-                  padding: "7px 7px",
-                }}
-              >
-                <img src={plusIcon} alt="plus" />
-              </Button>
-            ))}
-        </div>
-
-        {(mrHeader.progress_id == 11 || mrHeader.progress_id == 9) && (
+      {!noTrigger && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: "10px",
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            {allSuppliersQSRejected && (
+            {mrHeader.progress_id === 11 && allSuppliersRejected && (
               <div
                 style={{
                   display: "flex",
@@ -731,30 +661,32 @@ export default function SupplierAndQuotationButton({
                   whiteSpace: "nowrap",
                 }}
               >
-                <span>Rejected by QS</span>
-                <RejectCommentPopUp text={qsRejectComments} />
+                <span>All Vendors Rejected</span>
+                <RejectCommentPopUp text={rejectComments} />
               </div>
             )}
 
-            {allSuppliersQSPending && !allSuppliersQSRejected && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "10px",
-                  padding: "5px 15px",
-                  backgroundColor: "rgba(128, 128, 128, 1)",
-                  color: "white",
-                  borderRadius: "25px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <span>QS Approval Pending</span>
-              </div>
-            )}
+            {(mrHeader.progress_id === 11 || mrHeader.progress_id === 10) &&
+              allSuppliersPending &&
+              !allSuppliersRejected && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "10px",
+                    padding: "5px 15px",
+                    backgroundColor: "rgba(128, 128, 128, 1)",
+                    color: "white",
+                    borderRadius: "25px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <span>Manager Pending Approval</span>
+                </div>
+              )}
 
-            {hasQSApprovedSupplier && (
+            {[10, 11].includes(mrHeader.progress_id) && hasApprovedSupplier && (
               <div
                 style={{
                   display: "flex",
@@ -768,204 +700,526 @@ export default function SupplierAndQuotationButton({
                   whiteSpace: "nowrap",
                 }}
               >
-                <span>Approved by QS</span>
+                <span>{approvedSupplierName}</span>
               </div>
             )}
+
+            {(mrHeader.progress_id === 11 || mrHeader.progress_id === 7) &&
+              (mode === "edit" ? (
+                <Button
+                  componentType="button"
+                  bgColor="rgba(239, 239, 239, 1)"
+                  borderColor="rgba(223, 223, 223, 1)"
+                  textColor="black"
+                  onClick={() => setIsOpen(true)}
+                  style={{
+                    padding: "7px 7px",
+                  }}
+                >
+                  <img src={pencilIcon} alt="pencil" />
+                </Button>
+              ) : (
+                <Button
+                  componentType="button"
+                  bgColor="rgba(239, 239, 239, 1)"
+                  textColor="white"
+                  borderColor="rgba(223, 223, 223, 1)"
+                  onClick={() => setIsOpen(true)}
+                  style={{
+                    padding: "7px 7px",
+                  }}
+                >
+                  <img src={plusIcon} alt="plus" />
+                </Button>
+              ))}
           </div>
-        )}
-      </div>
 
-      {isOpen && (
-        <FormPopUp
-          header={
-            mode === "edit"
-              ? `UPDATE VENDORS & QUOTATIONS FOR ${mrLine.material_description}`
-              : `ADD VENDORS & QUOTATIONS FOR ${mrLine.material_description}`
-          }
-          setIsOpen={setIsOpen}
-          handleSubmit={handleSupplierAndQuotationSubmit}
-          addButtonLabel={"CONFIRM"}
-          style={{ minWidth: "1875px" }}
-        >
-          <>
-            <table className="items-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>VENDOR</th>
-                  <th>QUOTATION</th>
-                  <th>REQUESTED QTY</th>
-                  <th>PROPOSED QTY</th>
-                  <th>UNIT PRICE</th>
-                  <th>TOTAL PRICE</th>
-                  <th>QUOTED BY</th>
-                  <th>ACTION</th>
-                </tr>
-              </thead>
-              <tbody>
-                {supplierQuotations.map(
-                  (quotation: SupplierQuotation, index: number) => (
-                    <tr key={index}>
-                      <td>{index + 1}</td>
-                      <td style={{ minWidth: "300px" }}>
-                        <SingleSelectDropdown
-                          label={"VENDOR"}
-                          selectedValue={quotation.supplier_id}
-                          onChange={(value) =>
-                            updateQuotation(index, "supplier_id", value)
-                          }
-                          placeholder={"SELECT VENDOR"}
-                          dbData={suppliers}
-                          idField="id"
-                          labelField="name"
-                          noLabel
-                          required
-                          bottomButtonComponent={
-                            <CreateSupplierButton
-                              full
-                              onSuccess={() => fetchSuppliers()}
-                            />
-                          }
-                        />
-                      </td>
-                      <td>
-                        {(quotation.quotation_file ||
-                          quotation.quotation_url) && (
-                          <Button
-                            componentType="none"
-                            bgColor="white"
-                            borderColor="rgba(223, 223, 223, 1)"
-                            textColor="black"
-                            style={{
-                              minWidth: "200px",
-                              padding: "7px 20px",
-                              borderRadius: "25px",
-                            }}
-                          >
-                            Quotation
-                            <img
-                              src={closeIcon}
-                              alt="remove"
-                              style={{
-                                cursor: "pointer",
-                              }}
-                              onClick={() => handleRemoveFile(index)}
-                            />
-                          </Button>
-                        )}
+          {(mrHeader.progress_id == 11 || mrHeader.progress_id == 9) && (
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {allSuppliersQSRejected && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "15px",
+                    padding: "5px 10px 5px 15px",
+                    backgroundColor: "rgba(185, 28, 28, 1)",
+                    color: "white",
+                    borderRadius: "25px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <span>Rejected by QS</span>
+                  <RejectCommentPopUp text={qsRejectComments} />
+                </div>
+              )}
 
-                        {!quotation.quotation_file &&
-                          !quotation.quotation_url && (
-                            <AttachQuotationButton
-                              onFileSelect={(file) =>
-                                handleFileSelection(index, file)
-                              }
-                            />
-                          )}
-                      </td>
-                      <td>
-                        {formatNumber(mrLine.quantity)} {mrLine.unit}
-                      </td>
-                      <td style={{ minWidth: "275px" }}>
-                        <div>
-                          <InputItem
-                            label={""}
-                            value={quotation.proposed_quantity}
-                            type={"text"}
-                            placeholder="ENTER PROPOSED QUANTITY"
-                            onChange={(e) => {
-                              handleNumericInput(
-                                index,
-                                "proposed_quantity",
-                                e.target.value,
-                              );
-                            }}
-                            required
-                          />
-                        </div>
-                      </td>
-                      <td style={{ minWidth: "250px" }}>
-                        <div className="input-prefix right">
-                          <span>AED</span>
-                          <input
-                            style={{ paddingRight: "50px" }}
-                            type="text"
-                            placeholder="ENTER UNIT PRICE"
-                            value={quotation.unit_price}
-                            onChange={(e) => {
-                              handleNumericInput(
-                                index,
-                                "unit_price",
-                                e.target.value,
-                              );
-                            }}
-                            required
-                          />
-                        </div>
-                      </td>
-                      <td style={{ minWidth: "225px" }}>
-                        <div className="input-prefix right">
-                          <span>AED</span>
-                          <input
-                            style={{ paddingRight: "50px" }}
-                            type="text"
-                            placeholder="CALCULATING..."
-                            value={quotation.total_price}
-                            disabled
-                          />
-                        </div>
-                      </td>
+              {allSuppliersQSPending && !allSuppliersQSRejected && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "10px",
+                    padding: "5px 15px",
+                    backgroundColor: "rgba(128, 128, 128, 1)",
+                    color: "white",
+                    borderRadius: "25px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <span>QS Approval Pending</span>
+                </div>
+              )}
 
-                      <td>{quotation.created_by || "-"}</td>
-
-                      {supplierQuotations.length > 1 && index > 0 && (
-                        <td>
-                          <Button
-                            componentType={"button"}
-                            bgColor={"rgba(239, 239, 239, 1)"}
-                            borderColor={"rgba(223, 223, 223, 1)"}
-                            textColor={"black"}
-                            style={{ padding: "7px 7px" }}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleRemoveRow(index);
-                            }}
-                          >
-                            <img src={trashIcon} alt="trash icon" />
-                          </Button>
-                        </td>
-                      )}
-
-                      {(supplierQuotations.length === 1 || index === 0) && (
-                        <td></td>
-                      )}
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-
-            <br />
-
-            <Button
-              componentType={"button"}
-              bgColor={"rgba(239, 239, 239, 1)"}
-              borderColor={"rgba(239, 239, 239, 1)"}
-              textColor={"black"}
-              onClick={(e) => {
-                e.preventDefault();
-                handleAddRow();
-              }}
-              full
-              style={{ padding: "20px 0px" }}
-            >
-              ADD VENDOR +
-            </Button>
-
-            <br />
-          </>
-        </FormPopUp>
+              {hasQSApprovedSupplier && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "10px",
+                    padding: "5px 15px",
+                    backgroundColor: "rgba(34, 150, 100, 1)",
+                    color: "white",
+                    borderRadius: "25px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <span>Approved by QS</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
+
+      {isOpen &&
+        (() => {
+          const validTotalPrices = supplierQuotations
+            .map((q) => parseFloat(q.total_price || ""))
+            .filter((p) => !isNaN(p) && p > 0);
+          const minTotal =
+            validTotalPrices.length > 0 ? Math.min(...validTotalPrices) : null;
+
+          return (
+            <FormPopUp
+              header={
+                mode === "edit"
+                  ? `UPDATE VENDORS & QUOTATIONS`
+                  : `ADD VENDORS & QUOTATIONS`
+              }
+              setIsOpen={setIsOpen}
+              handleSubmit={handleSupplierAndQuotationSubmit}
+              addButtonLabel="CONFIRM"
+              style={{ minWidth: "97dvw" }}
+            >
+              <>
+                {/* Info card */}
+                <div
+                  style={{
+                    border: "1px solid rgba(239,239,239,1)",
+                    borderRadius: "10px",
+                    padding: "18px 24px",
+                    display: "flex",
+                    gap: "48px",
+                    marginBottom: "24px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div>
+                    <small>MR NUMBER</small>
+                    <h2>
+                      MR-
+                      {mrHeader.identifier ||
+                        String(mrHeader.id).toString().padStart(5, "0")}
+                    </h2>
+                  </div>
+                  <div>
+                    <small>PROJECT</small>
+                    <h2>{mrHeader.project_name || "—"}</h2>
+                  </div>
+                  <div>
+                    <small>ITEM(S)</small>
+                    <h2>{mrLine.material_description}</h2>
+                  </div>
+                  <div>
+                    <small>QUOTED BY</small>
+                    <h2>{userInfo?.name}</h2>
+                  </div>
+                </div>
+
+                <h4 style={{ marginBottom: "16px" }}>
+                  VENDORS &amp; QUOTATIONS
+                </h4>
+
+                <table className="items-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: "40px" }}>#</th>
+                      <th style={{ width: "275px" }}>VENDOR</th>
+                      <th>QUOTATION</th>
+                      <th style={{ width: "100px" }}>REQ. QTY</th>
+                      <th style={{ width: "180px" }}>PROPOSED QTY</th>
+                      <th style={{ width: "180px" }}>UNIT PRICE</th>
+                      <th style={{ width: "180px" }}>TOTAL PRICE</th>
+                      <th style={{ width: "100px" }}>LEAD TIME</th>
+                      <th style={{ width: "130px" }}>PAYMENT TYPE</th>
+                      <th style={{ width: "40px" }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supplierQuotations.map(
+                      (quotation: SupplierQuotation, index: number) => {
+                        const supplier = suppliers.find(
+                          (s) => String(s.id) === String(quotation.supplier_id),
+                        );
+                        const unitVal = parseFloat(quotation.unit_price || "");
+                        const totalVal = parseFloat(
+                          quotation.total_price || "",
+                        );
+                        const totalAlert =
+                          !isNaN(totalVal) && totalVal > 0 && minTotal !== null
+                            ? totalVal === minTotal
+                              ? "lowest"
+                              : `+${Math.round(((totalVal - minTotal) / minTotal) * 100)}% vs lowest`
+                            : null;
+
+                        const hasFile =
+                          quotation.quotation_file || quotation.quotation_url;
+                        const fileName = quotation.quotation_file
+                          ? quotation.quotation_file.name
+                          : (quotation.quotation_url
+                              .split("/")
+                              .pop()
+                              ?.split("?")[0] ?? "quotation");
+                        const fileExt = (
+                          fileName.split(".").pop() ?? "FILE"
+                        ).toUpperCase();
+                        const fileSize = quotation.quotation_file
+                          ? formatFileSize(quotation.quotation_file.size)
+                          : null;
+                        const isImage = [
+                          "JPG",
+                          "JPEG",
+                          "PNG",
+                          "GIF",
+                          "WEBP",
+                        ].includes(fileExt);
+                        const imagePreviewUrl = isImage
+                          ? quotation.quotation_file
+                            ? URL.createObjectURL(quotation.quotation_file)
+                            : quotation.quotation_url
+                          : null;
+
+                        return (
+                          <tr key={index}>
+                            <td>{index + 1}</td>
+                            <td style={{ width: "275px", maxWidth: "275px" }}>
+                              <SingleSelectDropdown
+                                label={"VENDOR"}
+                                selectedValue={quotation.supplier_id}
+                                onChange={(value) =>
+                                  updateQuotation(index, "supplier_id", value)
+                                }
+                                placeholder={"SELECT VENDOR"}
+                                dbData={suppliers}
+                                idField="id"
+                                labelField="name"
+                                noLabel
+                                required
+                                bottomButtonComponent={
+                                  <CreateSupplierButton
+                                    full
+                                    onSuccess={() => fetchSuppliers()}
+                                  />
+                                }
+                              />
+                            </td>
+                            <td style={{ width: "250px", maxWidth: "250px" }}>
+                              {hasFile ? (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: "10px",
+                                    border: "1px solid rgba(207,207,207,1)",
+                                    borderRadius: "8px",
+                                    padding: "0px 8px",
+                                    height: "40px",
+                                    boxSizing: "border-box",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "10px",
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    {isImage ? (
+                                      <img
+                                        src={imagePreviewUrl!}
+                                        alt="preview"
+                                        style={{
+                                          width: "32px",
+                                          height: "32px",
+                                          objectFit: "cover",
+                                          borderRadius: "4px",
+                                          flexShrink: 0,
+                                        }}
+                                      />
+                                    ) : (
+                                      <img
+                                        src="/icons/pdf.svg"
+                                        alt="file"
+                                        style={{
+                                          width: "24px",
+                                          flexShrink: 0,
+                                        }}
+                                      />
+                                    )}
+                                    <div style={{ overflow: "hidden" }}>
+                                      <div
+                                        style={{
+                                          fontWeight: 600,
+                                          fontSize: "12px",
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        {fileName}
+                                      </div>
+                                      {fileSize && (
+                                        <div
+                                          style={{
+                                            color: "rgba(150,150,150,1)",
+                                            fontSize: "10px",
+                                          }}
+                                        >
+                                          {fileSize}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    componentType="button"
+                                    style={{ padding: "7px 7px" }}
+                                    onClick={() => handleRemoveFile(index)}
+                                    bgColor={"rgba(239, 239, 239, 1)"}
+                                    borderColor={"rgba(223, 223, 223, 1)"}
+                                    textColor={"black"}
+                                  >
+                                    <img src={trashIcon} alt="remove" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <label
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent:
+                                      dragOverIndex === index
+                                        ? "center"
+                                        : "space-between",
+                                    gap: "10px",
+                                    border: `1.5px dashed ${dragOverIndex === index ? "rgba(169,255,218,1)" : "rgba(207,207,207,1)"}`,
+                                    borderRadius: "8px",
+                                    padding: "0px 8px",
+                                    height: "40px",
+                                    cursor: "pointer",
+                                    boxSizing: "border-box",
+                                    backgroundColor:
+                                      dragOverIndex === index
+                                        ? "rgba(169,255,218,1)"
+                                        : "white",
+                                  }}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    setDragOverIndex(index);
+                                  }}
+                                  onDragLeave={() => setDragOverIndex(null)}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    setDragOverIndex(null);
+                                    const file = e.dataTransfer.files?.[0];
+                                    if (file) handleFileSelection(index, file);
+                                  }}
+                                >
+                                  <input
+                                    type="file"
+                                    style={{ display: "none" }}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file)
+                                        handleFileSelection(index, file);
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                  {dragOverIndex === index ? (
+                                    <span
+                                      style={{
+                                        color: "rgba(34,150,100,1)",
+                                        fontSize: "12px",
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      DROP HERE
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <span
+                                        style={{
+                                          color: "rgba(150,150,150,1)",
+                                          fontSize: "12px",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        Select File or Drop
+                                      </span>
+                                      <Button
+                                        componentType={"none"}
+                                        bgColor={"black"}
+                                        borderColor={"black"}
+                                        textColor={"black"}
+                                        style={{ padding: "7px 7px" }}
+                                      >
+                                        <img
+                                          src="/icons/upload.svg"
+                                          alt="upload"
+                                        />
+                                      </Button>
+                                    </>
+                                  )}
+                                </label>
+                              )}
+                            </td>
+                            <td>
+                              {formatNumber(mrLine.quantity)} {mrLine.unit}
+                            </td>
+                            <td style={{ minWidth: "210px" }}>
+                              <InputItem
+                                label={""}
+                                value={quotation.proposed_quantity}
+                                type={"text"}
+                                placeholder="ENTER PROPOSED QTY"
+                                onChange={(e) => {
+                                  handleNumericInput(
+                                    index,
+                                    "proposed_quantity",
+                                    e.target.value,
+                                  );
+                                }}
+                                required
+                              />
+                            </td>
+                            <td style={{ minWidth: "225px" }}>
+                              <div className="input-prefix right">
+                                <span>AED</span>
+                                <input
+                                  style={{ paddingRight: "50px" }}
+                                  type="text"
+                                  placeholder="ENTER UNIT PRICE"
+                                  value={quotation.unit_price}
+                                  onChange={(e) => {
+                                    handleNumericInput(
+                                      index,
+                                      "unit_price",
+                                      e.target.value,
+                                    );
+                                  }}
+                                  required
+                                />
+                              </div>
+                            </td>
+                            <td style={{ minWidth: "210px" }}>
+                              <div className="input-prefix right">
+                                <span>AED</span>
+                                <input
+                                  style={{ paddingRight: "50px" }}
+                                  type="text"
+                                  placeholder="CALCULATING..."
+                                  value={quotation.total_price}
+                                  disabled
+                                />
+                              </div>
+                              {totalAlert && (
+                                <div style={{ height: 0, overflow: "visible", position: "relative" }}>
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      top: "4px",
+                                      left: 0,
+                                      fontSize: "10px",
+                                      fontWeight: 600,
+                                      whiteSpace: "nowrap",
+                                      color:
+                                        totalAlert === "lowest"
+                                          ? "rgba(0,163,93,1)"
+                                          : "rgba(220,38,38,1)",
+                                    }}
+                                  >
+                                    {totalAlert === "lowest"
+                                      ? "Lowest ✓"
+                                      : totalAlert}
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                            <td>{supplier?.avg_lead_time || "-"}</td>
+                            <td>{supplier?.type || "-"}</td>
+                            {supplierQuotations.length > 1 && index > 0 ? (
+                              <td>
+                                <Button
+                                  componentType="button"
+                                  bgColor="rgba(239, 239, 239, 1)"
+                                  borderColor="rgba(223, 223, 223, 1)"
+                                  textColor="black"
+                                  style={{ padding: "7px 7px" }}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleRemoveRow(index);
+                                  }}
+                                >
+                                  <img src={trashIcon} alt="trash icon" />
+                                </Button>
+                              </td>
+                            ) : (
+                              <td></td>
+                            )}
+                          </tr>
+                        );
+                      },
+                    )}
+                  </tbody>
+                </table>
+
+                <br />
+
+                <Button
+                  componentType={"button"}
+                  bgColor={"rgba(239, 239, 239, 1)"}
+                  borderColor={"rgba(239, 239, 239, 1)"}
+                  textColor={"black"}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleAddRow();
+                  }}
+                  full
+                  style={{ padding: "20px 0px" }}
+                >
+                  + ADD MORE
+                </Button>
+
+                <br />
+              </>
+            </FormPopUp>
+          );
+        })()}
     </>
   );
 }

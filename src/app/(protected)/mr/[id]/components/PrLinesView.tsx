@@ -503,7 +503,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
 
   return (
     <>
-      <div className="mr-lines-view">
+      <div className="mr-lines-view mr-with-id">
         <div className="subcategory-header">
           <h2 style={{ textTransform: "uppercase" }}>PAYMENT REQUEST ITEMS</h2>
 

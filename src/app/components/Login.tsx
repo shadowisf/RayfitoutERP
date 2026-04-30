@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import InputItem from "./InputItem";
 import Button from "./Button";
 import { login, completeNewPassword } from "@/lib/auth";
@@ -145,6 +145,7 @@ export default function Login() {
                   borderColor={"black"}
                   textColor={"white"}
                   full
+                  disabled={loading}
                 >
                   {loading ? "LOGGING IN..." : "LOGIN"}
                 </Button>

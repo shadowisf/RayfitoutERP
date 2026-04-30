@@ -59,7 +59,7 @@ export default function SubmitForQSApprovalButton({
         borderColor="white"
         textColor="black"
         onClick={() => setIsOpen(true)}
-        style={{ padding: "7px 20px", ...style }}
+        style={{ ...style }}
         disabled={disabled}
       >
         SUBMIT FOR QS REVIEW

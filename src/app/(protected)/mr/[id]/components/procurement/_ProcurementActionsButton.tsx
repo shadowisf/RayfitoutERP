@@ -4,41 +4,43 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { pdf } from "@react-pdf/renderer";
 import Button from "@/app/components/Button";
-import FormPopUp from "@/app/components/FormPopup";
-import InputItem from "@/app/components/InputItem";
 import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
 import { MrPDF } from "../MrPDF";
 import { toast } from "@/app/components/Toast";
+import SupplierAndQuotationButton from "./_SupplierAndQuotationButton";
+import BulkQuotationCreator, {
+  BulkQuotationItem,
+} from "@/app/(protected)/mr/components/_BulkQuotationCreator";
 
 type Props = {
   selectedItemIds: Set<number>;
   setSelectedItemIds: (ids: Set<number>) => void;
-  allCategoryItems: MrLine[]; // all flat items visible in current category view
+  allCategoryItems: MrLine[];
   mrHeader: MrHeader;
-  category: string; // label shown in the PDF filename, e.g. "MECHANICAL" or "ALL"
 };
 
-export default function QSActionsButton({
+export default function ProcurementActionsButton({
   selectedItemIds,
   setSelectedItemIds,
   allCategoryItems,
   mrHeader,
-  category,
 }: Props) {
   const router = useRouter();
-
   const downloadIcon = "/icons/download.svg";
 
   // ── Dropdown states ────────────────────────────────────────────────────────
   const [actionsOpen, setActionsOpen] = useState(false);
-
-  // ── Confirm dialog states ──────────────────────────────────────────────────
-  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
-  const [rejectText, setRejectText] = useState("");
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-
   const [isDownloading, setIsDownloading] = useState(false);
+
+  // ── Single-item quotation trigger ─────────────────────────────────────────
+  const [singleItemForQuotation, setSingleItemForQuotation] =
+    useState<MrLine | null>(null);
+  const [singleItemKey, setSingleItemKey] = useState(0);
+
+  // ── Bulk quotation trigger ────────────────────────────────────────────────
+  const [showBulkQuotation, setShowBulkQuotation] = useState(false);
+  const [bulkQuotationKey, setBulkQuotationKey] = useState(0);
 
   // ── Outside-click refs ────────────────────────────────────────────────────
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -52,58 +54,21 @@ export default function QSActionsButton({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ── Bulk actions ───────────────────────────────────────────────────────────
-  async function handleBulkApprove() {
+  // ── Actions ────────────────────────────────────────────────────────────────
+  function handleAddVendorAndQuotation() {
     setActionsOpen(false);
-    const ids = Array.from(selectedItemIds);
-    await Promise.all(
-      ids.map((id) =>
-        fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "setQSReviewNeedOrder", id }),
-        }),
-      ),
-    );
-    setSelectedItemIds(new Set());
-    router.refresh();
-  }
 
-  async function handleBulkReject() {
-    const ids = Array.from(selectedItemIds);
-    await Promise.all(
-      ids.map((id) =>
-        fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "rejectItemQS",
-            id,
-            comment: rejectText,
-          }),
-        }),
-      ),
-    );
-    setSelectedItemIds(new Set());
-    setConfirmRejectOpen(false);
-    setRejectText("");
-    router.refresh();
-  }
-
-  async function handleBulkDelete() {
-    const ids = Array.from(selectedItemIds);
-    await Promise.all(
-      ids.map((id) =>
-        fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "deleteItem", id }),
-        }),
-      ),
-    );
-    setSelectedItemIds(new Set());
-    setConfirmDeleteOpen(false);
-    router.refresh();
+    if (selectedItemIds.size === 1) {
+      const itemId = Array.from(selectedItemIds)[0];
+      const item = allCategoryItems.find((i) => i.id === itemId) ?? null;
+      if (item) {
+        setSingleItemForQuotation(item);
+        setSingleItemKey((k) => k + 1);
+      }
+    } else if (selectedItemIds.size > 1) {
+      setBulkQuotationKey((k) => k + 1);
+      setShowBulkQuotation(true);
+    }
   }
 
   // ── PDF download ───────────────────────────────────────────────────────────
@@ -164,7 +129,26 @@ export default function QSActionsButton({
     downloadPDF(selected, "SELECTED");
   }
 
-  // ── Shared dropdown menu styles ────────────────────────────────────────────
+  // ── Bulk quotation items ───────────────────────────────────────────────────
+  const bulkItems: BulkQuotationItem[] = Array.from(selectedItemIds)
+    .map((id) => allCategoryItems.find((i) => i.id === id))
+    .filter((item): item is MrLine => !!item)
+    .map((item) => ({
+      line_id: item.id,
+      mr_header_id: item.mr_header_id,
+      material_description: item.material_description,
+      quantity: item.quantity,
+      unit: item.unit,
+      progress_id: mrHeader.progress_id,
+      type: mrHeader.type,
+      delivery_location: item.delivery_location,
+      progress_name: mrHeader.progress_name,
+      requested_by: mrHeader.requested_by,
+      project_name: item.project_name || mrHeader.project_name,
+      lpo_id: null,
+    }));
+
+  // ── Shared dropdown styles ─────────────────────────────────────────────────
   const dropdownStyle: React.CSSProperties = {
     position: "absolute",
     top: "calc(100% + 4px)",
@@ -174,7 +158,7 @@ export default function QSActionsButton({
     borderRadius: "8px",
     boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
     zIndex: 100,
-    minWidth: "160px",
+    minWidth: "200px",
     overflow: "hidden",
   };
 
@@ -197,7 +181,7 @@ export default function QSActionsButton({
         {/* ── Actions dropdown ───────────────────────────────────────────── */}
         <div ref={actionsRef} style={{ position: "relative" }}>
           <Button
-            componentType={"button"}
+            componentType="button"
             bgColor={selectedItemIds.size === 0 ? "white" : "black"}
             borderColor={
               selectedItemIds.size === 0 ? "rgba(211, 211, 211, 1)" : "black"
@@ -211,47 +195,28 @@ export default function QSActionsButton({
 
           {actionsOpen && (
             <div style={dropdownStyle}>
-              {[
-                { label: "Approve", onClick: handleBulkApprove },
-                {
-                  label: "Reject",
-                  onClick: () => {
-                    setActionsOpen(false);
-                    setConfirmRejectOpen(true);
-                  },
-                },
-                {
-                  label: "Delete",
-                  onClick: () => {
-                    setActionsOpen(false);
-                    setConfirmDeleteOpen(true);
-                  },
-                },
-              ].map((opt) => (
-                <button
-                  key={opt.label}
-                  type="button"
-                  onClick={opt.onClick}
-                  style={dropdownItemStyle}
-                  onMouseEnter={(e) =>
-                    ((e.target as HTMLElement).style.backgroundColor =
-                      "rgba(245,245,245,1)")
-                  }
-                  onMouseLeave={(e) =>
-                    ((e.target as HTMLElement).style.backgroundColor =
-                      "transparent")
-                  }
-                >
-                  {opt.label}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={handleAddVendorAndQuotation}
+                style={dropdownItemStyle}
+                onMouseEnter={(e) =>
+                  ((e.target as HTMLElement).style.backgroundColor =
+                    "rgba(245,245,245,1)")
+                }
+                onMouseLeave={(e) =>
+                  ((e.target as HTMLElement).style.backgroundColor =
+                    "transparent")
+                }
+              >
+                Add Vendor &amp; Quotation
+              </button>
             </div>
           )}
         </div>
 
         {/* ── Download button (selected items only) ─────────────────────── */}
         <Button
-          componentType={"button"}
+          componentType="button"
           bgColor={selectedItemIds.size === 0 ? "white" : "black"}
           borderColor={
             selectedItemIds.size === 0 ? "rgba(211, 211, 211, 1)" : "black"
@@ -276,50 +241,44 @@ export default function QSActionsButton({
         </Button>
       </div>
 
-      {/* ── Confirm reject ─────────────────────────────────────────────────── */}
-      {confirmRejectOpen && (
-        <FormPopUp
-          header="REJECT SELECTED ITEMS"
-          setIsOpen={(open) => {
-            if (!open) {
-              setConfirmRejectOpen(false);
-              setRejectText("");
-            }
+      {/* ── Single-item quotation popup (trigger button hidden off-screen) ── */}
+      {singleItemForQuotation && (
+        <div
+          style={{
+            position: "absolute",
+            left: "-9999px",
+            width: "1px",
+            height: "1px",
+            overflow: "hidden",
           }}
-          handleSubmit={handleBulkReject}
-          addButtonLabel="CONFIRM"
         >
-          Are you sure you want to reject {selectedItemIds.size} selected item
-          {selectedItemIds.size !== 1 ? "s" : ""}?
-          <br />
-          <br />
-          <br />
-          <div className="input-row full">
-            <InputItem
-              label={"COMMENTS"}
-              value={rejectText}
-              type={"textarea"}
-              placeholder={"ENTER COMMENTS"}
-              required
-              onChange={(e) => setRejectText(e.target.value)}
-            />
-          </div>
-        </FormPopUp>
+          <SupplierAndQuotationButton
+            key={singleItemKey}
+            mrHeader={mrHeader}
+            mrLine={singleItemForQuotation}
+            initialOpen
+            noTrigger
+          />
+        </div>
       )}
 
-      {/* ── Confirm delete ─────────────────────────────────────────────────── */}
-      {confirmDeleteOpen && (
-        <FormPopUp
-          header="DELETE SELECTED ITEMS"
-          setIsOpen={(open) => {
-            if (!open) setConfirmDeleteOpen(false);
+      {/* ── Bulk quotation creator ─────────────────────────────────────── */}
+      {showBulkQuotation && bulkItems.length > 1 && (
+        <BulkQuotationCreator
+          key={bulkQuotationKey}
+          selectedItems={bulkItems}
+          onClear={() => {
+            setShowBulkQuotation(false);
+            setSelectedItemIds(new Set());
           }}
-          handleSubmit={handleBulkDelete}
-          addButtonLabel="CONFIRM"
-        >
-          Are you sure you want to delete {selectedItemIds.size} selected item
-          {selectedItemIds.size !== 1 ? "s" : ""}? This action cannot be undone.
-        </FormPopUp>
+          onSuccess={() => {
+            setShowBulkQuotation(false);
+            setSelectedItemIds(new Set());
+            router.refresh();
+          }}
+          openOnMount
+          mrRef={mrHeader.identifier || String(mrHeader.id)}
+        />
       )}
     </>
   );

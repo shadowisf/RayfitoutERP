@@ -33,6 +33,10 @@ small {
   color: rgba(112, 112, 112, 1);
 }
 
+input {
+  background-color: white !important;
+}
+
 input,
 select,
 textarea {
@@ -116,6 +120,10 @@ button {
     img {
       width: 12px;
     }
+
+    &:hover:not(:disabled) {
+      opacity: 0.75;
+    }
   }
 
   &:disabled {
@@ -136,6 +144,11 @@ button {
 
   img {
     width: 12px;
+    cursor: pointer;
+  }
+
+  &:hover:not([disabled]):not(.disabled) {
+    opacity: 0.75;
     cursor: pointer;
   }
 }
@@ -868,7 +881,11 @@ label {
 
 .items-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 5px;
+  border: 1px solid rgba(239, 239, 239, 1);
+  overflow: hidden;
 
   &.alt {
     td {
@@ -876,7 +893,7 @@ label {
     }
   }
 
-  &.two-toned {
+  /* &.two-toned {
     tbody tr:nth-child(even) td {
       background-color: rgba(246, 246, 246, 1);
     }
@@ -884,7 +901,7 @@ label {
     tbody tr:nth-child(odd) td {
       background-color: white;
     }
-  }
+  } */
 
   &.fixed-layout {
     table-layout: fixed;
@@ -910,12 +927,14 @@ label {
   }
 
   td {
-    padding: 25px 30px;
+    /* padding: 25px 30px; */
+    padding: 15px 20px;
     text-align: left;
   }
 
   th {
-    padding: 15px 30px;
+    /* padding: 15px 30px; */
+    padding: 15px 20px;
     text-align: left;
     /* border-bottom: 1px solid #eee; */
   }
@@ -923,6 +942,16 @@ label {
   td {
     vertical-align: middle;
     background-color: white;
+    border-bottom: 1px solid rgba(239, 239, 239, 1);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tfoot td {
+    border-top: 1px solid rgba(239, 239, 239, 1);
+    border-bottom: none;
   }
 
   th {
@@ -946,6 +975,10 @@ label {
   .toggle-btn {
     font-weight: 600;
     cursor: pointer;
+  }
+
+  tbody tr:hover td {
+    background-color: rgba(253, 249, 249, 1) !important;
   }
 }
 
@@ -1465,4 +1498,12 @@ label {
 
 .search-cards-grid-documents {
   grid-template-columns: repeat(6, 1fr) !important;
+}
+
+/* ── FormPopUp table rows: white by default, pink only on actual hover ── */
+.form-outer-container .items-table tbody tr td {
+  background-color: white !important;
+}
+.form-outer-container .items-table tbody tr:hover td {
+  background-color: rgba(253, 249, 249, 1) !important;
 }

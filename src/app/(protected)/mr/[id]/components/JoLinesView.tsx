@@ -250,6 +250,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
 
   return (
     <>
+      <div className="mr-with-id">
       <div className="subcategory-section">
         <div
           className="subcategory-header"
@@ -600,6 +601,8 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             allJoLines={joLines}
           />
         )}
+
+      </div>{/* end mr-with-id */}
 
       <CommentsSection
         mrHeaderId={mrHeader.id}
