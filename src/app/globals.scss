@@ -1059,6 +1059,15 @@ label {
   }
 }
 
+/* Manager price approval checkboxes */
+.manager-checkbox {
+  accent-color: rgba(0, 163, 93, 1);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .bottom-nav {
   position: fixed;
   bottom: 0;
