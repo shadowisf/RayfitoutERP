@@ -214,8 +214,7 @@ export default function DownloadMrPDFButton({ mrHeader, mrLines }: props) {
       onClick={handleDownload}
       disabled={isProcessing || flattenedLines.length === 0}
     >
-      EXPORT MR
-      <img src={downloadIcon} alt="download" />
+      EXPORT MR <img src={downloadIcon} alt="download" />
     </Button>
   );
 }

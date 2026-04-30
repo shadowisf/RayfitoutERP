@@ -681,6 +681,7 @@ export default function LpoLinesView({
 
   return (
     <>
+      <div className="mr-with-id">
       {/* Supplier header */}
       <div className="subcategory-section">
         <div className="subcategory-header">
@@ -1061,6 +1062,8 @@ export default function LpoLinesView({
         <br />
         <br />
       </div>
+
+      </div>{/* end mr-with-id */}
 
       <CommentsSection
         mrHeaderId={mrHeader.id}

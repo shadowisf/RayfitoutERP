@@ -47,6 +47,8 @@ import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 import QSActionsButton from "./quantitySurveyor/_QSActionsButton";
 import QSEditQtyButton from "./quantitySurveyor/_QSEditQtyButton";
 import QSEditBrandSpecButton from "./quantitySurveyor/_QSEditBrandSpecButton";
+import ProcurementActionsButton from "./procurement/_ProcurementActionsButton";
+import ManagerPriceActionsButton from "./manager/_ManagerPriceActionsButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -77,6 +79,7 @@ export default function MrLinesView({
   const externalLinkIcon = "/icons/external-link.svg";
   const checkSmallIcon = "/icons/check.svg";
   const crossSmallIcon = "/icons/cross-small.svg";
+  const warningIcon = "/icons/warning.svg";
 
   // After stock transfer (progress > 4), filter out item_available lines
   // They've been fulfilled via stock transfer and shouldn't appear in quotation/LPO stages
@@ -120,6 +123,19 @@ export default function MrLinesView({
   );
   const [isCheckingQuotations, setIsCheckingQuotations] =
     useState<boolean>(true);
+
+  // Price stats for procurement quotations stage (progress_id === 7)
+  const [materialPriceStats, setMaterialPriceStats] = useState<
+    Record<
+      string,
+      {
+        lowest_price: number | null;
+        highest_price: number | null;
+        avg_price: number | null;
+        prev_price: number | null;
+      }
+    >
+  >({});
 
   const [supplierApprovalStatus, setSupplierApprovalStatus] = useState<{
     [itemId: number]: "approved" | "rejected" | "pending";
@@ -214,6 +230,39 @@ export default function MrLinesView({
   const isQSReview =
     mrHeader.progress_id === 2 && userInfo?.departmentID === 16;
 
+  // ── Procurement Quotations helpers ────────────────────────────────────────
+  const isProcurementQuotations =
+    mrHeader.progress_id === 7 && userInfo?.departmentID === 9;
+
+  // ── Manager Price Approval helpers ────────────────────────────────────────
+  const isManagerPriceApproval =
+    mrHeader.progress_id === 10 && userInfo?.departmentID === 8;
+
+  // Items where approved total price exceeds historical avg price
+  const itemsExceedingAvgPrice = useMemo(() => {
+    const set = new Set<number>();
+    if (!isManagerPriceApproval) return set;
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          for (const item of mrLines[category][subCategory][supplier]) {
+            const approvedPrice = Number(item.approved_unit_price) || 0;
+            const avgPrice =
+              materialPriceStats[item.material_description]?.avg_price;
+            if (
+              approvedPrice > 0 &&
+              avgPrice != null &&
+              approvedPrice > avgPrice
+            ) {
+              set.add(item.id);
+            }
+          }
+        }
+      }
+    }
+    return set;
+  }, [mrLines, materialPriceStats, isManagerPriceApproval]);
+
   // Check if any item across all mrLines has an attachment
   const hasAnyAttachment = useMemo(() => {
     for (const category in mrLines) {
@@ -264,6 +313,16 @@ export default function MrLinesView({
     new Set(),
   );
 
+  // Procurement Quotations — selected item IDs (progress_id 7, dept 9)
+  const [selectedProcurementItemIds, setSelectedProcurementItemIds] = useState<
+    Set<number>
+  >(new Set());
+
+  // Manager Price Approval — selected item IDs (progress_id 10, dept 8)
+  const [selectedManagerItemIds, setSelectedManagerItemIds] = useState<
+    Set<number>
+  >(new Set());
+
   // Compute columns before TOTAL PRICE and columns after it for subtotal alignment
   // Subtotal only renders when progress_id >= 10 && canSeePrice
   const subtotalLabelColSpan = (() => {
@@ -274,7 +333,7 @@ export default function MrLinesView({
     // #, ITEM
     count += 2;
     // QTY columns: progress >= 9 means 3 cols (or 2 if QTY STOCKS hidden), else 1
-    count += pid >= 9 ? (hasAnyQtyStocks ? 3 : 2) : 1;
+    count += pid >= 9 ? (hasAnyQtyStocks ? 3 : 1) : 1;
     // BOQ REF (always) + BRAND & SPECS (conditional) + ATTACHMENT (conditional)
     count += 1 + (hasAnyBrandSpecs ? 1 : 0) + (hasAnyAttachment ? 1 : 0);
     // APPROVAL STATUS (only at progress 2, 3, 5 — not at >= 10)
@@ -294,7 +353,7 @@ export default function MrLinesView({
     // #, CATEGORY, SUBCATEGORY, ITEM
     count += 4;
     // QTY columns: progress >= 9 means 3 cols (or 2 if QTY STOCKS hidden), else 1
-    count += pid >= 9 ? (hasAnyQtyStocks ? 3 : 2) : 1;
+    count += pid >= 9 ? (hasAnyQtyStocks ? 3 : 1) : 1;
     // BOQ REF (always) + BRAND & SPECS (conditional) + ATTACHMENT (conditional)
     count += 1 + (hasAnyBrandSpecs ? 1 : 0) + (hasAnyAttachment ? 1 : 0);
     return count;
@@ -309,8 +368,6 @@ export default function MrLinesView({
     if (dept === 12 && pid === 21) count += 1; // QUALITY CONTROL
     if (dept === 11 && pid === 24) count += 1; // STOCKS
     if (dept === 9 && pid === 23) count += 1; // RESOLUTION
-    if ((pid === 9 || pid === 10) && (dept === 8 || dept === 16)) count += 1; // ACTIONS
-
     return count;
   })();
 
@@ -370,6 +427,37 @@ export default function MrLinesView({
     }
 
     fetchMatches();
+  }, [mrHeader.progress_id, mrLines]);
+
+  // Fetch price stats for all materials when in Quotations stage or Manager Price Approval
+  useEffect(() => {
+    if (mrHeader.progress_id !== 7 && mrHeader.progress_id !== 10) return;
+
+    const allMaterials: string[] = [];
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          for (const item of mrLines[category][subCategory][supplier]) {
+            if (
+              item.material_description &&
+              !allMaterials.includes(item.material_description)
+            ) {
+              allMaterials.push(item.material_description);
+            }
+          }
+        }
+      }
+    }
+
+    if (allMaterials.length === 0) return;
+
+    const encoded = encodeURIComponent(allMaterials.join("||"));
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialPriceStats?materials=${encoded}`,
+    )
+      .then((res) => res.json())
+      .then((data) => setMaterialPriceStats(data))
+      .catch((err) => console.error("getMaterialPriceStats error:", err));
   }, [mrHeader.progress_id, mrLines]);
 
   useEffect(() => {
@@ -987,13 +1075,18 @@ export default function MrLinesView({
         [itemId: number]: "approved" | "rejected" | "pending";
       } = {};
 
+      const idToDesc: { [id: number]: string } = {};
+
       try {
         const allItemIds: number[] = [];
         for (const category in mrLines) {
           for (const subCategory in mrLines[category]) {
             for (const supplier in mrLines[category][subCategory]) {
               const items = mrLines[category][subCategory][supplier];
-              items.forEach((item) => allItemIds.push(item.id));
+              items.forEach((item: MrLine) => {
+                allItemIds.push(item.id);
+                idToDesc[item.id] = item.material_description;
+              });
             }
           }
         }
@@ -2238,528 +2331,1877 @@ export default function MrLinesView({
 
   return (
     <>
-      <div
-        className="category-grid"
-        style={{
-          flexDirection: "column",
-          gap: "2rem",
-        }}
-      >
-        {mrHeader.progress_id >= 12 && (
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-            }}
-          >
-            <Button
-              componentType={"button"}
-              bgColor={showByItem ? "black" : "transparent"}
-              borderColor={"black"}
-              textColor={showByItem ? "white" : "black"}
-              style={{
-                padding: "7px 20px",
-                borderRadius: "25px",
-              }}
-              onClick={() => {
-                setShowByItem(true);
-                setShowBySupplier(false);
-              }}
-            >
-              SHOW BY ITEM
-            </Button>
-            <Button
-              componentType={"button"}
-              bgColor={showBySupplier ? "black" : "transparent"}
-              borderColor={"black"}
-              textColor={showBySupplier ? "white" : "black"}
-              style={{
-                padding: "7px 20px",
-                borderRadius: "25px",
-              }}
-              onClick={() => {
-                setShowBySupplier(true);
-                setShowByItem(false);
-              }}
-            >
-              SHOW BY VENDOR
-            </Button>
-          </div>
-        )}
-
-        {showByItem && (
-          <div>
+      <div className="mr-with-id">
+        <div
+          className="category-grid"
+          style={{
+            flexDirection: "column",
+            gap: "2rem",
+          }}
+        >
+          {mrHeader.progress_id >= 12 && (
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
-                width: "100%",
-                alignItems: "center",
+                gap: "10px",
               }}
             >
-              <div>
-                <button
-                  className={`item ${activeCategory === "ALL" ? "active" : ""}`}
-                  onClick={() => setActiveCategory("ALL")}
-                  style={{ textTransform: "uppercase" }}
-                >
-                  ALL
-                </button>
+              <Button
+                componentType={"button"}
+                bgColor={showByItem ? "black" : "transparent"}
+                borderColor={"black"}
+                textColor={showByItem ? "white" : "black"}
+                style={{
+                  padding: "7px 20px",
+                  borderRadius: "25px",
+                }}
+                onClick={() => {
+                  setShowByItem(true);
+                  setShowBySupplier(false);
+                }}
+              >
+                SHOW BY ITEM
+              </Button>
+              <Button
+                componentType={"button"}
+                bgColor={showBySupplier ? "black" : "transparent"}
+                borderColor={"black"}
+                textColor={showBySupplier ? "white" : "black"}
+                style={{
+                  padding: "7px 20px",
+                  borderRadius: "25px",
+                }}
+                onClick={() => {
+                  setShowBySupplier(true);
+                  setShowByItem(false);
+                }}
+              >
+                SHOW BY VENDOR
+              </Button>
+            </div>
+          )}
 
-                {categories.map((category) => (
+          {showByItem && (
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  width: "100%",
+                  alignItems: "center",
+                }}
+              >
+                <div>
                   <button
-                    key={category}
-                    className={`item ${
-                      activeCategory === category ? "active" : ""
-                    }`}
-                    onClick={() => setActiveCategory(category)}
+                    className={`item ${activeCategory === "ALL" ? "active" : ""}`}
+                    onClick={() => setActiveCategory("ALL")}
                     style={{ textTransform: "uppercase" }}
                   >
-                    {category}
+                    ALL
                   </button>
-                ))}
-              </div>
 
-              {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-                userInfo?.departmentID === mrHeader.department_id &&
-                showByItem && (
-                  <>
-                    {/* CATEGORY + SUBCATEGORY + ITEM */}
-                    <AddMrItemButton
-                      mrHeaderID={mrHeader.id}
-                      projectID={mrHeader.project_id}
-                      bgColor="black"
-                      borderColor="black"
-                      textColor="white"
+                  {categories.map((category) => (
+                    <button
+                      key={category}
+                      className={`item ${
+                        activeCategory === category ? "active" : ""
+                      }`}
+                      onClick={() => setActiveCategory(category)}
+                      style={{ textTransform: "uppercase" }}
                     >
-                      ADD ITEM +
-                    </AddMrItemButton>
-                  </>
+                      {category}
+                    </button>
+                  ))}
+                </div>
+
+                {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
+                  userInfo?.departmentID === mrHeader.department_id &&
+                  showByItem && (
+                    <>
+                      {/* CATEGORY + SUBCATEGORY + ITEM */}
+                      <AddMrItemButton
+                        mrHeaderID={mrHeader.id}
+                        projectID={mrHeader.project_id}
+                        bgColor="black"
+                        borderColor="black"
+                        textColor="white"
+                      >
+                        ADD ITEM +
+                      </AddMrItemButton>
+                    </>
+                  )}
+
+                {/* QS Review — ACTIONS + DOWNLOAD inline with category tabs */}
+                {isQSReview && (
+                  <QSActionsButton
+                    selectedItemIds={selectedItemIds}
+                    setSelectedItemIds={setSelectedItemIds}
+                    allCategoryItems={(() => {
+                      const source =
+                        activeCategory === "ALL"
+                          ? regroupedMrLines
+                          : { [activeCategory]: subCategories };
+                      const flat: MrLine[] = [];
+                      Object.values(source).forEach((subCats) =>
+                        Object.values(subCats).forEach((suppliers) =>
+                          Object.values(suppliers).forEach((items) =>
+                            (items as MrLine[]).forEach((i) => flat.push(i)),
+                          ),
+                        ),
+                      );
+                      return flat;
+                    })()}
+                    mrHeader={mrHeader}
+                    category={activeCategory}
+                  />
                 )}
 
-              {/* QS Review — ACTIONS + DOWNLOAD inline with category tabs */}
-              {isQSReview && (
-                <QSActionsButton
-                  selectedItemIds={selectedItemIds}
-                  setSelectedItemIds={setSelectedItemIds}
-                  allCategoryItems={(() => {
-                    const source =
-                      activeCategory === "ALL"
-                        ? regroupedMrLines
-                        : { [activeCategory]: subCategories };
-                    const flat: MrLine[] = [];
-                    Object.values(source).forEach((subCats) =>
-                      Object.values(subCats).forEach((suppliers) =>
-                        Object.values(suppliers).forEach((items) =>
-                          (items as MrLine[]).forEach((i) => flat.push(i)),
+                {/* Manager Price Approval — ACTIONS + DOWNLOAD inline with category tabs */}
+                {isManagerPriceApproval && (
+                  <ManagerPriceActionsButton
+                    selectedItemIds={selectedManagerItemIds}
+                    setSelectedItemIds={setSelectedManagerItemIds}
+                    allCategoryItems={(() => {
+                      const source =
+                        activeCategory === "ALL"
+                          ? regroupedMrLines
+                          : { [activeCategory]: subCategories };
+                      const flat: MrLine[] = [];
+                      Object.values(source).forEach((subCats) =>
+                        Object.values(subCats as any).forEach((suppliers) =>
+                          Object.values(suppliers as any).forEach((items) =>
+                            (items as MrLine[]).forEach((i) => flat.push(i)),
+                          ),
                         ),
-                      ),
-                    );
-                    return flat;
-                  })()}
-                  mrHeader={mrHeader}
-                  category={activeCategory}
-                />
-              )}
+                      );
+                      return flat;
+                    })()}
+                    mrHeader={mrHeader}
+                    mrLines={mrLines}
+                  />
+                )}
+
+                {/* Procurement Quotations — ACTIONS + DOWNLOAD inline with category tabs */}
+                {isProcurementQuotations && (
+                  <ProcurementActionsButton
+                    selectedItemIds={selectedProcurementItemIds}
+                    setSelectedItemIds={setSelectedProcurementItemIds}
+                    allCategoryItems={(() => {
+                      const source =
+                        activeCategory === "ALL"
+                          ? regroupedMrLines
+                          : { [activeCategory]: subCategories };
+                      const flat: MrLine[] = [];
+                      Object.values(source).forEach((subCats) =>
+                        Object.values(subCats).forEach((suppliers) =>
+                          Object.values(suppliers).forEach((items) =>
+                            (items as MrLine[]).forEach((i) => flat.push(i)),
+                          ),
+                        ),
+                      );
+                      return flat;
+                    })()}
+                    mrHeader={mrHeader}
+                  />
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      <br />
+        <br />
 
-      {showByItem &&
-        (activeCategory === "ALL"
-          ? Object.entries(regroupedMrLines).map(
-              ([category, subCategoriesData], categoryIndex) =>
-                Object.entries(subCategoriesData).map(function (
-                  [subCategory, suppliers],
-                  subCategoryIndex,
-                ) {
-                  const allItems = getAllItemsInSubCategory(suppliers);
-                  const firstItem = allItems[0];
+        {showByItem &&
+          (activeCategory === "ALL"
+            ? Object.entries(regroupedMrLines).map(
+                ([category, subCategoriesData], categoryIndex) =>
+                  Object.entries(subCategoriesData).map(function (
+                    [subCategory, suppliers],
+                    subCategoryIndex,
+                  ) {
+                    const allItems = getAllItemsInSubCategory(suppliers);
+                    const firstItem = allItems[0];
 
-                  return (
-                    <div
-                      key={`${category}-${subCategory}`}
-                      className="subcategory-section"
-                    >
-                      <div className="subcategory-header">
-                        {userInfo?.departmentID === 8 &&
-                          mrHeader.progress_id === 10 && (
-                            <PriceApprovalButton
-                              progressID={mrHeader.progress_id}
-                              mrLine={{} as MrLine}
-                              isSmartSelectPortal
-                              allMrLines={
-                                showByItem
-                                  ? { [category]: { [subCategory]: suppliers } }
-                                  : mrLinesBySupplier
-                              }
-                              portalTargetId={`smart-select-portal-${categoryIndex}-${subCategoryIndex}`}
-                            />
-                          )}
-
-                        <h2 style={{ textTransform: "uppercase" }}>
-                          <span style={{ marginRight: "25px" }}>
-                            {categoryIndex + 1}.{subCategoryIndex + 1}
-                          </span>
-                          {category} - {subCategory}
-                        </h2>
-
-                        {mrHeader.progress_id === 1 &&
-                          userInfo?.departmentID === mrHeader.department_id &&
-                          firstItem && (
-                            <div className="right">
-                              <RenameMrSubCategoryButton
-                                items={allItems}
-                                categoryID={String(
-                                  firstItem.material_category_id,
-                                )}
-                                subCategoryID={String(
-                                  firstItem.material_subcategory_id,
-                                )}
+                    return (
+                      <div
+                        key={`${category}-${subCategory}`}
+                        className="subcategory-section"
+                      >
+                        <div className="subcategory-header">
+                          {/* Smart select portal — commented out
+                          {userInfo?.departmentID === 8 &&
+                            mrHeader.progress_id === 10 && (
+                              <PriceApprovalButton
+                                progressID={mrHeader.progress_id}
+                                mrLine={{} as MrLine}
+                                isSmartSelectPortal
+                                allMrLines={
+                                  showByItem
+                                    ? { [category]: { [subCategory]: suppliers } }
+                                    : mrLinesBySupplier
+                                }
+                                portalTargetId={`smart-select-portal-${categoryIndex}-${subCategoryIndex}`}
                               />
+                            )} */}
 
-                              <DeleteMrSubCategoryButton
-                                items={allItems}
-                                subCategory={subCategory}
-                              />
-                            </div>
-                          )}
-                      </div>
+                          <h2 style={{ textTransform: "uppercase" }}>
+                            <span style={{ marginRight: "25px" }}>
+                              {categoryIndex + 1}.{subCategoryIndex + 1}
+                            </span>
+                            {category} - {subCategory}
+                          </h2>
 
-                      <br />
-
-                      {Object.entries(suppliers).map(
-                        ([supplier, items], supplierIndex) => (
-                          <div key={supplier} style={{ marginBottom: "2rem" }}>
-                            <table className="items-table two-toned fixed-layout">
-                              <thead>
-                                <tr>
-                                  {isQSReview && (
-                                    <th style={{ width: "24px" }}>
-                                      <input
-                                        type="checkbox"
-                                        checked={
-                                          items.length > 0 &&
-                                          items.every((i) =>
-                                            selectedItemIds.has(i.id),
-                                          )
-                                        }
-                                        onChange={(e) => {
-                                          const newSet = new Set(
-                                            selectedItemIds,
-                                          );
-                                          items.forEach((i) => {
-                                            if (e.target.checked)
-                                              newSet.add(i.id);
-                                            else newSet.delete(i.id);
-                                          });
-                                          setSelectedItemIds(newSet);
-                                        }}
-                                        style={{
-                                          cursor: "pointer",
-                                          accentColor: "black",
-                                        }}
-                                      />
-                                    </th>
+                          {mrHeader.progress_id === 1 &&
+                            userInfo?.departmentID === mrHeader.department_id &&
+                            firstItem && (
+                              <div className="right">
+                                <RenameMrSubCategoryButton
+                                  items={allItems}
+                                  categoryID={String(
+                                    firstItem.material_category_id,
                                   )}
-                                  <th style={{ width: "40px" }}>#</th>
-                                  <th style={{ width: "130px" }}>ITEM</th>
-                                  {mrHeader.progress_id >= 9 ? (
-                                    <>
-                                      <th style={{ width: "80px" }}>QTY USE</th>
-                                      {hasAnyQtyStocks && (
-                                        <th style={{ width: "90px" }}>
-                                          QTY STOCKS
+                                  subCategoryID={String(
+                                    firstItem.material_subcategory_id,
+                                  )}
+                                />
+
+                                <DeleteMrSubCategoryButton
+                                  items={allItems}
+                                  subCategory={subCategory}
+                                />
+                              </div>
+                            )}
+                        </div>
+
+                        <br />
+
+                        {Object.entries(suppliers).map(
+                          ([supplier, items], supplierIndex) => (
+                            <div
+                              key={supplier}
+                              style={{ marginBottom: "2rem" }}
+                            >
+                              <table className="items-table two-toned fixed-layout">
+                                <thead>
+                                  <tr>
+                                    {isQSReview && (
+                                      <th style={{ width: "24px" }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={
+                                            items.length > 0 &&
+                                            items.every((i) =>
+                                              selectedItemIds.has(i.id),
+                                            )
+                                          }
+                                          onChange={(e) => {
+                                            const newSet = new Set(
+                                              selectedItemIds,
+                                            );
+                                            items.forEach((i) => {
+                                              if (e.target.checked)
+                                                newSet.add(i.id);
+                                              else newSet.delete(i.id);
+                                            });
+                                            setSelectedItemIds(newSet);
+                                          }}
+                                          style={{
+                                            cursor: "pointer",
+                                            accentColor: "rgba(0, 163, 93, 1)",
+                                          }}
+                                        />
+                                      </th>
+                                    )}
+                                    {isProcurementQuotations && (
+                                      <th style={{ width: "24px" }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={
+                                            items.length > 0 &&
+                                            items.every((i) =>
+                                              selectedProcurementItemIds.has(
+                                                i.id,
+                                              ),
+                                            )
+                                          }
+                                          onChange={(e) => {
+                                            const newSet = new Set(
+                                              selectedProcurementItemIds,
+                                            );
+                                            items.forEach((i) => {
+                                              if (e.target.checked)
+                                                newSet.add(i.id);
+                                              else newSet.delete(i.id);
+                                            });
+                                            setSelectedProcurementItemIds(
+                                              newSet,
+                                            );
+                                          }}
+                                          style={{
+                                            cursor: "pointer",
+                                            accentColor: "rgba(0, 163, 93, 1)",
+                                          }}
+                                        />
+                                      </th>
+                                    )}
+                                    {isManagerPriceApproval && (
+                                      <th style={{ width: "24px" }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={
+                                            items.length > 0 &&
+                                            items.every((i) =>
+                                              selectedManagerItemIds.has(i.id),
+                                            )
+                                          }
+                                          onChange={(e) => {
+                                            const newSet = new Set(
+                                              selectedManagerItemIds,
+                                            );
+                                            items.forEach((i) => {
+                                              if (e.target.checked)
+                                                newSet.add(i.id);
+                                              else newSet.delete(i.id);
+                                            });
+                                            setSelectedManagerItemIds(newSet);
+                                          }}
+                                          style={{
+                                            cursor: "pointer",
+                                            accentColor: "rgba(0, 163, 93, 1)",
+                                          }}
+                                        />
+                                      </th>
+                                    )}
+                                    <th style={{ width: "40px" }}>#</th>
+                                    <th style={{ width: "130px" }}>ITEM</th>
+                                    {mrHeader.progress_id >= 9 ? (
+                                      <>
+                                        <th style={{ width: "80px" }}>
+                                          QTY USE
+                                        </th>
+                                        {hasAnyQtyStocks && (
+                                          <th style={{ width: "90px" }}>
+                                            QTY STOCKS
+                                          </th>
+                                        )}
+                                        {hasAnyQtyStocks && (
+                                          <th style={{ width: "80px" }}>
+                                            TOTAL QTY
+                                          </th>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <th style={{ width: "120px" }}>
+                                        REQ. QTY
+                                      </th>
+                                    )}
+                                    <th style={{ width: "95px" }}>BOQ REF.</th>
+                                    {hasAnyBrandSpecs && (
+                                      <th style={{ width: "120px" }}>
+                                        BRAND & SPECS
+                                      </th>
+                                    )}
+                                    {hasAnyAttachment && (
+                                      <th style={{ width: "100px" }}>
+                                        ATTACHMENT
+                                      </th>
+                                    )}
+                                    {((mrHeader.progress_id === 5 &&
+                                      (userInfo?.departmentID ===
+                                        mrHeader.department_id ||
+                                        userInfo?.departmentID === 8 ||
+                                        userInfo?.departmentID === 16)) ||
+                                      (mrHeader.progress_id === 3 &&
+                                        userInfo?.departmentID ===
+                                          mrHeader.department_id &&
+                                        userInfo?.departmentID !== 8) ||
+                                      (mrHeader.progress_id === 2 &&
+                                        userInfo?.departmentID ===
+                                          mrHeader.department_id &&
+                                        userInfo?.departmentID !== 16)) && (
+                                      <th style={{ width: "160px" }}>
+                                        APPROVAL STATUS
+                                      </th>
+                                    )}
+                                    {(mrHeader.progress_id === 1 ||
+                                      mrHeader.progress_id === 5 ||
+                                      mrHeader.progress_id === 11) &&
+                                      userInfo?.departmentID ===
+                                        mrHeader.department_id && (
+                                        <th style={{ width: "160px" }}>
+                                          ACTIONS
                                         </th>
                                       )}
-                                      <th style={{ width: "80px" }}>
-                                        TOTAL QTY
-                                      </th>
-                                    </>
-                                  ) : (
-                                    <th style={{ width: "120px" }}>
-                                      REQUESTED QTY
-                                    </th>
-                                  )}
-                                  <th style={{ width: "95px" }}>BOQ REF.</th>
-                                  {hasAnyBrandSpecs && (
-                                    <th style={{ width: "120px" }}>
-                                      BRAND & SPECS
-                                    </th>
-                                  )}
-                                  {hasAnyAttachment && (
-                                    <th style={{ width: "100px" }}>
-                                      ATTACHMENT
-                                    </th>
-                                  )}
-                                  {((mrHeader.progress_id === 5 &&
-                                    (userInfo?.departmentID ===
-                                      mrHeader.department_id ||
-                                      userInfo?.departmentID === 8 ||
-                                      userInfo?.departmentID === 16)) ||
-                                    (mrHeader.progress_id === 3 &&
-                                      userInfo?.departmentID ===
-                                        mrHeader.department_id &&
-                                      userInfo?.departmentID !== 8) ||
-                                    (mrHeader.progress_id === 2 &&
-                                      userInfo?.departmentID ===
-                                        mrHeader.department_id &&
-                                      userInfo?.departmentID !== 16)) && (
-                                    <th style={{ width: "160px" }}>
-                                      APPROVAL STATUS
-                                    </th>
-                                  )}
-                                  {(mrHeader.progress_id === 1 ||
-                                    mrHeader.progress_id === 5 ||
-                                    mrHeader.progress_id === 11) &&
-                                    userInfo?.departmentID ===
-                                      mrHeader.department_id && (
-                                      <th style={{ width: "160px" }}>
-                                        ACTIONS
-                                      </th>
-                                    )}
-                                  {mrHeader.progress_id === 11 &&
-                                    userInfo?.departmentID === 9 && (
-                                      <th style={{ width: "160px" }}>
-                                        ACTIONS
-                                      </th>
-                                    )}
-                                  {mrHeader.progress_id === 3 &&
-                                    (userInfo?.departmentID === 8 ||
-                                      userInfo?.departmentID ===
-                                        mrHeader.department_id) && (
-                                      <th style={{ width: "160px" }}>
-                                        QS REVIEW
-                                      </th>
-                                    )}
-                                  {mrHeader.progress_id === 3 &&
-                                    userInfo?.departmentID === 8 && (
-                                      <th style={{ width: "160px" }}>
-                                        ACTIONS
-                                      </th>
-                                    )}
-                                  {mrHeader.progress_id === 2 &&
-                                    userInfo?.departmentID === 16 && (
-                                      <th style={{ width: "160px" }}>
-                                        ACTIONS
-                                      </th>
-                                    )}
-                                  {mrHeader.progress_id >= 10 &&
-                                    mrHeader.progress_id !== 11 && (
-                                      <th
-                                        style={
-                                          userInfo?.departmentID === 8 &&
-                                          mrHeader.progress_id === 10
-                                            ? { width: "275px" }
-                                            : { width: "160px" }
-                                        }
-                                      >
-                                        <div
-                                          style={{
-                                            display: "flex",
-                                            gap: "10px",
-                                            alignItems: "center",
-                                          }}
-                                        >
+                                    {mrHeader.progress_id === 11 &&
+                                      userInfo?.departmentID === 9 && (
+                                        <th style={{ width: "160px" }}>
+                                          ACTIONS
+                                        </th>
+                                      )}
+                                    {mrHeader.progress_id === 3 &&
+                                      (userInfo?.departmentID === 8 ||
+                                        userInfo?.departmentID ===
+                                          mrHeader.department_id) && (
+                                        <th style={{ width: "160px" }}>
+                                          QS REVIEW
+                                        </th>
+                                      )}
+                                    {mrHeader.progress_id === 3 &&
+                                      userInfo?.departmentID === 8 && (
+                                        <th style={{ width: "160px" }}>
+                                          ACTIONS
+                                        </th>
+                                      )}
+                                    {mrHeader.progress_id === 2 &&
+                                      userInfo?.departmentID === 16 && (
+                                        <th style={{ width: "160px" }}>
+                                          ACTIONS
+                                        </th>
+                                      )}
+                                    {mrHeader.progress_id >= 10 &&
+                                      mrHeader.progress_id !== 11 &&
+                                      !isManagerPriceApproval && (
+                                        <th style={{ width: "160px" }}>
                                           <span>VENDOR & QUOTATION</span>
-                                          {userInfo?.departmentID === 8 &&
-                                            mrHeader.progress_id === 10 && (
-                                              <div
-                                                id={`smart-select-portal-${categoryIndex}-${subCategoryIndex}`}
-                                              ></div>
-                                            )}
-                                        </div>
-                                      </th>
-                                    )}
-                                  {mrHeader.progress_id === 7 &&
-                                    userInfo?.departmentID === 9 && (
-                                      <th style={{ width: "160px" }}>
-                                        VENDOR & QUOTATION
-                                      </th>
-                                    )}
-                                  {mrHeader.progress_id === 9 &&
-                                    userInfo?.departmentID === 16 && (
-                                      <th style={{ width: "160px" }}>
-                                        VENDOR & QUOTATION
-                                      </th>
-                                    )}
-                                  {mrHeader.progress_id >= 10 &&
-                                    canSeePrice && (
-                                      <th style={{ width: "100px" }}>
-                                        UNIT PRICE
-                                      </th>
-                                    )}
-                                  {mrHeader.progress_id >= 10 &&
-                                    canSeePrice && (
-                                      <th style={{ width: "100px" }}>
-                                        TOTAL PRICE
-                                      </th>
-                                    )}
-                                  {userInfo?.departmentID === 11 &&
-                                    mrHeader.progress_id === 4 && (
-                                      <th style={{ width: "160px" }}>
-                                        STOCK TRANSFER
-                                      </th>
-                                    )}
-                                  {userInfo?.departmentID === 12 &&
-                                    mrHeader.progress_id === 21 && (
-                                      <th style={{ width: "160px" }}>
-                                        QUALITY CONTROL
-                                      </th>
-                                    )}
-                                  {userInfo?.departmentID === 11 &&
-                                    mrHeader.progress_id === 24 && (
-                                      <th style={{ width: "120px" }}>STOCKS</th>
-                                    )}
-                                  {userInfo?.departmentID === 9 &&
-                                    mrHeader.progress_id === 23 && (
-                                      <th style={{ width: "140px" }}>
-                                        RESOLUTION
-                                      </th>
-                                    )}
-                                  {(mrHeader.progress_id === 9 ||
-                                    mrHeader.progress_id === 10) &&
-                                    (userInfo?.departmentID === 8 ||
-                                      userInfo?.departmentID === 16) && (
-                                      <th style={{ width: "120px" }}>
-                                        ACTIONS
-                                      </th>
-                                    )}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {Array.isArray(items) &&
-                                  items.map(function (item, itemIndex) {
-                                    return (
-                                      <tr key={item.id}>
-                                        {/* QS Review checkbox */}
-                                        {isQSReview && (
-                                          <td>
-                                            <input
-                                              type="checkbox"
-                                              checked={selectedItemIds.has(
-                                                item.id,
-                                              )}
-                                              onChange={(e) => {
-                                                const newSet = new Set(
-                                                  selectedItemIds,
-                                                );
-                                                if (e.target.checked)
-                                                  newSet.add(item.id);
-                                                else newSet.delete(item.id);
-                                                setSelectedItemIds(newSet);
-                                              }}
-                                              style={{
-                                                cursor: "pointer",
-                                                accentColor: "black",
-                                              }}
-                                            />
-                                          </td>
+                                        </th>
+                                      )}
+                                    {mrHeader.progress_id === 7 && (
+                                      <>
+                                        <th style={{ width: "100px" }}>
+                                          LOWEST PRICE
+                                        </th>
+                                        <th style={{ width: "100px" }}>
+                                          AVG. PRICE
+                                        </th>
+                                        <th style={{ width: "100px" }}>
+                                          PREV. PRICE
+                                        </th>
+                                        {userInfo?.departmentID === 9 && (
+                                          <th style={{ width: "160px" }}>
+                                            VENDOR & QUOTATION
+                                          </th>
                                         )}
-                                        <td>{itemIndex + 1}</td>
-                                        <td>
-                                          {item.material_description}
-                                          {item.qs_review_type ===
-                                            "item_available" &&
-                                            mrHeader.progress_id <= 4 &&
-                                            item.linked_inventory_item_description && (
+                                      </>
+                                    )}
+                                    {mrHeader.progress_id === 9 &&
+                                      userInfo?.departmentID === 16 && (
+                                        <th style={{ width: "160px" }}>
+                                          VENDOR & QUOTATION
+                                        </th>
+                                      )}
+                                    {mrHeader.progress_id >= 10 &&
+                                      canSeePrice &&
+                                      !isManagerPriceApproval && (
+                                        <th style={{ width: "100px" }}>
+                                          UNIT PRICE
+                                        </th>
+                                      )}
+                                    {mrHeader.progress_id >= 10 &&
+                                      canSeePrice &&
+                                      !isManagerPriceApproval && (
+                                        <th style={{ width: "100px" }}>
+                                          TOTAL PRICE
+                                        </th>
+                                      )}
+                                    {isManagerPriceApproval && (
+                                      <>
+                                        <th style={{ width: "100px" }}>
+                                          LOWEST PRICE
+                                        </th>
+                                        <th style={{ width: "100px" }}>
+                                          AVG. PRICE
+                                        </th>
+                                        <th style={{ width: "100px" }}>
+                                          PREV. PRICE
+                                        </th>
+                                        <th style={{ width: "160px" }}>
+                                          VENDOR & QUOTATION
+                                        </th>
+                                        <th style={{ width: "130px" }}>
+                                          PRICE RANGE
+                                        </th>
+                                      </>
+                                    )}
+                                    {userInfo?.departmentID === 11 &&
+                                      mrHeader.progress_id === 4 && (
+                                        <th style={{ width: "160px" }}>
+                                          STOCK TRANSFER
+                                        </th>
+                                      )}
+                                    {userInfo?.departmentID === 12 &&
+                                      mrHeader.progress_id === 21 && (
+                                        <th style={{ width: "160px" }}>
+                                          QUALITY CONTROL
+                                        </th>
+                                      )}
+                                    {userInfo?.departmentID === 11 &&
+                                      mrHeader.progress_id === 24 && (
+                                        <th style={{ width: "120px" }}>
+                                          STOCKS
+                                        </th>
+                                      )}
+                                    {userInfo?.departmentID === 9 &&
+                                      mrHeader.progress_id === 23 && (
+                                        <th style={{ width: "140px" }}>
+                                          RESOLUTION
+                                        </th>
+                                      )}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Array.isArray(items) &&
+                                    items.map(function (item, itemIndex) {
+                                      return (
+                                        <tr key={item.id}>
+                                          {/* QS Review checkbox */}
+                                          {isQSReview && (
+                                            <td>
+                                              <input
+                                                type="checkbox"
+                                                checked={selectedItemIds.has(
+                                                  item.id,
+                                                )}
+                                                onChange={(e) => {
+                                                  const newSet = new Set(
+                                                    selectedItemIds,
+                                                  );
+                                                  if (e.target.checked)
+                                                    newSet.add(item.id);
+                                                  else newSet.delete(item.id);
+                                                  setSelectedItemIds(newSet);
+                                                }}
+                                                style={{
+                                                  cursor: "pointer",
+                                                  accentColor:
+                                                    "rgba(0, 163, 93, 1)",
+                                                }}
+                                              />
+                                            </td>
+                                          )}
+                                          {/* Procurement Quotations checkbox */}
+                                          {isProcurementQuotations && (
+                                            <td>
+                                              <input
+                                                type="checkbox"
+                                                checked={selectedProcurementItemIds.has(
+                                                  item.id,
+                                                )}
+                                                onChange={(e) => {
+                                                  const newSet = new Set(
+                                                    selectedProcurementItemIds,
+                                                  );
+                                                  if (e.target.checked)
+                                                    newSet.add(item.id);
+                                                  else newSet.delete(item.id);
+                                                  setSelectedProcurementItemIds(
+                                                    newSet,
+                                                  );
+                                                }}
+                                                style={{
+                                                  cursor: "pointer",
+                                                  accentColor:
+                                                    "rgba(0, 163, 93, 1)",
+                                                }}
+                                              />
+                                            </td>
+                                          )}
+                                          {/* Manager Price Approval checkbox */}
+                                          {isManagerPriceApproval && (
+                                            <td>
+                                              <input
+                                                type="checkbox"
+                                                checked={selectedManagerItemIds.has(
+                                                  item.id,
+                                                )}
+                                                onChange={(e) => {
+                                                  const newSet = new Set(
+                                                    selectedManagerItemIds,
+                                                  );
+                                                  if (e.target.checked)
+                                                    newSet.add(item.id);
+                                                  else newSet.delete(item.id);
+                                                  setSelectedManagerItemIds(
+                                                    newSet,
+                                                  );
+                                                }}
+                                                style={{
+                                                  cursor: "pointer",
+                                                  accentColor:
+                                                    "rgba(0, 163, 93, 1)",
+                                                }}
+                                              />
+                                            </td>
+                                          )}
+                                          <td>{itemIndex + 1}</td>
+                                          <td>
+                                            {item.material_description}
+                                            {item.qs_review_type ===
+                                              "item_available" &&
+                                              mrHeader.progress_id <= 4 &&
+                                              item.linked_inventory_item_description && (
+                                                <div
+                                                  style={{
+                                                    fontSize: "10px",
+                                                    color:
+                                                      "rgba(26, 216, 135, 1)",
+                                                    marginTop: "4px",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "4px",
+                                                  }}
+                                                >
+                                                  Item available:{" "}
+                                                  {
+                                                    item.linked_inventory_item_description
+                                                  }
+                                                  <img
+                                                    src={externalLinkIcon}
+                                                    alt=""
+                                                    style={{
+                                                      width: "10px",
+                                                      height: "10px",
+                                                      filter:
+                                                        "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
+                                                    }}
+                                                  />
+                                                </div>
+                                              )}
+                                          </td>
+                                          {mrHeader.progress_id >= 9 ? (
+                                            <>
+                                              <td>
+                                                {formatNumber(item?.quantity)}{" "}
+                                                {item.unit}
+                                              </td>
+                                              {hasAnyQtyStocks && (
+                                                <td>
+                                                  {(() => {
+                                                    const proposedQty =
+                                                      Number(
+                                                        item.approved_proposed_quantity,
+                                                      ) || 0;
+                                                    const requestedQty =
+                                                      Number(item.quantity) ||
+                                                      0;
+                                                    const stockQty =
+                                                      proposedQty > requestedQty
+                                                        ? proposedQty -
+                                                          requestedQty
+                                                        : 0;
+                                                    return stockQty > 0
+                                                      ? `${formatNumber(stockQty)} ${item.unit}`
+                                                      : "-";
+                                                  })()}
+                                                </td>
+                                              )}
+                                              {hasAnyQtyStocks && (
+                                                <td>
+                                                  {formatNumber(
+                                                    item?.approved_proposed_quantity,
+                                                  )}{" "}
+                                                  {item.unit}
+                                                </td>
+                                              )}
+                                            </>
+                                          ) : (
+                                            <td>
                                               <div
                                                 style={{
-                                                  fontSize: "10px",
-                                                  color:
-                                                    "rgba(26, 216, 135, 1)",
-                                                  marginTop: "4px",
                                                   display: "flex",
+                                                  gap: "10px",
                                                   alignItems: "center",
-                                                  gap: "4px",
                                                 }}
                                               >
-                                                Item available:{" "}
-                                                {
-                                                  item.linked_inventory_item_description
-                                                }
-                                                <img
-                                                  src={externalLinkIcon}
-                                                  alt=""
-                                                  style={{
-                                                    width: "10px",
-                                                    height: "10px",
-                                                    filter:
-                                                      "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
-                                                  }}
-                                                />
+                                                {formatNumber(item?.quantity)}{" "}
+                                                {item.unit}
+                                                {isQSReview && (
+                                                  <QSEditQtyButton
+                                                    item={item}
+                                                  />
+                                                )}
                                               </div>
-                                            )}
-                                        </td>
-                                        {mrHeader.progress_id >= 9 ? (
-                                          <>
-                                            <td>
-                                              {formatNumber(item?.quantity)}{" "}
-                                              {item.unit}
                                             </td>
-                                            {hasAnyQtyStocks && (
+                                          )}
+                                          <td>
+                                            {item.boq_line_ids ? (
+                                              <BoqReferencePopUp
+                                                item={item}
+                                                mrHeader={mrHeader}
+                                              />
+                                            ) : (
+                                              "-"
+                                            )}
+                                          </td>
+                                          {hasAnyBrandSpecs && (
+                                            <td>
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  gap: "10px",
+                                                  alignItems: "center",
+                                                }}
+                                              >
+                                                {item.brand ||
+                                                item.specification ? (
+                                                  <InfoPopUpButton
+                                                    text={
+                                                      <>
+                                                        <small>BRAND</small>
+                                                        <h2>
+                                                          {item.brand || "-"}
+                                                        </h2>
+                                                        <br />
+                                                        <small>
+                                                          SPECIFICATION
+                                                        </small>
+                                                        <h2>
+                                                          {item.specification ||
+                                                            "-"}
+                                                        </h2>
+                                                      </>
+                                                    }
+                                                    header="BRAND & SPECIFICATION"
+                                                  />
+                                                ) : !isQSReview ? (
+                                                  <span>-</span>
+                                                ) : null}
+                                                {isQSReview && (
+                                                  <QSEditBrandSpecButton
+                                                    item={item}
+                                                  />
+                                                )}
+                                              </div>
+                                            </td>
+                                          )}
+                                          {hasAnyAttachment && (
+                                            <td>
+                                              {item.attachment ? (
+                                                <Button
+                                                  componentType={"link"}
+                                                  bgColor={
+                                                    "rgba(239, 239, 239, 1)"
+                                                  }
+                                                  borderColor={
+                                                    "rgba(223, 223, 223, 1)"
+                                                  }
+                                                  textColor={"black"}
+                                                  style={{ padding: "7px 7px" }}
+                                                  href={item.attachment}
+                                                  target="_blank"
+                                                >
+                                                  <img
+                                                    src={externalLinkIcon}
+                                                    alt="external link"
+                                                  />
+                                                </Button>
+                                              ) : (
+                                                "-"
+                                              )}
+                                            </td>
+                                          )}
+
+                                          {!(
+                                            mrHeader.progress_id === 3 &&
+                                            userInfo?.departmentID === 8
+                                          ) &&
+                                            (((mrHeader.progress_id === 5 ||
+                                              mrHeader.progress_id === 3 ||
+                                              mrHeader.progress_id === 2) &&
+                                              userInfo?.departmentID ===
+                                                mrHeader.department_id) ||
+                                              ((mrHeader.progress_id === 5 ||
+                                                mrHeader.progress_id === 3) &&
+                                                userInfo?.departmentID === 8) ||
+                                              ((mrHeader.progress_id === 5 ||
+                                                mrHeader.progress_id === 2) &&
+                                                userInfo?.departmentID ===
+                                                  16)) && (
+                                              <td>
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    flexDirection: "column",
+                                                    gap: "10px",
+                                                  }}
+                                                >
+                                                  {/* Show QS Review buttons (Item Available / Need Order) */}
+                                                  {(mrHeader.progress_id ===
+                                                    5 ||
+                                                    mrHeader.progress_id ===
+                                                      2) &&
+                                                    (userInfo?.departmentID ===
+                                                      mrHeader.department_id ||
+                                                      userInfo?.departmentID ===
+                                                        16 ||
+                                                      userInfo?.departmentID ===
+                                                        8) && (
+                                                      <QSReviewButton
+                                                        item={item}
+                                                        progressID={
+                                                          mrHeader.progress_id
+                                                        }
+                                                        inventoryMatch={
+                                                          inventoryMatches[
+                                                            item
+                                                              .material_description
+                                                          ] || null
+                                                        }
+                                                      />
+                                                    )}
+
+                                                  {/* Show Manager approval buttons (not when rejected) */}
+                                                  {mrHeader.progress_id === 3 &&
+                                                    (userInfo?.departmentID ===
+                                                      mrHeader.department_id ||
+                                                      userInfo?.departmentID ===
+                                                        8) && (
+                                                      <InitialApprovalButtons
+                                                        item={item}
+                                                        progressID={
+                                                          mrHeader.progress_id
+                                                        }
+                                                      />
+                                                    )}
+                                                </div>
+                                              </td>
+                                            )}
+
+                                          {/* QS Review column at Manager Approval stage */}
+                                          {mrHeader.progress_id === 3 &&
+                                            (userInfo?.departmentID === 8 ||
+                                              userInfo?.departmentID ===
+                                                mrHeader.department_id) && (
+                                              <td>
+                                                {item.qs_review_type ===
+                                                "need_order" ? (
+                                                  <div
+                                                    className="approval-pill"
+                                                    style={{
+                                                      backgroundColor:
+                                                        "rgba(34, 150, 100, 1)",
+                                                      color: "white",
+                                                    }}
+                                                  >
+                                                    <span
+                                                      style={{
+                                                        textWrap: "nowrap",
+                                                      }}
+                                                    >
+                                                      Need Order
+                                                    </span>
+                                                  </div>
+                                                ) : item.qs_review_type ===
+                                                  "item_available" ? (
+                                                  <div
+                                                    className="approval-pill"
+                                                    style={{
+                                                      backgroundColor:
+                                                        "rgba(34, 150, 100, 1)",
+                                                      color: "white",
+                                                    }}
+                                                  >
+                                                    <span
+                                                      style={{
+                                                        textWrap: "nowrap",
+                                                      }}
+                                                    >
+                                                      {item.linked_inventory_item_description ||
+                                                        "Item Available"}
+                                                    </span>
+                                                    {item.linked_inventory_item_id && (
+                                                      <Button
+                                                        componentType="link"
+                                                        bgColor={"transparent"}
+                                                        borderColor={
+                                                          "transparent"
+                                                        }
+                                                        textColor={"black"}
+                                                        href={`/inventory/${item.linked_inventory_item_id}`}
+                                                        style={{
+                                                          padding: "0px",
+                                                        }}
+                                                      >
+                                                        <img
+                                                          src={externalLinkIcon}
+                                                          alt="view"
+                                                          style={{
+                                                            filter: "invert(1)",
+                                                            cursor: "pointer",
+                                                          }}
+                                                        />
+                                                      </Button>
+                                                    )}
+                                                  </div>
+                                                ) : (
+                                                  "-"
+                                                )}
+                                              </td>
+                                            )}
+
+                                          {/* Manager ACTIONS cell at Manager Approval stage */}
+                                          {mrHeader.progress_id === 3 &&
+                                            userInfo?.departmentID === 8 && (
+                                              <td>
+                                                <InitialApprovalButtons
+                                                  item={item}
+                                                  progressID={
+                                                    mrHeader.progress_id
+                                                  }
+                                                />
+                                              </td>
+                                            )}
+
+                                          {(mrHeader.progress_id === 1 ||
+                                            mrHeader.progress_id === 5 ||
+                                            mrHeader.progress_id === 11) &&
+                                            userInfo?.departmentID ===
+                                              mrHeader.department_id && (
+                                              <td>
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    gap: "10px",
+                                                  }}
+                                                >
+                                                  <EditMrItemButton
+                                                    projectID={
+                                                      mrHeader.project_id
+                                                    }
+                                                    item={item}
+                                                    bgColor="rgba(239, 239, 239, 1)"
+                                                    borderColor="rgba(223, 223, 223, 1)"
+                                                    textColor="black"
+                                                  >
+                                                    <img
+                                                      src={pencilIcon}
+                                                      alt="pencil icon"
+                                                    />
+                                                  </EditMrItemButton>
+
+                                                  <DeleteMrItemButton
+                                                    item={item}
+                                                    bgColor="rgba(239, 239, 239, 1)"
+                                                    borderColor="rgba(223, 223, 223, 1)"
+                                                    textColor="black"
+                                                  >
+                                                    <img
+                                                      src={trashIcon}
+                                                      alt="trash icon"
+                                                    />
+                                                  </DeleteMrItemButton>
+                                                </div>
+                                              </td>
+                                            )}
+
+                                          {mrHeader.progress_id === 7 &&
+                                            (() => {
+                                              const stats =
+                                                materialPriceStats[
+                                                  item.material_description
+                                                ];
+                                              const fmt = (
+                                                v: number | null | undefined,
+                                              ) =>
+                                                v != null
+                                                  ? formatPriceAED(v)
+                                                  : "-";
+                                              return (
+                                                <>
+                                                  <td
+                                                    style={{
+                                                      color:
+                                                        "rgba(37,150,190,1)",
+                                                      fontWeight: 600,
+                                                    }}
+                                                  >
+                                                    {fmt(stats?.lowest_price)}
+                                                  </td>
+                                                  <td
+                                                    style={{
+                                                      color:
+                                                        "rgba(37,150,190,1)",
+                                                      fontWeight: 600,
+                                                    }}
+                                                  >
+                                                    {fmt(stats?.avg_price)}
+                                                  </td>
+                                                  <td
+                                                    style={{
+                                                      color:
+                                                        "rgba(37,150,190,1)",
+                                                      fontWeight: 600,
+                                                    }}
+                                                  >
+                                                    {fmt(stats?.prev_price)}
+                                                  </td>
+                                                </>
+                                              );
+                                            })()}
+
+                                          {(mrHeader.progress_id === 7 ||
+                                            mrHeader.progress_id === 11 ||
+                                            mrHeader.progress_id === 10) &&
+                                            userInfo?.departmentID === 9 && (
+                                              <td>
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "10px",
+                                                  }}
+                                                >
+                                                  <SupplierAndQuotationButton
+                                                    mrHeader={mrHeader}
+                                                    mrLine={item}
+                                                  />
+                                                </div>
+                                              </td>
+                                            )}
+
+                                          {mrHeader.progress_id === 9 &&
+                                            userInfo?.departmentID === 16 && (
+                                              <td>
+                                                <CheckPricesButton
+                                                  progressID={
+                                                    mrHeader.progress_id
+                                                  }
+                                                  mrLine={item}
+                                                />
+                                              </td>
+                                            )}
+
+                                          {mrHeader.progress_id === 11 &&
+                                            userInfo?.departmentID === 8 && (
+                                              <td>
+                                                <PriceApprovalButton
+                                                  progressID={
+                                                    mrHeader.progress_id
+                                                  }
+                                                  mrLine={item}
+                                                  bgColor="white"
+                                                  borderColor="rgba(207, 207, 207, 1)"
+                                                  textColor="black"
+                                                  style={{
+                                                    borderRadius: "25px",
+                                                    padding: "7px 20px",
+                                                  }}
+                                                  onTotalPriceChange={
+                                                    handleTotalPriceChange
+                                                  }
+                                                />
+                                              </td>
+                                            )}
+
+                                          {mrHeader.progress_id >= 12 && (
+                                            <td>
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  gap: "10px",
+                                                  alignItems: "center",
+                                                }}
+                                              >
+                                                {item.approved_supplier_name}{" "}
+                                                <SupplierDetailsPopUp
+                                                  item={item}
+                                                  style={{
+                                                    padding: "7px 7px",
+                                                    backgroundColor:
+                                                      "rgba(239, 239, 239, 1)",
+                                                    borderColor:
+                                                      "rgba(223, 223, 223, 1)",
+                                                  }}
+                                                >
+                                                  <img
+                                                    src={externalLinkIcon}
+                                                    alt="external link icon"
+                                                  />
+                                                </SupplierDetailsPopUp>
+                                              </div>
+                                            </td>
+                                          )}
+
+                                          {mrHeader.progress_id >= 10 &&
+                                            canSeePrice &&
+                                            !isManagerPriceApproval && (
                                               <td>
                                                 {(() => {
-                                                  const proposedQty =
-                                                    Number(
-                                                      item.approved_proposed_quantity,
-                                                    ) || 0;
-                                                  const requestedQty =
-                                                    Number(item.quantity) || 0;
-                                                  const stockQty =
-                                                    proposedQty > requestedQty
-                                                      ? proposedQty -
-                                                        requestedQty
-                                                      : 0;
-                                                  return stockQty > 0
-                                                    ? `${formatNumber(stockQty)} ${item.unit}`
-                                                    : "-";
+                                                  let unitPrice: number;
+
+                                                  if (
+                                                    mrHeader.progress_id >=
+                                                      12 &&
+                                                    lpoLinePrices[item.id]
+                                                  ) {
+                                                    unitPrice =
+                                                      lpoLinePrices[item.id]
+                                                        .unitPrice;
+                                                  } else {
+                                                    unitPrice =
+                                                      Number(
+                                                        item.approved_unit_price,
+                                                      ) || 0;
+                                                  }
+                                                  return formatPriceAED(
+                                                    unitPrice,
+                                                  );
                                                 })()}
                                               </td>
                                             )}
+
+                                          {mrHeader.progress_id >= 10 &&
+                                            canSeePrice &&
+                                            !isManagerPriceApproval && (
+                                              <td>
+                                                {(() => {
+                                                  let totalPrice: number;
+
+                                                  if (
+                                                    mrHeader.progress_id >=
+                                                      12 &&
+                                                    lpoLinePrices[item.id]
+                                                  ) {
+                                                    totalPrice =
+                                                      lpoLinePrices[item.id]
+                                                        .totalPrice;
+                                                  } else {
+                                                    totalPrice =
+                                                      Number(
+                                                        item.approved_total_price,
+                                                      ) || 0;
+                                                  }
+                                                  return formatPriceAED(
+                                                    totalPrice,
+                                                  );
+                                                })()}
+                                              </td>
+                                            )}
+
+                                          {/* Manager Price Approval — LOWEST, AVG, PREV, VENDOR & QUOTATION, PRICE RANGE */}
+                                          {isManagerPriceApproval &&
+                                            (() => {
+                                              const stats =
+                                                materialPriceStats[
+                                                  item.material_description
+                                                ];
+                                              const fmt = (
+                                                v: number | null | undefined,
+                                              ) =>
+                                                v != null
+                                                  ? formatPriceAED(v)
+                                                  : "-";
+                                              return (
+                                                <>
+                                                  <td
+                                                    style={{
+                                                      color:
+                                                        "rgba(37,150,190,1)",
+                                                      fontWeight: 600,
+                                                    }}
+                                                  >
+                                                    {fmt(stats?.lowest_price)}
+                                                  </td>
+                                                  <td
+                                                    style={{
+                                                      color:
+                                                        "rgba(37,150,190,1)",
+                                                      fontWeight: 600,
+                                                    }}
+                                                  >
+                                                    {fmt(stats?.avg_price)}
+                                                  </td>
+                                                  <td
+                                                    style={{
+                                                      color:
+                                                        "rgba(37,150,190,1)",
+                                                      fontWeight: 600,
+                                                    }}
+                                                  >
+                                                    {fmt(stats?.prev_price)}
+                                                  </td>
+                                                  <td>
+                                                    <div
+                                                      style={{
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "6px",
+                                                      }}
+                                                    >
+                                                      <PriceApprovalButton
+                                                        progressID={
+                                                          mrHeader.progress_id
+                                                        }
+                                                        mrLine={item}
+                                                        bgColor="white"
+                                                        borderColor="rgba(207, 207, 207, 1)"
+                                                        textColor="black"
+                                                        style={{
+                                                          borderRadius: "25px",
+                                                          padding: "7px 20px",
+                                                        }}
+                                                        onTotalPriceChange={
+                                                          handleTotalPriceChange
+                                                        }
+                                                      />
+                                                      {itemsExceedingAvgPrice.has(
+                                                        item.id,
+                                                      ) && (
+                                                        <img
+                                                          src={warningIcon}
+                                                          alt="warning"
+                                                        />
+                                                      )}
+                                                    </div>
+                                                  </td>
+                                                  <td>
+                                                    {stats?.lowest_price !=
+                                                      null &&
+                                                    stats?.highest_price != null
+                                                      ? `${formatPriceAED(stats.lowest_price)} – ${formatPriceAED(stats.highest_price)}`
+                                                      : "-"}
+                                                  </td>
+                                                </>
+                                              );
+                                            })()}
+
+                                          {/* Stock Transfer actions at progress_id 4 (ALL view - storekeeper only) */}
+                                          {userInfo?.departmentID === 11 &&
+                                            mrHeader.progress_id === 4 && (
+                                              <td>
+                                                {item.qs_review_type ===
+                                                "item_available" ? (
+                                                  <div
+                                                    style={{
+                                                      display: "flex",
+                                                      flexDirection: "column",
+                                                      gap: "6px",
+                                                    }}
+                                                  >
+                                                    {!item.stock_transfer_id ? (
+                                                      <MrTransferIssueButton
+                                                        item={item}
+                                                      />
+                                                    ) : (
+                                                      <>
+                                                        <MrDownloadDnButton
+                                                          transactionID={
+                                                            item.stock_transfer_id
+                                                          }
+                                                        />
+                                                        <MrUploadSignedDnButton
+                                                          transactionID={
+                                                            item.stock_transfer_id
+                                                          }
+                                                          mrLineId={item.id}
+                                                        />
+                                                      </>
+                                                    )}
+                                                  </div>
+                                                ) : (
+                                                  "-"
+                                                )}
+                                              </td>
+                                            )}
+
+                                          {userInfo?.departmentID === 12 &&
+                                            mrHeader.progress_id === 21 && (
+                                              <td>
+                                                <QCCheckListButton
+                                                  item={item}
+                                                  mrHeader={mrHeader}
+                                                />
+                                              </td>
+                                            )}
+
+                                          {userInfo?.departmentID === 11 &&
+                                            mrHeader.progress_id === 24 && (
+                                              <td>
+                                                <AddToInventoryButton
+                                                  mrLine={item}
+                                                />
+                                              </td>
+                                            )}
+
+                                          {userInfo?.departmentID === 9 &&
+                                            mrHeader.progress_id === 23 && (
+                                              <td>
+                                                <ResolutionButton
+                                                  mrHeader={mrHeader}
+                                                  item={item}
+                                                />
+                                              </td>
+                                            )}
+                                        </tr>
+                                      );
+                                    })}
+                                </tbody>
+
+                                {mrHeader.progress_id >= 10 &&
+                                  canSeePrice &&
+                                  !isManagerPriceApproval && (
+                                    <tfoot
+                                      style={{
+                                        borderTop:
+                                          "1px solid rgba(239, 239, 239, 1)",
+                                      }}
+                                    >
+                                      <tr>
+                                        <td colSpan={subtotalLabelColSpan} />
+                                        <td
+                                          style={{
+                                            fontWeight: "600",
+                                          }}
+                                        >
+                                          SUBTOTAL
+                                        </td>
+                                        <td
+                                          style={{
+                                            fontWeight: "600",
+                                          }}
+                                        >
+                                          {formatPriceAED(
+                                            calculateItemsTotal(
+                                              getAllItemsInSubCategory(
+                                                suppliers,
+                                              ),
+                                            ),
+                                          )}
+                                        </td>
+                                        {subtotalTrailingColSpan > 0 && (
+                                          <td
+                                            colSpan={subtotalTrailingColSpan}
+                                          />
+                                        )}
+                                      </tr>
+                                    </tfoot>
+                                  )}
+                              </table>
+
+                              {isManagerPriceApproval &&
+                                items.filter((i) =>
+                                  itemsExceedingAvgPrice.has(i.id),
+                                ).length > 0 && (
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px",
+                                      marginTop: "12px",
+                                      fontSize: "12px",
+                                      color: "rgba(220,38,38,1)",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    <img src={warningIcon} alt="warning" />
+                                    Price exceeds average paid for items (
+                                    {
+                                      items.filter((i) =>
+                                        itemsExceedingAvgPrice.has(i.id),
+                                      ).length
+                                    }
+                                    )
+                                  </div>
+                                )}
+
+                              <br />
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    );
+                  }),
+              )
+            : Object.entries(subCategories).map(function (
+                [subCategory, suppliers],
+                index,
+              ) {
+                const allItems = getAllItemsInSubCategory(suppliers);
+                const firstItem = allItems[0];
+
+                return (
+                  <div key={subCategory} className="subcategory-section">
+                    <div className="subcategory-header">
+                      {/* Smart select portal — commented out
+                      {userInfo?.departmentID === 8 &&
+                        mrHeader.progress_id === 10 && (
+                          <PriceApprovalButton
+                            progressID={mrHeader.progress_id}
+                            mrLine={{} as MrLine}
+                            isSmartSelectPortal
+                            allMrLines={
+                              showByItem
+                                ? {
+                                    [activeCategory]: {
+                                      [subCategory]: suppliers,
+                                    },
+                                  }
+                                : mrLinesBySupplier
+                            }
+                            portalTargetId={`smart-select-portal-specific-${index}`}
+                          />
+                        )} */}
+
+                      <h2 style={{ textTransform: "uppercase" }}>
+                        <span style={{ marginRight: "25px" }}>
+                          {categories.indexOf(activeCategory) + 1}.{index + 1}
+                        </span>
+                        {subCategory}
+                      </h2>
+
+                      {mrHeader.progress_id === 1 &&
+                        userInfo?.departmentID === mrHeader.department_id &&
+                        firstItem && (
+                          <div className="right">
+                            <RenameMrSubCategoryButton
+                              items={allItems}
+                              categoryID={String(
+                                firstItem.material_category_id,
+                              )}
+                              subCategoryID={String(
+                                firstItem.material_subcategory_id,
+                              )}
+                            />
+
+                            <DeleteMrSubCategoryButton
+                              items={allItems}
+                              subCategory={subCategory}
+                            />
+                          </div>
+                        )}
+                    </div>
+
+                    <br />
+
+                    {Object.entries(suppliers).map(
+                      ([supplier, items], supplierIndex) => (
+                        <div key={supplier} style={{ marginBottom: "2rem" }}>
+                          <table className="items-table two-toned fixed-layout">
+                            <thead>
+                              <tr>
+                                {isQSReview && (
+                                  <th style={{ width: "40px" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        items.length > 0 &&
+                                        items.every((i) =>
+                                          selectedItemIds.has(i.id),
+                                        )
+                                      }
+                                      onChange={(e) => {
+                                        const newSet = new Set(selectedItemIds);
+                                        items.forEach((i) => {
+                                          if (e.target.checked)
+                                            newSet.add(i.id);
+                                          else newSet.delete(i.id);
+                                        });
+                                        setSelectedItemIds(newSet);
+                                      }}
+                                      style={{
+                                        cursor: "pointer",
+                                        accentColor: "rgba(0, 163, 93, 1)",
+                                      }}
+                                    />
+                                  </th>
+                                )}
+                                {isProcurementQuotations && (
+                                  <th style={{ width: "24px" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        items.length > 0 &&
+                                        items.every((i) =>
+                                          selectedProcurementItemIds.has(i.id),
+                                        )
+                                      }
+                                      onChange={(e) => {
+                                        const newSet = new Set(
+                                          selectedProcurementItemIds,
+                                        );
+                                        items.forEach((i) => {
+                                          if (e.target.checked)
+                                            newSet.add(i.id);
+                                          else newSet.delete(i.id);
+                                        });
+                                        setSelectedProcurementItemIds(newSet);
+                                      }}
+                                      style={{
+                                        cursor: "pointer",
+                                        accentColor: "rgba(0, 163, 93, 1)",
+                                      }}
+                                    />
+                                  </th>
+                                )}
+                                {isManagerPriceApproval && (
+                                  <th style={{ width: "24px" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        items.length > 0 &&
+                                        items.every((i) =>
+                                          selectedManagerItemIds.has(i.id),
+                                        )
+                                      }
+                                      onChange={(e) => {
+                                        const newSet = new Set(
+                                          selectedManagerItemIds,
+                                        );
+                                        items.forEach((i) => {
+                                          if (e.target.checked)
+                                            newSet.add(i.id);
+                                          else newSet.delete(i.id);
+                                        });
+                                        setSelectedManagerItemIds(newSet);
+                                      }}
+                                      style={{
+                                        cursor: "pointer",
+                                        accentColor: "rgba(0, 163, 93, 1)",
+                                      }}
+                                    />
+                                  </th>
+                                )}
+                                <th style={{ width: "40px" }}>#</th>
+                                <th style={{ width: "130px" }}>ITEM</th>
+                                {mrHeader.progress_id >= 9 ? (
+                                  <>
+                                    <th style={{ width: "80px" }}>QTY USE</th>
+                                    {hasAnyQtyStocks && (
+                                      <th style={{ width: "90px" }}>
+                                        QTY STOCKS
+                                      </th>
+                                    )}
+                                    {hasAnyQtyStocks && (
+                                      <th style={{ width: "80px" }}>
+                                        TOTAL QTY
+                                      </th>
+                                    )}
+                                  </>
+                                ) : (
+                                  <th style={{ width: "120px" }}>REQ. QTY</th>
+                                )}
+                                <th style={{ width: "95px" }}>BOQ REF.</th>
+                                {hasAnyBrandSpecs && (
+                                  <th style={{ width: "120px" }}>
+                                    BRAND & SPECS
+                                  </th>
+                                )}
+                                {hasAnyAttachment && (
+                                  <th style={{ width: "100px" }}>ATTACHMENT</th>
+                                )}
+                                {((mrHeader.progress_id === 5 &&
+                                  (userInfo?.departmentID ===
+                                    mrHeader.department_id ||
+                                    userInfo?.departmentID === 8 ||
+                                    userInfo?.departmentID === 16)) ||
+                                  (mrHeader.progress_id === 3 &&
+                                    userInfo?.departmentID ===
+                                      mrHeader.department_id &&
+                                    userInfo?.departmentID !== 8) ||
+                                  (mrHeader.progress_id === 2 &&
+                                    userInfo?.departmentID ===
+                                      mrHeader.department_id &&
+                                    userInfo?.departmentID !== 16)) && (
+                                  <th style={{ width: "160px" }}>
+                                    APPROVAL STATUS
+                                  </th>
+                                )}
+                                {(mrHeader.progress_id === 1 ||
+                                  mrHeader.progress_id === 5 ||
+                                  mrHeader.progress_id === 11) &&
+                                  userInfo?.departmentID ===
+                                    mrHeader.department_id && (
+                                    <th style={{ width: "160px" }}>ACTIONS</th>
+                                  )}
+                                {mrHeader.progress_id === 11 &&
+                                  userInfo?.departmentID === 9 && (
+                                    <th style={{ width: "160px" }}>ACTIONS</th>
+                                  )}
+                                {mrHeader.progress_id === 3 &&
+                                  (userInfo?.departmentID === 8 ||
+                                    userInfo?.departmentID ===
+                                      mrHeader.department_id) && (
+                                    <th style={{ width: "160px" }}>
+                                      QS REVIEW
+                                    </th>
+                                  )}
+                                {mrHeader.progress_id === 3 &&
+                                  userInfo?.departmentID === 8 && (
+                                    <th style={{ width: "160px" }}>ACTIONS</th>
+                                  )}
+                                {mrHeader.progress_id === 2 &&
+                                  userInfo?.departmentID === 16 && (
+                                    <th style={{ width: "160px" }}>ACTIONS</th>
+                                  )}
+                                {mrHeader.progress_id >= 10 &&
+                                  mrHeader.progress_id !== 11 &&
+                                  !isManagerPriceApproval && (
+                                    <th style={{ width: "160px" }}>
+                                      <span>VENDOR & QUOTATION</span>
+                                    </th>
+                                  )}
+                                {mrHeader.progress_id === 7 && (
+                                  <>
+                                    <th style={{ width: "100px" }}>
+                                      LOWEST PRICE
+                                    </th>
+                                    <th style={{ width: "100px" }}>
+                                      AVG. PRICE
+                                    </th>
+                                    <th style={{ width: "100px" }}>
+                                      PREV. PRICE
+                                    </th>
+                                    {userInfo?.departmentID === 9 && (
+                                      <th style={{ width: "160px" }}>
+                                        VENDOR & QUOTATION
+                                      </th>
+                                    )}
+                                  </>
+                                )}
+                                {mrHeader.progress_id === 9 &&
+                                  userInfo?.departmentID === 16 && (
+                                    <th style={{ width: "160px" }}>
+                                      VENDOR & QUOTATION
+                                    </th>
+                                  )}
+                                {mrHeader.progress_id >= 10 &&
+                                  canSeePrice &&
+                                  !isManagerPriceApproval && (
+                                    <th style={{ width: "100px" }}>
+                                      UNIT PRICE
+                                    </th>
+                                  )}
+                                {mrHeader.progress_id >= 10 &&
+                                  canSeePrice &&
+                                  !isManagerPriceApproval && (
+                                    <th style={{ width: "100px" }}>
+                                      TOTAL PRICE
+                                    </th>
+                                  )}
+                                {isManagerPriceApproval && (
+                                  <>
+                                    <th style={{ width: "100px" }}>
+                                      LOWEST PRICE
+                                    </th>
+                                    <th style={{ width: "100px" }}>
+                                      AVG. PRICE
+                                    </th>
+                                    <th style={{ width: "100px" }}>
+                                      PREV. PRICE
+                                    </th>
+                                    <th style={{ width: "160px" }}>
+                                      VENDOR & QUOTATION
+                                    </th>
+                                    <th style={{ width: "130px" }}>
+                                      PRICE RANGE
+                                    </th>
+                                  </>
+                                )}
+                                {userInfo?.departmentID === 12 &&
+                                  mrHeader.progress_id === 21 && (
+                                    <th style={{ width: "160px" }}>
+                                      QUALITY CONTROL
+                                    </th>
+                                  )}
+                                {userInfo?.departmentID === 11 &&
+                                  mrHeader.progress_id === 24 && (
+                                    <th style={{ width: "120px" }}>STOCKS</th>
+                                  )}
+                                {userInfo?.departmentID === 9 &&
+                                  mrHeader.progress_id === 23 && (
+                                    <th style={{ width: "140px" }}>
+                                      RESOLUTION
+                                    </th>
+                                  )}
+                                {(userInfo?.departmentID === 11 ||
+                                  userInfo?.departmentID === 8) &&
+                                  mrHeader.progress_id === 4 && (
+                                    <th style={{ width: "160px" }}>
+                                      STOCK TRANSFER
+                                    </th>
+                                  )}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {Array.isArray(items) &&
+                                items.map(function (item, itemIndex) {
+                                  return (
+                                    <tr key={item.id}>
+                                      {isQSReview && (
+                                        <td>
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedItemIds.has(
+                                              item.id,
+                                            )}
+                                            onChange={(e) => {
+                                              const newSet = new Set(
+                                                selectedItemIds,
+                                              );
+                                              if (e.target.checked)
+                                                newSet.add(item.id);
+                                              else newSet.delete(item.id);
+                                              setSelectedItemIds(newSet);
+                                            }}
+                                            style={{
+                                              cursor: "pointer",
+                                              accentColor:
+                                                "rgba(0, 163, 93, 1)",
+                                            }}
+                                          />
+                                        </td>
+                                      )}
+                                      {isProcurementQuotations && (
+                                        <td>
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedProcurementItemIds.has(
+                                              item.id,
+                                            )}
+                                            onChange={(e) => {
+                                              const newSet = new Set(
+                                                selectedProcurementItemIds,
+                                              );
+                                              if (e.target.checked)
+                                                newSet.add(item.id);
+                                              else newSet.delete(item.id);
+                                              setSelectedProcurementItemIds(
+                                                newSet,
+                                              );
+                                            }}
+                                            style={{
+                                              cursor: "pointer",
+                                              accentColor:
+                                                "rgba(0, 163, 93, 1)",
+                                            }}
+                                          />
+                                        </td>
+                                      )}
+                                      {/* Manager Price Approval checkbox */}
+                                      {isManagerPriceApproval && (
+                                        <td>
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedManagerItemIds.has(
+                                              item.id,
+                                            )}
+                                            onChange={(e) => {
+                                              const newSet = new Set(
+                                                selectedManagerItemIds,
+                                              );
+                                              if (e.target.checked)
+                                                newSet.add(item.id);
+                                              else newSet.delete(item.id);
+                                              setSelectedManagerItemIds(newSet);
+                                            }}
+                                            style={{
+                                              cursor: "pointer",
+                                              accentColor:
+                                                "rgba(0, 163, 93, 1)",
+                                            }}
+                                          />
+                                        </td>
+                                      )}
+                                      <td>{itemIndex + 1}</td>
+                                      <td>
+                                        {item.material_description}
+                                        {item.qs_review_type ===
+                                          "item_available" &&
+                                          mrHeader.progress_id <= 4 &&
+                                          item.linked_inventory_item_description && (
+                                            <div
+                                              style={{
+                                                fontSize: "10px",
+                                                color: "rgba(26, 216, 135, 1)",
+                                                marginTop: "4px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "4px",
+                                              }}
+                                            >
+                                              Item available:{" "}
+                                              {
+                                                item.linked_inventory_item_description
+                                              }
+                                              <img
+                                                src={externalLinkIcon}
+                                                alt=""
+                                                style={{
+                                                  width: "10px",
+                                                  height: "10px",
+                                                  filter:
+                                                    "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
+                                                }}
+                                              />
+                                            </div>
+                                          )}
+                                      </td>
+                                      {mrHeader.progress_id >= 9 ? (
+                                        <>
+                                          <td>
+                                            {formatNumber(item?.quantity)}{" "}
+                                            {item.unit}
+                                          </td>
+                                          {hasAnyQtyStocks && (
+                                            <td>
+                                              {(() => {
+                                                const proposedQty =
+                                                  Number(
+                                                    item.approved_proposed_quantity,
+                                                  ) || 0;
+                                                const requestedQty =
+                                                  Number(item.quantity) || 0;
+                                                const stockQty =
+                                                  proposedQty > requestedQty
+                                                    ? proposedQty - requestedQty
+                                                    : 0;
+                                                return stockQty > 0
+                                                  ? `${formatNumber(stockQty)} ${item.unit}`
+                                                  : "-";
+                                              })()}
+                                            </td>
+                                          )}
+                                          {hasAnyQtyStocks && (
                                             <td>
                                               {formatNumber(
                                                 item?.approved_proposed_quantity,
                                               )}{" "}
                                               {item.unit}
                                             </td>
-                                          </>
-                                        ) : (
-                                          <td>
-                                            <div
-                                              style={{
-                                                display: "flex",
-                                                gap: "10px",
-                                                alignItems: "center",
-                                              }}
-                                            >
-                                              {formatNumber(item?.quantity)}{" "}
-                                              {item.unit}
-                                              {isQSReview && (
-                                                <QSEditQtyButton item={item} />
-                                              )}
-                                            </div>
-                                          </td>
-                                        )}
-                                        <td>
-                                          {item.boq_line_ids ? (
-                                            <BoqReferencePopUp
-                                              item={item}
-                                              mrHeader={mrHeader}
-                                            />
-                                          ) : (
-                                            "-"
                                           )}
-                                        </td>
-                                        {hasAnyBrandSpecs && (
+                                        </>
+                                      ) : (
                                         <td>
                                           <div
                                             style={{
                                               display: "flex",
                                               gap: "10px",
+                                              alignItems: "center",
+                                            }}
+                                          >
+                                            {formatNumber(item?.quantity)}{" "}
+                                            {item.unit}
+                                            {isQSReview && (
+                                              <QSEditQtyButton item={item} />
+                                            )}
+                                          </div>
+                                        </td>
+                                      )}
+                                      <td>
+                                        {item.boq_line_ids ? (
+                                          <BoqReferencePopUp
+                                            item={item}
+                                            mrHeader={mrHeader}
+                                          />
+                                        ) : (
+                                          "-"
+                                        )}
+                                      </td>
+                                      {hasAnyBrandSpecs && (
+                                        <td>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "8px",
                                               alignItems: "center",
                                             }}
                                           >
@@ -2770,7 +4212,9 @@ export default function MrLinesView({
                                                   <>
                                                     <small>BRAND</small>
                                                     <h2>{item.brand || "-"}</h2>
+
                                                     <br />
+
                                                     <small>SPECIFICATION</small>
                                                     <h2>
                                                       {item.specification ||
@@ -2790,385 +4234,196 @@ export default function MrLinesView({
                                             )}
                                           </div>
                                         </td>
-                                        )}
-                                        {hasAnyAttachment && (
+                                      )}
+
+                                      {hasAnyAttachment && (
+                                        <td>
+                                          {item.attachment ? (
+                                            <Button
+                                              componentType={"link"}
+                                              bgColor={"rgba(239, 239, 239, 1)"}
+                                              borderColor={
+                                                "rgba(223, 223, 223, 1)"
+                                              }
+                                              textColor={"black"}
+                                              style={{ padding: "7px 7px" }}
+                                              href={item.attachment}
+                                              target="_blank"
+                                            >
+                                              <img
+                                                src={externalLinkIcon}
+                                                alt="external link"
+                                              />
+                                            </Button>
+                                          ) : (
+                                            "-"
+                                          )}
+                                        </td>
+                                      )}
+
+                                      {!(
+                                        mrHeader.progress_id === 3 &&
+                                        userInfo?.departmentID === 8
+                                      ) &&
+                                        (((mrHeader.progress_id === 5 ||
+                                          mrHeader.progress_id === 3 ||
+                                          mrHeader.progress_id === 2) &&
+                                          userInfo?.departmentID ===
+                                            mrHeader.department_id) ||
+                                          ((mrHeader.progress_id === 5 ||
+                                            mrHeader.progress_id === 3) &&
+                                            userInfo?.departmentID === 8) ||
+                                          ((mrHeader.progress_id === 5 ||
+                                            mrHeader.progress_id === 2) &&
+                                            userInfo?.departmentID === 16)) && (
                                           <td>
-                                            {item.attachment ? (
-                                              <Button
-                                                componentType={"link"}
-                                                bgColor={
-                                                  "rgba(239, 239, 239, 1)"
-                                                }
-                                                borderColor={
-                                                  "rgba(223, 223, 223, 1)"
-                                                }
-                                                textColor={"black"}
-                                                style={{ padding: "7px 7px" }}
-                                                href={item.attachment}
-                                                target="_blank"
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "10px",
+                                              }}
+                                            >
+                                              {/* Show QS Review buttons (Item Available / Need Order) */}
+                                              {(mrHeader.progress_id === 5 ||
+                                                mrHeader.progress_id === 2) &&
+                                                (userInfo?.departmentID ===
+                                                  mrHeader.department_id ||
+                                                  userInfo?.departmentID ===
+                                                    16 ||
+                                                  userInfo?.departmentID ===
+                                                    8) && (
+                                                  <QSReviewButton
+                                                    item={item}
+                                                    progressID={
+                                                      mrHeader.progress_id
+                                                    }
+                                                    inventoryMatch={
+                                                      inventoryMatches[
+                                                        item
+                                                          .material_description
+                                                      ] || null
+                                                    }
+                                                  />
+                                                )}
+
+                                              {/* Show Manager approval buttons (not when rejected) */}
+                                              {mrHeader.progress_id === 3 &&
+                                                (userInfo?.departmentID ===
+                                                  mrHeader.department_id ||
+                                                  userInfo?.departmentID ===
+                                                    8) && (
+                                                  <InitialApprovalButtons
+                                                    item={item}
+                                                    progressID={
+                                                      mrHeader.progress_id
+                                                    }
+                                                  />
+                                                )}
+                                            </div>
+                                          </td>
+                                        )}
+
+                                      {/* QS Review column at Manager Approval stage (supplier view) */}
+                                      {mrHeader.progress_id === 3 &&
+                                        (userInfo?.departmentID === 8 ||
+                                          userInfo?.departmentID ===
+                                            mrHeader.department_id) && (
+                                          <td>
+                                            {item.qs_review_type ===
+                                            "need_order" ? (
+                                              <div
+                                                className="approval-pill"
+                                                style={{
+                                                  backgroundColor:
+                                                    "rgba(34, 150, 100, 1)",
+                                                  color: "white",
+                                                }}
                                               >
-                                                <img
-                                                  src={externalLinkIcon}
-                                                  alt="external link"
-                                                />
-                                              </Button>
+                                                <span
+                                                  style={{ textWrap: "nowrap" }}
+                                                >
+                                                  Need Order
+                                                </span>
+                                              </div>
+                                            ) : item.qs_review_type ===
+                                              "item_available" ? (
+                                              <div
+                                                className="approval-pill"
+                                                style={{
+                                                  backgroundColor:
+                                                    "rgba(34, 150, 100, 1)",
+                                                  color: "white",
+                                                }}
+                                              >
+                                                <span
+                                                  style={{ textWrap: "nowrap" }}
+                                                >
+                                                  {item.linked_inventory_item_description ||
+                                                    "Item Available"}
+                                                </span>
+                                                {item.linked_inventory_item_id && (
+                                                  <Button
+                                                    componentType="link"
+                                                    bgColor={"transparent"}
+                                                    borderColor={"transparent"}
+                                                    textColor={"black"}
+                                                    href={`/inventory/${item.linked_inventory_item_id}`}
+                                                    style={{ padding: "0px" }}
+                                                  >
+                                                    <img
+                                                      src={externalLinkIcon}
+                                                      alt="view"
+                                                      style={{
+                                                        filter: "invert(1)",
+                                                        cursor: "pointer",
+                                                      }}
+                                                    />
+                                                  </Button>
+                                                )}
+                                              </div>
                                             ) : (
                                               "-"
                                             )}
                                           </td>
                                         )}
 
-                                        {!(
-                                          mrHeader.progress_id === 3 &&
-                                          userInfo?.departmentID === 8
-                                        ) &&
-                                          (((mrHeader.progress_id === 5 ||
-                                            mrHeader.progress_id === 3 ||
-                                            mrHeader.progress_id === 2) &&
-                                            userInfo?.departmentID ===
-                                              mrHeader.department_id) ||
-                                            ((mrHeader.progress_id === 5 ||
-                                              mrHeader.progress_id === 3) &&
-                                              userInfo?.departmentID === 8) ||
-                                            ((mrHeader.progress_id === 5 ||
-                                              mrHeader.progress_id === 2) &&
-                                              userInfo?.departmentID ===
-                                                16)) && (
-                                            <td>
-                                              <div
-                                                style={{
-                                                  display: "flex",
-                                                  flexDirection: "column",
-                                                  gap: "10px",
-                                                }}
-                                              >
-                                                {/* Show QS Review buttons (Item Available / Need Order) */}
-                                                {(mrHeader.progress_id === 5 ||
-                                                  mrHeader.progress_id === 2) &&
-                                                  (userInfo?.departmentID ===
-                                                    mrHeader.department_id ||
-                                                    userInfo?.departmentID ===
-                                                      16 ||
-                                                    userInfo?.departmentID ===
-                                                      8) && (
-                                                    <QSReviewButton
-                                                      item={item}
-                                                      progressID={
-                                                        mrHeader.progress_id
-                                                      }
-                                                      inventoryMatch={
-                                                        inventoryMatches[
-                                                          item
-                                                            .material_description
-                                                        ] || null
-                                                      }
-                                                    />
-                                                  )}
+                                      {/* Manager ACTIONS cell at Manager Approval stage (supplier view) */}
+                                      {mrHeader.progress_id === 3 &&
+                                        userInfo?.departmentID === 8 && (
+                                          <td>
+                                            <InitialApprovalButtons
+                                              item={item}
+                                              progressID={mrHeader.progress_id}
+                                            />
+                                          </td>
+                                        )}
 
-                                                {/* Show Manager approval buttons (not when rejected) */}
-                                                {mrHeader.progress_id === 3 &&
-                                                  (userInfo?.departmentID ===
-                                                    mrHeader.department_id ||
-                                                    userInfo?.departmentID ===
-                                                      8) && (
-                                                    <InitialApprovalButtons
-                                                      item={item}
-                                                      progressID={
-                                                        mrHeader.progress_id
-                                                      }
-                                                    />
-                                                  )}
-                                              </div>
-                                            </td>
-                                          )}
-
-                                        {/* QS Review column at Manager Approval stage */}
-                                        {mrHeader.progress_id === 3 &&
-                                          (userInfo?.departmentID === 8 ||
-                                            userInfo?.departmentID ===
-                                              mrHeader.department_id) && (
-                                            <td>
-                                              {item.qs_review_type ===
-                                              "need_order" ? (
-                                                <div
-                                                  className="approval-pill"
-                                                  style={{
-                                                    backgroundColor:
-                                                      "rgba(34, 150, 100, 1)",
-                                                    color: "white",
-                                                  }}
-                                                >
-                                                  <span
-                                                    style={{
-                                                      textWrap: "nowrap",
-                                                    }}
-                                                  >
-                                                    Need Order
-                                                  </span>
-                                                </div>
-                                              ) : item.qs_review_type ===
-                                                "item_available" ? (
-                                                <div
-                                                  className="approval-pill"
-                                                  style={{
-                                                    backgroundColor:
-                                                      "rgba(34, 150, 100, 1)",
-                                                    color: "white",
-                                                  }}
-                                                >
-                                                  <span
-                                                    style={{
-                                                      textWrap: "nowrap",
-                                                    }}
-                                                  >
-                                                    {item.linked_inventory_item_description ||
-                                                      "Item Available"}
-                                                  </span>
-                                                  {item.linked_inventory_item_id && (
-                                                    <Button
-                                                      componentType="link"
-                                                      bgColor={"transparent"}
-                                                      borderColor={
-                                                        "transparent"
-                                                      }
-                                                      textColor={"black"}
-                                                      href={`/inventory/${item.linked_inventory_item_id}`}
-                                                      style={{ padding: "0px" }}
-                                                    >
-                                                      <img
-                                                        src={externalLinkIcon}
-                                                        alt="view"
-                                                        style={{
-                                                          filter: "invert(1)",
-                                                          cursor: "pointer",
-                                                        }}
-                                                      />
-                                                    </Button>
-                                                  )}
-                                                </div>
-                                              ) : (
-                                                "-"
-                                              )}
-                                            </td>
-                                          )}
-
-                                        {/* Manager ACTIONS cell at Manager Approval stage */}
-                                        {mrHeader.progress_id === 3 &&
-                                          userInfo?.departmentID === 8 && (
-                                            <td>
-                                              <InitialApprovalButtons
-                                                item={item}
-                                                progressID={
-                                                  mrHeader.progress_id
-                                                }
-                                              />
-                                            </td>
-                                          )}
-
-                                        {(mrHeader.progress_id === 1 ||
-                                          mrHeader.progress_id === 5 ||
-                                          mrHeader.progress_id === 11) &&
-                                          userInfo?.departmentID ===
-                                            mrHeader.department_id && (
-                                            <td>
-                                              <div
-                                                style={{
-                                                  display: "flex",
-                                                  gap: "10px",
-                                                }}
-                                              >
-                                                <EditMrItemButton
-                                                  projectID={
-                                                    mrHeader.project_id
-                                                  }
-                                                  item={item}
-                                                  bgColor="rgba(239, 239, 239, 1)"
-                                                  borderColor="rgba(223, 223, 223, 1)"
-                                                  textColor="black"
-                                                >
-                                                  <img
-                                                    src={pencilIcon}
-                                                    alt="pencil icon"
-                                                  />
-                                                </EditMrItemButton>
-
-                                                <DeleteMrItemButton
-                                                  item={item}
-                                                  bgColor="rgba(239, 239, 239, 1)"
-                                                  borderColor="rgba(223, 223, 223, 1)"
-                                                  textColor="black"
-                                                >
-                                                  <img
-                                                    src={trashIcon}
-                                                    alt="trash icon"
-                                                  />
-                                                </DeleteMrItemButton>
-                                              </div>
-                                            </td>
-                                          )}
-
-                                        {(mrHeader.progress_id === 7 ||
-                                          mrHeader.progress_id === 11 ||
-                                          mrHeader.progress_id === 10) &&
-                                          userInfo?.departmentID === 9 && (
-                                            <td>
-                                              <div
-                                                style={{
-                                                  display: "flex",
-                                                  alignItems: "center",
-                                                  gap: "10px",
-                                                }}
-                                              >
-                                                <SupplierAndQuotationButton
-                                                  mrHeader={mrHeader}
-                                                  mrLine={item}
-                                                />
-                                              </div>
-                                            </td>
-                                          )}
-
-                                        {mrHeader.progress_id === 9 &&
-                                          userInfo?.departmentID === 16 && (
-                                            <td>
-                                              <CheckPricesButton
-                                                progressID={
-                                                  mrHeader.progress_id
-                                                }
-                                                mrLine={item}
-                                              />
-                                            </td>
-                                          )}
-
-                                        {[10, 11].includes(
-                                          mrHeader.progress_id,
-                                        ) &&
-                                          userInfo?.departmentID === 8 && (
-                                            <td>
-                                              <PriceApprovalButton
-                                                progressID={
-                                                  mrHeader.progress_id
-                                                }
-                                                mrLine={item}
-                                                bgColor="white"
-                                                borderColor="rgba(207, 207, 207, 1)"
-                                                textColor="black"
-                                                style={{
-                                                  borderRadius: "25px",
-                                                  padding: "7px 20px",
-                                                }}
-                                                onTotalPriceChange={
-                                                  handleTotalPriceChange
-                                                }
-                                              />
-                                            </td>
-                                          )}
-
-                                        {mrHeader.progress_id >= 12 && (
+                                      {(mrHeader.progress_id === 1 ||
+                                        mrHeader.progress_id === 5 ||
+                                        mrHeader.progress_id === 11) &&
+                                        userInfo?.departmentID ===
+                                          mrHeader.department_id && (
                                           <td>
                                             <div
                                               style={{
                                                 display: "flex",
                                                 gap: "10px",
-                                                alignItems: "center",
                                               }}
                                             >
-                                              {item.approved_supplier_name}{" "}
-                                              <SupplierDetailsPopUp
+                                              <EditMrItemButton
+                                                projectID={mrHeader.project_id}
                                                 item={item}
-                                                style={{
-                                                  padding: "7px 7px",
-                                                  backgroundColor:
-                                                    "rgba(239, 239, 239, 1)",
-                                                  borderColor:
-                                                    "rgba(223, 223, 223, 1)",
-                                                }}
+                                                bgColor="rgba(239, 239, 239, 1)"
+                                                borderColor="rgba(223, 223, 223, 1)"
+                                                textColor="black"
                                               >
                                                 <img
-                                                  src={externalLinkIcon}
-                                                  alt="external link icon"
+                                                  src={pencilIcon}
+                                                  alt="pencil icon"
                                                 />
-                                              </SupplierDetailsPopUp>
-                                              {/* {canSeePrice && (
-                                                <span>
-                                                  {item.approved_total_price}{" "}
-                                                  AED
-                                                </span>
-                                              )} */}
-                                            </div>
-                                          </td>
-                                        )}
+                                              </EditMrItemButton>
 
-                                        {mrHeader.progress_id >= 10 &&
-                                          canSeePrice && (
-                                            <td>
-                                              {(() => {
-                                                let unitPrice: number;
-                                                let vatRate: number;
-
-                                                if (
-                                                  mrHeader.progress_id >= 12 &&
-                                                  lpoLinePrices[item.id]
-                                                ) {
-                                                  // Use LPO prices
-                                                  unitPrice =
-                                                    lpoLinePrices[item.id]
-                                                      .unitPrice;
-                                                  //vatRate = lpoLinePrices[item.id].vatRate;
-                                                } else {
-                                                  // Use quotation prices
-                                                  unitPrice =
-                                                    Number(
-                                                      item.approved_unit_price,
-                                                    ) || 0;
-                                                  //vatRate = Number(item.approved_vat_rate) || 0;
-                                                }
-
-                                                //const priceWithVat = unitPrice * (1 + vatRate / 100);
-                                                return formatPriceAED(
-                                                  unitPrice,
-                                                );
-                                              })()}
-                                            </td>
-                                          )}
-
-                                        {mrHeader.progress_id >= 10 &&
-                                          canSeePrice && (
-                                            <td>
-                                              {(() => {
-                                                let totalPrice: number;
-                                                let vatRate: number;
-
-                                                if (
-                                                  mrHeader.progress_id >= 12 &&
-                                                  lpoLinePrices[item.id]
-                                                ) {
-                                                  // Use LPO prices
-                                                  totalPrice =
-                                                    lpoLinePrices[item.id]
-                                                      .totalPrice;
-                                                  /* vatRate = lpoLinePrices[item.id].vatRate; */
-                                                } else {
-                                                  // Use quotation prices
-                                                  totalPrice =
-                                                    Number(
-                                                      item.approved_total_price,
-                                                    ) || 0;
-                                                  /* vatRate = Number(item.approved_vat_rate) || 0; */
-                                                }
-
-                                                /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
-                                                return formatPriceAED(
-                                                  totalPrice,
-                                                );
-                                              })()}
-                                            </td>
-                                          )}
-
-                                        {(mrHeader.progress_id === 9 ||
-                                          mrHeader.progress_id === 10) &&
-                                          (userInfo?.departmentID === 8 ||
-                                            userInfo?.departmentID === 16) && (
-                                            <td>
                                               <DeleteMrItemButton
                                                 item={item}
                                                 bgColor="rgba(239, 239, 239, 1)"
@@ -3180,82 +4435,336 @@ export default function MrLinesView({
                                                   alt="trash icon"
                                                 />
                                               </DeleteMrItemButton>
-                                            </td>
-                                          )}
+                                            </div>
+                                          </td>
+                                        )}
 
-                                        {/* Stock Transfer actions at progress_id 4 (ALL view - storekeeper only) */}
-                                        {userInfo?.departmentID === 11 &&
-                                          mrHeader.progress_id === 4 && (
-                                            <td>
-                                              {item.qs_review_type ===
-                                              "item_available" ? (
+                                      {mrHeader.progress_id === 7 &&
+                                        (() => {
+                                          const stats =
+                                            materialPriceStats[
+                                              item.material_description
+                                            ];
+                                          const fmt = (
+                                            v: number | null | undefined,
+                                          ) =>
+                                            v != null ? formatPriceAED(v) : "-";
+                                          return (
+                                            <>
+                                              <td
+                                                style={{
+                                                  color: "rgba(37,150,190,1)",
+                                                  fontWeight: 600,
+                                                }}
+                                              >
+                                                {fmt(stats?.lowest_price)}
+                                              </td>
+                                              <td
+                                                style={{
+                                                  color: "rgba(37,150,190,1)",
+                                                  fontWeight: 600,
+                                                }}
+                                              >
+                                                {fmt(stats?.avg_price)}
+                                              </td>
+                                              <td
+                                                style={{
+                                                  color: "rgba(37,150,190,1)",
+                                                  fontWeight: 600,
+                                                }}
+                                              >
+                                                {fmt(stats?.prev_price)}
+                                              </td>
+                                            </>
+                                          );
+                                        })()}
+
+                                      {(mrHeader.progress_id === 7 ||
+                                        mrHeader.progress_id === 11 ||
+                                        mrHeader.progress_id === 10) &&
+                                        userInfo?.departmentID === 9 && (
+                                          <td>
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "10px",
+                                              }}
+                                            >
+                                              <SupplierAndQuotationButton
+                                                mrHeader={mrHeader}
+                                                mrLine={item}
+                                              />
+                                            </div>
+                                          </td>
+                                        )}
+
+                                      {mrHeader.progress_id === 9 &&
+                                        userInfo?.departmentID === 16 && (
+                                          <td>
+                                            <CheckPricesButton
+                                              progressID={mrHeader.progress_id}
+                                              mrLine={item}
+                                            />
+                                          </td>
+                                        )}
+
+                                      {mrHeader.progress_id === 11 &&
+                                        userInfo?.departmentID === 8 && (
+                                          <td>
+                                            <PriceApprovalButton
+                                              progressID={mrHeader.progress_id}
+                                              mrLine={item}
+                                              bgColor="white"
+                                              borderColor="rgba(207, 207, 207, 1)"
+                                              textColor="black"
+                                              style={{
+                                                borderRadius: "25px",
+                                                padding: "7px 20px",
+                                              }}
+                                              onTotalPriceChange={
+                                                handleTotalPriceChange
+                                              }
+                                            />
+                                          </td>
+                                        )}
+
+                                      {mrHeader.progress_id >= 12 && (
+                                        <td>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "10px",
+                                              alignItems: "center",
+                                            }}
+                                          >
+                                            {item.approved_supplier_name}{" "}
+                                            <SupplierDetailsPopUp
+                                              item={item}
+                                              style={{
+                                                padding: "7px 7px",
+                                                backgroundColor:
+                                                  "rgba(239, 239, 239, 1)",
+                                                borderColor:
+                                                  "rgba(223, 223, 223, 1)",
+                                              }}
+                                            >
+                                              <img
+                                                src={externalLinkIcon}
+                                                alt="external link icon"
+                                              />
+                                            </SupplierDetailsPopUp>
+                                          </div>
+                                        </td>
+                                      )}
+
+                                      {mrHeader.progress_id >= 10 &&
+                                        canSeePrice &&
+                                        !isManagerPriceApproval && (
+                                          <td>
+                                            {(() => {
+                                              let unitPrice: number;
+
+                                              if (
+                                                mrHeader.progress_id >= 12 &&
+                                                lpoLinePrices[item.id]
+                                              ) {
+                                                unitPrice =
+                                                  lpoLinePrices[item.id]
+                                                    .unitPrice;
+                                              } else {
+                                                unitPrice =
+                                                  Number(
+                                                    item.approved_unit_price,
+                                                  ) || 0;
+                                              }
+                                              return formatPriceAED(unitPrice);
+                                            })()}
+                                          </td>
+                                        )}
+
+                                      {mrHeader.progress_id >= 10 &&
+                                        canSeePrice &&
+                                        !isManagerPriceApproval && (
+                                          <td>
+                                            {(() => {
+                                              let totalPrice: number;
+
+                                              if (
+                                                mrHeader.progress_id >= 12 &&
+                                                lpoLinePrices[item.id]
+                                              ) {
+                                                totalPrice =
+                                                  lpoLinePrices[item.id]
+                                                    .totalPrice;
+                                              } else {
+                                                totalPrice =
+                                                  Number(
+                                                    item.approved_total_price,
+                                                  ) || 0;
+                                              }
+                                              return formatPriceAED(totalPrice);
+                                            })()}
+                                          </td>
+                                        )}
+
+                                      {/* Manager Price Approval — LOWEST, AVG, PREV, VENDOR & QUOTATION, PRICE RANGE */}
+                                      {isManagerPriceApproval &&
+                                        (() => {
+                                          const stats =
+                                            materialPriceStats[
+                                              item.material_description
+                                            ];
+                                          const fmt = (
+                                            v: number | null | undefined,
+                                          ) =>
+                                            v != null ? formatPriceAED(v) : "-";
+                                          return (
+                                            <>
+                                              <td
+                                                style={{
+                                                  color: "rgba(37,150,190,1)",
+                                                  fontWeight: 600,
+                                                }}
+                                              >
+                                                {fmt(stats?.lowest_price)}
+                                              </td>
+                                              <td
+                                                style={{
+                                                  color: "rgba(37,150,190,1)",
+                                                  fontWeight: 600,
+                                                }}
+                                              >
+                                                {fmt(stats?.avg_price)}
+                                              </td>
+                                              <td
+                                                style={{
+                                                  color: "rgba(37,150,190,1)",
+                                                  fontWeight: 600,
+                                                }}
+                                              >
+                                                {fmt(stats?.prev_price)}
+                                              </td>
+                                              <td>
                                                 <div
                                                   style={{
                                                     display: "flex",
-                                                    flexDirection: "column",
+                                                    alignItems: "center",
                                                     gap: "6px",
                                                   }}
                                                 >
-                                                  {!item.stock_transfer_id ? (
-                                                    <MrTransferIssueButton
-                                                      item={item}
+                                                  <PriceApprovalButton
+                                                    progressID={
+                                                      mrHeader.progress_id
+                                                    }
+                                                    mrLine={item}
+                                                    bgColor="white"
+                                                    borderColor="rgba(207, 207, 207, 1)"
+                                                    textColor="black"
+                                                    style={{
+                                                      borderRadius: "25px",
+                                                      padding: "7px 20px",
+                                                    }}
+                                                    onTotalPriceChange={
+                                                      handleTotalPriceChange
+                                                    }
+                                                  />
+                                                  {itemsExceedingAvgPrice.has(
+                                                    item.id,
+                                                  ) && (
+                                                    <img
+                                                      src={warningIcon}
+                                                      alt="warning"
                                                     />
-                                                  ) : (
-                                                    <>
-                                                      <MrDownloadDnButton
-                                                        transactionID={
-                                                          item.stock_transfer_id
-                                                        }
-                                                      />
-                                                      <MrUploadSignedDnButton
-                                                        transactionID={
-                                                          item.stock_transfer_id
-                                                        }
-                                                        mrLineId={item.id}
-                                                      />
-                                                    </>
                                                   )}
                                                 </div>
-                                              ) : (
-                                                "-"
-                                              )}
-                                            </td>
-                                          )}
+                                              </td>
+                                              <td>
+                                                {stats?.lowest_price != null &&
+                                                stats?.highest_price != null
+                                                  ? `${formatPriceAED(stats.lowest_price)} – ${formatPriceAED(stats.highest_price)}`
+                                                  : "-"}
+                                              </td>
+                                            </>
+                                          );
+                                        })()}
 
-                                        {userInfo?.departmentID === 12 &&
-                                          mrHeader.progress_id === 21 && (
-                                            <td>
-                                              <QCCheckListButton
-                                                item={item}
-                                                mrHeader={mrHeader}
-                                              />
-                                            </td>
-                                          )}
+                                      {userInfo?.departmentID === 12 &&
+                                        mrHeader.progress_id === 21 && (
+                                          <td>
+                                            <QCCheckListButton
+                                              item={item}
+                                              mrHeader={mrHeader}
+                                            />
+                                          </td>
+                                        )}
 
-                                        {userInfo?.departmentID === 11 &&
-                                          mrHeader.progress_id === 24 && (
-                                            <td>
-                                              <AddToInventoryButton
-                                                mrLine={item}
-                                              />
-                                            </td>
-                                          )}
+                                      {userInfo?.departmentID === 11 &&
+                                        mrHeader.progress_id === 24 && (
+                                          <td>
+                                            <AddToInventoryButton
+                                              mrLine={item}
+                                            />
+                                          </td>
+                                        )}
 
-                                        {userInfo?.departmentID === 9 &&
-                                          mrHeader.progress_id === 23 && (
-                                            <td>
-                                              <ResolutionButton
-                                                mrHeader={mrHeader}
-                                                item={item}
-                                              />
-                                            </td>
-                                          )}
-                                      </tr>
-                                    );
-                                  })}
-                              </tbody>
+                                      {userInfo?.departmentID === 9 &&
+                                        mrHeader.progress_id === 23 && (
+                                          <td>
+                                            <ResolutionButton
+                                              mrHeader={mrHeader}
+                                              item={item}
+                                            />
+                                          </td>
+                                        )}
 
-                              {mrHeader.progress_id >= 10 && canSeePrice && (
+                                      {/* Stock Transfer actions at progress_id 4 (specific category view) */}
+                                      {(userInfo?.departmentID === 11 ||
+                                        userInfo?.departmentID === 8) &&
+                                        mrHeader.progress_id === 4 && (
+                                          <td>
+                                            {item.qs_review_type ===
+                                            "item_available" ? (
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  flexDirection: "column",
+                                                  gap: "6px",
+                                                }}
+                                              >
+                                                {!item.stock_transfer_id ? (
+                                                  <MrTransferIssueButton
+                                                    item={item}
+                                                  />
+                                                ) : (
+                                                  <>
+                                                    <MrDownloadDnButton
+                                                      transactionID={
+                                                        item.stock_transfer_id
+                                                      }
+                                                    />
+                                                    <MrUploadSignedDnButton
+                                                      transactionID={
+                                                        item.stock_transfer_id
+                                                      }
+                                                      mrLineId={item.id}
+                                                    />
+                                                  </>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              "-"
+                                            )}
+                                          </td>
+                                        )}
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+
+                            {mrHeader.progress_id >= 10 &&
+                              canSeePrice &&
+                              !isManagerPriceApproval && (
                                 <tfoot
                                   style={{
                                     borderTop:
@@ -3288,985 +4797,166 @@ export default function MrLinesView({
                                   </tr>
                                 </tfoot>
                               )}
-                            </table>
+                          </table>
 
-                            <br />
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  );
-                }),
-            )
-          : Object.entries(subCategories).map(function (
-              [subCategory, suppliers],
-              index,
-            ) {
-              const allItems = getAllItemsInSubCategory(suppliers);
-              const firstItem = allItems[0];
-
-              return (
-                <div key={subCategory} className="subcategory-section">
-                  <div className="subcategory-header">
-                    {userInfo?.departmentID === 8 &&
-                      mrHeader.progress_id === 10 && (
-                        <PriceApprovalButton
-                          progressID={mrHeader.progress_id}
-                          mrLine={{} as MrLine}
-                          isSmartSelectPortal
-                          allMrLines={
-                            showByItem
-                              ? {
-                                  [activeCategory]: {
-                                    [subCategory]: suppliers,
-                                  },
+                          {isManagerPriceApproval &&
+                            items.filter((i) =>
+                              itemsExceedingAvgPrice.has(i.id),
+                            ).length > 0 && (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                  marginTop: "12px",
+                                  fontSize: "12px",
+                                  color: "rgba(220,38,38,1)",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                <img src={warningIcon} alt="warning" />
+                                Price exceeds average paid for items (
+                                {
+                                  items.filter((i) =>
+                                    itemsExceedingAvgPrice.has(i.id),
+                                  ).length
                                 }
-                              : mrLinesBySupplier
-                          }
-                          portalTargetId={`smart-select-portal-specific-${index}`}
-                        />
-                      )}
-
-                    <h2 style={{ textTransform: "uppercase" }}>
-                      <span style={{ marginRight: "25px" }}>
-                        {categories.indexOf(activeCategory) + 1}.{index + 1}
-                      </span>
-                      {subCategory}
-                    </h2>
-
-                    {mrHeader.progress_id === 1 &&
-                      userInfo?.departmentID === mrHeader.department_id &&
-                      firstItem && (
-                        <div className="right">
-                          <RenameMrSubCategoryButton
-                            items={allItems}
-                            categoryID={String(firstItem.material_category_id)}
-                            subCategoryID={String(
-                              firstItem.material_subcategory_id,
+                                )
+                              </div>
                             )}
-                          />
 
-                          <DeleteMrSubCategoryButton
-                            items={allItems}
-                            subCategory={subCategory}
-                          />
+                          <br />
                         </div>
-                      )}
+                      ),
+                    )}
                   </div>
+                );
+              }))}
 
-                  <br />
-
-                  {Object.entries(suppliers).map(
-                    ([supplier, items], supplierIndex) => (
-                      <div key={supplier} style={{ marginBottom: "2rem" }}>
-                        <table className="items-table two-toned fixed-layout">
-                          <thead>
-                            <tr>
-                              {isQSReview && (
-                                <th style={{ width: "40px" }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      items.length > 0 &&
-                                      items.every((i) =>
-                                        selectedItemIds.has(i.id),
-                                      )
-                                    }
-                                    onChange={(e) => {
-                                      const newSet = new Set(selectedItemIds);
-                                      items.forEach((i) => {
-                                        if (e.target.checked) newSet.add(i.id);
-                                        else newSet.delete(i.id);
-                                      });
-                                      setSelectedItemIds(newSet);
-                                    }}
-                                    style={{
-                                      cursor: "pointer",
-                                      accentColor: "black",
-                                    }}
-                                  />
-                                </th>
-                              )}
-                              <th style={{ width: "40px" }}>#</th>
-                              <th style={{ width: "130px" }}>ITEM</th>
-                              {mrHeader.progress_id >= 9 ? (
-                                <>
-                                  <th style={{ width: "80px" }}>QTY USE</th>
-                                  {hasAnyQtyStocks && (
-                                    <th style={{ width: "90px" }}>
-                                      QTY STOCKS
-                                    </th>
-                                  )}
-                                  <th style={{ width: "80px" }}>TOTAL QTY</th>
-                                </>
-                              ) : (
-                                <th style={{ width: "120px" }}>
-                                  REQUESTED QTY
-                                </th>
-                              )}
-                              <th style={{ width: "95px" }}>BOQ REF.</th>
-                              {hasAnyBrandSpecs && (
-                                <th style={{ width: "120px" }}>BRAND & SPECS</th>
-                              )}
-                              {hasAnyAttachment && (
-                                <th style={{ width: "100px" }}>ATTACHMENT</th>
-                              )}
-                              {((mrHeader.progress_id === 5 &&
-                                (userInfo?.departmentID ===
-                                  mrHeader.department_id ||
-                                  userInfo?.departmentID === 8 ||
-                                  userInfo?.departmentID === 16)) ||
-                                (mrHeader.progress_id === 3 &&
-                                  userInfo?.departmentID ===
-                                    mrHeader.department_id &&
-                                  userInfo?.departmentID !== 8) ||
-                                (mrHeader.progress_id === 2 &&
-                                  userInfo?.departmentID ===
-                                    mrHeader.department_id &&
-                                  userInfo?.departmentID !== 16)) && (
-                                <th style={{ width: "160px" }}>
-                                  APPROVAL STATUS
-                                </th>
-                              )}
-                              {(mrHeader.progress_id === 1 ||
-                                mrHeader.progress_id === 5 ||
-                                mrHeader.progress_id === 11) &&
-                                userInfo?.departmentID ===
-                                  mrHeader.department_id && (
-                                  <th style={{ width: "160px" }}>ACTIONS</th>
-                                )}
-                              {mrHeader.progress_id === 11 &&
-                                userInfo?.departmentID === 9 && (
-                                  <th style={{ width: "160px" }}>ACTIONS</th>
-                                )}
-                              {mrHeader.progress_id === 3 &&
-                                (userInfo?.departmentID === 8 ||
-                                  userInfo?.departmentID ===
-                                    mrHeader.department_id) && (
-                                  <th style={{ width: "160px" }}>QS REVIEW</th>
-                                )}
-                              {mrHeader.progress_id === 3 &&
-                                userInfo?.departmentID === 8 && (
-                                  <th style={{ width: "160px" }}>ACTIONS</th>
-                                )}
-                              {mrHeader.progress_id === 2 &&
-                                userInfo?.departmentID === 16 && (
-                                  <th style={{ width: "160px" }}>ACTIONS</th>
-                                )}
-                              {mrHeader.progress_id >= 10 &&
-                                mrHeader.progress_id !== 11 && (
-                                  <th
-                                    style={
-                                      userInfo?.departmentID === 8 &&
-                                      mrHeader.progress_id === 10
-                                        ? { width: "275px" }
-                                        : { width: "160px" }
-                                    }
-                                  >
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        gap: "10px",
-                                        alignItems: "center",
-                                      }}
-                                    >
-                                      <span>VENDOR & QUOTATION</span>
-                                      {userInfo?.departmentID === 8 &&
-                                        mrHeader.progress_id === 10 && (
-                                          <div
-                                            id={`smart-select-portal-specific-${index}`}
-                                          ></div>
-                                        )}
-                                    </div>
-                                  </th>
-                                )}
-                              {mrHeader.progress_id === 7 &&
-                                userInfo?.departmentID === 9 && (
-                                  <th style={{ width: "160px" }}>
-                                    VENDOR & QUOTATION
-                                  </th>
-                                )}
-                              {mrHeader.progress_id === 9 &&
-                                userInfo?.departmentID === 16 && (
-                                  <th style={{ width: "160px" }}>
-                                    VENDOR & QUOTATION
-                                  </th>
-                                )}
-                              {mrHeader.progress_id >= 10 && canSeePrice && (
-                                <th style={{ width: "100px" }}>UNIT PRICE</th>
-                              )}
-                              {mrHeader.progress_id >= 10 && canSeePrice && (
-                                <th style={{ width: "100px" }}>TOTAL PRICE</th>
-                              )}
-                              {userInfo?.departmentID === 12 &&
-                                mrHeader.progress_id === 21 && (
-                                  <th style={{ width: "160px" }}>
-                                    QUALITY CONTROL
-                                  </th>
-                                )}
-                              {userInfo?.departmentID === 11 &&
-                                mrHeader.progress_id === 24 && (
-                                  <th style={{ width: "120px" }}>STOCKS</th>
-                                )}
-                              {userInfo?.departmentID === 9 &&
-                                mrHeader.progress_id === 23 && (
-                                  <th style={{ width: "140px" }}>RESOLUTION</th>
-                                )}
-                              {(userInfo?.departmentID === 11 ||
-                                userInfo?.departmentID === 8) &&
-                                mrHeader.progress_id === 4 && (
-                                  <th style={{ width: "160px" }}>
-                                    STOCK TRANSFER
-                                  </th>
-                                )}
-                              {(mrHeader.progress_id === 9 ||
-                                mrHeader.progress_id === 10) &&
-                                (userInfo?.departmentID === 8 ||
-                                  userInfo?.departmentID === 16) && (
-                                  <th style={{ width: "120px" }}>ACTIONS</th>
-                                )}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {Array.isArray(items) &&
-                              items.map(function (item, itemIndex) {
-                                return (
-                                  <tr key={item.id}>
-                                    {isQSReview && (
-                                      <td>
-                                        <input
-                                          type="checkbox"
-                                          checked={selectedItemIds.has(item.id)}
-                                          onChange={(e) => {
-                                            const newSet = new Set(
-                                              selectedItemIds,
-                                            );
-                                            if (e.target.checked)
-                                              newSet.add(item.id);
-                                            else newSet.delete(item.id);
-                                            setSelectedItemIds(newSet);
-                                          }}
-                                          style={{
-                                            cursor: "pointer",
-                                            accentColor: "black",
-                                          }}
-                                        />
-                                      </td>
-                                    )}
-                                    <td>{itemIndex + 1}</td>
-                                    <td>
-                                      {item.material_description}
-                                      {item.qs_review_type ===
-                                        "item_available" &&
-                                        mrHeader.progress_id <= 4 &&
-                                        item.linked_inventory_item_description && (
-                                          <div
-                                            style={{
-                                              fontSize: "10px",
-                                              color: "rgba(26, 216, 135, 1)",
-                                              marginTop: "4px",
-                                              display: "flex",
-                                              alignItems: "center",
-                                              gap: "4px",
-                                            }}
-                                          >
-                                            Item available:{" "}
-                                            {
-                                              item.linked_inventory_item_description
-                                            }
-                                            <img
-                                              src={externalLinkIcon}
-                                              alt=""
-                                              style={{
-                                                width: "10px",
-                                                height: "10px",
-                                                filter:
-                                                  "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
-                                              }}
-                                            />
-                                          </div>
-                                        )}
-                                    </td>
-                                    {mrHeader.progress_id >= 9 ? (
-                                      <>
-                                        <td>
-                                          {formatNumber(item?.quantity)}{" "}
-                                          {item.unit}
-                                        </td>
-                                        {hasAnyQtyStocks && (
-                                          <td>
-                                            {(() => {
-                                              const proposedQty =
-                                                Number(
-                                                  item.approved_proposed_quantity,
-                                                ) || 0;
-                                              const requestedQty =
-                                                Number(item.quantity) || 0;
-                                              const stockQty =
-                                                proposedQty > requestedQty
-                                                  ? proposedQty - requestedQty
-                                                  : 0;
-                                              return stockQty > 0
-                                                ? `${formatNumber(stockQty)} ${item.unit}`
-                                                : "-";
-                                            })()}
-                                          </td>
-                                        )}
-                                        <td>
-                                          {formatNumber(
-                                            item?.approved_proposed_quantity,
-                                          )}{" "}
-                                          {item.unit}
-                                        </td>
-                                      </>
-                                    ) : (
-                                      <td>
-                                        <div
-                                          style={{
-                                            display: "flex",
-                                            gap: "10px",
-                                            alignItems: "center",
-                                          }}
-                                        >
-                                          {formatNumber(item?.quantity)}{" "}
-                                          {item.unit}
-                                          {isQSReview && (
-                                            <QSEditQtyButton item={item} />
-                                          )}
-                                        </div>
-                                      </td>
-                                    )}
-                                    <td>
-                                      {item.boq_line_ids ? (
-                                        <BoqReferencePopUp
-                                          item={item}
-                                          mrHeader={mrHeader}
-                                        />
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </td>
-                                    {hasAnyBrandSpecs && (
-                                    <td>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          gap: "8px",
-                                          alignItems: "center",
-                                        }}
-                                      >
-                                        {item.brand || item.specification ? (
-                                          <InfoPopUpButton
-                                            text={
-                                              <>
-                                                <small>BRAND</small>
-                                                <h2>{item.brand || "-"}</h2>
-
-                                                <br />
-
-                                                <small>SPECIFICATION</small>
-                                                <h2>
-                                                  {item.specification || "-"}
-                                                </h2>
-                                              </>
-                                            }
-                                            header="BRAND & SPECIFICATION"
-                                          />
-                                        ) : !isQSReview ? (
-                                          <span>-</span>
-                                        ) : null}
-                                        {isQSReview && (
-                                          <QSEditBrandSpecButton item={item} />
-                                        )}
-                                      </div>
-                                    </td>
-                                    )}
-
-                                    {hasAnyAttachment && (
-                                      <td>
-                                        {item.attachment ? (
-                                          <Button
-                                            componentType={"link"}
-                                            bgColor={"rgba(239, 239, 239, 1)"}
-                                            borderColor={
-                                              "rgba(223, 223, 223, 1)"
-                                            }
-                                            textColor={"black"}
-                                            style={{ padding: "7px 7px" }}
-                                            href={item.attachment}
-                                            target="_blank"
-                                          >
-                                            <img
-                                              src={externalLinkIcon}
-                                              alt="external link"
-                                            />
-                                          </Button>
-                                        ) : (
-                                          "-"
-                                        )}
-                                      </td>
-                                    )}
-
-                                    {!(
-                                      mrHeader.progress_id === 3 &&
-                                      userInfo?.departmentID === 8
-                                    ) &&
-                                      (((mrHeader.progress_id === 5 ||
-                                        mrHeader.progress_id === 3 ||
-                                        mrHeader.progress_id === 2) &&
-                                        userInfo?.departmentID ===
-                                          mrHeader.department_id) ||
-                                        ((mrHeader.progress_id === 5 ||
-                                          mrHeader.progress_id === 3) &&
-                                          userInfo?.departmentID === 8) ||
-                                        ((mrHeader.progress_id === 5 ||
-                                          mrHeader.progress_id === 2) &&
-                                          userInfo?.departmentID === 16)) && (
-                                        <td>
-                                          <div
-                                            style={{
-                                              display: "flex",
-                                              flexDirection: "column",
-                                              gap: "10px",
-                                            }}
-                                          >
-                                            {/* Show QS Review buttons (Item Available / Need Order) */}
-                                            {(mrHeader.progress_id === 5 ||
-                                              mrHeader.progress_id === 2) &&
-                                              (userInfo?.departmentID ===
-                                                mrHeader.department_id ||
-                                                userInfo?.departmentID === 16 ||
-                                                userInfo?.departmentID ===
-                                                  8) && (
-                                                <QSReviewButton
-                                                  item={item}
-                                                  progressID={
-                                                    mrHeader.progress_id
-                                                  }
-                                                  inventoryMatch={
-                                                    inventoryMatches[
-                                                      item.material_description
-                                                    ] || null
-                                                  }
-                                                />
-                                              )}
-
-                                            {/* Show Manager approval buttons (not when rejected) */}
-                                            {mrHeader.progress_id === 3 &&
-                                              (userInfo?.departmentID ===
-                                                mrHeader.department_id ||
-                                                userInfo?.departmentID ===
-                                                  8) && (
-                                                <InitialApprovalButtons
-                                                  item={item}
-                                                  progressID={
-                                                    mrHeader.progress_id
-                                                  }
-                                                />
-                                              )}
-                                          </div>
-                                        </td>
-                                      )}
-
-                                    {/* QS Review column at Manager Approval stage (supplier view) */}
-                                    {mrHeader.progress_id === 3 &&
-                                      (userInfo?.departmentID === 8 ||
-                                        userInfo?.departmentID ===
-                                          mrHeader.department_id) && (
-                                        <td>
-                                          {item.qs_review_type ===
-                                          "need_order" ? (
-                                            <div
-                                              className="approval-pill"
-                                              style={{
-                                                backgroundColor:
-                                                  "rgba(34, 150, 100, 1)",
-                                                color: "white",
-                                              }}
-                                            >
-                                              <span
-                                                style={{ textWrap: "nowrap" }}
-                                              >
-                                                Need Order
-                                              </span>
-                                            </div>
-                                          ) : item.qs_review_type ===
-                                            "item_available" ? (
-                                            <div
-                                              className="approval-pill"
-                                              style={{
-                                                backgroundColor:
-                                                  "rgba(34, 150, 100, 1)",
-                                                color: "white",
-                                              }}
-                                            >
-                                              <span
-                                                style={{ textWrap: "nowrap" }}
-                                              >
-                                                {item.linked_inventory_item_description ||
-                                                  "Item Available"}
-                                              </span>
-                                              {item.linked_inventory_item_id && (
-                                                <Button
-                                                  componentType="link"
-                                                  bgColor={"transparent"}
-                                                  borderColor={"transparent"}
-                                                  textColor={"black"}
-                                                  href={`/inventory/${item.linked_inventory_item_id}`}
-                                                  style={{ padding: "0px" }}
-                                                >
-                                                  <img
-                                                    src={externalLinkIcon}
-                                                    alt="view"
-                                                    style={{
-                                                      filter: "invert(1)",
-                                                      cursor: "pointer",
-                                                    }}
-                                                  />
-                                                </Button>
-                                              )}
-                                            </div>
-                                          ) : (
-                                            "-"
-                                          )}
-                                        </td>
-                                      )}
-
-                                    {/* Manager ACTIONS cell at Manager Approval stage (supplier view) */}
-                                    {mrHeader.progress_id === 3 &&
-                                      userInfo?.departmentID === 8 && (
-                                        <td>
-                                          <InitialApprovalButtons
-                                            item={item}
-                                            progressID={mrHeader.progress_id}
-                                          />
-                                        </td>
-                                      )}
-
-                                    {(mrHeader.progress_id === 1 ||
-                                      mrHeader.progress_id === 5 ||
-                                      mrHeader.progress_id === 11) &&
-                                      userInfo?.departmentID ===
-                                        mrHeader.department_id && (
-                                        <td>
-                                          <div
-                                            style={{
-                                              display: "flex",
-                                              gap: "10px",
-                                            }}
-                                          >
-                                            <EditMrItemButton
-                                              projectID={mrHeader.project_id}
-                                              item={item}
-                                              bgColor="rgba(239, 239, 239, 1)"
-                                              borderColor="rgba(223, 223, 223, 1)"
-                                              textColor="black"
-                                            >
-                                              <img
-                                                src={pencilIcon}
-                                                alt="pencil icon"
-                                              />
-                                            </EditMrItemButton>
-
-                                            <DeleteMrItemButton
-                                              item={item}
-                                              bgColor="rgba(239, 239, 239, 1)"
-                                              borderColor="rgba(223, 223, 223, 1)"
-                                              textColor="black"
-                                            >
-                                              <img
-                                                src={trashIcon}
-                                                alt="trash icon"
-                                              />
-                                            </DeleteMrItemButton>
-                                          </div>
-                                        </td>
-                                      )}
-
-                                    {(mrHeader.progress_id === 7 ||
-                                      mrHeader.progress_id === 11 ||
-                                      mrHeader.progress_id === 10) &&
-                                      userInfo?.departmentID === 9 && (
-                                        <td>
-                                          <div
-                                            style={{
-                                              display: "flex",
-                                              alignItems: "center",
-                                              gap: "10px",
-                                            }}
-                                          >
-                                            <SupplierAndQuotationButton
-                                              mrHeader={mrHeader}
-                                              mrLine={item}
-                                            />
-                                          </div>
-                                        </td>
-                                      )}
-
-                                    {mrHeader.progress_id === 9 &&
-                                      userInfo?.departmentID === 16 && (
-                                        <td>
-                                          <CheckPricesButton
-                                            progressID={mrHeader.progress_id}
-                                            mrLine={item}
-                                          />
-                                        </td>
-                                      )}
-
-                                    {[10, 11].includes(mrHeader.progress_id) &&
-                                      userInfo?.departmentID === 8 && (
-                                        <td>
-                                          <PriceApprovalButton
-                                            progressID={mrHeader.progress_id}
-                                            mrLine={item}
-                                            bgColor="white"
-                                            borderColor="rgba(207, 207, 207, 1)"
-                                            textColor="black"
-                                            style={{
-                                              borderRadius: "25px",
-                                              padding: "7px 20px",
-                                            }}
-                                            onTotalPriceChange={
-                                              handleTotalPriceChange
-                                            }
-                                          />
-                                        </td>
-                                      )}
-
-                                    {mrHeader.progress_id >= 12 && (
-                                      <td>
-                                        <div
-                                          style={{
-                                            display: "flex",
-                                            gap: "10px",
-                                            alignItems: "center",
-                                          }}
-                                        >
-                                          {item.approved_supplier_name}{" "}
-                                          <SupplierDetailsPopUp
-                                            item={item}
-                                            style={{
-                                              padding: "7px 7px",
-                                              backgroundColor:
-                                                "rgba(239, 239, 239, 1)",
-                                              borderColor:
-                                                "rgba(223, 223, 223, 1)",
-                                            }}
-                                          >
-                                            <img
-                                              src={externalLinkIcon}
-                                              alt="external link icon"
-                                            />
-                                          </SupplierDetailsPopUp>
-                                          {/* {canSeePrice && (
-                                            <span>
-                                              {item.approved_total_price} AED
-                                            </span>
-                                          )} */}
-                                        </div>
-                                      </td>
-                                    )}
-
-                                    {mrHeader.progress_id >= 10 &&
-                                      canSeePrice && (
-                                        <td>
-                                          {(() => {
-                                            let unitPrice: number;
-                                            let vatRate: number;
-
-                                            if (
-                                              mrHeader.progress_id >= 12 &&
-                                              lpoLinePrices[item.id]
-                                            ) {
-                                              // Use LPO prices
-                                              unitPrice =
-                                                lpoLinePrices[item.id]
-                                                  .unitPrice;
-                                              //vatRate = lpoLinePrices[item.id].vatRate;
-                                            } else {
-                                              // Use quotation prices
-                                              unitPrice =
-                                                Number(
-                                                  item.approved_unit_price,
-                                                ) || 0;
-                                              //vatRate = Number(item.approved_vat_rate) || 0;
-                                            }
-
-                                            //const priceWithVat = unitPrice * (1 + vatRate / 100);
-                                            return formatPriceAED(unitPrice);
-                                          })()}
-                                        </td>
-                                      )}
-
-                                    {mrHeader.progress_id >= 10 &&
-                                      canSeePrice && (
-                                        <td>
-                                          {(() => {
-                                            let totalPrice: number;
-                                            let vatRate: number;
-
-                                            if (
-                                              mrHeader.progress_id >= 12 &&
-                                              lpoLinePrices[item.id]
-                                            ) {
-                                              // Use LPO prices
-                                              totalPrice =
-                                                lpoLinePrices[item.id]
-                                                  .totalPrice;
-                                              /* vatRate = lpoLinePrices[item.id].vatRate; */
-                                            } else {
-                                              // Use quotation prices
-                                              totalPrice =
-                                                Number(
-                                                  item.approved_total_price,
-                                                ) || 0;
-                                              /* vatRate = Number(item.approved_vat_rate) || 0; */
-                                            }
-
-                                            /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
-                                            return formatPriceAED(totalPrice);
-                                          })()}
-                                        </td>
-                                      )}
-
-                                    {(mrHeader.progress_id === 9 ||
-                                      mrHeader.progress_id === 10) &&
-                                      (userInfo?.departmentID === 8 ||
-                                        userInfo?.departmentID === 16) && (
-                                        <td>
-                                          <DeleteMrItemButton
-                                            item={item}
-                                            bgColor="rgba(239, 239, 239, 1)"
-                                            borderColor="rgba(223, 223, 223, 1)"
-                                            textColor="black"
-                                          >
-                                            <img
-                                              src={trashIcon}
-                                              alt="trash icon"
-                                            />
-                                          </DeleteMrItemButton>
-                                        </td>
-                                      )}
-
-                                    {userInfo?.departmentID === 12 &&
-                                      mrHeader.progress_id === 21 && (
-                                        <td>
-                                          <QCCheckListButton
-                                            item={item}
-                                            mrHeader={mrHeader}
-                                          />
-                                        </td>
-                                      )}
-
-                                    {userInfo?.departmentID === 11 &&
-                                      mrHeader.progress_id === 24 && (
-                                        <td>
-                                          <AddToInventoryButton mrLine={item} />
-                                        </td>
-                                      )}
-
-                                    {userInfo?.departmentID === 9 &&
-                                      mrHeader.progress_id === 23 && (
-                                        <td>
-                                          <ResolutionButton
-                                            mrHeader={mrHeader}
-                                            item={item}
-                                          />
-                                        </td>
-                                      )}
-
-                                    {/* Stock Transfer actions at progress_id 4 (specific category view) */}
-                                    {(userInfo?.departmentID === 11 ||
-                                      userInfo?.departmentID === 8) &&
-                                      mrHeader.progress_id === 4 && (
-                                        <td>
-                                          {item.qs_review_type ===
-                                          "item_available" ? (
-                                            <div
-                                              style={{
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                gap: "6px",
-                                              }}
-                                            >
-                                              {!item.stock_transfer_id ? (
-                                                <MrTransferIssueButton
-                                                  item={item}
-                                                />
-                                              ) : (
-                                                <>
-                                                  <MrDownloadDnButton
-                                                    transactionID={
-                                                      item.stock_transfer_id
-                                                    }
-                                                  />
-                                                  <MrUploadSignedDnButton
-                                                    transactionID={
-                                                      item.stock_transfer_id
-                                                    }
-                                                    mrLineId={item.id}
-                                                  />
-                                                </>
-                                              )}
-                                            </div>
-                                          ) : (
-                                            "-"
-                                          )}
-                                        </td>
-                                      )}
-                                  </tr>
-                                );
-                              })}
-                          </tbody>
-
-                          {mrHeader.progress_id >= 10 && canSeePrice && (
-                            <tfoot
-                              style={{
-                                borderTop: "1px solid rgba(239, 239, 239, 1)",
-                              }}
-                            >
-                              <tr>
-                                <td colSpan={subtotalLabelColSpan} />
-                                <td
-                                  style={{
-                                    fontWeight: "600",
-                                  }}
-                                >
-                                  SUBTOTAL
-                                </td>
-                                <td
-                                  style={{
-                                    fontWeight: "600",
-                                  }}
-                                >
-                                  {formatPriceAED(
-                                    calculateItemsTotal(
-                                      getAllItemsInSubCategory(suppliers),
-                                    ),
-                                  )}
-                                </td>
-                                {subtotalTrailingColSpan > 0 && (
-                                  <td colSpan={subtotalTrailingColSpan} />
-                                )}
-                              </tr>
-                            </tfoot>
-                          )}
-                        </table>
-
-                        <br />
-                      </div>
-                    ),
-                  )}
-                </div>
-              );
-            }))}
-
-      {showBySupplier &&
-        Object.entries(mrLinesBySupplier).map(([supplier, items], index) => (
-          <div key={supplier} className="subcategory-section">
-            <div className="subcategory-header">
-              <div
-                style={{ display: "flex", gap: "10px", alignItems: "center" }}
-              >
-                <h2
-                  style={{
-                    textTransform: "uppercase",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                  }}
+        {showBySupplier &&
+          Object.entries(mrLinesBySupplier).map(([supplier, items], index) => (
+            <div key={supplier} className="subcategory-section">
+              <div className="subcategory-header">
+                <div
+                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
                 >
-                  {supplier}
-                </h2>
+                  <h2
+                    style={{
+                      textTransform: "uppercase",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    {supplier}
+                  </h2>
 
-                <SupplierDetailsPopUp
-                  item={items[0]}
-                  style={{
-                    padding: "7px 7px",
-                    backgroundColor: "rgba(239, 239, 239, 1)",
-                    borderColor: "rgba(223, 223, 223, 1)",
-                  }}
-                >
-                  <img
-                    src={externalLinkIcon}
-                    alt="external link"
-                    style={{ width: "12px" }}
-                  />
-                </SupplierDetailsPopUp>
+                  <SupplierDetailsPopUp
+                    item={items[0]}
+                    style={{
+                      padding: "7px 7px",
+                      backgroundColor: "rgba(239, 239, 239, 1)",
+                      borderColor: "rgba(223, 223, 223, 1)",
+                    }}
+                  >
+                    <img
+                      src={externalLinkIcon}
+                      alt="external link"
+                      style={{ width: "12px" }}
+                    />
+                  </SupplierDetailsPopUp>
 
-                {/* LPO Progress Badge + View LPO link */}
-                {mrHeader.progress_id >= 13 &&
-                  items[0]?.approved_supplier_id &&
-                  lpoPerSupplier[items[0].approved_supplier_id] &&
-                  (() => {
-                    const lpoInfo =
-                      lpoPerSupplier[items[0].approved_supplier_id];
-                    const isLpoRejected = ["reject", "fail"].some((word) =>
-                      lpoInfo.progressName?.toLowerCase().includes(word),
-                    );
-                    const isLpoCompleted = lpoInfo.progressId === 25;
-                    const lpoProgressStyle = isLpoRejected
-                      ? {
-                          backgroundColor: "rgba(255, 181, 181, 1)",
-                          color: "rgba(248, 77, 77, 1)",
-                        }
-                      : isLpoCompleted
+                  {/* LPO Progress Badge + View LPO link */}
+                  {mrHeader.progress_id >= 13 &&
+                    items[0]?.approved_supplier_id &&
+                    lpoPerSupplier[items[0].approved_supplier_id] &&
+                    (() => {
+                      const lpoInfo =
+                        lpoPerSupplier[items[0].approved_supplier_id];
+                      const isLpoRejected = ["reject", "fail"].some((word) =>
+                        lpoInfo.progressName?.toLowerCase().includes(word),
+                      );
+                      const isLpoCompleted = lpoInfo.progressId === 25;
+                      const lpoProgressStyle = isLpoRejected
                         ? {
-                            backgroundColor: "rgba(87, 244, 176, 1)",
-                            color: "rgba(31, 101, 71, 1)",
+                            backgroundColor: "rgba(255, 181, 181, 1)",
+                            color: "rgba(248, 77, 77, 1)",
                           }
-                        : {
-                            backgroundColor: "rgba(255, 250, 189, 1)",
-                            color: "rgba(134, 83, 47, 1)",
-                          };
+                        : isLpoCompleted
+                          ? {
+                              backgroundColor: "rgba(87, 244, 176, 1)",
+                              color: "rgba(31, 101, 71, 1)",
+                            }
+                          : {
+                              backgroundColor: "rgba(255, 250, 189, 1)",
+                              color: "rgba(134, 83, 47, 1)",
+                            };
 
-                    return (
-                      <>
-                        <span
-                          className="approval-pill normal-text"
-                          style={{
-                            ...lpoProgressStyle,
-                            textTransform: "uppercase",
-                            fontSize: "11px",
-                            padding: "4px 10px",
-                          }}
-                        >
-                          {lpoInfo.progressName}
-                        </span>
-                        <Button
-                          componentType="link"
-                          bgColor="black"
-                          borderColor="black"
-                          textColor="white"
-                          href={`/mr/${mrHeader.id}/lpo/${lpoInfo.lpoId}`}
-                          style={{
-                            padding: "5px 15px",
-                            borderRadius: "50px",
-                            fontSize: "11px",
-                            fontWeight: "600",
-                          }}
-                        >
-                          VIEW LPO &gt;
-                        </Button>
-                      </>
-                    );
-                  })()}
-              </div>
+                      return (
+                        <>
+                          <span
+                            className="approval-pill normal-text"
+                            style={{
+                              ...lpoProgressStyle,
+                              textTransform: "uppercase",
+                              fontSize: "11px",
+                              padding: "4px 10px",
+                            }}
+                          >
+                            {lpoInfo.progressName}
+                          </span>
+                          <Button
+                            componentType="link"
+                            bgColor="black"
+                            borderColor="black"
+                            textColor="white"
+                            href={`/mr/${mrHeader.id}/lpo/${lpoInfo.lpoId}`}
+                            style={{
+                              padding: "5px 15px",
+                              borderRadius: "50px",
+                              fontSize: "11px",
+                              fontWeight: "600",
+                            }}
+                          >
+                            VIEW LPO &gt;
+                          </Button>
+                        </>
+                      );
+                    })()}
+                </div>
 
-              <div className="right">
-                {mrHeader.progress_id === 23 &&
-                  userInfo?.departmentID === 9 && (
-                    <QCRecheckButton mrHeader={mrHeader} />
+                <div className="right">
+                  {mrHeader.progress_id === 23 &&
+                    userInfo?.departmentID === 9 && (
+                      <QCRecheckButton mrHeader={mrHeader} />
+                    )}
+
+                  {mrHeader.progress_id >= 12 && (
+                    <IssueLPOButton mrHeader={mrHeader} mrLines={items} />
                   )}
 
-                {mrHeader.progress_id >= 12 && (
-                  <IssueLPOButton mrHeader={mrHeader} mrLines={items} />
-                )}
+                  {(userInfo?.departmentID === 10 ||
+                    userInfo?.departmentID === 11) &&
+                    (mrHeader.progress_id === 13 ||
+                      mrHeader.progress_id === 14) && (
+                      <PaymentButtons
+                        mrHeader={mrHeader}
+                        mrLine={items[0]}
+                        supplierId={items[0].approved_supplier_id}
+                      />
+                    )}
 
-                {(userInfo?.departmentID === 10 ||
-                  userInfo?.departmentID === 11) &&
-                  (mrHeader.progress_id === 13 ||
-                    mrHeader.progress_id === 14) && (
+                  {(userInfo?.departmentID === 8 ||
+                    userInfo?.departmentID === 9) &&
+                    mrHeader.progress_id === 13 && (
+                      <PaymentButtons
+                        mrHeader={mrHeader}
+                        mrLine={items[0]}
+                        supplierId={items[0].approved_supplier_id}
+                      />
+                    )}
+
+                  {mrHeader.progress_id > 14 && (
                     <PaymentButtons
                       mrHeader={mrHeader}
                       mrLine={items[0]}
@@ -4274,26 +4964,17 @@ export default function MrLinesView({
                     />
                   )}
 
-                {(userInfo?.departmentID === 8 ||
-                  userInfo?.departmentID === 9) &&
-                  mrHeader.progress_id === 13 && (
-                    <PaymentButtons
-                      mrHeader={mrHeader}
-                      mrLine={items[0]}
-                      supplierId={items[0].approved_supplier_id}
-                    />
-                  )}
+                  {(mrHeader.progress_id === 16 ||
+                    mrHeader.progress_id === 17) &&
+                    userInfo?.departmentID === 11 && (
+                      <CreateGRNButton
+                        mrHeader={mrHeader}
+                        mrLines={items}
+                        progress_id={mrHeader.progress_id}
+                      />
+                    )}
 
-                {mrHeader.progress_id > 14 && (
-                  <PaymentButtons
-                    mrHeader={mrHeader}
-                    mrLine={items[0]}
-                    supplierId={items[0].approved_supplier_id}
-                  />
-                )}
-
-                {(mrHeader.progress_id === 16 || mrHeader.progress_id === 17) &&
-                  userInfo?.departmentID === 11 && (
+                  {mrHeader.progress_id >= 18 && (
                     <CreateGRNButton
                       mrHeader={mrHeader}
                       mrLines={items}
@@ -4301,15 +4982,7 @@ export default function MrLinesView({
                     />
                   )}
 
-                {mrHeader.progress_id >= 18 && (
-                  <CreateGRNButton
-                    mrHeader={mrHeader}
-                    mrLines={items}
-                    progress_id={mrHeader.progress_id}
-                  />
-                )}
-
-                {/* {(mrHeader.progress_id >= 18 ||
+                  {/* {(mrHeader.progress_id >= 18 ||
                   mrHeader.progress_id === 17 ||
                   mrHeader.progress_id === 16) &&
                   userInfo?.departmentID === 11 && (
@@ -4319,155 +4992,159 @@ export default function MrLinesView({
                       progress_id={mrHeader.progress_id}
                     />
                   )} */}
+                </div>
               </div>
-            </div>
 
-            <br />
+              <br />
 
-            <table className="items-table two-toned fixed-layout">
-              <thead>
-                <tr>
-                  <th style={{ width: "40px" }}>#</th>
-                  <th style={{ width: "120px" }}>CATEGORY</th>
-                  <th style={{ width: "120px" }}>SUBCATEGORY</th>
-                  <th style={{ width: "120px" }}>ITEM</th>
-                  {mrHeader.progress_id >= 9 ? (
-                    <>
-                      <th style={{ width: "80px" }}>QTY USE</th>
-                      {hasAnyQtyStocks && (
-                        <th style={{ width: "90px" }}>QTY STOCKS</th>
-                      )}
-                      <th style={{ width: "80px" }}>TOTAL QTY</th>
-                    </>
-                  ) : (
-                    <th style={{ width: "120px" }}>REQUESTED QTY</th>
-                  )}
-                  <th style={{ width: "90px" }}>BOQ REF.</th>
-                  {hasAnyBrandSpecs && (
-                    <th style={{ width: "110px" }}>BRAND & SPECS</th>
-                  )}
-                  {/* {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>} */}
-                  {hasAnyAttachment && (
-                    <th style={{ width: "90px" }}>ATTACHMENT</th>
-                  )}
-                  {mrHeader.progress_id >= 10 && canSeePrice && (
-                    <th style={{ width: "100px" }}>UNIT PRICE</th>
-                  )}
-                  {mrHeader.progress_id >= 10 && canSeePrice && (
-                    <th style={{ width: "100px" }}>TOTAL PRICE</th>
-                  )}
-                  {userInfo?.departmentID === 12 &&
-                    mrHeader.progress_id === 21 && (
-                      <th style={{ width: "160px" }}>QUALITY CONTROL</th>
-                    )}
-                  {mrHeader.progress_id === 24 &&
-                    userInfo?.departmentID === 11 && (
-                      <th style={{ width: "120px" }}>STOCKS</th>
-                    )}
-                  {mrHeader.progress_id === 23 &&
-                    userInfo?.departmentID === 9 && (
-                      <th style={{ width: "140px" }}>RESOLUTION</th>
-                    )}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item: MrLine, itemIndex: number) => (
-                  <tr key={item.id}>
-                    <td>{itemIndex + 1}</td>
-                    <td>{item.material_category}</td>
-                    <td>{item.material_subcategory}</td>
-                    <td>
-                      {item.material_description}
-                      {item.qs_review_type === "item_available" &&
-                        mrHeader.progress_id <= 4 &&
-                        item.linked_inventory_item_description && (
-                          <div
-                            style={{
-                              fontSize: "10px",
-                              color: "rgba(26, 216, 135, 1)",
-                              marginTop: "4px",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px",
-                            }}
-                          >
-                            Item available:{" "}
-                            {item.linked_inventory_item_description}
-                            <img
-                              src={externalLinkIcon}
-                              alt=""
-                              style={{
-                                width: "10px",
-                                height: "10px",
-                                filter:
-                                  "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
-                              }}
-                            />
-                          </div>
-                        )}
-                    </td>
+              <table className="items-table two-toned fixed-layout">
+                <thead>
+                  <tr>
+                    <th style={{ width: "40px" }}>#</th>
+                    <th style={{ width: "120px" }}>CATEGORY</th>
+                    <th style={{ width: "120px" }}>SUBCATEGORY</th>
+                    <th style={{ width: "120px" }}>ITEM</th>
                     {mrHeader.progress_id >= 9 ? (
                       <>
+                        <th style={{ width: "80px" }}>QTY USE</th>
+                        {hasAnyQtyStocks && (
+                          <th style={{ width: "90px" }}>QTY STOCKS</th>
+                        )}
+                        {hasAnyQtyStocks && (
+                          <th style={{ width: "80px" }}>TOTAL QTY</th>
+                        )}
+                      </>
+                    ) : (
+                      <th style={{ width: "120px" }}>REQ. QTY</th>
+                    )}
+                    <th style={{ width: "90px" }}>BOQ REF.</th>
+                    {hasAnyBrandSpecs && (
+                      <th style={{ width: "110px" }}>BRAND & SPECS</th>
+                    )}
+                    {/* {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>} */}
+                    {hasAnyAttachment && (
+                      <th style={{ width: "90px" }}>ATTACHMENT</th>
+                    )}
+                    {mrHeader.progress_id >= 10 && canSeePrice && (
+                      <th style={{ width: "100px" }}>UNIT PRICE</th>
+                    )}
+                    {mrHeader.progress_id >= 10 && canSeePrice && (
+                      <th style={{ width: "100px" }}>TOTAL PRICE</th>
+                    )}
+                    {userInfo?.departmentID === 12 &&
+                      mrHeader.progress_id === 21 && (
+                        <th style={{ width: "160px" }}>QUALITY CONTROL</th>
+                      )}
+                    {mrHeader.progress_id === 24 &&
+                      userInfo?.departmentID === 11 && (
+                        <th style={{ width: "120px" }}>STOCKS</th>
+                      )}
+                    {mrHeader.progress_id === 23 &&
+                      userInfo?.departmentID === 9 && (
+                        <th style={{ width: "140px" }}>RESOLUTION</th>
+                      )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item: MrLine, itemIndex: number) => (
+                    <tr key={item.id}>
+                      <td>{itemIndex + 1}</td>
+                      <td>{item.material_category}</td>
+                      <td>{item.material_subcategory}</td>
+                      <td>
+                        {item.material_description}
+                        {item.qs_review_type === "item_available" &&
+                          mrHeader.progress_id <= 4 &&
+                          item.linked_inventory_item_description && (
+                            <div
+                              style={{
+                                fontSize: "10px",
+                                color: "rgba(26, 216, 135, 1)",
+                                marginTop: "4px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              Item available:{" "}
+                              {item.linked_inventory_item_description}
+                              <img
+                                src={externalLinkIcon}
+                                alt=""
+                                style={{
+                                  width: "10px",
+                                  height: "10px",
+                                  filter:
+                                    "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
+                                }}
+                              />
+                            </div>
+                          )}
+                      </td>
+                      {mrHeader.progress_id >= 9 ? (
+                        <>
+                          <td>
+                            {formatNumber(item?.quantity)} {item.unit}
+                          </td>
+                          {hasAnyQtyStocks && (
+                            <td>
+                              {(() => {
+                                const proposedQty =
+                                  Number(item.approved_proposed_quantity) || 0;
+                                const requestedQty = Number(item.quantity) || 0;
+                                const stockQty =
+                                  proposedQty > requestedQty
+                                    ? proposedQty - requestedQty
+                                    : 0;
+                                return stockQty > 0
+                                  ? `${formatNumber(stockQty)} ${item.unit}`
+                                  : "-";
+                              })()}
+                            </td>
+                          )}
+                          {hasAnyQtyStocks && (
+                            <td>
+                              {formatNumber(item?.approved_proposed_quantity)}{" "}
+                              {item.unit}
+                            </td>
+                          )}
+                        </>
+                      ) : (
                         <td>
                           {formatNumber(item?.quantity)} {item.unit}
                         </td>
-                        {hasAnyQtyStocks && (
-                          <td>
-                            {(() => {
-                              const proposedQty =
-                                Number(item.approved_proposed_quantity) || 0;
-                              const requestedQty = Number(item.quantity) || 0;
-                              const stockQty =
-                                proposedQty > requestedQty
-                                  ? proposedQty - requestedQty
-                                  : 0;
-                              return stockQty > 0
-                                ? `${formatNumber(stockQty)} ${item.unit}`
-                                : "-";
-                            })()}
-                          </td>
-                        )}
-                        <td>
-                          {formatNumber(item?.approved_proposed_quantity)}{" "}
-                          {item.unit}
-                        </td>
-                      </>
-                    ) : (
-                      <td>
-                        {formatNumber(item?.quantity)} {item.unit}
-                      </td>
-                    )}
-                    <td>
-                      {item.boq_line_ids ? (
-                        <BoqReferencePopUp item={item} mrHeader={mrHeader} />
-                      ) : (
-                        "-"
                       )}
-                    </td>
-                    {hasAnyBrandSpecs && (
                       <td>
-                        {item.brand || item.specification ? (
-                          <InfoPopUpButton
-                            text={
-                              <>
-                                <small>BRAND</small>
-                                <h2>{item.brand || "-"}</h2>
-
-                                <br />
-
-                                <small>SPECIFICATION</small>
-                                <h2>{item.specification || "-"}</h2>
-                              </>
-                            }
-                            header="BRAND & SPECIFICATION"
-                          />
+                        {item.boq_line_ids ? (
+                          <BoqReferencePopUp item={item} mrHeader={mrHeader} />
                         ) : (
                           "-"
                         )}
                       </td>
-                    )}
+                      {hasAnyBrandSpecs && (
+                        <td>
+                          {item.brand || item.specification ? (
+                            <InfoPopUpButton
+                              text={
+                                <>
+                                  <small>BRAND</small>
+                                  <h2>{item.brand || "-"}</h2>
 
-                    {/* {mrHeader.progress_id >= 12 && (
+                                  <br />
+
+                                  <small>SPECIFICATION</small>
+                                  <h2>{item.specification || "-"}</h2>
+                                </>
+                              }
+                              header="BRAND & SPECIFICATION"
+                            />
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                      )}
+
+                      {/* {mrHeader.progress_id >= 12 && (
                       <td>
                         <div
                           style={{
@@ -4497,131 +5174,137 @@ export default function MrLinesView({
                       </td>
                     )} */}
 
-                    {hasAnyAttachment && (
-                      <td>
-                        {item.attachment ? (
-                          <Button
-                            componentType={"link"}
-                            bgColor={"rgba(239, 239, 239, 1)"}
-                            borderColor={"rgba(223, 223, 223, 1)"}
-                            textColor={"black"}
-                            style={{ padding: "7px 7px" }}
-                            href={item.attachment}
-                            target="_blank"
-                          >
-                            <img src={externalLinkIcon} alt="external link" />
-                          </Button>
-                        ) : (
-                          "-"
+                      {hasAnyAttachment && (
+                        <td>
+                          {item.attachment ? (
+                            <Button
+                              componentType={"link"}
+                              bgColor={"rgba(239, 239, 239, 1)"}
+                              borderColor={"rgba(223, 223, 223, 1)"}
+                              textColor={"black"}
+                              style={{ padding: "7px 7px" }}
+                              href={item.attachment}
+                              target="_blank"
+                            >
+                              <img src={externalLinkIcon} alt="external link" />
+                            </Button>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                      )}
+
+                      {mrHeader.progress_id >= 10 && canSeePrice && (
+                        <td>
+                          {(() => {
+                            let unitPrice: number;
+
+                            if (
+                              mrHeader.progress_id >= 12 &&
+                              lpoLinePrices[item.id]
+                            ) {
+                              // Use LPO prices
+                              unitPrice = lpoLinePrices[item.id].unitPrice;
+                              //vatRate = lpoLinePrices[item.id].vatRate;
+                            } else {
+                              // Use quotation prices
+                              unitPrice = Number(item.approved_unit_price) || 0;
+                              //vatRate = Number(item.approved_vat_rate) || 0;
+                            }
+
+                            //const priceWithVat = unitPrice * (1 + vatRate / 100);
+                            return formatPriceAED(unitPrice);
+                          })()}
+                        </td>
+                      )}
+
+                      {mrHeader.progress_id >= 10 && canSeePrice && (
+                        <td>
+                          {(() => {
+                            let totalPrice: number;
+
+                            if (
+                              mrHeader.progress_id >= 12 &&
+                              lpoLinePrices[item.id]
+                            ) {
+                              // Use LPO prices
+                              totalPrice = lpoLinePrices[item.id].totalPrice;
+                              /* vatRate = lpoLinePrices[item.id].vatRate; */
+                            } else {
+                              // Use quotation prices
+                              totalPrice =
+                                Number(item.approved_total_price) || 0;
+                              /* vatRate = Number(item.approved_vat_rate) || 0; */
+                            }
+
+                            /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
+                            return formatPriceAED(totalPrice);
+                          })()}
+                        </td>
+                      )}
+
+                      {userInfo?.departmentID === 12 &&
+                        mrHeader.progress_id === 21 && (
+                          <td>
+                            <QCCheckListButton
+                              item={item}
+                              mrHeader={mrHeader}
+                            />
+                          </td>
                         )}
+
+                      {userInfo?.departmentID === 11 &&
+                        mrHeader.progress_id === 24 && (
+                          <td>
+                            <AddToInventoryButton mrLine={item} />
+                          </td>
+                        )}
+
+                      {mrHeader.progress_id === 23 &&
+                        userInfo?.departmentID === 9 && (
+                          <td>
+                            <ResolutionButton mrHeader={mrHeader} item={item} />
+                          </td>
+                        )}
+                    </tr>
+                  ))}
+                </tbody>
+
+                {mrHeader.progress_id >= 10 && canSeePrice && (
+                  <tfoot
+                    style={{
+                      borderTop: "1px solid rgba(239, 239, 239, 1)",
+                    }}
+                  >
+                    <tr>
+                      <td colSpan={subtotalLabelColSpanByItem} />
+                      <td
+                        style={{
+                          fontWeight: "600",
+                        }}
+                      >
+                        SUBTOTAL
                       </td>
-                    )}
-
-                    {mrHeader.progress_id >= 10 && canSeePrice && (
-                      <td>
-                        {(() => {
-                          let unitPrice: number;
-
-                          if (
-                            mrHeader.progress_id >= 12 &&
-                            lpoLinePrices[item.id]
-                          ) {
-                            // Use LPO prices
-                            unitPrice = lpoLinePrices[item.id].unitPrice;
-                            //vatRate = lpoLinePrices[item.id].vatRate;
-                          } else {
-                            // Use quotation prices
-                            unitPrice = Number(item.approved_unit_price) || 0;
-                            //vatRate = Number(item.approved_vat_rate) || 0;
-                          }
-
-                          //const priceWithVat = unitPrice * (1 + vatRate / 100);
-                          return formatPriceAED(unitPrice);
-                        })()}
+                      <td
+                        style={{
+                          fontWeight: "600",
+                        }}
+                      >
+                        {formatPriceAED(calculateItemsTotal(items))}
                       </td>
-                    )}
-
-                    {mrHeader.progress_id >= 10 && canSeePrice && (
-                      <td>
-                        {(() => {
-                          let totalPrice: number;
-
-                          if (
-                            mrHeader.progress_id >= 12 &&
-                            lpoLinePrices[item.id]
-                          ) {
-                            // Use LPO prices
-                            totalPrice = lpoLinePrices[item.id].totalPrice;
-                            /* vatRate = lpoLinePrices[item.id].vatRate; */
-                          } else {
-                            // Use quotation prices
-                            totalPrice = Number(item.approved_total_price) || 0;
-                            /* vatRate = Number(item.approved_vat_rate) || 0; */
-                          }
-
-                          /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
-                          return formatPriceAED(totalPrice);
-                        })()}
-                      </td>
-                    )}
-
-                    {userInfo?.departmentID === 12 &&
-                      mrHeader.progress_id === 21 && (
-                        <td>
-                          <QCCheckListButton item={item} mrHeader={mrHeader} />
-                        </td>
+                      {subtotalTrailingColSpan > 0 && (
+                        <td colSpan={subtotalTrailingColSpan} />
                       )}
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
 
-                    {userInfo?.departmentID === 11 &&
-                      mrHeader.progress_id === 24 && (
-                        <td>
-                          <AddToInventoryButton mrLine={item} />
-                        </td>
-                      )}
-
-                    {mrHeader.progress_id === 23 &&
-                      userInfo?.departmentID === 9 && (
-                        <td>
-                          <ResolutionButton mrHeader={mrHeader} item={item} />
-                        </td>
-                      )}
-                  </tr>
-                ))}
-              </tbody>
-
-              {mrHeader.progress_id >= 10 && canSeePrice && (
-                <tfoot
-                  style={{
-                    borderTop: "1px solid rgba(239, 239, 239, 1)",
-                  }}
-                >
-                  <tr>
-                    <td colSpan={subtotalLabelColSpanByItem} />
-                    <td
-                      style={{
-                        fontWeight: "600",
-                      }}
-                    >
-                      SUBTOTAL
-                    </td>
-                    <td
-                      style={{
-                        fontWeight: "600",
-                      }}
-                    >
-                      {formatPriceAED(calculateItemsTotal(items))}
-                    </td>
-                    {subtotalTrailingColSpan > 0 && (
-                      <td colSpan={subtotalTrailingColSpan} />
-                    )}
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-
-            <br />
-          </div>
-        ))}
+              <br />
+            </div>
+          ))}
+      </div>
+      {/* end mr-with-id */}
 
       <CommentsSection
         mrHeaderId={mrHeader.id}
@@ -4773,18 +5456,15 @@ export default function MrLinesView({
               }
               style={{
                 opacity:
-                  !allItemsHaveSupplierQuotations() ||
-                  hasAnyRejectedSuppliers()
+                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
                     ? "0.5"
                     : "1",
                 cursor:
-                  !allItemsHaveSupplierQuotations() ||
-                  hasAnyRejectedSuppliers()
+                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
                     ? "not-allowed"
                     : "pointer",
                 pointerEvents:
-                  !allItemsHaveSupplierQuotations() ||
-                  hasAnyRejectedSuppliers()
+                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
                     ? "none"
                     : "auto",
               }}
