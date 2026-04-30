@@ -9,6 +9,8 @@ import MrFilterButton from "./components/_MrFilterButton";
 import BulkQuotationCreator from "./components/_BulkQuotationCreator";
 import SupplierAndQuotationButton from "./[id]/components/procurement/_SupplierAndQuotationButton";
 import ExportItemsButton from "./components/_ExportAllItemsButton";
+import MassPriceApprovalButton from "./components/_MassPriceApprovalButton";
+import router from "next/router";
 
 type TableItem = {
   line_id: number;
@@ -68,6 +70,9 @@ export default function MR() {
 
   const [mrHeaders, setMrHeaders] = useState<MrHeader[]>([]);
   const [lpoCards, setLpoCards] = useState<LpoCard[]>([]);
+  const [selectedManagerMrIds, setSelectedManagerMrIds] = useState<Set<number>>(
+    new Set(),
+  );
   const [filterRelevant, setFilterRelevant] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -227,7 +232,7 @@ export default function MR() {
       .then((res) => res.json())
       .then((data) => setLpoCards(data))
       .catch((err) => console.error("Error fetching LPO cards:", err));
-  }, [userInfo]);
+  }, [userInfo, tableRefreshKey]);
 
   useEffect(() => {
     setTableLoading(true);
@@ -1525,15 +1530,63 @@ export default function MR() {
                                 : "1px solid rgba(231, 231, 231, 1)",
                             }}
                           >
-                            <h3
+                            <div
                               style={{
-                                margin: 0,
-                                fontSize: "14px",
-                                fontWeight: "600",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "10px",
                               }}
                             >
-                              {status.name}
-                            </h3>
+                              {/* Select-all checkbox for Manager Price Approval */}
+                              {status.progress_id === 10 &&
+                                userInfo?.departmentID === 8 &&
+                                !isEmpty &&
+                                (() => {
+                                  const allSelected =
+                                    mrs.length > 0 &&
+                                    mrs.every((mr) =>
+                                      selectedManagerMrIds.has(mr.id),
+                                    );
+                                  const someSelected =
+                                    !allSelected &&
+                                    mrs.some((mr) =>
+                                      selectedManagerMrIds.has(mr.id),
+                                    );
+                                  return (
+                                    <input
+                                      type="checkbox"
+                                      className="manager-checkbox"
+                                      checked={allSelected}
+                                      ref={(el) => {
+                                        if (el) el.indeterminate = someSelected;
+                                      }}
+                                      onChange={(e) => {
+                                        const next = new Set(
+                                          selectedManagerMrIds,
+                                        );
+                                        if (e.target.checked) {
+                                          mrs.forEach((mr) => next.add(mr.id));
+                                        } else {
+                                          mrs.forEach((mr) =>
+                                            next.delete(mr.id),
+                                          );
+                                        }
+                                        setSelectedManagerMrIds(next);
+                                      }}
+                                      style={{ alignSelf: "center" }}
+                                    />
+                                  );
+                                })()}
+                              <h3
+                                style={{
+                                  margin: 0,
+                                  fontSize: "14px",
+                                  fontWeight: "600",
+                                }}
+                              >
+                                {status.name}
+                              </h3>
+                            </div>
                             <div
                               style={{
                                 display: "flex",
@@ -2293,6 +2346,32 @@ export default function MR() {
                                             gap: "10px",
                                           }}
                                         >
+                                          {/* Manager price approval checkbox */}
+                                          {status.progress_id === 10 &&
+                                            userInfo?.departmentID === 8 && (
+                                              <input
+                                                type="checkbox"
+                                                className="manager-checkbox"
+                                                checked={selectedManagerMrIds.has(
+                                                  mr.id,
+                                                )}
+                                                onChange={(e) => {
+                                                  const next = new Set(
+                                                    selectedManagerMrIds,
+                                                  );
+                                                  if (e.target.checked) {
+                                                    next.add(mr.id);
+                                                  } else {
+                                                    next.delete(mr.id);
+                                                  }
+                                                  setSelectedManagerMrIds(next);
+                                                }}
+                                                style={{ alignSelf: "center" }}
+                                                onClick={(e) =>
+                                                  e.stopPropagation()
+                                                }
+                                              />
+                                            )}
                                           <div
                                             style={{
                                               backgroundColor:
@@ -2553,6 +2632,29 @@ export default function MR() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Mass price approval bottom nav */}
+      {selectedManagerMrIds.size > 0 && (
+        <div className="bottom-nav">
+          <div></div>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <Button
+              componentType={"button"}
+              bgColor={"black"}
+              borderColor={"white"}
+              textColor={"white"}
+              onClick={() => setSelectedManagerMrIds(new Set())}
+            >
+              RESET
+            </Button>
+            <MassPriceApprovalButton
+              selectedMrIds={selectedManagerMrIds}
+              setSelectedMrIds={setSelectedManagerMrIds}
+              onRefresh={() => setTableRefreshKey((k) => k + 1)}
+            />
+          </div>
         </div>
       )}
     </div>

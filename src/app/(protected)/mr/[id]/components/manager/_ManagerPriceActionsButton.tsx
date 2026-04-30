@@ -31,7 +31,6 @@ export default function ManagerPriceActionsButton({
   const downloadIcon = "/icons/download.svg";
 
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const [rejectText, setRejectText] = useState("");
@@ -50,7 +49,7 @@ export default function ManagerPriceActionsButton({
 
   async function handleAutoSelect() {
     setActionsOpen(false);
-    setIsProcessing(true);
+
     const ids = Array.from(selectedItemIds);
     let successful = 0;
     let failed = 0;
@@ -99,7 +98,6 @@ export default function ManagerPriceActionsButton({
       }
     }
 
-    setIsProcessing(false);
     if (successful > 0 && failed === 0) {
       toast(
         `Auto select: ${successful} vendor${successful > 1 ? "s" : ""} approved`,
@@ -199,7 +197,10 @@ export default function ManagerPriceActionsButton({
             }
             if (!Array.isArray(urls) || urls.length === 0) return line;
             const base64Images = await Promise.all(urls.map(urlToBase64));
-            return { ...line, attachment: base64Images.filter((img) => img !== "") };
+            return {
+              ...line,
+              attachment: base64Images.filter((img) => img !== ""),
+            };
           } catch {
             return line;
           }
@@ -266,7 +267,6 @@ export default function ManagerPriceActionsButton({
               selectedItemIds.size === 0 ? "rgba(211,211,211,1)" : "black"
             }
             textColor={selectedItemIds.size === 0 ? "black" : "white"}
-            disabled={selectedItemIds.size === 0 || isProcessing}
             onClick={() => setActionsOpen((v) => !v)}
           >
             ACTIONS
@@ -289,11 +289,7 @@ export default function ManagerPriceActionsButton({
                 }
               >
                 <span>Auto select ({selectedItemIds.size})</span>
-                <img
-                  src={diamondIcon}
-                  alt="smart select"
-                  style={{ width: "16px" }}
-                />
+                <img src={diamondIcon} alt="smart select" />
               </button>
 
               {/* Reject */}
