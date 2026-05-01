@@ -110,10 +110,10 @@ const PR_STAGE_LABELS: { [key: number]: string } = {
 
 const PR_REJECTION_IDS = new Set([5]);
 
-// Base LPO stages (no QS) - MRs skip Manager Approval (3); TEMPORARILY DISABLED QC: removed 21 (QC Check)
-const BASE_LPO_STAGES = [1, 7, 10, 12, 14, 17, 24, 25];
-// Full LPO stages (with QS) - MRs skip Manager Approval (3); TEMPORARILY DISABLED QC: removed 21 (QC Check)
-const FULL_LPO_STAGES = [1, 2, 4, 7, 9, 10, 12, 14, 17, 24, 25];
+// Base LPO stages (no QS) - MRs skip Manager Approval (3); TEMPORARILY DISABLED QC: removed 21 (QC Check); PAYMENT (14) removed — LPO & Invoice goes directly to Awaiting Delivery
+const BASE_LPO_STAGES = [1, 7, 10, 12, 17, 24, 25];
+// Full LPO stages (with QS) - MRs skip Manager Approval (3); TEMPORARILY DISABLED QC: removed 21 (QC Check); PAYMENT (14) removed — LPO & Invoice goes directly to Awaiting Delivery
+const FULL_LPO_STAGES = [1, 2, 4, 7, 9, 10, 12, 17, 24, 25];
 
 type ReplacementItem = {
   original: string;

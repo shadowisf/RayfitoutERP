@@ -128,6 +128,7 @@ function CalendarMonth({
   onPrev?: () => void;
   onNext?: () => void;
 }) {
+  const today = startOfDay(new Date());
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDow = new Date(year, month, 1).getDay();
   const cells: (number | null)[] = [
@@ -233,6 +234,7 @@ function CalendarMonth({
         {cells.map((day, i) => {
           if (!day) return <div key={i} style={{ height: 32 }} />;
           const date = new Date(year, month, day, 12, 0, 0);
+          const isFuture = startOfDay(date) > today;
           const isStart = pendingStart ? isSameDay(date, pendingStart) : false;
           const isEnd = pendingEnd ? isSameDay(date, pendingEnd) : false;
           const isHover =
@@ -249,19 +251,21 @@ function CalendarMonth({
           );
 
           let bandBg = "transparent";
-          if (isStart && hasRange)
-            bandBg =
-              "linear-gradient(to right, transparent 50%, rgba(0,0,0,0.06) 50%)";
-          else if (
-            (isEnd || isHover) &&
-            pendingStart &&
-            !isSameDay(date, pendingStart)
-          )
-            bandBg =
-              "linear-gradient(to left, transparent 50%, rgba(0,0,0,0.06) 50%)";
-          else if (inRange) bandBg = "rgba(0,0,0,0.06)";
+          if (!isFuture) {
+            if (isStart && hasRange)
+              bandBg =
+                "linear-gradient(to right, transparent 50%, rgba(0,0,0,0.06) 50%)";
+            else if (
+              (isEnd || isHover) &&
+              pendingStart &&
+              !isSameDay(date, pendingStart)
+            )
+              bandBg =
+                "linear-gradient(to left, transparent 50%, rgba(0,0,0,0.06) 50%)";
+            else if (inRange) bandBg = "rgba(0,0,0,0.06)";
+          }
           const isSelected =
-            isStart || isEnd || (isHover && Boolean(pendingStart));
+            !isFuture && (isStart || isEnd || (isHover && Boolean(pendingStart)));
 
           return (
             <div
@@ -272,10 +276,11 @@ function CalendarMonth({
                 justifyContent: "center",
                 alignItems: "center",
                 height: 32,
-                cursor: "pointer",
+                cursor: isFuture ? "default" : "pointer",
+                opacity: isFuture ? 0.5 : 1,
               }}
-              onClick={() => onDayClick(date)}
-              onMouseEnter={() => onDayHover(date)}
+              onClick={() => !isFuture && onDayClick(date)}
+              onMouseEnter={() => !isFuture && onDayHover(date)}
             >
               <div
                 style={{

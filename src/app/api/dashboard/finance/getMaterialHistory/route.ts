@@ -28,13 +28,13 @@ export async function GET(req: NextRequest) {
          DATE(l.paid_at)                                  AS period,
          DATE_FORMAT(MIN(l.paid_at), '%d %b')            AS label,
          DATE_FORMAT(MIN(l.paid_at), '%d %b ''%y')       AS full_label,
-         ROUND(SUM(lml.total_price), 2)             AS total_spent,
-         ROUND(AVG(lml.unit_price), 2)              AS avg_price
+         ROUND(SUM(lml.total_price), 2)                  AS total_spent,
+         ROUND(AVG(lml.unit_price), 2)                   AS avg_price
        FROM lpo_mr_line lml
        JOIN lpo         l   ON lml.lpo_id     = l.id
        JOIN vw_mr_lines vml ON lml.mr_line_id = vml.id
        WHERE vml.material_description = ?
-         AND l.progress_id != 26
+         AND l.progress_id NOT IN (13)
          AND l.paid_at IS NOT NULL
          AND lml.unit_price > 0
          ${dateClause}

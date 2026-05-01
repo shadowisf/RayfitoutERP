@@ -20,20 +20,15 @@ import Button from "@/app/components/Button";
 import PendingIncompleteDeliveriesWidget from "./components/procurement/W_OverdueDeliveries";
 import TopVendorsBySpendWidget from "./components/W_TopVendorsBySpend";
 import TopVendorsByVolumeWidget from "./components/procurement/W_TopVendorsByVolume";
-import TotalSpentWidget from "./components/finance/W_TotalSpent";
-import AvgPaymentTimeWidget from "./components/finance/W_AvgPaymentTime";
-import RisksAndExceptionFlagsWidget from "./components/finance/W_RisksAndExceptionFlags";
-import TopMaterialsBySpendingChart from "./components/finance/W_TopMaterialsBySpend";
-import PriceTrendSignalsWidget from "./components/finance/W_PriceTrendSignals";
-import FinanceTotalSpentWidget from "./components/finance/W_Finance_TotalSpent";
-import FinanceOutstandingPayablesWidget from "./components/finance/W_Finance_OutstandingPayables";
-import FinanceMedianPaymentDelayWidget from "./components/finance/W_Finance_MedianPaymentDelay";
-import FinanceRecentTransactionsWidget from "./components/finance/W_Finance_RecentTransactions";
 import QuickInitialApprovalWidget from "./components/manager/W_QuickInitialApproval";
 import QuickPriceApprovalWidget from "./components/manager/W_QuickPriceApproval";
+import FinanceMedianPaymentDelayWidget from "./components/finance/W_Finance_MedianPaymentDelay";
+import FinanceOutstandingPayablesWidget from "./components/finance/W_Finance_OutstandingPayables";
+import FinanceRecentTransactionsWidget from "./components/finance/W_Finance_RecentTransactions";
 import FinanceSpendingByProjectWidget from "./components/finance/W_Finance_SpendingByProject";
-import FinanceTopVendorsBySpendWidget from "./components/finance/W_Finance_TopVendorsBySpend";
 import FinanceTopMaterialsBySpendWidget from "./components/finance/W_Finance_TopMaterialsBySpend";
+import FinanceTopVendorsBySpendWidget from "./components/finance/W_Finance_TopVendorsBySpend";
+import FinanceTotalSpentWidget from "./components/finance/W_Finance_TotalSpent";
 
 export default function Dashboard() {
   const bannerBackground = "/images/welcome-banner.jpg";
@@ -208,44 +203,6 @@ export default function Dashboard() {
           <br />
           <br />
           <ExpectedDeliveriesWidget />
-
-          <br />
-          <br />
-          <br />
-          <h2>Financial Overview</h2>
-          <br />
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "2fr 1.2fr 2.2fr",
-              gap: "16px",
-              alignItems: "stretch",
-            }}
-          >
-            <FinanceTotalSpentWidget />
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-            >
-              <FinanceOutstandingPayablesWidget />
-              <FinanceMedianPaymentDelayWidget />
-            </div>
-            <FinanceRecentTransactionsWidget />
-          </div>
-
-          <br />
-          <br />
-          <br />
-          <FinanceSpendingByProjectWidget />
-
-          <br />
-          <br />
-          <br />
-          <FinanceTopVendorsBySpendWidget />
-
-          <br />
-          <br />
-          <br />
-          <FinanceTopMaterialsBySpendWidget />
         </>
       )}
 
@@ -319,36 +276,9 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* FINANCE */}
+      {/* PROCUREMENT */}
       {userInfo?.departmentID === 10 && (
         <>
-          {/* Time filter commented out
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <h2>OVERVIEW</h2>
-            <select
-              onChange={(e) => setOverviewFilter(Number(e.target.value))}
-              value={overviewFilter}
-              style={{
-                width: "150px",
-                backgroundColor: "white",
-                borderRadius: "50px",
-              }}
-            >
-              <option value={0}>All Time</option>
-              <option value={7}>Last 7 Days</option>
-              <option value={14}>Last 14 Days</option>
-              <option value={30}>Last month</option>
-            </select>
-          </div>
-          <br />
-          */}
-
           <h2>Financial Overview</h2>
           <br />
           <div
@@ -383,43 +313,6 @@ export default function Dashboard() {
           <br />
           <br />
           <FinanceTopMaterialsBySpendWidget />
-
-          {/* <br />
-          <br />
-          <br />
-          <div className="widget-grid overview two-col">
-            <RisksAndExceptionFlagsWidget />
-            <TopVendorsBySpendWidget />
-            <PriceTrendSignalsWidget />
-          </div> */}
-          {/* <br />
-          <br />
-          <br />
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <h2>ACTIVE PROJECTS</h2>
-            <Button
-              componentType={"link"}
-              bgColor={"white"}
-              borderColor={"white"}
-              textColor={"black"}
-              style={{ borderRadius: "50px" }}
-              href="/project"
-            >
-              View All Projects &gt;
-            </Button>
-          </div>
-          <br />
-          <div className="widget-grid active-projects">
-            {projects.slice(0, 3).map((proj: any, index) => (
-              <ProjectCard project={proj} key={index} />
-            ))}
-          </div> */}
         </>
       )}
 

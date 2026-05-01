@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 
 type TopVendor = {
@@ -11,6 +11,9 @@ type TopVendor = {
   amount: number;
 };
 
+type SortKey = "total_lpos" | "amount";
+type SortDir = "asc" | "desc";
+
 function formatAED(val: number): string {
   return val.toLocaleString("en-GB", {
     minimumFractionDigits: 2,
@@ -18,9 +21,19 @@ function formatAED(val: number): string {
   });
 }
 
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  return (
+    <span style={{ marginLeft: 4, fontSize: 10, opacity: active ? 1 : 0.35 }}>
+      {active ? (dir === "asc" ? "↑" : "↓") : "↕"}
+    </span>
+  );
+}
+
 export default function FinanceTopVendorsBySpendWidget() {
   const [vendors, setVendors] = useState<TopVendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<SortKey>("amount");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   useEffect(() => {
     fetch(
@@ -32,9 +45,32 @@ export default function FinanceTopVendorsBySpendWidget() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
+  const sorted = useMemo(() => {
+    return [...vendors].sort((a, b) => {
+      const mul = sortDir === "asc" ? 1 : -1;
+      return mul * (a[sortKey] - b[sortKey]);
+    });
+  }, [vendors, sortKey, sortDir]);
+
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
         <h2 style={{ margin: 0 }}>Top Vendors By Spend</h2>
         <Link
           href="/finance/vendors"
@@ -73,102 +109,90 @@ export default function FinanceTopVendorsBySpendWidget() {
             No vendor data available
           </p>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "separate",
+              borderSpacing: 0,
+            }}
+          >
             <thead>
-              <tr style={{ backgroundColor: "rgba(245, 246, 248, 1)" }}>
-                {[
-                  { label: "", width: "5%" },
-                  { label: "VENDOR", width: "auto" },
-                  { label: "PAYMENT TYPE", width: "16%" },
-                  { label: "TOTAL LPOS", width: "14%" },
-                  { label: "AMOUNT", width: "20%" },
-                ].map(({ label, width }, i) => (
-                  <th
-                    key={i}
-                    style={{
-                      textAlign: "left",
-                      padding: "9px 12px",
-                      fontSize: "12px",
-                      fontWeight: 700,
-                      width,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {label}
-                  </th>
-                ))}
+              <tr>
+                {/* VENDOR — not sortable */}
+                <th style={{ textAlign: "left", padding: "9px 12px", fontSize: "12px", fontWeight: 700, width: "auto", whiteSpace: "nowrap", backgroundColor: "rgba(245,246,248,1)", borderRadius: "50px 0 0 50px" }}>
+                  VENDOR
+                </th>
+                {/* PAYMENT TYPE — not sortable */}
+                <th style={{ textAlign: "left", padding: "9px 12px", fontSize: "12px", fontWeight: 700, width: "16%", whiteSpace: "nowrap", backgroundColor: "rgba(245,246,248,1)" }}>
+                  PAYMENT TYPE
+                </th>
+                {/* TOTAL LPOS — sortable */}
+                <th onClick={() => handleSort("total_lpos")} style={{ textAlign: "left", padding: "9px 12px", fontSize: "12px", fontWeight: 700, width: "14%", whiteSpace: "nowrap", backgroundColor: "rgba(245,246,248,1)", cursor: "pointer", userSelect: "none" }}>
+                  TOTAL LPOS<SortIcon active={sortKey === "total_lpos"} dir={sortDir} />
+                </th>
+                {/* TOTAL SPENT — sortable */}
+                <th onClick={() => handleSort("amount")} style={{ textAlign: "left", padding: "9px 12px", fontSize: "12px", fontWeight: 700, width: "20%", whiteSpace: "nowrap", backgroundColor: "rgba(245,246,248,1)", borderRadius: "0 50px 50px 0", cursor: "pointer", userSelect: "none" }}>
+                  TOTAL SPENT<SortIcon active={sortKey === "amount"} dir={sortDir} />
+                </th>
               </tr>
             </thead>
             <tbody>
-              {vendors.map((vendor, i) => (
-                <tr
-                  key={vendor.supplier_id}
-                  style={{
-                    borderBottom: "1px solid rgba(243, 244, 246, 1)",
-                  }}
-                >
-                  {/* # */}
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      fontSize: "12px",
-                      color: "rgba(120,120,120,1)",
-                    }}
-                  >
-                    {i + 1}
-                  </td>
-
-                  {/* VENDOR */}
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "rgba(30,30,30,1)",
-                      maxWidth: "0",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {vendor.supplier_name}
-                  </td>
-
-                  {/* PAYMENT TYPE */}
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      fontSize: "12px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {vendor.payment_type}
-                  </td>
-
-                  {/* TOTAL LPOS */}
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      fontSize: "12px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {vendor.total_lpos}
-                  </td>
-
-                  {/* AMOUNT */}
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      fontSize: "12px",
-                      color: "rgba(30,30,30,1)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    AED {formatAED(vendor.amount)}
-                  </td>
-                </tr>
-              ))}
+              {sorted.map((vendor, i) => {
+                const isAlt = i % 2 !== 0;
+                const altBg = isAlt ? "rgba(249, 249, 249, 1)" : undefined;
+                return (
+                  <tr key={vendor.supplier_id}>
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color: "rgba(30,30,30,1)",
+                        maxWidth: "0",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        backgroundColor: altBg,
+                        borderRadius: isAlt ? "50px 0 0 50px" : undefined,
+                      }}
+                    >
+                      {vendor.supplier_name}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        fontSize: "12px",
+                        whiteSpace: "nowrap",
+                        backgroundColor: altBg,
+                      }}
+                    >
+                      {vendor.payment_type}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        fontSize: "12px",
+                        whiteSpace: "nowrap",
+                        backgroundColor: altBg,
+                      }}
+                    >
+                      {vendor.total_lpos}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        fontSize: "12px",
+                        color: "rgba(30,30,30,1)",
+                        whiteSpace: "nowrap",
+                        backgroundColor: altBg,
+                        borderRadius: isAlt ? "0 50px 50px 0" : undefined,
+                      }}
+                    >
+                      AED {formatAED(vendor.amount)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

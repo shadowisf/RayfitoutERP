@@ -53,7 +53,7 @@ export default function CancelMaterialRequestButton({
     9: "QS Price Check",
     10: "Manager Price Approval",
     12: "LPO & Invoice",
-    14: "Pending Payments",
+    // 14: "Pending Payments", // REMOVED — payment stage skipped, LPO & Invoice goes directly to Awaiting Delivery
     17: "Awaiting Delivery",
     24: "Stock Entry",
   };
@@ -67,7 +67,7 @@ export default function CancelMaterialRequestButton({
     9: 16, // Awaiting QS price approval → QS
     10: 8, // Awaiting manager price approval → Management
     12: 9, // Awaiting LPO & invoice → Procurement
-    14: 10, // Pending payment → Finance
+    // 14: 10, // Pending payment → Finance — REMOVED (payment stage skipped)
     17: 11, // Pending delivery → Storekeeper
     24: 11, // Awaiting stock entry → Storekeeper
   };
@@ -118,10 +118,10 @@ export default function CancelMaterialRequestButton({
 
   // MR flow: skips Manager Approval (3) entirely
   const mrProgressFlow = [1, 2, 7, 9, 10, 12];
-  // LPO-level progress flow (after MR segregation)
-  const lpoProgressFlow = [12, 14, 17, 24];
-  // Full MR flow for LPO context (no Manager Approval for MRs)
-  const fullProgressFlow = [1, 2, 7, 9, 10, 12, 14, 17, 24];
+  // LPO-level progress flow (after MR segregation) — payment stage (14) removed
+  const lpoProgressFlow = [12, 17, 24];
+  // Full MR flow for LPO context (no Manager Approval for MRs) — payment stage (14) removed
+  const fullProgressFlow = [1, 2, 7, 9, 10, 12, 17, 24];
   // JO flow: Draft → Manager Approval → Quotations → Price Approval → LPO & Invoice
   const joProgressFlow = [1, 3, 7, 10, 12];
   // PR flow: Draft → QS Review → Manager Approval → Payment
@@ -134,7 +134,7 @@ export default function CancelMaterialRequestButton({
     5: type === "job" || type === "payment" ? 3 : 2, // Request Rejected → back to last valid stage
     11: 10, // Price Approval Rejected → roll back up to Manager Price Approval
     13: 12, // Payment Rejected → roll back up to LPO & Invoice
-    16: 14, // GRN Failed → roll back up to Pending Payments
+    16: 12, // GRN Failed → roll back up to LPO & Invoice (payment stage skipped)
   };
 
   useEffect(() => {

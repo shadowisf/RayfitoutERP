@@ -25,8 +25,6 @@ export async function GET(req: NextRequest) {
 
   try {
     // ── 1. Materials table ────────────────────────────────────────────────────
-    // Chain: lpo_mr_line → lpo (lpo_id) → mr_headers (mr_header_id) → projects (project_id)
-    // mr_lines also carry mr_header_id via vw_mr_lines, but using lpo.mr_header_id is simpler
     const [tableRows] = await db.query<RowDataPacket[]>(
       `SELECT
          vml.material_description,
@@ -42,7 +40,7 @@ export async function GET(req: NextRequest) {
            JOIN vw_mr_lines   vml2 ON lml2.mr_line_id = vml2.id
            LEFT JOIN suppliers s2  ON l2.supplier_id  = s2.id
            WHERE vml2.material_description = vml.material_description
-             AND l2.progress_id != 26
+             AND l2.progress_id NOT IN (13)
            GROUP BY s2.id, s2.name
            ORDER BY SUM(lml2.total_price) DESC
            LIMIT 1
@@ -53,7 +51,7 @@ export async function GET(req: NextRequest) {
        LEFT JOIN suppliers  s  ON l.supplier_id  = s.id
        LEFT JOIN mr_headers mh ON l.mr_header_id = mh.id
        LEFT JOIN projects   p  ON mh.project_id  = p.id
-       WHERE l.progress_id != 26
+       WHERE l.progress_id NOT IN (13)
          AND lml.unit_price > 0
          ${dateClause}
          ${vendorClause}
@@ -73,7 +71,7 @@ export async function GET(req: NextRequest) {
        JOIN vw_mr_lines vml ON lml.mr_line_id = vml.id
        LEFT JOIN lut_material_categories lmc ON vml.material_category_id = lmc.id
        LEFT JOIN suppliers s ON l.supplier_id = s.id
-       WHERE l.progress_id != 26
+       WHERE l.progress_id NOT IN (13)
          AND lml.total_price > 0
          ${dateClause}
          ${vendorClause}

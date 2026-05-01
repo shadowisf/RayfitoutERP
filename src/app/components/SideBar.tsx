@@ -128,8 +128,15 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
     icon: string;
     count?: number;
     extraPaths?: string[];
+    visibleTo?: number[];
   }[] = [
-    { label: "Dashboard", path: "/dashboard", icon: "/icons/dashboard.svg", extraPaths: ["/finance"] },
+    {
+      label: "Dashboard",
+      path: "/dashboard",
+      icon: "/icons/dashboard.svg",
+      // Finance dept (10) uses /finance as their home — highlight Dashboard when there
+      extraPaths: userInfo?.departmentID === 10 ? ["/finance"] : undefined,
+    },
     {
       label: "Procurement Tracker",
       path: "/mr",
@@ -148,15 +155,21 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       icon: "/icons/boq.svg",
     }, */
     {
+      label: "Financial Analytics",
+      path: "/finance",
+      icon: "/icons/bar-chart.svg",
+      visibleTo: [8],
+    },
+    {
       label: "Vendors & Subcontractors",
       path: "/vendor",
       icon: "/icons/vendors.svg",
     },
-    /* {
+    {
       label: "Payments",
       path: "/payment",
       icon: "/icons/payment-black.svg",
-    }, */
+    },
     /* TEMPORARILY DISABLED - Resolution Center
     {
       label: "Resolution Center",
@@ -173,6 +186,12 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       count: inventoryActionCount,
     },
   ];
+
+  const visibleMenuItems = menuItems.filter(
+    (item) =>
+      !item.visibleTo ||
+      item.visibleTo.includes(Number(userInfo?.departmentID)),
+  );
 
   const isActive = (item: { path: string; extraPaths?: string[] }) => {
     if (pathname === item.path) return true;
@@ -224,7 +243,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
           <br />
 
           <div className="nav-container">
-            {menuItems.map((item) => (
+            {visibleMenuItems.map((item) => (
               <button
                 key={item.label}
                 className={isActive(item) ? "nav-active" : ""}
@@ -271,7 +290,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
             gap: "7px",
           }}
         >
-          {menuItems.map((item) => (
+          {visibleMenuItems.map((item) => (
             <button
               key={item.label}
               onClick={() => router.push(item.path)}

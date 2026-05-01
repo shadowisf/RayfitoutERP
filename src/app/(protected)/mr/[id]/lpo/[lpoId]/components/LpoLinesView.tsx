@@ -727,7 +727,7 @@ export default function LpoLinesView({
 
                 {(userInfo?.departmentID === 10 ||
                   userInfo?.departmentID === 11) &&
-                  (progressId === 13 || progressId === 14) && (
+                  progressId === 13 && (
                     <PaymentButtons
                       mrHeader={lpoAsMrHeader}
                       mrLine={allItems[0]}
@@ -1071,25 +1071,16 @@ export default function LpoLinesView({
         stageName={lpo.progress_name || mrHeader.progress_name || ""}
       />
 
-      {/* Awaiting LPO & Invoice (Progress 12, 13, 16) - Procurement Submit for Payment */}
+      {/* Awaiting LPO & Invoice (Progress 12, 13, 16) - Procurement Submit for Delivery (payment stage skipped) */}
       {userInfo?.departmentID === 9 &&
         (progressId === 12 || progressId === 13 || progressId === 16) && (
           <div className="bottom-nav">
             <div></div>
-            <SubmitForPaymentButton
+            <SubmitForDeliveryButton
+              mrHeader={lpoAsMrHeader}
+              lpoId={lpoId}
+              deliveryDate={lpo.delivery_date || mrHeader.delivery_date}
               paymentValue={totalInvoiceAmount}
-              mrHeaderID={mrHeader.id}
-              lpoID={lpoId}
-              mode="single"
-              suppliers={[
-                {
-                  supplierId: allItems[0]?.approved_supplier_id || 0,
-                  lpoId: lpoId,
-                  supplierType: lpo.supplier_type || "",
-                  supplierName: lpo.supplier_name || "",
-                  paymentValue: totalInvoiceAmount,
-                },
-              ]}
               disabled={!hasLpoWithInvoiceAndSignedFile()}
               style={{
                 opacity: !hasLpoWithInvoiceAndSignedFile() ? "0.5" : "1",
@@ -1104,8 +1095,8 @@ export default function LpoLinesView({
           </div>
         )}
 
-      {/* Pending Payment (Progress 14) - Finance Submit for Delivery or Return to LPO */}
-      {userInfo?.departmentID === 10 && progressId === 14 && (
+      {/* Pending Payment (Progress 14) - REMOVED — payment stage skipped, LPO & Invoice goes directly to Awaiting Delivery */}
+      {/* {userInfo?.departmentID === 10 && progressId === 14 && (
         <div className="bottom-nav">
           <div></div>
           {(() => {
@@ -1137,7 +1128,7 @@ export default function LpoLinesView({
             }
           })()}
         </div>
-      )}
+      )} */}
 
       {/* Awaiting Delivery (Progress 17) - Storekeeper: GRN then Submit for QC or GRN Fail Resubmission */}
       {userInfo?.departmentID === 11 && progressId === 17 && (

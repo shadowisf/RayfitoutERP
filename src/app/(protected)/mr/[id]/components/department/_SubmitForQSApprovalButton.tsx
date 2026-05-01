@@ -25,14 +25,25 @@ export default function SubmitForQSApprovalButton({
 
   const [isOpen, setIsOpen] = useState(false);
 
+  // Manager (8) and QS (16) creators skip QS review — go straight to Quotations.
+  // skip_approvals flag also bypasses QS review (but then also skips Manager Price Approval later).
+  const bypassQSReview =
+    !!mrHeader.skip_approvals ||
+    userInfo?.departmentID === 8 ||
+    userInfo?.departmentID === 16;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    const action = bypassQSReview
+      ? "submitForSkipApprovalsQuotations"
+      : "submitForQSInitialApproval";
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitForQSInitialApproval",
+        action,
         id: mrHeader.id,
         changed_by: userInfo?.name,
         department_id: mrHeader.department_id,
@@ -62,7 +73,7 @@ export default function SubmitForQSApprovalButton({
         style={{ ...style }}
         disabled={disabled}
       >
-        SUBMIT FOR QS REVIEW
+        {bypassQSReview ? "SUBMIT FOR QUOTATIONS" : "SUBMIT FOR QS REVIEW"}
       </Button>
 
       {isOpen && (

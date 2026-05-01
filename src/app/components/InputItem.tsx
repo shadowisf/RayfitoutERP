@@ -246,6 +246,52 @@ export default function InputItem({
         </div>
       );
 
+    case "text prefix":
+      return (
+        <div
+          className="input-item"
+          style={{
+            ...(style || {}),
+            ...(sideLabel
+              ? {
+                  display: "grid",
+                  gridTemplateColumns: "0.5fr 1fr",
+                  alignItems: "center",
+                }
+              : {}),
+            ...(!label
+              ? {
+                  marginBottom: 0,
+                }
+              : {}),
+          }}
+        >
+          <label className="custom">
+            <span>{label}</span>{" "}
+            {!required && !noOptionalLabel && (
+              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                (OPTIONAL)
+              </small>
+            )}
+          </label>
+
+          <div className="input-prefix left">
+            <span>{postfixText}</span>
+            <input
+              style={{ paddingLeft: "50px" }}
+              type="text"
+              value={value || ""}
+              onChange={onChange}
+              placeholder={placeholder || `ENTER ${label}`}
+              required={required}
+              disabled={disabled}
+              onClick={onClick}
+              onBlur={onBlur}
+            />
+          </div>
+        </div>
+      );
+
     case "number":
       return (
         <div className="input-item">

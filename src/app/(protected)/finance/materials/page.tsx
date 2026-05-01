@@ -494,6 +494,8 @@ export default function MaterialsReportPage() {
     preset: null,
   });
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   // ── Query string → re-fetch on date/vendorType change ─────────────────────
   const queryStr = useMemo(() => {
@@ -563,11 +565,24 @@ export default function MaterialsReportPage() {
     filters.spentMax,
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const sorted = useMemo(() => {
+    if (!sortCol) return filtered;
+    return [...filtered].sort((a, b) => {
+      const av = a[sortCol as keyof MaterialRow] ?? 0;
+      const bv = b[sortCol as keyof MaterialRow] ?? 0;
+      if (av === null || av === undefined) return sortDir === "asc" ? 1 : -1;
+      if (bv === null || bv === undefined) return sortDir === "asc" ? -1 : 1;
+      return sortDir === "asc"
+        ? (av as number) - (bv as number)
+        : (bv as number) - (av as number);
+    });
+  }, [filtered, sortCol, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / ITEMS_PER_PAGE));
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filtered.slice(start, start + ITEMS_PER_PAGE);
-  }, [filtered, currentPage]);
+    return sorted.slice(start, start + ITEMS_PER_PAGE);
+  }, [sorted, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -619,6 +634,31 @@ export default function MaterialsReportPage() {
       pages.push(totalPages);
     }
     return pages;
+  };
+
+  const sortIcon = (col: string) => (
+    <span
+      style={{
+        marginLeft: 4,
+        fontSize: 10,
+        opacity: sortCol === col ? 1 : 0.35,
+      }}
+    >
+      {sortCol === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+    </span>
+  );
+
+  const handleSort = (col: string) => {
+    if (sortCol === col) {
+      if (sortDir === "asc") setSortDir("desc");
+      else {
+        setSortCol(null);
+        setSortDir("asc");
+      }
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
   };
 
   // Date strings for per-row chart
@@ -958,18 +998,48 @@ export default function MaterialsReportPage() {
           <div style={{ overflowX: "auto" }}>
             <table
               className="items-table two-toned"
-              style={{ minWidth: "100%" }}
+              style={{ width: "100%", tableLayout: "fixed" }}
             >
+              <colgroup>
+                <col style={{ width: "44px" }} />
+                <col style={{ width: "50px" }} />
+                <col />
+                <col style={{ width: "300px" }} />
+                <col style={{ width: "120px" }} />
+                <col style={{ width: "150px" }} />
+                <col style={{ width: "150px" }} />
+                <col style={{ width: "160px" }} />
+              </colgroup>
               <thead>
                 <tr>
-                  <th style={{ width: 44 }} />
-                  <th style={{ width: 60 }}>#</th>
-                  <th>MATERIAL NAME</th>
-                  <th style={{ width: 200 }}>TOP VENDOR</th>
-                  <th style={{ width: 130 }}>QTY ORDERED</th>
-                  <th style={{ width: 160 }}>AVG. PRICE</th>
-                  <th style={{ width: 160 }}>LOWEST PRICE</th>
-                  <th style={{ width: 180 }}>TOTAL SPENT</th>
+                  <th />
+                  <th>#</th>
+                  <th>MATERIAL</th>
+                  <th>TOP VENDOR</th>
+                  <th
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSort("qty_order")}
+                  >
+                    QTY ORDERED{sortIcon("qty_order")}
+                  </th>
+                  <th
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSort("avg_price")}
+                  >
+                    AVG. PRICE{sortIcon("avg_price")}
+                  </th>
+                  <th
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSort("lowest_price")}
+                  >
+                    LOWEST PRICE{sortIcon("lowest_price")}
+                  </th>
+                  <th
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSort("total_spent")}
+                  >
+                    TOTAL SPENT{sortIcon("total_spent")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1000,7 +1070,6 @@ export default function MaterialsReportPage() {
                         <td>{rowNum}</td>
                         <td
                           style={{
-                            fontWeight: 600,
                             maxWidth: 0,
                             overflow: "hidden",
                             textOverflow: "ellipsis",

@@ -33,7 +33,7 @@ small {
   color: rgba(112, 112, 112, 1);
 }
 
-input {
+input:not([type="range"]) {
   background-color: white !important;
 }
 

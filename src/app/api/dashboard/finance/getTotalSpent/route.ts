@@ -14,22 +14,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Reusable two-case SUM fragment — old LPOs use l.total, new LPOs use lpo_payments sum
+    const twoCase = `COALESCE(SUM(
+      CASE
+        WHEN LOWER(IFNULL(l.payment_status, ''))
+             IN ('approved','paid','fully paid','completed','done')
+          THEN l.total
+        ELSE COALESCE(pay.total_paid, 0)
+      END
+    ), 0)`;
+
     if (filter === 0) {
       const [projectRows] = await db.query(
-        "SELECT COALESCE(SUM(allocated_budget), 0) AS project_allocated FROM projects"
+        "SELECT COALESCE(SUM(allocated_budget), 0) AS project_allocated FROM projects",
       );
       const [lpoRows] = await db.query(
-        "SELECT COALESCE(SUM(total), 0) AS lpo_total FROM lpo WHERE payment_status = 'Approved'"
+        `SELECT ${twoCase} AS lpo_total
+         FROM lpo l
+         LEFT JOIN (SELECT lpo_id, SUM(amount) AS total_paid FROM lpo_payments GROUP BY lpo_id) pay ON pay.lpo_id = l.id
+         WHERE l.progress_id NOT IN (13)`,
       );
-      const total = Number((projectRows as any[])[0]?.project_allocated ?? 0) +
+      const total =
+        Number((projectRows as any[])[0]?.project_allocated ?? 0) +
         Number((lpoRows as any[])[0]?.lpo_total ?? 0);
 
       const [itemRows]: any = await db.query(
         `SELECT l.id, l.mr_header_id, l.total, s.name AS supplier_name
          FROM lpo l LEFT JOIN suppliers s ON s.id = l.supplier_id
-         WHERE l.payment_status = 'Approved'
+         WHERE l.progress_id NOT IN (13)
          ORDER BY l.total DESC LIMIT ?`,
-        [maxItems]
+        [maxItems],
       );
       const items = itemRows.map((lpo: any) => ({
         display_id: `LPO-${String(lpo.id).padStart(5, "0")}`,
@@ -43,33 +57,44 @@ export async function POST(req: NextRequest) {
 
     const [currentProjectRows] = await db.query(
       "SELECT COALESCE(SUM(allocated_budget), 0) AS project_allocated FROM projects WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)",
-      [filter]
+      [filter],
     );
     const [currentLpoRows] = await db.query(
-      "SELECT COALESCE(SUM(total), 0) AS lpo_total FROM lpo WHERE payment_status = 'Approved' AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)",
-      [filter]
+      `SELECT ${twoCase} AS lpo_total
+       FROM lpo l
+       LEFT JOIN (SELECT lpo_id, SUM(amount) AS total_paid FROM lpo_payments GROUP BY lpo_id) pay ON pay.lpo_id = l.id
+       WHERE l.progress_id NOT IN (13)
+         AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
+      [filter],
     );
-    const currentPeriodTotal = Number((currentProjectRows as any[])[0]?.project_allocated ?? 0) +
+    const currentPeriodTotal =
+      Number((currentProjectRows as any[])[0]?.project_allocated ?? 0) +
       Number((currentLpoRows as any[])[0]?.lpo_total ?? 0);
 
     const [previousProjectRows] = await db.query(
       "SELECT COALESCE(SUM(allocated_budget), 0) AS project_allocated FROM projects WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND created_at < DATE_SUB(CURDATE(), INTERVAL ? DAY)",
-      [filter * 2, filter]
+      [filter * 2, filter],
     );
     const [previousLpoRows] = await db.query(
-      "SELECT COALESCE(SUM(total), 0) AS lpo_total FROM lpo WHERE payment_status = 'Approved' AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND created_at < DATE_SUB(CURDATE(), INTERVAL ? DAY)",
-      [filter * 2, filter]
+      `SELECT ${twoCase} AS lpo_total
+       FROM lpo l
+       LEFT JOIN (SELECT lpo_id, SUM(amount) AS total_paid FROM lpo_payments GROUP BY lpo_id) pay ON pay.lpo_id = l.id
+       WHERE l.progress_id NOT IN (13)
+         AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         AND l.created_at < DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
+      [filter * 2, filter],
     );
-    const previousPeriodTotal = Number((previousProjectRows as any[])[0]?.project_allocated ?? 0) +
+    const previousPeriodTotal =
+      Number((previousProjectRows as any[])[0]?.project_allocated ?? 0) +
       Number((previousLpoRows as any[])[0]?.lpo_total ?? 0);
 
     const [itemRows]: any = await db.query(
       `SELECT l.id, l.mr_header_id, l.total, s.name AS supplier_name
        FROM lpo l LEFT JOIN suppliers s ON s.id = l.supplier_id
-       WHERE l.payment_status = 'Approved'
+       WHERE l.progress_id NOT IN (13)
          AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
        ORDER BY l.total DESC LIMIT ?`,
-      [filter, maxItems]
+      [filter, maxItems],
     );
     const items = itemRows.map((lpo: any) => ({
       display_id: `LPO-${String(lpo.id).padStart(5, "0")}`,

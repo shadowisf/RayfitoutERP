@@ -241,6 +241,7 @@ function CalendarMonth({
   onPrev,
   onNext,
 }: CalMonthProps) {
+  const today = startOfDay(new Date());
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDow = new Date(year, month, 1).getDay();
   const cells: (number | null)[] = [
@@ -353,6 +354,7 @@ function CalendarMonth({
         {cells.map((day, i) => {
           if (!day) return <div key={i} style={{ height: 32 }} />;
           const date = new Date(year, month, day, 12, 0, 0);
+          const isFuture = startOfDay(date) > today;
           const isStart = pendingStart ? isSameDay(date, pendingStart) : false;
           const isEnd = pendingEnd ? isSameDay(date, pendingEnd) : false;
           const isHover =
@@ -369,20 +371,22 @@ function CalendarMonth({
           );
 
           let bandBg = "transparent";
-          if (isStart && hasRange)
-            bandBg =
-              "linear-gradient(to right, transparent 50%, rgba(0,0,0,0.06) 50%)";
-          else if (
-            (isEnd || isHover) &&
-            pendingStart &&
-            !isSameDay(date, pendingStart)
-          )
-            bandBg =
-              "linear-gradient(to left, transparent 50%, rgba(0,0,0,0.06) 50%)";
-          else if (inRange) bandBg = "rgba(0,0,0,0.06)";
+          if (!isFuture) {
+            if (isStart && hasRange)
+              bandBg =
+                "linear-gradient(to right, transparent 50%, rgba(0,0,0,0.06) 50%)";
+            else if (
+              (isEnd || isHover) &&
+              pendingStart &&
+              !isSameDay(date, pendingStart)
+            )
+              bandBg =
+                "linear-gradient(to left, transparent 50%, rgba(0,0,0,0.06) 50%)";
+            else if (inRange) bandBg = "rgba(0,0,0,0.06)";
+          }
 
           const isSelected =
-            isStart || isEnd || (isHover && Boolean(pendingStart));
+            !isFuture && (isStart || isEnd || (isHover && Boolean(pendingStart)));
 
           return (
             <div
@@ -393,10 +397,11 @@ function CalendarMonth({
                 justifyContent: "center",
                 alignItems: "center",
                 height: 32,
-                cursor: "pointer",
+                cursor: isFuture ? "default" : "pointer",
+                opacity: isFuture ? 0.5 : 1,
               }}
-              onClick={() => onDayClick(date)}
-              onMouseEnter={() => onDayHover(date)}
+              onClick={() => !isFuture && onDayClick(date)}
+              onMouseEnter={() => !isFuture && onDayHover(date)}
             >
               <div
                 style={{
@@ -633,6 +638,28 @@ function ProjectsTable({
   data: TableRow[];
   isLoading: boolean;
 }) {
+  const [sortKey, setSortKey] = useState<"total">("total");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const handleSort = (key: "total") => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
+  const sorted = useMemo(() => {
+    return [...data].sort((a, b) => {
+      // Unspecified always last regardless of sort direction
+      if (a.project === "Unspecified") return 1;
+      if (b.project === "Unspecified") return -1;
+      const mul = sortDir === "asc" ? 1 : -1;
+      return mul * (a.total - b.total);
+    });
+  }, [data, sortKey, sortDir]);
+
   return (
     <div
       style={{
@@ -645,82 +672,85 @@ function ProjectsTable({
         <p style={{ fontSize: 12, color: "#999" }}>Loading…</p>
       ) : (
         <table
-          style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}
+          style={{
+            width: "100%",
+            borderCollapse: "separate",
+            borderSpacing: 0,
+            fontSize: 11,
+          }}
         >
           <thead>
-            <tr style={{ backgroundColor: "rgba(245,246,248,1)" }}>
-              <th
-                style={{
-                  padding: "9px 12px",
-                  fontWeight: 700,
-                  fontSize: 10,
-                  width: 24,
-                }}
-              />
+            <tr>
               <th
                 style={{
                   textAlign: "left",
                   padding: "9px 12px",
                   fontWeight: 700,
                   fontSize: 10,
+                  backgroundColor: "rgba(245,246,248,1)",
+                  borderRadius: "50px 0 0 50px",
+                  whiteSpace: "nowrap",
                 }}
               >
                 PROJECT
               </th>
               <th
+                onClick={() => handleSort("total")}
                 style={{
                   textAlign: "left",
                   padding: "9px 12px",
                   fontWeight: 700,
                   fontSize: 10,
                   whiteSpace: "nowrap",
+                  backgroundColor: "rgba(245,246,248,1)",
+                  borderRadius: "0 50px 50px 0",
+                  cursor: "pointer",
+                  userSelect: "none",
                 }}
               >
                 COMMITTED + CASH
+                <span style={{ marginLeft: 4, fontSize: 9, opacity: sortKey === "total" ? 1 : 0.35 }}>
+                  {sortKey === "total" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                </span>
               </th>
             </tr>
           </thead>
           <tbody>
-            {data.map((row, i) => (
-              <tr
-                key={i}
-                style={{ borderBottom: "1px solid rgba(243,244,246,1)" }}
-              >
-                <td
-                  style={{
-                    padding: "10px 12px",
-                    textAlign: "center",
-                    fontSize: 10,
-                    color: "#bbb",
-                  }}
-                >
-                  {i + 1}
-                </td>
-                <td
-                  style={{
-                    padding: "10px 12px",
-                    color: "rgba(30,30,30,1)",
-                    maxWidth: 180,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    fontSize: 12,
-                  }}
-                >
-                  {row.project}
-                </td>
-                <td
-                  style={{
-                    padding: "10px 12px",
-                    color: "rgba(20,20,20,1)",
-                    whiteSpace: "nowrap",
-                    fontSize: 12,
-                  }}
-                >
-                  AED {formatAEDFull(row.total)}
-                </td>
-              </tr>
-            ))}
+            {sorted.map((row, i) => {
+              const isAlt = i % 2 !== 0;
+              const altBg = isAlt ? "rgba(249, 249, 249, 1)" : undefined;
+              return (
+                <tr key={i}>
+                  <td
+                    style={{
+                      padding: "10px 12px",
+                      color: "rgba(30,30,30,1)",
+                      maxWidth: 180,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: 12,
+                      backgroundColor: altBg,
+                      borderRadius: isAlt ? "50px 0 0 50px" : undefined,
+                    }}
+                  >
+                    {row.project}
+                  </td>
+                  <td
+                    style={{
+                      padding: "10px 12px",
+                      color: "rgba(20,20,20,1)",
+                      whiteSpace: "nowrap",
+                      fontSize: 12,
+                      backgroundColor: altBg,
+                      borderRadius: isAlt ? "0 50px 50px 0" : undefined,
+                    }}
+                  >
+                    AED {formatAEDFull(row.total)}
+                  </td>
+                </tr>
+              );
+            })}
             {!data.length && (
               <tr>
                 <td

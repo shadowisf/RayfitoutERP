@@ -4,9 +4,23 @@ import { RowDataPacket } from "mysql2";
 
 export async function GET() {
   try {
-    // 1. Total spent — sum of all LPO totals (excluding cancelled progress_id = 26)
+    // 1. Total spent — two-case: old LPOs use l.total (payment_status approved), new LPOs use lpo_payments sum
     const [totalSpentRows] = await db.query<RowDataPacket[]>(
-      `SELECT COALESCE(SUM(total), 0) AS total_spent FROM lpo WHERE progress_id != 26`,
+      `SELECT COALESCE(SUM(
+         CASE
+           WHEN LOWER(IFNULL(l.payment_status, ''))
+                IN ('approved','paid','fully paid','completed','done')
+             THEN l.total
+           ELSE COALESCE(pay.total_paid, 0)
+         END
+       ), 0) AS total_spent
+       FROM lpo l
+       LEFT JOIN (
+         SELECT lpo_id, SUM(amount) AS total_paid
+         FROM lpo_payments
+         GROUP BY lpo_id
+       ) pay ON pay.lpo_id = l.id
+       WHERE l.progress_id NOT IN (13)`,
     );
     const totalSpent = Number((totalSpentRows as any[])[0]?.total_spent ?? 0);
 

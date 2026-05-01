@@ -33,6 +33,7 @@ export default function NewMrButton() {
   const [requestedBy, setRequestedBy] = useState<string | number>("");
   const [neededBy, setNeededBy] = useState("");
   const [selectedJoId, setSelectedJoId] = useState<string | number>("");
+  const [skipApprovals, setSkipApprovals] = useState(false);
 
   // Check if selected date is at least 3 days from today (applies to ALL users)
   const isDateValid = () => {
@@ -190,6 +191,7 @@ export default function NewMrButton() {
         requested_by: requestedBy,
         required_date: neededBy,
         purpose_id: purposeReasonID,
+        skip_approvals: mode === "material" ? skipApprovals : false,
       }),
     });
 
@@ -207,6 +209,7 @@ export default function NewMrButton() {
       setProjectID("");
       setNeededBy("");
       setMode("");
+      setSkipApprovals(false);
 
       router.refresh();
 
@@ -568,6 +571,41 @@ export default function NewMrButton() {
               />
             </div>
           </div>
+
+          {mode === "material" && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                marginTop: "8px",
+              }}
+            >
+              <input
+                type="checkbox"
+                id="skip-approvals"
+                checked={skipApprovals}
+                onChange={(e) => setSkipApprovals(e.target.checked)}
+                style={{
+                  width: "16px",
+                  height: "16px",
+                  cursor: "pointer",
+                  accentColor: "rgba(0, 163, 93, 1)",
+                  flexShrink: 0,
+                }}
+              />
+              <label
+                htmlFor="skip-approvals"
+                style={{
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  userSelect: "none",
+                }}
+              >
+                SKIP APPROVALS
+              </label>
+            </div>
+          )}
 
           <br />
 

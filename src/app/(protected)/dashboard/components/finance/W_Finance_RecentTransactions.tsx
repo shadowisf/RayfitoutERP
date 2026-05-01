@@ -88,15 +88,21 @@ export default function FinanceRecentTransactionsWidget() {
           No transactions yet
         </p>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "separate",
+            borderSpacing: 0,
+          }}
+        >
           <thead>
-            <tr style={{ backgroundColor: "rgba(245, 246, 248, 1)" }}>
+            <tr>
               {[
                 { label: "LPO", width: "15%" },
                 { label: "VENDOR", width: "40%" },
                 { label: "PAYMENT TYPE", width: "22%" },
                 { label: "AMOUNT", width: "23%" },
-              ].map(({ label, width }) => (
+              ].map(({ label, width }, index, arr) => (
                 <th
                   key={label}
                   style={{
@@ -105,6 +111,13 @@ export default function FinanceRecentTransactionsWidget() {
                     fontSize: "10px",
                     fontWeight: 700,
                     width,
+                    backgroundColor: "rgba(245, 246, 248, 1)",
+                    borderRadius:
+                      index === 0
+                        ? "50px 0 0 50px"
+                        : index === arr.length - 1
+                          ? "0 50px 50px 0"
+                          : undefined,
                   }}
                 >
                   {label}
@@ -114,13 +127,10 @@ export default function FinanceRecentTransactionsWidget() {
           </thead>
           <tbody>
             {transactions.map((tx, i) => {
+              const isAlt = i % 2 !== 0;
+              const altBg = isAlt ? "rgba(249, 249, 249, 1)" : undefined;
               return (
-                <tr
-                  key={i}
-                  style={{
-                    borderBottom: "1px solid rgba(243, 244, 246, 1)",
-                  }}
-                >
+                <tr key={i}>
                   <td
                     style={{
                       padding: "10px 12px",
@@ -128,6 +138,8 @@ export default function FinanceRecentTransactionsWidget() {
                       fontWeight: 600,
                       color: "rgba(30,30,30,1)",
                       whiteSpace: "nowrap",
+                      backgroundColor: altBg,
+                      borderRadius: isAlt ? "50px 0 0 50px" : undefined,
                     }}
                   >
                     {tx.display_id}
@@ -140,6 +152,7 @@ export default function FinanceRecentTransactionsWidget() {
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
+                      backgroundColor: altBg,
                     }}
                   >
                     {tx.vendor_name}
@@ -149,6 +162,7 @@ export default function FinanceRecentTransactionsWidget() {
                       padding: "10px 12px",
                       fontSize: "12px",
                       whiteSpace: "nowrap",
+                      backgroundColor: altBg,
                     }}
                   >
                     {tx.payment_type}
@@ -159,6 +173,8 @@ export default function FinanceRecentTransactionsWidget() {
                       fontSize: "12px",
                       color: "rgba(30,30,30,1)",
                       whiteSpace: "nowrap",
+                      backgroundColor: altBg,
+                      borderRadius: isAlt ? "0 50px 50px 0" : undefined,
                     }}
                   >
                     AED {formatAED(tx.amount)}

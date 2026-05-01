@@ -12,6 +12,7 @@ type SubmitForLPOProps = {
   mrLines: any;
   disabled?: boolean;
   style?: React.CSSProperties;
+  skipApprovals?: boolean;
 };
 
 export default function SubmitForLPO({
@@ -19,6 +20,7 @@ export default function SubmitForLPO({
   mrLines,
   disabled,
   style,
+  skipApprovals = false,
 }: SubmitForLPOProps) {
   const router = useRouter();
 
@@ -44,6 +46,42 @@ export default function SubmitForLPO({
             if (Array.isArray(items)) {
               items.forEach((item: any) => allItemIds.push(item.id));
             }
+          }
+        }
+      }
+
+      // If skip_approvals: auto-select the only/cheapest quotation per line
+      if (skipApprovals) {
+        for (const itemId of allItemIds) {
+          try {
+            const response = await fetch(
+              "/api/supplier/getAllSupplierAndQuotationByMrLineID",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: itemId }),
+              }
+            );
+            if (!response.ok) continue;
+            const quotations = await response.json();
+            if (!Array.isArray(quotations) || quotations.length === 0) continue;
+
+            const lowest = quotations.reduce((prev: any, curr: any) =>
+              Number(curr.total_price) < Number(prev.total_price) ? curr : prev,
+            );
+
+            await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "approveSupplierAndQuotation",
+                quotation_id: lowest.id,
+                mr_line_id: itemId,
+                supplier_id: lowest.supplier_id,
+              }),
+            });
+          } catch (error) {
+            console.error(`Error auto-selecting quotation for item ${itemId}:`, error);
           }
         }
       }
