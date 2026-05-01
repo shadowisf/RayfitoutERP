@@ -6,16 +6,33 @@ export async function GET() {
   try {
     const [rows] = await db.query<RowDataPacket[]>(
       `SELECT
-        l.id,
-        l.total,
-        l.paid_at,
-        COALESCE(s.name, sub.name) AS vendor_name,
-        s.type AS supplier_type
+         l.id,
+         CASE
+           WHEN LOWER(IFNULL(l.payment_status, ''))
+                IN ('approved','paid','fully paid','completed','done')
+             THEN l.total
+           ELSE COALESCE(pay.total_paid, 0)
+         END AS amount,
+         l.paid_at,
+         l.created_at,
+         COALESCE(s.name, sub.name) AS vendor_name,
+         s.type AS supplier_type
        FROM lpo l
        LEFT JOIN suppliers s ON l.supplier_id = s.id
        LEFT JOIN subcontractors sub ON l.subcontractor_id = sub.id
-       WHERE l.paid_at IS NOT NULL
-       ORDER BY l.paid_at DESC
+       LEFT JOIN (
+         SELECT lpo_id, SUM(amount) AS total_paid
+         FROM lpo_payments
+         GROUP BY lpo_id
+       ) pay ON pay.lpo_id = l.id
+       WHERE l.progress_id NOT IN (13)
+         AND (
+           l.paid_at IS NOT NULL
+           OR LOWER(IFNULL(l.payment_status, ''))
+              IN ('approved','paid','fully paid','completed','done')
+           OR COALESCE(pay.total_paid, 0) > 0
+         )
+       ORDER BY COALESCE(l.paid_at, l.created_at) DESC
        LIMIT 6`,
     );
 
@@ -25,7 +42,7 @@ export async function GET() {
       payment_type: row.supplier_type
         ? String(row.supplier_type).toUpperCase()
         : "—",
-      amount: Number(row.total) || 0,
+      amount: Number(row.amount) || 0,
     }));
 
     return NextResponse.json({ transactions }, { status: 200 });

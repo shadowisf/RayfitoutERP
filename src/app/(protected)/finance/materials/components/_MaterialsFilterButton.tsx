@@ -184,11 +184,11 @@ function DualRangeSlider({
   return (
     <div>
       <style>{`
-        .dual-range-slider-mat input[type="range"] {
+        .dual-range-slider input[type="range"] {
           -webkit-appearance: none;
           appearance: none;
-          width: calc(100% + 15px);
-          left: -5.5px;
+          width: 100%;
+          left: 0;
           height: 10px;
           background: transparent;
           outline: none !important;
@@ -196,37 +196,43 @@ function DualRangeSlider({
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
+          margin: 0;
+          padding: 0;
         }
-        .dual-range-slider-mat input[type="range"]:focus { outline: none !important; }
-        .dual-range-slider-mat input[type="range"]::-webkit-slider-thumb {
+        .dual-range-slider input[type="range"]:focus {
+          outline: none !important;
+        }
+        .dual-range-slider input[type="range"]::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
           width: 15px;
           height: 15px;
           border-radius: 50%;
           background: white;
-          border: 1px solid rgba(177,177,177,1);
+          border: 1px solid rgba(177, 177, 177, 1);
           outline: 0 !important;
           cursor: pointer;
           pointer-events: all;
           box-shadow: 0 1px 8px rgba(0,0,0,0.2);
         }
-        .dual-range-slider-mat input[type="range"]:focus::-webkit-slider-thumb {
+        .dual-range-slider input[type="range"]:focus::-webkit-slider-thumb {
           outline: 0 !important;
-          border: 1px solid rgba(177,177,177,1);
+          border: 1px solid rgba(177, 177, 177, 1);
         }
-        .dual-range-slider-mat input[type="range"]::-moz-range-thumb {
+        .dual-range-slider input[type="range"]::-moz-range-thumb {
           width: 15px;
           height: 15px;
           border-radius: 50%;
           background: white;
-          border: 1px solid rgba(177,177,177,1);
+          border: 1px solid rgba(177, 177, 177, 1);
           outline: 0 !important;
           cursor: pointer;
           pointer-events: all;
           box-shadow: 0 1px 8px rgba(0,0,0,0.2);
         }
-        .dual-range-slider-mat input[type="range"]::-moz-focus-outer { border: 0; }
+        .dual-range-slider input[type="range"]::-moz-focus-outer {
+          border: 0;
+        }
       `}</style>
 
       {/* Label + value inputs */}
@@ -253,26 +259,10 @@ function DualRangeSlider({
         )}
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <div style={{ position: "relative" }}>
-            <input
-              type="number"
-              placeholder="Min"
-              value={minVal}
-              min={rangeMin}
-              max={currentMax - 1}
-              onChange={(e) => onMinChange(e.target.value)}
-              style={{
-                width: 110,
-                padding: "7px 10px 7px 10px",
-                borderRadius: 8,
-                border: "1px solid rgba(223,223,223,1)",
-                fontSize: 12,
-                boxSizing: "border-box",
-              }}
-            />
             <span
               style={{
                 position: "absolute",
-                right: 10,
+                left: 10,
                 top: "50%",
                 transform: "translateY(-50%)",
                 fontSize: 11,
@@ -283,31 +273,35 @@ function DualRangeSlider({
             >
               AED
             </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Min"
+              value={
+                minVal !== "" ? Number(minVal).toLocaleString("en-US") : ""
+              }
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d+$/.test(raw)) onMinChange(raw);
+              }}
+              style={{
+                width: 110,
+                padding: "7px 10px 7px 36px",
+                borderRadius: 8,
+                border: "1px solid rgba(223,223,223,1)",
+                fontSize: 12,
+                boxSizing: "border-box",
+              }}
+            />
           </div>
           <span style={{ color: "#888", fontWeight: 600, flexShrink: 0 }}>
             —
           </span>
           <div style={{ position: "relative" }}>
-            <input
-              type="number"
-              placeholder="Max"
-              value={maxVal}
-              min={currentMin + 1}
-              max={rangeMax}
-              onChange={(e) => onMaxChange(e.target.value)}
-              style={{
-                width: 110,
-                padding: "7px 10px 7px 10px",
-                borderRadius: 8,
-                border: "1px solid rgba(223,223,223,1)",
-                fontSize: 12,
-                boxSizing: "border-box",
-              }}
-            />
             <span
               style={{
                 position: "absolute",
-                right: 10,
+                left: 10,
                 top: "50%",
                 transform: "translateY(-50%)",
                 fontSize: 11,
@@ -318,13 +312,33 @@ function DualRangeSlider({
             >
               AED
             </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Max"
+              value={
+                maxVal !== "" ? Number(maxVal).toLocaleString("en-US") : ""
+              }
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d+$/.test(raw)) onMaxChange(raw);
+              }}
+              style={{
+                width: 110,
+                padding: "7px 10px 7px 36px",
+                borderRadius: 8,
+                border: "1px solid rgba(223,223,223,1)",
+                fontSize: 12,
+                boxSizing: "border-box",
+              }}
+            />
           </div>
         </div>
       </div>
 
       {/* Slider track */}
       <div
-        className="dual-range-slider-mat"
+        className="dual-range-slider"
         style={{
           position: "relative",
           height: 30,
@@ -341,7 +355,7 @@ function DualRangeSlider({
             top: "50%",
             transform: "translateY(-50%)",
             height: 10,
-            borderRadius: 5,
+            borderRadius: 10,
             backgroundColor: "rgba(220,220,220,1)",
           }}
         />
@@ -354,7 +368,7 @@ function DualRangeSlider({
             top: "50%",
             transform: "translateY(-50%)",
             height: 10,
-            borderRadius: 5,
+            borderRadius: 10,
             backgroundColor: "#3d9e6e",
           }}
         />

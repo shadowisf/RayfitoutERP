@@ -44,7 +44,7 @@ function formatAED(val: number): string {
 }
 
 function formatDate(raw: string | null): string {
-  if (!raw) return "-";
+  if (!raw) return "Pending";
   const d = new Date(raw);
   return d
     .toLocaleDateString("en-GB", {
@@ -108,6 +108,8 @@ export default function AllTransactionsPage() {
   const [categoryHierarchy, setCategoryHierarchy] = useState<
     { level_2: string; value: string }[]
   >([]);
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     fetch(
@@ -231,12 +233,58 @@ export default function AllTransactionsPage() {
     });
   }, [data, searchQuery, filters, dateRange]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const sorted = useMemo(() => {
+    if (!sortCol) return filtered;
+    return [...filtered].sort((a, b) => {
+      const aVal = (a as Record<string, unknown>)[sortCol];
+      const bVal = (b as Record<string, unknown>)[sortCol];
+      // Nulls always sort to the end regardless of direction
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
+      let cmp: number;
+      if (sortCol === "paid_at") {
+        cmp =
+          new Date(aVal as string).getTime() -
+          new Date(bVal as string).getTime();
+      } else {
+        cmp = (aVal as number) - (bVal as number);
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, sortCol, sortDir]);
+
+  const sortIcon = (col: string) => (
+    <span
+      style={{
+        marginLeft: 4,
+        fontSize: 10,
+        opacity: sortCol === col ? 1 : 0.35,
+      }}
+    >
+      {sortCol === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+    </span>
+  );
+
+  const handleSort = (col: string) => {
+    if (sortCol === col) {
+      if (sortDir === "asc") setSortDir("desc");
+      else {
+        setSortCol(null);
+        setSortDir("asc");
+      }
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  };
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / ITEMS_PER_PAGE));
 
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filtered.slice(start, start + ITEMS_PER_PAGE);
-  }, [filtered, currentPage]);
+    return sorted.slice(start, start + ITEMS_PER_PAGE);
+  }, [sorted, currentPage]);
 
   // Reset page on search/filter change
   useEffect(() => {
@@ -321,38 +369,35 @@ export default function AllTransactionsPage() {
         </div>
       </div>
 
-      {/* ── Row 2: Filter button (left) + Date range button (right) ── */}
+      {/* ── Row 2: Filter button + bubbles (left) + Date range button (right) ── */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: hasActiveFilters ? 10 : 20,
+          marginBottom: 20,
+          gap: 12,
         }}
       >
-        <TransactionsFilterButton
-          requesters={filterOptions.requesters}
-          projects={filterOptions.projects}
-          categoryGroups={filterOptions.categoryGroups}
-          currentFilters={filters}
-          onApplyFilters={setFilters}
-          amountBounds={amountBounds}
-        />
-
-        <DateRangeButton value={dateRange} onChange={setDateRange} />
-      </div>
-
-      {/* ── Row 3: Active filter bubbles (filters only, not date) ── */}
-      {hasActiveFilters && (
+        {/* Left: filter button + active filter bubbles inline */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 10,
-            marginBottom: 20,
             flexWrap: "wrap",
+            flex: 1,
           }}
         >
+          <TransactionsFilterButton
+            requesters={filterOptions.requesters}
+            projects={filterOptions.projects}
+            categoryGroups={filterOptions.categoryGroups}
+            currentFilters={filters}
+            onApplyFilters={setFilters}
+            amountBounds={amountBounds}
+          />
+
           {filters.selectedPaymentTypes.length > 0 && (
             <Button
               componentType="none"
@@ -411,7 +456,7 @@ export default function AllTransactionsPage() {
                 whiteSpace: "nowrap",
               }}
             >
-              REQUESTOR:{" "}
+              REQUESTER:{" "}
               <span style={{ color: "rgba(16,185,129,1)" }}>
                 {filters.selectedRequesters[0].toUpperCase()}
                 {filters.selectedRequesters.length > 1 &&
@@ -462,21 +507,25 @@ export default function AllTransactionsPage() {
             </Button>
           )}
 
-          <Button
-            componentType="button"
-            bgColor="transparent"
-            borderColor="transparent"
-            textColor="black"
-            onClick={() => {
-              setFilters(DEFAULT_FILTERS);
-              setDateRange({ start: null, end: null, preset: null });
-            }}
-            style={{ padding: "0px" }}
-          >
-            RESET FILTER
-          </Button>
+          {hasActiveFilters && (
+            <Button
+              componentType="button"
+              bgColor="transparent"
+              borderColor="transparent"
+              textColor="black"
+              onClick={() => {
+                setFilters(DEFAULT_FILTERS);
+                setDateRange({ start: null, end: null, preset: null });
+              }}
+              style={{ padding: "0px" }}
+            >
+              RESET FILTER
+            </Button>
+          )}
         </div>
-      )}
+
+        <DateRangeButton value={dateRange} onChange={setDateRange} />
+      </div>
 
       {/* ── Table ── */}
       {isLoading ? (
@@ -489,25 +538,38 @@ export default function AllTransactionsPage() {
         </p>
       ) : (
         <>
-          <table className="items-table two-toned">
+          <table
+            className="items-table two-toned"
+            style={{ width: "100%", tableLayout: "fixed" }}
+          >
             <colgroup>
-              <col style={{ width: "150px" }} />
-              <col style={{ width: "22%" }} />
-              <col style={{ width: "16%" }} />
-              <col style={{ width: "18%" }} />
-              <col style={{ width: "130px" }} />
-              <col style={{ width: "140px" }} />
-              <col style={{ width: "130px" }} />
+              <col style={{ width: "160px" }} />
+              <col />
+              <col style={{ width: "200px" }} />
+              <col style={{ width: "300px" }} />
+              <col style={{ width: "200px" }} />
+              <col style={{ width: "200px" }} />
+              <col style={{ width: "200px" }} />
             </colgroup>
             <thead>
               <tr>
                 <th>LPO NUMBER</th>
                 <th>VENDOR</th>
-                <th>REQUESTOR</th>
+                <th>REQUESTER</th>
                 <th>PROJECT</th>
                 <th>VENDOR TYPE</th>
-                <th>TOTAL AMOUNT</th>
-                <th>PAYMENT DATE</th>
+                <th
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                  onClick={() => handleSort("total")}
+                >
+                  TOTAL AMOUNT{sortIcon("total")}
+                </th>
+                <th
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                  onClick={() => handleSort("paid_at")}
+                >
+                  PAYMENT DATE{sortIcon("paid_at")}
+                </th>
               </tr>
             </thead>
             <tbody>

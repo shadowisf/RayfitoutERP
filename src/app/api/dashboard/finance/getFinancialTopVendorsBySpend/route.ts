@@ -10,10 +10,22 @@ export async function GET() {
          COALESCE(s.name, 'Unknown')       AS supplier_name,
          UPPER(COALESCE(s.type, '—'))      AS payment_type,
          COUNT(l.id)                       AS total_lpos,
-         COALESCE(SUM(l.total), 0)         AS amount
+         COALESCE(SUM(
+           CASE
+             WHEN LOWER(IFNULL(l.payment_status, ''))
+                  IN ('approved','paid','fully paid','completed','done')
+               THEN l.total
+             ELSE COALESCE(pay.total_paid, 0)
+           END
+         ), 0)                             AS amount
        FROM lpo l
        LEFT JOIN suppliers s ON l.supplier_id = s.id
-       WHERE l.progress_id != 26
+       LEFT JOIN (
+         SELECT lpo_id, SUM(amount) AS total_paid
+         FROM lpo_payments
+         GROUP BY lpo_id
+       ) pay ON pay.lpo_id = l.id
+       WHERE l.progress_id NOT IN (13)
        GROUP BY s.id, s.name, s.type
        HAVING amount > 0
        ORDER BY amount DESC

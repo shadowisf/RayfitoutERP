@@ -104,7 +104,7 @@ function SearchableChecklist({
                 width: 18,
                 height: 18,
                 cursor: "pointer",
-                accentColor: "#10b981",
+                accentColor: "rgba(0, 163, 93, 1)",
               }}
             />
             <h4>Select All</h4>
@@ -136,7 +136,7 @@ function SearchableChecklist({
                       width: 18,
                       height: 18,
                       cursor: "pointer",
-                      accentColor: "#10b981",
+                      accentColor: "rgba(0, 163, 93, 1)",
                     }}
                   />
                   <h4>{item}</h4>
@@ -170,7 +170,13 @@ function IndeterminateCheckbox({
       type="checkbox"
       checked={checked}
       onChange={onChange}
-      style={{ width: 18, height: 18, cursor: "pointer", accentColor: "#10b981", flexShrink: 0 }}
+      style={{
+        width: 18,
+        height: 18,
+        cursor: "pointer",
+        accentColor: "rgba(0, 163, 93, 1)",
+        flexShrink: 0,
+      }}
     />
   );
 }
@@ -192,7 +198,8 @@ function GroupedSearchableChecklist({
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
 
   const allItems = groups.flatMap((g) => g.items);
-  const allSelected = allItems.length > 0 && allItems.every((i) => selected.includes(i));
+  const allSelected =
+    allItems.length > 0 && allItems.every((i) => selected.includes(i));
   const anySelected = allItems.some((i) => selected.includes(i));
 
   const toggleExpand = (idx: number) => {
@@ -215,15 +222,22 @@ function GroupedSearchableChecklist({
       ...g,
       originalIdx,
       items: q
-        ? g.items.filter((i) => i.toLowerCase().includes(q) || g.name.toLowerCase().includes(q))
+        ? g.items.filter(
+            (i) =>
+              i.toLowerCase().includes(q) || g.name.toLowerCase().includes(q),
+          )
         : g.items,
     }))
     .filter((g) => g.items.length > 0);
 
   return (
     <div style={{ marginBottom: 30 }}>
-      <h3 style={{ marginBottom: 15, fontSize: 14, fontWeight: 600 }}>{label}</h3>
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
+      <h3 style={{ marginBottom: 15, fontSize: 14, fontWeight: 600 }}>
+        {label}
+      </h3>
+      <div
+        style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}
+      >
         {/* Search */}
         <div style={{ position: "relative", marginBottom: 15 }}>
           <input
@@ -257,11 +271,20 @@ function GroupedSearchableChecklist({
 
         {/* Select All */}
         <div style={{ marginBottom: 10 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              cursor: "pointer",
+            }}
+          >
             <IndeterminateCheckbox
               checked={allSelected}
               indeterminate={!allSelected && anySelected}
-              onChange={(e) => allItems.forEach((i) => onToggle(i, e.target.checked))}
+              onChange={(e) =>
+                allItems.forEach((i) => onToggle(i, e.target.checked))
+              }
             />
             <h4>Select All</h4>
           </label>
@@ -270,28 +293,47 @@ function GroupedSearchableChecklist({
         {/* Groups */}
         <div style={{ maxHeight: 260, overflowY: "auto" }}>
           {visibleGroups.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 20, color: "#888" }}>No items found</div>
+            <div style={{ textAlign: "center", padding: 20, color: "#888" }}>
+              No items found
+            </div>
           ) : (
             visibleGroups.map((group, groupIdx) => {
-              const isExpanded = q !== "" || expandedGroups.has(group.originalIdx);
+              const isExpanded =
+                q !== "" || expandedGroups.has(group.originalIdx);
               const groupAllChecked = isGroupAllChecked(group);
               const groupSomeChecked = isGroupSomeChecked(group);
 
               return (
-                <div key={`group-${group.originalIdx}`} style={{ marginBottom: 10 }}>
+                <div
+                  key={`group-${group.originalIdx}`}
+                  style={{ marginBottom: 10 }}
+                >
                   {/* Group header row */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
                     <IndeterminateCheckbox
                       checked={groupAllChecked}
                       indeterminate={groupSomeChecked}
-                      onChange={(e) => group.items.forEach((i) => onToggle(i, e.target.checked))}
+                      onChange={(e) =>
+                        group.items.forEach((i) =>
+                          onToggle(i, e.target.checked),
+                        )
+                      }
                     />
                     <h4
-                      style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+                      style={{
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
                       onClick={() => toggleExpand(group.originalIdx)}
                     >
                       {group.name || "Uncategorized"}
-                      <span style={{ fontSize: 10, color: "#888", lineHeight: 1 }}>
+                      <span
+                        style={{ fontSize: 10, color: "#888", lineHeight: 1 }}
+                      >
                         {isExpanded ? "∧" : "∨"}
                       </span>
                     </h4>
@@ -301,8 +343,18 @@ function GroupedSearchableChecklist({
                   {isExpanded && (
                     <div style={{ marginLeft: 28, marginTop: 6 }}>
                       {group.items.map((item, itemIdx) => (
-                        <div key={`${group.originalIdx}::${itemIdx}`} style={{ marginBottom: 8 }}>
-                          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                        <div
+                          key={`${group.originalIdx}::${itemIdx}`}
+                          style={{ marginBottom: 8 }}
+                        >
+                          <label
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              cursor: "pointer",
+                            }}
+                          >
                             <input
                               type="checkbox"
                               checked={selected.includes(item)}
@@ -311,7 +363,7 @@ function GroupedSearchableChecklist({
                                 width: 18,
                                 height: 18,
                                 cursor: "pointer",
-                                accentColor: "#10b981",
+                                accentColor: "rgba(0, 163, 93, 1)",
                                 flexShrink: 0,
                               }}
                             />
@@ -378,8 +430,8 @@ function DualRangeSlider({
         .dual-range-slider input[type="range"] {
           -webkit-appearance: none;
           appearance: none;
-          width: calc(100% + 15px);
-          left: -5.5px;
+          width: 100%;
+          left: 0;
           height: 10px;
           background: transparent;
           outline: none !important;
@@ -387,6 +439,8 @@ function DualRangeSlider({
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
+          margin: 0;
+          padding: 0;
         }
         .dual-range-slider input[type="range"]:focus {
           outline: none !important;
@@ -465,12 +519,16 @@ function DualRangeSlider({
               AED
             </span>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               placeholder="Min"
-              value={minVal}
-              min={rangeMin}
-              max={currentMax - 1}
-              onChange={(e) => onMinChange(e.target.value)}
+              value={
+                minVal !== "" ? Number(minVal).toLocaleString("en-US") : ""
+              }
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d+$/.test(raw)) onMinChange(raw);
+              }}
               style={{
                 width: 110,
                 padding: "7px 10px 7px 36px",
@@ -500,12 +558,16 @@ function DualRangeSlider({
               AED
             </span>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               placeholder="Max"
-              value={maxVal}
-              min={currentMin + 1}
-              max={rangeMax}
-              onChange={(e) => onMaxChange(e.target.value)}
+              value={
+                maxVal !== "" ? Number(maxVal).toLocaleString("en-US") : ""
+              }
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d+$/.test(raw)) onMaxChange(raw);
+              }}
               style={{
                 width: 110,
                 padding: "7px 10px 7px 36px",
@@ -520,59 +582,59 @@ function DualRangeSlider({
       </div>
 
       {/* Slider track */}
-      <div
-        className="dual-range-slider"
-        style={{
-          position: "relative",
-          height: 30,
-          marginBottom: 8,
-          overflow: "visible",
-        }}
-      >
-        {/* Grey base track */}
+      <div style={{ padding: "0 9px", marginBottom: 8 }}>
         <div
+          className="dual-range-slider"
           style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: "50%",
-            transform: "translateY(-50%)",
-            height: 10,
-            borderRadius: 5,
-            backgroundColor: "rgba(220,220,220,1)",
+            position: "relative",
+            height: 30,
           }}
-        />
-        {/* Green active fill */}
-        <div
-          style={{
-            position: "absolute",
-            left: `${minPct}%`,
-            right: `${100 - maxPct}%`,
-            top: "50%",
-            transform: "translateY(-50%)",
-            height: 10,
-            borderRadius: 5,
-            backgroundColor: "#3d9e6e",
-          }}
-        />
-        {/* Min thumb — raise z-index when pushed far right so it stays grabbable */}
-        <input
-          type="range"
-          min={rangeMin}
-          max={rangeMax}
-          value={currentMin}
-          onChange={handleMinSlider}
-          style={{ zIndex: minPct > 95 ? 5 : 1, border: "none" }}
-        />
-        {/* Max thumb — sits on top by default so right-end drag always works */}
-        <input
-          type="range"
-          min={rangeMin}
-          max={rangeMax}
-          value={currentMax}
-          onChange={handleMaxSlider}
-          style={{ zIndex: minPct > 95 ? 4 : 2, border: "none" }}
-        />
+        >
+          {/* Grey base track */}
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: "50%",
+              transform: "translateY(-50%)",
+              height: 10,
+              borderRadius: 10,
+              backgroundColor: "rgba(220,220,220,1)",
+            }}
+          />
+          {/* Green active fill */}
+          <div
+            style={{
+              position: "absolute",
+              left: `${minPct}%`,
+              right: `${100 - maxPct}%`,
+              top: "50%",
+              transform: "translateY(-50%)",
+              height: 10,
+              borderRadius: 10,
+              backgroundColor: "#3d9e6e",
+            }}
+          />
+          {/* Min thumb — raise z-index when pushed far right so it stays grabbable */}
+          <input
+            type="range"
+            min={rangeMin}
+            max={rangeMax}
+            value={currentMin}
+            onChange={handleMinSlider}
+            style={{ zIndex: minPct > 95 ? 5 : 1, border: "none" }}
+          />
+          {/* Max thumb — sits on top by default so right-end drag always works */}
+          <input
+            type="range"
+            min={rangeMin}
+            max={rangeMax}
+            value={currentMax}
+            onChange={handleMaxSlider}
+            style={{ zIndex: minPct > 95 ? 4 : 2, border: "none" }}
+          />
+        </div>
       </div>
 
       {/* Min / Max labels */}
@@ -733,7 +795,7 @@ export default function TransactionsFilterButton({
                       width: 18,
                       height: 18,
                       cursor: "pointer",
-                      accentColor: "#10b981",
+                      accentColor: "rgba(0, 163, 93, 1)",
                     }}
                   />
                   <h4>{type}</h4>
@@ -754,20 +816,20 @@ export default function TransactionsFilterButton({
             />
           </div>
 
-          {/* REQUESTOR */}
-          <SearchableChecklist
-            label="REQUESTER"
-            items={requesters}
-            selected={selectedRequesters}
-            onToggle={toggleRequester}
-          />
-
           {/* PROJECTS */}
           <SearchableChecklist
             label="PROJECTS"
             items={projects}
             selected={selectedProjects}
             onToggle={toggleProject}
+          />
+
+          {/* REQUESTOR */}
+          <SearchableChecklist
+            label="REQUESTER"
+            items={requesters}
+            selected={selectedRequesters}
+            onToggle={toggleRequester}
           />
 
           {/* MATERIAL CATEGORIES */}

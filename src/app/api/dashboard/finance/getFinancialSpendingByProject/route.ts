@@ -33,17 +33,29 @@ export async function GET(request: Request) {
       : "";
     const dateArgs = hasDateFilter ? [startStr, endStr] : [];
 
-    // 1. Chart data
+    // 1. Chart data — two-case: old LPOs use l.total, new LPOs use lpo_payments sum
     const [chartRows] = await db.query<RowDataPacket[]>(
       `SELECT
          DATE_FORMAT(l.created_at, ?) AS period_key,
          DATE_FORMAT(l.created_at, ?) AS period_label,
          COALESCE(p.name, 'Unspecified') AS project_name,
-         COALESCE(SUM(l.total), 0) AS total_spent
+         COALESCE(SUM(
+           CASE
+             WHEN LOWER(IFNULL(l.payment_status, ''))
+                  IN ('approved','paid','fully paid','completed','done')
+               THEN l.total
+             ELSE COALESCE(pay.total_paid, 0)
+           END
+         ), 0) AS total_spent
        FROM lpo l
        JOIN mr_headers mh ON l.mr_header_id = mh.id
        LEFT JOIN projects p ON mh.project_id = p.id
-       WHERE l.progress_id != 26 ${dateWhere}
+       LEFT JOIN (
+         SELECT lpo_id, SUM(amount) AS total_paid
+         FROM lpo_payments
+         GROUP BY lpo_id
+       ) pay ON pay.lpo_id = l.id
+       WHERE l.progress_id NOT IN (13) ${dateWhere}
        GROUP BY period_key, period_label, p.id, p.name
        ORDER BY period_key ASC`,
       [dateKeyFmt, labelFmt, ...dateArgs],
@@ -100,9 +112,13 @@ export async function GET(request: Request) {
       return entry;
     });
 
-    // Table data: total per project from chart query (same date filter), sorted desc
+    // Table data: total per project, sorted desc — Unspecified always last
     const tableData = Object.entries(projectTotalMap)
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => {
+        if (a[0] === "Unspecified") return 1;
+        if (b[0] === "Unspecified") return -1;
+        return b[1] - a[1];
+      })
       .map(([project, total]) => ({ project, total }));
 
     return NextResponse.json(

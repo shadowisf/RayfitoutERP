@@ -208,8 +208,8 @@ export async function POST(req: Request) {
 
       const headerQuery = `
       INSERT INTO mr_headers
-      (type, project_id, department_id, requested_by, required_date, purpose_id)
-      VALUES (?, ?, ?, ?, ?, ?)
+      (type, project_id, department_id, requested_by, required_date, purpose_id, skip_approvals)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
       const headerValues = [
@@ -219,6 +219,7 @@ export async function POST(req: Request) {
         body.requested_by,
         body.required_date,
         Number(body.purpose_id),
+        body.skip_approvals ? 1 : 0,
       ];
 
       const [headerResult] = await db.query<ResultSetHeader>(
@@ -501,6 +502,30 @@ export async function PUT(req: Request) {
       await db.query(`UPDATE mr_headers SET progress_id = 26 WHERE id = ?`, [
         body.id,
       ]);
+
+      return NextResponse.json({ status: 200 });
+    }
+
+    if (body.action === "submitForSkipApprovalsQuotations") {
+      // Skip all approval stages — go straight from Draft (1) to Quotations (7)
+      await db.query(`UPDATE mr_headers SET progress_id = 7 WHERE id = ?`, [
+        body.id,
+      ]);
+
+      await db.query(
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 7, 1, ?)`,
+        [body.id, body.changed_by],
+      );
+
+      await db.query(
+        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+        [
+          body.id,
+          9,
+          "Quotations Required",
+          `${formattedId} is ready for quotations (approvals skipped)`,
+        ],
+      );
 
       return NextResponse.json({ status: 200 });
     }

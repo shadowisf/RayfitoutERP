@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
@@ -76,11 +76,24 @@ const PieTooltip = ({ active, payload }: any) => {
   );
 };
 
+type SortKey = "qty_order" | "avg_price" | "lowest_price" | "total_spent";
+type SortDir = "asc" | "desc";
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  return (
+    <span style={{ marginLeft: 4, fontSize: 10, opacity: active ? 1 : 0.35 }}>
+      {active ? (dir === "asc" ? "↑" : "↓") : "↕"}
+    </span>
+  );
+}
+
 // ─── Widget ───────────────────────────────────────────────────────────────────
 export default function FinanceTopMaterialsBySpendWidget() {
   const [tableData, setTableData] = useState<MaterialRow[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<SortKey>("total_spent");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   useEffect(() => {
     fetch(
@@ -95,6 +108,22 @@ export default function FinanceTopMaterialsBySpendWidget() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
+  const sorted = useMemo(() => {
+    return [...tableData].sort((a, b) => {
+      const mul = sortDir === "asc" ? 1 : -1;
+      return mul * ((a[sortKey] as number) - (b[sortKey] as number));
+    });
+  }, [tableData, sortKey, sortDir]);
+
   const chartData = categoryData.slice(0, 7).map((row, i) => ({
     name: row.category_name,
     value: row.total_spent,
@@ -104,11 +133,31 @@ export default function FinanceTopMaterialsBySpendWidget() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
         <h2 style={{ margin: 0 }}>Top Materials By Spend</h2>
         <Link
           href="/finance/materials"
-          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 50, border: "1px solid rgba(223,223,223,1)", backgroundColor: "white", fontSize: 12, fontWeight: 600, color: "rgba(30,30,30,1)", textDecoration: "none", whiteSpace: "nowrap" }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "7px 14px",
+            borderRadius: 50,
+            border: "1px solid rgba(223,223,223,1)",
+            backgroundColor: "white",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "rgba(30,30,30,1)",
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+          }}
         >
           VIEW FULL REPORT
           <span style={{ fontSize: 14, lineHeight: 1 }}>›</span>
@@ -136,131 +185,220 @@ export default function FinanceTopMaterialsBySpendWidget() {
               No material data available
             </p>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "separate",
+                borderSpacing: 0,
+              }}
+            >
               <thead>
-                <tr style={{ backgroundColor: "rgba(245,246,248,1)" }}>
-                  {[
-                    { label: "", width: "4%" },
-                    { label: "MATERIAL NAME", width: "auto" },
-                    { label: "TOP VENDOR", width: "18%" },
-                    { label: "QTY ORDER", width: "10%" },
-                    { label: "AVG PRICE", width: "12%" },
-                    { label: "LOWEST PRICE", width: "12%" },
-                    { label: "TOTAL SPENT", width: "13%" },
-                  ].map(({ label, width }, i) => (
-                    <th
-                      key={i}
-                      style={{
-                        textAlign: "left",
-                        padding: "9px 12px",
-                        fontSize: "12px",
-                        fontWeight: 700,
-                        width,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {label}
-                    </th>
-                  ))}
+                <tr>
+                  {/* MATERIAL — not sortable */}
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: "9px 12px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      width: "auto",
+                      whiteSpace: "nowrap",
+                      backgroundColor: "rgba(245,246,248,1)",
+                      borderRadius: "50px 0 0 50px",
+                    }}
+                  >
+                    MATERIAL
+                  </th>
+                  {/* TOP VENDOR — not sortable */}
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: "9px 12px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      width: "18%",
+                      whiteSpace: "nowrap",
+                      backgroundColor: "rgba(245,246,248,1)",
+                    }}
+                  >
+                    TOP VENDOR
+                  </th>
+                  {/* QTY ORDER — sortable */}
+                  <th
+                    onClick={() => handleSort("qty_order")}
+                    style={{
+                      textAlign: "left",
+                      padding: "9px 12px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      width: "10%",
+                      whiteSpace: "nowrap",
+                      backgroundColor: "rgba(245,246,248,1)",
+                      cursor: "pointer",
+                      userSelect: "none",
+                    }}
+                  >
+                    QTY ORDER
+                    <SortIcon active={sortKey === "qty_order"} dir={sortDir} />
+                  </th>
+                  {/* AVG PRICE — sortable */}
+                  <th
+                    onClick={() => handleSort("avg_price")}
+                    style={{
+                      textAlign: "left",
+                      padding: "9px 12px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      width: "12%",
+                      whiteSpace: "nowrap",
+                      backgroundColor: "rgba(245,246,248,1)",
+                      cursor: "pointer",
+                      userSelect: "none",
+                    }}
+                  >
+                    AVG PRICE
+                    <SortIcon active={sortKey === "avg_price"} dir={sortDir} />
+                  </th>
+                  {/* LOWEST PRICE — sortable */}
+                  <th
+                    onClick={() => handleSort("lowest_price")}
+                    style={{
+                      textAlign: "left",
+                      padding: "9px 12px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      width: "12%",
+                      whiteSpace: "nowrap",
+                      backgroundColor: "rgba(245,246,248,1)",
+                      cursor: "pointer",
+                      userSelect: "none",
+                    }}
+                  >
+                    LOWEST PRICE
+                    <SortIcon
+                      active={sortKey === "lowest_price"}
+                      dir={sortDir}
+                    />
+                  </th>
+                  {/* TOTAL SPENT — sortable */}
+                  <th
+                    onClick={() => handleSort("total_spent")}
+                    style={{
+                      textAlign: "left",
+                      padding: "9px 12px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      width: "13%",
+                      whiteSpace: "nowrap",
+                      backgroundColor: "rgba(245,246,248,1)",
+                      borderRadius: "0 50px 50px 0",
+                      cursor: "pointer",
+                      userSelect: "none",
+                    }}
+                  >
+                    TOTAL SPENT
+                    <SortIcon
+                      active={sortKey === "total_spent"}
+                      dir={sortDir}
+                    />
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {tableData.map((row, i) => (
-                  <tr
-                    key={i}
-                    style={{ borderBottom: "1px solid rgba(243,244,246,1)" }}
-                  >
-                    {/* # */}
-                    <td
-                      style={{
-                        padding: "10px 12px",
-                        fontSize: 12,
-                        color: "rgba(120,120,120,1)",
-                      }}
-                    >
-                      {i + 1}
-                    </td>
+                {sorted.map((row, i) => {
+                  const isAlt = i % 2 !== 0;
+                  const altBg = isAlt ? "rgba(249, 249, 249, 1)" : undefined;
+                  return (
+                    <tr key={i}>
+                      {/* MATERIAL NAME */}
+                      <td
+                        style={{
+                          padding: "10px 12px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "rgba(30,30,30,1)",
+                          maxWidth: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          backgroundColor: altBg,
+                          borderRadius: isAlt ? "50px 0 0 50px" : undefined,
+                        }}
+                      >
+                        {row.material_description}
+                      </td>
 
-                    {/* MATERIAL NAME */}
-                    <td
-                      style={{
-                        padding: "10px 12px",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: "rgba(30,30,30,1)",
-                        maxWidth: 0,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {row.material_description}
-                    </td>
+                      {/* TOP SUPPLIER */}
+                      <td
+                        style={{
+                          padding: "10px 12px",
+                          fontSize: 12,
+                          maxWidth: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          backgroundColor: altBg,
+                        }}
+                      >
+                        {row.top_supplier}
+                      </td>
 
-                    {/* TOP SUPPLIER */}
-                    <td
-                      style={{
-                        padding: "10px 12px",
-                        fontSize: 12,
-                        maxWidth: 0,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {row.top_supplier}
-                    </td>
+                      {/* QTY ORDER */}
+                      <td
+                        style={{
+                          padding: "10px 12px",
+                          fontSize: 12,
+                          whiteSpace: "nowrap",
+                          backgroundColor: altBg,
+                        }}
+                      >
+                        {row.qty_order.toLocaleString()}
+                      </td>
 
-                    {/* QTY ORDER */}
-                    <td
-                      style={{
-                        padding: "10px 12px",
-                        fontSize: 12,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {row.qty_order.toLocaleString()}
-                    </td>
+                      {/* AVG PRICE */}
+                      <td
+                        style={{
+                          padding: "10px 12px",
+                          fontSize: 12,
+                          whiteSpace: "nowrap",
+                          color: "rgba(198,169,0,1)",
+                          fontWeight: 600,
+                          backgroundColor: altBg,
+                        }}
+                      >
+                        AED {formatAED(row.avg_price)}
+                      </td>
 
-                    {/* AVG PRICE */}
-                    <td
-                      style={{
-                        padding: "10px 12px",
-                        fontSize: 12,
-                        whiteSpace: "nowrap",
-                        color: "rgba(198,169,0,1)",
-                        fontWeight: 600,
-                      }}
-                    >
-                      AED {formatAED(row.avg_price)}
-                    </td>
+                      {/* LOWEST PRICE */}
+                      <td
+                        style={{
+                          padding: "10px 12px",
+                          fontSize: 12,
+                          whiteSpace: "nowrap",
+                          color: "rgba(2,122,70,1)",
+                          fontWeight: 600,
+                          backgroundColor: altBg,
+                        }}
+                      >
+                        AED {formatAED(row.lowest_price)}
+                      </td>
 
-                    {/* LOWEST PRICE */}
-                    <td
-                      style={{
-                        padding: "10px 12px",
-                        fontSize: 12,
-                        whiteSpace: "nowrap",
-                        color: "rgba(2,122,70,1)",
-                        fontWeight: 600,
-                      }}
-                    >
-                      AED {formatAED(row.lowest_price)}
-                    </td>
-
-                    {/* TOTAL SPENT */}
-                    <td
-                      style={{
-                        padding: "10px 12px",
-                        fontSize: 12,
-                        whiteSpace: "nowrap",
-                        color: "rgba(30,30,30,1)",
-                      }}
-                    >
-                      AED {formatAED(row.total_spent)}
-                    </td>
-                  </tr>
-                ))}
+                      {/* TOTAL SPENT */}
+                      <td
+                        style={{
+                          padding: "10px 12px",
+                          fontSize: 12,
+                          whiteSpace: "nowrap",
+                          color: "rgba(30,30,30,1)",
+                          backgroundColor: altBg,
+                          borderRadius: isAlt ? "0 50px 50px 0" : undefined,
+                        }}
+                      >
+                        AED {formatAED(row.total_spent)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

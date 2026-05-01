@@ -4937,8 +4937,7 @@ export default function MrLinesView({
 
                   {(userInfo?.departmentID === 10 ||
                     userInfo?.departmentID === 11) &&
-                    (mrHeader.progress_id === 13 ||
-                      mrHeader.progress_id === 14) && (
+                    mrHeader.progress_id === 13 && (
                       <PaymentButtons
                         mrHeader={mrHeader}
                         mrLine={items[0]}
@@ -4956,6 +4955,7 @@ export default function MrLinesView({
                       />
                     )}
 
+                  {/* progress_id > 14 — payment stage (14) skipped so flow goes 12 → 17; 17 > 14 still evaluates true */}
                   {mrHeader.progress_id > 14 && (
                     <PaymentButtons
                       mrHeader={mrHeader}
@@ -5447,28 +5447,54 @@ export default function MrLinesView({
           <div className="bottom-nav">
             <div></div>
 
-            {/* Always submit directly to Manager Price Approval (QS Price Check bypassed) */}
-            <SubmitForPricingApprovalButton
-              mrHeaderID={mrHeader.id}
-              progressId={mrHeader.progress_id}
-              disabled={
-                !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
-              }
-              style={{
-                opacity:
+            {mrHeader.skip_approvals ? (
+              /* Skip approvals: go straight to LPO, auto-selecting quotations */
+              <SubmitForLPO
+                mrLines={mrLines}
+                mrHeaderID={mrHeader.id}
+                skipApprovals
+                disabled={
                   !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
-                    ? "0.5"
-                    : "1",
-                cursor:
+                }
+                style={{
+                  opacity:
+                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                      ? "0.5"
+                      : "1",
+                  cursor:
+                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                      ? "not-allowed"
+                      : "pointer",
+                  pointerEvents:
+                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                      ? "none"
+                      : "auto",
+                }}
+              />
+            ) : (
+              /* Normal flow: submit directly to Manager Price Approval (QS Price Check bypassed) */
+              <SubmitForPricingApprovalButton
+                mrHeaderID={mrHeader.id}
+                progressId={mrHeader.progress_id}
+                disabled={
                   !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
-                    ? "not-allowed"
-                    : "pointer",
-                pointerEvents:
-                  !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
-                    ? "none"
-                    : "auto",
-              }}
-            />
+                }
+                style={{
+                  opacity:
+                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                      ? "0.5"
+                      : "1",
+                  cursor:
+                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                      ? "not-allowed"
+                      : "pointer",
+                  pointerEvents:
+                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                      ? "none"
+                      : "auto",
+                }}
+              />
+            )}
           </div>
         )}
 
@@ -5524,13 +5550,12 @@ export default function MrLinesView({
         </div>
       )}
 
-      {/* LPO & Invoice (Progress 12) - Procurement Submit for Payment */}
-      {/* LPO & Invoice (Progress 12) - Procurement Submit for Payment */}
+      {/* LPO & Invoice (Progress 12) - Procurement Submit for Delivery (payment stage skipped, all suppliers route to delivery) */}
       {userInfo?.departmentID === 9 && mrHeader.progress_id === 12 && (
         <div className="bottom-nav">
           <div></div>
           {(() => {
-            // Build suppliers array from your existing data
+            // Build suppliers array — force supplierType to "credit" so all route to delivery (payment stage skipped)
             const suppliersArray: SupplierInfo[] = [];
 
             for (const category in mrLines) {
@@ -5550,7 +5575,7 @@ export default function MrLinesView({
                       suppliersArray.push({
                         supplierId: supplierId!,
                         lpoId: lpoInfo.lpoId,
-                        supplierType: lpoStatus.supplierType || "unknown",
+                        supplierType: "credit", // Force delivery routing — payment stage removed
                         supplierName: supplierName,
                       });
                     }

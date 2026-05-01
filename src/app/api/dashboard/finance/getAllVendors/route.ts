@@ -17,6 +17,16 @@ export async function GET(req: NextRequest) {
           ? `AND l.created_at <= '${endDate} 23:59:59'`
           : "";
 
+  // Same filter but aliased for the inner amount subquery (l2)
+  const dateClauseInner =
+    startDate && endDate
+      ? `AND l2.created_at BETWEEN '${startDate}' AND '${endDate} 23:59:59'`
+      : startDate
+        ? `AND l2.created_at >= '${startDate}'`
+        : endDate
+          ? `AND l2.created_at <= '${endDate} 23:59:59'`
+          : "";
+
   try {
     const [rows] = await db.query<RowDataPacket[]>(
       `SELECT
@@ -24,7 +34,12 @@ export async function GET(req: NextRequest) {
          COALESCE(s.name, 'Unknown')                                       AS supplier_name,
          UPPER(COALESCE(s.type, '—'))                                      AS payment_type,
          COUNT(DISTINCT l.id)                                              AS total_lpos,
-         COALESCE(SUM(l.total), 0)                                         AS amount,
+
+         -- Amount is pre-aggregated in a subquery so it is NOT multiplied
+         -- by the lpo_mr_line join below. MAX() satisfies only_full_group_by
+         -- since all rows in the group share the same pre-aggregated value.
+         COALESCE(MAX(lpo_amounts.total_spent), 0)                        AS amount,
+
          GROUP_CONCAT(DISTINCT p.name ORDER BY p.name SEPARATOR '||')     AS projects,
 
          -- Last purchase date
@@ -38,8 +53,8 @@ export async function GET(req: NextRequest) {
 
          -- Order completion rate: % of LPOs that have been paid
          ROUND(
-           COUNT(CASE WHEN l.paid_at IS NOT NULL THEN 1 END) * 100.0
-           / NULLIF(COUNT(l.id), 0),
+           COUNT(DISTINCT CASE WHEN l.paid_at IS NOT NULL THEN l.id END) * 100.0
+           / NULLIF(COUNT(DISTINCT l.id), 0),
          1)                                                                AS order_completion_rate,
 
          -- Avg delivery time: mean days from LPO creation to payment
@@ -50,7 +65,7 @@ export async function GET(req: NextRequest) {
 
          -- Order frequency/week: LPOs per week since first order
          ROUND(
-           COUNT(l.id)
+           COUNT(DISTINCT l.id)
            / GREATEST(1, DATEDIFF(NOW(), MIN(l.created_at)) / 7.0),
          2)                                                                AS order_frequency_week
 
@@ -60,7 +75,29 @@ export async function GET(req: NextRequest) {
        LEFT JOIN projects     p   ON mh.project_id  = p.id
        LEFT JOIN lpo_mr_line  lml ON lml.lpo_id     = l.id
        LEFT JOIN mr_lines     ml  ON ml.id           = lml.mr_line_id
-       WHERE l.progress_id != 26
+       -- Pre-aggregate amount per supplier to avoid multiplication by line items
+       LEFT JOIN (
+         SELECT
+           l2.supplier_id,
+           COALESCE(SUM(
+             CASE
+               WHEN LOWER(IFNULL(l2.payment_status, ''))
+                    IN ('approved','paid','fully paid','completed','done')
+                 THEN l2.total
+               ELSE COALESCE(pay.total_paid, 0)
+             END
+           ), 0) AS total_spent
+         FROM lpo l2
+         LEFT JOIN (
+           SELECT lpo_id, SUM(amount) AS total_paid
+           FROM lpo_payments
+           GROUP BY lpo_id
+         ) pay ON pay.lpo_id = l2.id
+         WHERE l2.progress_id NOT IN (13)
+           ${dateClauseInner}
+         GROUP BY l2.supplier_id
+       ) lpo_amounts ON lpo_amounts.supplier_id = l.supplier_id
+       WHERE l.progress_id NOT IN (13)
          ${dateClause}
        GROUP BY s.id, s.name, s.type
        HAVING amount > 0

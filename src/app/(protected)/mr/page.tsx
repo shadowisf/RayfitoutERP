@@ -587,7 +587,7 @@ export default function MR() {
       name: "Procurement",
       statuses: [
         { name: "LPO & Invoice", progress_id: 12 },
-        { name: "Pending Payments", progress_id: 14 },
+        // { name: "Pending Payments", progress_id: 14 }, // REMOVED — payment stage skipped, LPO & Invoice goes directly to Awaiting Delivery
       ],
     },
     {

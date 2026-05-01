@@ -196,8 +196,8 @@ function DualRangeSlider({
         .dual-range-slider input[type="range"] {
           -webkit-appearance: none;
           appearance: none;
-          width: calc(100% + 15px);
-          left: -5.5px;
+          width: 100%;
+          left: 0;
           height: 10px;
           background: transparent;
           outline: none !important;
@@ -205,6 +205,8 @@ function DualRangeSlider({
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
+          margin: 0;
+          padding: 0;
         }
         .dual-range-slider input[type="range"]:focus {
           outline: none !important;
@@ -281,12 +283,16 @@ function DualRangeSlider({
               AED
             </span>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               placeholder="Min"
-              value={minVal}
-              min={rangeMin}
-              max={currentMax - 1}
-              onChange={(e) => onMinChange(e.target.value)}
+              value={
+                minVal !== "" ? Number(minVal).toLocaleString("en-US") : ""
+              }
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d+$/.test(raw)) onMinChange(raw);
+              }}
               style={{
                 width: 110,
                 padding: "7px 10px 7px 36px",
@@ -316,12 +322,16 @@ function DualRangeSlider({
               AED
             </span>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               placeholder="Max"
-              value={maxVal}
-              min={currentMin + 1}
-              max={rangeMax}
-              onChange={(e) => onMaxChange(e.target.value)}
+              value={
+                maxVal !== "" ? Number(maxVal).toLocaleString("en-US") : ""
+              }
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d+$/.test(raw)) onMaxChange(raw);
+              }}
               style={{
                 width: 110,
                 padding: "7px 10px 7px 36px",
@@ -354,7 +364,7 @@ function DualRangeSlider({
             top: "50%",
             transform: "translateY(-50%)",
             height: 10,
-            borderRadius: 5,
+            borderRadius: 10,
             backgroundColor: "rgba(220,220,220,1)",
           }}
         />
@@ -367,7 +377,7 @@ function DualRangeSlider({
             top: "50%",
             transform: "translateY(-50%)",
             height: 10,
-            borderRadius: 5,
+            borderRadius: 10,
             backgroundColor: "#3d9e6e",
           }}
         />
@@ -498,7 +508,7 @@ export default function VendorsFilterButton({
 
       {isOpen && (
         <FormPopUp
-          header="FILTER"
+          header="FILTER VENDORS"
           setIsOpen={setIsOpen}
           style={{ minWidth: "50dvw" }}
           addButtonLabel="CONFIRM"

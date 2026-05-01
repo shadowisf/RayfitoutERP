@@ -23,4 +23,5 @@ export type MrHeader = {
   pr_payment_receipt?: string | null;
   item_count?: number;
   identifier?: string | null;
+  skip_approvals?: number | null;
 };

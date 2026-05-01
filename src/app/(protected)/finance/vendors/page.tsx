@@ -87,29 +87,34 @@ const METRIC_COLS: Record<
     header: string;
     render: (v: Vendor) => React.ReactNode;
     bubbleLabel: string;
+    sortKey: string;
   }
 > = {
   on_time_delivery: {
     header: "ON-TIME DELIVERY %",
     bubbleLabel: "On-time Delivery %",
+    sortKey: "on_time_delivery_pct",
     render: (v) =>
       v.on_time_delivery_pct != null ? `${v.on_time_delivery_pct}%` : "—",
   },
   order_completion: {
     header: "ORDER COMPLETION RATE",
     bubbleLabel: "Order Completion Rate",
+    sortKey: "order_completion_rate",
     render: (v) =>
       v.order_completion_rate != null ? `${v.order_completion_rate}%` : "—",
   },
   avg_delivery_time: {
     header: "AVG DELIVERY TIME",
     bubbleLabel: "Avg. Delivery Time",
+    sortKey: "avg_delivery_days",
     render: (v) =>
       v.avg_delivery_days != null ? `${v.avg_delivery_days} days` : "—",
   },
   order_frequency: {
     header: "ORDER FREQ/WEEK",
     bubbleLabel: "Order Frequency/Week",
+    sortKey: "order_frequency_week",
     render: (v) =>
       v.order_frequency_week != null ? `${v.order_frequency_week}` : "—",
   },
@@ -187,6 +192,8 @@ export default function VendorsReportPage() {
   const [visibleOptCols, setVisibleOptCols] = useState<string[]>([]);
   const [draftOptCols, setDraftOptCols] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   // Build query string — date filter by LPO created_at
   const queryStr = useMemo(() => {
@@ -273,11 +280,32 @@ export default function VendorsReportPage() {
     });
   }, [data, searchQuery, filters]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const sorted = useMemo(() => {
+    if (!sortCol) return filtered;
+    return [...filtered].sort((a, b) => {
+      const aVal = (a as Record<string, unknown>)[sortCol];
+      const bVal = (b as Record<string, unknown>)[sortCol];
+      // Nulls always sort to the end regardless of direction
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
+      let cmp: number;
+      if (sortCol === "last_purchase_date" || sortCol === "paid_at") {
+        cmp =
+          new Date(aVal as string).getTime() -
+          new Date(bVal as string).getTime();
+      } else {
+        cmp = (aVal as number) - (bVal as number);
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, sortCol, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / ITEMS_PER_PAGE));
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filtered.slice(start, start + ITEMS_PER_PAGE);
-  }, [filtered, currentPage]);
+    return sorted.slice(start, start + ITEMS_PER_PAGE);
+  }, [sorted, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -307,13 +335,32 @@ export default function VendorsReportPage() {
       checked ? [...prev, key] : prev.filter((k) => k !== key),
     );
 
+  const sortIcon = (col: string) => (
+    <span style={{ marginLeft: 4, fontSize: 10, opacity: sortCol === col ? 1 : 0.35 }}>
+      {sortCol === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+    </span>
+  );
+
+  const handleSort = (col: string) => {
+    if (sortCol === col) {
+      if (sortDir === "asc") setSortDir("desc");
+      else {
+        setSortCol(null);
+        setSortDir("asc");
+      }
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  };
+
   // ── Dynamic columns ───────────────────────────────────────────────────────
   const optionalColsToShow = OPTIONAL_COLS.filter((c) =>
     visibleOptCols.includes(c.key),
   );
   const metricColsToShow = filters.selectedMetrics
     .map((m) => ({ key: m, ...METRIC_COLS[m] }))
-    .filter((c) => c.header);
+    .filter((c) => c.header && c.sortKey);
 
   // ── Pagination ────────────────────────────────────────────────────────────
   const getPageNumbers = () => {
@@ -579,27 +626,67 @@ export default function VendorsReportPage() {
           <div style={{ overflowX: "auto" }}>
             <table
               className="items-table two-toned"
-              style={{ minWidth: "100%" }}
+              style={{ width: "100%", tableLayout: "fixed" }}
             >
+              <colgroup>
+                <col style={{ width: "50px" }} />
+                <col />
+                <col style={{ width: "250px" }} />
+                <col style={{ width: "150px" }} />
+                <col style={{ width: "200px" }} />
+                {optionalColsToShow.map((c) => (
+                  <col key={c.key} style={{ width: "150px" }} />
+                ))}
+                {metricColsToShow.map((c) => (
+                  <col key={c.key} style={{ width: "180px" }} />
+                ))}
+                <col style={{ width: "100px" }} />
+              </colgroup>
               <thead>
                 <tr>
-                  <th style={{ width: 60 }}>#</th>
+                  <th>#</th>
                   <th>VENDOR</th>
-                  <th style={{ width: 160 }}>VENDOR TYPE</th>
-                  <th style={{ width: 130 }}>TOTAL LPOS</th>
-                  <th style={{ width: 180 }}>TOTAL SPENT</th>
+                  <th>VENDOR TYPE</th>
+                  <th
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSort("total_lpos")}
+                  >
+                    TOTAL LPOS{sortIcon("total_lpos")}
+                  </th>
+                  <th
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSort("amount")}
+                  >
+                    TOTAL SPENT{sortIcon("amount")}
+                  </th>
                   {optionalColsToShow.map((c) => (
-                    <th key={c.key} style={{ whiteSpace: "nowrap" }}>
-                      {c.header}
+                    <th
+                      key={c.key}
+                      style={{
+                        whiteSpace: "nowrap",
+                        cursor: "pointer",
+                        userSelect: "none",
+                      }}
+                      onClick={() => handleSort(c.key)}
+                    >
+                      {c.header}{sortIcon(c.key)}
                     </th>
                   ))}
                   {metricColsToShow.map((c) => (
-                    <th key={c.key} style={{ whiteSpace: "nowrap" }}>
-                      {c.header}
+                    <th
+                      key={c.key}
+                      style={{
+                        whiteSpace: "nowrap",
+                        cursor: "pointer",
+                        userSelect: "none",
+                      }}
+                      onClick={() => handleSort(c.sortKey)}
+                    >
+                      {c.header}{sortIcon(c.sortKey)}
                     </th>
                   ))}
                   {/* Settings column */}
-                  <th style={{ width: 44, textAlign: "center" }}>
+                  <th style={{ textAlign: "center" }}>
                     <Button
                       onClick={openSettings}
                       componentType={"button"}

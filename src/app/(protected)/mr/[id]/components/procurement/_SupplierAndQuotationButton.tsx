@@ -1200,20 +1200,22 @@ export default function SupplierAndQuotationButton({
 
                 <br />
 
-                <Button
-                  componentType={"button"}
-                  bgColor={"rgba(239, 239, 239, 1)"}
-                  borderColor={"rgba(239, 239, 239, 1)"}
-                  textColor={"black"}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleAddRow();
-                  }}
-                  full
-                  style={{ padding: "20px 0px" }}
-                >
-                  + ADD MORE
-                </Button>
+                {!mrHeader.skip_approvals && (
+                  <Button
+                    componentType={"button"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"rgba(239, 239, 239, 1)"}
+                    textColor={"black"}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleAddRow();
+                    }}
+                    full
+                    style={{ padding: "20px 0px" }}
+                  >
+                    + ADD MORE
+                  </Button>
+                )}
 
                 <br />
               </>
