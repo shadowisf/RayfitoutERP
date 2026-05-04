@@ -36,9 +36,8 @@ export default function CreateNewMaterialButton({
     any[]
   >([]);
 
-  // Fetch categories + all subcategories when popup opens
+  // Fetch all categories + all subcategories on mount
   useEffect(() => {
-    if (!showNewMaterial) return;
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
     )
@@ -53,14 +52,40 @@ export default function CreateNewMaterialButton({
       .then((res) => res.json())
       .then(setMaterialSubCategoryValues)
       .catch(console.error);
-  }, [showNewMaterial]);
+  }, []);
 
-  // Handle subcategory selection — auto-fill category
+  // When category is selected, filter subcategories by category
+  useEffect(() => {
+    if (newMatCategoryID) {
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category_id: newMatCategoryID }),
+        },
+      )
+        .then((res) => res.json())
+        .then(setMaterialSubCategoryValues)
+        .catch(console.error);
+    } else {
+      // If category is reset, load all subcategories
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
+        { method: "GET", headers: { "Content-Type": "application/json" } },
+      )
+        .then((res) => res.json())
+        .then(setMaterialSubCategoryValues)
+        .catch(console.error);
+    }
+  }, [newMatCategoryID]);
+
+  // Handle subcategory selection — always sync category
   const handleNewMatSubCategoryChange = (val: string | number) => {
     setNewMatSubCategoryID(val);
     if (val && materialSubCategoryValues.length > 0) {
       const subCat = materialSubCategoryValues.find((sc: any) => sc.id === val);
-      if (subCat?.category_id && !newMatCategoryID) {
+      if (subCat?.category_id) {
         setNewMatCategoryID(subCat.category_id);
       }
     }
