@@ -44,10 +44,9 @@ export default function Payments() {
   const canView = userInfo?.departmentID === 8 || userInfo?.departmentID === 10;
 
   useEffect(() => {
-    // Fetch all LPOs — balance / paid status will be handled by a payments
-    // table once it is created. For now we show every MR that has at least
-    // one LPO (i.e. a vendor has been assigned and an order exists).
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getAllLPOs`)
+    // Fetch only LPOs belonging to MRs that have passed segregation (mr progress_id = 26),
+    // excluding payment-rejected (13) and completed (25) LPOs — handled server-side.
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/getPaymentKanban`)
       .then((r) => r.json())
       .then((data: LpoCard[]) => {
         if (Array.isArray(data)) setLpoCards(data);
@@ -55,17 +54,9 @@ export default function Payments() {
       .catch(console.error);
   }, []);
 
-  // ── Group by MR (exclude payment-rejected and completed LPOs) ───────────────
-  const PAYMENT_REJECTED_ID = 13;
-  const PAYMENT_COMPLETED_ID = 25;
-  const activeLpoCards = lpoCards.filter(
-    (l) =>
-      l.progress_id !== PAYMENT_REJECTED_ID &&
-      l.progress_id !== PAYMENT_COMPLETED_ID,
-  );
-
+  // ── Group by MR ─────────────────────────────────────────────────────────────
   const mrGroupsMap = new Map<number, MrGroup>();
-  for (const lpo of activeLpoCards) {
+  for (const lpo of lpoCards) {
     if (!mrGroupsMap.has(lpo.mr_header_id)) {
       mrGroupsMap.set(lpo.mr_header_id, {
         mr_header_id: lpo.mr_header_id,
@@ -79,7 +70,6 @@ export default function Payments() {
     }
     mrGroupsMap.get(lpo.mr_header_id)!.lpos.push(lpo);
   }
-  // Drop MR groups where all LPOs were rejected or completed (nothing left to show)
   const mrGroups = Array.from(mrGroupsMap.values()).filter(
     (g) => g.lpos.length > 0,
   );

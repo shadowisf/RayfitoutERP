@@ -32,7 +32,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 export default function FinanceTopVendorsBySpendWidget() {
   const [vendors, setVendors] = useState<TopVendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [sortKey, setSortKey] = useState<SortKey>("amount");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   useEffect(() => {
@@ -46,15 +46,19 @@ export default function FinanceTopVendorsBySpendWidget() {
   }, []);
 
   const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
+    if (sortKey !== key) {
       setSortKey(key);
+      setSortDir("desc");
+    } else if (sortDir === "desc") {
+      setSortDir("asc");
+    } else {
+      setSortKey(null);
       setSortDir("desc");
     }
   };
 
   const sorted = useMemo(() => {
+    if (!sortKey) return [...vendors];
     return [...vendors].sort((a, b) => {
       const mul = sortDir === "asc" ? 1 : -1;
       return mul * (a[sortKey] - b[sortKey]);

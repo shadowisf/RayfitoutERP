@@ -265,7 +265,8 @@ function CalendarMonth({
             else if (inRange) bandBg = "rgba(0,0,0,0.06)";
           }
           const isSelected =
-            !isFuture && (isStart || isEnd || (isHover && Boolean(pendingStart)));
+            !isFuture &&
+            (isStart || isEnd || (isHover && Boolean(pendingStart)));
 
           return (
             <div

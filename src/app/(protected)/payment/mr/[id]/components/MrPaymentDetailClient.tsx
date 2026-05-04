@@ -356,7 +356,7 @@ export default function FinanceDetailClient({
                 const isLast = idx === lpos.length - 1;
 
                 return (
-                  <label
+                  <div
                     key={lpo.id}
                     style={{
                       display: "flex",
@@ -364,6 +364,7 @@ export default function FinanceDetailClient({
                       gap: "15px",
                       cursor: "pointer",
                     }}
+                    onClick={() => setSelectedLpoId(lpo.id)}
                   >
                     <input
                       type="radio"
@@ -371,6 +372,7 @@ export default function FinanceDetailClient({
                       value={lpo.id}
                       checked={isSelected}
                       onChange={() => setSelectedLpoId(lpo.id)}
+                      onClick={(e) => e.stopPropagation()}
                       style={{
                         accentColor: "black",
                         width: "16px",
@@ -400,14 +402,37 @@ export default function FinanceDetailClient({
                           {String(lpo.supplier_type || "-").toUpperCase()}
                         </h2>
                       </div>
-                      <div>
-                        <small>LPO NUMBER</small>
-                        <h2>LPO-{String(lpo.id).padStart(5, "0")}</h2>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "10px",
+                          alignItems: "center",
+                        }}
+                      >
+                        <div>
+                          <small>LPO NUMBER</small>
+                          <h2>LPO-{String(lpo.id).padStart(5, "0")}</h2>
+                        </div>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            componentType={"link"}
+                            bgColor={"rgba(239, 239, 239, 1)"}
+                            borderColor={"rgba(223, 223, 223, 1)"}
+                            textColor={"black"}
+                            style={{ padding: "7px 7px" }}
+                            href={`/mr/${mrHeaderId}/lpo/${lpo.id}`}
+                            target="_blank"
+                          >
+                            <img src={externalLinkIcon} />
+                          </Button>
+                        </div>
                       </div>
                     </div>
 
-                    <DocumentsPopup lpoId={lpo.id} />
-                  </label>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DocumentsPopup lpoId={lpo.id} />
+                    </div>
+                  </div>
                 );
               })
             )}
@@ -828,7 +853,22 @@ export default function FinanceDetailClient({
           {/* VENDOR INFORMATION */}
           {selectedLpo && (
             <div className="mr-with-id">
-              <h3>VENDOR INFORMATION</h3>
+              <div
+                style={{ display: "flex", gap: "10px", alignItems: "center" }}
+              >
+                <h3>VENDOR INFORMATION</h3>
+                <Button
+                  componentType={"link"}
+                  bgColor={"rgba(239, 239, 239, 1)"}
+                  borderColor={"rgba(223, 223, 223, 1)"}
+                  textColor={"black"}
+                  style={{ padding: "7px 7px" }}
+                  href={`/vendor/${selectedLpo.supplier_id}`}
+                  target="_blank"
+                >
+                  <img src={externalLinkIcon} />
+                </Button>
+              </div>
 
               <br />
 

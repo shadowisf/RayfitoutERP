@@ -638,26 +638,28 @@ function ProjectsTable({
   data: TableRow[];
   isLoading: boolean;
 }) {
-  const [sortKey, setSortKey] = useState<"total">("total");
+  const [sortKey, setSortKey] = useState<"total" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const handleSort = (key: "total") => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
+    if (sortKey !== key) {
       setSortKey(key);
+      setSortDir("desc");
+    } else if (sortDir === "desc") {
+      setSortDir("asc");
+    } else {
+      setSortKey(null);
       setSortDir("desc");
     }
   };
 
   const sorted = useMemo(() => {
-    return [...data].sort((a, b) => {
-      // Unspecified always last regardless of sort direction
-      if (a.project === "Unspecified") return 1;
-      if (b.project === "Unspecified") return -1;
-      const mul = sortDir === "asc" ? 1 : -1;
-      return mul * (a.total - b.total);
-    });
+    // Always pin Unspecified last
+    const rest = data.filter((d) => d.project !== "Unspecified");
+    const unspecified = data.filter((d) => d.project === "Unspecified");
+    if (!sortKey) return [...rest, ...unspecified];
+    const mul = sortDir === "asc" ? 1 : -1;
+    return [...rest.sort((a, b) => mul * (a.total - b.total)), ...unspecified];
   }, [data, sortKey, sortDir]);
 
   return (

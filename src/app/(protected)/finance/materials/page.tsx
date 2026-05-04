@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import {
   AreaChart,
   Area,
@@ -20,6 +26,7 @@ import DateRangeButton, {
   DateRange,
   formatRangeLabel,
 } from "../transactions/components/_DateRangeButton";
+import DownloadMaterialsButton from "./components/_DownloadMaterialsButton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MaterialRow = {
@@ -496,6 +503,8 @@ export default function MaterialsReportPage() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   // ── Query string → re-fetch on date/vendorType change ─────────────────────
   const queryStr = useMemo(() => {
@@ -596,12 +605,49 @@ export default function MaterialsReportPage() {
     filters.spentMax !== "";
 
   // ── Row expand toggle ──────────────────────────────────────────────────────
-  const toggleRow = (key: string) =>
+  const toggleExpand = (key: string) =>
     setExpandedRows((prev) => {
       const next = new Set(prev);
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
+
+  // ── Checkbox helpers ──────────────────────────────────────────────────────
+  const allSelected =
+    sorted.length > 0 &&
+    sorted.every((r) => selectedKeys.has(r.material_description));
+  const someSelected =
+    !allSelected &&
+    sorted.some((r) => selectedKeys.has(r.material_description));
+
+  useEffect(() => {
+    if (headerCheckboxRef.current)
+      headerCheckboxRef.current.indeterminate = someSelected;
+  }, [someSelected]);
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        sorted.forEach((r) => next.delete(r.material_description));
+        return next;
+      });
+    } else {
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        sorted.forEach((r) => next.add(r.material_description));
+        return next;
+      });
+    }
+  };
+
+  const toggleKey = useCallback((key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }, []);
 
   // ── Chart data for donut ───────────────────────────────────────────────────
   const chartData = categoryData.map((row, i) => ({
@@ -649,15 +695,14 @@ export default function MaterialsReportPage() {
   );
 
   const handleSort = (col: string) => {
-    if (sortCol === col) {
-      if (sortDir === "asc") setSortDir("desc");
-      else {
-        setSortCol(null);
-        setSortDir("asc");
-      }
-    } else {
+    if (sortCol !== col) {
       setSortCol(col);
+      setSortDir("desc");
+    } else if (sortDir === "desc") {
       setSortDir("asc");
+    } else {
+      setSortCol(null);
+      setSortDir("desc");
     }
   };
 
@@ -980,8 +1025,23 @@ export default function MaterialsReportPage() {
           )}
         </div>
 
-        {/* Right: date filter */}
-        <DateRangeButton value={dateRange} onChange={setDateRange} />
+        {/* Right: date filter + download */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexShrink: 0,
+          }}
+        >
+          <DateRangeButton value={dateRange} onChange={setDateRange} />
+          <DownloadMaterialsButton
+            allRows={sorted}
+            selectedKeys={selectedKeys}
+            categoryData={categoryData}
+            dateRange={dateRange}
+          />
+        </div>
       </div>
 
       {/* ── Table ── */}
@@ -1002,9 +1062,10 @@ export default function MaterialsReportPage() {
             >
               <colgroup>
                 <col style={{ width: "44px" }} />
+                <col style={{ width: "44px" }} />
                 <col style={{ width: "50px" }} />
                 <col />
-                <col style={{ width: "300px" }} />
+                <col style={{ width: "400px" }} />
                 <col style={{ width: "120px" }} />
                 <col style={{ width: "150px" }} />
                 <col style={{ width: "150px" }} />
@@ -1013,6 +1074,16 @@ export default function MaterialsReportPage() {
               <thead>
                 <tr>
                   <th />
+                  <th style={{ textAlign: "center", padding: "12px 8px" }}>
+                    <input
+                      ref={headerCheckboxRef}
+                      type="checkbox"
+                      className="manager-checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      style={{ cursor: "pointer" }}
+                    />
+                  </th>
                   <th>#</th>
                   <th>MATERIAL</th>
                   <th>TOP VENDOR</th>
@@ -1051,8 +1122,13 @@ export default function MaterialsReportPage() {
                   return (
                     <React.Fragment key={rowKey}>
                       <tr
-                        style={{ cursor: "pointer" }}
-                        onClick={() => toggleRow(rowKey)}
+                        style={{
+                          cursor: "pointer",
+                          backgroundColor: selectedKeys.has(rowKey)
+                            ? "rgba(240,250,244,1)"
+                            : undefined,
+                        }}
+                        onClick={() => toggleExpand(rowKey)}
                       >
                         {/* Expand toggle */}
                         <td style={{ textAlign: "center" }}>
@@ -1066,6 +1142,19 @@ export default function MaterialsReportPage() {
                           >
                             ›
                           </span>
+                        </td>
+                        {/* Checkbox — stops propagation so it doesn't expand/collapse */}
+                        <td
+                          style={{ textAlign: "center", padding: "12px 8px" }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            className="manager-checkbox"
+                            checked={selectedKeys.has(rowKey)}
+                            onChange={() => toggleKey(rowKey)}
+                            style={{ cursor: "pointer" }}
+                          />
                         </td>
                         <td>{rowNum}</td>
                         <td
@@ -1115,7 +1204,10 @@ export default function MaterialsReportPage() {
                       {/* Expanded: per-item chart — aligned with MATERIAL NAME column */}
                       {isExpanded && (
                         <tr>
-                          {/* Skip arrow + # columns so chart starts at MATERIAL NAME */}
+                          {/* Skip arrow + checkbox + # columns so chart starts at MATERIAL NAME */}
+                          <td
+                            style={{ padding: 0, backgroundColor: "white" }}
+                          />
                           <td
                             style={{ padding: 0, backgroundColor: "white" }}
                           />
