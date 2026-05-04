@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   colBrandSpecsWide: {
-    width: "30%",
+    width: "40%",
     paddingRight: 4,
   },
   colAttachment: {
