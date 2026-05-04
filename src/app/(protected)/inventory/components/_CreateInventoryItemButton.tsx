@@ -3,7 +3,7 @@
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
-import { UNIT_OPTIONS, mapPredefinedUnit } from "@/constants/units";
+import { UNIT_OPTIONS } from "@/constants/units";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { toast } from "@/app/components/Toast";
