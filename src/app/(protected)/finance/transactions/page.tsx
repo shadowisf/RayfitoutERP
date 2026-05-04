@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import Link from "next/link";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import Button from "@/app/components/Button";
 import TransactionsFilterButton, {
   TransactionFilters,
   CategoryGroup,
 } from "./components/_TransactionsFilterButton";
 import DateRangeButton, { DateRange } from "./components/_DateRangeButton";
+import DownloadTransactionsButton from "./components/_DownloadTransactionsButton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Transaction = {
@@ -111,6 +111,11 @@ export default function AllTransactionsPage() {
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
+  // ── Checkbox state ─────────────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/finance/getAllTransactions`,
@@ -137,7 +142,6 @@ export default function AllTransactionsPage() {
       new Set(data.map((r) => r.project_name).filter((p) => p && p !== "—")),
     ).sort();
 
-    // Build grouped categories: only include values that appear in the data
     const presentCategories = new Set(
       data.flatMap((r) => r.material_categories),
     );
@@ -155,7 +159,7 @@ export default function AllTransactionsPage() {
     return { requesters, projects, categoryGroups };
   }, [data, categoryHierarchy]);
 
-  // ── Amount bounds (for slider) ────────────────────────────────────────────
+  // ── Amount bounds ─────────────────────────────────────────────────────────
   const amountBounds = useMemo(() => {
     if (!data.length) return { min: 0, max: 1_000_000 };
     const max = Math.max(...data.map((r) => r.total));
@@ -169,12 +173,10 @@ export default function AllTransactionsPage() {
     const maxAmt = filters.amountMax !== "" ? Number(filters.amountMax) : null;
 
     return data.filter((row) => {
-      // Date range (based on payment date)
       if (dateRange.start || dateRange.end) {
         if (!row.paid_at) return false;
         const rowDate = new Date(row.paid_at);
         const rangeStart = dateRange.start;
-        // If no end is set, treat as single-day: cap at 23:59:59 of the start day
         const rangeEnd = dateRange.end
           ? dateRange.end
           : rangeStart
@@ -183,7 +185,6 @@ export default function AllTransactionsPage() {
         if (rangeStart && rowDate < rangeStart) return false;
         if (rangeEnd && rowDate > rangeEnd) return false;
       }
-      // Text search
       if (
         q &&
         !row.display_id.toLowerCase().includes(q) &&
@@ -194,7 +195,6 @@ export default function AllTransactionsPage() {
       )
         return false;
 
-      // Payment type
       if (filters.selectedPaymentTypes.length > 0) {
         const rowType = row.vendor_type.toLowerCase();
         const match = filters.selectedPaymentTypes.some(
@@ -203,25 +203,21 @@ export default function AllTransactionsPage() {
         if (!match) return false;
       }
 
-      // Amount range
       if (minAmt !== null && row.total < minAmt) return false;
       if (maxAmt !== null && row.total > maxAmt) return false;
 
-      // Requesters
       if (
         filters.selectedRequesters.length > 0 &&
         !filters.selectedRequesters.includes(row.requester)
       )
         return false;
 
-      // Projects
       if (
         filters.selectedProjects.length > 0 &&
         !filters.selectedProjects.includes(row.project_name)
       )
         return false;
 
-      // Material categories
       if (filters.selectedCategories.length > 0) {
         const hasMatch = row.material_categories.some((c) =>
           filters.selectedCategories.includes(c),
@@ -238,7 +234,6 @@ export default function AllTransactionsPage() {
     return [...filtered].sort((a, b) => {
       const aVal = (a as Record<string, unknown>)[sortCol];
       const bVal = (b as Record<string, unknown>)[sortCol];
-      // Nulls always sort to the end regardless of direction
       if (aVal == null && bVal == null) return 0;
       if (aVal == null) return 1;
       if (bVal == null) return -1;
@@ -267,15 +262,14 @@ export default function AllTransactionsPage() {
   );
 
   const handleSort = (col: string) => {
-    if (sortCol === col) {
-      if (sortDir === "asc") setSortDir("desc");
-      else {
-        setSortCol(null);
-        setSortDir("asc");
-      }
-    } else {
+    if (sortCol !== col) {
       setSortCol(col);
+      setSortDir("desc");
+    } else if (sortDir === "desc") {
       setSortDir("asc");
+    } else {
+      setSortCol(null);
+      setSortDir("desc");
     }
   };
 
@@ -299,6 +293,47 @@ export default function AllTransactionsPage() {
     filters.selectedRequesters.length > 0 ||
     filters.selectedProjects.length > 0 ||
     filters.selectedCategories.length > 0;
+
+  // ── Checkbox helpers ──────────────────────────────────────────────────────
+  const allFilteredIds = useMemo(
+    () => new Set(sorted.map((r) => r.id)),
+    [sorted],
+  );
+  const allSelected =
+    sorted.length > 0 && sorted.every((r) => selectedIds.has(r.id));
+  const someSelected =
+    !allSelected && sorted.some((r) => selectedIds.has(r.id));
+
+  // Sync native indeterminate state on header checkbox
+  useEffect(() => {
+    if (headerCheckboxRef.current)
+      headerCheckboxRef.current.indeterminate = someSelected;
+  }, [someSelected]);
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        allFilteredIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        allFilteredIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  };
+
+  const toggleRow = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   // ── Pagination ────────────────────────────────────────────────────────────
   const getPageNumbers = () => {
@@ -326,7 +361,7 @@ export default function AllTransactionsPage() {
 
   return (
     <div>
-      {/* ── Row 1: Title + search (space-between) ── */}
+      {/* ── Row 1: Title + search ── */}
       <div
         style={{
           display: "flex",
@@ -369,7 +404,7 @@ export default function AllTransactionsPage() {
         </div>
       </div>
 
-      {/* ── Row 2: Filter button + bubbles (left) + Date range button (right) ── */}
+      {/* ── Row 2: Filter + bubbles (left) | Date range + Download (right) ── */}
       <div
         style={{
           display: "flex",
@@ -524,7 +559,22 @@ export default function AllTransactionsPage() {
           )}
         </div>
 
-        <DateRangeButton value={dateRange} onChange={setDateRange} />
+        {/* Right: date range + download */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexShrink: 0,
+          }}
+        >
+          <DateRangeButton value={dateRange} onChange={setDateRange} />
+
+          <DownloadTransactionsButton
+            allRows={sorted}
+            selectedIds={selectedIds}
+          />
+        </div>
       </div>
 
       {/* ── Table ── */}
@@ -543,6 +593,7 @@ export default function AllTransactionsPage() {
             style={{ width: "100%", tableLayout: "fixed" }}
           >
             <colgroup>
+              <col style={{ width: "44px" }} />
               <col style={{ width: "160px" }} />
               <col />
               <col style={{ width: "200px" }} />
@@ -553,6 +604,16 @@ export default function AllTransactionsPage() {
             </colgroup>
             <thead>
               <tr>
+                <th style={{ textAlign: "center", padding: "12px 8px" }}>
+                  <input
+                    ref={headerCheckboxRef}
+                    type="checkbox"
+                    className="manager-checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    style={{ cursor: "pointer" }}
+                  />
+                </th>
                 <th>LPO NUMBER</th>
                 <th>VENDOR</th>
                 <th>REQUESTER</th>
@@ -574,7 +635,23 @@ export default function AllTransactionsPage() {
             </thead>
             <tbody>
               {paginated.map((row) => (
-                <tr key={row.id}>
+                <tr
+                  key={row.id}
+                  style={{
+                    backgroundColor: selectedIds.has(row.id)
+                      ? "rgba(240,250,244,1)"
+                      : undefined,
+                  }}
+                >
+                  <td style={{ textAlign: "center", padding: "12px 8px" }}>
+                    <input
+                      type="checkbox"
+                      className="manager-checkbox"
+                      checked={selectedIds.has(row.id)}
+                      onChange={() => toggleRow(row.id)}
+                      style={{ cursor: "pointer" }}
+                    />
+                  </td>
                   <td>
                     <div
                       style={{
@@ -610,7 +687,7 @@ export default function AllTransactionsPage() {
             </tbody>
           </table>
 
-          {/* ── Pagination (identical to inventory/page.tsx) ── */}
+          {/* ── Pagination ── */}
           {totalPages > 1 && (
             <div
               style={{

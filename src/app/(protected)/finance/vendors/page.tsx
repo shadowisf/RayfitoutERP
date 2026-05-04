@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import VendorsFilterButton, {
@@ -9,6 +9,7 @@ import VendorsFilterButton, {
 import DateRangeButton, {
   DateRange,
 } from "../transactions/components/_DateRangeButton";
+import DownloadVendorsButton from "./components/_DownloadVendorsButton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Vendor = {
@@ -194,6 +195,8 @@ export default function VendorsReportPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   // Build query string — date filter by LPO created_at
   const queryStr = useMemo(() => {
@@ -336,23 +339,62 @@ export default function VendorsReportPage() {
     );
 
   const sortIcon = (col: string) => (
-    <span style={{ marginLeft: 4, fontSize: 10, opacity: sortCol === col ? 1 : 0.35 }}>
+    <span
+      style={{
+        marginLeft: 4,
+        fontSize: 10,
+        opacity: sortCol === col ? 1 : 0.35,
+      }}
+    >
       {sortCol === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
     </span>
   );
 
   const handleSort = (col: string) => {
-    if (sortCol === col) {
-      if (sortDir === "asc") setSortDir("desc");
-      else {
-        setSortCol(null);
-        setSortDir("asc");
-      }
-    } else {
+    if (sortCol !== col) {
       setSortCol(col);
+      setSortDir("desc");
+    } else if (sortDir === "desc") {
       setSortDir("asc");
+    } else {
+      setSortCol(null);
+      setSortDir("desc");
     }
   };
+
+  // ── Checkbox helpers ──────────────────────────────────────────────────────
+  const allSelected =
+    sorted.length > 0 && sorted.every((r) => selectedIds.has(r.supplier_id));
+  const someSelected =
+    !allSelected && sorted.some((r) => selectedIds.has(r.supplier_id));
+
+  useEffect(() => {
+    if (headerCheckboxRef.current)
+      headerCheckboxRef.current.indeterminate = someSelected;
+  }, [someSelected]);
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        sorted.forEach((r) => next.delete(r.supplier_id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        sorted.forEach((r) => next.add(r.supplier_id));
+        return next;
+      });
+    }
+  };
+
+  const toggleRow = (id: number) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   // ── Dynamic columns ───────────────────────────────────────────────────────
   const optionalColsToShow = OPTIONAL_COLS.filter((c) =>
@@ -558,8 +600,22 @@ export default function VendorsReportPage() {
           )}
         </div>
 
-        {/* Right: date filter */}
-        <DateRangeButton value={dateRange} onChange={setDateRange} />
+        {/* Right: date filter + download */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexShrink: 0,
+          }}
+        >
+          <DateRangeButton value={dateRange} onChange={setDateRange} />
+          <DownloadVendorsButton
+            allRows={sorted}
+            selectedIds={selectedIds}
+            dateRange={dateRange}
+          />
+        </div>
       </div>
 
       {/* ── Settings popup ── */}
@@ -629,6 +685,7 @@ export default function VendorsReportPage() {
               style={{ width: "100%", tableLayout: "fixed" }}
             >
               <colgroup>
+                <col style={{ width: "44px" }} />
                 <col style={{ width: "50px" }} />
                 <col />
                 <col style={{ width: "250px" }} />
@@ -644,6 +701,16 @@ export default function VendorsReportPage() {
               </colgroup>
               <thead>
                 <tr>
+                  <th style={{ textAlign: "center", padding: "12px 8px" }}>
+                    <input
+                      ref={headerCheckboxRef}
+                      type="checkbox"
+                      className="manager-checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      style={{ cursor: "pointer" }}
+                    />
+                  </th>
                   <th>#</th>
                   <th>VENDOR</th>
                   <th>VENDOR TYPE</th>
@@ -669,7 +736,8 @@ export default function VendorsReportPage() {
                       }}
                       onClick={() => handleSort(c.key)}
                     >
-                      {c.header}{sortIcon(c.key)}
+                      {c.header}
+                      {sortIcon(c.key)}
                     </th>
                   ))}
                   {metricColsToShow.map((c) => (
@@ -682,7 +750,8 @@ export default function VendorsReportPage() {
                       }}
                       onClick={() => handleSort(c.sortKey)}
                     >
-                      {c.header}{sortIcon(c.sortKey)}
+                      {c.header}
+                      {sortIcon(c.sortKey)}
                     </th>
                   ))}
                   {/* Settings column */}
@@ -702,10 +771,24 @@ export default function VendorsReportPage() {
               </thead>
               <tbody>
                 {paginated.map((row, i) => (
-                  <tr key={row.supplier_id}>
-                    <td style={{ color: "rgba(120,120,120,1)" }}>
-                      {(currentPage - 1) * ITEMS_PER_PAGE + i + 1}
+                  <tr
+                    key={row.supplier_id}
+                    style={{
+                      backgroundColor: selectedIds.has(row.supplier_id)
+                        ? "rgba(240,250,244,1)"
+                        : undefined,
+                    }}
+                  >
+                    <td style={{ textAlign: "center", padding: "12px 8px" }}>
+                      <input
+                        type="checkbox"
+                        className="manager-checkbox"
+                        checked={selectedIds.has(row.supplier_id)}
+                        onChange={() => toggleRow(row.supplier_id)}
+                        style={{ cursor: "pointer" }}
+                      />
                     </td>
+                    <td>{(currentPage - 1) * ITEMS_PER_PAGE + i + 1}</td>
                     <td style={{ fontWeight: 600 }}>{row.supplier_name}</td>
                     <td>
                       <VendorTypePill type={row.payment_type} />

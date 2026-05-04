@@ -8,12 +8,7 @@ export async function GET() {
       `SELECT
          l.id,
          l.mr_header_id,
-         CASE
-           WHEN LOWER(IFNULL(l.payment_status, ''))
-                IN ('approved','paid','fully paid','completed','done')
-             THEN l.total
-           ELSE COALESCE(pay.total_paid, 0)
-         END                                          AS total,
+         l.total                                      AS total,
          l.paid_at,
          l.created_at,
          COALESCE(s.name, 'Unknown')                 AS vendor_name,
@@ -33,11 +28,6 @@ export async function GET() {
        LEFT JOIN suppliers   s   ON l.supplier_id  = s.id
        LEFT JOIN mr_headers  mh  ON l.mr_header_id = mh.id
        LEFT JOIN projects    p   ON mh.project_id  = p.id
-       LEFT JOIN (
-         SELECT lpo_id, SUM(amount) AS total_paid
-         FROM lpo_payments
-         GROUP BY lpo_id
-       ) pay ON pay.lpo_id = l.id
        WHERE l.progress_id NOT IN (13)
        ORDER BY l.created_at DESC`,
     );

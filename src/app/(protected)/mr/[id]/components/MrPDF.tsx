@@ -38,7 +38,9 @@ type ColumnWidthKey =
   | "colCategory"
   | "colSubCategory"
   | "colBrandSpecs"
-  | "colAttachment";
+  | "colBrandSpecsWide"
+  | "colAttachment"
+  | "colAttachmentWide";
 
 const styles = StyleSheet.create({
   page: {
@@ -174,8 +176,16 @@ const styles = StyleSheet.create({
     width: "18%",
     paddingRight: 4,
   },
+  colBrandSpecsWide: {
+    width: "30%",
+    paddingRight: 4,
+  },
   colAttachment: {
     width: "12%",
+    paddingRight: 4,
+  },
+  colAttachmentWide: {
+    width: "24%",
     paddingRight: 4,
   },
 
@@ -294,8 +304,23 @@ export function MrPDF({ mrHeader, mrLines }: props) {
     return "colRequestedQty";
   };
 
+  // Dynamic optional column widths
+  const getBrandSpecsColKey = (): ColumnWidthKey => {
+    // If attachments don't exist, brand/specs can take more space
+    if (!hasAnyAttachments && hasAnyBrandSpecs) return "colBrandSpecsWide";
+    return "colBrandSpecs";
+  };
+
+  const getAttachmentColKey = (): ColumnWidthKey => {
+    // If brand/specs don't exist, attachments can take more space
+    if (!hasAnyBrandSpecs && hasAnyAttachments) return "colAttachmentWide";
+    return "colAttachment";
+  };
+
   const itemColKey = getItemColKey();
   const qtyColKey = getQtyColKey();
+  const brandSpecsColKey = getBrandSpecsColKey();
+  const attachmentColKey = getAttachmentColKey();
 
   // Calculate totals
   const totalItems = mrLines.length;
@@ -371,11 +396,11 @@ export function MrPDF({ mrHeader, mrLines }: props) {
             <Text style={styles[qtyColKey]}>QTY</Text>
 
             {hasAnyBrandSpecs && (
-              <Text style={styles.colBrandSpecs}>BRAND & SPECS</Text>
+              <Text style={styles[brandSpecsColKey]}>BRAND & SPECS</Text>
             )}
 
             {hasAnyAttachments && (
-              <Text style={styles.colAttachment}>ATTACHMENT(S)</Text>
+              <Text style={styles[attachmentColKey]}>ATTACHMENT(S)</Text>
             )}
           </View>
 
@@ -399,7 +424,7 @@ export function MrPDF({ mrHeader, mrLines }: props) {
                 </Text>
 
                 {hasAnyBrandSpecs && (
-                  <Text style={styles.colBrandSpecs}>
+                  <Text style={styles[brandSpecsColKey]}>
                     {line.brand || line.specification ? (
                       <>
                         {line.brand && `Brand: ${line.brand}`}
@@ -413,7 +438,7 @@ export function MrPDF({ mrHeader, mrLines }: props) {
                 )}
 
                 {hasAnyAttachments && (
-                  <View style={styles.colAttachment}>
+                  <View style={styles[attachmentColKey]}>
                     {line.attachment &&
                     Array.isArray(line.attachment) &&
                     line.attachment.length > 0 ? (

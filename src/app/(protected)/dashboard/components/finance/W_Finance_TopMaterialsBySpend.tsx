@@ -92,7 +92,7 @@ export default function FinanceTopMaterialsBySpendWidget() {
   const [tableData, setTableData] = useState<MaterialRow[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [sortKey, setSortKey] = useState<SortKey>("total_spent");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   useEffect(() => {
@@ -109,15 +109,19 @@ export default function FinanceTopMaterialsBySpendWidget() {
   }, []);
 
   const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
+    if (sortKey !== key) {
       setSortKey(key);
+      setSortDir("desc");
+    } else if (sortDir === "desc") {
+      setSortDir("asc");
+    } else {
+      setSortKey(null);
       setSortDir("desc");
     }
   };
 
   const sorted = useMemo(() => {
+    if (!sortKey) return [...tableData];
     return [...tableData].sort((a, b) => {
       const mul = sortDir === "asc" ? 1 : -1;
       return mul * ((a[sortKey] as number) - (b[sortKey] as number));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 
 type RecentTransaction = {
@@ -17,9 +17,21 @@ function formatAED(val: number): string {
   });
 }
 
+type SortDir = "asc" | "desc";
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  return (
+    <span style={{ marginLeft: 4, fontSize: 10, opacity: active ? 1 : 0.35 }}>
+      {active ? (dir === "asc" ? "↑" : "↓") : "↕"}
+    </span>
+  );
+}
+
 export default function FinanceRecentTransactionsWidget() {
   const [transactions, setTransactions] = useState<RecentTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<"amount" | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   useEffect(() => {
     fetch(
@@ -30,6 +42,24 @@ export default function FinanceRecentTransactionsWidget() {
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, []);
+
+  const handleSort = () => {
+    if (sortKey !== "amount") {
+      setSortKey("amount");
+      setSortDir("desc");
+    } else if (sortDir === "desc") {
+      setSortDir("asc");
+    } else {
+      setSortKey(null);
+      setSortDir("desc");
+    }
+  };
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return [...transactions];
+    const mul = sortDir === "asc" ? 1 : -1;
+    return [...transactions].sort((a, b) => mul * (a.amount - b.amount));
+  }, [transactions, sortKey, sortDir]);
 
   return (
     <div
@@ -101,8 +131,7 @@ export default function FinanceRecentTransactionsWidget() {
                 { label: "LPO", width: "15%" },
                 { label: "VENDOR", width: "40%" },
                 { label: "PAYMENT TYPE", width: "22%" },
-                { label: "AMOUNT", width: "23%" },
-              ].map(({ label, width }, index, arr) => (
+              ].map(({ label, width }, index) => (
                 <th
                   key={label}
                   style={{
@@ -112,21 +141,32 @@ export default function FinanceRecentTransactionsWidget() {
                     fontWeight: 700,
                     width,
                     backgroundColor: "rgba(245, 246, 248, 1)",
-                    borderRadius:
-                      index === 0
-                        ? "50px 0 0 50px"
-                        : index === arr.length - 1
-                          ? "0 50px 50px 0"
-                          : undefined,
+                    borderRadius: index === 0 ? "50px 0 0 50px" : undefined,
                   }}
                 >
                   {label}
                 </th>
               ))}
+              <th
+                onClick={handleSort}
+                style={{
+                  textAlign: "left",
+                  padding: "9px 12px",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  width: "23%",
+                  backgroundColor: "rgba(245, 246, 248, 1)",
+                  borderRadius: "0 50px 50px 0",
+                  cursor: "pointer",
+                  userSelect: "none",
+                }}
+              >
+                AMOUNT<SortIcon active={sortKey === "amount"} dir={sortDir} />
+              </th>
             </tr>
           </thead>
           <tbody>
-            {transactions.map((tx, i) => {
+            {sorted.map((tx, i) => {
               const isAlt = i % 2 !== 0;
               const altBg = isAlt ? "rgba(249, 249, 249, 1)" : undefined;
               return (
