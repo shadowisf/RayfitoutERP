@@ -234,6 +234,20 @@ export default function MrLinesView({
   const isProcurementQuotations =
     mrHeader.progress_id === 7 && userInfo?.departmentID === 9;
 
+  // ── Current stage label for activity log ─────────────────────────────────
+  const PROGRESS_STAGE_LABELS: Record<number, string> = {
+    1: "INITIAL APPROVAL", 2: "QS REVIEW", 3: "MANAGER APPROVAL",
+    4: "STOCK TRANSFER", 5: "REQUEST REJECTED", 7: "QUOTATIONS",
+    9: "QS PRICE CHECK", 10: "MANAGER PRICE APPROVAL", 11: "PRICE REJECTED",
+    12: "LPO & INVOICE", 13: "PAYMENT REJECTED", 14: "PAYMENT",
+    17: "AWAITING DELIVERY", 21: "QC CHECK", 23: "FAILED QC",
+    24: "STOCK ENTRY", 25: "COMPLETED", 26: "SEGREGATION",
+  };
+  const currentStageName =
+    PROGRESS_STAGE_LABELS[mrHeader.progress_id] ||
+    mrHeader.progress_name ||
+    "INITIAL APPROVAL";
+
   // ── Manager Price Approval helpers ────────────────────────────────────────
   const isManagerPriceApproval =
     mrHeader.progress_id === 10 && userInfo?.departmentID === 8;
@@ -955,6 +969,16 @@ export default function MrLinesView({
       total += subtotal;
     });
 
+    return Number(total.toFixed(2));
+  }
+
+  function calculateItemsTotalWithVat(items: MrLine[]): number {
+    let total = 0;
+    items.forEach((item: MrLine) => {
+      const totalPrice = Number(item.approved_total_price) || 0;
+      const vatRate = Number(item.approved_vat_rate) || 0;
+      total += totalPrice * (1 + vatRate / 100);
+    });
     return Number(total.toFixed(2));
   }
 
@@ -2425,6 +2449,7 @@ export default function MrLinesView({
                         bgColor="black"
                         borderColor="black"
                         textColor="white"
+                        stageName={currentStageName}
                       >
                         ADD ITEM +
                       </AddMrItemButton>
@@ -2819,6 +2844,9 @@ export default function MrLinesView({
                                         </th>
                                         <th style={{ width: "130px" }}>
                                           PRICE RANGE
+                                        </th>
+                                        <th style={{ width: "100px" }}>
+                                          TOTAL PRICE
                                         </th>
                                       </>
                                     )}
@@ -3271,6 +3299,7 @@ export default function MrLinesView({
                                                     bgColor="rgba(239, 239, 239, 1)"
                                                     borderColor="rgba(223, 223, 223, 1)"
                                                     textColor="black"
+                                                    stageName={currentStageName}
                                                   >
                                                     <img
                                                       src={pencilIcon}
@@ -3283,6 +3312,7 @@ export default function MrLinesView({
                                                     bgColor="rgba(239, 239, 239, 1)"
                                                     borderColor="rgba(223, 223, 223, 1)"
                                                     textColor="black"
+                                                    stageName={currentStageName}
                                                   >
                                                     <img
                                                       src={trashIcon}
@@ -3560,6 +3590,13 @@ export default function MrLinesView({
                                                       ? `${formatPriceAED(stats.lowest_price)} – ${formatPriceAED(stats.highest_price)}`
                                                       : "-"}
                                                   </td>
+                                                  <td>
+                                                    {formatPriceAED(
+                                                      Number(
+                                                        item.approved_total_price,
+                                                      ) || 0,
+                                                    )}
+                                                  </td>
                                                 </>
                                               );
                                             })()}
@@ -3675,6 +3712,46 @@ export default function MrLinesView({
                                       </tr>
                                     </tfoot>
                                   )}
+
+                                {isManagerPriceApproval && (
+                                  <tfoot
+                                    style={{
+                                      borderTop:
+                                        "1px solid rgba(239, 239, 239, 1)",
+                                    }}
+                                  >
+                                    <tr>
+                                      <td
+                                        colSpan={subtotalLabelColSpan + 4}
+                                      />
+                                      <td style={{ fontWeight: "600" }}>
+                                        SUBTOTAL
+                                      </td>
+                                      <td style={{ fontWeight: "600" }}>
+                                        {formatPriceAED(
+                                          calculateItemsTotal(
+                                            getAllItemsInSubCategory(suppliers),
+                                          ),
+                                        )}
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td
+                                        colSpan={subtotalLabelColSpan + 4}
+                                      />
+                                      <td style={{ fontWeight: "600" }}>
+                                        SUBTOTAL W/ VAT
+                                      </td>
+                                      <td style={{ fontWeight: "600" }}>
+                                        {formatPriceAED(
+                                          calculateItemsTotalWithVat(
+                                            getAllItemsInSubCategory(suppliers),
+                                          ),
+                                        )}
+                                      </td>
+                                    </tr>
+                                  </tfoot>
+                                )}
                               </table>
 
                               {isManagerPriceApproval &&
@@ -3993,6 +4070,9 @@ export default function MrLinesView({
                                     </th>
                                     <th style={{ width: "130px" }}>
                                       PRICE RANGE
+                                    </th>
+                                    <th style={{ width: "100px" }}>
+                                      TOTAL PRICE
                                     </th>
                                   </>
                                 )}
@@ -4417,6 +4497,7 @@ export default function MrLinesView({
                                                 bgColor="rgba(239, 239, 239, 1)"
                                                 borderColor="rgba(223, 223, 223, 1)"
                                                 textColor="black"
+                                                stageName={currentStageName}
                                               >
                                                 <img
                                                   src={pencilIcon}
@@ -4429,6 +4510,7 @@ export default function MrLinesView({
                                                 bgColor="rgba(239, 239, 239, 1)"
                                                 borderColor="rgba(223, 223, 223, 1)"
                                                 textColor="black"
+                                                stageName={currentStageName}
                                               >
                                                 <img
                                                   src={trashIcon}
@@ -4685,6 +4767,13 @@ export default function MrLinesView({
                                                   ? `${formatPriceAED(stats.lowest_price)} – ${formatPriceAED(stats.highest_price)}`
                                                   : "-"}
                                               </td>
+                                              <td>
+                                                {formatPriceAED(
+                                                  Number(
+                                                    item.approved_total_price,
+                                                  ) || 0,
+                                                )}
+                                              </td>
                                             </>
                                           );
                                         })()}
@@ -4797,6 +4886,42 @@ export default function MrLinesView({
                                   </tr>
                                 </tfoot>
                               )}
+
+                            {isManagerPriceApproval && (
+                              <tfoot
+                                style={{
+                                  borderTop:
+                                    "1px solid rgba(239, 239, 239, 1)",
+                                }}
+                              >
+                                <tr>
+                                  <td colSpan={subtotalLabelColSpan + 4} />
+                                  <td style={{ fontWeight: "600" }}>
+                                    SUBTOTAL
+                                  </td>
+                                  <td style={{ fontWeight: "600" }}>
+                                    {formatPriceAED(
+                                      calculateItemsTotal(
+                                        getAllItemsInSubCategory(suppliers),
+                                      ),
+                                    )}
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td colSpan={subtotalLabelColSpan + 4} />
+                                  <td style={{ fontWeight: "600" }}>
+                                    SUBTOTAL W/ VAT
+                                  </td>
+                                  <td style={{ fontWeight: "600" }}>
+                                    {formatPriceAED(
+                                      calculateItemsTotalWithVat(
+                                        getAllItemsInSubCategory(suppliers),
+                                      ),
+                                    )}
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            )}
                           </table>
 
                           {isManagerPriceApproval &&

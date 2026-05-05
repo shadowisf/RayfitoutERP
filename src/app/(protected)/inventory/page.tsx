@@ -1879,7 +1879,7 @@ export default function Inventory() {
               </div>
             ) : currentItems.length > 0 ? (
               <>
-                <table className="items-table alt two-toned fixed-layout">
+                <table className="items-table alt fixed-layout">
                   <thead>
                     <tr>
                       <th style={{ width: "40px" }}>

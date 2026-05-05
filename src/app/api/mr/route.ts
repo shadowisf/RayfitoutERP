@@ -312,6 +312,19 @@ export async function POST(req: Request) {
           await db.query(boqJunctionQuery, [boqJunctionValues]);
         }
 
+        // ── Activity log: LINE_ADDED ────────────────────────────────────────
+        await db.query(
+          `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, new_value)
+           VALUES (?, ?, 'LINE_ADDED', ?, ?, ?)`,
+          [
+            Number(body.mr_header_id),
+            mrLineId,
+            body.changed_by || null,
+            body.stage_name || "DEPARTMENT",
+            body.material_description || null,
+          ],
+        );
+
         return NextResponse.json({
           success: true,
           mrLineId: mrLineId,
@@ -1028,6 +1041,13 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "setQSReplaced") {
+      // Fetch current material_description (the replacement already set on the line)
+      const [lineRows]: any = await db.query(
+        `SELECT mr_header_id, material_description FROM mr_lines WHERE id = ?`,
+        [Number(body.id)],
+      );
+      const currentLine = lineRows?.[0];
+
       // Persist replacement data on the line
       await db.query(
         `UPDATE mr_lines
@@ -1043,6 +1063,21 @@ export async function PUT(req: Request) {
           Number(body.id),
         ],
       );
+
+      // ── Activity log: MATERIAL_CHANGED ─────────────────────────────────────
+      if (currentLine) {
+        await db.query(
+          `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, old_value, new_value)
+           VALUES (?, ?, 'MATERIAL_CHANGED', ?, 'QS REVIEW', ?, ?)`,
+          [
+            currentLine.mr_header_id,
+            Number(body.id),
+            body.changed_by || null,
+            body.qs_original_material_description || null,
+            currentLine.material_description || null,
+          ],
+        );
+      }
 
       return NextResponse.json({ success: true });
     }
@@ -1689,13 +1724,20 @@ export async function PUT(req: Request) {
 
     if (body.action === "updateAll") {
       try {
+        // Fetch old values for activity log
+        const [oldAllRows]: any = await db.query(
+          `SELECT mr_header_id, material_description, quantity, unit FROM mr_lines WHERE id = ?`,
+          [Number(body.id)],
+        );
+        const oldAllLine = oldAllRows?.[0];
+
         // ✅ Update the main mr_line WITHOUT boq_line_id
         const query = `
-      UPDATE mr_lines 
-      SET material_category_id = ?, 
-          material_description = ?, 
-          quantity = ?, 
-          unit = ?, 
+      UPDATE mr_lines
+      SET material_category_id = ?,
+          material_description = ?,
+          quantity = ?,
+          unit = ?,
           notes = ?,
           specification = ?,
           brand = ?,
@@ -1781,6 +1823,61 @@ export async function PUT(req: Request) {
           await db.query(boqJunctionQuery, [boqJunctionValues]);
         }
 
+        // ── Activity log: LINE_EDITED / MATERIAL_CHANGED / QTY_EDITED ────────
+        if (oldAllLine) {
+          const materialChanged =
+            oldAllLine.material_description !== body.material_description;
+          const qtyChanged =
+            String(oldAllLine.quantity) !== String(body.quantity) ||
+            oldAllLine.unit !== body.unit;
+
+          if (materialChanged) {
+            await db.query(
+              `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, old_value, new_value)
+               VALUES (?, ?, 'MATERIAL_CHANGED', ?, ?, ?, ?)`,
+              [
+                oldAllLine.mr_header_id,
+                Number(body.id),
+                body.changed_by || null,
+                body.stage_name || "DEPARTMENT",
+                oldAllLine.material_description || null,
+                body.material_description || null,
+              ],
+            );
+          }
+
+          if (qtyChanged) {
+            const oldQ = `${oldAllLine.quantity}${oldAllLine.unit ? " " + oldAllLine.unit : ""}`;
+            const newQ = `${body.quantity}${body.unit ? " " + body.unit : ""}`;
+            await db.query(
+              `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, old_value, new_value)
+               VALUES (?, ?, 'QTY_EDITED', ?, ?, ?, ?)`,
+              [
+                oldAllLine.mr_header_id,
+                Number(body.id),
+                body.changed_by || null,
+                body.stage_name || "DEPARTMENT",
+                oldQ,
+                newQ,
+              ],
+            );
+          }
+
+          if (!materialChanged && !qtyChanged) {
+            await db.query(
+              `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, new_value)
+               VALUES (?, ?, 'LINE_EDITED', ?, ?, ?)`,
+              [
+                oldAllLine.mr_header_id,
+                Number(body.id),
+                body.changed_by || null,
+                body.stage_name || "DEPARTMENT",
+                body.material_description || null,
+              ],
+            );
+          }
+        }
+
         return NextResponse.json({ success: true });
       } catch (error) {
         throw error;
@@ -1802,18 +1899,74 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "updateMrLineQuantity") {
+      // Fetch old values before updating
+      const [oldQtyRows]: any = await db.query(
+        `SELECT mr_header_id, quantity, unit FROM mr_lines WHERE id = ?`,
+        [Number(body.id)],
+      );
+      const oldLine = oldQtyRows?.[0];
+
       await db.query(
         `UPDATE mr_lines SET quantity = ?, unit = ? WHERE id = ?`,
         [Number(body.quantity), body.unit || null, Number(body.id)],
       );
+
+      // ── Activity log: QTY_EDITED ──────────────────────────────────────────
+      if (oldLine) {
+        const oldQtyStr = `${oldLine.quantity}${oldLine.unit ? " " + oldLine.unit : ""}`;
+        const newQtyStr = `${body.quantity}${body.unit ? " " + body.unit : ""}`;
+        await db.query(
+          `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, old_value, new_value)
+           VALUES (?, ?, 'QTY_EDITED', ?, ?, ?, ?)`,
+          [
+            oldLine.mr_header_id,
+            Number(body.id),
+            body.changed_by || null,
+            body.stage_name || null,
+            oldQtyStr,
+            newQtyStr,
+          ],
+        );
+      }
+
       return NextResponse.json({ success: true });
     }
 
     if (body.action === "updateMrLineBrandSpec") {
+      // Fetch old values before updating
+      const [oldBsRows]: any = await db.query(
+        `SELECT mr_header_id, brand, specification FROM mr_lines WHERE id = ?`,
+        [Number(body.id)],
+      );
+      const oldBsLine = oldBsRows?.[0];
+
       await db.query(
         `UPDATE mr_lines SET brand = ?, specification = ? WHERE id = ?`,
         [body.brand || null, body.specification || null, Number(body.id)],
       );
+
+      // ── Activity log: BRAND_SPEC_EDITED ───────────────────────────────────
+      if (oldBsLine) {
+        const oldBs = [oldBsLine.brand, oldBsLine.specification]
+          .filter(Boolean)
+          .join(" / ") || null;
+        const newBs = [body.brand, body.specification]
+          .filter(Boolean)
+          .join(" / ") || null;
+        await db.query(
+          `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, old_value, new_value)
+           VALUES (?, ?, 'BRAND_SPEC_EDITED', ?, ?, ?, ?)`,
+          [
+            oldBsLine.mr_header_id,
+            Number(body.id),
+            body.changed_by || null,
+            body.stage_name || null,
+            oldBs,
+            newBs,
+          ],
+        );
+      }
+
       return NextResponse.json({ success: true });
     }
 
@@ -1836,10 +1989,34 @@ export async function DELETE(req: Request) {
 
     if (body.action === "deleteItem") {
       const lineId = Number(body.id);
+
+      // Fetch line data before deletion for activity log
+      const [delRows]: any = await db.query(
+        `SELECT mr_header_id, material_description FROM mr_lines WHERE id = ?`,
+        [lineId],
+      );
+      const delLine = delRows?.[0];
+
       // Explicitly clean up junction tables before deleting the line
       await db.query(`DELETE FROM jt_mr_lines_boq_lines WHERE mr_line_id = ?`, [lineId]);
       await db.query(`DELETE FROM jt_mr_line_material_subcategory WHERE mr_line_id = ?`, [lineId]);
       await db.query("DELETE FROM mr_lines WHERE id = ?", [lineId]);
+
+      // ── Activity log: LINE_DELETED ──────────────────────────────────────────
+      if (delLine) {
+        await db.query(
+          `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, old_value)
+           VALUES (?, ?, 'LINE_DELETED', ?, ?, ?)`,
+          [
+            delLine.mr_header_id,
+            lineId,
+            body.changed_by || null,
+            body.stage_name || "DEPARTMENT",
+            delLine.material_description || null,
+          ],
+        );
+      }
+
       return NextResponse.json({ success: true });
     }
 

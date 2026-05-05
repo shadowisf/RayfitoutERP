@@ -891,6 +891,10 @@ label {
     td {
       padding: 4px 30px;
     }
+
+    th {
+      padding: 15px 30px;
+    }
   }
 
   /* &.two-toned {
@@ -915,6 +919,9 @@ label {
   }
 
   &.popup-hover {
+    border: none;
+    border-radius: 0;
+
     th {
       background-color: transparent;
       padding: 4px 0px;
