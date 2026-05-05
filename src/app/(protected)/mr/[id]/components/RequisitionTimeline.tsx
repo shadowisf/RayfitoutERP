@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
+import RequisitionLogButton from "./RequisitionLogButton";
 
 type ProgressLogEntry = {
   id: number;
@@ -358,8 +359,9 @@ export default function RequisitionTimeline({
 
   return (
     <div className="mr-with-id">
-      <div className="subcategory-header">
+      <div className="subcategory-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h2>REQUISITION TIMELINE</h2>
+        <RequisitionLogButton mrHeaderId={mrHeaderId} lpoId={lpoId} />
       </div>
 
       <br />

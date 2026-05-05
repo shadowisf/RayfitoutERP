@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { MrLine } from "../../types/mrLine";
 import { toast } from "@/app/components/Toast";
+import { useAuth } from "@/app/context/AuthContext";
 
 type DeleteMrItemButtonProps = {
   item: MrLine;
@@ -13,6 +14,7 @@ type DeleteMrItemButtonProps = {
   textColor?: string;
   borderColor?: string;
   children?: React.ReactNode;
+  stageName?: string;
 };
 
 export default function DeleteMrItemButton({
@@ -21,8 +23,10 @@ export default function DeleteMrItemButton({
   textColor = "black",
   borderColor = "rgba(239, 239, 239, 1)",
   children,
+  stageName,
 }: DeleteMrItemButtonProps) {
   const router = useRouter();
+  const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -65,6 +69,10 @@ export default function DeleteMrItemButton({
         body: JSON.stringify({
           action: "deleteItem",
           id: item.id,
+          changed_by: userInfo?.name && userInfo?.role
+            ? `${userInfo.name}, ${userInfo.role}`
+            : (userInfo?.name || null),
+          stage_name: stageName || "INITIAL APPROVAL",
         }),
       });
 

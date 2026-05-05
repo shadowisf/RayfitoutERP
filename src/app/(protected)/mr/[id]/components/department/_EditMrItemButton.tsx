@@ -14,6 +14,7 @@ import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItem
 import MultipleSelectMaterialItemButton, {
   PredefinedItem,
 } from "@/app/components/_MultipleSelectMaterialItemButton";
+import { useAuth } from "@/app/context/AuthContext";
 
 type SelectedMaterialRow = {
   predefinedItem: PredefinedItem | null;
@@ -34,6 +35,7 @@ type EditMrItemButtonProps = {
   borderColor?: string;
   children?: React.ReactNode;
   full?: boolean;
+  stageName?: string;
 };
 
 export default function EditMrItemButton({
@@ -44,8 +46,10 @@ export default function EditMrItemButton({
   borderColor = "rgba(239, 239, 239, 1)",
   children,
   full,
+  stageName,
 }: EditMrItemButtonProps) {
   const router = useRouter();
+  const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -285,6 +289,10 @@ export default function EditMrItemButton({
         body: JSON.stringify({
           action: "updateAll",
           id: Number(item.id),
+          changed_by: userInfo?.name && userInfo?.role
+            ? `${userInfo.name}, ${userInfo.role}`
+            : (userInfo?.name || null),
+          stage_name: stageName || "INITIAL APPROVAL",
           boq_line_ids: boqLineIDs,
           material_category_id: Number(selectedRow.categoryId),
           material_subcategory_id: [Number(selectedRow.subcategoryId)],

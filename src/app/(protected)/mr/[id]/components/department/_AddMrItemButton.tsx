@@ -43,6 +43,7 @@ type AddMrItemButtonProps = {
   children: React.ReactNode;
   full?: boolean;
   style?: React.CSSProperties;
+  stageName?: string;
 };
 
 export default function AddMrItemButton({
@@ -54,6 +55,7 @@ export default function AddMrItemButton({
   children,
   full,
   style,
+  stageName,
 }: AddMrItemButtonProps) {
   const router = useRouter();
   const crossSmallIcon = "/icons/cross-small.svg";
@@ -389,6 +391,10 @@ export default function AddMrItemButton({
           body: JSON.stringify({
             action: "createMrLine",
             mr_header_id: mrHeaderID,
+            changed_by: userInfo?.name && userInfo?.role
+              ? `${userInfo.name}, ${userInfo.role}`
+              : (userInfo?.name || null),
+            stage_name: stageName || "INITIAL APPROVAL",
             material_category_id:
               row.categoryIdOverride ?? row.predefinedItem.category_id,
             material_subcategory_ids: [

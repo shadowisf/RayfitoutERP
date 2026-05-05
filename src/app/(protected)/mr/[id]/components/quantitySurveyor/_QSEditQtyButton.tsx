@@ -7,6 +7,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { MrLine } from "../../types/mrLine";
 import { UNIT_OPTIONS, mapPredefinedUnit } from "@/constants/units";
+import { useAuth } from "@/app/context/AuthContext";
 
 type Props = {
   item: MrLine;
@@ -14,6 +15,7 @@ type Props = {
 
 export default function QSEditQtyButton({ item }: Props) {
   const router = useRouter();
+  const { userInfo } = useAuth();
   const pencilIcon = "/icons/pencil.svg";
 
   const [isOpen, setIsOpen] = useState(false);
@@ -45,6 +47,11 @@ export default function QSEditQtyButton({ item }: Props) {
         id: item.id,
         quantity: num,
         unit: unitValue || item.unit,
+        changed_by:
+          userInfo?.name && userInfo?.role
+            ? `${userInfo.name}, ${userInfo.role}`
+            : userInfo?.name || null,
+        stage_name: "QS REVIEW",
       }),
     });
     setIsOpen(false);
