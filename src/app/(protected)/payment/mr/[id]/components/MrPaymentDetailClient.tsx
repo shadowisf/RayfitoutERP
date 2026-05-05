@@ -355,309 +355,305 @@ export default function FinanceDetailClient({
                 const isSelected = lpo.id === selectedLpoId;
                 const isLast = idx === lpos.length - 1;
 
-                return (
-                  <div
-                    key={lpo.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "15px",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => setSelectedLpoId(lpo.id)}
-                  >
-                    <input
-                      type="radio"
-                      name="lpo-select"
-                      value={lpo.id}
-                      checked={isSelected}
-                      onChange={() => setSelectedLpoId(lpo.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        accentColor: "black",
-                        width: "16px",
-                        height: "16px",
-                        flexShrink: 0,
-                      }}
-                    />
+                const sortedLines = lpoLinesSortCol
+                  ? [...lpo.lpo_mr_lines].sort((a, b) => {
+                      const av = Number((a as any)[lpoLinesSortCol]) || 0;
+                      const bv = Number((b as any)[lpoLinesSortCol]) || 0;
+                      return lpoLinesSortDir === "asc" ? av - bv : bv - av;
+                    })
+                  : lpo.lpo_mr_lines;
 
+                return (
+                  <div key={lpo.id}>
+                    {/* Radio card */}
                     <div
                       style={{
-                        flex: 1,
                         display: "flex",
-                        gap: "25px",
                         alignItems: "center",
-                        flexWrap: "wrap",
+                        gap: "15px",
+                        cursor: "pointer",
                       }}
+                      onClick={() => setSelectedLpoId(lpo.id)}
                     >
-                      <div>
-                        <small>VENDOR</small>
-                        <h2>
-                          {String(lpo.supplier_name || "-").toUpperCase()}
-                        </h2>
-                      </div>
-                      <div>
-                        <small>PAYMENT TYPE</small>
-                        <h2>
-                          {String(lpo.supplier_type || "-").toUpperCase()}
-                        </h2>
-                      </div>
+                      <input
+                        type="radio"
+                        name="lpo-select"
+                        value={lpo.id}
+                        checked={isSelected}
+                        onChange={() => setSelectedLpoId(lpo.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          accentColor: "black",
+                          width: "16px",
+                          height: "16px",
+                          flexShrink: 0,
+                        }}
+                      />
+
                       <div
                         style={{
+                          flex: 1,
                           display: "flex",
-                          gap: "10px",
+                          gap: "25px",
                           alignItems: "center",
+                          flexWrap: "wrap",
                         }}
                       >
                         <div>
-                          <small>LPO NUMBER</small>
-                          <h2>LPO-{String(lpo.id).padStart(5, "0")}</h2>
+                          <small>VENDOR</small>
+                          <h2>
+                            {String(lpo.supplier_name || "-").toUpperCase()}
+                          </h2>
                         </div>
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            componentType={"link"}
-                            bgColor={"rgba(239, 239, 239, 1)"}
-                            borderColor={"rgba(223, 223, 223, 1)"}
-                            textColor={"black"}
-                            style={{ padding: "7px 7px" }}
-                            href={`/mr/${mrHeaderId}/lpo/${lpo.id}`}
-                            target="_blank"
-                          >
-                            <img src={externalLinkIcon} />
-                          </Button>
+                        <div>
+                          <small>PAYMENT TYPE</small>
+                          <h2>
+                            {String(lpo.supplier_type || "-").toUpperCase()}
+                          </h2>
                         </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "10px",
+                            alignItems: "center",
+                          }}
+                        >
+                          <div>
+                            <small>LPO NUMBER</small>
+                            <h2>LPO-{String(lpo.id).padStart(5, "0")}</h2>
+                          </div>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              componentType={"link"}
+                              bgColor={"rgba(239, 239, 239, 1)"}
+                              borderColor={"rgba(223, 223, 223, 1)"}
+                              textColor={"black"}
+                              style={{ padding: "7px 7px" }}
+                              href={`/mr/${mrHeaderId}/lpo/${lpo.id}`}
+                              target="_blank"
+                            >
+                              <img src={externalLinkIcon} />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <DocumentsPopup lpoId={lpo.id} />
                       </div>
                     </div>
 
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <DocumentsPopup lpoId={lpo.id} />
+                    {/* Items table for this LPO */}
+                    <div style={{ marginTop: "20px" }}>
+                      {lpo.lpo_mr_lines.length > 0 ? (
+                        <table
+                          className="items-table"
+                          style={{
+                            width: "100%",
+                            borderCollapse: "collapse",
+                            tableLayout: "fixed",
+                          }}
+                        >
+                          <colgroup>
+                            <col style={{ width: "50px" }} />
+                            <col />
+                            <col style={{ width: "150px" }} />
+                            <col style={{ width: "150px" }} />
+                            <col style={{ width: "125px" }} />
+                            <col style={{ width: "150px" }} />
+                            <col style={{ width: "150px" }} />
+                          </colgroup>
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>MATERIAL</th>
+                              <th>BRAND &amp; SPECS</th>
+                              <th>BOQ REF</th>
+                              <th
+                                style={{ cursor: "pointer", userSelect: "none" }}
+                                onClick={() => handleLpoLinesSort("qty")}
+                              >
+                                QTY
+                                <span
+                                  style={{
+                                    marginLeft: 4,
+                                    fontSize: 12,
+                                    color: "rgba(166,166,166,1)",
+                                  }}
+                                >
+                                  {lpoLinesSortCol === "qty"
+                                    ? lpoLinesSortDir === "asc"
+                                      ? "↑"
+                                      : "↓"
+                                    : "↕"}
+                                </span>
+                              </th>
+                              <th
+                                style={{ cursor: "pointer", userSelect: "none" }}
+                                onClick={() =>
+                                  handleLpoLinesSort("lpo_unit_price")
+                                }
+                              >
+                                UNIT PRICE
+                                <span
+                                  style={{
+                                    marginLeft: 4,
+                                    fontSize: 12,
+                                    color: "rgba(166,166,166,1)",
+                                  }}
+                                >
+                                  {lpoLinesSortCol === "lpo_unit_price"
+                                    ? lpoLinesSortDir === "asc"
+                                      ? "↑"
+                                      : "↓"
+                                    : "↕"}
+                                </span>
+                              </th>
+                              <th
+                                style={{ cursor: "pointer", userSelect: "none" }}
+                                onClick={() =>
+                                  handleLpoLinesSort("lpo_total_price")
+                                }
+                              >
+                                TOTAL PRICE
+                                <span
+                                  style={{
+                                    marginLeft: 4,
+                                    fontSize: 12,
+                                    color: "rgba(166,166,166,1)",
+                                  }}
+                                >
+                                  {lpoLinesSortCol === "lpo_total_price"
+                                    ? lpoLinesSortDir === "asc"
+                                      ? "↑"
+                                      : "↓"
+                                    : "↕"}
+                                </span>
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedLines.map((line, lineIdx) => (
+                              <tr key={line.lpo_mr_line_id}>
+                                <td>{lineIdx + 1}</td>
+                                <td>{line.material_description || "-"}</td>
+                                <td style={{ padding: "12px 20px" }}>
+                                  {line.brand || line.specification ? (
+                                    <InfoPopUpButton
+                                      header="BRAND & SPECIFICATION"
+                                      text={
+                                        <>
+                                          <small>BRAND</small>
+                                          <h2>{line.brand || "-"}</h2>
+                                          <br />
+                                          <small>SPECIFICATION</small>
+                                          <h2>{line.specification || "-"}</h2>
+                                        </>
+                                      }
+                                    />
+                                  ) : (
+                                    <span
+                                      style={{ color: "rgba(150,150,150,1)" }}
+                                    >
+                                      -
+                                    </span>
+                                  )}
+                                </td>
+                                <td style={{ padding: "12px 20px" }}>
+                                  {line.boq_line_ids ? (
+                                    <BoqReferencePopUp
+                                      mrHeader={mrHeader}
+                                      item={
+                                        {
+                                          id: line.mr_line_id,
+                                          boq_line_ids: line.boq_line_ids,
+                                        } as any
+                                      }
+                                    />
+                                  ) : (
+                                    <span
+                                      style={{ color: "rgba(150,150,150,1)" }}
+                                    >
+                                      -
+                                    </span>
+                                  )}
+                                </td>
+                                <td>
+                                  {Number.isInteger(Number(line.qty))
+                                    ? Number(line.qty)
+                                    : parseFloat(
+                                        Number(line.qty).toFixed(3),
+                                      )}{" "}
+                                  {line.unit}
+                                </td>
+                                <td>{formatPriceAED(line.lpo_unit_price)}</td>
+                                <td>{formatPriceAED(line.lpo_total_price)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr>
+                              <td colSpan={5} />
+                              <td
+                                style={{
+                                  padding: "10px 20px",
+                                  fontWeight: "600",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                SUBTOTAL
+                              </td>
+                              <td
+                                style={{
+                                  padding: "10px 20px",
+                                  fontWeight: "600",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {formatPriceAED(lpo.subtotal)}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td colSpan={5} />
+                              <td
+                                style={{
+                                  padding: "13px 20px",
+                                  fontWeight: "600",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                SUBTOTAL W/ VAT
+                              </td>
+                              <td
+                                style={{
+                                  padding: "13px 20px",
+                                  fontWeight: "600",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {formatPriceAED(lpo.total)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      ) : (
+                        <div
+                          style={{
+                            padding: "25px 20px",
+                            color: "rgba(120,120,120,1)",
+                            fontSize: "13px",
+                          }}
+                        >
+                          No items found for this LPO.
+                        </div>
+                      )}
                     </div>
+
+                    {/* Spacing between LPOs */}
+                    {!isLast && <div style={{ marginBottom: "30px" }} />}
                   </div>
                 );
               })
-            )}
-
-            <br />
-
-            {/* Items table for selected LPO — seamlessly inside the same box */}
-            {selectedLpo && (
-              <>
-                {selectedLpo.lpo_mr_lines.length > 0 ? (
-                  (() => {
-                    const sortedLines = lpoLinesSortCol
-                      ? [...selectedLpo.lpo_mr_lines].sort((a, b) => {
-                          const av = Number((a as any)[lpoLinesSortCol]) || 0;
-                          const bv = Number((b as any)[lpoLinesSortCol]) || 0;
-                          return lpoLinesSortDir === "asc" ? av - bv : bv - av;
-                        })
-                      : selectedLpo.lpo_mr_lines;
-                    return (
-                      <table
-                        className="items-table"
-                        style={{
-                          width: "100%",
-                          borderCollapse: "collapse",
-                          tableLayout: "fixed",
-                        }}
-                      >
-                        <colgroup>
-                          <col style={{ width: "50px" }} />
-                          <col />
-                          <col style={{ width: "150px" }} />
-                          <col style={{ width: "150px" }} />
-                          <col style={{ width: "125px" }} />
-                          <col style={{ width: "150px" }} />
-                          <col style={{ width: "150px" }} />
-                        </colgroup>
-                        <thead>
-                          <tr>
-                            <th>#</th>
-                            <th>MATERIAL</th>
-                            <th>BRAND &amp; SPECS</th>
-                            <th>BOQ REF</th>
-                            <th
-                              style={{ cursor: "pointer", userSelect: "none" }}
-                              onClick={() => handleLpoLinesSort("qty")}
-                            >
-                              QTY
-                              <span
-                                style={{
-                                  marginLeft: 4,
-                                  fontSize: 12,
-                                  color: "rgba(166,166,166,1)",
-                                }}
-                              >
-                                {lpoLinesSortCol === "qty"
-                                  ? lpoLinesSortDir === "asc"
-                                    ? "↑"
-                                    : "↓"
-                                  : "↕"}
-                              </span>
-                            </th>
-                            <th
-                              style={{ cursor: "pointer", userSelect: "none" }}
-                              onClick={() =>
-                                handleLpoLinesSort("lpo_unit_price")
-                              }
-                            >
-                              UNIT PRICE
-                              <span
-                                style={{
-                                  marginLeft: 4,
-                                  fontSize: 12,
-                                  color: "rgba(166,166,166,1)",
-                                }}
-                              >
-                                {lpoLinesSortCol === "lpo_unit_price"
-                                  ? lpoLinesSortDir === "asc"
-                                    ? "↑"
-                                    : "↓"
-                                  : "↕"}
-                              </span>
-                            </th>
-                            <th
-                              style={{ cursor: "pointer", userSelect: "none" }}
-                              onClick={() =>
-                                handleLpoLinesSort("lpo_total_price")
-                              }
-                            >
-                              TOTAL PRICE
-                              <span
-                                style={{
-                                  marginLeft: 4,
-                                  fontSize: 12,
-                                  color: "rgba(166,166,166,1)",
-                                }}
-                              >
-                                {lpoLinesSortCol === "lpo_total_price"
-                                  ? lpoLinesSortDir === "asc"
-                                    ? "↑"
-                                    : "↓"
-                                  : "↕"}
-                              </span>
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sortedLines.map((line, idx) => (
-                            <tr key={line.lpo_mr_line_id}>
-                              <td>{idx + 1}</td>
-                              <td>{line.material_description || "-"}</td>
-                              <td style={{ padding: "12px 20px" }}>
-                                {line.brand || line.specification ? (
-                                  <InfoPopUpButton
-                                    header="BRAND & SPECIFICATION"
-                                    text={
-                                      <>
-                                        <small>BRAND</small>
-                                        <h2>{line.brand || "-"}</h2>
-                                        <br />
-                                        <small>SPECIFICATION</small>
-                                        <h2>{line.specification || "-"}</h2>
-                                      </>
-                                    }
-                                  />
-                                ) : (
-                                  <span
-                                    style={{ color: "rgba(150,150,150,1)" }}
-                                  >
-                                    -
-                                  </span>
-                                )}
-                              </td>
-                              <td style={{ padding: "12px 20px" }}>
-                                {line.boq_line_ids ? (
-                                  <BoqReferencePopUp
-                                    mrHeader={mrHeader}
-                                    item={
-                                      {
-                                        id: line.mr_line_id,
-                                        boq_line_ids: line.boq_line_ids,
-                                      } as any
-                                    }
-                                  />
-                                ) : (
-                                  <span
-                                    style={{ color: "rgba(150,150,150,1)" }}
-                                  >
-                                    -
-                                  </span>
-                                )}
-                              </td>
-                              <td>
-                                {Number.isInteger(Number(line.qty))
-                                  ? Number(line.qty)
-                                  : parseFloat(
-                                      Number(line.qty).toFixed(3),
-                                    )}{" "}
-                                {line.unit}
-                              </td>
-                              <td>{formatPriceAED(line.lpo_unit_price)}</td>
-                              <td>{formatPriceAED(line.lpo_total_price)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          {/* SUBTOTAL */}
-                          <tr>
-                            <td colSpan={5} />
-                            <td
-                              style={{
-                                padding: "10px 20px",
-                                fontWeight: "600",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              SUBTOTAL
-                            </td>
-                            <td
-                              style={{
-                                padding: "10px 20px",
-                                fontWeight: "600",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {formatPriceAED(selectedLpo.subtotal)}
-                            </td>
-                          </tr>
-                          {/* SUBTOTAL W/ VAT (= total) */}
-                          <tr>
-                            <td colSpan={5} />
-                            <td
-                              style={{
-                                padding: "13px 20px",
-                                fontWeight: "600",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              SUBTOTAL W/ VAT
-                            </td>
-                            <td
-                              style={{
-                                padding: "13px 20px",
-                                fontWeight: "600",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {formatPriceAED(selectedLpo.total)}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    );
-                  })()
-                ) : (
-                  <div
-                    style={{
-                      padding: "25px 20px",
-                      color: "rgba(120,120,120,1)",
-                      fontSize: "13px",
-                    }}
-                  >
-                    No items found for this LPO.
-                  </div>
-                )}
-              </>
             )}
           </div>
         </div>
