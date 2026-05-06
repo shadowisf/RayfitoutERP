@@ -26,6 +26,7 @@ export const UNIT_OPTIONS = [
   "SHEET",
   "CARTON",
   "PACK",
+  "BUNDLE",
 ] as const;
 
 export type UnitType = (typeof UNIT_OPTIONS)[number];
