@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
          COALESCE(MAX(lpo_amounts.total_spent), 0)                        AS amount,
 
          GROUP_CONCAT(DISTINCT p.name ORDER BY p.name SEPARATOR '||')     AS projects,
+         GROUP_CONCAT(DISTINCT CONCAT(l.id, ':', l.mr_header_id, ':', COALESCE(per_lpo.lpo_spent, 0), ':', COALESCE(per_lpo_qty.lpo_qty, 0)) ORDER BY l.id SEPARATOR '||') AS lpo_ids,
 
          -- Last purchase date
          MAX(l.created_at)                                                 AS last_purchase_date,
@@ -75,6 +76,30 @@ export async function GET(req: NextRequest) {
        LEFT JOIN projects     p   ON mh.project_id  = p.id
        LEFT JOIN lpo_mr_line  lml ON lml.lpo_id     = l.id
        LEFT JOIN mr_lines     ml  ON ml.id           = lml.mr_line_id
+       -- Per-LPO spent amount for the hover popup
+       LEFT JOIN (
+         SELECT
+           l3.id AS lpo_id,
+           CASE
+             WHEN LOWER(IFNULL(l3.payment_status, ''))
+                  IN ('approved','paid','fully paid','completed','done')
+               THEN l3.total
+             ELSE COALESCE(pay3.total_paid, 0)
+           END AS lpo_spent
+         FROM lpo l3
+         LEFT JOIN (
+           SELECT lpo_id, SUM(amount) AS total_paid
+           FROM lpo_payments
+           GROUP BY lpo_id
+         ) pay3 ON pay3.lpo_id = l3.id
+       ) per_lpo ON per_lpo.lpo_id = l.id
+       -- Per-LPO quantity for the hover popup
+       LEFT JOIN (
+         SELECT lml2.lpo_id, ROUND(SUM(ml2.quantity), 3) AS lpo_qty
+         FROM lpo_mr_line lml2
+         JOIN mr_lines ml2 ON ml2.id = lml2.mr_line_id
+         GROUP BY lml2.lpo_id
+       ) per_lpo_qty ON per_lpo_qty.lpo_id = l.id
        -- Pre-aggregate amount per supplier to avoid multiplication by line items
        LEFT JOIN (
          SELECT
@@ -110,7 +135,13 @@ export async function GET(req: NextRequest) {
       payment_type:           row.payment_type,
       total_lpos:             Number(row.total_lpos),
       amount:                 Number(row.amount),
-      projects:               row.projects ? String(row.projects).split("||").filter(Boolean) : [],
+      projects:               row.projects  ? String(row.projects).split("||").filter(Boolean) : [],
+      lpo_ids:                row.lpo_ids
+        ? String(row.lpo_ids).split("||").filter(Boolean).map((s: string) => {
+            const [id, mrHeaderId, spent, qty] = s.split(":");
+            return { id: Number(id), mr_header_id: Number(mrHeaderId), spent: Number(spent), qty: Number(qty) };
+          })
+        : [],
       last_purchase_date:     row.last_purchase_date ?? null,
       qty_ordered:            row.qty_ordered            != null ? Number(row.qty_ordered)            : null,
       avg_price:              row.avg_price              != null ? Number(row.avg_price)              : null,

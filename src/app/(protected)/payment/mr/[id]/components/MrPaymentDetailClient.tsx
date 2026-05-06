@@ -78,7 +78,7 @@ const PAYMENT_TYPES = [
   "Advance payment",
   "Retention payment",
 ];
-const PAYMENT_METHODS = ["Bank transfer", "Cheque", "Cash", "Credit"];
+const PAYMENT_METHODS = ["Bank transfer", "Cheque", "Cash", "Credit card"];
 
 // ── File helpers ──────────────────────────────────────────────────────────────
 

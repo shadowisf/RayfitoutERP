@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import VendorsFilterButton, {
@@ -29,6 +35,7 @@ type Vendor = {
   avg_delivery_days: number | null;
   order_frequency_week: number | null;
   on_time_delivery_pct: number | null;
+  lpo_ids: { id: number; mr_header_id: number; spent: number; qty: number }[];
 };
 
 const ITEMS_PER_PAGE = 30;
@@ -47,37 +54,37 @@ const OPTIONAL_COLS = [
     key: "qty_ordered",
     header: "QTY ORDERED",
     render: (v: Vendor) =>
-      v.qty_ordered != null ? v.qty_ordered.toLocaleString() : "—",
+      v.qty_ordered != null ? v.qty_ordered.toLocaleString() : "-",
   },
   {
     key: "avg_price",
     header: "AVG PRICE",
     render: (v: Vendor) =>
-      v.avg_price != null ? `AED ${formatAED(v.avg_price)}` : "—",
+      v.avg_price != null ? `AED ${formatAED(v.avg_price)}` : "-",
   },
   {
     key: "median_price",
     header: "MEDIAN PRICE",
     render: (v: Vendor) =>
-      v.median_price != null ? `AED ${formatAED(v.median_price)}` : "—",
+      v.median_price != null ? `AED ${formatAED(v.median_price)}` : "-",
   },
   {
     key: "lowest_price",
     header: "LOWEST PRICE",
     render: (v: Vendor) =>
-      v.lowest_price != null ? `AED ${formatAED(v.lowest_price)}` : "—",
+      v.lowest_price != null ? `AED ${formatAED(v.lowest_price)}` : "-",
   },
   {
     key: "highest_price",
     header: "HIGHEST PRICE",
     render: (v: Vendor) =>
-      v.highest_price != null ? `AED ${formatAED(v.highest_price)}` : "—",
+      v.highest_price != null ? `AED ${formatAED(v.highest_price)}` : "-",
   },
   {
     key: "last_purchase_date",
     header: "LAST PURCHASE DATE",
     render: (v: Vendor) =>
-      v.last_purchase_date ? formatDate(v.last_purchase_date) : "—",
+      v.last_purchase_date ? formatDate(v.last_purchase_date) : "-",
   },
 ];
 
@@ -96,28 +103,28 @@ const METRIC_COLS: Record<
     bubbleLabel: "On-time Delivery %",
     sortKey: "on_time_delivery_pct",
     render: (v) =>
-      v.on_time_delivery_pct != null ? `${v.on_time_delivery_pct}%` : "—",
+      v.on_time_delivery_pct != null ? `${v.on_time_delivery_pct}%` : "-",
   },
   order_completion: {
     header: "ORDER COMPLETION RATE",
     bubbleLabel: "Order Completion Rate",
     sortKey: "order_completion_rate",
     render: (v) =>
-      v.order_completion_rate != null ? `${v.order_completion_rate}%` : "—",
+      v.order_completion_rate != null ? `${v.order_completion_rate}%` : "-",
   },
   avg_delivery_time: {
     header: "AVG DELIVERY TIME",
     bubbleLabel: "Avg. Delivery Time",
     sortKey: "avg_delivery_days",
     render: (v) =>
-      v.avg_delivery_days != null ? `${v.avg_delivery_days} days` : "—",
+      v.avg_delivery_days != null ? `${v.avg_delivery_days} days` : "-",
   },
   order_frequency: {
     header: "ORDER FREQ/WEEK",
     bubbleLabel: "Order Frequency/Week",
     sortKey: "order_frequency_week",
     render: (v) =>
-      v.order_frequency_week != null ? `${v.order_frequency_week}` : "—",
+      v.order_frequency_week != null ? `${v.order_frequency_week}` : "-",
   },
 };
 
@@ -164,7 +171,7 @@ function getVendorTypeStyle(type: string): {
 }
 
 function VendorTypePill({ type }: { type: string }) {
-  if (!type || type === "—") return <span>—</span>;
+  if (!type || type === "—") return <span>-</span>;
   return (
     <div
       className="approval-pill normal-text centered"
@@ -179,6 +186,7 @@ function VendorTypePill({ type }: { type: string }) {
 export default function VendorsReportPage() {
   const searchIcon = "/icons/search.svg";
   const settingsIcon = "/icons/gear.svg";
+  const externalLinkIcon = "/icons/external-link.svg";
 
   const [data, setData] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -197,6 +205,31 @@ export default function VendorsReportPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
+
+  // LPO hover popup state
+  const [hoveredLpoSupplierId, setHoveredLpoSupplierId] = useState<
+    number | null
+  >(null);
+  const [hoveredColumn, setHoveredColumn] = useState<
+    "lpos" | "spent" | "qty_ordered" | null
+  >(null);
+  const [lpoPopupRect, setLpoPopupRect] = useState<DOMRect | null>(null);
+  const lpoHideTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const startLpoHideTimer = useCallback(() => {
+    if (lpoHideTimer.current) clearTimeout(lpoHideTimer.current);
+    lpoHideTimer.current = setTimeout(() => {
+      setHoveredLpoSupplierId(null);
+      setHoveredColumn(null);
+    }, 120);
+  }, []);
+
+  const cancelLpoHideTimer = useCallback(() => {
+    if (lpoHideTimer.current) {
+      clearTimeout(lpoHideTimer.current);
+      lpoHideTimer.current = null;
+    }
+  }, []);
 
   // Build query string — date filter by LPO created_at
   const queryStr = useMemo(() => {
@@ -303,6 +336,11 @@ export default function VendorsReportPage() {
       return sortDir === "asc" ? cmp : -cmp;
     });
   }, [filtered, sortCol, sortDir]);
+
+  const filteredTotal = useMemo(
+    () => sorted.reduce((sum, r) => sum + r.amount, 0),
+    [sorted],
+  );
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / ITEMS_PER_PAGE));
   const paginated = useMemo(() => {
@@ -713,7 +751,7 @@ export default function VendorsReportPage() {
                   </th>
                   <th>#</th>
                   <th>VENDOR</th>
-                  <th>VENDOR TYPE</th>
+                  <th>TYPE</th>
                   <th
                     style={{ cursor: "pointer", userSelect: "none" }}
                     onClick={() => handleSort("total_lpos")}
@@ -789,14 +827,98 @@ export default function VendorsReportPage() {
                       />
                     </td>
                     <td>{(currentPage - 1) * ITEMS_PER_PAGE + i + 1}</td>
-                    <td style={{ fontWeight: 600 }}>{row.supplier_name}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "10px",
+                          alignItems: "center",
+                        }}
+                      >
+                        {row.supplier_name}
+
+                        <Button
+                          componentType={"link"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"rgba(223, 223, 223, 1)"}
+                          textColor={"black"}
+                          style={{ padding: "7px 7px" }}
+                          href={`/vendor/${row.supplier_id}`}
+                        >
+                          <img src={externalLinkIcon} alt="open" />
+                        </Button>
+                      </div>
+                    </td>
                     <td>
                       <VendorTypePill type={row.payment_type} />
                     </td>
-                    <td>{row.total_lpos}</td>
-                    <td>AED {formatAED(row.amount)}</td>
+                    <td
+                      style={{ cursor: "default" }}
+                      onMouseEnter={(e) => {
+                        if (!row.lpo_ids.length) return;
+                        cancelLpoHideTimer();
+                        if (hoveredLpoSupplierId === row.supplier_id) return;
+                        setHoveredLpoSupplierId(row.supplier_id);
+                        setHoveredColumn("lpos");
+                        setLpoPopupRect(
+                          (
+                            e.currentTarget as HTMLElement
+                          ).getBoundingClientRect(),
+                        );
+                      }}
+                      onMouseLeave={startLpoHideTimer}
+                    >
+                      {row.total_lpos}
+                    </td>
+                    <td
+                      style={{ cursor: "default" }}
+                      onMouseEnter={(e) => {
+                        if (!row.lpo_ids.length) return;
+                        cancelLpoHideTimer();
+                        if (hoveredLpoSupplierId === row.supplier_id) return;
+                        setHoveredLpoSupplierId(row.supplier_id);
+                        setHoveredColumn("spent");
+                        setLpoPopupRect(
+                          (
+                            e.currentTarget as HTMLElement
+                          ).getBoundingClientRect(),
+                        );
+                      }}
+                      onMouseLeave={startLpoHideTimer}
+                    >
+                      AED {formatAED(row.amount)}
+                    </td>
                     {optionalColsToShow.map((c) => (
-                      <td key={c.key} style={{ whiteSpace: "nowrap" }}>
+                      <td
+                        key={c.key}
+                        style={{
+                          whiteSpace: "nowrap",
+                          cursor:
+                            c.key === "qty_ordered" ? "default" : undefined,
+                        }}
+                        onMouseEnter={
+                          c.key === "qty_ordered"
+                            ? (e) => {
+                                if (!row.lpo_ids.length) return;
+                                cancelLpoHideTimer();
+                                if (hoveredLpoSupplierId === row.supplier_id)
+                                  return;
+                                setHoveredLpoSupplierId(row.supplier_id);
+                                setHoveredColumn("qty_ordered");
+                                setLpoPopupRect(
+                                  (
+                                    e.currentTarget as HTMLElement
+                                  ).getBoundingClientRect(),
+                                );
+                              }
+                            : undefined
+                        }
+                        onMouseLeave={
+                          c.key === "qty_ordered"
+                            ? startLpoHideTimer
+                            : undefined
+                        }
+                      >
                         {c.render(row)}
                       </td>
                     ))}
@@ -809,6 +931,24 @@ export default function VendorsReportPage() {
                   </tr>
                 ))}
               </tbody>
+              {/* <tfoot>
+                <tr>
+                  <td colSpan={5} />
+                  <td style={{ fontWeight: "600", whiteSpace: "nowrap" }}>
+                    AED {formatAED(filteredTotal)}
+                  </td>
+                  {optionalColsToShow.length + metricColsToShow.length > 0 && (
+                    <td
+                      colSpan={
+                        optionalColsToShow.length + metricColsToShow.length + 1
+                      }
+                    />
+                  )}
+                  {optionalColsToShow.length + metricColsToShow.length === 0 && (
+                    <td />
+                  )}
+                </tr>
+              </tfoot> */}
             </table>
           </div>
 
@@ -853,6 +993,103 @@ export default function VendorsReportPage() {
           )}
         </>
       )}
+
+      {/* ── LPO hover popup ── */}
+      {hoveredLpoSupplierId !== null &&
+        lpoPopupRect &&
+        (() => {
+          const vendor = sorted.find(
+            (r) => r.supplier_id === hoveredLpoSupplierId,
+          );
+          if (!vendor) return null;
+          const popupWidth = hoveredColumn === "lpos" ? 320 : 400;
+          const spaceRight = window.innerWidth - lpoPopupRect.right;
+          const left =
+            spaceRight >= popupWidth + 10
+              ? lpoPopupRect.right + 8
+              : lpoPopupRect.left - popupWidth - 8;
+          const top = Math.min(lpoPopupRect.top, window.innerHeight - 400);
+          return (
+            <div
+              onMouseEnter={cancelLpoHideTimer}
+              onMouseLeave={() => {
+                setHoveredLpoSupplierId(null);
+                setHoveredColumn(null);
+              }}
+              style={{
+                position: "fixed",
+                left: Math.max(8, left),
+                top: Math.max(8, top),
+                backgroundColor: "white",
+                border: "1px solid rgba(223,223,223,1)",
+                borderRadius: "10px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                zIndex: 10000,
+                minWidth: `${popupWidth}px`,
+                maxWidth: `${popupWidth}px`,
+                maxHeight: "400px",
+                overflowY: "auto",
+                padding: "0",
+              }}
+            >
+              <div style={{ padding: "12px" }}>
+                <table
+                  className="items-table popup-hover"
+                  style={{ width: "100%" }}
+                >
+                  <thead>
+                    <tr>
+                      <th>MR NUMBER</th>
+                      <th>LPO NUMBER</th>
+                      {hoveredColumn === "spent" && <th>SPENT</th>}
+                      {hoveredColumn === "qty_ordered" && <th>QTY</th>}
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vendor.lpo_ids.map(
+                      ({ id: lpoId, mr_header_id, spent, qty }) => (
+                        <tr key={lpoId}>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            MR-{String(mr_header_id).padStart(5, "0")}
+                          </td>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            LPO-{String(lpoId).padStart(5, "0")}
+                          </td>
+                          {hoveredColumn === "spent" && (
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              AED {formatAED(spent)}
+                            </td>
+                          )}
+                          {hoveredColumn === "qty_ordered" && (
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              {Number.isInteger(qty)
+                                ? qty
+                                : parseFloat(qty.toFixed(3))}
+                            </td>
+                          )}
+                          <td>
+                            <Button
+                              componentType={"link"}
+                              bgColor={"rgba(239, 239, 239, 1)"}
+                              borderColor={"rgba(223, 223, 223, 1)"}
+                              textColor={"black"}
+                              style={{ padding: "7px 7px" }}
+                              onClick={(e) => e.stopPropagation()}
+                              href={`/mr/${mr_header_id}/lpo/${lpoId}`}
+                            >
+                              <img src={externalLinkIcon} alt="open" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ),
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }

@@ -273,6 +273,11 @@ export default function AllTransactionsPage() {
     }
   };
 
+  const filteredTotal = useMemo(
+    () => sorted.reduce((sum, r) => sum + r.total, 0),
+    [sorted],
+  );
+
   const totalPages = Math.max(1, Math.ceil(sorted.length / ITEMS_PER_PAGE));
 
   const paginated = useMemo(() => {
@@ -674,9 +679,9 @@ export default function AllTransactionsPage() {
                       </Button>
                     </div>
                   </td>
-                  <td>{row.vendor_name}</td>
-                  <td>{row.requester}</td>
-                  <td>{row.project_name}</td>
+                  <td>{row.vendor_name || "-"}</td>
+                  <td>{!row.requester || row.requester === "—" ? "-" : row.requester}</td>
+                  <td>{!row.project_name || row.project_name === "—" ? "-" : row.project_name}</td>
                   <td>
                     <VendorTypePill type={row.vendor_type} />
                   </td>
@@ -685,6 +690,15 @@ export default function AllTransactionsPage() {
                 </tr>
               ))}
             </tbody>
+            {/* <tfoot>
+              <tr>
+                <td colSpan={6} />
+                <td style={{ fontWeight: "600", whiteSpace: "nowrap" }}>
+                  AED {formatAED(filteredTotal)}
+                </td>
+                <td />
+              </tr>
+            </tfoot> */}
           </table>
 
           {/* ── Pagination ── */}

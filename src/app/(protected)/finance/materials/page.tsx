@@ -21,6 +21,7 @@ import {
 import Button from "@/app/components/Button";
 import MaterialsFilterButton, {
   MaterialFilters,
+  CategoryGroup,
 } from "./components/_MaterialsFilterButton";
 import DateRangeButton, {
   DateRange,
@@ -37,6 +38,7 @@ type MaterialRow = {
   lowest_price: number;
   total_spent: number;
   projects: string[];
+  lpo_details: { mr_header_id: number; lpo_id: number; qty: number; unit_price: number; total_price: number }[];
 };
 
 type CategoryRow = {
@@ -61,6 +63,7 @@ const DEFAULT_FILTERS: MaterialFilters = {
   selectedProjects: [],
   spentMin: "",
   spentMax: "",
+  selectedCategories: [],
 };
 
 const CHART_COLORS = [
@@ -492,6 +495,9 @@ export default function MaterialsReportPage() {
   const [tableData, setTableData] = useState<MaterialRow[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [categoryHierarchy, setCategoryHierarchy] = useState<
+    { level_2: string; value: string }[]
+  >([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<MaterialFilters>(DEFAULT_FILTERS);
@@ -506,7 +512,37 @@ export default function MaterialsReportPage() {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
-  // ── Query string → re-fetch on date/vendorType change ─────────────────────
+  // Column hover popup (QTY ORDERED / LOWEST PRICE / TOTAL SPENT)
+  const [hoveredMatKey, setHoveredMatKey] = useState<string | null>(null);
+  const [hoveredMatCol, setHoveredMatCol] = useState<"qty" | "lowest_price" | "total_spent" | null>(null);
+  const [matPopupRect, setMatPopupRect] = useState<DOMRect | null>(null);
+  const matHideTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const startMatHideTimer = useCallback(() => {
+    if (matHideTimer.current) clearTimeout(matHideTimer.current);
+    matHideTimer.current = setTimeout(() => {
+      setHoveredMatKey(null);
+      setHoveredMatCol(null);
+      setMatPopupRect(null);
+    }, 120);
+  }, []);
+
+  const cancelMatHideTimer = useCallback(() => {
+    if (matHideTimer.current) {
+      clearTimeout(matHideTimer.current);
+      matHideTimer.current = null;
+    }
+  }, []);
+
+  // ── Fetch category hierarchy once on mount ─────────────────────────────────
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`)
+      .then((r) => r.json())
+      .then((d) => setCategoryHierarchy(Array.isArray(d) ? d : []))
+      .catch(console.error);
+  }, []);
+
+  // ── Query string → re-fetch on date/vendorType/category change ────────────
   const queryStr = useMemo(() => {
     const p = new URLSearchParams();
     if (dateRange.start)
@@ -515,8 +551,10 @@ export default function MaterialsReportPage() {
       p.set("endDate", dateRange.end.toISOString().split("T")[0]);
     if (filters.selectedVendorTypes.length > 0)
       p.set("vendorType", filters.selectedVendorTypes.join(","));
+    if (filters.selectedCategories.length > 0)
+      p.set("category", filters.selectedCategories.join(","));
     return p.toString();
-  }, [dateRange, filters.selectedVendorTypes]);
+  }, [dateRange, filters.selectedVendorTypes, filters.selectedCategories]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -544,6 +582,21 @@ export default function MaterialsReportPage() {
     const max = Math.max(...tableData.map((v) => v.total_spent));
     return { min: 0, max: Math.ceil(max / 10000) * 10000 };
   }, [tableData]);
+
+  // Build grouped category list from hierarchy, filtered to categories present in current data
+  const categoryGroups = useMemo<CategoryGroup[]>(() => {
+    const presentCategories = new Set(categoryData.map((r) => r.category_name));
+    const groupMap = new Map<string, string[]>();
+    categoryHierarchy.forEach(({ level_2, value }) => {
+      if (presentCategories.has(value)) {
+        if (!groupMap.has(level_2)) groupMap.set(level_2, []);
+        groupMap.get(level_2)!.push(value);
+      }
+    });
+    return Array.from(groupMap.entries())
+      .map(([name, items]) => ({ name, items: items.sort() }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [categoryData, categoryHierarchy]);
 
   // ── Filtered + paginated rows ──────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -602,7 +655,8 @@ export default function MaterialsReportPage() {
     filters.selectedVendorTypes.length > 0 ||
     filters.selectedProjects.length > 0 ||
     filters.spentMin !== "" ||
-    filters.spentMax !== "";
+    filters.spentMax !== "" ||
+    filters.selectedCategories.length > 0;
 
   // ── Row expand toggle ──────────────────────────────────────────────────────
   const toggleExpand = (key: string) =>
@@ -759,162 +813,154 @@ export default function MaterialsReportPage() {
       </div>
 
       {/* ── Spending By Categories ── */}
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: 15,
-          padding: "20px 28px",
-          marginBottom: 24,
-        }}
-      >
-        <p
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+        <div
           style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: "rgba(74,85,101,1)",
-            marginBottom: 16,
+            backgroundColor: "white",
+            borderRadius: 15,
+            padding: "20px 28px",
+            marginBottom: 24,
+            minHeight: 280,
           }}
         >
-          Spending By Categories
-        </p>
-
-        {isLoading ? (
-          <p style={{ fontSize: 13, color: "#999" }}>Loading…</p>
-        ) : !chartData.length ? (
-          <p style={{ fontSize: 13, color: "#999" }}>
-            No category data available
+          <p
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "rgba(74,85,101,1)",
+              marginBottom: 16,
+            }}
+          >
+            Spending By Categories
           </p>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-            {/* Donut */}
-            <div
-              style={{
-                position: "relative",
-                width: 200,
-                height: 200,
-                flexShrink: 0,
-              }}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={62}
-                    outerRadius={92}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {chartData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    content={<PieTooltip />}
-                    wrapperStyle={{ zIndex: 100 }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Centre label */}
+
+          {isLoading ? (
+            <p style={{ fontSize: 13, color: "#999" }}>Loading…</p>
+          ) : !chartData.length ? (
+            <p style={{ fontSize: 13, color: "#999" }}>
+              No category data available
+            </p>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+              {/* Donut */}
               <div
                 style={{
-                  position: "absolute",
-                  inset: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  pointerEvents: "none",
+                  position: "relative",
+                  width: 200,
+                  height: 200,
+                  flexShrink: 0,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      backgroundColor: CHART_COLORS[0],
-                      display: "inline-block",
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "rgba(30,30,30,1)",
-                    }}
-                  >
-                    {formatAEDShort(totalCategorySpend)} AED
-                  </span>
-                </div>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={62}
+                      outerRadius={92}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {chartData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={<PieTooltip />}
+                      wrapperStyle={{ zIndex: 100 }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Legend */}
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                {chartData.map((item, i) => {
+                  const isActive = filters.selectedCategories.includes(item.name);
+                  return (
+                    <div
+                      key={i}
+                      onClick={() =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          selectedCategories: isActive
+                            ? prev.selectedCategories.filter(
+                                (c) => c !== item.name,
+                              )
+                            : [...prev.selectedCategories, item.name],
+                        }))
+                      }
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "16px 1fr auto auto",
+                        alignItems: "center",
+                        gap: "6px 12px",
+                        cursor: "pointer",
+                        padding: "5px 8px",
+                        borderRadius: 8,
+                        backgroundColor: isActive
+                          ? "rgba(0,128,76,0.07)"
+                          : "transparent",
+                        transition: "background-color 0.12s",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          backgroundColor: item.color,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          color: "rgba(30,30,30,1)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {item.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: "rgba(120,120,120,1)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {item.item_count.toLocaleString()} Items
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: "rgba(30,30,30,1)",
+                          whiteSpace: "nowrap",
+                          fontWeight: 600,
+                        }}
+                      >
+                        AED {formatAED(item.value)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-
-            {/* Legend */}
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-              }}
-            >
-              {chartData.map((item, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "16px 1fr auto auto",
-                    alignItems: "center",
-                    gap: "6px 12px",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      backgroundColor: item.color,
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      color: "rgba(30,30,30,1)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {item.name}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "rgba(120,120,120,1)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {item.item_count.toLocaleString()} Items
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "rgba(30,30,30,1)",
-                      whiteSpace: "nowrap",
-                      fontWeight: 600,
-                    }}
-                  >
-                    AED {formatAED(item.value)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
+        <div></div>
       </div>
 
       {/* ── Row 2: Filter + bubbles (left) | Date (right) ── */}
@@ -939,6 +985,7 @@ export default function MaterialsReportPage() {
         >
           <MaterialsFilterButton
             projects={allProjects}
+            categoryGroups={categoryGroups}
             currentFilters={filters}
             onApplyFilters={setFilters}
             spentBounds={spentBounds}
@@ -1008,6 +1055,26 @@ export default function MaterialsReportPage() {
                     {filters.selectedProjects[0].toUpperCase()}
                     {filters.selectedProjects.length > 1 &&
                       `, +${filters.selectedProjects.length - 1} MORE`}
+                  </span>
+                </Button>
+              )}
+              {filters.selectedCategories.length > 0 && (
+                <Button
+                  componentType="none"
+                  bgColor="rgba(239,239,239,1)"
+                  borderColor="transparent"
+                  textColor="black"
+                  style={{
+                    borderRadius: 50,
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  CATEGORY:{" "}
+                  <span style={{ color: "rgba(16,185,129,1)" }}>
+                    {filters.selectedCategories[0].toUpperCase()}
+                    {filters.selectedCategories.length > 1 &&
+                      `, +${filters.selectedCategories.length - 1} MORE`}
                   </span>
                 </Button>
               )}
@@ -1177,7 +1244,24 @@ export default function MaterialsReportPage() {
                         >
                           {row.top_supplier}
                         </td>
-                        <td>{row.qty_order.toLocaleString()}</td>
+                        {/* QTY ORDERED */}
+                        <td
+                          style={{ cursor: "default" }}
+                          onMouseEnter={(e) => {
+                            if (!row.lpo_details.length) return;
+                            cancelMatHideTimer();
+                            if (hoveredMatKey === rowKey) return;
+                            setHoveredMatKey(rowKey);
+                            setHoveredMatCol("qty");
+                            setMatPopupRect(
+                              (e.currentTarget as HTMLElement).getBoundingClientRect(),
+                            );
+                          }}
+                          onMouseLeave={startMatHideTimer}
+                        >
+                          {row.qty_order.toLocaleString()}
+                        </td>
+                        {/* AVG. PRICE — no hover */}
                         <td
                           style={{
                             color: "rgba(198,169,0,1)",
@@ -1187,16 +1271,43 @@ export default function MaterialsReportPage() {
                         >
                           AED {formatAED(row.avg_price)}
                         </td>
+                        {/* LOWEST PRICE */}
                         <td
                           style={{
                             color: "rgba(2,122,70,1)",
                             fontWeight: 600,
                             whiteSpace: "nowrap",
+                            cursor: "default",
                           }}
+                          onMouseEnter={(e) => {
+                            if (!row.lpo_details.length) return;
+                            cancelMatHideTimer();
+                            if (hoveredMatKey === rowKey) return;
+                            setHoveredMatKey(rowKey);
+                            setHoveredMatCol("lowest_price");
+                            setMatPopupRect(
+                              (e.currentTarget as HTMLElement).getBoundingClientRect(),
+                            );
+                          }}
+                          onMouseLeave={startMatHideTimer}
                         >
                           AED {formatAED(row.lowest_price)}
                         </td>
-                        <td style={{ whiteSpace: "nowrap" }}>
+                        {/* TOTAL SPENT */}
+                        <td
+                          style={{ whiteSpace: "nowrap", cursor: "default" }}
+                          onMouseEnter={(e) => {
+                            if (!row.lpo_details.length) return;
+                            cancelMatHideTimer();
+                            if (hoveredMatKey === rowKey) return;
+                            setHoveredMatKey(rowKey);
+                            setHoveredMatCol("total_spent");
+                            setMatPopupRect(
+                              (e.currentTarget as HTMLElement).getBoundingClientRect(),
+                            );
+                          }}
+                          onMouseLeave={startMatHideTimer}
+                        >
                           AED {formatAED(row.total_spent)}
                         </td>
                       </tr>
@@ -1271,6 +1382,110 @@ export default function MaterialsReportPage() {
           )}
         </>
       )}
+
+      {/* ── Column hover popup (QTY / LOWEST PRICE / TOTAL SPENT) ── */}
+      {hoveredMatKey !== null &&
+        hoveredMatCol !== null &&
+        matPopupRect &&
+        (() => {
+          const material = sorted.find(
+            (r) => r.material_description === hoveredMatKey,
+          );
+          if (!material) return null;
+          const popupWidth = hoveredMatCol === "qty" ? 360 : 420;
+          const spaceRight = window.innerWidth - matPopupRect.right;
+          const left =
+            spaceRight >= popupWidth + 10
+              ? matPopupRect.right + 8
+              : matPopupRect.left - popupWidth - 8;
+          const top = Math.min(matPopupRect.top, window.innerHeight - 400);
+          return (
+            <div
+              onMouseEnter={cancelMatHideTimer}
+              onMouseLeave={() => {
+                setHoveredMatKey(null);
+                setHoveredMatCol(null);
+                setMatPopupRect(null);
+              }}
+              style={{
+                position: "fixed",
+                left: Math.max(8, left),
+                top: Math.max(8, top),
+                backgroundColor: "white",
+                border: "1px solid rgba(223,223,223,1)",
+                borderRadius: "10px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                zIndex: 10000,
+                minWidth: `${popupWidth}px`,
+                maxWidth: `${popupWidth}px`,
+                maxHeight: "400px",
+                overflowY: "auto",
+              }}
+            >
+              <div style={{ padding: "12px" }}>
+                <table
+                  className="items-table popup-hover"
+                  style={{ width: "100%" }}
+                >
+                  <thead>
+                    <tr>
+                      <th>MR NUMBER</th>
+                      <th>LPO NUMBER</th>
+                      {hoveredMatCol === "qty" && <th>QTY</th>}
+                      {hoveredMatCol === "lowest_price" && <th>PRICE</th>}
+                      {hoveredMatCol === "total_spent" && <th>PRICE</th>}
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {material.lpo_details.map(
+                      ({ mr_header_id, lpo_id, qty, unit_price, total_price }, idx) => (
+                        <tr key={idx}>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            MR-{String(mr_header_id).padStart(5, "0")}
+                          </td>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            LPO-{String(lpo_id).padStart(5, "0")}
+                          </td>
+                          {hoveredMatCol === "qty" && (
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              {Number.isInteger(qty)
+                                ? qty
+                                : parseFloat(qty.toFixed(3))}
+                            </td>
+                          )}
+                          {hoveredMatCol === "lowest_price" && (
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              AED {formatAED(unit_price)}
+                            </td>
+                          )}
+                          {hoveredMatCol === "total_spent" && (
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              AED {formatAED(total_price)}
+                            </td>
+                          )}
+                          <td>
+                            <Button
+                              componentType={"link"}
+                              bgColor={"rgba(239, 239, 239, 1)"}
+                              borderColor={"rgba(223, 223, 223, 1)"}
+                              textColor={"black"}
+                              style={{ padding: "7px 7px" }}
+                              onClick={(e) => e.stopPropagation()}
+                              href={`/mr/${mr_header_id}/lpo/${lpo_id}`}
+                            >
+                              <img src="/icons/external-link.svg" alt="open" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ),
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }

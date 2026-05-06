@@ -72,6 +72,10 @@ a {
     font-size: 14.1px;
     font-weight: 600;
 
+    &:hover {
+      opacity: 0.75 !important;
+    }
+
     img {
       width: 12px;
     }
@@ -104,6 +108,7 @@ button {
 
   &:hover {
     cursor: pointer;
+    opacity: 0.75;
   }
 
   &.custom {

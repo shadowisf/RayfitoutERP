@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
 
     const searchTerm = `%${query}%`;
 
-    // Extract numeric ID from patterns like MR-00001, LPO-00012, BOQ-00003, PR-00001
-    const idMatch = query.match(/^(?:MR|JO|PR|LPO|BOQ|RAY|DN|TA)-?(\d+)$/i);
+    // Extract numeric ID from patterns like MR-00001, LPO-00012, BOQ-00003, PR-00001, VEN-00001
+    const idMatch = query.match(/^(?:MR|JO|PR|LPO|BOQ|RAY|DN|TA|VEN)-?(\d+)$/i);
     const numericId = idMatch ? parseInt(idMatch[1], 10) : null;
 
     // Also try parsing as a plain number
@@ -297,6 +297,23 @@ export async function GET(req: NextRequest) {
       [searchTerm, searchTerm, searchTerm, searchTerm, numericId || plainNumber || -1],
     );
 
+    // 9. Search Vendors
+    const [vendorRows]: any = await db.query(
+      `SELECT
+        id,
+        CONCAT('VEN-', LPAD(id, 5, '0')) as display_id,
+        name,
+        type
+      FROM suppliers
+      WHERE
+        CONCAT('VEN-', LPAD(id, 5, '0')) LIKE ?
+        OR name LIKE ?
+        OR id = ?
+      ORDER BY name ASC
+      LIMIT 5`,
+      [searchTerm, searchTerm, numericId || plainNumber || -1],
+    );
+
     // Parse document rows into individual document entries
     const parseFiles = (val: any): string[] => {
       if (!val) return [];
@@ -452,6 +469,11 @@ export async function GET(req: NextRequest) {
           ...row,
           category: "TRANSACTION",
           url: `__transaction__${row.id}`,
+        })),
+        vendors: vendorRows.map((row: any) => ({
+          ...row,
+          category: "VENDOR",
+          url: `/vendor/${row.id}`,
         })),
         documents: documents.slice(0, 15),
       },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import Link from "next/link";
+import Button from "@/app/components/Button";
 
 type TopVendor = {
   supplier_id: number;
@@ -76,26 +76,18 @@ export default function FinanceTopVendorsBySpendWidget() {
         }}
       >
         <h2 style={{ margin: 0 }}>Top Vendors By Spend</h2>
-        <Link
+
+        <Button
+          componentType={"link"}
           href="/finance/vendors"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "7px 14px",
-            borderRadius: 50,
-            border: "1px solid rgba(223,223,223,1)",
-            backgroundColor: "white",
-            fontSize: 12,
-            fontWeight: 600,
-            color: "rgba(30,30,30,1)",
-            textDecoration: "none",
-            whiteSpace: "nowrap",
-          }}
+          bgColor={"white"}
+          borderColor={"rgba(223,223,223,1)"}
+          textColor={"black"}
+          style={{ borderRadius: 50, fontSize: "12px" }}
         >
           VIEW FULL REPORT
-          <span style={{ fontSize: 14, lineHeight: 1 }}>›</span>
-        </Link>
+          <span>›</span>
+        </Button>
       </div>
       <div
         style={{
@@ -123,20 +115,70 @@ export default function FinanceTopVendorsBySpendWidget() {
             <thead>
               <tr>
                 {/* VENDOR — not sortable */}
-                <th style={{ textAlign: "left", padding: "9px 12px", fontSize: "12px", fontWeight: 700, width: "auto", whiteSpace: "nowrap", backgroundColor: "rgba(245,246,248,1)", borderRadius: "50px 0 0 50px" }}>
+                <th
+                  style={{
+                    textAlign: "left",
+                    padding: "9px 12px",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    width: "auto",
+                    whiteSpace: "nowrap",
+                    backgroundColor: "rgba(245,246,248,1)",
+                    borderRadius: "50px 0 0 50px",
+                  }}
+                >
                   VENDOR
                 </th>
                 {/* PAYMENT TYPE — not sortable */}
-                <th style={{ textAlign: "left", padding: "9px 12px", fontSize: "12px", fontWeight: 700, width: "16%", whiteSpace: "nowrap", backgroundColor: "rgba(245,246,248,1)" }}>
+                <th
+                  style={{
+                    textAlign: "left",
+                    padding: "9px 12px",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    width: "16%",
+                    whiteSpace: "nowrap",
+                    backgroundColor: "rgba(245,246,248,1)",
+                  }}
+                >
                   PAYMENT TYPE
                 </th>
                 {/* TOTAL LPOS — sortable */}
-                <th onClick={() => handleSort("total_lpos")} style={{ textAlign: "left", padding: "9px 12px", fontSize: "12px", fontWeight: 700, width: "14%", whiteSpace: "nowrap", backgroundColor: "rgba(245,246,248,1)", cursor: "pointer", userSelect: "none" }}>
-                  TOTAL LPOS<SortIcon active={sortKey === "total_lpos"} dir={sortDir} />
+                <th
+                  onClick={() => handleSort("total_lpos")}
+                  style={{
+                    textAlign: "left",
+                    padding: "9px 12px",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    width: "14%",
+                    whiteSpace: "nowrap",
+                    backgroundColor: "rgba(245,246,248,1)",
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                >
+                  TOTAL LPOS
+                  <SortIcon active={sortKey === "total_lpos"} dir={sortDir} />
                 </th>
                 {/* TOTAL SPENT — sortable */}
-                <th onClick={() => handleSort("amount")} style={{ textAlign: "left", padding: "9px 12px", fontSize: "12px", fontWeight: 700, width: "20%", whiteSpace: "nowrap", backgroundColor: "rgba(245,246,248,1)", borderRadius: "0 50px 50px 0", cursor: "pointer", userSelect: "none" }}>
-                  TOTAL SPENT<SortIcon active={sortKey === "amount"} dir={sortDir} />
+                <th
+                  onClick={() => handleSort("amount")}
+                  style={{
+                    textAlign: "left",
+                    padding: "9px 12px",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    width: "20%",
+                    whiteSpace: "nowrap",
+                    backgroundColor: "rgba(245,246,248,1)",
+                    borderRadius: "0 50px 50px 0",
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                >
+                  TOTAL SPENT
+                  <SortIcon active={sortKey === "amount"} dir={sortDir} />
                 </th>
               </tr>
             </thead>

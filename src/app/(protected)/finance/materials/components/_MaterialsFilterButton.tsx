@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 
@@ -9,10 +9,14 @@ export type MaterialFilters = {
   selectedProjects: string[];
   spentMin: string;
   spentMax: string;
+  selectedCategories: string[];
 };
+
+export type CategoryGroup = { name: string; items: string[] };
 
 type Props = {
   projects: string[];
+  categoryGroups: CategoryGroup[];
   currentFilters: MaterialFilters;
   onApplyFilters: (filters: MaterialFilters) => void;
   spentBounds: { min: number; max: number };
@@ -133,6 +137,235 @@ function SearchableChecklist({
                 </label>
               </div>
             ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Indeterminate checkbox helper ────────────────────────────────────────────
+function IndeterminateCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      style={{
+        width: 18,
+        height: 18,
+        cursor: "pointer",
+        accentColor: "rgba(0, 163, 93, 1)",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+// ── Grouped searchable checklist (for Material Categories) ────────────────────
+function GroupedSearchableChecklist({
+  label,
+  groups,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  groups: CategoryGroup[];
+  selected: string[];
+  onToggle: (item: string, checked: boolean) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
+
+  const allItems = groups.flatMap((g) => g.items);
+  const allSelected =
+    allItems.length > 0 && allItems.every((i) => selected.includes(i));
+  const anySelected = allItems.some((i) => selected.includes(i));
+
+  const toggleExpand = (idx: number) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  };
+
+  const isGroupAllChecked = (g: CategoryGroup) =>
+    g.items.length > 0 && g.items.every((i) => selected.includes(i));
+  const isGroupSomeChecked = (g: CategoryGroup) =>
+    g.items.some((i) => selected.includes(i)) && !isGroupAllChecked(g);
+
+  const q = query.trim().toLowerCase();
+  const visibleGroups = groups
+    .map((g, originalIdx) => ({
+      ...g,
+      originalIdx,
+      items: q
+        ? g.items.filter(
+            (i) =>
+              i.toLowerCase().includes(q) || g.name.toLowerCase().includes(q),
+          )
+        : g.items,
+    }))
+    .filter((g) => g.items.length > 0);
+
+  return (
+    <div style={{ marginBottom: 30 }}>
+      <h3 style={{ marginBottom: 15, fontSize: 14, fontWeight: 600 }}>
+        {label}
+      </h3>
+      <div
+        style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}
+      >
+        {/* Search */}
+        <div style={{ position: "relative", marginBottom: 15 }}>
+          <input
+            type="text"
+            placeholder="SEARCH"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "10px 40px 10px 15px",
+              borderRadius: 8,
+              border: "1px solid rgba(223,223,223,1)",
+              fontSize: 14,
+              backgroundColor: "rgba(245,245,245,1)",
+            }}
+          />
+          <img
+            src="/icons/search.svg"
+            alt="search"
+            style={{
+              position: "absolute",
+              right: 15,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 16,
+              height: 16,
+              opacity: 0.5,
+            }}
+          />
+        </div>
+
+        {/* Select All */}
+        <div style={{ marginBottom: 10 }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              cursor: "pointer",
+            }}
+          >
+            <IndeterminateCheckbox
+              checked={allSelected}
+              indeterminate={!allSelected && anySelected}
+              onChange={(e) =>
+                allItems.forEach((i) => onToggle(i, e.target.checked))
+              }
+            />
+            <h4>Select All</h4>
+          </label>
+        </div>
+
+        {/* Groups */}
+        <div style={{ maxHeight: 260, overflowY: "auto" }}>
+          {visibleGroups.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 20, color: "#888" }}>
+              No items found
+            </div>
+          ) : (
+            visibleGroups.map((group) => {
+              const isExpanded =
+                q !== "" || expandedGroups.has(group.originalIdx);
+              const groupAllChecked = isGroupAllChecked(group);
+              const groupSomeChecked = isGroupSomeChecked(group);
+
+              return (
+                <div
+                  key={`group-${group.originalIdx}`}
+                  style={{ marginBottom: 10 }}
+                >
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <IndeterminateCheckbox
+                      checked={groupAllChecked}
+                      indeterminate={groupSomeChecked}
+                      onChange={(e) =>
+                        group.items.forEach((i) =>
+                          onToggle(i, e.target.checked),
+                        )
+                      }
+                    />
+                    <h4
+                      style={{
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                      onClick={() => toggleExpand(group.originalIdx)}
+                    >
+                      {group.name || "Uncategorized"}
+                      <span
+                        style={{ fontSize: 10, color: "#888", lineHeight: 1 }}
+                      >
+                        {isExpanded ? "∧" : "∨"}
+                      </span>
+                    </h4>
+                  </div>
+
+                  {isExpanded && (
+                    <div style={{ marginLeft: 28, marginTop: 6 }}>
+                      {group.items.map((item, itemIdx) => (
+                        <div
+                          key={`${group.originalIdx}::${itemIdx}`}
+                          style={{ marginBottom: 8 }}
+                        >
+                          <label
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              cursor: "pointer",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selected.includes(item)}
+                              onChange={(e) => onToggle(item, e.target.checked)}
+                              style={{
+                                width: 18,
+                                height: 18,
+                                cursor: "pointer",
+                                accentColor: "rgba(0, 163, 93, 1)",
+                                flexShrink: 0,
+                              }}
+                            />
+                            <h4>{item}</h4>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </div>
@@ -412,6 +645,7 @@ function DualRangeSlider({
 // ── Main filter button ────────────────────────────────────────────────────────
 export default function MaterialsFilterButton({
   projects,
+  categoryGroups,
   currentFilters,
   onApplyFilters,
   spentBounds,
@@ -426,6 +660,9 @@ export default function MaterialsFilterButton({
   );
   const [localSpentMin, setLocalSpentMin] = useState(currentFilters.spentMin);
   const [localSpentMax, setLocalSpentMax] = useState(currentFilters.spentMax);
+  const [localCategories, setLocalCategories] = useState<string[]>(
+    currentFilters.selectedCategories,
+  );
 
   // Sync local state when reopened
   useEffect(() => {
@@ -434,6 +671,7 @@ export default function MaterialsFilterButton({
       setLocalProjects(currentFilters.selectedProjects);
       setLocalSpentMin(currentFilters.spentMin);
       setLocalSpentMax(currentFilters.spentMax);
+      setLocalCategories(currentFilters.selectedCategories);
     }
   }, [isOpen]);
 
@@ -447,12 +685,18 @@ export default function MaterialsFilterButton({
       checked ? [...prev, project] : prev.filter((p) => p !== project),
     );
 
+  const toggleCategory = (item: string, checked: boolean) =>
+    setLocalCategories((prev) =>
+      checked ? [...prev, item] : prev.filter((c) => c !== item),
+    );
+
   const handleApply = () => {
     onApplyFilters({
       selectedVendorTypes: localVendorTypes,
       selectedProjects: localProjects,
       spentMin: localSpentMin,
       spentMax: localSpentMax,
+      selectedCategories: localCategories,
     });
     setIsOpen(false);
   };
@@ -463,11 +707,13 @@ export default function MaterialsFilterButton({
       selectedProjects: [],
       spentMin: "",
       spentMax: "",
+      selectedCategories: [],
     };
     setLocalVendorTypes([]);
     setLocalProjects([]);
     setLocalSpentMin("");
     setLocalSpentMax("");
+    setLocalCategories([]);
     onApplyFilters(empty);
   };
 
@@ -525,7 +771,7 @@ export default function MaterialsFilterButton({
           </div>
 
           {/* VENDOR TYPE */}
-          <div style={{ marginBottom: 10 }}>
+          <div style={{ marginBottom: 30 }}>
             <h3 style={{ marginBottom: 15, fontSize: 14, fontWeight: 600 }}>
               VENDOR TYPE
             </h3>
@@ -556,6 +802,14 @@ export default function MaterialsFilterButton({
               ))}
             </div>
           </div>
+
+          {/* MATERIAL CATEGORIES — flat list */}
+          <SearchableChecklist
+            label="MATERIAL CATEGORIES"
+            items={categoryGroups.flatMap((g) => g.items)}
+            selected={localCategories}
+            onToggle={toggleCategory}
+          />
         </FormPopUp>
       )}
     </>

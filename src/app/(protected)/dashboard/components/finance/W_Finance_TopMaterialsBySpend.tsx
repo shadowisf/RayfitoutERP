@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import Button from "@/app/components/Button";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type MaterialRow = {
@@ -47,7 +48,8 @@ const COLORS = [
 // ─── Pie tooltip ─────────────────────────────────────────────────────────────
 const PieTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
-  const { color, value } = payload[0];
+  const { value } = payload[0];
+  const color = payload[0].payload?.color ?? payload[0].fill;
   return (
     <div
       style={{
@@ -146,26 +148,18 @@ export default function FinanceTopMaterialsBySpendWidget() {
         }}
       >
         <h2 style={{ margin: 0 }}>Top Materials By Spend</h2>
-        <Link
+
+        <Button
+          componentType={"link"}
           href="/finance/materials"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "7px 14px",
-            borderRadius: 50,
-            border: "1px solid rgba(223,223,223,1)",
-            backgroundColor: "white",
-            fontSize: 12,
-            fontWeight: 600,
-            color: "rgba(30,30,30,1)",
-            textDecoration: "none",
-            whiteSpace: "nowrap",
-          }}
+          bgColor={"white"}
+          borderColor={"rgba(223,223,223,1)"}
+          textColor={"black"}
+          style={{ borderRadius: 50, fontSize: "12px" }}
         >
           VIEW FULL REPORT
-          <span style={{ fontSize: 14, lineHeight: 1 }}>›</span>
-        </Link>
+          <span>›</span>
+        </Button>
       </div>
       <div
         style={{
