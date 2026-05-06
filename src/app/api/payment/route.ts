@@ -48,6 +48,12 @@ export async function POST(request: NextRequest) {
         LEFT JOIN lut_mr_headers_progress pr ON l.progress_id = pr.id
         WHERE l.mr_header_id = ?
           AND l.progress_id NOT IN (13, 25)
+          AND NOT (
+            LOWER(IFNULL(l.payment_status, '')) = 'approved'
+            AND l.payment_file IS NOT NULL
+            AND l.payment_file != ''
+            AND l.payment_file != '[]'
+          )
         ORDER BY l.id ASC`,
         [mrHeaderId],
       );

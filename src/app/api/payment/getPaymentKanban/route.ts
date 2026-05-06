@@ -16,6 +16,7 @@ export async function GET() {
         l.payment_status,
         l.created_at,
         s.name        AS supplier_name,
+        s.type        AS supplier_type,
         mh.requested_by,
         mh.department_id,
         mh.required_date,

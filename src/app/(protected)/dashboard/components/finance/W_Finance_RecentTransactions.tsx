@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import Button from "@/app/components/Button";
 
 type RecentTransaction = {
   display_id: string;
@@ -87,26 +88,18 @@ export default function FinanceRecentTransactionsWidget() {
         >
           Recent Transactions
         </p>
-        <Link
+
+        <Button
+          componentType={"link"}
           href="/finance/transactions"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "7px 14px",
-            borderRadius: 50,
-            border: "1px solid rgba(223,223,223,1)",
-            backgroundColor: "white",
-            fontSize: 12,
-            fontWeight: 600,
-            color: "rgba(30,30,30,1)",
-            textDecoration: "none",
-            whiteSpace: "nowrap",
-          }}
+          bgColor={"white"}
+          borderColor={"rgba(223,223,223,1)"}
+          textColor={"black"}
+          style={{ borderRadius: 50, fontSize: "12px" }}
         >
           VIEW FULL REPORT
-          <span style={{ fontSize: 14, lineHeight: 1 }}>›</span>
-        </Link>
+          <span>›</span>
+        </Button>
       </div>
 
       {isLoading ? (
@@ -161,7 +154,8 @@ export default function FinanceRecentTransactionsWidget() {
                   userSelect: "none",
                 }}
               >
-                AMOUNT<SortIcon active={sortKey === "amount"} dir={sortDir} />
+                AMOUNT
+                <SortIcon active={sortKey === "amount"} dir={sortDir} />
               </th>
             </tr>
           </thead>

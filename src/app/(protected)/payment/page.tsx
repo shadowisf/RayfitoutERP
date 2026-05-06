@@ -13,6 +13,7 @@ type LpoCard = {
   total: number;
   delivery_date: string;
   supplier_name: string;
+  supplier_type: string | null;
   requested_by: string;
   department_id: number;
   department_name: string;
@@ -54,9 +55,15 @@ export default function Payments() {
       .catch(console.error);
   }, []);
 
+  // ── Credit vendor filter — comment out the next two lines to show all types ─
+  const visibleLpoCards = lpoCards.filter(
+    (lpo) => lpo.supplier_type?.toLowerCase() !== "credit",
+  );
+  // ── End credit filter ──────────────────────────────────────────────────────
+
   // ── Group by MR ─────────────────────────────────────────────────────────────
   const mrGroupsMap = new Map<number, MrGroup>();
-  for (const lpo of lpoCards) {
+  for (const lpo of visibleLpoCards) {
     if (!mrGroupsMap.has(lpo.mr_header_id)) {
       mrGroupsMap.set(lpo.mr_header_id, {
         mr_header_id: lpo.mr_header_id,

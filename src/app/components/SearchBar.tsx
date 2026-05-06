@@ -45,6 +45,7 @@ interface SearchResults {
   projects: SearchResult[];
   inventory: SearchResult[];
   transactions: SearchResult[];
+  vendors: SearchResult[];
   documents: SearchResult[];
 }
 
@@ -156,6 +157,8 @@ function getSubtitle(item: SearchResult): string {
       return [item.type, item.project_name].filter(Boolean).join(" - ");
     case "INVENTORY":
       return [item.description].filter(Boolean).join(" - ");
+    case "VENDOR":
+      return [item.name].filter(Boolean).join(" - ");
     default:
       return "";
   }
@@ -301,6 +304,7 @@ export default function SearchBar() {
       results.projects.length > 0 ||
       (results.inventory?.length || 0) > 0 ||
       (results.transactions?.length || 0) > 0 ||
+      (results.vendors?.length || 0) > 0 ||
       (results.documents?.length || 0) > 0);
 
   const totalResults = results
@@ -310,6 +314,7 @@ export default function SearchBar() {
       results.projects.length +
       (results.inventory?.length || 0) +
       (results.transactions?.length || 0) +
+      (results.vendors?.length || 0) +
       (results.documents?.length || 0)
     : 0;
 
@@ -346,6 +351,12 @@ export default function SearchBar() {
       categorizedResults.push({
         category: "TRANSACTION",
         items: results.transactions,
+      });
+    }
+    if (results.vendors?.length > 0) {
+      categorizedResults.push({
+        category: "VENDOR",
+        items: results.vendors,
       });
     }
     if (results.documents?.length > 0) {

@@ -144,6 +144,11 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       count: mrActionCount,
     },
     { label: "Projects", path: "/project", icon: "/icons/projects.svg" },
+    {
+      label: "Payments",
+      path: "/payment",
+      icon: "/icons/payment-black.svg",
+    },
     /* {
       label: "Local Purchase Orders",
       path: "/lpo",
@@ -155,7 +160,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       icon: "/icons/boq.svg",
     }, */
     {
-      label: "Financial Analytics",
+      label: "Finances",
       path: "/finance",
       icon: "/icons/bar-chart.svg",
       visibleTo: [8],
@@ -165,11 +170,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       path: "/vendor",
       icon: "/icons/vendors.svg",
     },
-    {
-      label: "Payments",
-      path: "/payment",
-      icon: "/icons/payment-black.svg",
-    },
+
     /* TEMPORARILY DISABLED - Resolution Center
     {
       label: "Resolution Center",
