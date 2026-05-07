@@ -19,6 +19,7 @@ type MrHeaderData = {
   project_id: number;
   project_name: string;
   requested_by: string;
+  requested_for: string;
   department_id: number;
   department_name: string;
   required_date: string;
@@ -778,6 +779,7 @@ export default function QuickPriceApprovalWidget() {
       department_id: currentMr.department_id,
       department_name: currentMr.department_name,
       requested_by: currentMr.requested_by,
+      requested_for: currentMr.requested_for,
       required_date: currentMr.required_date,
       priority: "",
       purpose_id: 0,
