@@ -1045,7 +1045,7 @@ export default function MR() {
         style={{
           position: "sticky",
           top: 0,
-          zIndex: 49,
+          zIndex: 1,
           backgroundColor: "rgba(248, 249, 251, 1)",
           marginTop: "-100px",
           paddingTop: "100px",
