@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 
@@ -171,323 +172,329 @@ export default function MrFilterButton({
         FILTER <img src={filterIcon} alt="filter" />
       </Button>
 
-      {isOpen && (
-        <FormPopUp
-          header={"FILTER REQUESTS"}
-          setIsOpen={setIsOpen}
-          addButtonLabel="CONFIRM"
-          handleSubmit={handleApply}
-          style={{ minWidth: "600px" }}
-          secondButton={
-            <Button
-              componentType={"button"}
-              bgColor={"white"}
-              borderColor={"black"}
-              textColor={"black"}
-              onClick={handleReset}
-            >
-              RESET
-            </Button>
-          }
-        >
-          {/* Request Type Section */}
-          <div style={{ marginBottom: "30px" }}>
-            <h3
-              style={{
-                marginBottom: "15px",
-                fontSize: "14px",
-                fontWeight: "600",
-              }}
-            >
-              REQUEST TYPE
-            </h3>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-              {[
-                { value: "all", label: "All" },
-                { value: "material", label: "Material Request" },
-                { value: "job", label: "Job Order" },
-                { value: "payment", label: "Payment Request" },
-              ].map((option) => (
-                <label
-                  key={option.value}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="requestType"
-                    value={option.value}
-                    checked={requestType === option.value}
-                    onChange={(e) => setRequestType(e.target.value)}
+      {isOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <FormPopUp
+            header={"FILTER REQUESTS"}
+            setIsOpen={setIsOpen}
+            addButtonLabel="CONFIRM"
+            handleSubmit={handleApply}
+            style={{ minWidth: "600px" }}
+            secondButton={
+              <Button
+                componentType={"button"}
+                bgColor={"white"}
+                borderColor={"black"}
+                textColor={"black"}
+                type="button"
+                onClick={handleReset}
+              >
+                RESET
+              </Button>
+            }
+          >
+            {/* Request Type Section */}
+            <div style={{ marginBottom: "30px" }}>
+              <h3
+                style={{
+                  marginBottom: "15px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                REQUEST TYPE
+              </h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+                {[
+                  { value: "all", label: "All" },
+                  { value: "material", label: "Material Request" },
+                  { value: "job", label: "Job Order" },
+                  { value: "payment", label: "Payment Request" },
+                ].map((option) => (
+                  <label
+                    key={option.value}
                     style={{
-                      width: "18px",
-                      height: "18px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
                       cursor: "pointer",
-                    }}
-                  />
-                  <h4>{option.label}</h4>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Items Requested In Section */}
-          <div style={{ marginBottom: "30px" }}>
-            <h3
-              style={{
-                marginBottom: "15px",
-                fontSize: "14px",
-                fontWeight: "600",
-              }}
-            >
-              ITEMS REQUESTED IN
-            </h3>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-              {[
-                { value: "all", label: "All Times" },
-                { value: "24h", label: "Last 24 Hours" },
-                { value: "3d", label: "Last 3 Days" },
-                { value: "7d", label: "Last 7 Days" },
-                { value: "14d", label: "Last 14 Days" },
-                { value: "30d", label: "Last 30 Days" },
-              ].map((option) => (
-                <label
-                  key={option.value}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="itemsRequestedIn"
-                    value={option.value}
-                    checked={itemsRequestedIn === option.value}
-                    onChange={(e) => setItemsRequestedIn(e.target.value)}
-                    style={{
-                      width: "18px",
-                      height: "18px",
-                      cursor: "pointer",
-                    }}
-                  />
-                  <h4>{option.label}</h4>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Department Section */}
-          <div style={{ marginBottom: "30px" }}>
-            <h3
-              style={{
-                marginBottom: "15px",
-                fontSize: "14px",
-                fontWeight: "600",
-              }}
-            >
-              DEPARTMENT
-            </h3>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-              {departmentOptions.map((dept) => (
-                <label
-                  key={dept.departmentId}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedDepartments.includes(dept.departmentId)}
-                    onChange={(e) =>
-                      handleDepartmentChange(
-                        dept.departmentId,
-                        e.target.checked,
-                      )
-                    }
-                    style={{
-                      width: "18px",
-                      height: "18px",
-                      cursor: "pointer",
-                      accentColor: "#10b981",
-                    }}
-                  />
-                  <h4>{dept.label}</h4>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Stage Section */}
-          <div style={{ marginBottom: "30px" }}>
-            <h3
-              style={{
-                marginBottom: "15px",
-                fontSize: "14px",
-                fontWeight: "600",
-              }}
-            >
-              STAGE
-            </h3>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-              {stageOptions.map((stage) => (
-                <label
-                  key={stage.progressId}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    cursor: "pointer",
-                    minWidth: "200px",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedStages.includes(stage.progressId)}
-                    onChange={(e) =>
-                      handleStageChange(stage.progressId, e.target.checked)
-                    }
-                    style={{
-                      width: "18px",
-                      height: "18px",
-                      cursor: "pointer",
-                      accentColor: "#10b981",
-                    }}
-                  />
-                  <h4>{stage.label}</h4>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Projects Section */}
-          <div style={{ marginBottom: "30px" }}>
-            <h3
-              style={{
-                marginBottom: "15px",
-                fontSize: "14px",
-                fontWeight: "600",
-              }}
-            >
-              PROJECTS
-            </h3>
-
-            <div
-              style={{
-                border: "1px solid #e5e7eb",
-                borderRadius: "8px",
-                padding: "10px",
-              }}
-            >
-              <div style={{ position: "relative", marginBottom: "15px" }}>
-                <input
-                  type="text"
-                  placeholder="SEARCH"
-                  value={projectSearchQuery}
-                  onChange={(e) => setProjectSearchQuery(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 40px 10px 15px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(223, 223, 223, 1)",
-                    fontSize: "14px",
-                    backgroundColor: "rgba(245, 245, 245, 1)",
-                  }}
-                />
-                <img
-                  src={searchIcon}
-                  alt="search"
-                  style={{
-                    position: "absolute",
-                    right: "15px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    width: "16px",
-                    height: "16px",
-                    opacity: 0.5,
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: "10px" }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isAllProjectsSelected}
-                    onChange={(e) => handleSelectAllProjects(e.target.checked)}
-                    style={{
-                      width: "18px",
-                      height: "18px",
-                      cursor: "pointer",
-                      accentColor: "#10b981",
-                    }}
-                  />
-                  <h4>Select All</h4>
-                </label>
-              </div>
-
-              <div style={{ maxHeight: "250px", overflowY: "auto" }}>
-                {filteredProjects.length > 0 ? (
-                  filteredProjects.map((project) => (
-                    <div key={project.id} style={{ marginBottom: "10px" }}>
-                      <label
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedProjects.includes(project.id)}
-                          onChange={(e) =>
-                            handleProjectChange(project.id, e.target.checked)
-                          }
-                          style={{
-                            width: "18px",
-                            height: "18px",
-                            cursor: "pointer",
-                            accentColor: "#10b981",
-                          }}
-                        />
-                        <h4>{project.name}</h4>
-                      </label>
-                    </div>
-                  ))
-                ) : (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "20px",
-                      color: "#888",
                     }}
                   >
-                    No projects found
-                  </div>
-                )}
+                    <input
+                      type="radio"
+                      name="requestType"
+                      value={option.value}
+                      checked={requestType === option.value}
+                      onChange={(e) => setRequestType(e.target.value)}
+                      style={{
+                        width: "18px",
+                        height: "18px",
+                        cursor: "pointer",
+                      }}
+                    />
+                    <h4>{option.label}</h4>
+                  </label>
+                ))}
               </div>
             </div>
-          </div>
-        </FormPopUp>
-      )}
+
+            {/* Items Requested In Section */}
+            <div style={{ marginBottom: "30px" }}>
+              <h3
+                style={{
+                  marginBottom: "15px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                ITEMS REQUESTED IN
+              </h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+                {[
+                  { value: "all", label: "All Times" },
+                  { value: "24h", label: "Last 24 Hours" },
+                  { value: "3d", label: "Last 3 Days" },
+                  { value: "7d", label: "Last 7 Days" },
+                  { value: "14d", label: "Last 14 Days" },
+                  { value: "30d", label: "Last 30 Days" },
+                ].map((option) => (
+                  <label
+                    key={option.value}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="itemsRequestedIn"
+                      value={option.value}
+                      checked={itemsRequestedIn === option.value}
+                      onChange={(e) => setItemsRequestedIn(e.target.value)}
+                      style={{
+                        width: "18px",
+                        height: "18px",
+                        cursor: "pointer",
+                      }}
+                    />
+                    <h4>{option.label}</h4>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Department Section */}
+            <div style={{ marginBottom: "30px" }}>
+              <h3
+                style={{
+                  marginBottom: "15px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                DEPARTMENT
+              </h3>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+                {departmentOptions.map((dept) => (
+                  <label
+                    key={dept.departmentId}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedDepartments.includes(dept.departmentId)}
+                      onChange={(e) =>
+                        handleDepartmentChange(
+                          dept.departmentId,
+                          e.target.checked,
+                        )
+                      }
+                      style={{
+                        width: "18px",
+                        height: "18px",
+                        cursor: "pointer",
+                        accentColor: "#10b981",
+                      }}
+                    />
+                    <h4>{dept.label}</h4>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Stage Section */}
+            <div style={{ marginBottom: "30px" }}>
+              <h3
+                style={{
+                  marginBottom: "15px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                STAGE
+              </h3>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+                {stageOptions.map((stage) => (
+                  <label
+                    key={stage.progressId}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      cursor: "pointer",
+                      minWidth: "200px",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedStages.includes(stage.progressId)}
+                      onChange={(e) =>
+                        handleStageChange(stage.progressId, e.target.checked)
+                      }
+                      style={{
+                        width: "18px",
+                        height: "18px",
+                        cursor: "pointer",
+                        accentColor: "#10b981",
+                      }}
+                    />
+                    <h4>{stage.label}</h4>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Projects Section */}
+            <div style={{ marginBottom: "30px" }}>
+              <h3
+                style={{
+                  marginBottom: "15px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                PROJECTS
+              </h3>
+
+              <div
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "10px",
+                }}
+              >
+                <div style={{ position: "relative", marginBottom: "15px" }}>
+                  <input
+                    type="text"
+                    placeholder="SEARCH"
+                    value={projectSearchQuery}
+                    onChange={(e) => setProjectSearchQuery(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 15px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(223, 223, 223, 1)",
+                      fontSize: "14px",
+                      backgroundColor: "rgba(245, 245, 245, 1)",
+                    }}
+                  />
+                  <img
+                    src={searchIcon}
+                    alt="search"
+                    style={{
+                      position: "absolute",
+                      right: "15px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: "16px",
+                      height: "16px",
+                      opacity: 0.5,
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "10px" }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isAllProjectsSelected}
+                      onChange={(e) =>
+                        handleSelectAllProjects(e.target.checked)
+                      }
+                      style={{
+                        width: "18px",
+                        height: "18px",
+                        cursor: "pointer",
+                        accentColor: "#10b981",
+                      }}
+                    />
+                    <h4>Select All</h4>
+                  </label>
+                </div>
+
+                <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                  {filteredProjects.length > 0 ? (
+                    filteredProjects.map((project) => (
+                      <div key={project.id} style={{ marginBottom: "10px" }}>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedProjects.includes(project.id)}
+                            onChange={(e) =>
+                              handleProjectChange(project.id, e.target.checked)
+                            }
+                            style={{
+                              width: "18px",
+                              height: "18px",
+                              cursor: "pointer",
+                              accentColor: "#10b981",
+                            }}
+                          />
+                          <h4>{project.name}</h4>
+                        </label>
+                      </div>
+                    ))
+                  ) : (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "20px",
+                        color: "#888",
+                      }}
+                    >
+                      No projects found
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </FormPopUp>,
+          document.body,
+        )}
     </>
   );
 }
