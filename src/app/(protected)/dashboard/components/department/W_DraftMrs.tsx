@@ -36,10 +36,8 @@ export default function DraftMrsWidget({ filterDays }: props) {
       if (hideTimer.current) clearTimeout(hideTimer.current);
       setShowPopup(false);
     };
-    window.addEventListener("scroll", handleCloseHover, true);
     window.addEventListener("blur", handleCloseHover);
     return () => {
-      window.removeEventListener("scroll", handleCloseHover, true);
       window.removeEventListener("blur", handleCloseHover);
     };
   }, []);

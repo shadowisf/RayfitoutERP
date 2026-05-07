@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 
@@ -8,16 +9,19 @@ export type PaymentFilters = {
   selectedVendors: string[];
   selectedPaymentTypes: string[];
   selectedStatuses: string[];
+  selectedProjects: string[];
 };
 
 export const defaultPaymentFilters: PaymentFilters = {
   selectedVendors: [],
   selectedPaymentTypes: [],
-  selectedStatuses: [],
+  selectedStatuses: ["Unpaid"],
+  selectedProjects: [],
 };
 
 type Props = {
   vendors: string[];
+  projects: string[];
   onApplyFilters: (filters: PaymentFilters) => void;
   currentFilters: PaymentFilters;
 };
@@ -27,6 +31,7 @@ const STATUS_OPTIONS = ["Paid", "Unpaid"];
 
 export default function PaymentFilterButton({
   vendors,
+  projects,
   onApplyFilters,
   currentFilters,
 }: Props) {
@@ -43,18 +48,24 @@ export default function PaymentFilterButton({
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(
     currentFilters.selectedStatuses,
   );
+  const [selectedProjects, setSelectedProjects] = useState<string[]>(
+    currentFilters.selectedProjects,
+  );
   const [vendorSearch, setVendorSearch] = useState("");
+  const [projectSearch, setProjectSearch] = useState("");
 
   const handleOpen = () => {
     setSelectedVendors(currentFilters.selectedVendors);
     setSelectedPaymentTypes(currentFilters.selectedPaymentTypes);
     setSelectedStatuses(currentFilters.selectedStatuses);
+    setSelectedProjects(currentFilters.selectedProjects);
     setVendorSearch("");
+    setProjectSearch("");
     setIsOpen(true);
   };
 
   const handleApply = () => {
-    onApplyFilters({ selectedVendors, selectedPaymentTypes, selectedStatuses });
+    onApplyFilters({ selectedVendors, selectedPaymentTypes, selectedStatuses, selectedProjects });
     setIsOpen(false);
   };
 
@@ -62,7 +73,9 @@ export default function PaymentFilterButton({
     setSelectedVendors([]);
     setSelectedPaymentTypes([]);
     setSelectedStatuses([]);
+    setSelectedProjects([]);
     setVendorSearch("");
+    setProjectSearch("");
   };
 
   // Vendor handlers
@@ -70,29 +83,36 @@ export default function PaymentFilterButton({
     v.toLowerCase().includes(vendorSearch.toLowerCase()),
   );
   const isAllVendorsSelected = selectedVendors.length === vendors.length;
-
-  const handleSelectAllVendors = (checked: boolean) => {
+  const handleSelectAllVendors = (checked: boolean) =>
     setSelectedVendors(checked ? [...vendors] : []);
-  };
-  const handleVendorChange = (vendor: string, checked: boolean) => {
+  const handleVendorChange = (vendor: string, checked: boolean) =>
     setSelectedVendors((prev) =>
       checked ? [...prev, vendor] : prev.filter((v) => v !== vendor),
     );
-  };
+
+  // Project handlers
+  const filteredProjects = projects.filter((p) =>
+    p.toLowerCase().includes(projectSearch.toLowerCase()),
+  );
+  const isAllProjectsSelected = selectedProjects.length === projects.length;
+  const handleSelectAllProjects = (checked: boolean) =>
+    setSelectedProjects(checked ? [...projects] : []);
+  const handleProjectChange = (project: string, checked: boolean) =>
+    setSelectedProjects((prev) =>
+      checked ? [...prev, project] : prev.filter((p) => p !== project),
+    );
 
   // Payment type handlers
-  const handlePaymentTypeChange = (type: string, checked: boolean) => {
+  const handlePaymentTypeChange = (type: string, checked: boolean) =>
     setSelectedPaymentTypes((prev) =>
       checked ? [...prev, type] : prev.filter((t) => t !== type),
     );
-  };
 
   // Status handlers
-  const handleStatusChange = (status: string, checked: boolean) => {
+  const handleStatusChange = (status: string, checked: boolean) =>
     setSelectedStatuses((prev) =>
       checked ? [...prev, status] : prev.filter((s) => s !== status),
     );
-  };
 
   return (
     <>
@@ -107,7 +127,9 @@ export default function PaymentFilterButton({
         FILTER <img src={filterIcon} alt="filter" />
       </Button>
 
-      {isOpen && (
+      {isOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
         <FormPopUp
           header="FILTER PAYMENTS"
           setIsOpen={setIsOpen}
@@ -120,6 +142,7 @@ export default function PaymentFilterButton({
               bgColor="white"
               borderColor="black"
               textColor="black"
+              type="button"
               onClick={handleReset}
             >
               RESET
@@ -128,23 +151,10 @@ export default function PaymentFilterButton({
         >
           {/* VENDOR */}
           <div style={{ marginBottom: "30px" }}>
-            <h3
-              style={{
-                marginBottom: "15px",
-                fontSize: "14px",
-                fontWeight: 600,
-              }}
-            >
+            <h3 style={{ marginBottom: "15px", fontSize: "14px", fontWeight: 600 }}>
               VENDOR
             </h3>
-            <div
-              style={{
-                border: "1px solid #e5e7eb",
-                borderRadius: "8px",
-                padding: "10px",
-              }}
-            >
-              {/* search */}
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "10px" }}>
               <div style={{ position: "relative", marginBottom: "15px" }}>
                 <input
                   type="text"
@@ -174,17 +184,8 @@ export default function PaymentFilterButton({
                   }}
                 />
               </div>
-
-              {/* select all */}
               <div style={{ marginBottom: "10px" }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    cursor: "pointer",
-                  }}
-                >
+                <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     className="filter-checkbox"
@@ -194,40 +195,92 @@ export default function PaymentFilterButton({
                   <h4>Select All</h4>
                 </label>
               </div>
-
-              {/* list */}
-              <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+              <div style={{ maxHeight: "200px", overflowY: "auto" }}>
                 {filteredVendors.map((vendor) => (
                   <div key={vendor} style={{ marginBottom: "10px" }}>
-                    <label
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        cursor: "pointer",
-                      }}
-                    >
+                    <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
                       <input
                         type="checkbox"
                         className="filter-checkbox"
                         checked={selectedVendors.includes(vendor)}
-                        onChange={(e) =>
-                          handleVendorChange(vendor, e.target.checked)
-                        }
+                        onChange={(e) => handleVendorChange(vendor, e.target.checked)}
                       />
                       <h4>{vendor}</h4>
                     </label>
                   </div>
                 ))}
                 {filteredVendors.length === 0 && (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "20px",
-                      color: "#888",
-                    }}
-                  >
+                  <div style={{ textAlign: "center", padding: "20px", color: "#888" }}>
                     No vendors found
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* PROJECT */}
+          <div style={{ marginBottom: "30px" }}>
+            <h3 style={{ marginBottom: "15px", fontSize: "14px", fontWeight: 600 }}>
+              PROJECT
+            </h3>
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "10px" }}>
+              <div style={{ position: "relative", marginBottom: "15px" }}>
+                <input
+                  type="text"
+                  placeholder="Search"
+                  value={projectSearch}
+                  onChange={(e) => setProjectSearch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 40px 10px 15px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(223, 223, 223, 1)",
+                    fontSize: "14px",
+                    backgroundColor: "rgba(245, 245, 245, 1)",
+                  }}
+                />
+                <img
+                  src={searchIcon}
+                  alt="search"
+                  style={{
+                    position: "absolute",
+                    right: "15px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: "16px",
+                    height: "16px",
+                    opacity: 0.5,
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    className="filter-checkbox"
+                    checked={isAllProjectsSelected}
+                    onChange={(e) => handleSelectAllProjects(e.target.checked)}
+                  />
+                  <h4>Select All</h4>
+                </label>
+              </div>
+              <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                {filteredProjects.map((project) => (
+                  <div key={project} style={{ marginBottom: "10px" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        className="filter-checkbox"
+                        checked={selectedProjects.includes(project)}
+                        onChange={(e) => handleProjectChange(project, e.target.checked)}
+                      />
+                      <h4>{project}</h4>
+                    </label>
+                  </div>
+                ))}
+                {filteredProjects.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "20px", color: "#888" }}>
+                    No projects found
                   </div>
                 )}
               </div>
@@ -236,33 +289,20 @@ export default function PaymentFilterButton({
 
           {/* PAYMENT TYPE */}
           <div style={{ marginBottom: "30px" }}>
-            <h3
-              style={{
-                marginBottom: "15px",
-                fontSize: "14px",
-                fontWeight: 600,
-              }}
-            >
+            <h3 style={{ marginBottom: "15px", fontSize: "14px", fontWeight: 600 }}>
               PAYMENT TYPE
             </h3>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
               {PAYMENT_TYPE_OPTIONS.map((type) => (
                 <label
                   key={type}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    cursor: "pointer",
-                  }}
+                  style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
                 >
                   <input
                     type="checkbox"
                     className="filter-checkbox"
                     checked={selectedPaymentTypes.includes(type)}
-                    onChange={(e) =>
-                      handlePaymentTypeChange(type, e.target.checked)
-                    }
+                    onChange={(e) => handlePaymentTypeChange(type, e.target.checked)}
                   />
                   <h4>{type}</h4>
                 </label>
@@ -272,41 +312,29 @@ export default function PaymentFilterButton({
 
           {/* STATUS */}
           <div style={{ marginBottom: "10px" }}>
-            <h3
-              style={{
-                marginBottom: "15px",
-                fontSize: "14px",
-                fontWeight: 600,
-              }}
-            >
+            <h3 style={{ marginBottom: "15px", fontSize: "14px", fontWeight: 600 }}>
               STATUS
             </h3>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
               {STATUS_OPTIONS.map((status) => (
                 <label
                   key={status}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    cursor: "pointer",
-                  }}
+                  style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
                 >
                   <input
                     type="checkbox"
                     className="filter-checkbox"
                     checked={selectedStatuses.includes(status)}
-                    onChange={(e) =>
-                      handleStatusChange(status, e.target.checked)
-                    }
+                    onChange={(e) => handleStatusChange(status, e.target.checked)}
                   />
                   <h4>{status}</h4>
                 </label>
               ))}
             </div>
           </div>
-        </FormPopUp>
-      )}
+        </FormPopUp>,
+        document.body,
+        )}
     </>
   );
 }

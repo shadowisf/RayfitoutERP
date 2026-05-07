@@ -52,10 +52,8 @@ export default function PendingApprovalMrsWidget({ filterDays }: props) {
 
   useEffect(() => {
     const handleCloseHover = () => setShowPopup(false);
-    window.addEventListener("scroll", handleCloseHover, true);
     window.addEventListener("blur", handleCloseHover);
     return () => {
-      window.removeEventListener("scroll", handleCloseHover, true);
       window.removeEventListener("blur", handleCloseHover);
     };
   }, []);

@@ -4,8 +4,8 @@ import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
-import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { useAuth } from "@/app/context/AuthContext";
+// FormPopUp is still used for the Reject Payment modal
 import { toast } from "@/app/components/Toast";
 import { formatPriceAED } from "@/lib/formatPrice";
 import BoqReferencePopUp from "@/app/(protected)/mr/components/BoqReferencePopUp";
@@ -14,6 +14,8 @@ import DocumentsPopup from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/sto
 import RequisitionTimeline from "@/app/(protected)/mr/[id]/components/RequisitionTimeline";
 import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 import InputItem from "@/app/components/InputItem";
+import CommentsSection from "@/app/components/CommentsSection";
+import RecordPaymentForm from "@/app/(protected)/payment/components/_RecordPaymentForm";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,14 +74,6 @@ type LpoDetail = {
 
 type Props = { mrHeaderId: number; mrHeader: MrHeader; children: ReactNode };
 
-const PAYMENT_TYPES = [
-  "Full payment",
-  "Partial payment",
-  "Advance payment",
-  "Retention payment",
-];
-const PAYMENT_METHODS = ["Bank transfer", "Cheque", "Cash", "Credit card"];
-
 // ── File helpers ──────────────────────────────────────────────────────────────
 
 function parseFiles(raw: string | string[] | null | undefined): string[] {
@@ -113,11 +107,6 @@ export default function FinanceDetailClient({
 
   // Record payment modal
   const [isRecordOpen, setIsRecordOpen] = useState(false);
-  const [paymentType, setPaymentType] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentNotes, setPaymentNotes] = useState("");
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
   // Reject payment modal
   const [isRejectOpen, setIsRejectOpen] = useState(false);
@@ -198,64 +187,7 @@ export default function FinanceDetailClient({
     lpoValue > 0 ? Math.min((totalPaid / lpoValue) * 100, 100) : 0;
 
   // ── Modal helpers ─────────────────────────────────────────────────────────
-  const openRecord = () => {
-    setPaymentType("");
-    setPaymentMethod("");
-    setPaymentAmount("");
-    setPaymentNotes("");
-    setReceiptFile(null);
-    setIsRecordOpen(true);
-  };
-
-  const handleRecordPayment = async () => {
-    if (!selectedLpo) return;
-    try {
-      let receiptUrl: string | null = null;
-      if (receiptFile) {
-        const fd = new FormData();
-        fd.append("folder", "payment-receipts");
-        fd.append("files", receiptFile);
-        const up = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`, {
-          method: "POST",
-          body: fd,
-        });
-        if (up.ok) {
-          const d = await up.json();
-          receiptUrl = d.urls?.[0] ?? null;
-        }
-      }
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "recordPayment",
-            lpo_id: selectedLpo.id,
-            mr_header_id: mrHeaderId,
-            payment_type: paymentType,
-            payment_method: paymentMethod,
-            amount: Number(paymentAmount),
-            receipt_file: receiptUrl,
-            notes: paymentNotes || null,
-            recorded_by: userInfo?.name || userInfo?.email || "Finance",
-          }),
-        },
-      );
-      const data = await res.json();
-      if (data.success) {
-        toast("Payment recorded", "success");
-        setIsRecordOpen(false);
-        await fetchLpos();
-        router.refresh();
-      } else {
-        toast("Failed to record payment", "error");
-      }
-    } catch (err) {
-      console.error(err);
-      toast("Error recording payment", "error");
-    }
-  };
+  const openRecord = () => setIsRecordOpen(true);
 
   const handleRejectPayment = async () => {
     if (!selectedLpo) return;
@@ -470,7 +402,10 @@ export default function FinanceDetailClient({
                               <th>BRAND &amp; SPECS</th>
                               <th>BOQ REF</th>
                               <th
-                                style={{ cursor: "pointer", userSelect: "none" }}
+                                style={{
+                                  cursor: "pointer",
+                                  userSelect: "none",
+                                }}
                                 onClick={() => handleLpoLinesSort("qty")}
                               >
                                 QTY
@@ -489,7 +424,10 @@ export default function FinanceDetailClient({
                                 </span>
                               </th>
                               <th
-                                style={{ cursor: "pointer", userSelect: "none" }}
+                                style={{
+                                  cursor: "pointer",
+                                  userSelect: "none",
+                                }}
                                 onClick={() =>
                                   handleLpoLinesSort("lpo_unit_price")
                                 }
@@ -510,7 +448,10 @@ export default function FinanceDetailClient({
                                 </span>
                               </th>
                               <th
-                                style={{ cursor: "pointer", userSelect: "none" }}
+                                style={{
+                                  cursor: "pointer",
+                                  userSelect: "none",
+                                }}
                                 onClick={() =>
                                   handleLpoLinesSort("lpo_total_price")
                                 }
@@ -999,231 +940,35 @@ export default function FinanceDetailClient({
         </div>
       </div>
 
+      {/* ── COMMENTS ────────────────────────────────────────────────────────── */}
+      {selectedLpoId !== null && (
+        <CommentsSection
+          key={selectedLpoId}
+          mrHeaderId={mrHeaderId}
+          lpoId={selectedLpoId}
+          stageName={
+            selectedLpo?.supplier_name
+              ? `LPO-${String(selectedLpoId).padStart(5, "0")} · ${selectedLpo.supplier_name}`
+              : `LPO-${String(selectedLpoId).padStart(5, "0")}`
+          }
+        />
+      )}
+
       {/* ── RECORD PAYMENT MODAL ────────────────────────────────────────────── */}
-      {isRecordOpen && selectedLpo && (
-        <FormPopUp
-          header="Record Payment"
+      {selectedLpo && (
+        <RecordPaymentForm
+          lpoId={selectedLpo.id}
+          mrHeaderId={mrHeaderId}
+          supplierName={selectedLpo.supplier_name}
+          outstanding={balance}
+          isOpen={isRecordOpen}
           setIsOpen={setIsRecordOpen}
-          handleSubmit={handleRecordPayment}
-          addButtonLabel="CONFIRM"
-          style={{ maxWidth: "520px" }}
-        >
-          <div className="input-row half">
-            <InputItem
-              label="LPO NUMBER"
-              type="text"
-              value={`LPO-${String(selectedLpo.id).padStart(5, "0")}`}
-              onChange={() => {}}
-              disabled
-              required
-              noOptionalLabel
-            />
-            <InputItem
-              label="VENDOR"
-              type="text"
-              value={selectedLpo.supplier_name || "-"}
-              onChange={() => {}}
-              disabled
-              required
-              noOptionalLabel
-            />
-          </div>
-          <div className="input-row half">
-            <InputItem
-              label="PAYMENT TYPE"
-              type="select"
-              value={paymentType}
-              onChange={(e) => setPaymentType(e.target.value)}
-              selectOptions={PAYMENT_TYPES}
-              required
-            />
-            <InputItem
-              label="PAYMENT METHOD"
-              type="select"
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              selectOptions={PAYMENT_METHODS}
-              required
-            />
-          </div>
-
-          {/* Outstanding indicator */}
-          <div
-            style={{
-              backgroundColor: "rgba(248, 249, 251, 1)",
-              borderRadius: "10px",
-              padding: "15px 18px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            {/* Left — stats */}
-            <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
-              <div>
-                <small style={{ color: "rgba(120,120,120,1)" }}>
-                  OUTSTANDING AMOUNT
-                </small>
-                <div
-                  style={{
-                    fontWeight: "600",
-                    fontSize: "16px",
-                  }}
-                >
-                  {formatPriceAED(balance)}
-                </div>
-              </div>
-              <div>
-                <small style={{ color: "rgba(120,120,120,1)" }}>
-                  PAYMENT AMOUNT
-                </small>
-                <div style={{ fontWeight: "600", fontSize: "16px" }}>
-                  {paymentAmount ? formatPriceAED(Number(paymentAmount)) : "-"}
-                </div>
-              </div>
-            </div>
-
-            {/* Right — 270° arc gauge (BudgetTrackerMeter style) */}
-            {(() => {
-              const enteredAmt = Number(paymentAmount) || 0;
-              const gaugePct =
-                balance > 0 ? Math.min((enteredAmt / balance) * 100, 100) : 0;
-              const gaugeColor = "rgba(26,216,135,1)";
-              const r = 33;
-              const circ = 2 * Math.PI * r;
-              const arc = circ * 0.75;
-              return (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "2px",
-                    flexShrink: 0,
-                  }}
-                >
-                  <div
-                    style={{
-                      position: "relative",
-                      width: "90px",
-                      height: "90px",
-                    }}
-                  >
-                    {/* track */}
-                    <svg
-                      width="90"
-                      height="90"
-                      viewBox="0 0 90 90"
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        transform: "rotate(135deg)",
-                      }}
-                    >
-                      <circle
-                        cx="45"
-                        cy="45"
-                        r={r}
-                        fill="none"
-                        stroke="rgba(220,220,220,1)"
-                        strokeWidth="9"
-                        strokeLinecap="butt"
-                        strokeDasharray={`${arc} ${circ}`}
-                      />
-                    </svg>
-                    {/* fill */}
-                    <svg
-                      width="90"
-                      height="90"
-                      viewBox="0 0 90 90"
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        transform: "rotate(135deg)",
-                      }}
-                    >
-                      <circle
-                        cx="45"
-                        cy="45"
-                        r={r}
-                        fill="none"
-                        stroke={gaugeColor}
-                        strokeWidth="9"
-                        strokeLinecap="butt"
-                        strokeDasharray={`${(gaugePct / 100) * arc} ${circ}`}
-                        style={{
-                          transition:
-                            "stroke-dasharray 0.4s ease-out, stroke 0.4s ease-out",
-                        }}
-                      />
-                    </svg>
-                    {/* label */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "16px",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {Math.round(gaugePct)}%
-                    </div>
-                  </div>
-                  <small
-                    style={{
-                      color: "rgba(120,120,120,1)",
-                      textAlign: "center",
-                    }}
-                  >
-                    PAYMENT PROGRESS
-                  </small>
-                </div>
-              );
-            })()}
-          </div>
-
-          <br />
-
-          <div className="input-row full">
-            <InputItem
-              label="PAYMENT AMOUNT"
-              type="text prefix"
-              value={paymentAmount}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (/^\d*\.?\d*$/.test(val)) setPaymentAmount(val);
-              }}
-              postfixText="AED"
-              required
-            />
-          </div>
-
-          <div className="input-row full">
-            <InputItem
-              label="NOTES"
-              type="textarea"
-              value={paymentNotes}
-              onChange={(e) => setPaymentNotes(e.target.value)}
-            />
-          </div>
-
-          <div className="input-row full">
-            <SingleUploadFileBox
-              fileState={receiptFile}
-              setFileState={setReceiptFile}
-              label="PAYMENT RECEIPT"
-              acceptedFileTypes=".pdf,.jpg,.jpeg,.png"
-              placeholder="UPLOAD PAYMENT RECEIPT"
-              buttonLabel="UPLOAD RECEIPT"
-              required
-            />
-          </div>
-        </FormPopUp>
+          onSuccess={async () => {
+            await fetchLpos();
+            router.refresh();
+          }}
+          recordedBy={userInfo?.name || userInfo?.email || "Finance"}
+        />
       )}
 
       {/* ── REJECT PAYMENT MODAL ────────────────────────────────────────────── */}

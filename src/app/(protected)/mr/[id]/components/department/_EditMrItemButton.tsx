@@ -289,9 +289,10 @@ export default function EditMrItemButton({
         body: JSON.stringify({
           action: "updateAll",
           id: Number(item.id),
-          changed_by: userInfo?.name && userInfo?.role
-            ? `${userInfo.name}, ${userInfo.role}`
-            : (userInfo?.name || null),
+          changed_by:
+            userInfo?.name && userInfo?.role
+              ? `${userInfo.name}, ${userInfo.role}`
+              : userInfo?.name || null,
           stage_name: stageName || "INITIAL APPROVAL",
           boq_line_ids: boqLineIDs,
           material_category_id: Number(selectedRow.categoryId),
@@ -332,6 +333,7 @@ export default function EditMrItemButton({
           );
         }
 
+        window.dispatchEvent(new Event("quotationsUpdated"));
         router.refresh();
       } else {
         const errorData = await res.json();

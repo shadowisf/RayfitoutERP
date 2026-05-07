@@ -20,6 +20,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
   const [mrActionCount, setMrActionCount] = useState<number>(0);
   const [inventoryActionCount, setInventoryActionCount] = useState<number>(0);
   const [resolutionActionCount, setResolutionActionCount] = useState<number>(0);
+  const [paymentUnpaidCount, setPaymentUnpaidCount] = useState<number>(0);
 
   const INVENTORY_DEPARTMENT_IDS = [8, 11, 15];
   const PROJECT_DEPARTMENT_IDS = [8, 9, 10, 15, 16];
@@ -83,6 +84,24 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
     const interval = setInterval(fetchInventoryActionCount, 30000);
     return () => clearInterval(interval);
   }, [userInfo]);
+
+  useEffect(() => {
+    const fetchPaymentUnpaidCount = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/getUnpaidCount`,
+        );
+        const data = await res.json();
+        if (data.success) setPaymentUnpaidCount(data.count);
+      } catch (error) {
+        console.error("Error fetching payment unpaid count:", error);
+      }
+    };
+
+    fetchPaymentUnpaidCount();
+    const interval = setInterval(fetchPaymentUnpaidCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   /* TEMPORARILY DISABLED - Resolution Center
   useEffect(() => {
@@ -148,6 +167,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       label: "Payments",
       path: "/payment",
       icon: "/icons/payment-black.svg",
+      count: paymentUnpaidCount,
     },
     /* {
       label: "Local Purchase Orders",

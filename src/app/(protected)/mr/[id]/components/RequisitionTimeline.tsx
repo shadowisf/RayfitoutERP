@@ -97,8 +97,8 @@ const FULL_MR_STAGES_ALL_AVAILABLE = [1, 2, 4, 25];
 const JO_STAGES_IDS = [1, 3, 7, 10, 12, 25];
 
 // Payment Request Stages
-// REQUEST CREATED (1) → QS REVIEW (2) → MANAGER APPROVAL (3) → PAYMENT (14) → COMPLETED (25)
-const PR_STAGES_IDS = [1, 2, 3, 14, 25];
+// REQUEST CREATED (1) → QS REVIEW (2) → MANAGER APPROVAL (3) → COMPLETED (25)
+const PR_STAGES_IDS = [1, 2, 3, 25];
 
 const PR_STAGE_LABELS: { [key: number]: string } = {
   1: "REQUEST CREATED",

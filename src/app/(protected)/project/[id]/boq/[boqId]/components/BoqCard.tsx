@@ -31,21 +31,23 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
             <h2>BOQ-{String(boqHeader?.id).padStart(5, "0")}</h2>
           </div>
 
-          {boqHeader.is_draft ? (
-            <span
-              style={{
-                padding: "2px 10px",
-                backgroundColor: "rgba(234, 234, 234, 1)",
-                color: "rgba(89, 89, 89, 1)",
-                borderRadius: "50px",
-                fontSize: "10px",
-                fontWeight: "800",
-                marginBottom: "5px",
-              }}
-            >
-              DRAFT
-            </span>
-          ) : null}
+          <span
+            style={{
+              padding: "2px 10px",
+              backgroundColor: boqHeader.is_draft
+                ? "rgba(234, 234, 234, 1)"
+                : "rgba(87, 244, 176, 1)",
+              color: boqHeader.is_draft
+                ? "rgba(89, 89, 89, 1)"
+                : "rgba(31, 101, 71, 1)",
+              borderRadius: "50px",
+              fontSize: "10px",
+              fontWeight: "800",
+              marginBottom: "5px",
+            }}
+          >
+            {boqHeader.is_draft ? "DRAFT" : "APPROVED"}
+          </span>
         </div>
 
         <div>
@@ -89,7 +91,7 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
           <h2>{boqHeader?.client_name || "-"}</h2>
         </div>
 
-        {/* {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
+        {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
           <div>
             <small>TOTAL VALUE</small>
             <h2>
@@ -102,7 +104,7 @@ export default function BoqCard({ boqHeader, onSuccess }: props) {
               })}
             </h2>
           </div>
-        )} */}
+        )}
 
         <div></div>
       </div>

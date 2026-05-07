@@ -114,13 +114,14 @@ export async function POST(request: Request) {
       );
 
       const [itemRows]: any = await db.query(
-        `SELECT lpo.id, lpo.mr_header_id, (${twoCase}) AS total, s.name AS supplier_name
+        `SELECT lpo.id, lpo.mr_header_id, (${twoCase}) AS total, s.name AS supplier_name,
+                DATE_FORMAT(lpo.created_at, '%d %b %Y') AS date
          FROM lpo
          JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
          LEFT JOIN suppliers s ON s.id = lpo.supplier_id
          ${payJoin}
          WHERE ${baseWhere}
-         ORDER BY total DESC LIMIT ?`,
+         ORDER BY lpo.created_at DESC LIMIT ?`,
         [maxItems],
       );
       const items = itemRows.map((lpo: any) => ({
@@ -128,6 +129,7 @@ export async function POST(request: Request) {
         amount: Number(lpo.total) || 0,
         raw_id: lpo.id,
         mr_header_id: lpo.mr_header_id,
+        date: lpo.date ?? "—",
         type: "lpo",
       }));
 
@@ -235,14 +237,15 @@ export async function POST(request: Request) {
     );
 
     const [itemRows]: any = await db.query(
-      `SELECT lpo.id, lpo.mr_header_id, (${twoCase}) AS total, s.name AS supplier_name
+      `SELECT lpo.id, lpo.mr_header_id, (${twoCase}) AS total, s.name AS supplier_name,
+              DATE_FORMAT(lpo.created_at, '%d %b %Y') AS date
        FROM lpo
        JOIN vw_mr_headers h ON lpo.mr_header_id = h.id
        LEFT JOIN suppliers s ON s.id = lpo.supplier_id
        ${payJoin}
        WHERE ${baseWhere}
          AND ${dateFilterClause}
-       ORDER BY total DESC LIMIT ?`,
+       ORDER BY lpo.created_at DESC LIMIT ?`,
       [filter, maxItems],
     );
     const items = itemRows.map((lpo: any) => ({
@@ -250,6 +253,7 @@ export async function POST(request: Request) {
       amount: Number(lpo.total) || 0,
       raw_id: lpo.id,
       mr_header_id: lpo.mr_header_id,
+      date: lpo.date ?? "—",
       type: "lpo",
     }));
 

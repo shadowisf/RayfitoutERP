@@ -43,15 +43,6 @@ export default function AlertsAndRiskMrsWidget() {
   const lateWidgetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setShowCriticalPopup(false);
-      setShowLatePopup(false);
-    };
-    window.addEventListener("scroll", handleScroll, true);
-    return () => window.removeEventListener("scroll", handleScroll, true);
-  }, []);
-
-  useEffect(() => {
     const handleCloseAll = (e: Event) => {
       const customE = e as CustomEvent;
       if (customE.detail?.source !== "alerts-risks") {

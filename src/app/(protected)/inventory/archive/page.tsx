@@ -68,7 +68,7 @@ export default function InventoryArchive() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Close hover popup on scroll or when window loses focus
+  // Close hover popup when window loses focus
   useEffect(() => {
     const handleCloseHover = () => {
       setShowPopup(false);
@@ -78,10 +78,8 @@ export default function InventoryArchive() {
         return null;
       });
     };
-    window.addEventListener("scroll", handleCloseHover, true);
     window.addEventListener("blur", handleCloseHover);
     return () => {
-      window.removeEventListener("scroll", handleCloseHover, true);
       window.removeEventListener("blur", handleCloseHover);
     };
   }, []);

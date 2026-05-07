@@ -294,9 +294,6 @@ export default function MassPriceApprovalButton({
           textColor={selectedMrIds.size === 0 ? "black" : "white"}
           disabled={selectedMrIds.size === 0}
           onClick={() => selectedMrIds.size > 0 && setActionsOpen((v) => !v)}
-          style={{
-            cursor: selectedMrIds.size === 0 ? "not-allowed" : "pointer",
-          }}
         >
           ACTIONS
         </Button>
