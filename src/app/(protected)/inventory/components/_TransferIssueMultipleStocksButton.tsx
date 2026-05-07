@@ -1277,6 +1277,7 @@ export default function TransferIssueMultipleStocks({
                               cursor: isAlreadyAdded
                                 ? "not-allowed"
                                 : "pointer",
+                              accentColor: "#10b981",
                             }}
                           />
                         </td>

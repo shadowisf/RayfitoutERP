@@ -46,14 +46,16 @@ export async function POST(request: NextRequest) {
         FROM lpo l
         LEFT JOIN suppliers s ON l.supplier_id = s.id
         LEFT JOIN lut_mr_headers_progress pr ON l.progress_id = pr.id
+        LEFT JOIN (
+          SELECT lpo_id, SUM(amount) AS total_paid
+          FROM lpo_payments
+          GROUP BY lpo_id
+        ) pay ON pay.lpo_id = l.id
         WHERE l.mr_header_id = ?
           AND l.progress_id NOT IN (13, 25)
-          AND NOT (
-            LOWER(IFNULL(l.payment_status, '')) = 'approved'
-            AND l.payment_file IS NOT NULL
-            AND l.payment_file != ''
-            AND l.payment_file != '[]'
-          )
+          AND LOWER(IFNULL(l.payment_status, ''))
+              NOT IN ('approved','paid','fully paid','completed','done')
+          AND NOT (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)
         ORDER BY l.id ASC`,
         [mrHeaderId],
       );

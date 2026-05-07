@@ -256,12 +256,12 @@ export default function MassPriceApprovalButton({
 
   const dropdownStyle: React.CSSProperties = {
     position: "absolute",
-    bottom: "calc(100% + 8px)",
+    top: "calc(100% + 4px)",
     right: 0,
     backgroundColor: "white",
     border: "1px solid rgba(207, 207, 207, 1)",
     borderRadius: "8px",
-    boxShadow: "0 -4px 12px rgba(0,0,0,0.12)",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
     zIndex: 200,
     minWidth: "240px",
     overflow: "hidden",
@@ -287,10 +287,16 @@ export default function MassPriceApprovalButton({
       <div ref={actionsRef} style={{ position: "relative" }}>
         <Button
           componentType="button"
-          bgColor={selectedMrIds.size === 0 ? "rgba(60,60,60,1)" : "white"}
-          borderColor={selectedMrIds.size === 0 ? "rgba(60,60,60,1)" : "white"}
-          textColor={selectedMrIds.size === 0 ? "white" : "black"}
-          onClick={() => setActionsOpen((v) => !v)}
+          bgColor={selectedMrIds.size === 0 ? "white" : "black"}
+          borderColor={
+            selectedMrIds.size === 0 ? "rgba(211, 211, 211, 1)" : "black"
+          }
+          textColor={selectedMrIds.size === 0 ? "black" : "white"}
+          disabled={selectedMrIds.size === 0}
+          onClick={() => selectedMrIds.size > 0 && setActionsOpen((v) => !v)}
+          style={{
+            cursor: selectedMrIds.size === 0 ? "not-allowed" : "pointer",
+          }}
         >
           ACTIONS
         </Button>

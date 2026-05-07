@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Button from "./Button";
 
 type FormPopUpProps = {
@@ -87,7 +88,7 @@ export default function FormPopUp({
     setIsOpen(false);
   };
 
-  return (
+  const modal = (
     <div className="form-outer-container">
       <div
         className="form-inner-container"
@@ -217,4 +218,6 @@ export default function FormPopUp({
       `}</style>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

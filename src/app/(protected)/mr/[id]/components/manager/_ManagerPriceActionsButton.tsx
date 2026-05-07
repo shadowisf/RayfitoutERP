@@ -19,6 +19,20 @@ type Props = {
   mrLines: any;
 };
 
+const Spinner = ({ color = "white" }: { color?: string }) => (
+  <div
+    style={{
+      width: "16px",
+      height: "16px",
+      border: `2px solid ${color}`,
+      borderTop: "2px solid transparent",
+      borderRadius: "50%",
+      animation: "spin 0.6s linear infinite",
+      flexShrink: 0,
+    }}
+  />
+);
+
 export default function ManagerPriceActionsButton({
   selectedItemIds,
   setSelectedItemIds,
@@ -32,6 +46,7 @@ export default function ManagerPriceActionsButton({
 
   const [actionsOpen, setActionsOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isAutoSelecting, setIsAutoSelecting] = useState(false);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const [rejectText, setRejectText] = useState("");
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -49,69 +64,77 @@ export default function ManagerPriceActionsButton({
 
   async function handleAutoSelect() {
     setActionsOpen(false);
+    setIsAutoSelecting(true);
 
     const ids = Array.from(selectedItemIds);
     let successful = 0;
     let failed = 0;
 
-    for (const itemId of ids) {
-      try {
-        const res = await fetch(
-          "/api/supplier/getAllSupplierAndQuotationByMrLineID",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: itemId }),
-          },
-        );
-        if (!res.ok) {
-          failed++;
-          continue;
-        }
-        const quotations = await res.json();
-        if (!quotations || quotations.length === 0) {
-          failed++;
-          continue;
-        }
+    try {
+      for (const itemId of ids) {
+        try {
+          const res = await fetch(
+            "/api/supplier/getAllSupplierAndQuotationByMrLineID",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: itemId }),
+            },
+          );
+          if (!res.ok) {
+            failed++;
+            continue;
+          }
+          const quotations = await res.json();
+          if (!quotations || quotations.length === 0) {
+            failed++;
+            continue;
+          }
 
-        const lowest = quotations.reduce((prev: any, curr: any) =>
-          Number(curr.total_price) < Number(prev.total_price) ? curr : prev,
-        );
+          const lowest = quotations.reduce((prev: any, curr: any) =>
+            Number(curr.total_price) < Number(prev.total_price) ? curr : prev,
+          );
 
-        const approveRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "approveSupplierAndQuotation",
-              quotation_id: lowest.id,
-              mr_line_id: itemId,
-              supplier_id: lowest.supplier_id,
-            }),
-          },
-        );
-        if (approveRes.ok) successful++;
-        else failed++;
-      } catch {
-        failed++;
+          const approveRes = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "approveSupplierAndQuotation",
+                quotation_id: lowest.id,
+                mr_line_id: itemId,
+                supplier_id: lowest.supplier_id,
+              }),
+            },
+          );
+          if (approveRes.ok) successful++;
+          else failed++;
+        } catch {
+          failed++;
+        }
       }
-    }
 
-    if (successful > 0 && failed === 0) {
-      toast(
-        `Auto select: ${successful} vendor${successful > 1 ? "s" : ""} approved`,
-        "success",
-      );
-    } else if (successful > 0) {
-      toast(`Auto select: ${successful} approved, ${failed} failed`, "warning");
-    } else {
-      toast("Auto select failed", "error");
-    }
+      if (successful > 0 && failed === 0) {
+        toast(
+          `Auto select: ${successful} vendor${successful > 1 ? "s" : ""} approved`,
+          "success",
+        );
+      } else if (successful > 0) {
+        toast(
+          `Auto select: ${successful} approved, ${failed} failed`,
+          "warning",
+        );
+      } else {
+        toast("Auto select failed", "error");
+      }
 
-    setSelectedItemIds(new Set());
-    window.dispatchEvent(new CustomEvent("quotationsUpdated"));
-    router.refresh();
+      setSelectedItemIds(new Set());
+      window.dispatchEvent(new CustomEvent("quotationsUpdated"));
+      router.refresh();
+    } finally {
+      setIsAutoSelecting(false);
+    }
   }
 
   async function handleBulkReject() {
@@ -227,6 +250,8 @@ export default function ManagerPriceActionsButton({
     }
   }
 
+  const isBusy = isAutoSelecting || isDownloading;
+
   const dropdownStyle: React.CSSProperties = {
     position: "absolute",
     top: "calc(100% + 4px)",
@@ -267,9 +292,29 @@ export default function ManagerPriceActionsButton({
               selectedItemIds.size === 0 ? "rgba(211,211,211,1)" : "black"
             }
             textColor={selectedItemIds.size === 0 ? "black" : "white"}
-            onClick={() => setActionsOpen((v) => !v)}
+            onClick={() => !isAutoSelecting && setActionsOpen((v) => !v)}
+            disabled={selectedItemIds.size === 0 || isAutoSelecting}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor:
+                selectedItemIds.size === 0 || isAutoSelecting
+                  ? "not-allowed"
+                  : "pointer",
+              opacity: isAutoSelecting ? 0.7 : 1,
+              transition: "opacity 0.2s ease",
+              pointerEvents: isAutoSelecting ? "none" : "auto",
+            }}
           >
-            ACTIONS
+            {isAutoSelecting ? (
+              <>
+                <Spinner color="white" />
+                LOADING
+              </>
+            ) : (
+              "ACTIONS"
+            )}
           </Button>
 
           {actionsOpen && (
@@ -343,22 +388,40 @@ export default function ManagerPriceActionsButton({
             selectedItemIds.size === 0 ? "rgba(211, 211, 211, 1)" : "black"
           }
           textColor={selectedItemIds.size === 0 ? "black" : "white"}
-          style={{ padding: "9px 9px" }}
+          style={{
+            padding: "9px 9px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor:
+              selectedItemIds.size === 0 || isDownloading
+                ? "not-allowed"
+                : "pointer",
+            opacity: isDownloading ? 0.7 : 1,
+            transition: "opacity 0.2s ease",
+            pointerEvents: isDownloading ? "none" : "auto",
+          }}
           disabled={selectedItemIds.size === 0 || isDownloading}
           onClick={() => {
             setActionsOpen(false);
             handleDownloadSelected();
           }}
         >
-          <img
-            src={downloadIcon}
-            alt="download"
-            style={
-              selectedItemIds.size === 0
-                ? { filter: "invert(0)" }
-                : { filter: "invert(1)" }
-            }
-          />
+          {isDownloading ? (
+            <Spinner
+              color={selectedItemIds.size === 0 ? "black" : "white"}
+            />
+          ) : (
+            <img
+              src={downloadIcon}
+              alt="download"
+              style={
+                selectedItemIds.size === 0
+                  ? { filter: "invert(0)" }
+                  : { filter: "invert(1)" }
+              }
+            />
+          )}
         </Button>
       </div>
 
@@ -405,9 +468,21 @@ export default function ManagerPriceActionsButton({
           addButtonLabel="CONFIRM"
         >
           Are you sure you want to delete {selectedItemIds.size} selected item
-          {selectedItemIds.size !== 1 ? "s" : ""}? This action cannot be undone.
+          {selectedItemIds.size !== 1 ? "s" : ""}? This action cannot be
+          undone.
         </FormPopUp>
       )}
+
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AddMrItemButton from "./department/_AddMrItemButton";
 import { MrLine } from "../types/mrLine";
@@ -137,6 +137,55 @@ export default function MrLinesView({
     >
   >({});
 
+  // ── Lowest price hover popup ───────────────────────────────────────────────
+  const [hoveredLowestDesc, setHoveredLowestDesc] = useState<string | null>(null);
+  const [hoveredLowestRect, setHoveredLowestRect] = useState<DOMRect | null>(null);
+  const [lpoHistoryCache, setLpoHistoryCache] = useState<Record<string, any[] | "loading">>({});
+  const lowestHideTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const startLowestHideTimer = useCallback(() => {
+    if (lowestHideTimer.current) clearTimeout(lowestHideTimer.current);
+    lowestHideTimer.current = setTimeout(() => {
+      setHoveredLowestDesc(null);
+      setHoveredLowestRect(null);
+    }, 120);
+  }, []);
+
+  const cancelLowestHideTimer = useCallback(() => {
+    if (lowestHideTimer.current) {
+      clearTimeout(lowestHideTimer.current);
+      lowestHideTimer.current = null;
+    }
+  }, []);
+
+  const handleLowestPriceEnter = useCallback(
+    async (e: React.MouseEvent, materialDesc: string) => {
+      const stats = materialPriceStats[materialDesc];
+      if (!stats?.lowest_price) return;
+      cancelLowestHideTimer();
+      setHoveredLowestDesc(materialDesc);
+      setHoveredLowestRect(
+        (e.currentTarget as HTMLElement).getBoundingClientRect(),
+      );
+      if (lpoHistoryCache[materialDesc]) return;
+      setLpoHistoryCache((prev) => ({ ...prev, [materialDesc]: "loading" }));
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialLPOHistory?material=${encodeURIComponent(materialDesc)}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setLpoHistoryCache((prev) => ({ ...prev, [materialDesc]: data }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch LPO history:", err);
+        setLpoHistoryCache((prev) => ({ ...prev, [materialDesc]: [] }));
+      }
+    },
+    [materialPriceStats, lpoHistoryCache, cancelLowestHideTimer],
+  );
+  // ─────────────────────────────────────────────────────────────────────────
+
   const [supplierApprovalStatus, setSupplierApprovalStatus] = useState<{
     [itemId: number]: "approved" | "rejected" | "pending";
   }>({});
@@ -236,12 +285,24 @@ export default function MrLinesView({
 
   // ── Current stage label for activity log ─────────────────────────────────
   const PROGRESS_STAGE_LABELS: Record<number, string> = {
-    1: "INITIAL APPROVAL", 2: "QS REVIEW", 3: "MANAGER APPROVAL",
-    4: "STOCK TRANSFER", 5: "REQUEST REJECTED", 7: "QUOTATIONS",
-    9: "QS PRICE CHECK", 10: "MANAGER PRICE APPROVAL", 11: "PRICE REJECTED",
-    12: "LPO & INVOICE", 13: "PAYMENT REJECTED", 14: "PAYMENT",
-    17: "AWAITING DELIVERY", 21: "QC CHECK", 23: "FAILED QC",
-    24: "STOCK ENTRY", 25: "COMPLETED", 26: "SEGREGATION",
+    1: "INITIAL APPROVAL",
+    2: "QS REVIEW",
+    3: "MANAGER APPROVAL",
+    4: "STOCK TRANSFER",
+    5: "REQUEST REJECTED",
+    7: "QUOTATIONS",
+    9: "QS PRICE CHECK",
+    10: "MANAGER PRICE APPROVAL",
+    11: "PRICE REJECTED",
+    12: "LPO & INVOICE",
+    13: "PAYMENT REJECTED",
+    14: "PAYMENT",
+    17: "AWAITING DELIVERY",
+    21: "QC CHECK",
+    23: "FAILED QC",
+    24: "STOCK ENTRY",
+    25: "COMPLETED",
+    26: "SEGREGATION",
   };
   const currentStageName =
     PROGRESS_STAGE_LABELS[mrHeader.progress_id] ||
@@ -3334,7 +3395,7 @@ export default function MrLinesView({
                                               ) =>
                                                 v != null
                                                   ? formatPriceAED(v)
-                                                  : "-";
+                                                  : "N/A";
                                               return (
                                                 <>
                                                   <td
@@ -3342,7 +3403,17 @@ export default function MrLinesView({
                                                       color:
                                                         "rgba(37,150,190,1)",
                                                       fontWeight: 600,
+                                                      cursor: stats?.lowest_price != null ? "default" : undefined,
                                                     }}
+                                                    onMouseEnter={(e) =>
+                                                      handleLowestPriceEnter(
+                                                        e,
+                                                        item.material_description,
+                                                      )
+                                                    }
+                                                    onMouseLeave={
+                                                      startLowestHideTimer
+                                                    }
                                                   >
                                                     {fmt(stats?.lowest_price)}
                                                   </td>
@@ -3519,7 +3590,7 @@ export default function MrLinesView({
                                               ) =>
                                                 v != null
                                                   ? formatPriceAED(v)
-                                                  : "-";
+                                                  : "N/A";
                                               return (
                                                 <>
                                                   <td
@@ -3527,7 +3598,17 @@ export default function MrLinesView({
                                                       color:
                                                         "rgba(37,150,190,1)",
                                                       fontWeight: 600,
+                                                      cursor: stats?.lowest_price != null ? "default" : undefined,
                                                     }}
+                                                    onMouseEnter={(e) =>
+                                                      handleLowestPriceEnter(
+                                                        e,
+                                                        item.material_description,
+                                                      )
+                                                    }
+                                                    onMouseLeave={
+                                                      startLowestHideTimer
+                                                    }
                                                   >
                                                     {fmt(stats?.lowest_price)}
                                                   </td>
@@ -3588,14 +3669,13 @@ export default function MrLinesView({
                                                       null &&
                                                     stats?.highest_price != null
                                                       ? `${formatPriceAED(stats.lowest_price)} – ${formatPriceAED(stats.highest_price)}`
-                                                      : "-"}
+                                                      : "N/A"}
                                                   </td>
                                                   <td>
-                                                    {formatPriceAED(
-                                                      Number(
-                                                        item.approved_total_price,
-                                                      ) || 0,
-                                                    )}
+                                                    {item.approved_total_price != null &&
+                                                    Number(item.approved_total_price) > 0
+                                                      ? formatPriceAED(item.approved_total_price)
+                                                      : "–"}
                                                   </td>
                                                 </>
                                               );
@@ -3721,9 +3801,7 @@ export default function MrLinesView({
                                     }}
                                   >
                                     <tr>
-                                      <td
-                                        colSpan={subtotalLabelColSpan + 4}
-                                      />
+                                      <td colSpan={subtotalLabelColSpan + 4} />
                                       <td style={{ fontWeight: "600" }}>
                                         SUBTOTAL
                                       </td>
@@ -3736,9 +3814,7 @@ export default function MrLinesView({
                                       </td>
                                     </tr>
                                     <tr>
-                                      <td
-                                        colSpan={subtotalLabelColSpan + 4}
-                                      />
+                                      <td colSpan={subtotalLabelColSpan + 4} />
                                       <td style={{ fontWeight: "600" }}>
                                         SUBTOTAL W/ VAT
                                       </td>
@@ -4530,14 +4606,26 @@ export default function MrLinesView({
                                           const fmt = (
                                             v: number | null | undefined,
                                           ) =>
-                                            v != null ? formatPriceAED(v) : "-";
+                                            v != null
+                                              ? formatPriceAED(v)
+                                              : "N/A";
                                           return (
                                             <>
                                               <td
                                                 style={{
                                                   color: "rgba(37,150,190,1)",
                                                   fontWeight: 600,
+                                                  cursor: stats?.lowest_price != null ? "default" : undefined,
                                                 }}
+                                                onMouseEnter={(e) =>
+                                                  handleLowestPriceEnter(
+                                                    e,
+                                                    item.material_description,
+                                                  )
+                                                }
+                                                onMouseLeave={
+                                                  startLowestHideTimer
+                                                }
                                               >
                                                 {fmt(stats?.lowest_price)}
                                               </td>
@@ -4700,14 +4788,26 @@ export default function MrLinesView({
                                           const fmt = (
                                             v: number | null | undefined,
                                           ) =>
-                                            v != null ? formatPriceAED(v) : "-";
+                                            v != null
+                                              ? formatPriceAED(v)
+                                              : "N/A";
                                           return (
                                             <>
                                               <td
                                                 style={{
                                                   color: "rgba(37,150,190,1)",
                                                   fontWeight: 600,
+                                                  cursor: stats?.lowest_price != null ? "default" : undefined,
                                                 }}
+                                                onMouseEnter={(e) =>
+                                                  handleLowestPriceEnter(
+                                                    e,
+                                                    item.material_description,
+                                                  )
+                                                }
+                                                onMouseLeave={
+                                                  startLowestHideTimer
+                                                }
                                               >
                                                 {fmt(stats?.lowest_price)}
                                               </td>
@@ -4765,14 +4865,13 @@ export default function MrLinesView({
                                                 {stats?.lowest_price != null &&
                                                 stats?.highest_price != null
                                                   ? `${formatPriceAED(stats.lowest_price)} – ${formatPriceAED(stats.highest_price)}`
-                                                  : "-"}
+                                                  : "N/A"}
                                               </td>
                                               <td>
-                                                {formatPriceAED(
-                                                  Number(
-                                                    item.approved_total_price,
-                                                  ) || 0,
-                                                )}
+                                                {item.approved_total_price != null &&
+                                                Number(item.approved_total_price) > 0
+                                                  ? formatPriceAED(item.approved_total_price)
+                                                  : "–"}
                                               </td>
                                             </>
                                           );
@@ -4890,8 +4989,7 @@ export default function MrLinesView({
                             {isManagerPriceApproval && (
                               <tfoot
                                 style={{
-                                  borderTop:
-                                    "1px solid rgba(239, 239, 239, 1)",
+                                  borderTop: "1px solid rgba(239, 239, 239, 1)",
                                 }}
                               >
                                 <tr>
@@ -5583,15 +5681,18 @@ export default function MrLinesView({
                 }
                 style={{
                   opacity:
-                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers()
                       ? "0.5"
                       : "1",
                   cursor:
-                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers()
                       ? "not-allowed"
                       : "pointer",
                   pointerEvents:
-                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers()
                       ? "none"
                       : "auto",
                 }}
@@ -5606,15 +5707,18 @@ export default function MrLinesView({
                 }
                 style={{
                   opacity:
-                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers()
                       ? "0.5"
                       : "1",
                   cursor:
-                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers()
                       ? "not-allowed"
                       : "pointer",
                   pointerEvents:
-                    !allItemsHaveSupplierQuotations() || hasAnyRejectedSuppliers()
+                    !allItemsHaveSupplierQuotations() ||
+                    hasAnyRejectedSuppliers()
                       ? "none"
                       : "auto",
                 }}
@@ -5732,6 +5836,129 @@ export default function MrLinesView({
           })()}
         </div>
       )}
+
+      {/* ── Lowest price hover popup ─────────────────────────────────────── */}
+      {hoveredLowestDesc && hoveredLowestRect &&
+        (() => {
+          const history = lpoHistoryCache[hoveredLowestDesc];
+          const popupWidth = 500;
+          const spaceRight = window.innerWidth - hoveredLowestRect.right;
+          const left =
+            spaceRight >= popupWidth + 10
+              ? hoveredLowestRect.right + 8
+              : hoveredLowestRect.left - popupWidth - 8;
+          const top = Math.min(
+            hoveredLowestRect.top,
+            window.innerHeight - 420,
+          );
+          return (
+            <div
+              onMouseEnter={cancelLowestHideTimer}
+              onMouseLeave={() => {
+                setHoveredLowestDesc(null);
+                setHoveredLowestRect(null);
+              }}
+              style={{
+                position: "fixed",
+                left: Math.max(8, left),
+                top: Math.max(8, top),
+                backgroundColor: "white",
+                border: "1px solid rgba(223,223,223,1)",
+                borderRadius: "10px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                zIndex: 10000,
+                minWidth: `${popupWidth}px`,
+                maxWidth: `${popupWidth}px`,
+                maxHeight: "420px",
+                overflowY: "auto",
+              }}
+            >
+              <div style={{ padding: "12px" }}>
+                {history === "loading" || !history ? (
+                  <div
+                    style={{
+                      padding: "16px",
+                      textAlign: "center",
+                      color: "rgba(128,128,128,1)",
+                      fontSize: "13px",
+                    }}
+                  >
+                    Loading...
+                  </div>
+                ) : history.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "16px",
+                      textAlign: "center",
+                      color: "rgba(128,128,128,1)",
+                      fontSize: "13px",
+                    }}
+                  >
+                    No history found
+                  </div>
+                ) : (
+                  <table
+                    className="items-table popup-hover"
+                    style={{ width: "100%" }}
+                  >
+                    <thead>
+                      <tr>
+                        <th>MR NUMBER</th>
+                        <th>LPO NUMBER</th>
+                        <th>QTY</th>
+                        <th>PRICE</th>
+                        <th>DATE</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {history.map((row: any, idx: number) => (
+                        <tr key={idx}>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            MR-{String(row.mr_header_id).padStart(5, "0")}
+                          </td>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            LPO-{String(row.lpo_id).padStart(5, "0")}
+                          </td>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            {row.qty ?? "—"}
+                          </td>
+                          <td
+                            style={{
+                              whiteSpace: "nowrap",
+                              fontWeight: 600,
+                              color: "rgba(2,122,70,1)",
+                            }}
+                          >
+                            {formatPriceAED(row.unit_price)}
+                          </td>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            {row.date ?? "—"}
+                          </td>
+                          <td>
+                            <Button
+                              componentType={"link"}
+                              bgColor={"rgba(239, 239, 239, 1)"}
+                              borderColor={"rgba(223, 223, 223, 1)"}
+                              textColor={"black"}
+                              style={{ padding: "7px 7px" }}
+                              href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
+                            >
+                              <img
+                                src="/icons/external-link.svg"
+                                alt="open"
+                              />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          );
+        })()}
     </>
   );
 }

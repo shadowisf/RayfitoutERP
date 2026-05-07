@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Button from "@/app/components/Button";
 import { useAuth } from "@/app/context/AuthContext";
+import PaymentFilterButton, {
+  defaultPaymentFilters,
+  PaymentFilters,
+} from "./components/_PaymentFilterButton";
 
-type LpoCard = {
+type LpoRow = {
   id: number;
   mr_header_id: number;
   supplier_id: number;
   progress_id: number;
-  payment_status: string | null;
   total: number;
-  delivery_date: string;
+  payment_status: string | null;
+  payment_terms: string | null;
+  supplier_payment_terms: string | null;
+  created_at: string;
   supplier_name: string;
   supplier_type: string | null;
   requested_by: string;
@@ -19,137 +25,384 @@ type LpoCard = {
   department_name: string;
   project_name: string;
   required_date: string;
-  identifier: string | null;
-  item_count: number;
+  progress_name: string | null;
+  total_paid: number;
+  outstanding: number;
+  is_paid: 0 | 1;
 };
 
-type MrGroup = {
-  mr_header_id: number;
-  project_name: string;
-  requested_by: string;
-  department_name: string;
-  department_id: number;
-  required_date: string;
-  lpos: LpoCard[];
-};
+// ── Supplier type pill ──────────────────────────────────────────────────────
+function getSupplierTypeStyle(type: string | null) {
+  const t = (type ?? "").toLowerCase();
+  if (t === "cash")
+    return {
+      backgroundColor: "rgba(87,244,176,1)",
+      color: "rgba(31,101,71,1)",
+    };
+  if (t === "credit")
+    return {
+      backgroundColor: "rgba(255,250,189,1)",
+      color: "rgba(134,83,47,1)",
+    };
+  if (t.startsWith("marketplace"))
+    return {
+      backgroundColor: "rgba(189,232,255,1)",
+      color: "rgba(15,86,125,1)",
+    };
+  return { backgroundColor: "rgba(231,231,231,1)", color: "black" };
+}
 
+function SupplierTypePill({ type }: { type: string | null }) {
+  if (!type) return <span style={{ color: "#aaa" }}>-</span>;
+  return (
+    <div
+      className="approval-pill normal-text centered"
+      style={{ ...getSupplierTypeStyle(type), textTransform: "uppercase" }}
+    >
+      {type}
+    </div>
+  );
+}
+
+// ── Status pill ────────────────────────────────────────────────────────────
+function StatusPill({ isPaid }: { isPaid: boolean }) {
+  return (
+    <div
+      className="approval-pill normal-text centered"
+      style={
+        isPaid
+          ? {
+              backgroundColor: "rgba(187,247,208,1)",
+              color: "rgba(3,130,46,1)",
+            }
+          : {
+              backgroundColor: "rgba(255,181,181,1)",
+              color: "rgba(248,77,77,1)",
+            }
+      }
+    >
+      {isPaid ? "PAID" : "UNPAID"}
+    </div>
+  );
+}
+
+// ── Due date helpers ─────────────────────────────────────────────────────────
+function parseDays(terms: string | null): number | null {
+  if (!terms) return null;
+  const m = terms.match(/\d+/);
+  return m ? parseInt(m[0], 10) : null;
+}
+
+function getDueDate(lpo: LpoRow): string {
+  const t = (lpo.supplier_type ?? "").toLowerCase();
+  if (t !== "credit") return "N/A";
+
+  const days =
+    parseDays(lpo.payment_terms) ?? parseDays(lpo.supplier_payment_terms);
+  if (!days || !lpo.created_at) return "N/A";
+
+  const due = new Date(lpo.created_at);
+  due.setDate(due.getDate() + days);
+  return due.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function isDueOverdue(lpo: LpoRow): boolean {
+  const t = (lpo.supplier_type ?? "").toLowerCase();
+  if (t !== "credit") return false;
+  const days =
+    parseDays(lpo.payment_terms) ?? parseDays(lpo.supplier_payment_terms);
+  if (!days || !lpo.created_at) return false;
+  const due = new Date(lpo.created_at);
+  due.setDate(due.getDate() + days);
+  due.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return due < today;
+}
+
+// ── Format currency ─────────────────────────────────────────────────────────
+function formatAED(val: number) {
+  return val.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+// ── Normalise supplier_type for filter matching ──────────────────────────────
+function normaliseType(type: string | null): string {
+  const t = (type ?? "").toLowerCase();
+  if (t === "cash") return "Cash";
+  if (t === "credit") return "Credit";
+  if (t.startsWith("marketplace")) return "Marketplace/Online";
+  return type ?? "";
+}
+
+// ── Pagination ───────────────────────────────────────────────────────────────
+const ITEMS_PER_PAGE = 50;
+
+function PaginationControls({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const getPageNumbers = (): (number | string)[] => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 7;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else if (currentPage <= 4) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+      pages.push("...");
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 3) {
+      pages.push(1);
+      pages.push("...");
+      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push("...");
+      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+      pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  if (totalPages <= 1) return null;
+
+  const btnBase: React.CSSProperties = {
+    padding: "8px 12px",
+    borderRadius: "5px",
+    border: "1px solid rgba(223, 223, 223, 1)",
+    backgroundColor: "white",
+    color: "black",
+    fontWeight: 600,
+    minWidth: "40px",
+    cursor: "pointer",
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: "10px",
+        marginTop: "20px",
+      }}
+    >
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        style={{
+          ...btnBase,
+          cursor: currentPage === 1 ? "not-allowed" : "pointer",
+          opacity: currentPage === 1 ? 0.4 : 1,
+        }}
+      >
+        ‹
+      </button>
+
+      {getPageNumbers().map((page, index) => (
+        <button
+          key={index}
+          onClick={() => typeof page === "number" && onPageChange(page)}
+          disabled={page === "..."}
+          style={{
+            ...btnBase,
+            backgroundColor:
+              page === currentPage
+                ? "black"
+                : page === "..."
+                  ? "transparent"
+                  : "white",
+            color: page === currentPage ? "white" : "black",
+            cursor: page === "..." ? "default" : "pointer",
+            border:
+              page === "..." ? "none" : "1px solid rgba(223, 223, 223, 1)",
+          }}
+        >
+          {page}
+        </button>
+      ))}
+
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        style={{
+          ...btnBase,
+          cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+          opacity: currentPage === totalPages ? 0.4 : 1,
+        }}
+      >
+        ›
+      </button>
+    </div>
+  );
+}
+
+// ── Main page ───────────────────────────────────────────────────────────────
 export default function Payments() {
   const { userInfo } = useAuth();
 
   const searchIcon = "/icons/search.svg";
+  const externalLinkIcon = "/icons/external-link.svg";
 
-  const [lpoCards, setLpoCards] = useState<LpoCard[]>([]);
+  const [lpoRows, setLpoRows] = useState<LpoRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [filters, setFilters] = useState<PaymentFilters>(defaultPaymentFilters);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   // Only managers (dept 8) and finance (dept 10) may navigate into the MR
   const canView = userInfo?.departmentID === 8 || userInfo?.departmentID === 10;
 
   useEffect(() => {
-    // Fetch only LPOs belonging to MRs that have passed segregation (mr progress_id = 26),
-    // excluding payment-rejected (13) and completed (25) LPOs — handled server-side.
+    setIsLoading(true);
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/getPaymentKanban`)
       .then((r) => r.json())
-      .then((data: LpoCard[]) => {
-        if (Array.isArray(data)) setLpoCards(data);
+      .then((data: LpoRow[]) => {
+        if (Array.isArray(data)) setLpoRows(data);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
   }, []);
 
-  // ── Credit vendor filter — comment out the next two lines to show all types ─
-  const visibleLpoCards = lpoCards.filter(
-    (lpo) => lpo.supplier_type?.toLowerCase() !== "credit",
-  );
-  // ── End credit filter ──────────────────────────────────────────────────────
-
-  // ── Group by MR ─────────────────────────────────────────────────────────────
-  const mrGroupsMap = new Map<number, MrGroup>();
-  for (const lpo of visibleLpoCards) {
-    if (!mrGroupsMap.has(lpo.mr_header_id)) {
-      mrGroupsMap.set(lpo.mr_header_id, {
-        mr_header_id: lpo.mr_header_id,
-        project_name: lpo.project_name,
-        requested_by: lpo.requested_by,
-        department_name: lpo.department_name,
-        department_id: lpo.department_id,
-        required_date: lpo.required_date,
-        lpos: [],
-      });
-    }
-    mrGroupsMap.get(lpo.mr_header_id)!.lpos.push(lpo);
-  }
-  const mrGroups = Array.from(mrGroupsMap.values()).filter(
-    (g) => g.lpos.length > 0,
+  // ── Unique vendor list derived from data ────────────────────────────────
+  const vendorList = useMemo(
+    () =>
+      Array.from(
+        new Set(lpoRows.map((r) => r.supplier_name).filter(Boolean)),
+      ).sort((a, b) => a.localeCompare(b)),
+    [lpoRows],
   );
 
-  // ── Search ─────────────────────────────────────────────────────────────────
-  const filteredGroups = mrGroups.filter((group) => {
+  // ── Search ──────────────────────────────────────────────────────────────
+  const searched = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return (
-      `MR-${String(group.mr_header_id).padStart(5, "0")}`
-        .toLowerCase()
-        .includes(q) ||
-      group.project_name?.toLowerCase().includes(q) ||
-      group.requested_by?.toLowerCase().includes(q) ||
-      group.department_name?.toLowerCase().includes(q) ||
-      group.lpos.some((l) => l.supplier_name?.toLowerCase().includes(q)) ||
-      group.lpos.some((l) =>
-        `LPO-${String(l.id).padStart(5, "0")}`.toLowerCase().includes(q),
+    if (!q) return lpoRows;
+    return lpoRows.filter(
+      (row) =>
+        `mr-${String(row.mr_header_id).padStart(5, "0")}`.includes(q) ||
+        `lpo-${String(row.id).padStart(5, "0")}`.includes(q) ||
+        (row.project_name ?? "").toLowerCase().includes(q) ||
+        (row.supplier_name ?? "").toLowerCase().includes(q) ||
+        (row.supplier_type ?? "").toLowerCase().includes(q) ||
+        (row.department_name ?? "").toLowerCase().includes(q) ||
+        (row.requested_by ?? "").toLowerCase().includes(q),
+    );
+  }, [lpoRows, searchQuery]);
+
+  // ── Filter ──────────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    return searched.filter((row) => {
+      if (
+        filters.selectedVendors.length > 0 &&
+        !filters.selectedVendors.includes(row.supplier_name)
       )
-    );
-  });
+        return false;
 
-  // ── Helpers (identical to procurement tracker) ─────────────────────────────
-  const getDaysLeftText = (requiredDate: string) => {
-    if (!requiredDate) return null;
-    const required = new Date(requiredDate);
-    const today = new Date();
-    required.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-    const diffDays = Math.ceil(
-      (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-    );
-    if (diffDays > 0) return `${diffDays}d left`;
-    if (diffDays === 0) return "Due today";
-    return `${Math.abs(diffDays)}d overdue`;
+      if (filters.selectedPaymentTypes.length > 0) {
+        if (
+          !filters.selectedPaymentTypes.includes(
+            normaliseType(row.supplier_type),
+          )
+        )
+          return false;
+      }
+
+      if (filters.selectedStatuses.length > 0) {
+        const statusLabel = row.is_paid === 1 ? "Paid" : "Unpaid";
+        if (!filters.selectedStatuses.includes(statusLabel)) return false;
+      }
+
+      return true;
+    });
+  }, [searched, filters]);
+
+  // Always keep unpaid first, paid last; then apply column sort within each group
+  const sorted = useMemo(() => {
+    const base = [...filtered].sort((a, b) => a.is_paid - b.is_paid);
+    if (!sortCol) return base;
+    return base.sort((a, b) => {
+      // Keep paid/unpaid grouping intact — only sort within same is_paid group
+      if (a.is_paid !== b.is_paid) return a.is_paid - b.is_paid;
+      const aVal = (a as Record<string, unknown>)[sortCol] as number;
+      const bVal = (b as Record<string, unknown>)[sortCol] as number;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, sortCol, sortDir]);
+
+  const handleSort = (col: string) => {
+    if (sortCol !== col) {
+      setSortCol(col);
+      setSortDir("desc");
+    } else if (sortDir === "desc") {
+      setSortDir("asc");
+    } else {
+      setSortCol(null);
+      setSortDir("desc");
+    }
   };
 
-  const getDaysLeftStyle = (requiredDate: string) => {
-    if (!requiredDate)
-      return {
-        backgroundColor: "rgba(255, 250, 189, 1)",
-        color: "rgba(134, 83, 47, 1)",
-      };
-    const required = new Date(requiredDate);
-    const today = new Date();
-    required.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-    const diffDays = Math.ceil(
-      (required.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-    );
-    return diffDays < 0
-      ? {
-          backgroundColor: "rgba(255, 181, 181, 1)",
-          color: "rgba(248, 77, 77, 1)",
-        }
-      : {
-          backgroundColor: "rgba(255, 250, 189, 1)",
-          color: "rgba(134, 83, 47, 1)",
-        };
-  };
+  const sortIcon = (col: string) => (
+    <span
+      style={{
+        marginLeft: 4,
+        fontSize: 10,
+        opacity: sortCol === col ? 1 : 0.35,
+      }}
+    >
+      {sortCol === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+    </span>
+  );
 
-  const initials = (name: string) =>
-    name
-      ? name
-          .split(" ")
-          .map((n) => n[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2)
-      : "?";
+  // ── Pagination ──────────────────────────────────────────────────────────
+  const totalPages = Math.ceil(sorted.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginated = sorted.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  const isEmpty = filteredGroups.length === 0;
+  // Reset to page 1 on search / filter / sort change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filters, sortCol, sortDir]);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Active filter helpers ───────────────────────────────────────────────
+  const hasActiveFilters =
+    filters.selectedVendors.length > 0 ||
+    filters.selectedPaymentTypes.length > 0 ||
+    filters.selectedStatuses.length > 0;
+
+  const resetAllFilters = () => setFilters(defaultPaymentFilters);
+
+  /*
+   * ─────────────────────────────────────────────────────────────────────────
+   * KANBAN VIEW — commented out, replaced with table below
+   * ─────────────────────────────────────────────────────────────────────────
+   *
+   * const mrGroupsMap = new Map<number, MrGroup>();
+   * ...
+   * return (
+   *   <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"20px" }}>
+   *     ...kanban cards...
+   *   </div>
+   * );
+   * ─────────────────────────────────────────────────────────────────────────
+   */
+
   return (
     <div className="dashboard">
       {/* ── Page heading + search ─────────────────────────────────────────── */}
@@ -159,7 +412,7 @@ export default function Payments() {
           justifyContent: "space-between",
           alignItems: "center",
           gap: "20px",
-          marginBottom: "30px",
+          marginBottom: "20px",
         }}
       >
         <h1>PAYMENTS</h1>
@@ -194,229 +447,211 @@ export default function Payments() {
         </div>
       </div>
 
-      {/* ── Status column header — aligned to column 1 of the grid ─────── */}
+      {/* ── Filter bar ───────────────────────────────────────────────────── */}
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "20px",
-          marginBottom: isEmpty ? "0px" : "20px",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          marginBottom: "20px",
+          flexWrap: "wrap",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "15px",
-            borderRadius: "50px",
-            backgroundColor: isEmpty ? "rgba(242, 242, 242, 1)" : "white",
-            border: isEmpty ? "none" : "1px solid rgba(231, 231, 231, 1)",
-          }}
-        >
-          <h3 style={{ margin: 0, fontSize: "14px", fontWeight: "600" }}>
-            Pending Payments
-          </h3>
+        <PaymentFilterButton
+          vendors={vendorList}
+          onApplyFilters={setFilters}
+          currentFilters={filters}
+        />
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            {!isEmpty && (
-              <div
+        {hasActiveFilters && (
+          <>
+            {filters.selectedVendors.length > 0 && (
+              <Button
                 style={{
-                  backgroundColor: "rgba(187, 247, 208, 1)",
-                  color: "rgba(3, 130, 46, 1)",
-                  padding: "7px 10px",
                   borderRadius: "50px",
-                  fontSize: "10px",
-                  fontWeight: "600",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
+                  fontWeight: 600,
+                  textWrap: "nowrap",
                 }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
               >
-                <span style={{ scale: "3" }}>•</span>
-                FINANCE
-              </div>
+                VENDOR:{" "}
+                <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                  {filters.selectedVendors[0].toUpperCase()}
+                  {filters.selectedVendors.length > 1 &&
+                    `, +${filters.selectedVendors.length - 1} MORE`}
+                </span>
+              </Button>
             )}
-            <div
-              style={{
-                fontSize: "16px",
-                fontWeight: "600",
-                padding: "6px",
-                minWidth: "32px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: "50%",
-                backgroundColor: isEmpty ? "white" : "black",
-                color: isEmpty ? "black" : "white",
-              }}
-            >
-              {filteredGroups.length}
-            </div>
-          </div>
-        </div>
-        <div />
-        <div />
-      </div>
 
-      {/* ── 3-column grid — cards in column 1 only ───────────────────────── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "20px",
-          alignItems: "start",
-        }}
-      >
-        {/* Column 1 — cards */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-          {filteredGroups.map((group) => {
-            const daysText = getDaysLeftText(group.required_date);
-            const daysStyle = getDaysLeftStyle(group.required_date);
-
-            // Unique vendor names
-            const vendorNames = [
-              ...new Set(group.lpos.map((l) => l.supplier_name)),
-            ].join(", ");
-
-            return (
-              <div
-                key={group.mr_header_id}
+            {filters.selectedPaymentTypes.length > 0 && (
+              <Button
                 style={{
-                  backgroundColor: "white",
-                  borderRadius: "15px",
-                  padding: "15px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                  border: "1px solid rgba(231, 231, 231, 1)",
+                  borderRadius: "50px",
+                  fontWeight: 600,
+                  textWrap: "nowrap",
                 }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
               >
-                {/* ── Badge + days-left pill ──────────────────────────────── */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <div
-                      style={{
-                        backgroundColor: "black",
-                        color: "white",
-                        padding: "4px 10px",
-                        borderRadius: "50px",
-                        fontSize: "11px",
-                        fontWeight: "600",
-                        display: "inline-flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      MATERIAL REQUEST
-                    </div>
+                TYPE:{" "}
+                <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                  {filters.selectedPaymentTypes[0].toUpperCase()}
+                  {filters.selectedPaymentTypes.length > 1 &&
+                    `, +${filters.selectedPaymentTypes.length - 1} MORE`}
+                </span>
+              </Button>
+            )}
 
-                    {daysText && (
-                      <div
-                        style={{
-                          ...daysStyle,
-                          padding: "4px 10px",
-                          borderRadius: "50px",
-                          fontSize: "11px",
-                          fontWeight: "600",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {daysText}
-                      </div>
-                    )}
-                  </div>
-                </div>
+            {filters.selectedStatuses.length > 0 && (
+              <Button
+                style={{
+                  borderRadius: "50px",
+                  fontWeight: 600,
+                  textWrap: "nowrap",
+                }}
+                componentType="none"
+                bgColor="rgba(239, 239, 239, 1)"
+                borderColor="transparent"
+                textColor="black"
+              >
+                STATUS:{" "}
+                <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                  {filters.selectedStatuses[0].toUpperCase()}
+                  {filters.selectedStatuses.length > 1 &&
+                    `, +${filters.selectedStatuses.length - 1} MORE`}
+                </span>
+              </Button>
+            )}
 
-                {/* ── MR Number ──────────────────────────────────────────── */}
-                <div>
-                  <small>MR NUMBER</small>
-                  <h3>MR-{String(group.mr_header_id).padStart(5, "0")}</h3>
-                </div>
-
-                {/* ── LPO IDs as plain text ──────────────────────────────── */}
-                <div>
-                  <small>LPO{group.lpos.length !== 1 ? "S" : ""}</small>
-                  <h3>
-                    {group.lpos
-                      .map((l) => `LPO-${String(l.id).padStart(5, "0")}`)
-                      .join(", ")}
-                  </h3>
-                </div>
-
-                {/* ── Vendor(s) ──────────────────────────────────────────── */}
-                <div>
-                  <small>VENDOR{group.lpos.length !== 1 ? "S" : ""}</small>
-                  <h3>{vendorNames || "-"}</h3>
-                </div>
-
-                {/* ── Project ────────────────────────────────────────────── */}
-                <div>
-                  <small>PROJECT</small>
-                  <h3>{group.project_name || "-"}</h3>
-                </div>
-
-                {/* ── Requester ──────────────────────────────────────────── */}
-                <div>
-                  <small>REQUESTER</small>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "5px",
-                      alignItems: "center",
-                    }}
-                  >
-                    <h3
-                      style={{
-                        backgroundColor: "black",
-                        color: "white",
-                        borderRadius: "50%",
-                        width: "24px",
-                        height: "24px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "11px",
-                        fontWeight: "600",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {initials(group.requested_by)}
-                    </h3>
-                    <h3>
-                      {group.requested_by || "-"},{" "}
-                      {group.department_name || "-"}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* ── VIEW button ────────────────────────────────────────── */}
-                <Button
-                  componentType="link"
-                  bgColor="rgba(239, 239, 239, 1)"
-                  borderColor="rgba(239, 239, 239, 1)"
-                  textColor="black"
-                  href={`/payment/mr/${group.mr_header_id}`}
-                  full
-                  style={{ borderRadius: "50px" }}
-                  disabled={!canView}
-                >
-                  VIEW &gt;
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Columns 2 & 3 — intentionally blank */}
-        <div />
-        <div />
+            <Button
+              onClick={resetAllFilters}
+              componentType="button"
+              bgColor="transparent"
+              borderColor="transparent"
+              textColor="black"
+              style={{ padding: "0px" }}
+            >
+              RESET FILTER
+            </Button>
+          </>
+        )}
       </div>
+
+      {/* ── Table ─────────────────────────────────────────────────────────── */}
+      {isLoading ? (
+        <div style={{ textAlign: "center", padding: "60px", color: "#888" }}>
+          Loading...
+        </div>
+      ) : sorted.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px", color: "#888" }}>
+          {searchQuery || hasActiveFilters
+            ? "No results found"
+            : "No payment records found"}
+        </div>
+      ) : (
+        <>
+          <table
+            className="items-table"
+            style={{ tableLayout: "fixed", width: "100%" }}
+          >
+            <colgroup>
+              <col style={{ width: "140px" }} />
+              <col style={{ width: "140px" }} />
+              <col style={{ width: "160px" }} />
+              <col style={{ width: "200px" }} />
+              <col style={{ width: "150px" }} />
+              <col style={{ width: "120px" }} />
+              <col style={{ width: "75px" }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>MR NUMBER</th>
+                <th>LPO NUMBER</th>
+                <th>TYPE</th>
+                <th
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                  onClick={() => handleSort("outstanding")}
+                >
+                  OUTSTANDING AMOUNT{sortIcon("outstanding")}
+                </th>
+                <th>DUE DATE</th>
+                <th>STATUS</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginated.map((row) => {
+                const isPaid = row.is_paid === 1;
+                const dueDate = getDueDate(row);
+                const overdue = !isPaid && isDueOverdue(row);
+
+                return (
+                  <tr key={row.id}>
+                    {/* MR NUMBER */}
+                    <td>MR-{String(row.mr_header_id).padStart(5, "0")}</td>
+
+                    {/* LPO NUMBER */}
+                    <td>LPO-{String(row.id).padStart(5, "0")}</td>
+
+                    {/* TYPE */}
+                    <td>
+                      <SupplierTypePill type={row.supplier_type} />
+                    </td>
+
+                    {/* OUTSTANDING AMOUNT */}
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <span>
+                        AED {formatAED(isPaid ? 0 : Number(row.outstanding))}
+                      </span>
+                    </td>
+
+                    {/* DUE DATE */}
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      {dueDate === "N/A" ? (
+                        <span>N/A</span>
+                      ) : (
+                        <span>{dueDate}</span>
+                      )}
+                    </td>
+
+                    {/* STATUS */}
+                    <td>
+                      <StatusPill isPaid={isPaid} />
+                    </td>
+
+                    {/* External link */}
+                    <td>
+                      {canView && (
+                        <Button
+                          componentType="link"
+                          bgColor="rgba(239, 239, 239, 1)"
+                          borderColor="rgba(223, 223, 223, 1)"
+                          textColor="black"
+                          href={`/payment/mr/${row.mr_header_id}`}
+                          style={{ padding: "7px 7px" }}
+                        >
+                          <img src={externalLinkIcon} alt="open" />
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </>
+      )}
     </div>
   );
 }

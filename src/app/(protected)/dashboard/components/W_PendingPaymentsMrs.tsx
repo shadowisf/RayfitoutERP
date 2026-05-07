@@ -11,7 +11,6 @@ type BottleneckStage = {
   progress_id: number;
   progress_name: string;
   mr_count: number;
-  median_minutes: number;
 };
 
 type ProjectAtRisk = {
@@ -215,33 +214,6 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
     return { left: Math.max(10, left), top: 10 };
   };
 
-  // Format helpers (mirrored from W_ActiveMrs)
-  const formatMedianTime = (minutes: number): string => {
-    if (minutes == null || isNaN(minutes)) return "N/A";
-    const totalMins = Math.max(0, Math.round(minutes));
-    if (totalMins === 0) return "0 mins";
-
-    const days = Math.floor(totalMins / (60 * 24));
-    const hours = Math.floor((totalMins % (60 * 24)) / 60);
-    const mins = totalMins % 60;
-
-    const parts: string[] = [];
-    if (days > 0) parts.push(`${days} ${days === 1 ? "day" : "days"}`);
-    if (hours > 0) parts.push(`${hours} ${hours === 1 ? "hour" : "hours"}`);
-    if (mins > 0) parts.push(`${mins} ${mins === 1 ? "min" : "mins"}`);
-
-    return parts.join(" ");
-  };
-
-  const getMedianColor = (minutes: number): string => {
-    if (minutes == null || isNaN(minutes)) return "#888";
-    const hours = minutes / 60;
-    if (hours < 24) return "rgba(16, 185, 129, 1)"; // green - under a day
-    const days = hours / 24;
-    if (days <= 3) return "rgba(234, 179, 8, 1)"; // yellow - 1-3 days
-    return "rgba(248, 77, 77, 1)"; // red - over 3 days
-  };
-
   // Format the date range footer using en-GB locale ("from DD MMM YYYY to
   // DD MMM YYYY"). Returns null when either bound is missing.
   const formatDateRange = (): string | null => {
@@ -384,10 +356,6 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
                         from{" "}
                         <strong>
                           {stage.progress_name || `Stage ${stage.progress_id}`}
-                        </strong>{" "}
-                        with current median time of{" "}
-                        <strong>
-                          {formatMedianTime(stage.median_minutes)}
                         </strong>
                       </span>
                     </div>

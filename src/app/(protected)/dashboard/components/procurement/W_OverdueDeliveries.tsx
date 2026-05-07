@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "../OverviewHoverPopup";
-import HoverLoadingCursor from "../HoverLoadingCursor";
 
 type props = {
   filterDays?: number;
@@ -25,18 +24,14 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
 
   // Hover popup state
   const [showPopup, setShowPopup] = useState(false);
-  const [isWaiting, setIsWaiting] = useState(false);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const hoverTimer = useRef<NodeJS.Timeout | null>(null);
+  const hideTimer = useRef<NodeJS.Timeout | null>(null);
+  const widgetRef = useRef<HTMLDivElement>(null);
+  const anchorRectRef = useRef<DOMRect | null>(null);
 
   useEffect(() => {
     const handleCloseHover = () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
       setShowPopup(false);
-      setIsWaiting(false);
-      if (hoverTimer.current) {
-        clearTimeout(hoverTimer.current);
-        hoverTimer.current = null;
-      }
     };
     window.addEventListener("scroll", handleCloseHover, true);
     window.addEventListener("blur", handleCloseHover);
@@ -44,6 +39,16 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
       window.removeEventListener("scroll", handleCloseHover, true);
       window.removeEventListener("blur", handleCloseHover);
     };
+  }, []);
+
+  useEffect(() => {
+    const handleCloseAll = (e: Event) => {
+      const customE = e as CustomEvent;
+      if (customE.detail?.source !== "overdue-deliveries") setShowPopup(false);
+    };
+    window.addEventListener("close-all-hover-popups", handleCloseAll);
+    return () =>
+      window.removeEventListener("close-all-hover-popups", handleCloseAll);
   }, []);
 
   useEffect(() => {
@@ -92,48 +97,36 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
       });
   }, [filterDays]);
 
-  // Hover handlers
+  const startHideTimer = () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => {
+      setShowPopup(false);
+    }, 120);
+  };
+
+  const cancelHideTimer = () => {
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+  };
+
   const handleMouseEnter = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("button, a, [role='button']")) return;
-    setMousePosition({ x: e.clientX, y: e.clientY });
-    setIsWaiting(true);
-    hoverTimer.current = setTimeout(() => {
-      setIsWaiting(false);
-      setShowPopup(true);
-    }, 2000);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest("button, a, [role='button']")) {
-      if (hoverTimer.current) {
-        clearTimeout(hoverTimer.current);
-        hoverTimer.current = null;
-      }
-      setIsWaiting(false);
-      setShowPopup(false);
-      return;
-    }
-    setMousePosition({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleMouseDown = () => {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
-    setIsWaiting(false);
-    setShowPopup(false);
+    window.dispatchEvent(
+      new CustomEvent("close-all-hover-popups", {
+        detail: { source: "overdue-deliveries" },
+      }),
+    );
+    cancelHideTimer();
+    anchorRectRef.current =
+      widgetRef.current?.getBoundingClientRect() ?? null;
+    setShowPopup(true);
   };
 
   const handleMouseLeave = () => {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
-    setShowPopup(false);
-    setIsWaiting(false);
+    startHideTimer();
   };
 
   const hasNoIncompleteDeliveries = thisWeek === 0;
@@ -152,7 +145,8 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
   const arrow = isIncrease ? upArrow : downArrow;
 
   const isAllTime = filterDays === 0;
-  const periodLabel = isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
+  const periodLabel =
+    isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
   const changeText = hasNoIncompleteDeliveries
     ? "No incomplete deliveries"
     : isAllTime
@@ -163,13 +157,12 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
 
   return (
     <div
+      ref={widgetRef}
       className="item"
       style={{ cursor: "pointer" }}
       onClick={() => router.push("/dashboard/details/overdue-deliveries")}
       onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      onMouseDown={handleMouseDown}
     >
       <div className="top">
         <span>Overdue Deliveries</span>
@@ -195,19 +188,22 @@ export default function OverdueDeliveriesWidget({ filterDays }: props) {
         <span>{isLoading ? "Loading..." : changeText}</span>
       </div>
 
-      {isWaiting && !showPopup && (
-        <HoverLoadingCursor mouseX={mousePosition.x} mouseY={mousePosition.y} />
-      )}
-
       {showPopup && items.length > 0 && (
         <OverviewHoverPopup
-          mouseX={mousePosition.x}
-          mouseY={mousePosition.y}
+          mouseX={0}
+          mouseY={0}
           items={items}
           totalCount={totalCount}
+          anchorRect={anchorRectRef.current}
+          onMouseEnter={cancelHideTimer}
+          onMouseLeave={startHideTimer}
           columns={[
             { key: "display_id", label: "LPO NUMBER" },
-            { key: "item_count", label: "ITEMS", format: (val: number) => `${val} Items` },
+            {
+              key: "item_count",
+              label: "ITEMS",
+              format: (val: number) => `${val} Items`,
+            },
           ]}
           emptyMessage="No overdue deliveries"
         />

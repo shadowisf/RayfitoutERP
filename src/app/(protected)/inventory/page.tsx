@@ -9,7 +9,6 @@ import TransferIssueMultipleStocks from "./components/_TransferIssueMultipleStoc
 import TransactionDetailsPopUpButton from "./[id]/components/_IssueDetailsPopUpButton";
 import InventoryFilterButton from "./components/_InventoryFilterButton";
 import StockLocationHoverPopup from "./components/_StockLocationHoverPopup";
-import HoverLoadingCursor from "../dashboard/components/HoverLoadingCursor";
 import ArchiveInventoryItemButton from "./[id]/components/_ArchiveInventoryItemButton";
 import DeleteTransactionButton from "./[id]/components/_DeleteTransactionButton";
 import EditTransactionButton from "./components/_EditTransactionButton";
@@ -91,12 +90,8 @@ export default function Inventory() {
   const [transactionsPerPage] = useState(50);
 
   const [hoveredItemId, setHoveredItemId] = useState<number | null>(null);
-  const [hoverTimer, setHoverTimer] = useState<NodeJS.Timeout | null>(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [showPopup, setShowPopup] = useState(false);
-  const [isWaiting, setIsWaiting] = useState(false);
-  const [prefetchedStockData, setPrefetchedStockData] = useState<any>(null);
   const [hoveredRowRect, setHoveredRowRect] = useState<DOMRect | null>(null);
+  const itemHideTimer = useRef<NodeJS.Timeout | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isScrollingRef = useRef(false);
@@ -534,15 +529,9 @@ export default function Inventory() {
   // Close hover popup whenever the user clicks anywhere (buttons, forms, etc.)
   useEffect(() => {
     const handleGlobalClick = () => {
-      if (showPopup || isWaiting) {
-        if (hoverTimer) clearTimeout(hoverTimer);
-        setHoverTimer(null);
-        setShowPopup(false);
-        setIsWaiting(false);
-        setHoveredItemId(null);
-        setHoveredRowRect(null);
-        setPrefetchedStockData(null);
-      }
+      if (itemHideTimer.current) clearTimeout(itemHideTimer.current);
+      setHoveredItemId(null);
+      setHoveredRowRect(null);
     };
     window.addEventListener("click", handleGlobalClick, true);
     window.addEventListener("blur", handleGlobalClick);
@@ -550,22 +539,16 @@ export default function Inventory() {
       window.removeEventListener("click", handleGlobalClick, true);
       window.removeEventListener("blur", handleGlobalClick);
     };
-  }, [showPopup, isWaiting, hoverTimer]);
+  }, []);
 
   // Detect scrolling — close popup immediately and block hover until scrolling stops
   useEffect(() => {
     const handleScroll = () => {
       isScrollingRef.current = true;
-      // Close any active popup/loading cursor immediately
-      setShowPopup(false);
-      setIsWaiting(false);
+      // Close any active popup immediately
+      if (itemHideTimer.current) clearTimeout(itemHideTimer.current);
       setHoveredItemId(null);
       setHoveredRowRect(null);
-      setPrefetchedStockData(null);
-      setHoverTimer((prev) => {
-        if (prev) clearTimeout(prev);
-        return null;
-      });
       // Unblock hover 200ms after scrolling stops
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
       scrollTimerRef.current = setTimeout(() => {
@@ -968,6 +951,13 @@ export default function Inventory() {
       });
     }
 
+    // Apply project filter
+    if (transferLogFilters.selectedProjects.length > 0) {
+      filtered = filtered.filter((transaction) =>
+        transferLogFilters.selectedProjects.includes(transaction.project_name),
+      );
+    }
+
     if (transferLogSearchQuery.trim() !== "") {
       const rawQuery = transferLogSearchQuery.toLowerCase().trim();
       const normalizedQuery = rawQuery.replace(/^ta-/, "");
@@ -1122,6 +1112,24 @@ export default function Inventory() {
           marginTop: "20px",
         }}
       >
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          style={{
+            padding: "8px 12px",
+            borderRadius: "5px",
+            border: "1px solid rgba(223, 223, 223, 1)",
+            backgroundColor: "white",
+            color: "black",
+            cursor: currentPage === 1 ? "not-allowed" : "pointer",
+            fontWeight: "600",
+            minWidth: "40px",
+            opacity: currentPage === 1 ? 0.4 : 1,
+          }}
+        >
+          ‹
+        </button>
+
         {getPageNumbers().map((page, index) => (
           <button
             key={index}
@@ -1146,6 +1154,24 @@ export default function Inventory() {
             {page}
           </button>
         ))}
+
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          style={{
+            padding: "8px 12px",
+            borderRadius: "5px",
+            border: "1px solid rgba(223, 223, 223, 1)",
+            backgroundColor: "white",
+            color: "black",
+            cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+            fontWeight: "600",
+            minWidth: "40px",
+            opacity: currentPage === totalPages ? 0.4 : 1,
+          }}
+        >
+          ›
+        </button>
       </div>
     );
   };
@@ -1174,94 +1200,29 @@ export default function Inventory() {
     selectedInventoryIds.has(item.id),
   );
 
-  const handleMouseEnter = (itemId: number, event: React.MouseEvent) => {
-    // Don't trigger while user is scrolling
-    if (isScrollingRef.current) return;
-
-    const target = event.target as HTMLElement;
-    if (target.closest("button, a, [role='button']")) return;
-
-    // Clear any in-progress hover from a previous row immediately
-    if (hoverTimer) {
-      clearTimeout(hoverTimer);
-      setHoverTimer(null);
+  const cancelItemHide = () => {
+    if (itemHideTimer.current) {
+      clearTimeout(itemHideTimer.current);
+      itemHideTimer.current = null;
     }
-    setShowPopup(false);
-    setHoveredItemId(null);
-
-    // Capture the row's bounding rect for static (non-following) popup placement
-    const rowRect = (
-      event.currentTarget as HTMLElement
-    ).getBoundingClientRect();
-    setHoveredRowRect(rowRect);
-
-    setMousePosition({ x: event.clientX, y: event.clientY });
-    setIsWaiting(true);
-    setPrefetchedStockData(null);
-
-    // Prefetch stock data immediately so it's ready when popup shows
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/stock/getStocksByInventoryItemID`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inventoryItemId: itemId }),
-      },
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setPrefetchedStockData(data);
-      })
-      .catch(() => {
-        setPrefetchedStockData({ success: false });
-      });
-
-    const timer = setTimeout(() => {
-      setIsWaiting(false);
-      setHoveredItemId(itemId);
-      setShowPopup(true);
-    }, 2000);
-
-    setHoverTimer(timer);
   };
 
-  const handleMouseMove = (event: React.MouseEvent) => {
-    const target = event.target as HTMLElement;
-    const overButton = !!target.closest("button, a, [role='button']");
-
-    if (overButton && (isWaiting || showPopup)) {
-      if (hoverTimer) {
-        clearTimeout(hoverTimer);
-        setHoverTimer(null);
-      }
-      setIsWaiting(false);
-      setShowPopup(false);
+  const startItemHide = () => {
+    itemHideTimer.current = setTimeout(() => {
       setHoveredItemId(null);
-      return;
-    }
-
-    setMousePosition({ x: event.clientX, y: event.clientY });
+      setHoveredRowRect(null);
+    }, 120);
   };
 
-  const handleMouseDown = () => {
-    if (hoverTimer) {
-      clearTimeout(hoverTimer);
-      setHoverTimer(null);
-    }
-    setIsWaiting(false);
-    setShowPopup(false);
-    setHoveredItemId(null);
-  };
-
-  const handleMouseLeave = () => {
-    if (hoverTimer) {
-      clearTimeout(hoverTimer);
-      setHoverTimer(null);
-    }
-    setIsWaiting(false);
-    setShowPopup(false);
-    setHoveredItemId(null);
-    setPrefetchedStockData(null);
+  const handleMaterialCellEnter = (
+    itemId: number,
+    e: React.MouseEvent<HTMLTableCellElement>,
+  ) => {
+    if (isScrollingRef.current) return;
+    cancelItemHide();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setHoveredRowRect(rect);
+    setHoveredItemId(itemId);
   };
 
   return (
@@ -1898,16 +1859,16 @@ export default function Inventory() {
                             width: "16px",
                             height: "16px",
                             cursor: "pointer",
-                            accentColor: "#10b981",
+                            accentColor: "rgba(0, 163, 93, 1)",
                           }}
                         />
                       </th>
                       <th style={{ width: "40px" }}>#</th>
                       <th style={{ width: "140px" }}>ITEM NUMBER</th>
                       <th style={{ width: "400px" }}>MATERIAL</th>
-                      <th style={{ width: "50px" }}>TOTAL QTY</th>
-                      <th style={{ width: "100px" }}>STATUS</th>
-                      <th style={{ width: "100px" }}></th>
+                      <th style={{ width: "100px" }}>TOTAL QTY</th>
+                      <th style={{ width: "125px" }}>STATUS</th>
+                      <th style={{ width: "125px" }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1933,7 +1894,7 @@ export default function Inventory() {
                                 width: "16px",
                                 height: "16px",
                                 cursor: "pointer",
-                                accentColor: "#10b981",
+                                accentColor: "rgba(0, 163, 93, 1)",
                               }}
                             />
                           </td>
@@ -1945,10 +1906,10 @@ export default function Inventory() {
                           </td>
                           <td
                             style={{ fontWeight: "600", cursor: "default" }}
-                            onMouseEnter={(e) => handleMouseEnter(item.id, e)}
-                            onMouseMove={handleMouseMove}
-                            onMouseLeave={handleMouseLeave}
-                            onMouseDown={handleMouseDown}
+                            onMouseEnter={(e) =>
+                              handleMaterialCellEnter(item.id, e)
+                            }
+                            onMouseLeave={startItemHide}
                           >
                             <div
                               style={{
@@ -2103,6 +2064,13 @@ export default function Inventory() {
                   ),
                 ).sort() as string[]
               }
+              projects={
+                Array.from(
+                  new Set(
+                    allTransactions.map((t) => t.project_name).filter(Boolean),
+                  ),
+                ).sort() as string[]
+              }
               onApplyFilters={setTransferLogFilters}
               currentFilters={transferLogFilters}
             />
@@ -2110,7 +2078,8 @@ export default function Inventory() {
             {(transferLogFilters.timeRange !== "all" ||
               transferLogFilters.selectedTypes.length > 0 ||
               transferLogFilters.selectedStatuses.length > 0 ||
-              transferLogFilters.selectedLocations.length > 0) && (
+              transferLogFilters.selectedLocations.length > 0 ||
+              transferLogFilters.selectedProjects.length > 0) && (
               <div
                 style={{
                   display: "flex",
@@ -2206,6 +2175,27 @@ export default function Inventory() {
                       {transferLogFilters.selectedLocations[0].toUpperCase()}
                       {transferLogFilters.selectedLocations.length > 1 &&
                         `, +${transferLogFilters.selectedLocations.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
+                {transferLogFilters.selectedProjects.length > 0 && (
+                  <Button
+                    style={{
+                      borderRadius: "50px",
+                      fontWeight: 600,
+                      textWrap: "nowrap",
+                    }}
+                    componentType={"none"}
+                    bgColor={"rgba(239, 239, 239, 1)"}
+                    borderColor={"transparent"}
+                    textColor={"black"}
+                  >
+                    PROJECT:{" "}
+                    <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                      {transferLogFilters.selectedProjects[0].toUpperCase()}
+                      {transferLogFilters.selectedProjects.length > 1 &&
+                        `, +${transferLogFilters.selectedProjects.length - 1} MORE`}
                     </span>
                   </Button>
                 )}
@@ -2398,21 +2388,16 @@ export default function Inventory() {
         </div>
       )}
 
-      {isWaiting && !showPopup && (
-        <HoverLoadingCursor mouseX={mousePosition.x} mouseY={mousePosition.y} />
-      )}
-
-      {showPopup && hoveredItemId !== null && (
-        <StockLocationHoverPopup
-          inventoryItemId={hoveredItemId}
-          mouseX={mousePosition.x}
-          mouseY={mousePosition.y}
-          anchorRect={hoveredRowRect}
-          unit={
-            currentItems.find((item) => item.id === hoveredItemId)?.unit || ""
-          }
-          prefetchedData={prefetchedStockData}
-        />
+      {hoveredItemId !== null && (
+        <div onMouseEnter={cancelItemHide} onMouseLeave={startItemHide}>
+          <StockLocationHoverPopup
+            inventoryItemId={hoveredItemId}
+            anchorRect={hoveredRowRect}
+            unit={
+              currentItems.find((item) => item.id === hoveredItemId)?.unit || ""
+            }
+          />
+        </div>
       )}
     </div>
   );

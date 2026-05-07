@@ -238,11 +238,11 @@ export async function PUT(req: Request) {
 
     if (body.action === "resetSupplierAndQuotation") {
       // Only reset the APPROVED quotation for this specific supplier
-      const query = `UPDATE mr_line_supplier_quotation 
+      const query = `UPDATE mr_line_supplier_quotation
                  SET approval_status = NULL,
                      reject_comment = NULL
-                 WHERE mr_line_id = ? 
-                 AND supplier_id = ? 
+                 WHERE mr_line_id = ?
+                 AND supplier_id = ?
                  AND approval_status = 'Approved'`;
 
       await db.query(query, [body.mr_line_id, body.supplier_id]);
@@ -250,6 +250,19 @@ export async function PUT(req: Request) {
       return NextResponse.json({
         success: true,
       });
+    }
+
+    if (body.action === "resetAllQuotationsForLine") {
+      // Reset ALL quotations for the line (handles rejected state where no approved quotation exists)
+      await db.query(
+        `UPDATE mr_line_supplier_quotation
+         SET approval_status = NULL,
+             reject_comment  = NULL
+         WHERE mr_line_id = ?`,
+        [body.mr_line_id],
+      );
+
+      return NextResponse.json({ success: true });
     }
 
     if (body.action === "resetSupplierAndQuotationQS") {

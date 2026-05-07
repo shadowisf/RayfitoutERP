@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 type StockLocationHoverPopupProps = {
   inventoryItemId: number;
-  mouseX: number;
-  mouseY: number;
+  mouseX?: number;
+  mouseY?: number;
   unit: string;
   prefetchedData?: any;
   anchorRect?: DOMRect | null;
@@ -68,8 +68,8 @@ function processStockData(result: any): {
 
 export default function StockLocationHoverPopup({
   inventoryItemId,
-  mouseX,
-  mouseY,
+  mouseX = 0,
+  mouseY = 0,
   unit,
   prefetchedData,
   anchorRect,
@@ -149,7 +149,6 @@ export default function StockLocationHoverPopup({
         boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
         zIndex: 10000,
         width: `${popupWidth}px`,
-        pointerEvents: "none",
       }}
     >
       <table className="items-table popup-hover">

@@ -616,7 +616,7 @@ export default function AllTransactionsPage() {
                     className="manager-checkbox"
                     checked={allSelected}
                     onChange={toggleAll}
-                    style={{ cursor: "pointer" }}
+                    style={{ cursor: "pointer", accentColor: "#10b981" }}
                   />
                 </th>
                 <th>LPO NUMBER</th>
@@ -654,7 +654,7 @@ export default function AllTransactionsPage() {
                       className="manager-checkbox"
                       checked={selectedIds.has(row.id)}
                       onChange={() => toggleRow(row.id)}
-                      style={{ cursor: "pointer" }}
+                      style={{ cursor: "pointer", accentColor: "#10b981" }}
                     />
                   </td>
                   <td>
@@ -680,8 +680,16 @@ export default function AllTransactionsPage() {
                     </div>
                   </td>
                   <td>{row.vendor_name || "-"}</td>
-                  <td>{!row.requester || row.requester === "—" ? "-" : row.requester}</td>
-                  <td>{!row.project_name || row.project_name === "—" ? "-" : row.project_name}</td>
+                  <td>
+                    {!row.requester || row.requester === "—"
+                      ? "-"
+                      : row.requester}
+                  </td>
+                  <td>
+                    {!row.project_name || row.project_name === "—"
+                      ? "-"
+                      : row.project_name}
+                  </td>
                   <td>
                     <VendorTypePill type={row.vendor_type} />
                   </td>
@@ -690,7 +698,7 @@ export default function AllTransactionsPage() {
                 </tr>
               ))}
             </tbody>
-            {/* <tfoot>
+            <tfoot>
               <tr>
                 <td colSpan={6} />
                 <td style={{ fontWeight: "600", whiteSpace: "nowrap" }}>
@@ -698,7 +706,7 @@ export default function AllTransactionsPage() {
                 </td>
                 <td />
               </tr>
-            </tfoot> */}
+            </tfoot>
           </table>
 
           {/* ── Pagination ── */}
@@ -712,6 +720,24 @@ export default function AllTransactionsPage() {
                 marginTop: "20px",
               }}
             >
+              <button
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "5px",
+                  border: "1px solid rgba(223, 223, 223, 1)",
+                  backgroundColor: "white",
+                  color: "black",
+                  cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                  fontWeight: "600",
+                  minWidth: "40px",
+                  opacity: currentPage === 1 ? 0.4 : 1,
+                }}
+              >
+                ‹
+              </button>
+
               {getPageNumbers().map((page, index) => (
                 <button
                   key={index}
@@ -738,6 +764,25 @@ export default function AllTransactionsPage() {
                   {page}
                 </button>
               ))}
+
+              <button
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "5px",
+                  border: "1px solid rgba(223, 223, 223, 1)",
+                  backgroundColor: "white",
+                  color: "black",
+                  cursor:
+                    currentPage === totalPages ? "not-allowed" : "pointer",
+                  fontWeight: "600",
+                  minWidth: "40px",
+                  opacity: currentPage === totalPages ? 0.4 : 1,
+                }}
+              >
+                ›
+              </button>
             </div>
           )}
         </>

@@ -970,6 +970,26 @@ export default function ReplaceMaterialButton({
             marginTop: "15px",
           }}
         >
+          <button
+            type="button"
+            onClick={() => setCurrentPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            style={{
+              padding: "6px 10px",
+              borderRadius: "5px",
+              border: "1px solid rgba(223, 223, 223, 1)",
+              backgroundColor: "white",
+              color: "black",
+              cursor: currentPage === 1 ? "not-allowed" : "pointer",
+              fontWeight: "600",
+              minWidth: "36px",
+              fontSize: "13px",
+              opacity: currentPage === 1 ? 0.4 : 1,
+            }}
+          >
+            ‹
+          </button>
+
           {getPageNumbers().map((page, index) => (
             <button
               key={index}
@@ -996,6 +1016,26 @@ export default function ReplaceMaterialButton({
               {page}
             </button>
           ))}
+
+          <button
+            type="button"
+            onClick={() => setCurrentPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: "6px 10px",
+              borderRadius: "5px",
+              border: "1px solid rgba(223, 223, 223, 1)",
+              backgroundColor: "white",
+              color: "black",
+              cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+              fontWeight: "600",
+              minWidth: "36px",
+              fontSize: "13px",
+              opacity: currentPage === totalPages ? 0.4 : 1,
+            }}
+          >
+            ›
+          </button>
         </div>
       )}
     </FormPopUp>

@@ -1148,7 +1148,7 @@ export default function MaterialsReportPage() {
                       className="manager-checkbox"
                       checked={allSelected}
                       onChange={toggleAll}
-                      style={{ cursor: "pointer" }}
+                      style={{ cursor: "pointer", accentColor: "#10b981" }}
                     />
                   </th>
                   <th>#</th>
@@ -1220,7 +1220,7 @@ export default function MaterialsReportPage() {
                             className="manager-checkbox"
                             checked={selectedKeys.has(rowKey)}
                             onChange={() => toggleKey(rowKey)}
-                            style={{ cursor: "pointer" }}
+                            style={{ cursor: "pointer", accentColor: "#10b981" }}
                           />
                         </td>
                         <td>{rowNum}</td>
@@ -1352,6 +1352,24 @@ export default function MaterialsReportPage() {
                 marginTop: 20,
               }}
             >
+              <button
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 5,
+                  border: "1px solid rgba(223,223,223,1)",
+                  backgroundColor: "white",
+                  color: "black",
+                  cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                  fontWeight: 600,
+                  minWidth: 40,
+                  opacity: currentPage === 1 ? 0.4 : 1,
+                }}
+              >
+                ‹
+              </button>
+
               {getPageNumbers().map((page, index) => (
                 <button
                   key={index}
@@ -1378,6 +1396,25 @@ export default function MaterialsReportPage() {
                   {page}
                 </button>
               ))}
+
+              <button
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 5,
+                  border: "1px solid rgba(223,223,223,1)",
+                  backgroundColor: "white",
+                  color: "black",
+                  cursor:
+                    currentPage === totalPages ? "not-allowed" : "pointer",
+                  fontWeight: 600,
+                  minWidth: 40,
+                  opacity: currentPage === totalPages ? 0.4 : 1,
+                }}
+              >
+                ›
+              </button>
             </div>
           )}
         </>
