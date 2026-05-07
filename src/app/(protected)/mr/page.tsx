@@ -1422,10 +1422,6 @@ export default function MR() {
                 selectedManagerMrIds.size > 0 &&
                 setSelectedManagerMrIds(new Set())
               }
-              style={{
-                cursor:
-                  selectedManagerMrIds.size === 0 ? "not-allowed" : "pointer",
-              }}
             >
               RESET
             </Button>
@@ -1548,7 +1544,7 @@ export default function MR() {
                       backgroundColor: "black",
                       color: "white",
                       borderRadius: "50px",
-                      padding: "3px 8px",
+                      padding: "3px 12px",
                       fontWeight: "600",
                       fontSize: "14px",
                     }}
@@ -1665,7 +1661,6 @@ export default function MR() {
                                       }}
                                       style={{
                                         alignSelf: "center",
-                                        accentColor: "#10b981",
                                       }}
                                       onChange={(e) => {
                                         const next = new Set(
@@ -2463,7 +2458,6 @@ export default function MR() {
                                                 )}
                                                 style={{
                                                   alignSelf: "center",
-                                                  accentColor: "#10b981",
                                                 }}
                                                 onChange={(e) => {
                                                   const next = new Set(

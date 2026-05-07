@@ -294,18 +294,6 @@ export default function ManagerPriceActionsButton({
             textColor={selectedItemIds.size === 0 ? "black" : "white"}
             onClick={() => !isAutoSelecting && setActionsOpen((v) => !v)}
             disabled={selectedItemIds.size === 0 || isAutoSelecting}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor:
-                selectedItemIds.size === 0 || isAutoSelecting
-                  ? "not-allowed"
-                  : "pointer",
-              opacity: isAutoSelecting ? 0.7 : 1,
-              transition: "opacity 0.2s ease",
-              pointerEvents: isAutoSelecting ? "none" : "auto",
-            }}
           >
             {isAutoSelecting ? (
               <>
@@ -389,17 +377,7 @@ export default function ManagerPriceActionsButton({
           }
           textColor={selectedItemIds.size === 0 ? "black" : "white"}
           style={{
-            padding: "9px 9px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor:
-              selectedItemIds.size === 0 || isDownloading
-                ? "not-allowed"
-                : "pointer",
-            opacity: isDownloading ? 0.7 : 1,
-            transition: "opacity 0.2s ease",
-            pointerEvents: isDownloading ? "none" : "auto",
+            padding: "9.5px 9.5px",
           }}
           disabled={selectedItemIds.size === 0 || isDownloading}
           onClick={() => {
@@ -408,9 +386,7 @@ export default function ManagerPriceActionsButton({
           }}
         >
           {isDownloading ? (
-            <Spinner
-              color={selectedItemIds.size === 0 ? "black" : "white"}
-            />
+            <Spinner color={selectedItemIds.size === 0 ? "black" : "white"} />
           ) : (
             <img
               src={downloadIcon}
@@ -468,8 +444,7 @@ export default function ManagerPriceActionsButton({
           addButtonLabel="CONFIRM"
         >
           Are you sure you want to delete {selectedItemIds.size} selected item
-          {selectedItemIds.size !== 1 ? "s" : ""}? This action cannot be
-          undone.
+          {selectedItemIds.size !== 1 ? "s" : ""}? This action cannot be undone.
         </FormPopUp>
       )}
 

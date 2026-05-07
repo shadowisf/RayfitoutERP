@@ -70,10 +70,6 @@ export default function PriceApprovalButton({
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null,
   );
-  const [globalLowestPrice, setGlobalLowestPrice] = useState<number | null>(
-    null,
-  );
-  const [globalPriceCount, setGlobalPriceCount] = useState<number>(0);
 
   // Pre-seed selectedQuotationID when popup opens so CONFIRM works even without
   // the user manually clicking a radio button (approved edit case or single quotation).
@@ -93,26 +89,6 @@ export default function PriceApprovalButton({
     }
   }, [isSmartSelectPortal, portalTargetId]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    async function fetchGlobalLowestPrice() {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getGlobalLowestPriceByMrLineID?mr_line_id=${mrLine.id}`,
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setGlobalLowestPrice(
-            data.global_lowest != null ? Number(data.global_lowest) : null,
-          );
-          setGlobalPriceCount(data.price_count ?? 0);
-        }
-      } catch (err) {
-        console.error("Failed to fetch global lowest price:", err);
-      }
-    }
-    fetchGlobalLowestPrice();
-  }, [isOpen, mrLine?.id]);
 
   // Helper function to format currency with 2 decimal places
   const formatCurrency = (
@@ -644,40 +620,47 @@ export default function PriceApprovalButton({
                       </tr>
                     </thead>
                     <tbody>
-                      {supplierQuotations.map(
-                        (quotation: SupplierQuotation, index: number) => {
-                          const requestedQty = Number(mrLine.quantity) || 0;
-                          const proposedQty =
-                            Number(quotation.proposed_quantity) || 0;
-                          const stockQty =
-                            proposedQty > requestedQty
-                              ? proposedQty - requestedQty
-                              : 0;
+                      {(() => {
+                        const lowestTotalPrice = supplierQuotations.reduce(
+                          (min, q) => {
+                            const v = parseFloat(String(q.total_price) || "");
+                            return !isNaN(v) && v > 0 ? Math.min(min, v) : min;
+                          },
+                          Infinity,
+                        );
+                        return supplierQuotations.map(
+                          (quotation: SupplierQuotation, index: number) => {
+                            const requestedQty = Number(mrLine.quantity) || 0;
+                            const proposedQty =
+                              Number(quotation.proposed_quantity) || 0;
+                            const stockQty =
+                              proposedQty > requestedQty
+                                ? proposedQty - requestedQty
+                                : 0;
 
-                          const totalVal = parseFloat(
-                            String(quotation.total_price) || "",
-                          );
-                          const totalAlert =
-                            !isNaN(totalVal) &&
-                            totalVal > 0 &&
-                            globalLowestPrice !== null &&
-                            globalPriceCount > 0
-                              ? totalVal <= globalLowestPrice
-                                ? "lowest"
-                                : `+${Math.round(((totalVal - globalLowestPrice) / globalLowestPrice) * 100)}% vs lowest`
-                              : null;
+                            const totalVal = parseFloat(
+                              String(quotation.total_price) || "",
+                            );
+                            const totalAlert =
+                              !isNaN(totalVal) &&
+                              totalVal > 0 &&
+                              lowestTotalPrice !== Infinity
+                                ? totalVal <= lowestTotalPrice
+                                  ? "lowest"
+                                  : `+${Math.round(((totalVal - lowestTotalPrice) / lowestTotalPrice) * 100)}% vs lowest`
+                                : null;
 
-                          return (
-                            <tr key={index}>
-                              <td>
-                                <input
-                                  type="radio"
-                                  name="supplier"
-                                  value={quotation.id}
-                                  defaultChecked={
-                                    String(quotation.id) ===
-                                    String(approvedQuotation?.id)
-                                  }
+                            return (
+                              <tr key={index}>
+                                <td>
+                                  <input
+                                    type="radio"
+                                    name="supplier"
+                                    value={quotation.id}
+                                    defaultChecked={
+                                      String(quotation.id) ===
+                                      String(approvedQuotation?.id)
+                                    }
                                   onChange={(e) =>
                                     setSelectedQuotationID(e.target.value)
                                   }
@@ -768,7 +751,8 @@ export default function PriceApprovalButton({
                             </tr>
                           );
                         },
-                      )}
+                        );
+                      })()}
                     </tbody>
                   </table>
                 </FormPopUp>
@@ -881,28 +865,35 @@ export default function PriceApprovalButton({
                     </tr>
                   </thead>
                   <tbody>
-                    {supplierQuotations.map(
-                      (quotation: SupplierQuotation, index: number) => {
-                        const requestedQty = Number(mrLine.quantity) || 0;
-                        const proposedQty =
-                          Number(quotation.proposed_quantity) || 0;
-                        const stockQty =
-                          proposedQty > requestedQty
-                            ? proposedQty - requestedQty
-                            : 0;
+                    {(() => {
+                      const lowestTotalPrice = supplierQuotations.reduce(
+                        (min, q) => {
+                          const v = parseFloat(String(q.total_price) || "");
+                          return !isNaN(v) && v > 0 ? Math.min(min, v) : min;
+                        },
+                        Infinity,
+                      );
+                      return supplierQuotations.map(
+                        (quotation: SupplierQuotation, index: number) => {
+                          const requestedQty = Number(mrLine.quantity) || 0;
+                          const proposedQty =
+                            Number(quotation.proposed_quantity) || 0;
+                          const stockQty =
+                            proposedQty > requestedQty
+                              ? proposedQty - requestedQty
+                              : 0;
 
-                        const totalVal = parseFloat(
-                          String(quotation.total_price) || "",
-                        );
-                        const totalAlert =
-                          !isNaN(totalVal) &&
-                          totalVal > 0 &&
-                          globalLowestPrice !== null &&
-                          globalPriceCount > 0
-                            ? totalVal <= globalLowestPrice
-                              ? "lowest"
-                              : `+${Math.round(((totalVal - globalLowestPrice) / globalLowestPrice) * 100)}% vs lowest`
-                            : null;
+                          const totalVal = parseFloat(
+                            String(quotation.total_price) || "",
+                          );
+                          const totalAlert =
+                            !isNaN(totalVal) &&
+                            totalVal > 0 &&
+                            lowestTotalPrice !== Infinity
+                              ? totalVal <= lowestTotalPrice
+                                ? "lowest"
+                                : `+${Math.round(((totalVal - lowestTotalPrice) / lowestTotalPrice) * 100)}% vs lowest`
+                              : null;
 
                         return (
                           <tr key={index}>
@@ -1001,7 +992,8 @@ export default function PriceApprovalButton({
                           </tr>
                         );
                       },
-                    )}
+                      );
+                    })()}
                   </tbody>
                 </table>
               </FormPopUp>

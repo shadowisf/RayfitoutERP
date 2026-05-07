@@ -10,11 +10,11 @@ const lpoPaymentsJoin = `
   ) pay ON pay.lpo_id = l.id
 `;
 
-// Same filter logic as the payments page kanban — excludes fully-paid LPOs
-// and LPOs in terminal/non-payment progress stages.
+// Same filter logic as the payments page kanban — excludes fully-paid LPOs.
+// l.progress_id > 14 matches getPaymentKanban and getUnpaidCount exactly.
 const pendingPaymentFilter = `
   mh.progress_id = 26
-  AND l.progress_id NOT IN (12, 15, 16, 23, 25)
+  AND l.progress_id > 14
   AND LOWER(IFNULL(l.payment_status, '')) NOT IN ('approved','paid','fully paid','completed','done')
   AND NOT (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)
 `;

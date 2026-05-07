@@ -1764,6 +1764,14 @@ export async function PUT(req: Request) {
 
         await db.query(query, values);
 
+        // ── Recalculate quotation total prices based on new quantity ──────────
+        await db.query(
+          `UPDATE mr_line_supplier_quotation
+           SET total_price = ROUND(unit_price * ?, 2)
+           WHERE mr_line_id = ? AND unit_price IS NOT NULL`,
+          [Number(body.quantity), Number(body.id)],
+        );
+
         // ✅ Delete existing subcategory associations
         await db.query(
           `DELETE FROM jt_mr_line_material_subcategory WHERE mr_line_id = ?`,
@@ -1910,6 +1918,14 @@ export async function PUT(req: Request) {
       await db.query(
         `UPDATE mr_lines SET quantity = ?, unit = ? WHERE id = ?`,
         [Number(body.quantity), body.unit || null, Number(body.id)],
+      );
+
+      // ── Recalculate quotation total prices based on new quantity ──────────
+      await db.query(
+        `UPDATE mr_line_supplier_quotation
+         SET total_price = ROUND(unit_price * ?, 2)
+         WHERE mr_line_id = ? AND unit_price IS NOT NULL`,
+        [Number(body.quantity), Number(body.id)],
       );
 
       // ── Activity log: QTY_EDITED ──────────────────────────────────────────

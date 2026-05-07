@@ -94,8 +94,6 @@ export default function Inventory() {
   const itemHideTimer = useRef<NodeJS.Timeout | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const isScrollingRef = useRef(false);
-  const scrollTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // ✅ NEW: Cache for quantities to avoid refetching when going back to previous pages
   const quantitiesCache = useRef<{
@@ -541,26 +539,6 @@ export default function Inventory() {
     };
   }, []);
 
-  // Detect scrolling — close popup immediately and block hover until scrolling stops
-  useEffect(() => {
-    const handleScroll = () => {
-      isScrollingRef.current = true;
-      // Close any active popup immediately
-      if (itemHideTimer.current) clearTimeout(itemHideTimer.current);
-      setHoveredItemId(null);
-      setHoveredRowRect(null);
-      // Unblock hover 200ms after scrolling stops
-      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-      scrollTimerRef.current = setTimeout(() => {
-        isScrollingRef.current = false;
-      }, 200);
-    };
-    window.addEventListener("scroll", handleScroll, true);
-    return () => {
-      window.removeEventListener("scroll", handleScroll, true);
-      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-    };
-  }, []);
 
   const getCategoryCount = (category: string) => {
     return inventory.filter((item) => item.category_name === category).length;
@@ -1218,7 +1196,6 @@ export default function Inventory() {
     itemId: number,
     e: React.MouseEvent<HTMLTableCellElement>,
   ) => {
-    if (isScrollingRef.current) return;
     cancelItemHide();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setHoveredRowRect(rect);

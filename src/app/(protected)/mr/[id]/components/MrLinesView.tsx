@@ -137,6 +137,11 @@ export default function MrLinesView({
     >
   >({});
 
+  // ── Quotation price ranges per MR line (for PRICE RANGE column) ─────────
+  const [quotationPriceRanges, setQuotationPriceRanges] = useState<
+    Record<number, { min: number; max: number }>
+  >({});
+
   // ── Lowest price hover popup ───────────────────────────────────────────────
   const [hoveredLowestDesc, setHoveredLowestDesc] = useState<string | null>(null);
   const [hoveredLowestRect, setHoveredLowestRect] = useState<DOMRect | null>(null);
@@ -534,6 +539,31 @@ export default function MrLinesView({
       .then((data) => setMaterialPriceStats(data))
       .catch((err) => console.error("getMaterialPriceStats error:", err));
   }, [mrHeader.progress_id, mrLines]);
+
+  // ── Fetch quotation price ranges for PRICE RANGE column ───────────────────
+  const fetchQuotationPriceRanges = useCallback(() => {
+    if (mrHeader.progress_id !== 10) return;
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getQuotationPriceRangesByMrHeaderID`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mr_header_id: mrHeader.id }),
+      },
+    )
+      .then((res) => res.json())
+      .then((data) => setQuotationPriceRanges(data))
+      .catch((err) => console.error("getQuotationPriceRanges error:", err));
+  }, [mrHeader.id, mrHeader.progress_id]);
+
+  useEffect(() => {
+    fetchQuotationPriceRanges();
+
+    const handleQuotationsUpdated = () => fetchQuotationPriceRanges();
+    window.addEventListener("quotationsUpdated", handleQuotationsUpdated);
+    return () =>
+      window.removeEventListener("quotationsUpdated", handleQuotationsUpdated);
+  }, [fetchQuotationPriceRanges]);
 
   useEffect(() => {
     async function fetchLpoPrices() {
@@ -1008,26 +1038,17 @@ export default function MrLinesView({
     let total = 0;
 
     items.forEach((item: MrLine) => {
-      let unitPrice: number;
-      let quantity: number;
-
       if (mrHeader.progress_id >= 12 && lpoLinePrices[item.id]) {
         // Use LPO prices
-        unitPrice = lpoLinePrices[item.id].unitPrice;
-        // Use proposed quantity if available, otherwise requested quantity
+        const unitPrice = lpoLinePrices[item.id].unitPrice;
         const proposedQty = Number(item.approved_proposed_quantity) || 0;
-        quantity = proposedQty > 0 ? proposedQty : Number(item.quantity) || 0;
-        /* vatRate = lpoLinePrices[item.id].vatRate; */
+        const quantity =
+          proposedQty > 0 ? proposedQty : Number(item.quantity) || 0;
+        total += unitPrice * quantity;
       } else {
-        // Use quotation prices
-        unitPrice = Number(item.approved_unit_price) || 0;
-        quantity = Number(item.approved_proposed_quantity) || 0;
-        /* vatRate = Number(item.approved_vat_rate) || 0; */
+        // Use approved_total_price directly — kept in sync with unit_price * quantity
+        total += Number(item.approved_total_price) || 0;
       }
-
-      const subtotal = unitPrice * quantity;
-      // Don't add VAT to match your original calculation
-      total += subtotal;
     });
 
     return Number(total.toFixed(2));
@@ -3023,38 +3044,66 @@ export default function MrLinesView({
                                           )}
                                           <td>{itemIndex + 1}</td>
                                           <td>
-                                            {item.material_description}
-                                            {item.qs_review_type ===
-                                              "item_available" &&
-                                              mrHeader.progress_id <= 4 &&
-                                              item.linked_inventory_item_description && (
-                                                <div
-                                                  style={{
-                                                    fontSize: "10px",
-                                                    color:
-                                                      "rgba(26, 216, 135, 1)",
-                                                    marginTop: "4px",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "4px",
-                                                  }}
-                                                >
-                                                  Item available:{" "}
-                                                  {
-                                                    item.linked_inventory_item_description
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "8px",
+                                              }}
+                                            >
+                                              <div>
+                                                {item.material_description}
+                                                {item.qs_review_type ===
+                                                  "item_available" &&
+                                                  mrHeader.progress_id <= 4 &&
+                                                  item.linked_inventory_item_description && (
+                                                    <div
+                                                      style={{
+                                                        fontSize: "10px",
+                                                        color:
+                                                          "rgba(26, 216, 135, 1)",
+                                                        marginTop: "4px",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "4px",
+                                                      }}
+                                                    >
+                                                      Item available:{" "}
+                                                      {
+                                                        item.linked_inventory_item_description
+                                                      }
+                                                      <img
+                                                        src={externalLinkIcon}
+                                                        alt=""
+                                                        style={{
+                                                          width: "10px",
+                                                          height: "10px",
+                                                          filter:
+                                                            "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
+                                                        }}
+                                                      />
+                                                    </div>
+                                                  )}
+                                              </div>
+                                              {(isManagerPriceApproval ||
+                                                isQSReview) && (
+                                                <EditMrItemButton
+                                                  projectID={
+                                                    mrHeader.project_id
                                                   }
+                                                  item={item}
+                                                  bgColor="rgba(239, 239, 239, 1)"
+                                                  borderColor="rgba(223, 223, 223, 1)"
+                                                  textColor="black"
+                                                  stageName={currentStageName}
+                                                >
                                                   <img
-                                                    src={externalLinkIcon}
-                                                    alt=""
-                                                    style={{
-                                                      width: "10px",
-                                                      height: "10px",
-                                                      filter:
-                                                        "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
-                                                    }}
+                                                    src={pencilIcon}
+                                                    alt="edit"
                                                   />
-                                                </div>
+                                                </EditMrItemButton>
                                               )}
+                                            </div>
                                           </td>
                                           {mrHeader.progress_id >= 9 ? (
                                             <>
@@ -3094,21 +3143,8 @@ export default function MrLinesView({
                                             </>
                                           ) : (
                                             <td>
-                                              <div
-                                                style={{
-                                                  display: "flex",
-                                                  gap: "10px",
-                                                  alignItems: "center",
-                                                }}
-                                              >
-                                                {formatNumber(item?.quantity)}{" "}
-                                                {item.unit}
-                                                {isQSReview && (
-                                                  <QSEditQtyButton
-                                                    item={item}
-                                                  />
-                                                )}
-                                              </div>
+                                              {formatNumber(item?.quantity)}{" "}
+                                              {item.unit}
                                             </td>
                                           )}
                                           <td>
@@ -3665,17 +3701,20 @@ export default function MrLinesView({
                                                     </div>
                                                   </td>
                                                   <td>
-                                                    {stats?.lowest_price !=
-                                                      null &&
-                                                    stats?.highest_price != null
-                                                      ? `${formatPriceAED(stats.lowest_price)} – ${formatPriceAED(stats.highest_price)}`
-                                                      : "N/A"}
+                                                    {(() => {
+                                                      const range =
+                                                        quotationPriceRanges[
+                                                          item.id
+                                                        ];
+                                                      if (!range) return "N/A";
+                                                      return `${formatPriceAED(range.min)} – ${formatPriceAED(range.max)}`;
+                                                    })()}
                                                   </td>
                                                   <td>
                                                     {item.approved_total_price != null &&
                                                     Number(item.approved_total_price) > 0
                                                       ? formatPriceAED(item.approved_total_price)
-                                                      : "–"}
+                                                      : formatPriceAED(0)}
                                                   </td>
                                                 </>
                                               );
@@ -3790,6 +3829,28 @@ export default function MrLinesView({
                                           />
                                         )}
                                       </tr>
+                                      {mrHeader.progress_id === 12 && (
+                                        <tr>
+                                          <td colSpan={subtotalLabelColSpan} />
+                                          <td style={{ fontWeight: "600" }}>
+                                            SUBTOTAL W/ VAT
+                                          </td>
+                                          <td style={{ fontWeight: "600" }}>
+                                            {formatPriceAED(
+                                              calculateItemsTotalWithVat(
+                                                getAllItemsInSubCategory(
+                                                  suppliers,
+                                                ),
+                                              ),
+                                            )}
+                                          </td>
+                                          {subtotalTrailingColSpan > 0 && (
+                                            <td
+                                              colSpan={subtotalTrailingColSpan}
+                                            />
+                                          )}
+                                        </tr>
+                                      )}
                                     </tfoot>
                                   )}
 
@@ -3808,19 +3869,6 @@ export default function MrLinesView({
                                       <td style={{ fontWeight: "600" }}>
                                         {formatPriceAED(
                                           calculateItemsTotal(
-                                            getAllItemsInSubCategory(suppliers),
-                                          ),
-                                        )}
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td colSpan={subtotalLabelColSpan + 4} />
-                                      <td style={{ fontWeight: "600" }}>
-                                        SUBTOTAL W/ VAT
-                                      </td>
-                                      <td style={{ fontWeight: "600" }}>
-                                        {formatPriceAED(
-                                          calculateItemsTotalWithVat(
                                             getAllItemsInSubCategory(suppliers),
                                           ),
                                         )}
@@ -4862,10 +4910,14 @@ export default function MrLinesView({
                                                 </div>
                                               </td>
                                               <td>
-                                                {stats?.lowest_price != null &&
-                                                stats?.highest_price != null
-                                                  ? `${formatPriceAED(stats.lowest_price)} – ${formatPriceAED(stats.highest_price)}`
-                                                  : "N/A"}
+                                                {(() => {
+                                                  const range =
+                                                    quotationPriceRanges[
+                                                      item.id
+                                                    ];
+                                                  if (!range) return "N/A";
+                                                  return `${formatPriceAED(range.min)} – ${formatPriceAED(range.max)}`;
+                                                })()}
                                               </td>
                                               <td>
                                                 {item.approved_total_price != null &&
@@ -4983,6 +5035,26 @@ export default function MrLinesView({
                                       <td colSpan={subtotalTrailingColSpan} />
                                     )}
                                   </tr>
+                                  {mrHeader.progress_id === 12 && (
+                                    <tr>
+                                      <td colSpan={subtotalLabelColSpan} />
+                                      <td style={{ fontWeight: "600" }}>
+                                        SUBTOTAL W/ VAT
+                                      </td>
+                                      <td style={{ fontWeight: "600" }}>
+                                        {formatPriceAED(
+                                          calculateItemsTotalWithVat(
+                                            getAllItemsInSubCategory(suppliers),
+                                          ),
+                                        )}
+                                      </td>
+                                      {subtotalTrailingColSpan > 0 && (
+                                        <td
+                                          colSpan={subtotalTrailingColSpan}
+                                        />
+                                      )}
+                                    </tr>
+                                  )}
                                 </tfoot>
                               )}
 
@@ -5000,19 +5072,6 @@ export default function MrLinesView({
                                   <td style={{ fontWeight: "600" }}>
                                     {formatPriceAED(
                                       calculateItemsTotal(
-                                        getAllItemsInSubCategory(suppliers),
-                                      ),
-                                    )}
-                                  </td>
-                                </tr>
-                                <tr>
-                                  <td colSpan={subtotalLabelColSpan + 4} />
-                                  <td style={{ fontWeight: "600" }}>
-                                    SUBTOTAL W/ VAT
-                                  </td>
-                                  <td style={{ fontWeight: "600" }}>
-                                    {formatPriceAED(
-                                      calculateItemsTotalWithVat(
                                         getAllItemsInSubCategory(suppliers),
                                       ),
                                     )}

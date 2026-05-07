@@ -12,7 +12,9 @@ export async function GET() {
              THEN l.total
            ELSE COALESCE(pay.total_paid, 0)
          END
-       ), 0) AS total_spent
+       ), 0) AS total_spent,
+       MIN(l.created_at) AS oldest_date,
+       MAX(l.created_at) AS latest_date
        FROM lpo l
        LEFT JOIN (
          SELECT lpo_id, SUM(amount) AS total_paid
@@ -25,7 +27,11 @@ export async function GET() {
     const row = (rows as any[])[0];
 
     return NextResponse.json(
-      { total_spent: Number(row?.total_spent ?? 0) },
+      {
+        total_spent: Number(row?.total_spent ?? 0),
+        oldest_date: row?.oldest_date ?? null,
+        latest_date: row?.latest_date ?? null,
+      },
       { status: 200 },
     );
   } catch (err: any) {

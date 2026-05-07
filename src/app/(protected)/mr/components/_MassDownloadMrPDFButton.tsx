@@ -109,7 +109,10 @@ export default function MassDownloadMrPDFButton({
             let urls: string[] = [];
             if (Array.isArray(line.attachments)) {
               urls = line.attachments;
-            } else if (typeof line.attachments === "string" && line.attachments.trim()) {
+            } else if (
+              typeof line.attachments === "string" &&
+              line.attachments.trim()
+            ) {
               try {
                 urls = JSON.parse(line.attachments);
               } catch {
@@ -162,14 +165,7 @@ export default function MassDownloadMrPDFButton({
         disabled={isDisabled}
         onClick={handleDownload}
         style={{
-          padding: "9px 9px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: isDisabled ? "not-allowed" : "pointer",
-          opacity: isDisabled ? 0.5 : 1,
-          transition: "opacity 0.2s ease",
-          pointerEvents: isDownloading ? "none" : "auto",
+          padding: "9.5px 9.5px",
         }}
       >
         {isDownloading ? (
