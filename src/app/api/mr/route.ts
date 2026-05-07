@@ -208,8 +208,8 @@ export async function POST(req: Request) {
 
       const headerQuery = `
       INSERT INTO mr_headers
-      (type, project_id, department_id, requested_by, required_date, purpose_id, skip_approvals)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      (type, project_id, department_id, requested_by, requested_for, required_date, purpose_id, skip_approvals)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const headerValues = [
@@ -217,6 +217,7 @@ export async function POST(req: Request) {
         Number(body.project_id) || null,
         Number(body.department_id),
         body.requested_by,
+        body.requested_for || null,
         body.required_date,
         Number(body.purpose_id),
         body.skip_approvals ? 1 : 0,

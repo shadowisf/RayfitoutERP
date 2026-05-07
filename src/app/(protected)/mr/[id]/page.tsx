@@ -494,6 +494,13 @@ export default async function MrWithID({
               <h2>{mrHeader.requested_by || ""}</h2>
             </div>
 
+            {mrHeader.requested_for && (
+              <div>
+                <small>REQUESTED FOR</small>
+                <h2>{mrHeader.requested_for}</h2>
+              </div>
+            )}
+
             <div>
               <small>DEPARTMENT</small>
               <h2>{mrHeader.department_name}</h2>

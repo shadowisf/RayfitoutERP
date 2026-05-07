@@ -70,6 +70,10 @@ export default function PriceApprovalButton({
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null,
   );
+  const [globalLowestPrice, setGlobalLowestPrice] = useState<number | null>(
+    null,
+  );
+  const [globalPriceCount, setGlobalPriceCount] = useState<number>(0);
 
   // Pre-seed selectedQuotationID when popup opens so CONFIRM works even without
   // the user manually clicking a radio button (approved edit case or single quotation).
@@ -88,6 +92,27 @@ export default function PriceApprovalButton({
       setPortalContainer(container);
     }
   }, [isSmartSelectPortal, portalTargetId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    async function fetchGlobalLowestPrice() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getGlobalLowestPriceByMrLineID?mr_line_id=${mrLine.id}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setGlobalLowestPrice(
+            data.global_lowest != null ? Number(data.global_lowest) : null,
+          );
+          setGlobalPriceCount(data.price_count ?? 0);
+        }
+      } catch (err) {
+        console.error("Failed to fetch global lowest price:", err);
+      }
+    }
+    fetchGlobalLowestPrice();
+  }, [isOpen, mrLine?.id]);
 
   // Helper function to format currency with 2 decimal places
   const formatCurrency = (
@@ -372,21 +397,25 @@ export default function PriceApprovalButton({
   }
 
   async function handleReset() {
-    if (!approvedQuotation) {
-      toast("No approved quotation to reset", "error");
-      return;
-    }
+    const isRejected = allRejected && !approvedQuotation;
+
+    const body = isRejected
+      ? {
+          action: "resetAllQuotationsForLine",
+          mr_line_id: mrLine.id,
+        }
+      : {
+          action: "resetSupplierAndQuotation",
+          mr_line_id: mrLine.id,
+          supplier_id: approvedQuotation!.supplier_id,
+        };
 
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "resetSupplierAndQuotation",
-          mr_line_id: mrLine.id,
-          supplier_id: approvedQuotation.supplier_id,
-        }),
+        body: JSON.stringify(body),
       },
     );
 
@@ -470,7 +499,7 @@ export default function PriceApprovalButton({
                 whiteSpace: "nowrap",
               }}
             >
-              <span>All Vendors Rejected</span>
+              <span>Rejected</span>
               <RejectCommentPopUp
                 text={supplierQuotations[0]?.reject_comment}
               />
@@ -570,17 +599,11 @@ export default function PriceApprovalButton({
             onClick={() => setIsOpen(true)}
             style={{ padding: "7px 7px" }}
           >
-            <img src={pencilIcon} alt="edit" />
+            <img src={externalLinkIcon} alt="edit" />
           </Button>
 
           {isOpen &&
             (() => {
-              const validTotals = supplierQuotations
-                .map((q) => parseFloat(String(q.total_price) || ""))
-                .filter((p) => !isNaN(p) && p > 0);
-              const minTotal =
-                validTotals.length > 1 ? Math.min(...validTotals) : null;
-
               const anyHasStocks = supplierQuotations.some((q) => {
                 const propQty = Number(q.proposed_quantity) || 0;
                 const reqQty = Number(mrLine.quantity) || 0;
@@ -589,7 +612,7 @@ export default function PriceApprovalButton({
 
               return (
                 <FormPopUp
-                  header={"CHOOSE VENDOR AND QUOTATION"}
+                  header={"CHOOSE VENDOR & QUOTATION"}
                   setIsOpen={setIsOpen}
                   handleSubmit={(e) => handleApproveSupplierAndQuotation(e)}
                   addButtonLabel={"CONFIRM"}
@@ -614,8 +637,8 @@ export default function PriceApprovalButton({
                         <th></th>
                         <th>VENDOR</th>
                         <th>QUOTATION</th>
-                        <th>QTY FOR USE</th>
-                        {anyHasStocks && <th>QTY FOR STOCKS</th>}
+                        <th>QTY USE</th>
+                        {anyHasStocks && <th>QTY STOCKS</th>}
                         <th>UNIT PRICE</th>
                         <th>TOTAL PRICE</th>
                       </tr>
@@ -637,10 +660,11 @@ export default function PriceApprovalButton({
                           const totalAlert =
                             !isNaN(totalVal) &&
                             totalVal > 0 &&
-                            minTotal !== null
-                              ? totalVal === minTotal
+                            globalLowestPrice !== null &&
+                            globalPriceCount > 0
+                              ? totalVal <= globalLowestPrice
                                 ? "lowest"
-                                : `+${Math.round(((totalVal - minTotal) / minTotal) * 100)}% vs lowest`
+                                : `+${Math.round(((totalVal - globalLowestPrice) / globalLowestPrice) * 100)}% vs lowest`
                               : null;
 
                           return (
@@ -785,7 +809,7 @@ export default function PriceApprovalButton({
             width: "250px",
           }}
         >
-          <span style={{ textWrap: "nowrap" }}>All Vendors Rejected</span>
+          <span style={{ textWrap: "nowrap" }}>Rejected</span>
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <RejectCommentPopUp text={supplierQuotations[0]?.reject_comment} />
             <img
@@ -812,17 +836,11 @@ export default function PriceApprovalButton({
           onClick={() => setIsOpen(true)}
           style={{ padding: "7px 7px" }}
         >
-          <img src={plusIcon} alt="add" />
+          <img src={externalLinkIcon} alt="add" />
         </Button>
 
         {isOpen &&
           (() => {
-            const validTotals = supplierQuotations
-              .map((q) => parseFloat(String(q.total_price) || ""))
-              .filter((p) => !isNaN(p) && p > 0);
-            const minTotal =
-              validTotals.length > 1 ? Math.min(...validTotals) : null;
-
             const anyHasStocks = supplierQuotations.some((q) => {
               const propQty = Number(q.proposed_quantity) || 0;
               const reqQty = Number(mrLine.quantity) || 0;
@@ -831,7 +849,7 @@ export default function PriceApprovalButton({
 
             return (
               <FormPopUp
-                header={"CHOOSE VENDOR AND QUOTATION"}
+                header={"CHOOSE VENDOR & QUOTATION"}
                 setIsOpen={setIsOpen}
                 handleSubmit={(e) => handleApproveSupplierAndQuotation(e)}
                 addButtonLabel={"CONFIRM"}
@@ -856,8 +874,8 @@ export default function PriceApprovalButton({
                       <th></th>
                       <th>VENDOR</th>
                       <th>QUOTATION</th>
-                      <th>QTY FOR USE</th>
-                      {anyHasStocks && <th>QTY FOR STOCKS</th>}
+                      <th>QTY USE</th>
+                      {anyHasStocks && <th>QTY STOCKS</th>}
                       <th>UNIT PRICE</th>
                       <th>TOTAL PRICE</th>
                     </tr>
@@ -879,10 +897,11 @@ export default function PriceApprovalButton({
                         const totalAlert =
                           !isNaN(totalVal) &&
                           totalVal > 0 &&
-                          minTotal !== null
-                            ? totalVal === minTotal
+                          globalLowestPrice !== null &&
+                          globalPriceCount > 0
+                            ? totalVal <= globalLowestPrice
                               ? "lowest"
-                              : `+${Math.round(((totalVal - minTotal) / minTotal) * 100)}% vs lowest`
+                              : `+${Math.round(((totalVal - globalLowestPrice) / globalLowestPrice) * 100)}% vs lowest`
                             : null;
 
                         return (
@@ -991,7 +1010,7 @@ export default function PriceApprovalButton({
 
         {isRejectOpen && (
           <FormPopUp
-            header={"REJECT ALL VENDOR AND QUOTATION"}
+            header={"REJECT ALL VENDOR & QUOTATION"}
             setIsOpen={setIsRejectOpen}
             handleSubmit={(e) => handleRejectAll(e)}
             style={{ whiteSpace: "pre-wrap" }}

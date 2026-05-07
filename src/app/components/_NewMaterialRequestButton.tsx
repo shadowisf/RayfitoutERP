@@ -31,6 +31,7 @@ export default function NewMrButton() {
   const [purposeReasonID, setPurposeReasonID] = useState<string | number>("");
   const [projectID, setProjectID] = useState<string | number>("");
   const [requestedBy, setRequestedBy] = useState<string | number>("");
+  const [requestedFor, setRequestedFor] = useState("");
   const [neededBy, setNeededBy] = useState("");
   const [selectedJoId, setSelectedJoId] = useState<string | number>("");
   const [skipApprovals, setSkipApprovals] = useState(false);
@@ -189,6 +190,7 @@ export default function NewMrButton() {
         type: mode,
         department_id: userInfo?.departmentID,
         requested_by: requestedBy,
+        requested_for: mode === "material" ? requestedFor || null : null,
         required_date: neededBy,
         purpose_id: purposeReasonID,
         skip_approvals: mode === "material" ? skipApprovals : false,
@@ -573,39 +575,51 @@ export default function NewMrButton() {
           </div>
 
           {mode === "material" && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                marginTop: "8px",
-              }}
-            >
-              <input
-                type="checkbox"
-                id="skip-approvals"
-                checked={skipApprovals}
-                onChange={(e) => setSkipApprovals(e.target.checked)}
-                style={{
-                  width: "16px",
-                  height: "16px",
-                  cursor: "pointer",
-                  accentColor: "rgba(0, 163, 93, 1)",
-                  flexShrink: 0,
-                }}
+            <div className="input-row full">
+              <InputItem
+                label="REQUESTED FOR"
+                value={requestedFor}
+                type="text"
+                onChange={(e) => setRequestedFor(e.target.value as string)}
               />
-              <label
-                htmlFor="skip-approvals"
-                style={{
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  userSelect: "none",
-                }}
-              >
-                SKIP APPROVALS
-              </label>
             </div>
           )}
+
+          {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) &&
+            mode === "material" && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  marginTop: "8px",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  id="skip-approvals"
+                  checked={skipApprovals}
+                  onChange={(e) => setSkipApprovals(e.target.checked)}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    cursor: "pointer",
+                    accentColor: "rgba(0, 163, 93, 1)",
+                    flexShrink: 0,
+                  }}
+                />
+                <label
+                  htmlFor="skip-approvals"
+                  style={{
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                >
+                  SKIP APPROVALS
+                </label>
+              </div>
+            )}
 
           <br />
 

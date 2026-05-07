@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import Button from "@/app/components/Button";
 import {
   AreaChart,
   Area,
@@ -183,36 +184,6 @@ const BudgetLabel = (props: any) => {
 };
 
 // ─────────────────────────────────────────────────
-// Custom Tooltip
-// ─────────────────────────────────────────────────
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      style={{
-        backgroundColor: "rgba(20,20,20,1)",
-        padding: "12px 16px",
-        borderRadius: 10,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 11,
-          color: "rgba(180,180,180,1)",
-          marginBottom: 4,
-          fontWeight: 400,
-        }}
-      >
-        {label}
-      </div>
-      <div style={{ fontSize: 16, color: "white", fontWeight: 600 }}>
-        AED {formatAEDFull(Number(payload[0]?.value ?? 0))}
-      </div>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────
 // CalendarMonth
 // ─────────────────────────────────────────────────
 interface CalMonthProps {
@@ -386,7 +357,8 @@ function CalendarMonth({
           }
 
           const isSelected =
-            !isFuture && (isStart || isEnd || (isHover && Boolean(pendingStart)));
+            !isFuture &&
+            (isStart || isEnd || (isHover && Boolean(pendingStart)));
 
           return (
             <div
@@ -629,17 +601,75 @@ function DateRangePicker({
 }
 
 // ─────────────────────────────────────────────────
-// ProjectsTable
+// Detail row type
+// ─────────────────────────────────────────────────
+interface DetailRow {
+  mr_header_id: number;
+  lpo_id: number;
+  total_price: number;
+  date: string;
+}
+
+// ─────────────────────────────────────────────────
+// ProjectsTable (with hover popup)
 // ─────────────────────────────────────────────────
 function ProjectsTable({
   data,
   isLoading,
+  appliedStart,
+  appliedEnd,
 }: {
   data: TableRow[];
   isLoading: boolean;
+  appliedStart: Date | null;
+  appliedEnd: Date | null;
 }) {
   const [sortKey, setSortKey] = useState<"total" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [hoveredProject, setHoveredProject] = useState<string | null>(null);
+  const [popupRect, setPopupRect] = useState<DOMRect | null>(null);
+  const [detailCache, setDetailCache] = useState<
+    Record<string, DetailRow[] | "loading">
+  >({});
+  const hideTimer = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setDetailCache({});
+    setHoveredProject(null);
+  }, [appliedStart, appliedEnd]);
+
+  function cancelHide() {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+  }
+  function startHide() {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => {
+      setHoveredProject(null);
+      setPopupRect(null);
+    }, 120);
+  }
+
+  async function handleRowEnter(e: React.MouseEvent, project: string) {
+    cancelHide();
+    setHoveredProject(project);
+    setPopupRect((e.currentTarget as HTMLElement).getBoundingClientRect());
+    if (detailCache[project]) return;
+    setDetailCache((prev) => ({ ...prev, [project]: "loading" }));
+    try {
+      const params = new URLSearchParams({ project });
+      if (appliedStart)
+        params.set("startDate", appliedStart.toISOString().split("T")[0]);
+      if (appliedEnd)
+        params.set("endDate", appliedEnd.toISOString().split("T")[0]);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/finance/getProjectLPOTransactions?${params}`,
+      );
+      const rows: DetailRow[] = res.ok ? await res.json() : [];
+      setDetailCache((prev) => ({ ...prev, [project]: rows }));
+    } catch {
+      setDetailCache((prev) => ({ ...prev, [project]: [] }));
+    }
+  }
 
   const handleSort = (key: "total") => {
     if (sortKey !== key) {
@@ -654,7 +684,6 @@ function ProjectsTable({
   };
 
   const sorted = useMemo(() => {
-    // Always pin Unspecified last
     const rest = data.filter((d) => d.project !== "Unspecified");
     const unspecified = data.filter((d) => d.project === "Unspecified");
     if (!sortKey) return [...rest, ...unspecified];
@@ -662,118 +691,268 @@ function ProjectsTable({
     return [...rest.sort((a, b) => mul * (a.total - b.total)), ...unspecified];
   }, [data, sortKey, sortDir]);
 
+  const popupWidth = 560;
+  let popupLeft = 0;
+  let popupTop = 0;
+  if (popupRect) {
+    popupLeft = popupRect.right + 10;
+    if (popupLeft + popupWidth > window.innerWidth - 8)
+      popupLeft = popupRect.left - popupWidth - 10;
+    popupTop = popupRect.top;
+    if (popupTop + 320 > window.innerHeight - 8)
+      popupTop = window.innerHeight - 8 - 320;
+  }
+
+  const currentRows = hoveredProject ? detailCache[hoveredProject] : undefined;
+
+  return (
+    <>
+      <div style={{ width: 500, flexShrink: 0, paddingLeft: 24 }}>
+        {isLoading ? (
+          <p style={{ fontSize: 12, color: "#999" }}>Loading…</p>
+        ) : (
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "separate",
+              borderSpacing: 0,
+              fontSize: 11,
+            }}
+          >
+            <thead>
+              <tr>
+                <th
+                  style={{
+                    textAlign: "left",
+                    padding: "9px 12px",
+                    fontWeight: 700,
+                    fontSize: 10,
+                    backgroundColor: "rgba(245,246,248,1)",
+                    borderRadius: "50px 0 0 50px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  PROJECT
+                </th>
+                <th
+                  onClick={() => handleSort("total")}
+                  style={{
+                    textAlign: "left",
+                    padding: "9px 12px",
+                    fontWeight: 700,
+                    fontSize: 10,
+                    whiteSpace: "nowrap",
+                    backgroundColor: "rgba(245,246,248,1)",
+                    borderRadius: "0 50px 50px 0",
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                >
+                  COMMITTED + CASH
+                  <span
+                    style={{
+                      marginLeft: 4,
+                      fontSize: 9,
+                      opacity: sortKey === "total" ? 1 : 0.35,
+                    }}
+                  >
+                    {sortKey === "total"
+                      ? sortDir === "asc"
+                        ? "↑"
+                        : "↓"
+                      : "↕"}
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((row, i) => {
+                const isAlt = i % 2 !== 0;
+                const bg = isAlt ? "rgba(249,249,249,1)" : undefined;
+                return (
+                  <tr
+                    key={i}
+                    onMouseEnter={(e) => handleRowEnter(e, row.project)}
+                    onMouseLeave={startHide}
+                    style={{ cursor: "default" }}
+                  >
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        color: "rgba(30,30,30,1)",
+                        maxWidth: 180,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        fontSize: 12,
+                        backgroundColor: bg,
+                        borderRadius: isAlt ? "50px 0 0 50px" : undefined,
+                      }}
+                    >
+                      {row.project}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        color: "rgba(20,20,20,1)",
+                        whiteSpace: "nowrap",
+                        fontSize: 12,
+                        backgroundColor: bg,
+                        borderRadius: isAlt ? "0 50px 50px 0" : undefined,
+                      }}
+                    >
+                      AED {formatAEDFull(row.total)}
+                    </td>
+                  </tr>
+                );
+              })}
+              {!data.length && (
+                <tr>
+                  <td
+                    colSpan={2}
+                    style={{
+                      padding: "20px 6px",
+                      textAlign: "center",
+                      color: "#aaa",
+                      fontSize: 12,
+                    }}
+                  >
+                    No data
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* ── Hover popup ─────────────────────────────────────────────── */}
+      {hoveredProject && popupRect && (
+        <div
+          onMouseEnter={cancelHide}
+          onMouseLeave={startHide}
+          style={{
+            position: "fixed",
+            top: popupTop,
+            left: popupLeft,
+            width: popupWidth,
+            zIndex: 10000,
+            backgroundColor: "white",
+            border: "1px solid rgba(223,223,223,1)",
+            borderRadius: 10,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            padding: 0,
+            maxHeight: 400,
+            overflowY: "auto",
+          }}
+        >
+          <div style={{ padding: 12 }}>
+            {currentRows === "loading" ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  color: "#888",
+                  fontSize: 13,
+                  padding: "10px 0",
+                }}
+              >
+                Loading...
+              </div>
+            ) : Array.isArray(currentRows) && currentRows.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  fontSize: 13,
+                  color: "#888",
+                  padding: "10px 0",
+                }}
+              >
+                No transactions
+              </div>
+            ) : Array.isArray(currentRows) ? (
+              <table
+                className="items-table popup-hover"
+                style={{ width: "100%" }}
+              >
+                <thead>
+                  <tr>
+                    <th>MR NUMBER</th>
+                    <th>LPO NUMBER</th>
+                    <th>TOTAL PRICE</th>
+                    <th>DATE</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentRows.map((row, i) => (
+                    <tr key={i}>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        MR-{String(row.mr_header_id).padStart(5, "0")}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        LPO-{String(row.lpo_id).padStart(5, "0")}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        AED {formatAEDFull(row.total_price)}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>{row.date}</td>
+                      <td>
+                        <Button
+                          componentType="link"
+                          bgColor="rgba(239,239,239,1)"
+                          borderColor="rgba(223,223,223,1)"
+                          textColor="black"
+                          style={{ padding: "7px 7px" }}
+                          onClick={(e: React.MouseEvent) =>
+                            e.stopPropagation()
+                          }
+                          href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
+                        >
+                          <img src="/icons/external-link.svg" alt="open" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// Custom Tooltip (simple)
+// ─────────────────────────────────────────────────
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+
   return (
     <div
       style={{
-        width: 500,
-        flexShrink: 0,
-        paddingLeft: 24,
+        backgroundColor: "rgba(20,20,20,1)",
+        padding: "12px 16px",
+        borderRadius: 10,
       }}
     >
-      {isLoading ? (
-        <p style={{ fontSize: 12, color: "#999" }}>Loading…</p>
-      ) : (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "separate",
-            borderSpacing: 0,
-            fontSize: 11,
-          }}
-        >
-          <thead>
-            <tr>
-              <th
-                style={{
-                  textAlign: "left",
-                  padding: "9px 12px",
-                  fontWeight: 700,
-                  fontSize: 10,
-                  backgroundColor: "rgba(245,246,248,1)",
-                  borderRadius: "50px 0 0 50px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                PROJECT
-              </th>
-              <th
-                onClick={() => handleSort("total")}
-                style={{
-                  textAlign: "left",
-                  padding: "9px 12px",
-                  fontWeight: 700,
-                  fontSize: 10,
-                  whiteSpace: "nowrap",
-                  backgroundColor: "rgba(245,246,248,1)",
-                  borderRadius: "0 50px 50px 0",
-                  cursor: "pointer",
-                  userSelect: "none",
-                }}
-              >
-                COMMITTED + CASH
-                <span style={{ marginLeft: 4, fontSize: 9, opacity: sortKey === "total" ? 1 : 0.35 }}>
-                  {sortKey === "total" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((row, i) => {
-              const isAlt = i % 2 !== 0;
-              const altBg = isAlt ? "rgba(249, 249, 249, 1)" : undefined;
-              return (
-                <tr key={i}>
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      color: "rgba(30,30,30,1)",
-                      maxWidth: 180,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      fontSize: 12,
-                      backgroundColor: altBg,
-                      borderRadius: isAlt ? "50px 0 0 50px" : undefined,
-                    }}
-                  >
-                    {row.project}
-                  </td>
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      color: "rgba(20,20,20,1)",
-                      whiteSpace: "nowrap",
-                      fontSize: 12,
-                      backgroundColor: altBg,
-                      borderRadius: isAlt ? "0 50px 50px 0" : undefined,
-                    }}
-                  >
-                    AED {formatAEDFull(row.total)}
-                  </td>
-                </tr>
-              );
-            })}
-            {!data.length && (
-              <tr>
-                <td
-                  colSpan={3}
-                  style={{
-                    padding: "20px 6px",
-                    textAlign: "center",
-                    color: "#aaa",
-                    fontSize: 12,
-                  }}
-                >
-                  No data
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      )}
+      <div
+        style={{
+          fontSize: 11,
+          color: "rgba(180,180,180,1)",
+          marginBottom: 4,
+          fontWeight: 400,
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ fontSize: 16, color: "white", fontWeight: 600 }}>
+        AED {formatAEDFull(Number(payload[0]?.value ?? 0))}
+      </div>
     </div>
   );
-}
+};
 
 // ─────────────────────────────────────────────────
 // Main Component
@@ -844,7 +1023,6 @@ export default function FinanceSpendingByProjectWidget() {
     ? (data?.project_budgets?.[selectedProject] ?? 0)
     : 0;
 
-  // Ensure Y-axis always reaches the budget line when it's above the data
   const yAxisMax = useMemo(() => {
     const dataMax = chartData.length
       ? Math.max(...chartData.map((r) => r.value as number))
@@ -923,6 +1101,7 @@ export default function FinanceSpendingByProjectWidget() {
           )}
         </div>
       </div>
+
       {/* ── White card ── */}
       <div
         style={{
@@ -957,7 +1136,7 @@ export default function FinanceSpendingByProjectWidget() {
           </select>
         </div>
 
-        {/* Body: chart + table */}
+        {/* Body: chart + projects table */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 0 }}>
           {/* Chart */}
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -1055,9 +1234,14 @@ export default function FinanceSpendingByProjectWidget() {
           </div>
 
           {/* Projects table */}
-          <ProjectsTable data={data?.table_data ?? []} isLoading={isLoading} />
+          <ProjectsTable
+            data={data?.table_data ?? []}
+            isLoading={isLoading}
+            appliedStart={appliedStart}
+            appliedEnd={appliedEnd}
+          />
         </div>
-      </div>{" "}
+      </div>
       {/* end white card */}
     </>
   );

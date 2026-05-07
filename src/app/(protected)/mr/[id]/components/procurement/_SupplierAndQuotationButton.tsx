@@ -92,6 +92,10 @@ export default function SupplierAndQuotationButton({
 
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [globalLowestPrice, setGlobalLowestPrice] = useState<number | null>(
+    null,
+  );
+  const [globalPriceCount, setGlobalPriceCount] = useState<number>(0);
 
   const formatNumber = (value: unknown): string => {
     const num = Number(value);
@@ -135,6 +139,27 @@ export default function SupplierAndQuotationButton({
     return () =>
       window.removeEventListener("quotations-created", handleQuotationsCreated);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    async function fetchGlobalLowestPrice() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getGlobalLowestPriceByMrLineID?mr_line_id=${mrLine.id}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setGlobalLowestPrice(
+            data.global_lowest != null ? Number(data.global_lowest) : null,
+          );
+          setGlobalPriceCount(data.price_count ?? 0);
+        }
+      } catch (err) {
+        console.error("Failed to fetch global lowest price:", err);
+      }
+    }
+    fetchGlobalLowestPrice();
+  }, [isOpen, mrLine.id]);
 
   async function checkExistingQuotations() {
     try {
@@ -797,11 +822,6 @@ export default function SupplierAndQuotationButton({
 
       {isOpen &&
         (() => {
-          const validTotalPrices = supplierQuotations
-            .map((q) => parseFloat(q.total_price || ""))
-            .filter((p) => !isNaN(p) && p > 0);
-          const minTotal =
-            validTotalPrices.length > 0 ? Math.min(...validTotalPrices) : null;
 
           return (
             <FormPopUp
@@ -880,10 +900,13 @@ export default function SupplierAndQuotationButton({
                           quotation.total_price || "",
                         );
                         const totalAlert =
-                          !isNaN(totalVal) && totalVal > 0 && minTotal !== null
-                            ? totalVal === minTotal
+                          !isNaN(totalVal) &&
+                          totalVal > 0 &&
+                          globalLowestPrice !== null &&
+                          globalPriceCount > 0
+                            ? totalVal <= globalLowestPrice
                               ? "lowest"
-                              : `+${Math.round(((totalVal - minTotal) / minTotal) * 100)}% vs lowest`
+                              : `+${Math.round(((totalVal - globalLowestPrice) / globalLowestPrice) * 100)}% vs lowest`
                             : null;
 
                         const hasFile =
@@ -950,6 +973,7 @@ export default function SupplierAndQuotationButton({
                                     padding: "0px 8px",
                                     height: "40px",
                                     boxSizing: "border-box",
+                                    backgroundColor: "white",
                                   }}
                                 >
                                   <div
@@ -1027,7 +1051,7 @@ export default function SupplierAndQuotationButton({
                                         ? "center"
                                         : "space-between",
                                     gap: "10px",
-                                    border: `1.5px dashed ${dragOverIndex === index ? "rgba(169,255,218,1)" : "rgba(207,207,207,1)"}`,
+                                    border: "1px dashed rgba(207,207,207,1)",
                                     borderRadius: "8px",
                                     padding: "0px 8px",
                                     height: "40px",
@@ -1137,7 +1161,10 @@ export default function SupplierAndQuotationButton({
                               </div>
                             </td>
                             <td style={{ minWidth: "210px" }}>
-                              <div className="input-prefix right">
+                              <div
+                                className="input-prefix right"
+                                style={{ backgroundColor: "white" }}
+                              >
                                 <span>AED</span>
                                 <input
                                   style={{ paddingRight: "50px" }}
@@ -1148,7 +1175,13 @@ export default function SupplierAndQuotationButton({
                                 />
                               </div>
                               {totalAlert && (
-                                <div style={{ height: 0, overflow: "visible", position: "relative" }}>
+                                <div
+                                  style={{
+                                    height: 0,
+                                    overflow: "visible",
+                                    position: "relative",
+                                  }}
+                                >
                                   <div
                                     style={{
                                       position: "absolute",

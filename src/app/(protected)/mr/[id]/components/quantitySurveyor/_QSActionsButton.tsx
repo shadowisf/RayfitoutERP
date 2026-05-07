@@ -19,6 +19,20 @@ type Props = {
   category: string; // label shown in the PDF filename, e.g. "MECHANICAL" or "ALL"
 };
 
+const Spinner = ({ color = "white" }: { color?: string }) => (
+  <div
+    style={{
+      width: "16px",
+      height: "16px",
+      border: `2px solid ${color}`,
+      borderTop: "2px solid transparent",
+      borderRadius: "50%",
+      animation: "spin 0.6s linear infinite",
+      flexShrink: 0,
+    }}
+  />
+);
+
 export default function QSActionsButton({
   selectedItemIds,
   setSelectedItemIds,
@@ -39,6 +53,7 @@ export default function QSActionsButton({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
 
   // ── Outside-click refs ────────────────────────────────────────────────────
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -55,18 +70,24 @@ export default function QSActionsButton({
   // ── Bulk actions ───────────────────────────────────────────────────────────
   async function handleBulkApprove() {
     setActionsOpen(false);
+    setIsApproving(true);
+
     const ids = Array.from(selectedItemIds);
-    await Promise.all(
-      ids.map((id) =>
-        fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "setQSReviewNeedOrder", id }),
-        }),
-      ),
-    );
-    setSelectedItemIds(new Set());
-    router.refresh();
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "setQSReviewNeedOrder", id }),
+          }),
+        ),
+      );
+      setSelectedItemIds(new Set());
+      router.refresh();
+    } finally {
+      setIsApproving(false);
+    }
   }
 
   async function handleBulkReject() {
@@ -203,10 +224,29 @@ export default function QSActionsButton({
               selectedItemIds.size === 0 ? "rgba(211, 211, 211, 1)" : "black"
             }
             textColor={selectedItemIds.size === 0 ? "black" : "white"}
-            disabled={selectedItemIds.size === 0}
-            onClick={() => setActionsOpen((v) => !v)}
+            disabled={selectedItemIds.size === 0 || isApproving}
+            onClick={() => !isApproving && setActionsOpen((v) => !v)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor:
+                selectedItemIds.size === 0 || isApproving
+                  ? "not-allowed"
+                  : "pointer",
+              opacity: isApproving ? 0.7 : 1,
+              transition: "opacity 0.2s ease",
+              pointerEvents: isApproving ? "none" : "auto",
+            }}
           >
-            ACTIONS
+            {isApproving ? (
+              <>
+                <Spinner color="white" />
+                LOADING
+              </>
+            ) : (
+              "ACTIONS"
+            )}
           </Button>
 
           {actionsOpen && (
@@ -257,22 +297,40 @@ export default function QSActionsButton({
             selectedItemIds.size === 0 ? "rgba(211, 211, 211, 1)" : "black"
           }
           textColor={selectedItemIds.size === 0 ? "black" : "white"}
-          style={{ padding: "9px 9px" }}
+          style={{
+            padding: "9px 9px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor:
+              selectedItemIds.size === 0 || isDownloading
+                ? "not-allowed"
+                : "pointer",
+            opacity: isDownloading ? 0.7 : 1,
+            transition: "opacity 0.2s ease",
+            pointerEvents: isDownloading ? "none" : "auto",
+          }}
           disabled={selectedItemIds.size === 0 || isDownloading}
           onClick={() => {
             setActionsOpen(false);
             handleDownloadSelected();
           }}
         >
-          <img
-            src={downloadIcon}
-            alt="download"
-            style={
-              selectedItemIds.size === 0
-                ? { filter: "invert(0)" }
-                : { filter: "invert(1)" }
-            }
-          />
+          {isDownloading ? (
+            <Spinner
+              color={selectedItemIds.size === 0 ? "black" : "white"}
+            />
+          ) : (
+            <img
+              src={downloadIcon}
+              alt="download"
+              style={
+                selectedItemIds.size === 0
+                  ? { filter: "invert(0)" }
+                  : { filter: "invert(1)" }
+              }
+            />
+          )}
         </Button>
       </div>
 
@@ -318,9 +376,21 @@ export default function QSActionsButton({
           addButtonLabel="CONFIRM"
         >
           Are you sure you want to delete {selectedItemIds.size} selected item
-          {selectedItemIds.size !== 1 ? "s" : ""}? This action cannot be undone.
+          {selectedItemIds.size !== 1 ? "s" : ""}? This action cannot be
+          undone.
         </FormPopUp>
       )}
+
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </>
   );
 }

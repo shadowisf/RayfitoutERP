@@ -701,6 +701,25 @@ export default function SingleSelectInventoryItem({
             marginTop: "20px",
           }}
         >
+          <button
+            type="button"
+            onClick={() => setCurrentPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            style={{
+              padding: "8px 12px",
+              borderRadius: "5px",
+              border: "1px solid rgba(223, 223, 223, 1)",
+              backgroundColor: "white",
+              color: "black",
+              cursor: currentPage === 1 ? "not-allowed" : "pointer",
+              fontWeight: "600",
+              minWidth: "40px",
+              opacity: currentPage === 1 ? 0.4 : 1,
+            }}
+          >
+            ‹
+          </button>
+
           {getPageNumbers().map((page, index) => (
             <button
               type="button"
@@ -726,6 +745,25 @@ export default function SingleSelectInventoryItem({
               {page}
             </button>
           ))}
+
+          <button
+            type="button"
+            onClick={() => setCurrentPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: "8px 12px",
+              borderRadius: "5px",
+              border: "1px solid rgba(223, 223, 223, 1)",
+              backgroundColor: "white",
+              color: "black",
+              cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+              fontWeight: "600",
+              minWidth: "40px",
+              opacity: currentPage === totalPages ? 0.4 : 1,
+            }}
+          >
+            ›
+          </button>
         </div>
       )}
     </FormPopUp>

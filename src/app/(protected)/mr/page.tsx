@@ -10,6 +10,7 @@ import BulkQuotationCreator from "./components/_BulkQuotationCreator";
 import SupplierAndQuotationButton from "./[id]/components/procurement/_SupplierAndQuotationButton";
 import ExportItemsButton from "./components/_ExportAllItemsButton";
 import MassPriceApprovalButton from "./components/_MassPriceApprovalButton";
+import MassDownloadMrPDFButton from "./components/_MassDownloadMrPDFButton";
 import router from "next/router";
 
 type TableItem = {
@@ -1039,305 +1040,407 @@ export default function MR() {
 
   return (
     <div className="dashboard">
+      {/* ── Sticky toolbar ───────────────────────────────────────────────────── */}
       <div
         style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
+          position: "sticky",
+          top: 0,
+          zIndex: 49,
+          backgroundColor: "rgba(248, 249, 251, 1)",
+          marginTop: "-100px",
+          paddingTop: "100px",
+          paddingBottom: "40px",
+          marginLeft: "-40px",
+          marginRight: "-40px",
+          paddingLeft: "40px",
+          paddingRight: "40px",
         }}
       >
-        <div>
-          <h1>PROCUREMENT TRACKER</h1>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            <h1>PROCUREMENT TRACKER</h1>
 
-          <br />
-          <br />
+            <br />
+            <br />
 
-          <h2 style={{ color: "rgba(120, 120, 120, 1)" }}>
-            Showing {activeMrCount} MRs & {activeLpoCount} LPOs
-          </h2>
+            <h2 style={{ color: "rgba(120, 120, 120, 1)" }}>
+              Showing {activeMrCount} MRs & {activeLpoCount} LPOs
+            </h2>
 
-          <br />
+            <br />
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+            {/* View toggle */}
+            <div
+              style={{
+                display: "flex",
+                backgroundColor: "rgba(242, 242, 242, 1)",
+                borderRadius: "10px",
+                padding: "4px",
+              }}
+            >
+              <button
+                onClick={() => {
+                  setViewMode("kanban");
+                  setFilters((prev) => ({ ...prev, selectedStages: [] }));
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  border: "none",
+                  cursor: "pointer",
+                  backgroundColor:
+                    viewMode === "kanban" ? "white" : "transparent",
+                  color: "black",
+                }}
+              >
+                <img
+                  src="/icons/kanban-option.svg"
+                  alt="kanban"
+                  style={{ width: "16px", height: "16px" }}
+                />
+                KANBAN
+              </button>
+              <button
+                onClick={() => {
+                  setViewMode("table");
+                  setFilters((prev) => ({
+                    ...prev,
+                    selectedStages:
+                      prev.selectedStages.length === 0
+                        ? [7]
+                        : prev.selectedStages,
+                  }));
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  border: "none",
+                  cursor: "pointer",
+                  backgroundColor:
+                    viewMode === "table" ? "white" : "transparent",
+                  color: "black",
+                }}
+              >
+                <img
+                  src="/icons/table-option.svg"
+                  alt="table"
+                  style={{ width: "16px", height: "16px" }}
+                />
+                TABLE
+              </button>
+            </div>
+
+            <div
+              style={{
+                maxWidth: "300px",
+                backgroundColor: "white",
+                position: "relative",
+              }}
+            >
+              <input
+                type="text"
+                placeholder="SEARCH"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: "300px",
+                  padding: "10px 40px 10px 15px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(223, 223, 223, 1)",
+                  fontSize: "14px",
+                }}
+              />
+              <img
+                src={searchIcon}
+                alt="search"
+                style={{
+                  position: "absolute",
+                  right: "15px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "16px",
+                  height: "16px",
+                  opacity: 0.5,
+                }}
+              />
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          {/* View toggle */}
+        <br />
+
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <div
             style={{
               display: "flex",
-              backgroundColor: "rgba(242, 242, 242, 1)",
-              borderRadius: "10px",
-              padding: "4px",
+              gap: "10px",
+              flexWrap: "wrap",
+              alignItems: "center",
             }}
           >
-            <button
-              onClick={() => {
-                setViewMode("kanban");
-                setFilters((prev) => ({ ...prev, selectedStages: [] }));
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "8px 16px",
-                borderRadius: "8px",
-                border: "none",
-                cursor: "pointer",
-                backgroundColor:
-                  viewMode === "kanban" ? "white" : "transparent",
-                color: "black",
-              }}
-            >
-              <img
-                src="/icons/kanban-option.svg"
-                alt="kanban"
-                style={{ width: "16px", height: "16px" }}
-              />
-              KANBAN
-            </button>
-            <button
-              onClick={() => {
-                setViewMode("table");
-                setFilters((prev) => ({
-                  ...prev,
-                  selectedStages:
-                    prev.selectedStages.length === 0
-                      ? [7]
-                      : prev.selectedStages,
-                }));
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "8px 16px",
-                borderRadius: "8px",
-                border: "none",
-                cursor: "pointer",
-                backgroundColor: viewMode === "table" ? "white" : "transparent",
-                color: "black",
-              }}
-            >
-              <img
-                src="/icons/table-option.svg"
-                alt="table"
-                style={{ width: "16px", height: "16px" }}
-              />
-              TABLE
-            </button>
-          </div>
+            {viewMode === "kanban" && (
+              <>
+                <Button
+                  componentType="button"
+                  bgColor="white"
+                  borderColor="rgba(241, 244, 246, 1)"
+                  textColor="black"
+                  onClick={() => setFilterRelevant(!filterRelevant)}
+                  style={{ padding: "7px 20px", borderRadius: "50px" }}
+                >
+                  ONLY RELATED CARDS{" "}
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "30px",
+                      height: "17px",
+                      backgroundColor: filterRelevant
+                        ? "rgb(34, 197, 94)"
+                        : "rgba(200, 200, 200, 1)",
+                      borderRadius: "34px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "0px",
+                        left: filterRelevant ? "15px" : "0px",
+                        width: "17px",
+                        border: "1px solid rgba(217, 217, 217, 1)",
+                        height: "17px",
+                        backgroundColor: "white",
+                        borderRadius: "50%",
+                      }}
+                    />
+                  </div>
+                </Button>
 
-          <div
-            style={{
-              maxWidth: "300px",
-              backgroundColor: "white",
-              position: "relative",
-            }}
-          >
-            <input
-              type="text"
-              placeholder="SEARCH"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: "300px",
-                padding: "10px 40px 10px 15px",
-                borderRadius: "8px",
-                border: "1px solid rgba(223, 223, 223, 1)",
-                fontSize: "14px",
-              }}
-            />
-            <img
-              src={searchIcon}
-              alt="search"
-              style={{
-                position: "absolute",
-                right: "15px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: "16px",
-                height: "16px",
-                opacity: 0.5,
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <br />
-
-      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-        {viewMode === "kanban" && (
-          <>
-            <Button
-              componentType="button"
-              bgColor="white"
-              borderColor="rgba(241, 244, 246, 1)"
-              textColor="black"
-              onClick={() => setFilterRelevant(!filterRelevant)}
-              style={{ padding: "7px 20px", borderRadius: "50px" }}
-            >
-              ONLY RELATED CARDS{" "}
-              <div
-                style={{
-                  position: "relative",
-                  width: "30px",
-                  height: "17px",
-                  backgroundColor: filterRelevant
-                    ? "rgb(34, 197, 94)"
-                    : "rgba(200, 200, 200, 1)",
-                  borderRadius: "34px",
-                }}
-              >
                 <div
                   style={{
-                    position: "absolute",
-                    top: "0px",
-                    left: filterRelevant ? "15px" : "0px",
-                    width: "17px",
-                    border: "1px solid rgba(217, 217, 217, 1)",
-                    height: "17px",
-                    backgroundColor: "white",
-                    borderRadius: "50%",
+                    borderRight: "1px solid rgba(207, 207, 207, 1)",
+                    height: "30px",
+                    alignSelf: "center",
                   }}
                 />
+              </>
+            )}
+
+            {viewMode === "kanban" && (
+              <MrFilterButton
+                availableProjects={availableProjects}
+                onApplyFilters={setFilters}
+                currentFilters={filters}
+              />
+            )}
+
+            {hasActiveFilters && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                {filters.requestType !== "all" && (
+                  <Button
+                    style={{ borderRadius: "50px", fontWeight: "600" }}
+                    componentType="none"
+                    bgColor="rgba(239, 239, 239, 1)"
+                    borderColor="transparent"
+                    textColor="black"
+                  >
+                    TYPE:{" "}
+                    <span
+                      style={{
+                        color: "rgba(16, 185, 129, 1)",
+                        textWrap: "nowrap",
+                      }}
+                    >
+                      {filters.requestType === "material"
+                        ? "MATERIAL REQUEST"
+                        : filters.requestType === "payment"
+                          ? "PAYMENT REQUEST"
+                          : "JOB ORDER"}
+                    </span>
+                  </Button>
+                )}
+
+                {filters.itemsRequestedIn !== "all" && (
+                  <Button
+                    style={{ borderRadius: "50px", fontWeight: "600" }}
+                    componentType="none"
+                    bgColor="rgba(239, 239, 239, 1)"
+                    borderColor="transparent"
+                    textColor="black"
+                  >
+                    ITEMS REQUESTED IN:{" "}
+                    <span
+                      style={{
+                        color: "rgba(16, 185, 129, 1)",
+                        textWrap: "nowrap",
+                      }}
+                    >
+                      {getItemsRequestedLabel(
+                        filters.itemsRequestedIn,
+                      ).toUpperCase()}
+                    </span>
+                  </Button>
+                )}
+
+                {filters.selectedDepartments.length > 0 && (
+                  <Button
+                    style={{ borderRadius: "50px", fontWeight: "600" }}
+                    componentType="none"
+                    bgColor="rgba(239, 239, 239, 1)"
+                    borderColor="transparent"
+                    textColor="black"
+                  >
+                    DEPARTMENT:{" "}
+                    <span
+                      style={{
+                        color: "rgba(16, 185, 129, 1)",
+                        textWrap: "nowrap",
+                      }}
+                    >
+                      {getDepartmentName(
+                        filters.selectedDepartments[0],
+                      ).toUpperCase()}
+                      {filters.selectedDepartments.length > 1 &&
+                        `, +${filters.selectedDepartments.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
+                {filters.selectedProjects.length > 0 && (
+                  <Button
+                    style={{ borderRadius: "50px", fontWeight: "600" }}
+                    componentType="none"
+                    bgColor="rgba(239, 239, 239, 1)"
+                    borderColor="transparent"
+                    textColor="black"
+                  >
+                    PROJECT:{" "}
+                    <span
+                      style={{
+                        color: "rgba(16, 185, 129, 1)",
+                        textWrap: "nowrap",
+                      }}
+                    >
+                      {(() => {
+                        const first = availableProjects.find(
+                          (p) => p.id === filters.selectedProjects[0],
+                        );
+                        return first ? first.name.toUpperCase() : "UNKNOWN";
+                      })()}
+                      {filters.selectedProjects.length > 1 &&
+                        `, +${filters.selectedProjects.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
+                {filters.selectedStages.length > 0 && (
+                  <Button
+                    style={{ borderRadius: "50px", fontWeight: "600" }}
+                    componentType="none"
+                    bgColor="rgba(239, 239, 239, 1)"
+                    borderColor="transparent"
+                    textColor="black"
+                  >
+                    STAGE:{" "}
+                    <span
+                      style={{
+                        color: "rgba(16, 185, 129, 1)",
+                        textWrap: "nowrap",
+                      }}
+                    >
+                      {getStageName(filters.selectedStages[0]).toUpperCase()}
+                      {filters.selectedStages.length > 1 &&
+                        `, +${filters.selectedStages.length - 1} MORE`}
+                    </span>
+                  </Button>
+                )}
+
+                {viewMode === "kanban" && (
+                  <Button
+                    onClick={resetAllFilters}
+                    componentType="button"
+                    bgColor="transparent"
+                    borderColor="transparent"
+                    textColor="black"
+                    style={{ padding: "0px" }}
+                  >
+                    RESET FILTER
+                  </Button>
+                )}
               </div>
-            </Button>
+            )}
+          </div>
 
-            <div style={{ borderRight: "1px solid rgba(207, 207, 207, 1)" }} />
-          </>
-        )}
-
-        <MrFilterButton
-          availableProjects={availableProjects}
-          onApplyFilters={setFilters}
-          currentFilters={filters}
-        />
-
-        {hasActiveFilters && (
+          {/* ── Manager actions (right side) ───────────────────────────────── */}
           <div
             style={{
               display: "flex",
               gap: "10px",
               alignItems: "center",
-              flexWrap: "wrap",
+              flexShrink: 0,
             }}
           >
-            {filters.requestType !== "all" && (
-              <Button
-                style={{ borderRadius: "50px", fontWeight: "600" }}
-                componentType="none"
-                bgColor="rgba(239, 239, 239, 1)"
-                borderColor="transparent"
-                textColor="black"
-              >
-                TYPE:{" "}
-                <span
-                  style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}
-                >
-                  {filters.requestType === "material"
-                    ? "MATERIAL REQUEST"
-                    : filters.requestType === "payment"
-                      ? "PAYMENT REQUEST"
-                      : "JOB ORDER"}
-                </span>
-              </Button>
-            )}
-
-            {filters.itemsRequestedIn !== "all" && (
-              <Button
-                style={{ borderRadius: "50px", fontWeight: "600" }}
-                componentType="none"
-                bgColor="rgba(239, 239, 239, 1)"
-                borderColor="transparent"
-                textColor="black"
-              >
-                ITEMS REQUESTED IN:{" "}
-                <span
-                  style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}
-                >
-                  {getItemsRequestedLabel(
-                    filters.itemsRequestedIn,
-                  ).toUpperCase()}
-                </span>
-              </Button>
-            )}
-
-            {filters.selectedDepartments.length > 0 && (
-              <Button
-                style={{ borderRadius: "50px", fontWeight: "600" }}
-                componentType="none"
-                bgColor="rgba(239, 239, 239, 1)"
-                borderColor="transparent"
-                textColor="black"
-              >
-                DEPARTMENT:{" "}
-                <span
-                  style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}
-                >
-                  {getDepartmentName(
-                    filters.selectedDepartments[0],
-                  ).toUpperCase()}
-                  {filters.selectedDepartments.length > 1 &&
-                    `, +${filters.selectedDepartments.length - 1} MORE`}
-                </span>
-              </Button>
-            )}
-
-            {filters.selectedProjects.length > 0 && (
-              <Button
-                style={{ borderRadius: "50px", fontWeight: "600" }}
-                componentType="none"
-                bgColor="rgba(239, 239, 239, 1)"
-                borderColor="transparent"
-                textColor="black"
-              >
-                PROJECT:{" "}
-                <span
-                  style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}
-                >
-                  {(() => {
-                    const first = availableProjects.find(
-                      (p) => p.id === filters.selectedProjects[0],
-                    );
-                    return first ? first.name.toUpperCase() : "UNKNOWN";
-                  })()}
-                  {filters.selectedProjects.length > 1 &&
-                    `, +${filters.selectedProjects.length - 1} MORE`}
-                </span>
-              </Button>
-            )}
-
-            {filters.selectedStages.length > 0 && (
-              <Button
-                style={{ borderRadius: "50px", fontWeight: "600" }}
-                componentType="none"
-                bgColor="rgba(239, 239, 239, 1)"
-                borderColor="transparent"
-                textColor="black"
-              >
-                STAGE:{" "}
-                <span
-                  style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}
-                >
-                  {getStageName(filters.selectedStages[0]).toUpperCase()}
-                  {filters.selectedStages.length > 1 &&
-                    `, +${filters.selectedStages.length - 1} MORE`}
-                </span>
-              </Button>
-            )}
-
             <Button
-              onClick={resetAllFilters}
-              componentType="button"
-              bgColor="transparent"
-              borderColor="transparent"
-              textColor="black"
-              style={{ padding: "0px" }}
+              componentType={"button"}
+              bgColor={selectedManagerMrIds.size === 0 ? "white" : "black"}
+              borderColor={
+                selectedManagerMrIds.size === 0
+                  ? "rgba(211, 211, 211, 1)"
+                  : "black"
+              }
+              textColor={selectedManagerMrIds.size === 0 ? "black" : "white"}
+              disabled={selectedManagerMrIds.size === 0}
+              onClick={() =>
+                selectedManagerMrIds.size > 0 &&
+                setSelectedManagerMrIds(new Set())
+              }
+              style={{
+                cursor:
+                  selectedManagerMrIds.size === 0 ? "not-allowed" : "pointer",
+              }}
             >
-              RESET FILTER
+              RESET
             </Button>
+            <MassPriceApprovalButton
+              selectedMrIds={selectedManagerMrIds}
+              setSelectedMrIds={setSelectedManagerMrIds}
+              onRefresh={() => setTableRefreshKey((k) => k + 1)}
+            />
+            <MassDownloadMrPDFButton
+              selectedMrIds={selectedManagerMrIds}
+              mrHeaders={mrHeaders}
+            />
           </div>
-        )}
+        </div>
+        {/* ── End sticky toolbar ───────────────────────────────────────────────── */}
       </div>
 
       <br />
@@ -1560,6 +1663,10 @@ export default function MR() {
                                       ref={(el) => {
                                         if (el) el.indeterminate = someSelected;
                                       }}
+                                      style={{
+                                        alignSelf: "center",
+                                        accentColor: "#10b981",
+                                      }}
                                       onChange={(e) => {
                                         const next = new Set(
                                           selectedManagerMrIds,
@@ -1573,7 +1680,6 @@ export default function MR() {
                                         }
                                         setSelectedManagerMrIds(next);
                                       }}
-                                      style={{ alignSelf: "center" }}
                                     />
                                   );
                                 })()}
@@ -1832,7 +1938,7 @@ export default function MR() {
 
                                         <div>
                                           <small>IDENTIFIER</small>
-                                          <h3>{lpoCard.identifier ?? "-"}</h3>
+                                          <h3>{lpoCard.identifier ?? "N/A"}</h3>
                                         </div>
 
                                         <div>
@@ -1984,7 +2090,7 @@ export default function MR() {
 
                                         <div>
                                           <small>IDENTIFIER</small>
-                                          <h3>{mr.identifier ?? "-"}</h3>
+                                          <h3>{mr.identifier ?? "N/A"}</h3>
                                         </div>
 
                                         <div>
@@ -2229,7 +2335,7 @@ export default function MR() {
 
                                       <div>
                                         <small>IDENTIFIER</small>
-                                        <h3>{lpoCard.identifier ?? "-"}</h3>
+                                        <h3>{lpoCard.identifier ?? "N/A"}</h3>
                                       </div>
 
                                       <div>
@@ -2355,6 +2461,10 @@ export default function MR() {
                                                 checked={selectedManagerMrIds.has(
                                                   mr.id,
                                                 )}
+                                                style={{
+                                                  alignSelf: "center",
+                                                  accentColor: "#10b981",
+                                                }}
                                                 onChange={(e) => {
                                                   const next = new Set(
                                                     selectedManagerMrIds,
@@ -2366,7 +2476,6 @@ export default function MR() {
                                                   }
                                                   setSelectedManagerMrIds(next);
                                                 }}
-                                                style={{ alignSelf: "center" }}
                                                 onClick={(e) =>
                                                   e.stopPropagation()
                                                 }
@@ -2522,7 +2631,7 @@ export default function MR() {
 
                                       <div>
                                         <small>IDENTIFIER</small>
-                                        <h3>{mr.identifier ?? "-"}</h3>
+                                        <h3>{mr.identifier ?? "N/A"}</h3>
                                       </div>
 
                                       <div>
@@ -2632,29 +2741,6 @@ export default function MR() {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* Mass price approval bottom nav */}
-      {selectedManagerMrIds.size > 0 && (
-        <div className="bottom-nav">
-          <div></div>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <Button
-              componentType={"button"}
-              bgColor={"black"}
-              borderColor={"white"}
-              textColor={"white"}
-              onClick={() => setSelectedManagerMrIds(new Set())}
-            >
-              RESET
-            </Button>
-            <MassPriceApprovalButton
-              selectedMrIds={selectedManagerMrIds}
-              setSelectedMrIds={setSelectedManagerMrIds}
-              onRefresh={() => setTableRefreshKey((k) => k + 1)}
-            />
-          </div>
         </div>
       )}
     </div>
@@ -3011,16 +3097,16 @@ function TableView({
                 <table className="items-table alt two-toned fixed-layout">
                   <thead>
                     <tr>
-                      <th style={{ width: "30px", padding: "0" }}></th>
+                      <th style={{ width: "50px", padding: "0" }}></th>
                       <th
                         style={{
                           width:
-                            section.type === "material" ? "600px" : "600px",
+                            section.type === "material" ? "400px" : "400px",
                         }}
                       >
                         {section.type === "job" ? "BOQ" : "CATEGORY"}
                       </th>
-                      <th style={{ width: "300px" }}>REQ. QTY</th>
+                      <th style={{ width: "200px" }}>REQ. QTY</th>
                       <th style={{ width: "175px" }}>REFERENCE</th>
                       <th style={{ width: "200px" }}>REQUESTER</th>
                       <th
@@ -3032,7 +3118,7 @@ function TableView({
                         PROJECT
                       </th>
                       <th style={{ width: "150px" }}>STAGE</th>
-                      <th style={{ width: "100px" }}></th>
+                      <th style={{ width: "75px" }}></th>
                     </tr>
                   </thead>
                   <tbody>
