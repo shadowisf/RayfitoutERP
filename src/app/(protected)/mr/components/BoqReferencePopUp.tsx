@@ -899,7 +899,7 @@ export default function BoqReferencePopUp({
                 </tbody>
                 {(canSeePrice || (showJoColumns && canSeeWorksValue)) && (
                   <tfoot
-                    style={{ borderTop: "1px solid rgba(232, 223, 223, 1)" }}
+                    style={{ borderTop: "1px solid rgba(232, 223, 223, 1)", pointerEvents: "none" }}
                   >
                     <tr>
                       <td
@@ -1273,6 +1273,7 @@ export default function BoqReferencePopUp({
                         <tfoot
                           style={{
                             borderTop: "1px solid rgba(232, 223, 223, 1)",
+                            pointerEvents: "none",
                           }}
                         >
                           <tr>
@@ -1704,6 +1705,7 @@ export default function BoqReferencePopUp({
                           <tfoot
                             style={{
                               borderTop: "1px solid rgba(232, 223, 223, 1)",
+                              pointerEvents: "none",
                             }}
                           >
                             <tr>

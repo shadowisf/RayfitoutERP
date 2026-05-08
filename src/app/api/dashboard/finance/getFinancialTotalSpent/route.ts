@@ -8,8 +8,9 @@ export async function GET() {
       `SELECT COALESCE(SUM(
          CASE
            WHEN LOWER(IFNULL(l.payment_status, ''))
-                IN ('approved','paid','fully paid','completed','done')
-             THEN l.total
+                  IN ('approved','paid','fully paid','completed','done')
+             OR  (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)
+             THEN COALESCE(l.total, 0)
            ELSE COALESCE(pay.total_paid, 0)
          END
        ), 0) AS total_spent,
@@ -28,9 +29,9 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        total_spent: Number(row?.total_spent ?? 0),
-        oldest_date: row?.oldest_date ?? null,
-        latest_date: row?.latest_date ?? null,
+        total_spent:  Number(row?.total_spent ?? 0),
+        oldest_date:  row?.oldest_date ?? null,
+        latest_date:  row?.latest_date ?? null,
       },
       { status: 200 },
     );

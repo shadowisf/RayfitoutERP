@@ -42,6 +42,7 @@ export async function POST(req: Request) {
             // Merge JO line data
             job_scope_name: joLine.job_scope_name,
             job_description: joLine.job_description,
+            contract_type: joLine.contract_type,
             boq_line_ids: joLine.boq_line_ids,
             boq_line_names: joLine.boq_line_names,
             boq_item_numbers: joLine.boq_item_numbers,
@@ -73,6 +74,7 @@ export async function POST(req: Request) {
             // JO line data
             job_scope_name: joLine.job_scope_name,
             job_description: joLine.job_description,
+            contract_type: joLine.contract_type,
             boq_line_ids: joLine.boq_line_ids,
             boq_line_names: joLine.boq_line_names,
             boq_item_numbers: joLine.boq_item_numbers,

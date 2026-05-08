@@ -8,6 +8,12 @@ import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../types/mrHeader";
 
+function getTypeLabel(type?: string) {
+  if (type === "job") return "job order";
+  if (type === "payment") return "payment request";
+  return "material request";
+}
+
 type SubitForInitialApprovalButtonProps = {
   mrHeader: MrHeader;
   disabled?: boolean;
@@ -43,15 +49,17 @@ export default function SubmitForInitialApprovalButton({
       }),
     });
 
+    const typeLabel = getTypeLabel(mrHeader.type);
+
     if (res.ok) {
-      toast("Material request submitted", "success");
+      toast(`${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} submitted`, "success");
 
       setIsOpen(false);
 
       router.refresh();
       router.replace(`/mr/`);
     } else {
-      toast("Failed to submit material request", "error");
+      toast(`Failed to submit ${typeLabel}`, "error");
     }
   }
 
@@ -66,9 +74,11 @@ export default function SubmitForInitialApprovalButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        {mrHeader.type === "job" || mrHeader.type === "payment"
+        {mrHeader.type === "payment"
           ? "SUBMIT FOR MANAGER APPROVAL"
-          : "SUBMIT FOR QUOTATIONS"}
+          : mrHeader.type === "job"
+            ? "SUBMIT FOR QS REVIEW"
+            : "SUBMIT FOR QUOTATIONS"}
       </Button>
 
       {isOpen && (
@@ -78,7 +88,7 @@ export default function SubmitForInitialApprovalButton({
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this material request?</p>
+          <p>Are you sure you want to submit this {getTypeLabel(mrHeader.type)}?</p>
         </FormPopUp>
       )}
     </>

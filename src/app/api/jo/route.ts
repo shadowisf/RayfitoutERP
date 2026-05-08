@@ -134,6 +134,31 @@ export async function POST(req: Request) {
       return NextResponse.json(rows, { status: 200 });
     }
 
+    if (body.action === "getBoqLinesWithDetailsByJoLineID") {
+      const [rows]: any = await db.query(
+        `SELECT
+           bl.id              AS boq_line_id,
+           bl.item_name,
+           bl.item_description,
+           bl.category,
+           bl.sub_category,
+           bl.quantity        AS boq_qty,
+           bl.unit,
+           bl.rate_per_quantity,
+           bl.total_cost,
+           bl.category_order,
+           bl.subcategory_order,
+           bl.item_order,
+           jt.subcontracted_qty
+         FROM jt_jo_lines_boq_lines jt
+         JOIN boq_lines bl ON jt.boq_line_id = bl.id
+         WHERE jt.jo_line_id = ?
+         ORDER BY bl.category_order ASC, bl.subcategory_order ASC, bl.item_order ASC`,
+        [Number(body.jo_line_id)],
+      );
+      return NextResponse.json(rows, { status: 200 });
+    }
+
     if (body.action === "getAttachmentsByJoLineID") {
       const [rows]: any = await db.query(
         `SELECT * FROM jo_line_attachments WHERE jo_line_id = ? ORDER BY id ASC`,

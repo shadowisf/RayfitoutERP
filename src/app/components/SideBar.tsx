@@ -86,6 +86,13 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
   }, [userInfo]);
 
   useEffect(() => {
+    if (!userInfo?.departmentID) return;
+
+    if (![8, 10].includes(userInfo.departmentID)) {
+      setPaymentUnpaidCount(0);
+      return;
+    }
+
     const fetchPaymentUnpaidCount = async () => {
       try {
         const res = await fetch(
@@ -99,9 +106,10 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
     };
 
     fetchPaymentUnpaidCount();
+
     const interval = setInterval(fetchPaymentUnpaidCount, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [userInfo]);
 
   /* TEMPORARILY DISABLED - Resolution Center
   useEffect(() => {

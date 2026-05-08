@@ -2,7 +2,7 @@
 
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import { toast } from "@/app/components/Toast";
@@ -13,6 +13,19 @@ import InputItem from "@/app/components/InputItem";
 import UploadFileBox from "@/app/components/SingleUploadFileBox";
 import CommentsSection from "@/app/components/CommentsSection";
 import { formatPriceAED } from "@/lib/formatPrice";
+
+type BoqLineDetail = {
+  boq_line_id: number;
+  item_name: string;
+  item_description?: string;
+  category: string;
+  sub_category: string;
+  boq_qty: number;
+  unit: string;
+  rate_per_quantity: number;
+  total_cost: number;
+  subcontracted_qty: number;
+};
 
 type PrLine = {
   id: number;
@@ -29,6 +42,7 @@ type PrLine = {
   // JO line fields
   job_scope_name: string;
   job_description: string;
+  contract_type?: string | null;
   boq_line_ids: string;
   boq_line_names: string;
   boq_item_numbers: string;
@@ -128,6 +142,68 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
   const lineAttachmentRefs = useRef<Record<number, HTMLInputElement | null>>(
     {},
   );
+
+  // Collapsible cards
+  const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set());
+  const [boqLinesByJoLine, setBoqLinesByJoLine] = useState<
+    Record<number, BoqLineDetail[]>
+  >({});
+  const [loadingBoqLines, setLoadingBoqLines] = useState<
+    Record<number, boolean>
+  >({});
+
+  // Per-BOQ-line editable fields (SQL revision pending)
+  const [editedBoqLines, setEditedBoqLines] = useState<
+    Record<number, { completed_qty: string; retention: string }>
+  >({});
+  const [boqLineAttachments, setBoqLineAttachments] = useState<
+    Record<number, string[]>
+  >({});
+  const boqLineUploadRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  async function fetchBoqLinesForJoLine(joLineId: number) {
+    if (boqLinesByJoLine[joLineId] !== undefined) return; // already loaded
+    setLoadingBoqLines((prev) => ({ ...prev, [joLineId]: true }));
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "getBoqLinesWithDetailsByJoLineID",
+          jo_line_id: joLineId,
+        }),
+      });
+      const data: BoqLineDetail[] = await res.json();
+      setBoqLinesByJoLine((prev) => ({ ...prev, [joLineId]: data || [] }));
+      // Init per-BOQ-line editable state
+      setEditedBoqLines((prev) => {
+        const next = { ...prev };
+        for (const b of data || []) {
+          if (!(b.boq_line_id in next)) {
+            next[b.boq_line_id] = { completed_qty: "0", retention: "0" };
+          }
+        }
+        return next;
+      });
+    } catch {
+      setBoqLinesByJoLine((prev) => ({ ...prev, [joLineId]: [] }));
+    } finally {
+      setLoadingBoqLines((prev) => ({ ...prev, [joLineId]: false }));
+    }
+  }
+
+  const toggleExpanded = (id: number, joLineId: number) => {
+    setExpandedLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        fetchBoqLinesForJoLine(joLineId);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     fetchPrLines();
@@ -349,6 +425,31 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
     }
   }
 
+  async function handleUploadBoqLineAttachment(boqLineId: number, file: File) {
+    try {
+      const formData = new FormData();
+      formData.append("folder", "pr-attachments");
+      formData.append("files", file);
+      const uploadRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
+        { method: "POST", body: formData },
+      );
+      if (!uploadRes.ok) {
+        toast("Failed to upload attachment", "error");
+        return;
+      }
+      const uploadData = await uploadRes.json();
+      const url = uploadData.url || uploadData.urls?.[0];
+      setBoqLineAttachments((prev) => ({
+        ...prev,
+        [boqLineId]: [...(prev[boqLineId] || []), url],
+      }));
+      toast("Attachment uploaded", "success");
+    } catch {
+      toast("Failed to upload attachment", "error");
+    }
+  }
+
   // Approval handlers
   async function handleApproveLineQS(prLineId: number) {
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`, {
@@ -503,52 +604,14 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
 
   return (
     <>
-      <div className="mr-lines-view mr-with-id">
+      <div className="mr-lines-view">
         <div className="subcategory-header">
-          <h2 style={{ textTransform: "uppercase" }}>PAYMENT REQUEST ITEMS</h2>
+          <div />
 
           <div
             className="right"
             style={{ display: "flex", gap: "10px", alignItems: "center" }}
           >
-            {/* Invoice */}
-            <input
-              ref={invoiceInputRef}
-              type="file"
-              style={{ display: "none" }}
-              accept=".pdf,.jpeg,.jpg,.png,.webp"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleUploadInvoice(file);
-                e.target.value = "";
-              }}
-            />
-            {invoiceFile ? (
-              <Button
-                componentType={"button"}
-                bgColor={"white"}
-                borderColor={"rgba(223, 223, 223, 1)"}
-                textColor={"black"}
-                style={{ borderRadius: "25px", padding: "7px 20px" }}
-                onClick={() => downloadFile(invoiceFile)}
-              >
-                Invoice <img src={downloadIcon} alt="download" />
-              </Button>
-            ) : (
-              canEdit && (
-                <Button
-                  componentType={"button"}
-                  bgColor={"black"}
-                  borderColor={"black"}
-                  textColor={"white"}
-                  onClick={() => invoiceInputRef.current?.click()}
-                  disabled={isUploadingInvoice}
-                >
-                  Upload Invoice <img src={uploadIcon} alt="upload" />
-                </Button>
-              )
-            )}
-
             {/* Payment Receipt download (completed or paid) */}
             {(isCompleted || prPaymentStatus === "paid") && paymentReceipt && (
               <Button
@@ -710,235 +773,183 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
             <p>No job order lines found for the referenced job order.</p>
           </div>
         ) : (
-          <div className="table-container">
-            <table className="items-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>SCOPE</th>
-                  <th>DESCRIPTION</th>
-                  <th>BOQ REF.</th>
-                  <th>ORDERED QTY</th>
-                  <th>COMPLETED QTY</th>
-                  <th>RETENTION (%)</th>
-                  <th>TOTAL PRICE</th>
-                  <th>ATTACHMENT</th>
-                  {showQsApproval && <th>QS APPROVAL</th>}
-                  {showManagerApproval && <th>MANAGER APPROVAL</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {prLines.map((line, index) => {
-                  const edited = editedLines[line.id] || {
-                    completed_qty: "0",
-                  };
-                  const completedQty = parseFloat(edited.completed_qty || "0");
-                  const orderedQty = line.quantity || 0;
-                  const retention =
-                    orderedQty > 0
-                      ? Math.min((completedQty / orderedQty) * 100, 100)
-                      : 0;
+          <>
+            {/* ── Collapsible JO line cards ── */}
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+            >
+              {prLines.map((line, index) => {
+                const isExpanded = expandedLines.has(line.id);
+                const edited = editedLines[line.id] || { completed_qty: "0" };
+                const completedQty = parseFloat(edited.completed_qty || "0");
+                const orderedQty = line.quantity || 0;
+                const retention =
+                  orderedQty > 0
+                    ? Math.min((completedQty / orderedQty) * 100, 100)
+                    : 0;
+                const lineAttachments = parseAttachments(line.attachment);
+                const hasInvoice = lineAttachments.length > 0;
 
-                  const lineAttachments = parseAttachments(line.attachment);
+                const joLineForBoqRef = {
+                  id: line.jo_line_id,
+                  boq_line_ids: line.boq_line_ids,
+                  boq_line_names: line.boq_line_names,
+                  boq_item_numbers: line.boq_item_numbers,
+                } as any;
 
-                  const joLineForBoqRef = {
-                    id: line.jo_line_id,
-                    boq_line_ids: line.boq_line_ids,
-                    boq_line_names: line.boq_line_names,
-                    boq_item_numbers: line.boq_item_numbers,
-                  } as any;
+                const infoLabelStyle: React.CSSProperties = {
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  color: "rgba(150,150,150,1)",
+                  marginBottom: "4px",
+                  letterSpacing: "0.3px",
+                  whiteSpace: "nowrap",
+                };
 
-                  return (
-                    <tr key={line.id}>
-                      <td>{index + 1}</td>
-                      <td>{line.job_scope_name || "-"}</td>
-                      <td>
-                        {line.job_description ? (
-                          <InfoPopUpButton
-                            text={line.job_description}
-                            header="DESCRIPTION"
-                          />
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td>
-                        {line.boq_line_ids ? (
-                          <BoqReferencePopUp
-                            item={joLineForBoqRef}
-                            mrHeader={mrHeader}
-                          />
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td>
-                        {formatNumber(orderedQty)} {line.unit}
-                      </td>
-                      <td>
-                        {canEdit ? (
-                          <InputItem
-                            style={{ width: "225px" }}
-                            label={""}
-                            value={edited.completed_qty}
-                            type={"text postfix"}
-                            postfixText={line.unit}
-                            placeholder="ENTER COMPLETED QTY"
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                                setEditedLines((prev) => ({
-                                  ...prev,
-                                  [line.id]: {
-                                    ...prev[line.id],
-                                    completed_qty: val,
-                                  },
-                                }));
-                              }
-                            }}
-                            onBlur={() => handleSaveLine(line.id)}
-                            required
-                          />
-                        ) : (
-                          <>
-                            {formatNumber(completedQty)} {line.unit}
-                          </>
-                        )}
-                      </td>
-                      <td>{retention.toFixed(1)}%</td>
-                      <td style={{ fontWeight: 600 }}>
-                        {Number(line.approved_total_price) > 0
-                          ? formatPriceAED(line.approved_total_price)
-                          : "-"}
-                      </td>
-                      <td>
+                return (
+                  <React.Fragment key={line.id}>
+                  <div className="mr-with-id">
+                      {/* ── Card Header ── */}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          cursor: "pointer",
+                          gap: "20px",
+                        }}
+                        onClick={() => toggleExpanded(line.id, line.jo_line_id)}
+                      >
+                        {/* Left: chevron + # + info columns */}
                         <div
                           style={{
                             display: "flex",
-                            flexDirection: "column",
-                            gap: "8px",
-                            alignItems: "flex-start",
+                            gap: "15px",
+                            alignItems: "center",
+                            minWidth: 0,
+                            flex: 1,
                           }}
                         >
-                          {lineAttachments.map((url, i) => (
-                            <div
-                              key={`pr-${i}`}
+                          {/* Chevron */}
+                          <div
+                            style={{
+                              flexShrink: 0,
+                              width: "28px",
+                              height: "28px",
+                              borderRadius: "8px",
+                              backgroundColor: "rgba(239,239,239,1)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 14 14"
+                              fill="none"
                               style={{
-                                display: "flex",
-                                gap: "8px",
-                                alignItems: "center",
+                                transform: isExpanded
+                                  ? "rotate(180deg)"
+                                  : "rotate(0deg)",
+                                transition: "transform 0.2s ease",
                               }}
                             >
-                              <span
-                                style={{
-                                  fontSize: "12px",
-                                  fontWeight: 600,
-                                  color: "rgba(100, 100, 100, 1)",
-                                }}
-                              >
-                                {i + 1}
-                              </span>
-                              <Button
-                                componentType={"button"}
-                                bgColor={"rgba(239, 239, 239, 1)"}
-                                borderColor={"rgba(223, 223, 223, 1)"}
-                                textColor={"black"}
-                                style={{ padding: "7px 7px" }}
-                                onClick={() => downloadFile(url)}
-                              >
-                                <img src={externalLinkIcon} alt="attachment" />
-                              </Button>
-                            </div>
-                          ))}
-                          {canEdit && (
-                            <>
-                              <input
-                                ref={(el) => {
-                                  lineAttachmentRefs.current[line.id] = el;
-                                }}
-                                type="file"
-                                style={{ display: "none" }}
-                                accept=".pdf,.jpeg,.jpg,.png,.webp"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file)
-                                    handleUploadLineAttachment(line.id, file);
-                                  e.target.value = "";
-                                }}
+                              <path
+                                d="M2.5 5L7 9.5L11.5 5"
+                                stroke="black"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
                               />
-                              <Button
-                                componentType={"button"}
-                                bgColor={"rgba(239, 239, 239, 1)"}
-                                borderColor={"rgba(223, 223, 223, 1)"}
-                                textColor={"black"}
-                                style={{ padding: "7px 7px" }}
-                                onClick={() =>
-                                  lineAttachmentRefs.current[line.id]?.click()
-                                }
-                              >
-                                <img
-                                  src={uploadIcon}
-                                  alt="upload"
-                                  style={{ filter: "invert(1)" }}
-                                />
-                              </Button>
-                            </>
-                          )}
-                          {lineAttachments.length === 0 && !canEdit && "-"}
-                        </div>
-                      </td>
+                            </svg>
+                          </div>
 
-                      {/* QS Approval Column */}
-                      {showQsApproval && (
-                        <td>
-                          {line.qs_approval_status === "Approved" ? (
-                            <div
-                              className="approval-pill"
-                              style={{
-                                backgroundColor: "rgba(34, 150, 100, 1)",
-                                color: "white",
-                              }}
-                            >
-                              <span>QS Approved</span>
-                              {isQsDept && isQsReview && (
-                                <img
-                                  src={crossIcon}
-                                  alt="reset"
-                                  style={{
-                                    filter: "invert(1)",
-                                    cursor: "pointer",
-                                  }}
-                                  onClick={() => handleResetLineQS(line.id)}
-                                />
-                              )}
+                          {/* Info columns */}
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "40px",
+                              alignItems: "flex-start",
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            {/* JOB SCOPE */}
+                            <div>
+                              <small>SCOPE</small>
+                              <h2>{line.job_scope_name || "-"}</h2>
                             </div>
-                          ) : line.qs_approval_status === "Rejected" ? (
-                            <div
-                              className="approval-pill"
-                              style={{
-                                backgroundColor: "rgba(185, 28, 28, 1)",
-                              }}
-                            >
-                              <span>QS Rejected</span>
+
+                            {/* CONTRACT TYPE */}
+                            <div>
+                              <small>CONTRACT TYPE</small>
+                              <h2>{line.contract_type || "-"}</h2>
+                            </div>
+
+                            {/* DESCRIPTION */}
+                            <div>
+                              <small>DESCRIPTION</small>
+                              <div onClick={(e) => e.stopPropagation()}>
+                                {line.job_description ? (
+                                  <InfoPopUpButton
+                                    text={line.job_description}
+                                    header="DESCRIPTION"
+                                  />
+                                ) : (
+                                  <span>-</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* BOQ REF */}
+                            <div>
+                              <small>BOQ REF.</small>
+                              <div onClick={(e) => e.stopPropagation()}>
+                                {line.boq_line_ids ? (
+                                  <BoqReferencePopUp
+                                    item={joLineForBoqRef}
+                                    mrHeader={mrHeader}
+                                  />
+                                ) : (
+                                  <span>-</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* TOTAL PRICE */}
+                            <div>
+                              <small>TOTAL PRICE</small>
+                              <h2>
+                                {Number(line.approved_total_price) > 0
+                                  ? formatPriceAED(line.approved_total_price)
+                                  : "-"}
+                              </h2>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: approval status + invoice button */}
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "10px",
+                            alignItems: "center",
+                            flexShrink: 0,
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* QS status pill */}
+                          {showQsApproval &&
+                            line.qs_approval_status === "Approved" && (
                               <div
+                                className="approval-pill"
                                 style={{
-                                  display: "flex",
-                                  gap: "10px",
-                                  alignItems: "center",
+                                  backgroundColor: "rgba(34,150,100,1)",
+                                  color: "white",
                                 }}
                               >
-                                {line.qs_reject_comment && (
-                                  <InfoPopUpButton
-                                    text={line.qs_reject_comment}
-                                    header="REJECTION COMMENT"
-                                    bgColor="transparent"
-                                    borderColor="transparent"
-                                    style={{
-                                      filter: "invert(1)",
-                                      padding: "0px",
-                                    }}
-                                  />
-                                )}
+                                <span>QS Approved</span>
                                 {isQsDept && isQsReview && (
                                   <img
                                     src={crossIcon}
@@ -951,117 +962,77 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                   />
                                 )}
                               </div>
-                            </div>
-                          ) : isQsDept && isQsReview ? (
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: "10px",
-                                width: "200px",
-                              }}
-                            >
-                              <Button
-                                componentType={"button"}
-                                bgColor={"white"}
-                                borderColor={"rgba(207, 207, 207, 1)"}
-                                textColor={"black"}
-                                onClick={() => handleApproveLineQS(line.id)}
-                                style={{
-                                  borderRadius: "20px",
-                                  padding: "5px 20px",
-                                  flexGrow: 1,
-                                }}
-                              >
-                                <img src={checkIcon} alt="approve" />
-                              </Button>
-                              <Button
-                                componentType={"button"}
-                                bgColor={"white"}
-                                borderColor={"rgba(207, 207, 207, 1)"}
-                                textColor={"black"}
-                                onClick={() => {
-                                  setRejectLineId(line.id);
-                                  setRejectType("qs");
-                                }}
-                                style={{
-                                  borderRadius: "20px",
-                                  padding: "5px 20px",
-                                  flexGrow: 1,
-                                }}
-                              >
-                                <img src={crossIcon} alt="reject" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div
-                              className="approval-pill"
-                              style={{
-                                backgroundColor: "gray",
-                                color: "white",
-                              }}
-                            >
-                              <span style={{ whiteSpace: "nowrap" }}>
-                                Pending QS
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                      )}
-
-                      {/* Manager Approval Column */}
-                      {showManagerApproval && (
-                        <td>
-                          {line.approval_status === "Approved" ? (
-                            <div
-                              className="approval-pill"
-                              style={{
-                                backgroundColor: "rgba(34, 150, 100, 1)",
-                                color: "white",
-                              }}
-                            >
-                              <span>Approved</span>
-                              {isManagerDept && isManagerApproval && (
-                                <img
-                                  src={crossIcon}
-                                  alt="reset"
-                                  style={{
-                                    filter: "invert(1)",
-                                    cursor: "pointer",
-                                    width: "12px",
-                                  }}
-                                  onClick={() => handleResetLine(line.id)}
-                                />
-                              )}
-                            </div>
-                          ) : line.approval_status === "Rejected" ? (
-                            <div
-                              className="approval-pill"
-                              style={{
-                                backgroundColor: "rgba(185, 28, 28, 1)",
-                                color: "white",
-                              }}
-                            >
-                              <span>Rejected</span>
+                            )}
+                          {showQsApproval &&
+                            line.qs_approval_status === "Rejected" && (
                               <div
+                                className="approval-pill"
                                 style={{
-                                  display: "flex",
-                                  gap: "10px",
-                                  alignItems: "center",
+                                  backgroundColor: "rgba(185,28,28,1)",
+                                  color: "white",
                                 }}
                               >
-                                {line.reject_comment && (
-                                  <InfoPopUpButton
-                                    text={line.reject_comment}
-                                    header="REJECTION COMMENT"
-                                    bgColor="transparent"
-                                    borderColor="transparent"
-                                    textColor="white"
-                                    style={{
-                                      filter: "invert(1)",
-                                      padding: "0px",
-                                    }}
-                                  />
-                                )}
+                                <span>QS Rejected</span>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "10px",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  {line.qs_reject_comment && (
+                                    <InfoPopUpButton
+                                      text={line.qs_reject_comment}
+                                      header="REJECTION COMMENT"
+                                      bgColor="transparent"
+                                      borderColor="transparent"
+                                      style={{
+                                        filter: "invert(1)",
+                                        padding: "0px",
+                                      }}
+                                    />
+                                  )}
+                                  {isQsDept && isQsReview && (
+                                    <img
+                                      src={crossIcon}
+                                      alt="reset"
+                                      style={{
+                                        filter: "invert(1)",
+                                        cursor: "pointer",
+                                      }}
+                                      onClick={() => handleResetLineQS(line.id)}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          {showQsApproval &&
+                            !line.qs_approval_status &&
+                            !isQsDept && (
+                              <div
+                                className="approval-pill"
+                                style={{
+                                  backgroundColor: "gray",
+                                  color: "white",
+                                }}
+                              >
+                                <span style={{ whiteSpace: "nowrap" }}>
+                                  Pending QS
+                                </span>
+                              </div>
+                            )}
+
+                          {/* Manager status pill */}
+                          {showManagerApproval &&
+                            line.approval_status === "Approved" && (
+                              <div
+                                className="approval-pill"
+                                style={{
+                                  backgroundColor: "rgba(34,150,100,1)",
+                                  color: "white",
+                                }}
+                              >
+                                <span>Approved</span>
                                 {isManagerDept && isManagerApproval && (
                                   <img
                                     src={crossIcon}
@@ -1069,138 +1040,551 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                     style={{
                                       filter: "invert(1)",
                                       cursor: "pointer",
+                                      width: "12px",
                                     }}
                                     onClick={() => handleResetLine(line.id)}
                                   />
                                 )}
                               </div>
-                            </div>
-                          ) : isManagerDept && isManagerApproval ? (
+                            )}
+                          {showManagerApproval &&
+                            line.approval_status === "Rejected" && (
+                              <div
+                                className="approval-pill"
+                                style={{
+                                  backgroundColor: "rgba(185,28,28,1)",
+                                  color: "white",
+                                }}
+                              >
+                                <span>Rejected</span>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "10px",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  {line.reject_comment && (
+                                    <InfoPopUpButton
+                                      text={line.reject_comment}
+                                      header="REJECTION COMMENT"
+                                      bgColor="transparent"
+                                      borderColor="transparent"
+                                      textColor="white"
+                                      style={{
+                                        filter: "invert(1)",
+                                        padding: "0px",
+                                      }}
+                                    />
+                                  )}
+                                  {isManagerDept && isManagerApproval && (
+                                    <img
+                                      src={crossIcon}
+                                      alt="reset"
+                                      style={{
+                                        filter: "invert(1)",
+                                        cursor: "pointer",
+                                      }}
+                                      onClick={() => handleResetLine(line.id)}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          {showManagerApproval &&
+                            !line.approval_status &&
+                            !isManagerDept && (
+                              <div
+                                className="approval-pill"
+                                style={{
+                                  backgroundColor: "gray",
+                                  color: "white",
+                                }}
+                              >
+                                <span style={{ whiteSpace: "nowrap" }}>
+                                  Pending Manager
+                                </span>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+
+                      <br />
+
+                      {/* ── Card Body (expanded) ── */}
+                      {isExpanded && (
+                        <div
+                          style={{
+                            borderTop: "1px solid rgba(239,239,239,1)",
+                            backgroundColor: "rgba(248,249,251,0.6)",
+                          }}
+                        >
+                          {/* Approval action buttons strip (only shown when actions are available) */}
+                          {((showQsApproval &&
+                            isQsDept &&
+                            isQsReview &&
+                            !line.qs_approval_status) ||
+                            (showManagerApproval &&
+                              isManagerDept &&
+                              isManagerApproval &&
+                              !line.approval_status)) && (
                             <div
                               style={{
                                 display: "flex",
-                                gap: "10px",
-                                width: "200px",
+                                gap: "30px",
+                                alignItems: "flex-start",
+                                flexWrap: "wrap",
+                                padding: "16px 25px",
+                                borderBottom: "1px solid rgba(239,239,239,1)",
                               }}
                             >
-                              <Button
-                                componentType={"button"}
-                                bgColor={"white"}
-                                borderColor={"rgba(207, 207, 207, 1)"}
-                                textColor={"black"}
-                                onClick={() => handleApproveLine(line.id)}
-                                style={{
-                                  borderRadius: "20px",
-                                  padding: "5px 20px",
-                                  flexGrow: 1,
-                                }}
-                              >
-                                <img src={checkIcon} alt="approve" />
-                              </Button>
-                              <Button
-                                componentType={"button"}
-                                bgColor={"white"}
-                                borderColor={"rgba(207, 207, 207, 1)"}
-                                textColor={"black"}
-                                onClick={() => {
-                                  setRejectLineId(line.id);
-                                  setRejectType("manager");
-                                }}
-                                style={{
-                                  borderRadius: "20px",
-                                  padding: "5px 20px",
-                                  flexGrow: 1,
-                                }}
-                              >
-                                <img src={crossIcon} alt="reject" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div
-                              className="approval-pill"
-                              style={{
-                                backgroundColor: "gray",
-                                color: "white",
-                              }}
-                            >
-                              <span style={{ whiteSpace: "nowrap" }}>
-                                Pending Manager
-                              </span>
+                              {showQsApproval &&
+                                isQsDept &&
+                                isQsReview &&
+                                !line.qs_approval_status && (
+                                  <div>
+                                    <div style={infoLabelStyle}>
+                                      QS APPROVAL
+                                    </div>
+                                    <div
+                                      style={{ display: "flex", gap: "10px" }}
+                                    >
+                                      <Button
+                                        componentType="button"
+                                        bgColor="white"
+                                        borderColor="rgba(207,207,207,1)"
+                                        textColor="black"
+                                        onClick={() =>
+                                          handleApproveLineQS(line.id)
+                                        }
+                                        style={{
+                                          borderRadius: "20px",
+                                          padding: "5px 20px",
+                                        }}
+                                      >
+                                        <img src={checkIcon} alt="approve" />
+                                      </Button>
+                                      <Button
+                                        componentType="button"
+                                        bgColor="white"
+                                        borderColor="rgba(207,207,207,1)"
+                                        textColor="black"
+                                        onClick={() => {
+                                          setRejectLineId(line.id);
+                                          setRejectType("qs");
+                                        }}
+                                        style={{
+                                          borderRadius: "20px",
+                                          padding: "5px 20px",
+                                        }}
+                                      >
+                                        <img src={crossIcon} alt="reject" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                              {showManagerApproval &&
+                                isManagerDept &&
+                                isManagerApproval &&
+                                !line.approval_status && (
+                                  <div>
+                                    <div style={infoLabelStyle}>
+                                      MANAGER APPROVAL
+                                    </div>
+                                    <div
+                                      style={{ display: "flex", gap: "10px" }}
+                                    >
+                                      <Button
+                                        componentType="button"
+                                        bgColor="white"
+                                        borderColor="rgba(207,207,207,1)"
+                                        textColor="black"
+                                        onClick={() =>
+                                          handleApproveLine(line.id)
+                                        }
+                                        style={{
+                                          borderRadius: "20px",
+                                          padding: "5px 20px",
+                                        }}
+                                      >
+                                        <img src={checkIcon} alt="approve" />
+                                      </Button>
+                                      <Button
+                                        componentType="button"
+                                        bgColor="white"
+                                        borderColor="rgba(207,207,207,1)"
+                                        textColor="black"
+                                        onClick={() => {
+                                          setRejectLineId(line.id);
+                                          setRejectType("manager");
+                                        }}
+                                        style={{
+                                          borderRadius: "20px",
+                                          padding: "5px 20px",
+                                        }}
+                                      >
+                                        <img src={crossIcon} alt="reject" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
                             </div>
                           )}
-                        </td>
+
+                          {/* BOQ lines table */}
+                          {loadingBoqLines[line.jo_line_id] ? (
+                            <div
+                              style={{
+                                padding: "20px 25px",
+                                color: "rgba(150,150,150,1)",
+                                fontSize: "13px",
+                              }}
+                            >
+                              Loading BOQ lines...
+                            </div>
+                          ) : (boqLinesByJoLine[line.jo_line_id] || [])
+                              .length === 0 ? (
+                            <div
+                              style={{
+                                padding: "20px 25px",
+                                color: "rgba(150,150,150,1)",
+                                fontSize: "13px",
+                              }}
+                            >
+                              No BOQ lines referenced.
+                            </div>
+                          ) : (
+                            <table
+                              className="items-table"
+                              style={{
+                                borderRadius: 0,
+                                border: "none",
+                                borderTop: "1px solid rgba(239,239,239,1)",
+                              }}
+                            >
+                              <thead>
+                                <tr>
+                                  <th style={{ width: "40px" }}>#</th>
+                                  <th>ITEM</th>
+                                  <th>BOQ RATE</th>
+                                  <th>SUBCONTRACTED QTY</th>
+                                  <th style={{ minWidth: "160px" }}>
+                                    COMPLETED QTY
+                                  </th>
+                                  <th style={{ minWidth: "130px" }}>
+                                    RETENTION
+                                  </th>
+                                  <th>ATTACHMENT(S)</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(boqLinesByJoLine[line.jo_line_id] || []).map(
+                                  (boqLine, bIdx) => {
+                                    const boqEdited = editedBoqLines[
+                                      boqLine.boq_line_id
+                                    ] || { completed_qty: "0", retention: "0" };
+                                    const completedQtyVal =
+                                      parseFloat(
+                                        boqEdited.completed_qty || "0",
+                                      ) || 0;
+                                    const retentionVal =
+                                      parseFloat(boqEdited.retention || "0") ||
+                                      0;
+                                    const subcontractorPrice =
+                                      completedQtyVal *
+                                      (Number(boqLine.rate_per_quantity) || 0);
+                                    const attachments =
+                                      boqLineAttachments[boqLine.boq_line_id] ||
+                                      [];
+
+                                    return (
+                                      <tr key={boqLine.boq_line_id}>
+                                        <td>{bIdx + 1}</td>
+                                        <td>
+                                          <div style={{ fontWeight: 600 }}>
+                                            {boqLine.item_name}
+                                          </div>
+                                          {boqLine.item_description && (
+                                            <div
+                                              style={{
+                                                fontSize: "11px",
+                                                color: "rgba(120,120,120,1)",
+                                                marginTop: "2px",
+                                              }}
+                                            >
+                                              {boqLine.item_description}
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td>
+                                          {formatPriceAED(
+                                            boqLine.rate_per_quantity,
+                                          )}
+                                        </td>
+                                        <td>
+                                          {formatNumber(
+                                            boqLine.subcontracted_qty,
+                                          )}{" "}
+                                          {boqLine.unit}
+                                        </td>
+                                        <td>
+                                          {canEdit ? (
+                                            <InputItem
+                                              style={{ width: "140px" }}
+                                              label=""
+                                              value={boqEdited.completed_qty}
+                                              type="text postfix"
+                                              postfixText={boqLine.unit}
+                                              placeholder="0"
+                                              noOptionalLabel
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (
+                                                  val === "" ||
+                                                  /^\d*\.?\d*$/.test(val)
+                                                ) {
+                                                  setEditedBoqLines((prev) => ({
+                                                    ...prev,
+                                                    [boqLine.boq_line_id]: {
+                                                      ...prev[
+                                                        boqLine.boq_line_id
+                                                      ],
+                                                      completed_qty: val,
+                                                    },
+                                                  }));
+                                                }
+                                              }}
+                                              required
+                                            />
+                                          ) : (
+                                            <span style={{ fontWeight: 600 }}>
+                                              {formatNumber(completedQtyVal)}{" "}
+                                              {boqLine.unit}
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td>
+                                          {canEdit ? (
+                                            <InputItem
+                                              style={{ width: "110px" }}
+                                              label=""
+                                              value={boqEdited.retention}
+                                              type="text postfix"
+                                              postfixText="%"
+                                              placeholder="0"
+                                              noOptionalLabel
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (
+                                                  val === "" ||
+                                                  /^\d*\.?\d*$/.test(val)
+                                                ) {
+                                                  setEditedBoqLines((prev) => ({
+                                                    ...prev,
+                                                    [boqLine.boq_line_id]: {
+                                                      ...prev[
+                                                        boqLine.boq_line_id
+                                                      ],
+                                                      retention: val,
+                                                    },
+                                                  }));
+                                                }
+                                              }}
+                                              required
+                                            />
+                                          ) : (
+                                            <span style={{ fontWeight: 600 }}>
+                                              {retentionVal.toFixed(1)}%
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td>
+                                          <input
+                                            ref={(el) => {
+                                              boqLineUploadRefs.current[
+                                                boqLine.boq_line_id
+                                              ] = el;
+                                            }}
+                                            type="file"
+                                            style={{ display: "none" }}
+                                            accept=".pdf,.jpeg,.jpg,.png,.webp"
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0];
+                                              if (file)
+                                                handleUploadBoqLineAttachment(
+                                                  boqLine.boq_line_id,
+                                                  file,
+                                                );
+                                              e.target.value = "";
+                                            }}
+                                          />
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "6px",
+                                              alignItems: "center",
+                                              flexWrap: "wrap",
+                                            }}
+                                          >
+                                            {attachments.map((url, aIdx) => (
+                                              <Button
+                                                key={aIdx}
+                                                componentType="button"
+                                                bgColor="white"
+                                                borderColor="rgba(223,223,223,1)"
+                                                textColor="black"
+                                                style={{
+                                                  borderRadius: "25px",
+                                                  padding: "5px 12px",
+                                                  whiteSpace: "nowrap",
+                                                  fontSize: "12px",
+                                                }}
+                                                onClick={() =>
+                                                  downloadFile(url)
+                                                }
+                                              >
+                                                {aIdx + 1}{" "}
+                                                <img
+                                                  src={downloadIcon}
+                                                  alt="download"
+                                                />
+                                              </Button>
+                                            ))}
+                                            {canEdit && (
+                                              <Button
+                                                componentType="button"
+                                                bgColor={
+                                                  attachments.length === 0
+                                                    ? "black"
+                                                    : "rgba(239,239,239,1)"
+                                                }
+                                                borderColor={
+                                                  attachments.length === 0
+                                                    ? "black"
+                                                    : "rgba(223,223,223,1)"
+                                                }
+                                                textColor={
+                                                  attachments.length === 0
+                                                    ? "white"
+                                                    : "black"
+                                                }
+                                                style={{
+                                                  padding: "5px 10px",
+                                                  whiteSpace: "nowrap",
+                                                }}
+                                                onClick={() =>
+                                                  boqLineUploadRefs.current[
+                                                    boqLine.boq_line_id
+                                                  ]?.click()
+                                                }
+                                              >
+                                                <img
+                                                  src={uploadIcon}
+                                                  alt="upload"
+                                                  style={
+                                                    attachments.length === 0
+                                                      ? { filter: "invert(1)" }
+                                                      : {}
+                                                  }
+                                                />
+                                              </Button>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  },
+                                )}
+                              </tbody>
+                              <tfoot style={{ pointerEvents: "none" }}>
+                                {(() => {
+                                  const boqRows =
+                                    boqLinesByJoLine[line.jo_line_id] || [];
+                                  const totalSubcontractorPrice =
+                                    boqRows.reduce((sum, b) => {
+                                      const bEdited = editedBoqLines[
+                                        b.boq_line_id
+                                      ] || {
+                                        completed_qty: "0",
+                                        retention: "0",
+                                      };
+                                      const cQty =
+                                        parseFloat(
+                                          bEdited.completed_qty || "0",
+                                        ) || 0;
+                                      return (
+                                        sum +
+                                        cQty *
+                                          (Number(b.rate_per_quantity) || 0)
+                                      );
+                                    }, 0);
+                                  const totalRetentionAmt = boqRows.reduce(
+                                    (sum, b) => {
+                                      const bEdited = editedBoqLines[
+                                        b.boq_line_id
+                                      ] || {
+                                        completed_qty: "0",
+                                        retention: "0",
+                                      };
+                                      const cQty =
+                                        parseFloat(
+                                          bEdited.completed_qty || "0",
+                                        ) || 0;
+                                      const retPct =
+                                        parseFloat(bEdited.retention || "0") ||
+                                        0;
+                                      const price =
+                                        cQty *
+                                        (Number(b.rate_per_quantity) || 0);
+                                      return sum + price * (retPct / 100);
+                                    },
+                                    0,
+                                  );
+                                  const totalAfterRetention =
+                                    totalSubcontractorPrice - totalRetentionAmt;
+                                  return (
+                                    <>
+                                      <tr>
+                                        <td colSpan={5} />
+                                        <td style={{ color: "rgba(146,146,146,1)" }}>BEFORE RETENTION</td>
+                                        <td style={{ color: "rgba(146,146,146,1)" }}>
+                                          {formatPriceAED(
+                                            totalSubcontractorPrice,
+                                          )}
+                                        </td>
+                                      </tr>
+                                      <tr>
+                                        <td colSpan={5} />
+                                        <td style={{ color: "rgba(146,146,146,1)" }}>RETENTION</td>
+                                        <td style={{ color: "rgba(146,146,146,1)" }}>
+                                          − {formatPriceAED(totalRetentionAmt)}
+                                        </td>
+                                      </tr>
+                                      <tr>
+                                        <td colSpan={5} />
+                                        <td style={{ fontWeight: 600 }}>
+                                          AFTER RETENTION
+                                        </td>
+                                        <td style={{ fontWeight: 600 }}>
+                                          {formatPriceAED(totalAfterRetention)}
+                                        </td>
+                                      </tr>
+                                    </>
+                                  );
+                                })()}
+                              </tfoot>
+                            </table>
+                          )}
+                        </div>
                       )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-
-              {/* Totals footer */}
-              {(() => {
-                const subtotalBeforeRetention = prLines.reduce(
-                  (sum, l) => sum + (Number(l.approved_total_price) || 0),
-                  0,
+                    </div>
+                    <br />
+                    <br />
+                  </React.Fragment>
                 );
-
-                const totalRetention = prLines.reduce((sum, l) => {
-                  const edited = editedLines[l.id];
-                  const completedQty = parseFloat(edited?.completed_qty || "0");
-                  const orderedQty = l.quantity || 0;
-                  const retentionPct =
-                    orderedQty > 0
-                      ? Math.min((completedQty / orderedQty) * 100, 100)
-                      : 0;
-                  const lineTotal = Number(l.approved_total_price) || 0;
-                  return sum + lineTotal * (retentionPct / 100);
-                }, 0);
-
-                const subtotalAfterRetention =
-                  subtotalBeforeRetention - totalRetention;
-
-                // Count trailing columns
-                let trailingCols = 1; // ATTACHMENT
-                if (showQsApproval) trailingCols += 1;
-                if (showManagerApproval) trailingCols += 1;
-
-                return (
-                  <tfoot
-                    style={{
-                      borderTop: "1px solid rgba(239, 239, 239, 1)",
-                    }}
-                  >
-                    <tr>
-                      <td colSpan={6} />
-                      <td style={{ fontWeight: 600 }}>
-                        SUBTOTAL BEFORE RETENTION
-                      </td>
-                      <td style={{ fontWeight: 600 }}>
-                        {formatPriceAED(subtotalBeforeRetention)}
-                      </td>
-                      <td colSpan={trailingCols} />
-                    </tr>
-                    <tr>
-                      <td colSpan={6} />
-                      <td style={{ fontWeight: 600 }}>RETENTION</td>
-                      <td style={{ fontWeight: 600 }}>
-                        - {formatPriceAED(totalRetention)}
-                      </td>
-                      <td colSpan={trailingCols} />
-                    </tr>
-                    <tr>
-                      <td colSpan={6} />
-                      <td style={{ fontWeight: 600 }}>
-                        SUBTOTAL AFTER RETENTION
-                      </td>
-                      <td style={{ fontWeight: 600 }}>
-                        {formatPriceAED(subtotalAfterRetention)}
-                      </td>
-                      <td colSpan={trailingCols} />
-                    </tr>
-                  </tfoot>
-                );
-              })()}
-            </table>
-          </div>
+              })}
+            </div>
+          </>
         )}
       </div>
 
@@ -1246,7 +1630,10 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
               const qty = parseFloat(edited?.completed_qty || "0");
               return qty > 0;
             });
-            const canSubmit = !!invoiceFile && allLinesHaveCompletedQty;
+            const allLinesHaveInvoice = prLines.every(
+              (l) => parseAttachments(l.attachment).length > 0,
+            );
+            const canSubmit = allLinesHaveInvoice && allLinesHaveCompletedQty;
 
             return (
               <div className="bottom-nav">

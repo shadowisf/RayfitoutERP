@@ -71,8 +71,7 @@ const STAGE_LABELS: { [key: number]: string } = {
 // JO Stage Labels (renamed stages for job orders)
 const JO_STAGE_LABELS: { [key: number]: string } = {
   1: "ORDER CREATED", // Renamed from REQUEST CREATED
-  2: "QS REVIEW", // Same (if needed)
-  3: "MANAGER APPROVAL", // Same
+  2: "QS REVIEW",
   5: "REQUEST REJECTED", // Same
   7: "QUOTATIONS", // Same
   9: "QS PRICE CHECK", // Same (if needed)
@@ -93,8 +92,8 @@ const BASE_MR_STAGES_ALL_AVAILABLE = [1, 4, 25];
 const FULL_MR_STAGES_ALL_AVAILABLE = [1, 2, 4, 25];
 
 // JO Stages - simplified flow for job orders
-// ORDER CREATED (1) → MANAGER APPROVAL (3) → QUOTATIONS (7) → MANAGER PRICE APPROVAL (10) → LPO & INVOICE (12) → COMPLETED (25)
-const JO_STAGES_IDS = [1, 3, 7, 10, 12, 25];
+// ORDER CREATED (1) → QS REVIEW (2) → QUOTATIONS (7) → MANAGER PRICE APPROVAL (10) → LPO & INVOICE (12) → COMPLETED (25)
+const JO_STAGES_IDS = [1, 2, 7, 10, 12, 25];
 
 // Payment Request Stages
 // REQUEST CREATED (1) → QS REVIEW (2) → MANAGER APPROVAL (3) → COMPLETED (25)

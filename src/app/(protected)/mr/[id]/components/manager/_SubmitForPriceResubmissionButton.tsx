@@ -7,12 +7,20 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 
+function getTypeLabel(type?: string) {
+  if (type === "job") return "job order";
+  if (type === "payment") return "payment request";
+  return "material request";
+}
+
 type SubmitForPricingResubmissionButtonProps = {
   mrHeaderID: number;
+  type?: string;
 };
 
 export default function SubmitForPricingResubmissionButton({
   mrHeaderID,
+  type,
 }: SubmitForPricingResubmissionButtonProps) {
   const router = useRouter();
 
@@ -35,15 +43,17 @@ export default function SubmitForPricingResubmissionButton({
       }),
     });
 
+    const typeLabel = getTypeLabel(type);
+
     if (res.ok) {
-      toast("Material request submitted", "success");
+      toast(`${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} submitted`, "success");
 
       setIsOpen(false);
 
       router.refresh();
       router.replace(`/mr/`);
     } else {
-      toast("Failed to submit material request", "error");
+      toast(`Failed to submit ${typeLabel}`, "error");
     }
   }
 
@@ -67,7 +77,7 @@ export default function SubmitForPricingResubmissionButton({
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this material request?</p>
+          <p>Are you sure you want to submit this {getTypeLabel(type)}?</p>
         </FormPopUp>
       )}
     </>

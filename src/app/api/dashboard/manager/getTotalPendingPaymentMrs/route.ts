@@ -102,24 +102,23 @@ export async function POST(request: Request) {
       type: "lpo",
     }));
 
-    // ── Pending by stage (for bottleneck breakdown) ────────────────────
-    const [stageRows]: any = await db.query(
+    // ── Payment types (by supplier type) ──────────────────────────────
+    const [paymentTypeRows]: any = await db.query(
       `
-      SELECT l.progress_id, pr.value AS progress_name, COUNT(*) AS mr_count
+      SELECT s.type AS supplier_type, COUNT(*) AS lpo_count
       FROM lpo l
       JOIN mr_headers mh ON mh.id = l.mr_header_id
+      JOIN suppliers s ON s.id = l.supplier_id
       ${lpoPaymentsJoin}
-      LEFT JOIN lut_mr_headers_progress pr ON pr.id = l.progress_id
       WHERE ${pendingPaymentFilter}
       ${dateClause}
-      GROUP BY l.progress_id, pr.value
-      ORDER BY mr_count DESC
+      GROUP BY s.type
+      ORDER BY lpo_count DESC
       `,
     );
-    const bottleneckStages = stageRows.map((r: any) => ({
-      progress_id: Number(r.progress_id),
-      progress_name: r.progress_name,
-      mr_count: Number(r.mr_count),
+    const paymentTypes = paymentTypeRows.map((r: any) => ({
+      supplier_type: r.supplier_type,
+      lpo_count: Number(r.lpo_count),
     }));
 
     // ── Projects at risk ───────────────────────────────────────────────
@@ -174,7 +173,7 @@ export async function POST(request: Request) {
         total_count: thisWeekCount,
         total_outstanding: totalOutstanding,
         items,
-        bottleneck_stages: bottleneckStages,
+        payment_types: paymentTypes,
         projects_at_risk: projectRows,
         top_suppliers: supplierRows,
         date_range: {

@@ -405,7 +405,7 @@ export default function NewMrButton() {
               </div>
             </label>
 
-            <label
+            {/* <label
               style={{
                 position: "relative",
                 border: `1px solid ${mode === "payment" ? "rgba(0, 163, 93, 1)" : "rgba(217, 217, 217, 1)"}`,
@@ -479,7 +479,7 @@ export default function NewMrButton() {
                   PAYMENT REQUEST
                 </span>
               </div>
-            </label>
+            </label> */}
           </div>
         </FormPopUp>
       )}

@@ -214,14 +214,14 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
   const popupWidth = 500;
 
   const getPopupPosition = () => {
-    if (!widgetRef.current) return { left: 0, top: 10 };
+    if (!widgetRef.current) return { left: 0, top: 80 };
     const rect = widgetRef.current.getBoundingClientRect();
     const spaceRight = window.innerWidth - rect.right;
     const left =
       spaceRight >= popupWidth + 10
         ? rect.right + 10
         : rect.left - popupWidth - 10;
-    return { left: Math.max(10, left), top: 10 };
+    return { left: Math.max(10, left), top: 80 };
   };
 
   // Format the date range footer using en-GB locale ("from DD MMM YYYY to
@@ -286,7 +286,7 @@ export default function PendingDeliveryMrsWidget({ filterDays }: props) {
             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             zIndex: 10000,
             width: `${popupWidth}px`,
-            maxHeight: "calc(100vh - 20px)",
+            maxHeight: "calc(100vh - 160px)",
             overflowY: "auto",
             pointerEvents: "auto",
             cursor: "default",

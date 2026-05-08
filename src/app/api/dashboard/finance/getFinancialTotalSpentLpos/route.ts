@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 import { RowDataPacket } from "mysql2";
 
 // Returns all individual LPO rows contributing to the Total Spent figure.
-// Uses the same logic as getFinancialTotalSpent (two-case amount, exclude progress 13).
+// "Paid" = payment_status in approved/paid list  OR  total_paid >= total in lpo_payments.
+// Rows with nothing paid yet (amount = 0) are excluded from the hover list.
 export async function GET() {
   try {
     const [rows] = await db.query<RowDataPacket[]>(
@@ -13,8 +14,9 @@ export async function GET() {
          ROUND(
            CASE
              WHEN LOWER(IFNULL(l.payment_status, ''))
-                  IN ('approved','paid','fully paid','completed','done')
-               THEN l.total
+                    IN ('approved','paid','fully paid','completed','done')
+               OR  (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)
+               THEN COALESCE(l.total, 0)
              ELSE COALESCE(pay.total_paid, 0)
            END, 2
          )                                       AS total_price,
@@ -26,14 +28,19 @@ export async function GET() {
          GROUP BY lpo_id
        ) pay ON pay.lpo_id = l.id
        WHERE l.progress_id NOT IN (13)
+         AND (
+           LOWER(IFNULL(l.payment_status, ''))
+             IN ('approved','paid','fully paid','completed','done')
+           OR COALESCE(pay.total_paid, 0) > 0
+         )
        ORDER BY l.created_at DESC`,
     );
 
     const data = (rows as any[]).map((row) => ({
       mr_header_id: Number(row.mr_header_id),
-      lpo_id: Number(row.lpo_id),
-      total_price: Number(row.total_price ?? 0),
-      date: row.date ?? "—",
+      lpo_id:       Number(row.lpo_id),
+      total_price:  Number(row.total_price ?? 0),
+      date:         row.date ?? "—",
     }));
 
     return NextResponse.json(data, { status: 200 });

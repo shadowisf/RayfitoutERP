@@ -103,14 +103,14 @@ export default function FinanceOutstandingPayablesWidget() {
   const popupWidth = 520;
 
   const getPopupPosition = () => {
-    if (!widgetRef.current) return { left: 10, top: 10 };
+    if (!widgetRef.current) return { left: 10, top: 80 };
     const rect = widgetRef.current.getBoundingClientRect();
     const spaceRight = window.innerWidth - rect.right;
     const left =
       spaceRight >= popupWidth + 10
         ? rect.right + 10
         : rect.left - popupWidth - 10;
-    return { left: Math.max(10, left), top: 10 };
+    return { left: Math.max(10, left), top: 80 };
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -185,7 +185,7 @@ export default function FinanceOutstandingPayablesWidget() {
             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             zIndex: 10000,
             width: `${popupWidth}px`,
-            maxHeight: "calc(100vh - 20px)",
+            maxHeight: "calc(100vh - 160px)",
             overflowY: "auto",
             pointerEvents: "auto",
             cursor: "default",
@@ -224,7 +224,7 @@ export default function FinanceOutstandingPayablesWidget() {
                   <tr>
                     <th>MR NUMBER</th>
                     <th>LPO NUMBER</th>
-                    <th>OUTSTANDING</th>
+                    <th>TOTAL PRICE</th>
                     <th>DATE</th>
                     <th></th>
                   </tr>

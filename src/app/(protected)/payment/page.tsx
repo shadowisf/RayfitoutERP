@@ -269,7 +269,7 @@ export default function Payments() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [groupByVendor, setGroupByVendor] = useState(false);
+  const [groupByVendor, setGroupByVendor] = useState(true);
   const [collapsedVendors, setCollapsedVendors] = useState<
     Record<string, boolean>
   >({});
@@ -410,8 +410,14 @@ export default function Payments() {
     return base.sort((a, b) => {
       // Keep paid/unpaid grouping intact — only sort within same is_paid group
       if (a.is_paid !== b.is_paid) return a.is_paid - b.is_paid;
-      const aVal = (a as Record<string, unknown>)[sortCol] as number;
-      const bVal = (b as Record<string, unknown>)[sortCol] as number;
+      // For outstanding, paid rows are always 0 regardless of raw field value
+      const getRaw = (row: LpoRow) => {
+        if (sortCol === "outstanding") return row.is_paid === 1 ? 0 : Number(row.outstanding ?? 0);
+        const v = (row as Record<string, unknown>)[sortCol];
+        return v == null ? null : Number(v);
+      };
+      const aVal = getRaw(a);
+      const bVal = getRaw(b);
       if (aVal == null) return 1;
       if (bVal == null) return -1;
       const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
@@ -1135,12 +1141,13 @@ export default function Payments() {
                             return [...group.rows].sort((a, b) => {
                               if (a.is_paid !== b.is_paid)
                                 return a.is_paid - b.is_paid;
-                              const aVal = (a as Record<string, unknown>)[
-                                gs.col
-                              ] as number;
-                              const bVal = (b as Record<string, unknown>)[
-                                gs.col
-                              ] as number;
+                              const getGRaw = (row: LpoRow) => {
+                                if (gs.col === "outstanding") return row.is_paid === 1 ? 0 : Number(row.outstanding ?? 0);
+                                const v = (row as Record<string, unknown>)[gs.col];
+                                return v == null ? null : Number(v);
+                              };
+                              const aVal = getGRaw(a);
+                              const bVal = getGRaw(b);
                               if (aVal == null) return 1;
                               if (bVal == null) return -1;
                               const cmp =
@@ -1251,16 +1258,18 @@ export default function Payments() {
                                   <StatusPill isPaid={isPaid} />
                                 </td>
                                 <td>
-                                  <Button
-                                    componentType="link"
-                                    bgColor="rgba(239, 239, 239, 1)"
-                                    borderColor="rgba(223, 223, 223, 1)"
-                                    textColor="black"
-                                    href={`/payment/mr/${row.mr_header_id}`}
-                                    style={{ padding: "7px 7px" }}
-                                  >
-                                    <img src={externalLinkIcon} alt="open" />
-                                  </Button>
+                                  {[8, 10].includes(userInfo?.departmentID ?? 0) && (
+                                    <Button
+                                      componentType="link"
+                                      bgColor="rgba(239, 239, 239, 1)"
+                                      borderColor="rgba(223, 223, 223, 1)"
+                                      textColor="black"
+                                      href={`/payment/mr/${row.mr_header_id}`}
+                                      style={{ padding: "7px 7px" }}
+                                    >
+                                      <img src={externalLinkIcon} alt="open" />
+                                    </Button>
+                                  )}
                                 </td>
                               </tr>
                             );
@@ -1296,7 +1305,7 @@ export default function Payments() {
             <thead>
               <tr>
                 <th>LPO NUMBER</th>
-                <th>SUPPLIER</th>
+                <th>VENDOR</th>
                 <th>PROJECT</th>
                 <th>TYPE</th>
                 <th
@@ -1424,18 +1433,20 @@ export default function Payments() {
                       <StatusPill isPaid={isPaid} />
                     </td>
 
-                    {/* MR payment detail link */}
+                    {/* MR payment detail link — manager & finance only */}
                     <td>
-                      <Button
-                        componentType="link"
-                        bgColor="rgba(239, 239, 239, 1)"
-                        borderColor="rgba(223, 223, 223, 1)"
-                        textColor="black"
-                        href={`/payment/mr/${row.mr_header_id}`}
-                        style={{ padding: "7px 7px" }}
-                      >
-                        <img src={externalLinkIcon} alt="open" />
-                      </Button>
+                      {[8, 10].includes(userInfo?.departmentID ?? 0) && (
+                        <Button
+                          componentType="link"
+                          bgColor="rgba(239, 239, 239, 1)"
+                          borderColor="rgba(223, 223, 223, 1)"
+                          textColor="black"
+                          href={`/payment/mr/${row.mr_header_id}`}
+                          style={{ padding: "7px 7px" }}
+                        >
+                          <img src={externalLinkIcon} alt="open" />
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );
