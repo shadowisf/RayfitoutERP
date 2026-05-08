@@ -7,10 +7,9 @@ type props = {
   filterDays?: number;
 };
 
-type BottleneckStage = {
-  progress_id: number;
-  progress_name: string;
-  mr_count: number;
+type PaymentType = {
+  supplier_type: string;
+  lpo_count: number;
 };
 
 type ProjectAtRisk = {
@@ -31,9 +30,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [items, setItems] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
-  const [bottleneckStages, setBottleneckStages] = useState<BottleneckStage[]>(
-    [],
-  );
+  const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
   const [projectsAtRisk, setProjectsAtRisk] = useState<ProjectAtRisk[]>([]);
   const [dateRange, setDateRange] = useState<{
     earliest: string | null;
@@ -101,7 +98,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
         setLastWeek(lastWeekCount);
         setItems(data.items || []);
         setTotalCount(data.total_count || 0);
-        setBottleneckStages(data.bottleneck_stages || []);
+        setPaymentTypes(data.payment_types || []);
         setProjectsAtRisk(data.projects_at_risk || []);
         setDateRange(data.date_range || { earliest: null, latest: null });
 
@@ -202,14 +199,14 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
   const popupWidth = 500;
 
   const getPopupPosition = () => {
-    if (!widgetRef.current) return { left: 0, top: 10 };
+    if (!widgetRef.current) return { left: 0, top: 80 };
     const rect = widgetRef.current.getBoundingClientRect();
     const spaceRight = window.innerWidth - rect.right;
     const left =
       spaceRight >= popupWidth + 10
         ? rect.right + 10
         : rect.left - popupWidth - 10;
-    return { left: Math.max(10, left), top: 10 };
+    return { left: Math.max(10, left), top: 80 };
   };
 
   // Format the date range footer using en-GB locale ("from DD MMM YYYY to
@@ -222,17 +219,6 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
     return `from ${earliest} to ${latest}`;
   };
   const dateRangeText = formatDateRange();
-
-  // Filter bottleneck stages to only show payment-related stages
-  const paymentStages = bottleneckStages.filter((stage) => {
-    const name = (stage.progress_name || "").toLowerCase();
-    return (
-      name.includes("payment") ||
-      name.includes("lpo") ||
-      name.includes("deliver") ||
-      name.includes("outbound")
-    );
-  });
 
   return (
     <div
@@ -273,7 +259,7 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             zIndex: 10000,
             width: `${popupWidth}px`,
-            maxHeight: "calc(100vh - 20px)",
+            maxHeight: "calc(100vh - 160px)",
             overflowY: "auto",
             pointerEvents: "auto",
             cursor: "default",
@@ -323,19 +309,19 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
             }}
           />
 
-          {/* Bottleneck Stages */}
+          {/* Payment Types */}
           <div style={{ marginBottom: "10px" }}>
-            <h4 style={{ margin: "0 0 10px 0" }}>BOTTLENECK STAGES</h4>
+            <h4 style={{ margin: "0 0 10px 0" }}>PAYMENT TYPES</h4>
             <div
               style={{ display: "flex", flexDirection: "column", gap: "4px" }}
             >
-              {paymentStages.length === 0 ? (
+              {paymentTypes.length === 0 ? (
                 <span style={{ color: "#aaa" }}>No data</span>
               ) : (
                 <>
-                  {paymentStages.slice(0, 5).map((stage) => (
+                  {paymentTypes.map((pt) => (
                     <div
-                      key={stage.progress_id}
+                      key={pt.supplier_type}
                       style={{
                         display: "flex",
                         alignItems: "baseline",
@@ -348,21 +334,13 @@ export default function PendingPaymentMrsWidget({ filterDays }: props) {
                           color: "rgba(248, 77, 77, 1)",
                         }}
                       >
-                        {stage.mr_count}
+                        {pt.lpo_count}
                       </span>
                       <span style={{ color: "#333" }}>
-                        from{" "}
-                        <strong>
-                          {stage.progress_name || `Stage ${stage.progress_id}`}
-                        </strong>
+                        from <strong>{pt.supplier_type}</strong> vendors
                       </span>
                     </div>
                   ))}
-                  {paymentStages.length > 5 && (
-                    <span style={{ color: "#555" }}>
-                      ... and {paymentStages.length - 5} more stages
-                    </span>
-                  )}
                 </>
               )}
             </div>

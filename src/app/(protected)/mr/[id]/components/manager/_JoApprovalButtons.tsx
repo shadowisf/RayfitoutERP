@@ -108,8 +108,8 @@ export default function JoApprovalButtons({
     }
   }
 
-  // Only managers (dept 8) can approve/reject
-  if (userInfo?.departmentID !== 8 || mrHeader.progress_id === 5) {
+  // Only QS (dept 16) can approve/reject
+  if (userInfo?.departmentID !== 16 || mrHeader.progress_id === 5) {
     if (status === "approved") {
       return (
         <div

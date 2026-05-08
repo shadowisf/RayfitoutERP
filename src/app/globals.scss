@@ -469,7 +469,7 @@ textarea {
 
   &[type="date"] {
     text-transform: uppercase;
-    background-color: rgba(248, 249, 251, 1);
+    background-color: rgba(248, 249, 251, 1) !important;
   }
 }
 
@@ -991,6 +991,11 @@ label {
 
   tbody tr:hover td {
     background-color: rgba(253, 249, 249, 1) !important;
+  }
+
+  tfoot tr td,
+  tfoot tr:hover td {
+    background-color: white !important;
   }
 }
 
@@ -1536,4 +1541,8 @@ label {
 }
 .form-outer-container .items-table tbody tr:hover td {
   background-color: rgba(253, 249, 249, 1) !important;
+}
+.form-outer-container .items-table tfoot tr td,
+.form-outer-container .items-table tfoot tr:hover td {
+  background-color: white !important;
 }

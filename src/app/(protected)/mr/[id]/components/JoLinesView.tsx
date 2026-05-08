@@ -3,7 +3,7 @@
 import { JoLine } from "../types/joLine";
 import { MrHeader } from "../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Button from "@/app/components/Button";
 import AddJoItemButton from "./department/_AddJoItemButton";
 import JoApprovalButtons from "./manager/_JoApprovalButtons";
@@ -74,7 +74,6 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
     userInfo?.departmentID === 10 ||
     userInfo?.departmentID === 16;
 
-
   // Check if all items have been reviewed (approved or rejected)
   const allItemsReviewed = joLines.every(
     (item) =>
@@ -118,16 +117,51 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
   // Track live prices when manager selects/changes quotation (before page refresh)
   const [livePrices, setLivePrices] = useState<Record<number, number>>({});
   const [lpoId, setLpoId] = useState<number | null>(null);
+  const [joLpoVatRate, setJoLpoVatRate] = useState<number>(5);
+  const [hasLpo, setHasLpo] = useState<boolean>(false);
+  const [lpoUpdateCounter, setLpoUpdateCounter] = useState(0);
 
   const handleTotalPriceChange = (joLineId: number, totalPrice: number) => {
     setLivePrices((prev) => ({ ...prev, [joLineId]: totalPrice }));
   };
+
+  // Fetch LPO VAT rate when in LPO & Invoice stage or beyond
+  useEffect(() => {
+    if (mrHeader.progress_id < 12) return;
+    async function fetchLpoVatRate() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mr_header_id: mrHeader.id }),
+          },
+        );
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setJoLpoVatRate(Number(data.data[0].vat_rate ?? 5));
+          setHasLpo(true);
+        } else {
+          setHasLpo(false);
+        }
+      } catch (err) {
+        console.error("Error fetching JO LPO VAT rate:", err);
+      }
+    }
+    fetchLpoVatRate();
+  }, [mrHeader.id, mrHeader.progress_id, lpoUpdateCounter]);
 
   // Show total price column from manager price approval stage onwards
   const showTotalPriceColumn = mrHeader.progress_id >= 10 && canSeePrice;
 
   // Show subcontractor column from LPO & Invoice stage onwards (12 = LPO & Invoice, 25 = Completed)
   const showSubcontractorColumn = mrHeader.progress_id >= 12;
+
+  // Hide attachment column if no line has any attachments
+  const showAttachmentsColumn = joLines.some(
+    (item) => (item.jo_attachments || []).length > 0,
+  );
 
   // ────────────────────────────────────────────────
   // NEW: Check if ANY line has a REJECTED quotation
@@ -251,70 +285,98 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
   return (
     <>
       <div className="mr-with-id">
-      <div className="subcategory-section">
-        <div
-          className="subcategory-header"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <h2 style={{ textTransform: "uppercase" }}>JOB ITEMS</h2>
-
+        <div className="subcategory-section">
           <div
-            className="right"
-            style={{ display: "flex", gap: "10px", alignItems: "center" }}
+            className="subcategory-header"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
           >
-            {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-              userInfo?.departmentID === mrHeader.department_id && (
-                <AddJoItemButton
-                  mrHeaderID={mrHeader.id}
-                  projectID={mrHeader.project_id}
+            <h2 style={{ textTransform: "uppercase" }}>JOB ITEMS</h2>
+
+            <div
+              className="right"
+              style={{ display: "flex", gap: "10px", alignItems: "center" }}
+            >
+              {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
+                userInfo?.departmentID === mrHeader.department_id && (
+                  <AddJoItemButton
+                    mrHeaderID={mrHeader.id}
+                    projectID={mrHeader.project_id}
+                  />
+                )}
+
+              {mrHeader.progress_id === 10 && userInfo?.departmentID === 8 && (
+                <div id="jo-smart-select-portal"></div>
+              )}
+
+              {/* RFQ Button (Create / Edit / Download / Delete) */}
+              {isProcurementQuotation && (
+                <JoRfqButton
+                  mrHeader={mrHeader}
+                  selectedIds={rfqSelectedIds}
+                  onRfqLoaded={(rfq) => {
+                    setRfqExists(!!rfq);
+                    if (rfq) {
+                      setRfqSelectedIds(rfq.jo_line_ids);
+                    }
+                  }}
                 />
               )}
 
-            {mrHeader.progress_id === 10 && userInfo?.departmentID === 8 && (
-              <div id="jo-smart-select-portal"></div>
-            )}
-
-            {/* RFQ Button (Create / Edit / Download / Delete) */}
-            {isProcurementQuotation && (
-              <JoRfqButton
-                mrHeader={mrHeader}
-                selectedIds={rfqSelectedIds}
-                onRfqLoaded={(rfq) => {
-                  setRfqExists(!!rfq);
-                  if (rfq) {
-                    setRfqSelectedIds(rfq.jo_line_ids);
-                  }
-                }}
-              />
-            )}
-
-            {/* LPO & Invoice (12) — Issue / View / Edit / Delete LPO (procurement only) */}
-            {/* Completed (25) — View / Download LPO only (all users) */}
-            {(mrHeader.progress_id === 12 && userInfo?.departmentID === 9) ||
-            mrHeader.progress_id === 25 ? (
-              <IssueJoLpoButton
-                mrHeader={mrHeader}
-                joLines={joLines}
-                onLpoCreated={(id) => setLpoId(id)}
-              />
-            ) : null}
+              {/* LPO & Invoice (12) — Issue / View / Edit / Delete LPO (procurement only) */}
+              {/* Completed (25) — View / Download LPO only (all users) */}
+              {(mrHeader.progress_id === 12 && userInfo?.departmentID === 9) ||
+              mrHeader.progress_id === 25 ? (
+                <IssueJoLpoButton
+                  mrHeader={mrHeader}
+                  joLines={joLines}
+                  onLpoCreated={(id) => {
+                    setLpoId(id);
+                    setHasLpo(!!id);
+                    setLpoUpdateCounter((c) => c + 1);
+                  }}
+                />
+              ) : null}
+            </div>
           </div>
-        </div>
 
-        <br />
+          <br />
 
-        <table className="items-table">
-          <thead>
-            <tr>
-              <th>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  {isProcurementQuotation && (
+          <table
+            className="items-table"
+            style={{ tableLayout: "fixed", width: "100%" }}
+          >
+            <colgroup>
+              {isProcurementQuotation && <col style={{ width: "40px" }} />}
+              <col style={{ width: "50px" }} />
+              <col style={{ width: "150px" }} />
+              <col style={{ width: "130px" }} />
+              <col style={{ width: "90px" }} />
+              <col style={{ width: "90px" }} />
+              {showSubcontractorColumn && <col style={{ width: "180px" }} />}
+              {canSeePrice && <col style={{ width: "120px" }} />}
+              {showTotalPriceColumn && <col style={{ width: "120px" }} />}
+              {showAttachmentsColumn && <col style={{ width: "220px" }} />}
+              {mrHeader.progress_id === 2 && <col style={{ width: "160px" }} />}
+              {mrHeader.progress_id === 5 &&
+                (userInfo?.departmentID === 16 ||
+                  userInfo?.departmentID === mrHeader.department_id) && (
+                  <col style={{ width: "160px" }} />
+                )}
+              {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
+                userInfo?.departmentID === mrHeader.department_id && (
+                  <col style={{ width: "100px" }} />
+                )}
+              {showQuotationColumn && <col style={{ width: "130px" }} />}
+              {showPriceApprovalColumn && <col style={{ width: "160px" }} />}
+            </colgroup>
+            <thead>
+              <tr>
+                {isProcurementQuotation && (
+                  <th style={{ textAlign: "center" }}>
                     <input
                       type="checkbox"
                       checked={
@@ -329,52 +391,44 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                         accentColor: "rgba(0, 163, 93, 1)",
                       }}
                     />
+                  </th>
+                )}
+                <th>#</th>
+                <th>SCOPE</th>
+                <th>CONTRACT TYPE</th>
+                <th>DESCRIPTION</th>
+                <th>BOQ REF.</th>
+                {showSubcontractorColumn && <th>SUBCONTRACTOR</th>}
+                {canSeePrice && <th>BUDGET</th>}
+                {showTotalPriceColumn && <th>TOTAL PRICE</th>}
+                {showAttachmentsColumn && <th>ATTACHMENT(S)</th>}
+
+                {mrHeader.progress_id === 2 && <th>APPROVAL STATUS</th>}
+
+                {mrHeader.progress_id === 5 &&
+                  (userInfo?.departmentID === 16 ||
+                    userInfo?.departmentID === mrHeader.department_id) && (
+                    <th>APPROVAL STATUS</th>
                   )}
-                  #
-                </div>
-              </th>
-              <th>SCOPE</th>
-              <th>CONTRACT TYPE</th>
-              <th>DESCRIPTION</th>
-              <th>BOQ REF.</th>
-              {showSubcontractorColumn && <th>SUBCONTRACTOR</th>}
-              {canSeePrice && <th>BUDGET</th>}
-              {showTotalPriceColumn && <th>TOTAL PRICE</th>}
-              <th>ATTACHMENT(S)</th>
+                {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
+                  userInfo?.departmentID === mrHeader.department_id && (
+                    <th>ACTIONS</th>
+                  )}
 
-              {mrHeader.progress_id === 3 && <th>APPROVAL STATUS</th>}
+                {showQuotationColumn && <th>QUOTATIONS</th>}
 
-              {mrHeader.progress_id === 5 &&
-                (userInfo?.departmentID === 8 ||
-                  userInfo?.departmentID === mrHeader.department_id) && (
-                  <th>APPROVAL STATUS</th>
-                )}
-              {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-                userInfo?.departmentID === mrHeader.department_id && (
-                  <th>ACTIONS</th>
-                )}
+                {showPriceApprovalColumn && <th>PRICE APPROVAL</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {joLines.map((item: JoLine, index: number) => {
+                // Use typed attachments from API
+                const typedAttachments = item.jo_attachments || [];
 
-              {showQuotationColumn && <th>QUOTATIONS</th>}
-
-              {showPriceApprovalColumn && <th>PRICE APPROVAL</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {joLines.map((item: JoLine, index: number) => {
-              // Use typed attachments from API
-              const typedAttachments = item.jo_attachments || [];
-
-              return (
-                <tr key={item.id}>
-                  <td>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      {isProcurementQuotation && (
+                return (
+                  <tr key={item.id}>
+                    {isProcurementQuotation && (
+                      <td style={{ textAlign: "center" }}>
                         <input
                           type="checkbox"
                           checked={rfqSelectedIds.includes(item.id)}
@@ -386,223 +440,243 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                             accentColor: "rgba(0, 163, 93, 1)",
                           }}
                         />
-                      )}
-                      {index + 1}
-                    </div>
-                  </td>
-                  <td>{item.job_scope_name || item.job_scope || "-"}</td>
-                  <td>{item.contract_type || "-"}</td>
-                  <td>
-                    {item.job_description ? (
-                      <InfoPopUpButton
-                        text={item.job_description}
-                        header="JOB DESCRIPTION"
-                      />
-                    ) : (
-                      "-"
+                      </td>
                     )}
-                  </td>
-                  <td>
-                    {item.boq_line_ids ? (
-                      <BoqReferencePopUp
-                        item={item}
-                        mrHeader={mrHeader}
-                        joLine={item}
-                      />
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-
-                  {showSubcontractorColumn && (
-                    <td>{item.approved_subcontractor_name || "-"}</td>
-                  )}
-
-                  {canSeePrice && (
+                    <td>{index + 1}</td>
+                    <td>{item.job_scope_name || item.job_scope || "-"}</td>
+                    <td>{item.contract_type || "-"}</td>
                     <td>
-                      {item.budget_estimate != null &&
-                      Number(item.budget_estimate) > 0 ? (
-                        <>{formatPriceAED(item.budget_estimate)}</>
+                      {item.job_description ? (
+                        <InfoPopUpButton
+                          text={item.job_description}
+                          header="JOB DESCRIPTION"
+                        />
                       ) : (
                         "-"
                       )}
                     </td>
-                  )}
-
-                  {showTotalPriceColumn && (
                     <td>
-                      {(() => {
-                        const price =
-                          livePrices[item.id] !== undefined
-                            ? livePrices[item.id]
-                            : Number(item.approved_total_price) || 0;
-                        return price > 0 ? formatPriceAED(price) : "-";
-                      })()}
+                      {item.boq_line_ids ? (
+                        <BoqReferencePopUp
+                          item={item}
+                          mrHeader={mrHeader}
+                          joLine={item}
+                        />
+                      ) : (
+                        "-"
+                      )}
                     </td>
-                  )}
 
-                  <td>
-                    {typedAttachments.length > 0
-                      ? typedAttachments.map((att, idx) => {
-                          const typeLabel =
-                            ATTACHMENT_TYPE_LABELS[att.attachment_type] ||
-                            att.attachment_type;
-                          return (
-                            <>
-                              <div
-                                key={`${item.id}-attachment-${idx}`}
-                                style={{
-                                  display: "flex",
-                                  gap: "10px",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <span>{typeLabel}:</span>
-                                <Button
-                                  componentType={"link"}
-                                  bgColor={"rgba(239, 239, 239, 1)"}
-                                  borderColor={"rgba(223, 223, 223, 1)"}
-                                  textColor={"black"}
-                                  href={att.file_url}
-                                  target="_blank"
-                                  style={{ padding: "7px 7px" }}
+                    {showSubcontractorColumn && (
+                      <td>{item.approved_subcontractor_name || "-"}</td>
+                    )}
+
+                    {canSeePrice && (
+                      <td>
+                        {item.budget_estimate != null &&
+                        Number(item.budget_estimate) > 0 ? (
+                          <>{formatPriceAED(item.budget_estimate)}</>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    )}
+
+                    {showTotalPriceColumn && (
+                      <td>
+                        {(() => {
+                          const price =
+                            livePrices[item.id] !== undefined
+                              ? livePrices[item.id]
+                              : Number(item.approved_total_price) || 0;
+                          return price > 0 ? formatPriceAED(price) : "-";
+                        })()}
+                      </td>
+                    )}
+
+                    {showAttachmentsColumn && (
+                      <td>
+                        {typedAttachments.length > 0
+                          ? typedAttachments.map((att, idx) => {
+                              const typeLabel =
+                                ATTACHMENT_TYPE_LABELS[att.attachment_type] ||
+                                att.attachment_type;
+                              return (
+                                <React.Fragment
+                                  key={`${item.id}-attachment-${idx}`}
                                 >
-                                  <img
-                                    src={externalLinkIcon}
-                                    alt="external link"
-                                  />
-                                </Button>
-                              </div>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      gap: "10px",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    <span>{typeLabel}:</span>
+                                    <Button
+                                      componentType={"link"}
+                                      bgColor={"rgba(239, 239, 239, 1)"}
+                                      borderColor={"rgba(223, 223, 223, 1)"}
+                                      textColor={"black"}
+                                      href={att.file_url}
+                                      target="_blank"
+                                      style={{ padding: "7px 7px" }}
+                                    >
+                                      <img
+                                        src={externalLinkIcon}
+                                        alt="external link"
+                                      />
+                                    </Button>
+                                  </div>
 
-                              <br />
-                            </>
-                          );
-                        })
-                      : "-"}
-                  </td>
+                                  {idx < typedAttachments.length - 1 && <br />}
+                                </React.Fragment>
+                              );
+                            })
+                          : "-"}
+                      </td>
+                    )}
 
-                  {mrHeader.progress_id === 3 && (
-                    <td>
-                      <JoApprovalButtons item={item} mrHeader={mrHeader} />
-                    </td>
-                  )}
-
-                  {mrHeader.progress_id === 5 &&
-                    (userInfo?.departmentID === 8 ||
-                      userInfo?.departmentID === mrHeader.department_id) && (
+                    {mrHeader.progress_id === 2 && (
                       <td>
                         <JoApprovalButtons item={item} mrHeader={mrHeader} />
                       </td>
                     )}
 
-                  {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-                    userInfo?.departmentID === mrHeader.department_id && (
+                    {mrHeader.progress_id === 5 &&
+                      (userInfo?.departmentID === 16 ||
+                        userInfo?.departmentID === mrHeader.department_id) && (
+                        <td>
+                          <JoApprovalButtons item={item} mrHeader={mrHeader} />
+                        </td>
+                      )}
+
+                    {(mrHeader.progress_id === 1 ||
+                      mrHeader.progress_id === 5) &&
+                      userInfo?.departmentID === mrHeader.department_id && (
+                        <td>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "10px",
+                              alignItems: "center",
+                            }}
+                          >
+                            <EditJoItemButton
+                              item={item}
+                              projectID={mrHeader.project_id}
+                            />
+                            <DeleteJoItemButton itemId={item.id} />
+                          </div>
+                        </td>
+                      )}
+
+                    {showQuotationColumn && (
                       <td>
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "10px",
-                            alignItems: "center",
-                          }}
-                        >
-                          <EditJoItemButton
-                            item={item}
-                            projectID={mrHeader.project_id}
-                          />
-                          <DeleteJoItemButton itemId={item.id} />
-                        </div>
+                        <SubcontractorAndQuotationButton
+                          mrHeader={mrHeader}
+                          joLine={item}
+                        />
                       </td>
                     )}
 
-                  {showQuotationColumn && (
-                    <td>
-                      <SubcontractorAndQuotationButton
-                        mrHeader={mrHeader}
-                        joLine={item}
-                      />
-                    </td>
-                  )}
-
-                  {showPriceApprovalColumn && (
-                    <td>
-                      <JoPriceApprovalButton
-                        progressID={mrHeader.progress_id}
-                        joLine={item}
-                        onTotalPriceChange={handleTotalPriceChange}
-                      />
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-
-          {showTotalPriceColumn && (
-            <tfoot style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}>
-              {(() => {
-                const liveTotalPrice = joLines.reduce((sum, item) => {
-                  const price =
-                    livePrices[item.id] !== undefined
-                      ? livePrices[item.id]
-                      : Number(item.approved_total_price) || 0;
-                  return sum + price;
-                }, 0);
-                const hasAnyPrice = liveTotalPrice > 0 || hasAnyApprovedPrice;
-
-                // Columns before TOTAL PRICE: #, SCOPE, CONTRACT TYPE, DESCRIPTION, BOQ REF, (+ SUBCONTRACTOR if showSubcontractorColumn, + BUDGET if canSeePrice)
-                const labelColSpan = 5 + (showSubcontractorColumn ? 1 : 0) + (canSeePrice ? 1 : 0);
-                // Columns after TOTAL PRICE value
-                let trailingCols = 1; // ATTACHMENT
-                if (mrHeader.progress_id === 3) trailingCols += 1;
-                if (
-                  mrHeader.progress_id === 5 &&
-                  (userInfo?.departmentID === 8 ||
-                    userInfo?.departmentID === mrHeader.department_id)
-                )
-                  trailingCols += 1;
-                if (
-                  (mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
-                  userInfo?.departmentID === mrHeader.department_id
-                )
-                  trailingCols += 1;
-                if (showQuotationColumn) trailingCols += 1;
-                if (showPriceApprovalColumn) trailingCols += 1;
-
-                return hasAnyPrice ? (
-                  <tr>
-                    <td colSpan={labelColSpan - 1} />
-                    <td
-                      style={{
-                        fontWeight: "600",
-                      }}
-                    >
-                      SUBTOTAL
-                    </td>
-                    <td style={{ fontWeight: "600" }}>
-                      {formatPriceAED(liveTotalPrice)}
-                    </td>
-                    {trailingCols > 0 && <td colSpan={trailingCols} />}
+                    {showPriceApprovalColumn && (
+                      <td>
+                        <JoPriceApprovalButton
+                          progressID={mrHeader.progress_id}
+                          joLine={item}
+                          onTotalPriceChange={handleTotalPriceChange}
+                        />
+                      </td>
+                    )}
                   </tr>
-                ) : null;
-              })()}
-            </tfoot>
+                );
+              })}
+            </tbody>
+
+            {showTotalPriceColumn && (
+              <tfoot style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}>
+                {(() => {
+                  const liveTotalPrice = joLines.reduce((sum, item) => {
+                    const price =
+                      livePrices[item.id] !== undefined
+                        ? livePrices[item.id]
+                        : Number(item.approved_total_price) || 0;
+                    return sum + price;
+                  }, 0);
+                  const hasAnyPrice = liveTotalPrice > 0 || hasAnyApprovedPrice;
+
+                  // Columns before TOTAL PRICE: (checkbox col if rfq) + #, SCOPE, CONTRACT TYPE, DESCRIPTION, BOQ REF, (+ SUBCONTRACTOR if showSubcontractorColumn, + BUDGET if canSeePrice)
+                  const labelColSpan =
+                    5 +
+                    (isProcurementQuotation ? 1 : 0) +
+                    (showSubcontractorColumn ? 1 : 0) +
+                    (canSeePrice ? 1 : 0);
+                  // Columns after TOTAL PRICE value
+                  let trailingCols = showAttachmentsColumn ? 1 : 0; // ATTACHMENT (hidden when all empty)
+                  if (mrHeader.progress_id === 2) trailingCols += 1;
+                  if (
+                    mrHeader.progress_id === 5 &&
+                    (userInfo?.departmentID === 16 ||
+                      userInfo?.departmentID === mrHeader.department_id)
+                  )
+                    trailingCols += 1;
+                  if (
+                    (mrHeader.progress_id === 1 ||
+                      mrHeader.progress_id === 5) &&
+                    userInfo?.departmentID === mrHeader.department_id
+                  )
+                    trailingCols += 1;
+                  if (showQuotationColumn) trailingCols += 1;
+                  if (showPriceApprovalColumn) trailingCols += 1;
+
+                  const showVatRows = mrHeader.progress_id >= 12;
+                  // When in LPO & Invoice stage but no LPO created yet, show 0s
+                  const displaySubtotal = showVatRows && !hasLpo ? 0 : liveTotalPrice;
+                  const vatAmount = displaySubtotal * (joLpoVatRate / 100);
+                  const totalWithVat = displaySubtotal + vatAmount;
+
+                  return showVatRows || hasAnyPrice ? (
+                    <>
+                      <tr>
+                        <td colSpan={labelColSpan - 1} />
+                        <td style={{ fontWeight: "600" }}>SUBTOTAL</td>
+                        <td style={{ fontWeight: "600" }}>
+                          {formatPriceAED(displaySubtotal)}
+                        </td>
+                        {trailingCols > 0 && <td colSpan={trailingCols} />}
+                      </tr>
+                      {showVatRows && (
+                        <tr>
+                          <td colSpan={labelColSpan - 1} />
+                          <td style={{ fontWeight: "600" }}>SUBTOTAL W/ VAT</td>
+                          <td style={{ fontWeight: "600" }}>
+                            {formatPriceAED(totalWithVat)}
+                          </td>
+                          {trailingCols > 0 && <td colSpan={trailingCols} />}
+                        </tr>
+                      )}
+                    </>
+                  ) : null;
+                })()}
+              </tfoot>
+            )}
+          </table>
+        </div>
+
+        {/* Smart Select Portal */}
+        {mrHeader.progress_id === 10 &&
+          userInfo?.departmentID === 8 &&
+          joLines.length > 0 && (
+            <JoPriceApprovalButton
+              progressID={mrHeader.progress_id}
+              joLine={joLines[0]}
+              isSmartSelectPortal={true}
+              allJoLines={joLines}
+            />
           )}
-        </table>
       </div>
-
-      {/* Smart Select Portal */}
-      {mrHeader.progress_id === 10 &&
-        userInfo?.departmentID === 8 &&
-        joLines.length > 0 && (
-          <JoPriceApprovalButton
-            progressID={mrHeader.progress_id}
-            joLine={joLines[0]}
-            isSmartSelectPortal={true}
-            allJoLines={joLines}
-          />
-        )}
-
-      </div>{/* end mr-with-id */}
+      {/* end mr-with-id */}
 
       <CommentsSection
         mrHeaderId={mrHeader.id}
@@ -630,9 +704,9 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
           </div>
         )}
 
-      {/* Manager Approval (3) */}
-      {mrHeader.progress_id === 3 &&
-        userInfo?.departmentID === 8 &&
+      {/* QS Review (2) */}
+      {mrHeader.progress_id === 2 &&
+        userInfo?.departmentID === 16 &&
         allItemsReviewed && (
           <div className="bottom-nav">
             <div></div>
@@ -683,7 +757,10 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             <div></div>
             {hasAnyRejectedQuotation ? (
               <>
-                <SubmitForPricingResubmissionButton mrHeaderID={mrHeader.id} />
+                <SubmitForPricingResubmissionButton
+                  mrHeaderID={mrHeader.id}
+                  type={mrHeader.type}
+                />
                 <small
                   style={{ color: "rgba(248, 77, 77, 1)", marginLeft: "12px" }}
                 >
@@ -737,21 +814,20 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
         )}
 
       {/* LPO & Invoice (12) — Procurement submits to completion once LPO is issued */}
-      {mrHeader.progress_id === 12 &&
-        userInfo?.departmentID === 9 && (
-          <div className="bottom-nav">
-            <div></div>
-            <SubmitJoFromLpoButton
-              mrHeader={mrHeader}
-              disabled={!lpoId}
-              style={{
-                opacity: lpoId ? "1" : "0.5",
-                cursor: lpoId ? "pointer" : "not-allowed",
-                pointerEvents: lpoId ? "auto" : "none",
-              }}
-            />
-          </div>
-        )}
+      {mrHeader.progress_id === 12 && userInfo?.departmentID === 9 && (
+        <div className="bottom-nav">
+          <div></div>
+          <SubmitJoFromLpoButton
+            mrHeader={mrHeader}
+            disabled={!lpoId}
+            style={{
+              opacity: lpoId ? "1" : "0.5",
+              cursor: lpoId ? "pointer" : "not-allowed",
+              pointerEvents: lpoId ? "auto" : "none",
+            }}
+          />
+        </div>
+      )}
     </>
   );
 }

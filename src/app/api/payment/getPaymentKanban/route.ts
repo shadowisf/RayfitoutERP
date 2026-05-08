@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+// Shared helper expression — true when an LPO is considered fully paid.
+// Priority: payment_status (TRIM + LOWER to handle stray whitespace/casing),
+//           then fall back to lpo_payments total vs. LPO face value.
+const IS_PAID_EXPR = `(
+  LOWER(TRIM(IFNULL(l.payment_status, '')))
+    IN ('approved','paid','fully paid','completed','done')
+  OR (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)
+)`;
+
 export async function GET() {
   try {
     const [rows]: any = await db.query(`
@@ -23,14 +32,15 @@ export async function GET() {
         p.name        AS project_name,
         d.value       AS department_name,
         pr.value      AS progress_name,
-        ROUND(COALESCE(pay.total_paid, 0), 2)                              AS total_paid,
-        ROUND(GREATEST(l.total - COALESCE(pay.total_paid, 0), 0), 2)      AS outstanding,
-        CASE
-          WHEN LOWER(IFNULL(l.payment_status, ''))
-               IN ('approved','paid','fully paid','completed','done')       THEN 1
-          WHEN l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total     THEN 1
-          ELSE 0
-        END AS is_paid
+        ROUND(COALESCE(pay.total_paid, 0), 2) AS total_paid,
+        -- outstanding is 0 for paid rows; otherwise remaining balance
+        ROUND(
+          CASE
+            WHEN ${IS_PAID_EXPR} THEN 0
+            ELSE GREATEST(l.total - COALESCE(pay.total_paid, 0), 0)
+          END, 2
+        ) AS outstanding,
+        CASE WHEN ${IS_PAID_EXPR} THEN 1 ELSE 0 END AS is_paid
       FROM lpo l
       JOIN suppliers       s  ON l.supplier_id    = s.id
       JOIN mr_headers      mh ON l.mr_header_id   = mh.id
@@ -45,12 +55,7 @@ export async function GET() {
       WHERE mh.progress_id = 26
         AND l.progress_id > 14
       ORDER BY
-        CASE
-          WHEN LOWER(IFNULL(l.payment_status, ''))
-               IN ('approved','paid','fully paid','completed','done')       THEN 1
-          WHEN l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total     THEN 1
-          ELSE 0
-        END ASC,
+        CASE WHEN ${IS_PAID_EXPR} THEN 1 ELSE 0 END ASC,
         l.created_at DESC
     `);
 

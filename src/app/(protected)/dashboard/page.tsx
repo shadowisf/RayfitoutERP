@@ -22,7 +22,7 @@ import TopVendorsBySpendWidget from "./components/W_TopVendorsBySpend";
 import TopVendorsByVolumeWidget from "./components/procurement/W_TopVendorsByVolume";
 import QuickInitialApprovalWidget from "./components/manager/W_QuickInitialApproval";
 import QuickPriceApprovalWidget from "./components/manager/W_QuickPriceApproval";
-import FinanceMedianPaymentDelayWidget from "./components/finance/W_Finance_MedianPaymentDelay";
+import FinanceCommittedSpentWidget from "./components/finance/W_Finance_MedianPaymentDelay";
 import FinanceOutstandingPayablesWidget from "./components/finance/W_Finance_OutstandingPayables";
 import FinanceRecentTransactionsWidget from "./components/finance/W_Finance_RecentTransactions";
 import FinanceSpendingByProjectWidget from "./components/finance/W_Finance_SpendingByProject";
@@ -294,7 +294,7 @@ export default function Dashboard() {
               style={{ display: "flex", flexDirection: "column", gap: "16px" }}
             >
               <FinanceOutstandingPayablesWidget />
-              <FinanceMedianPaymentDelayWidget />
+              <FinanceCommittedSpentWidget />
             </div>
             <FinanceRecentTransactionsWidget />
           </div>

@@ -672,10 +672,9 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitForInitialApproval") {
-      // JOs and PRs go through Manager Approval (3); MRs skip it and go directly to Quotations (7)
-      const isManagerApprovalType =
-        body.type === "job" || body.type === "payment";
-      const nextProgressId = isManagerApprovalType ? 3 : 7;
+      // PRs go through Manager Approval (3); JOs and MRs go to QS Review (2) first, then Quotations (7)
+      const isPaymentType = body.type === "payment";
+      const nextProgressId = isPaymentType ? 3 : 2;
 
       await db.query(
         `UPDATE mr_headers SET progress_id = ? WHERE id = ?`,
@@ -684,7 +683,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, ?, ?, ?)`,
-        [body.id, nextProgressId, body.from_progress_id || (isManagerApprovalType ? 1 : 2), body.changed_by],
+        [body.id, nextProgressId, body.from_progress_id || 1, body.changed_by],
       );
 
       // Create a single consolidated replacement note for all replaced lines
@@ -716,8 +715,8 @@ export async function PUT(req: Request) {
         );
       }
 
-      if (isManagerApprovalType) {
-        // Notify management for JO/PR initial approval
+      if (isPaymentType) {
+        // PR: notify manager for initial approval
         await db.query(
           `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
           [
@@ -737,8 +736,29 @@ export async function PUT(req: Request) {
             `Your ${formattedId} is awaiting manager approval`,
           ],
         );
+      } else if (body.type === "job") {
+        // JO: notify QS for review
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            16,
+            "QS Review Required",
+            `${formattedId} is awaiting your review`,
+          ],
+        );
+
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            body.department_id,
+            `${prefix} Submitted`,
+            `Your ${formattedId} is awaiting QS review`,
+          ],
+        );
       } else {
-        // MR: skip Manager Approval, notify Procurement directly
+        // MR: notify Procurement directly
         await db.query(
           `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
           [

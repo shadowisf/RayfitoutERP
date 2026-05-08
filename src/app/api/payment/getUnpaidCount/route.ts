@@ -7,6 +7,7 @@ export async function GET() {
       SELECT COUNT(*) AS unpaid_count
       FROM lpo l
       JOIN mr_headers mh ON l.mr_header_id = mh.id
+      JOIN suppliers   s  ON s.id = l.supplier_id
       LEFT JOIN (
         SELECT lpo_id, SUM(amount) AS total_paid
         FROM lpo_payments
@@ -15,9 +16,21 @@ export async function GET() {
       WHERE mh.progress_id = 26
         AND l.progress_id > 14
         AND NOT (
-          LOWER(IFNULL(l.payment_status, ''))
+          LOWER(TRIM(IFNULL(l.payment_status, '')))
             IN ('approved','paid','fully paid','completed','done')
           OR (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)
+        )
+        -- Exclude credit suppliers unless their payment is due today or overdue
+        AND (
+          LOWER(TRIM(IFNULL(s.type, ''))) != 'credit'
+          OR DATE_ADD(
+               l.created_at,
+               INTERVAL COALESCE(
+                 NULLIF(CAST(l.payment_terms AS UNSIGNED), 0),
+                 NULLIF(CAST(s.payment_terms AS UNSIGNED), 0),
+                 0
+               ) DAY
+             ) <= CURDATE()
         )
     `);
 

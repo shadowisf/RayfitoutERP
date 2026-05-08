@@ -697,7 +697,7 @@ export default function SubcontractorAndQuotationButton({
                   <th>QUOTATION</th>
                   <th>TOTAL PRICE</th>
                   <th>QUOTED BY</th>
-                  <th>ACTION</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>

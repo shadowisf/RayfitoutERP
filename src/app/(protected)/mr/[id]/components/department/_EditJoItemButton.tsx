@@ -31,6 +31,13 @@ function isImageFile(fileName?: string): boolean {
   return IMAGE_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
 
+function formatBudgetDisplay(val: string): string {
+  if (!val) return "";
+  const parts = val.split(".");
+  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.length > 1 ? `${intPart}.${parts[1]}` : intPart;
+}
+
 type props = {
   item: JoLine;
   projectID: number;
@@ -80,11 +87,13 @@ export default function EditJoItemButton({ item, projectID }: props) {
   const [subcontractedQtys, setSubcontractedQtys] = useState<
     Record<number, string>
   >({});
-  const [subcontractorBudget, setSubcontractorBudget] = useState<
-    string | number
-  >(item.budget_estimate || "");
+  const [subcontractorBudget, setSubcontractorBudget] = useState<string>(
+    item.budget_estimate ? String(item.budget_estimate) : "",
+  );
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
   const [showAttachmentPopup, setShowAttachmentPopup] = useState(false);
+  const [qtyModes, setQtyModes] = useState<Record<number, "qty" | "pct">>({});
+  const [pctValues, setPctValues] = useState<Record<number, string>>({});
 
   // Fetch BOQ lines for the project to populate the selected items table
   useEffect(() => {
@@ -164,9 +173,16 @@ export default function EditJoItemButton({ item, projectID }: props) {
     }
   }, [isOpen]);
 
+  const getActualSubcontractedQty = (boqId: number, boqQty: number) => {
+    if (qtyModes[boqId] === "pct") {
+      return ((Number(pctValues[boqId]) || 0) / 100) * boqQty;
+    }
+    return Number(subcontractedQtys[boqId]) || 0;
+  };
+
   // Calculate sub-contracted works value
   const subcontractedWorksValue = selectedBoqLines.reduce((sum, boq) => {
-    const qty = Number(subcontractedQtys[boq.id]) || 0;
+    const qty = getActualSubcontractedQty(boq.id, Number(boq.quantity) || 0);
     const rate = Number(boq.rate_per_quantity) || 0;
     return sum + qty * rate;
   }, 0);
@@ -281,10 +297,16 @@ export default function EditJoItemButton({ item, projectID }: props) {
       }
 
       // Build boq_items with subcontracted qty
-      const boqItems = boqLineIDs.map((id) => ({
-        boq_line_id: id,
-        subcontracted_qty: Number(subcontractedQtys[id]) || 0,
-      }));
+      const boqItems = boqLineIDs.map((id) => {
+        const boq = selectedBoqLines.find((b) => b.id === id);
+        return {
+          boq_line_id: id,
+          subcontracted_qty: getActualSubcontractedQty(
+            id,
+            Number(boq?.quantity) || 0,
+          ),
+        };
+      });
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`, {
         method: "PUT",
@@ -508,23 +530,96 @@ export default function EditJoItemButton({ item, projectID }: props) {
                         {formatQty(boq.quantity)} {boq.unit}
                       </td>
                       <td>
-                        <InputItem
-                          label={""}
-                          value={subcontractedQtys[boq.id] || ""}
-                          type={"text"}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                              setSubcontractedQtys((prev) => ({
-                                ...prev,
-                                [boq.id]: val,
-                              }));
-                            }
+                        <div
+                          style={{
+                            display: "flex",
+                            border: "1px solid rgba(217,217,217,1)",
+                            borderRadius: "5px",
+                            backgroundColor: "white",
+                            overflow: "hidden",
                           }}
-                          required
-                          placeholder="ENTER SUBCONTRACTED QTY"
-                          style={{ backgroundColor: "white" }}
-                        />
+                        >
+                          <input
+                            type="text"
+                            value={
+                              qtyModes[boq.id] === "pct"
+                                ? pctValues[boq.id] || ""
+                                : subcontractedQtys[boq.id] || ""
+                            }
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                                if (qtyModes[boq.id] === "pct") {
+                                  setPctValues((prev) => ({
+                                    ...prev,
+                                    [boq.id]: val,
+                                  }));
+                                } else {
+                                  setSubcontractedQtys((prev) => ({
+                                    ...prev,
+                                    [boq.id]: val,
+                                  }));
+                                }
+                              }
+                            }}
+                            placeholder={"ENTER SUBCONRACTED QTY"}
+                            required
+                            style={{
+                              flex: 1,
+                              border: "none",
+                              borderRadius: 0,
+                              padding: "7px",
+                              background: "transparent",
+                              width: "200px",
+                            }}
+                          />
+                          <select
+                            value={qtyModes[boq.id] === "pct" ? "pct" : "qty"}
+                            onChange={(e) => {
+                              const newMode = e.target.value as "qty" | "pct";
+                              const boqQty = Number(boq.quantity) || 0;
+                              if (newMode === "pct") {
+                                const qty =
+                                  Number(subcontractedQtys[boq.id]) || 0;
+                                const pct =
+                                  boqQty > 0 ? (qty / boqQty) * 100 : 0;
+                                setPctValues((prev) => ({
+                                  ...prev,
+                                  [boq.id]: pct
+                                    ? parseFloat(pct.toFixed(2)).toString()
+                                    : "",
+                                }));
+                              } else {
+                                const qty =
+                                  ((Number(pctValues[boq.id]) || 0) / 100) *
+                                  boqQty;
+                                setSubcontractedQtys((prev) => ({
+                                  ...prev,
+                                  [boq.id]: qty
+                                    ? parseFloat(qty.toFixed(4)).toString()
+                                    : "",
+                                }));
+                              }
+                              setQtyModes((prev) => ({
+                                ...prev,
+                                [boq.id]: newMode,
+                              }));
+                            }}
+                            style={{
+                              border: "none",
+                              borderLeft: "none",
+                              borderRadius: 0,
+                              padding: "7px 4px",
+                              background: "transparent",
+                              cursor: "pointer",
+                              width: "auto",
+                              fontSize: "12px",
+                            }}
+                          >
+                            <option value="qty">{boq.unit}</option>
+                            <option value="pct">%</option>
+                          </select>
+                        </div>
                       </td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         {formatPriceAED(boq.total_cost)}
@@ -574,12 +669,12 @@ export default function EditJoItemButton({ item, projectID }: props) {
 
             <InputItem
               label={"SUBCONTRACTOR BUDGET"}
-              value={subcontractorBudget}
+              value={formatBudgetDisplay(subcontractorBudget)}
               type={"text postfix"}
               onChange={(e) => {
-                const val = e.target.value;
-                if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                  setSubcontractorBudget(val);
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d*\.?\d*$/.test(raw)) {
+                  setSubcontractorBudget(raw);
                 }
               }}
               postfixText={"AED"}

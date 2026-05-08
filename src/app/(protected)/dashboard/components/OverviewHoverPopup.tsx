@@ -54,7 +54,7 @@ export default function OverviewHoverPopup({
       ? anchorRect.right + 10
       : anchorRect.left - popupWidth - 10;
     left = Math.max(10, left);
-    top = 10;
+    top = 80;
   } else {
     // Legacy mouse-following positioning
     const offsetX = 20;
@@ -88,7 +88,7 @@ export default function OverviewHoverPopup({
         zIndex: 10000,
         minWidth: "280px",
         maxWidth: `${popupWidth}px`,
-        maxHeight: anchorRect ? "calc(100vh - 20px)" : undefined,
+        maxHeight: anchorRect ? "calc(100vh - 160px)" : undefined,
         overflowY: anchorRect ? "auto" : undefined,
         pointerEvents: anchorRect ? "auto" : "none",
         cursor: "default",
