@@ -52,7 +52,7 @@ export async function GET() {
            l.mr_header_id,
            l.payment_status,
            lp.receipt_file                               AS payment_file_raw,
-           l.total                                       AS total,
+           lp.amount                                     AS total,
            lp.created_at                                 AS payment_date,
            l.created_at,
            COALESCE(s.name,  'Unknown')                  AS vendor_name,
