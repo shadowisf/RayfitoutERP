@@ -408,7 +408,9 @@ export async function PUT(req: Request) {
           );
         } else {
           // Rolling back past LPO start (< 14): reset LPO to 12, update MR to rollback stage
-          await db.query(`UPDATE lpo SET progress_id = 12 WHERE id = ?`, [lpoId]);
+          await db.query(`UPDATE lpo SET progress_id = 12 WHERE id = ?`, [
+            lpoId,
+          ]);
           await db.query(`UPDATE mr_headers SET progress_id = ? WHERE id = ?`, [
             rollbackId,
             body.id,
@@ -678,21 +680,20 @@ export async function PUT(req: Request) {
       // Stage routing:
       //   Payment (any stage)  → 3 (Manager Approval)
       //   JO/MR from stage 1   → 2 (QS Review)
-      //   JO from stage 2      → 3 (Manager Review after QS)
-      //   MR from stage 2      → 7 (Quotations, skip manager review)
+      //   JO/MR from stage 2   → 7 (Quotations)
       let nextProgressId: number;
       if (isPaymentType) {
         nextProgressId = 3;
       } else if (fromProgress === 2) {
-        nextProgressId = body.type === "job" ? 3 : 7;
+        nextProgressId = 7;
       } else {
         nextProgressId = 2;
       }
 
-      await db.query(
-        `UPDATE mr_headers SET progress_id = ? WHERE id = ?`,
-        [nextProgressId, body.id],
-      );
+      await db.query(`UPDATE mr_headers SET progress_id = ? WHERE id = ?`, [
+        nextProgressId,
+        body.id,
+      ]);
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, ?, ?, ?)`,
@@ -749,29 +750,8 @@ export async function PUT(req: Request) {
             `Your ${formattedId} is awaiting manager approval`,
           ],
         );
-      } else if (fromProgress === 2 && body.type === "job") {
-        // JO: QS review complete → notify manager for review
-        await db.query(
-          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
-          [
-            body.id,
-            8,
-            "Manager Review Required",
-            `${formattedId} has completed QS review and is awaiting your approval`,
-          ],
-        );
-
-        await db.query(
-          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
-          [
-            body.id,
-            body.department_id,
-            `${prefix} QS Review Complete`,
-            `Your ${formattedId} has passed QS review`,
-          ],
-        );
       } else if (fromProgress === 2) {
-        // MR: QS review complete → notify Procurement for quotations
+        // JO/MR: QS review complete → notify Procurement for quotations
         await db.query(
           `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
           [
@@ -2039,12 +2019,12 @@ export async function PUT(req: Request) {
 
       // ── Activity log: BRAND_SPEC_EDITED ───────────────────────────────────
       if (oldBsLine) {
-        const oldBs = [oldBsLine.brand, oldBsLine.specification]
-          .filter(Boolean)
-          .join(" / ") || null;
-        const newBs = [body.brand, body.specification]
-          .filter(Boolean)
-          .join(" / ") || null;
+        const oldBs =
+          [oldBsLine.brand, oldBsLine.specification]
+            .filter(Boolean)
+            .join(" / ") || null;
+        const newBs =
+          [body.brand, body.specification].filter(Boolean).join(" / ") || null;
         await db.query(
           `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, old_value, new_value)
            VALUES (?, ?, 'BRAND_SPEC_EDITED', ?, ?, ?, ?)`,
@@ -2090,8 +2070,13 @@ export async function DELETE(req: Request) {
       const delLine = delRows?.[0];
 
       // Explicitly clean up junction tables before deleting the line
-      await db.query(`DELETE FROM jt_mr_lines_boq_lines WHERE mr_line_id = ?`, [lineId]);
-      await db.query(`DELETE FROM jt_mr_line_material_subcategory WHERE mr_line_id = ?`, [lineId]);
+      await db.query(`DELETE FROM jt_mr_lines_boq_lines WHERE mr_line_id = ?`, [
+        lineId,
+      ]);
+      await db.query(
+        `DELETE FROM jt_mr_line_material_subcategory WHERE mr_line_id = ?`,
+        [lineId],
+      );
       await db.query("DELETE FROM mr_lines WHERE id = ?", [lineId]);
 
       // ── Activity log: LINE_DELETED ──────────────────────────────────────────
@@ -2116,8 +2101,14 @@ export async function DELETE(req: Request) {
       const itemIds: number[] = body.item_ids.map(Number);
       // Explicitly clean up junction tables for each line before deleting
       for (const lineId of itemIds) {
-        await db.query(`DELETE FROM jt_mr_lines_boq_lines WHERE mr_line_id = ?`, [lineId]);
-        await db.query(`DELETE FROM jt_mr_line_material_subcategory WHERE mr_line_id = ?`, [lineId]);
+        await db.query(
+          `DELETE FROM jt_mr_lines_boq_lines WHERE mr_line_id = ?`,
+          [lineId],
+        );
+        await db.query(
+          `DELETE FROM jt_mr_line_material_subcategory WHERE mr_line_id = ?`,
+          [lineId],
+        );
       }
       const query = `
     DELETE FROM mr_lines
@@ -2146,7 +2137,6 @@ export async function DELETE(req: Request) {
 
       return NextResponse.json({ success: true });
     }
-
   } catch (err: any) {
     console.error(err.sqlMessage);
     return NextResponse.json({ error: err.sqlMessage }, { status: 500 });

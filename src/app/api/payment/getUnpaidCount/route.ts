@@ -15,10 +15,15 @@ export async function GET() {
       ) pay ON pay.lpo_id = l.id
       WHERE mh.progress_id = 26
         AND l.progress_id > 14
+        -- Exclude rejected LPOs (progress_id = 13 is already filtered by > 14,
+        -- but be explicit). Completed LPOs (progress_id = 25) are intentionally
+        -- kept — they may still be awaiting actual payment.
+        AND l.progress_id NOT IN (13)
+        -- Exclude LPOs that have actually been paid
         AND NOT (
           LOWER(TRIM(IFNULL(l.payment_status, '')))
             IN ('approved','paid','fully paid','completed','done')
-          OR (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)
+          OR (l.total > 0 AND ROUND(COALESCE(pay.total_paid, 0), 2) >= ROUND(l.total, 2))
         )
         -- Exclude credit suppliers unless their payment is due today or overdue
         AND (

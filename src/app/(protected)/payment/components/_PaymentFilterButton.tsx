@@ -70,12 +70,20 @@ export default function PaymentFilterButton({
   };
 
   const handleReset = () => {
+    const empty: PaymentFilters = {
+      selectedVendors: [],
+      selectedPaymentTypes: [],
+      selectedStatuses: [],
+      selectedProjects: [],
+    };
     setSelectedVendors([]);
     setSelectedPaymentTypes([]);
     setSelectedStatuses([]);
     setSelectedProjects([]);
     setVendorSearch("");
     setProjectSearch("");
+    onApplyFilters(empty);
+    setIsOpen(false);
   };
 
   // Vendor handlers

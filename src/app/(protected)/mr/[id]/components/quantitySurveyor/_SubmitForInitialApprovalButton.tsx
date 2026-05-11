@@ -52,7 +52,10 @@ export default function SubmitForInitialApprovalButton({
     const typeLabel = getTypeLabel(mrHeader.type);
 
     if (res.ok) {
-      toast(`${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} submitted`, "success");
+      toast(
+        `${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} submitted`,
+        "success",
+      );
 
       setIsOpen(false);
 
@@ -76,9 +79,11 @@ export default function SubmitForInitialApprovalButton({
       >
         {mrHeader.type === "payment"
           ? "SUBMIT FOR MANAGER APPROVAL"
-          : mrHeader.type === "job"
-            ? (progressId === 2 ? "SUBMIT FOR MANAGER REVIEW" : "SUBMIT FOR QS REVIEW")
-            : "SUBMIT FOR QUOTATIONS"}
+          : progressId === 2
+            ? "SUBMIT FOR QUOTATIONS"
+            : mrHeader.type === "job"
+              ? "SUBMIT FOR QS REVIEW"
+              : "SUBMIT FOR QUOTATIONS"}
       </Button>
 
       {isOpen && (
@@ -88,7 +93,9 @@ export default function SubmitForInitialApprovalButton({
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
         >
-          <p>Are you sure you want to submit this {getTypeLabel(mrHeader.type)}?</p>
+          <p>
+            Are you sure you want to submit this {getTypeLabel(mrHeader.type)}?
+          </p>
         </FormPopUp>
       )}
     </>

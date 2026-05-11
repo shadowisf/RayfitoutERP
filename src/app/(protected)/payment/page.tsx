@@ -130,6 +130,18 @@ function isDueOverdue(lpo: LpoRow): boolean {
   return due < today;
 }
 
+// Returns epoch ms for the due date (used for sort comparison).
+// Non-credit LPOs or missing terms → Infinity (sort to end).
+function getDueDateTimestamp(lpo: LpoRow): number {
+  const t = (lpo.supplier_type ?? "").toLowerCase();
+  if (t !== "credit") return Infinity;
+  const days = parseDays(lpo.payment_terms) ?? parseDays(lpo.supplier_payment_terms);
+  if (!days || !lpo.created_at) return Infinity;
+  const due = new Date(lpo.created_at);
+  due.setDate(due.getDate() + days);
+  return due.getTime();
+}
+
 // ── Format currency ─────────────────────────────────────────────────────────
 function formatAED(val: number) {
   return val.toLocaleString("en-US", {
@@ -310,7 +322,7 @@ export default function Payments() {
 
   useEffect(() => {
     setIsLoading(true);
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/getPaymentKanban`)
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/getPaymentList`)
       .then((r) => r.json())
       .then((data: LpoRow[]) => {
         if (Array.isArray(data)) setLpoRows(data);
@@ -413,6 +425,7 @@ export default function Payments() {
       // For outstanding, paid rows are always 0 regardless of raw field value
       const getRaw = (row: LpoRow) => {
         if (sortCol === "outstanding") return row.is_paid === 1 ? 0 : Number(row.outstanding ?? 0);
+        if (sortCol === "due_date") return getDueDateTimestamp(row);
         const v = (row as Record<string, unknown>)[sortCol];
         return v == null ? null : Number(v);
       };
@@ -525,7 +538,7 @@ export default function Payments() {
     hasActiveDateRange;
 
   const resetAllFilters = () => {
-    setFilters(defaultPaymentFilters);
+    setFilters({ selectedVendors: [], selectedPaymentTypes: [], selectedStatuses: [], selectedProjects: [] });
     setDateRange({ start: null, end: null, preset: null });
   };
 
@@ -548,7 +561,7 @@ export default function Payments() {
 
   const refetchLpos = (showLoader = true) => {
     if (showLoader) setIsLoading(true);
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/getPaymentKanban`)
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/getPaymentList`)
       .then((r) => r.json())
       .then((data: LpoRow[]) => {
         if (Array.isArray(data)) setLpoRows(data);
@@ -1129,7 +1142,16 @@ export default function Payments() {
                               OUTSTANDING AMOUNT
                               {groupSortIcon(group.supplierId, "outstanding")}
                             </th>
-                            <th>DUE DATE</th>
+                            <th
+                              style={{ cursor: "pointer", userSelect: "none" }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleGroupSort(group.supplierId, "due_date");
+                              }}
+                            >
+                              DUE DATE
+                              {groupSortIcon(group.supplierId, "due_date")}
+                            </th>
                             <th>STATUS</th>
                             <th></th>
                           </tr>
@@ -1143,6 +1165,7 @@ export default function Payments() {
                                 return a.is_paid - b.is_paid;
                               const getGRaw = (row: LpoRow) => {
                                 if (gs.col === "outstanding") return row.is_paid === 1 ? 0 : Number(row.outstanding ?? 0);
+                                if (gs.col === "due_date") return getDueDateTimestamp(row);
                                 const v = (row as Record<string, unknown>)[gs.col];
                                 return v == null ? null : Number(v);
                               };
@@ -1314,7 +1337,12 @@ export default function Payments() {
                 >
                   OUTSTANDING AMOUNT{sortIcon("outstanding")}
                 </th>
-                <th>DUE DATE</th>
+                <th
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                  onClick={() => handleSort("due_date")}
+                >
+                  DUE DATE{sortIcon("due_date")}
+                </th>
                 <th>STATUS</th>
                 <th></th>
               </tr>
