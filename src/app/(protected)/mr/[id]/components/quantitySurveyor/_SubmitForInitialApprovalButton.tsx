@@ -77,7 +77,7 @@ export default function SubmitForInitialApprovalButton({
         {mrHeader.type === "payment"
           ? "SUBMIT FOR MANAGER APPROVAL"
           : mrHeader.type === "job"
-            ? "SUBMIT FOR QS REVIEW"
+            ? (progressId === 2 ? "SUBMIT FOR MANAGER REVIEW" : "SUBMIT FOR QS REVIEW")
             : "SUBMIT FOR QUOTATIONS"}
       </Button>
 
