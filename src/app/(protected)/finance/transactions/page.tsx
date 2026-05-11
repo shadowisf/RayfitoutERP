@@ -708,9 +708,16 @@ export default function AllTransactionsPage() {
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "6px",
+                          gap: "10px",
                         }}
                       >
+                        <span>
+                          PAY-
+                          {String(row.payment_entry_id ?? row.lpo_id).padStart(
+                            5,
+                            "0",
+                          )}
+                        </span>
                         <Button
                           componentType="link"
                           bgColor="rgba(239,239,239,1)"
