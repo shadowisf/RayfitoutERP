@@ -44,7 +44,7 @@ type LpoRow = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function FinanceMedianPaymentDelayWidget() {
+export default function FinanceCommittedSpentWidget() {
   const [committedTotal, setCommittedTotal] = useState<number>(0);
   const [lpoCount, setLpoCount] = useState<number>(0);
   const [oldestDate, setOldestDate] = useState<string | null>(null);
@@ -170,7 +170,7 @@ export default function FinanceMedianPaymentDelayWidget() {
             color: "rgba(74, 85, 101, 1)",
           }}
         >
-          Committed Spent
+          Unpaid + Paid
         </span>
 
         <div>
@@ -182,10 +182,7 @@ export default function FinanceMedianPaymentDelayWidget() {
               color: "rgba(20,20,20,1)",
             }}
           >
-            {isLoading ? "..." : formatMillions(committedTotal)}{" "}
-            <span style={{ fontSize: "16px", fontWeight: 500, color: "rgba(74, 85, 101, 1)" }}>
-              AED
-            </span>
+            {isLoading ? "..." : `${formatAEDFull(committedTotal)} AED`}
           </p>
           <p
             style={{
@@ -195,9 +192,7 @@ export default function FinanceMedianPaymentDelayWidget() {
               margin: 0,
             }}
           >
-            {isLoading
-              ? "—"
-              : `Across ${lpoCount} LPOs · ${formatDate(oldestDate)} – ${formatDate(latestDate)}`}
+            {isLoading ? "—" : `Based on ${lpoCount} LPOs (including credit)`}
           </p>
         </div>
       </div>
@@ -258,7 +253,6 @@ export default function FinanceMedianPaymentDelayWidget() {
               >
                 <thead>
                   <tr>
-                    <th>MR NUMBER</th>
                     <th>LPO NUMBER</th>
                     <th>TOTAL PRICE</th>
                     <th>DATE</th>
@@ -268,9 +262,6 @@ export default function FinanceMedianPaymentDelayWidget() {
                 <tbody>
                   {lpoRows.map((row, i) => (
                     <tr key={i}>
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        MR-{String(row.mr_header_id).padStart(5, "0")}
-                      </td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         LPO-{String(row.lpo_id).padStart(5, "0")}
                       </td>
@@ -297,20 +288,6 @@ export default function FinanceMedianPaymentDelayWidget() {
               </table>
             </div>
           ) : null}
-
-          {/* Footer */}
-          <div
-            style={{
-              borderTop: "1px solid rgba(223,223,223,1)",
-              padding: "8px 12px",
-              textAlign: "center",
-              fontSize: "11px",
-              fontWeight: 600,
-              color: "#888",
-            }}
-          >
-            COMMITTED SPENT
-          </div>
         </div>
       )}
     </>

@@ -10,9 +10,9 @@ export async function GET() {
     const [rows] = await db.query<RowDataPacket[]>(
       `SELECT
          l.mr_header_id,
-         l.id                                                              AS lpo_id,
-         GREATEST(0, COALESCE(l.total, 0) - COALESCE(pay.total_paid, 0)) AS outstanding,
-         DATE_FORMAT(l.created_at, '%d %b %Y')                            AS date
+         l.id                                                                           AS lpo_id,
+         ROUND(GREATEST(0, COALESCE(l.total, 0) - COALESCE(pay.total_paid, 0)), 2)    AS outstanding,
+         DATE_FORMAT(l.created_at, '%d %b %Y')                                         AS date
        FROM lpo l
        LEFT JOIN (
          SELECT lpo_id, SUM(amount) AS total_paid
@@ -21,7 +21,7 @@ export async function GET() {
        ) pay ON pay.lpo_id = l.id
        WHERE LOWER(IFNULL(l.payment_status, ''))
                NOT IN ('approved','paid','fully paid','completed','done')
-         AND NOT (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)
+         AND NOT (l.total > 0 AND ROUND(COALESCE(pay.total_paid, 0), 2) >= ROUND(l.total, 2))
        ORDER BY l.created_at DESC`,
     );
 

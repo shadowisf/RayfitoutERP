@@ -171,7 +171,7 @@ export default function FinanceTotalSpentWidget() {
             alignItems: "center",
           }}
         >
-          <span style={{ fontSize: "13px", fontWeight: 600 }}>Total Spent</span>
+          <span style={{ fontSize: "13px", fontWeight: 600 }}>Paid</span>
           <img
             src="/icons/spent-inverted.svg"
             alt="spent"
@@ -249,7 +249,6 @@ export default function FinanceTotalSpentWidget() {
               >
                 <thead>
                   <tr>
-                    <th>MR NUMBER</th>
                     <th>LPO NUMBER</th>
                     <th>TOTAL PRICE</th>
                     <th>DATE</th>
@@ -259,9 +258,6 @@ export default function FinanceTotalSpentWidget() {
                 <tbody>
                   {lpoRows.map((row, i) => (
                     <tr key={i}>
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        MR-{String(row.mr_header_id).padStart(5, "0")}
-                      </td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         LPO-{String(row.lpo_id).padStart(5, "0")}
                       </td>

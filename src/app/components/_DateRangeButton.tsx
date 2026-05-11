@@ -151,6 +151,7 @@ function CalendarMonth({
         <div style={{ display: "flex", justifyContent: "center" }}>
           {showPrev && (
             <button
+              type="button"
               onClick={onPrev}
               style={{
                 background: "none",
@@ -185,6 +186,7 @@ function CalendarMonth({
         <div style={{ display: "flex", justifyContent: "center" }}>
           {showNext && (
             <button
+              type="button"
               onClick={onNext}
               style={{
                 background: "none",
@@ -433,6 +435,7 @@ function DateRangePicker({
           {PRESETS.map((preset) => (
             <button
               key={preset}
+              type="button"
               onClick={() => handlePreset(preset)}
               style={{
                 background:
@@ -461,6 +464,7 @@ function DateRangePicker({
           }}
         >
           <button
+            type="button"
             onClick={() => {
               setActivePreset("All time");
               setPendingStart(null);
@@ -481,6 +485,7 @@ function DateRangePicker({
             RESET
           </button>
           <button
+            type="button"
             onClick={() => onApply(pendingStart, pendingEnd, activePreset)}
             style={{
               flex: 1,
@@ -512,15 +517,19 @@ export type DateRange = {
 export default function DateRangeButton({
   value,
   onChange,
+  popupAlign = "right",
 }: {
   value: DateRange;
   onChange: (range: DateRange) => void;
+  popupAlign?: "left" | "right";
 }) {
   const calendarIcon = "/icons/calendar.svg";
   const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; right: number } | null>(
-    null,
-  );
+  const [coords, setCoords] = useState<{
+    top: number;
+    left?: number;
+    right?: number;
+  } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -528,10 +537,11 @@ export default function DateRangeButton({
   const handleToggle = () => {
     if (!open && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setCoords({
-        top: rect.bottom + 8,
-        right: window.innerWidth - rect.right,
-      });
+      setCoords(
+        popupAlign === "left"
+          ? { top: rect.bottom + 8, left: rect.left }
+          : { top: rect.bottom + 8, right: window.innerWidth - rect.right },
+      );
     }
     setOpen((o) => !o);
   };
@@ -556,6 +566,7 @@ export default function DateRangeButton({
   return (
     <>
       <button
+        type="button"
         ref={buttonRef}
         onClick={handleToggle}
         style={{
@@ -589,7 +600,9 @@ export default function DateRangeButton({
             style={{
               position: "fixed",
               top: coords.top,
-              right: coords.right,
+              ...(coords.left !== undefined
+                ? { left: coords.left }
+                : { right: coords.right }),
               zIndex: 9999,
             }}
           >

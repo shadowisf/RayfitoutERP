@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Button from "@/app/components/Button";
 import PaymentFilterButton, {
   defaultPaymentFilters,
   PaymentFilters,
 } from "./components/_PaymentFilterButton";
-import DateRangeButton, {
-  type DateRange,
-} from "@/app/(protected)/finance/transactions/components/_DateRangeButton";
+import type { DateRange } from "@/app/components/_DateRangeButton";
 import BulkRecordPaymentButton from "./components/_BulkRecordPaymentButton";
 import BulkRejectPaymentButton from "./components/_BulkRejectPaymentButton";
+import PaymentActionsButton from "./components/_PaymentActionsButton";
+import NewPaymentButton from "./components/_NewPaymentButton";
 import { useAuth } from "@/app/context/AuthContext";
 
 type LpoRow = {
@@ -21,6 +21,8 @@ type LpoRow = {
   total: number;
   payment_status: string | null;
   payment_terms: string | null;
+  invoice_file: string | null;
+  signed_file: string | null;
   supplier_payment_terms: string | null;
   created_at: string;
   supplier_name: string;
@@ -59,7 +61,7 @@ function getSupplierTypeStyle(type: string | null) {
 }
 
 function SupplierTypePill({ type }: { type: string | null }) {
-  if (!type) return <span style={{ color: "#aaa" }}>-</span>;
+  if (!type) return <span>-</span>;
   return (
     <div
       className="approval-pill normal-text centered"
@@ -135,7 +137,8 @@ function isDueOverdue(lpo: LpoRow): boolean {
 function getDueDateTimestamp(lpo: LpoRow): number {
   const t = (lpo.supplier_type ?? "").toLowerCase();
   if (t !== "credit") return Infinity;
-  const days = parseDays(lpo.payment_terms) ?? parseDays(lpo.supplier_payment_terms);
+  const days =
+    parseDays(lpo.payment_terms) ?? parseDays(lpo.supplier_payment_terms);
   if (!days || !lpo.created_at) return Infinity;
   const due = new Date(lpo.created_at);
   due.setDate(due.getDate() + days);
@@ -148,6 +151,17 @@ function formatAED(val: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+// ── Parse invoice_file (JSON array or plain URL) ─────────────────────────────
+function parseInvoiceUrl(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed[0] ?? null) : raw;
+  } catch {
+    return raw;
+  }
 }
 
 // ── Normalise supplier_type for filter matching ──────────────────────────────
@@ -271,6 +285,8 @@ function PaginationControls({
 export default function Payments() {
   const searchIcon = "/icons/search.svg";
   const externalLinkIcon = "/icons/external-link.svg";
+  const downloadIcon = "/icons/download.svg";
+  const transactionIcon = "/icons/payments-black.svg";
 
   const { userInfo } = useAuth();
 
@@ -296,29 +312,11 @@ export default function Payments() {
   // ── Row selection (group-by-vendor mode) ─────────────────────────────────
   const [selectedRowIds, setSelectedRowIds] = useState<Set<number>>(new Set());
 
-  // ── Actions dropdown ─────────────────────────────────────────────────────
-  const [actionsOpen, setActionsOpen] = useState(false);
-  const actionsRef = useRef<HTMLDivElement>(null);
-
   // ── Bulk payment modal (triggered from Actions dropdown) ─────────────────
   const [bulkPayOpen, setBulkPayOpen] = useState(false);
 
   // ── Bulk reject modal ────────────────────────────────────────────────────
   const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
-
-  // Close actions dropdown on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (
-        actionsRef.current &&
-        !actionsRef.current.contains(e.target as Node)
-      ) {
-        setActionsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -348,6 +346,31 @@ export default function Payments() {
       ).sort((a, b) => a.localeCompare(b)),
     [lpoRows],
   );
+
+  // ── Widget stats — computed from ALL loaded rows (not filtered) ─────────
+  const outstandingStats = useMemo(() => {
+    const unpaid = lpoRows.filter((r) => r.is_paid !== 1);
+    const cash = unpaid.filter(
+      (r) => (r.supplier_type ?? "").toLowerCase() === "cash",
+    );
+    const credit = unpaid.filter(
+      (r) => (r.supplier_type ?? "").toLowerCase() === "credit",
+    );
+    return {
+      total: {
+        amount: unpaid.reduce((s, r) => s + Number(r.outstanding), 0),
+        count: unpaid.length,
+      },
+      cash: {
+        amount: cash.reduce((s, r) => s + Number(r.outstanding), 0),
+        count: cash.length,
+      },
+      credit: {
+        amount: credit.reduce((s, r) => s + Number(r.outstanding), 0),
+        count: credit.length,
+      },
+    };
+  }, [lpoRows]);
 
   // ── Search ──────────────────────────────────────────────────────────────
   const searched = useMemo(() => {
@@ -424,7 +447,8 @@ export default function Payments() {
       if (a.is_paid !== b.is_paid) return a.is_paid - b.is_paid;
       // For outstanding, paid rows are always 0 regardless of raw field value
       const getRaw = (row: LpoRow) => {
-        if (sortCol === "outstanding") return row.is_paid === 1 ? 0 : Number(row.outstanding ?? 0);
+        if (sortCol === "outstanding")
+          return row.is_paid === 1 ? 0 : Number(row.outstanding ?? 0);
         if (sortCol === "due_date") return getDueDateTimestamp(row);
         const v = (row as Record<string, unknown>)[sortCol];
         return v == null ? null : Number(v);
@@ -523,6 +547,14 @@ export default function Payments() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginated = sorted.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
+  // ── Flat table select-all helpers ───────────────────────────────────────
+  const unpaidPaginated = paginated.filter((r) => r.is_paid !== 1);
+  const flatAllSelected =
+    unpaidPaginated.length > 0 &&
+    unpaidPaginated.every((r) => selectedRowIds.has(r.id));
+  const flatSomeSelected =
+    !flatAllSelected && unpaidPaginated.some((r) => selectedRowIds.has(r.id));
+
   // Reset to page 1 on search / filter / sort change
   useEffect(() => {
     setCurrentPage(1);
@@ -538,7 +570,12 @@ export default function Payments() {
     hasActiveDateRange;
 
   const resetAllFilters = () => {
-    setFilters({ selectedVendors: [], selectedPaymentTypes: [], selectedStatuses: [], selectedProjects: [] });
+    setFilters({
+      selectedVendors: [],
+      selectedPaymentTypes: [],
+      selectedStatuses: [],
+      selectedProjects: [],
+    });
     setDateRange({ start: null, end: null, preset: null });
   };
 
@@ -622,33 +659,46 @@ export default function Payments() {
         >
           <h1>PAYMENTS</h1>
 
-          <div style={{ position: "relative" }}>
-            <input
-              type="text"
-              placeholder="SEARCH"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: "350px",
-                padding: "10px 40px 10px 15px",
-                borderRadius: "8px",
-                border: "1px solid rgba(223, 223, 223, 1)",
-                fontSize: "14px",
-              }}
-            />
-            <img
-              src={searchIcon}
-              alt="search"
-              style={{
-                position: "absolute",
-                right: "15px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: "16px",
-                height: "16px",
-                opacity: 0.5,
-              }}
-            />
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <Button
+              componentType={"link"}
+              bgColor={"white"}
+              borderColor={"rgba(238, 238, 238, 1)"}
+              textColor={"black"}
+              href="/finance/transactions"
+            >
+              TRANSACTION LOG{" "}
+              <img src={transactionIcon} alt="transaction log" />
+            </Button>
+            <NewPaymentButton onSuccess={() => refetchLpos(false)} />
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                placeholder="SEARCH"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: "350px",
+                  padding: "7px 40px 7px 15px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(223, 223, 223, 1)",
+                  fontSize: "14px",
+                }}
+              />
+              <img
+                src={searchIcon}
+                alt="search"
+                style={{
+                  position: "absolute",
+                  right: "15px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "16px",
+                  height: "16px",
+                  opacity: 0.5,
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -721,6 +771,8 @@ export default function Payments() {
               projects={projectList}
               onApplyFilters={setFilters}
               currentFilters={filters}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
             />
 
             {hasActiveFilters && (
@@ -856,7 +908,7 @@ export default function Payments() {
           </div>
           {/* end LEFT */}
 
-          {/* RIGHT — date range + actions */}
+          {/* RIGHT — actions */}
           <div
             style={{
               display: "flex",
@@ -865,134 +917,69 @@ export default function Payments() {
               flexShrink: 0,
             }}
           >
-            <DateRangeButton value={dateRange} onChange={setDateRange} />
-
-            {/* Reset selection button */}
-            {groupByVendor && (
-              <Button
-                componentType="button"
-                bgColor={selectedRows.length === 0 ? "white" : "black"}
-                borderColor={
-                  selectedRows.length === 0 ? "rgba(211,211,211,1)" : "black"
-                }
-                textColor={selectedRows.length === 0 ? "black" : "white"}
-                disabled={selectedRows.length === 0}
-                onClick={() => setSelectedRowIds(new Set())}
-              >
-                RESET
-              </Button>
-            )}
-
-            {/* Actions dropdown */}
-            {groupByVendor && (
-              <div ref={actionsRef} style={{ position: "relative" }}>
-                <Button
-                  componentType="button"
-                  bgColor={selectedRows.length === 0 ? "white" : "black"}
-                  borderColor={
-                    selectedRows.length === 0 ? "rgba(211,211,211,1)" : "black"
-                  }
-                  textColor={selectedRows.length === 0 ? "black" : "white"}
-                  onClick={() =>
-                    selectedRows.length > 0 && setActionsOpen((v) => !v)
-                  }
-                  disabled={selectedRows.length === 0}
-                >
-                  ACTIONS
-                </Button>
-
-                {actionsOpen && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "calc(100% + 4px)",
-                      right: 0,
-                      backgroundColor: "white",
-                      border: "1px solid rgba(207,207,207,1)",
-                      borderRadius: "8px",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-                      zIndex: 200,
-                      minWidth: "220px",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        width: "100%",
-                        padding: "10px 16px",
-                        textAlign: "left",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "black",
-                        fontWeight: "600",
-                        fontSize: "13px",
-                        borderBottom: "1px solid rgba(239,239,239,1)",
-                      }}
-                      onMouseEnter={(e) =>
-                        ((
-                          e.currentTarget as HTMLElement
-                        ).style.backgroundColor = "rgba(245,245,245,1)")
-                      }
-                      onMouseLeave={(e) =>
-                        ((
-                          e.currentTarget as HTMLElement
-                        ).style.backgroundColor = "transparent")
-                      }
-                      onClick={() => {
-                        setActionsOpen(false);
-                        setBulkPayOpen(true);
-                      }}
-                    >
-                      Record Payment ({selectedRows.length})
-                    </button>
-
-                    <button
-                      type="button"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        width: "100%",
-                        padding: "10px 16px",
-                        textAlign: "left",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "black",
-                        fontWeight: "600",
-                        fontSize: "13px",
-                      }}
-                      onMouseEnter={(e) =>
-                        ((
-                          e.currentTarget as HTMLElement
-                        ).style.backgroundColor = "rgba(245,245,245,1)")
-                      }
-                      onMouseLeave={(e) =>
-                        ((
-                          e.currentTarget as HTMLElement
-                        ).style.backgroundColor = "transparent")
-                      }
-                      onClick={() => {
-                        setActionsOpen(false);
-                        setBulkRejectOpen(true);
-                      }}
-                    >
-                      Reject ({selectedRows.length})
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+            <PaymentActionsButton
+              selectedCount={selectedRows.length}
+              selectedRows={selectedRows.map((r) => ({
+                id: r.id,
+                mr_header_id: r.mr_header_id,
+                invoice_file: r.invoice_file,
+                signed_lpo_file: r.signed_file,
+              }))}
+              onReset={() => setSelectedRowIds(new Set())}
+              onRecordPayment={() => setBulkPayOpen(true)}
+              onReject={() => setBulkRejectOpen(true)}
+            />
           </div>
           {/* end RIGHT */}
         </div>
       </div>
       {/* ── End sticky toolbar ───────────────────────────────────────────────── */}
+
+      <div style={{ display: "flex", gap: "10px" }}>
+        {[
+          {
+            label: "Total Outstanding Amount",
+            stats: outstandingStats.total,
+          },
+          {
+            label: "Cash Outstanding Amount",
+            stats: outstandingStats.cash,
+          },
+          {
+            label: "Credit Outstanding Amount",
+            stats: outstandingStats.credit,
+          },
+        ].map(({ label, stats }) => (
+          <div
+            key={label}
+            className="widget-container"
+            style={{
+              width: "300px",
+              height: "175px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              borderRadius: "15px",
+            }}
+          >
+            <h3 style={{ color: "rgba(74, 85, 101, 1)" }}>{label}</h3>
+            <div>
+              <h2 style={{ fontSize: "28px" }}>
+                {isLoading ? "..." : `${formatAED(stats.amount)} AED`}
+              </h2>
+              <p style={{ color: "rgba(74, 85, 101, 1)" }}>
+                {isLoading
+                  ? "—"
+                  : `${stats.count} Pending LPO${stats.count !== 1 ? "s" : ""}`}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <br />
+      <br />
+      <br />
 
       {/* ── Table ─────────────────────────────────────────────────────────── */}
       {isLoading ? (
@@ -1007,9 +994,12 @@ export default function Payments() {
         </div>
       ) : groupByVendor ? (
         /* ── Grouped by vendor ── */
-        <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
           {vendorGroups.map((group) => {
             const isCollapsed = collapsedVendors[group.supplierId] ?? false;
+            const groupOutstanding = group.rows
+              .filter((r) => r.is_paid !== 1)
+              .reduce((s, r) => s + Number(r.outstanding), 0);
             return (
               <div key={group.supplierId}>
                 {/* Group header */}
@@ -1017,10 +1007,14 @@ export default function Payments() {
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "15px",
+                    gap: "10px",
                     marginBottom: isCollapsed ? "0px" : "20px",
                     cursor: "pointer",
                     userSelect: "none",
+                    backgroundColor: "rgba(239, 239, 239, 1)",
+                    width: "fit-content",
+                    padding: "5px 12px",
+                    borderRadius: "50px",
                   }}
                   onClick={() => toggleVendorCollapse(group.supplierId)}
                 >
@@ -1050,11 +1044,11 @@ export default function Payments() {
                   <h2>{group.supplierName}</h2>
                   <Button
                     componentType="link"
-                    bgColor="rgba(239, 239, 239, 1)"
-                    borderColor="rgba(223, 223, 223, 1)"
+                    bgColor="transparent"
+                    borderColor="transparent"
                     textColor="black"
                     href={`/vendor/${group.supplierId}`}
-                    style={{ padding: "7px 7px" }}
+                    style={{ padding: "0px", marginBottom: "2px" }}
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                   >
                     <img src={externalLinkIcon} alt="open" />
@@ -1071,6 +1065,20 @@ export default function Payments() {
                   >
                     {group.rows.length} LPO{group.rows.length !== 1 ? "s" : ""}
                   </div>
+                  {groupOutstanding > 0 && (
+                    <div
+                      style={{
+                        backgroundColor: "black",
+                        color: "white",
+                        borderRadius: "50px",
+                        padding: "3px 12px",
+                        fontWeight: "600",
+                        fontSize: "14px",
+                      }}
+                    >
+                      {formatAED(groupOutstanding)} AED Outstanding
+                    </div>
+                  )}
                 </div>
 
                 {/* Group table */}
@@ -1099,6 +1107,7 @@ export default function Payments() {
                           <col style={{ width: "200px" }} />
                           <col style={{ width: "140px" }} />
                           <col style={{ width: "110px" }} />
+                          <col style={{ width: "90px" }} />
                           <col style={{ width: "60px" }} />
                         </colgroup>
                         <thead>
@@ -1153,6 +1162,7 @@ export default function Payments() {
                               {groupSortIcon(group.supplierId, "due_date")}
                             </th>
                             <th>STATUS</th>
+                            <th>INVOICE</th>
                             <th></th>
                           </tr>
                         </thead>
@@ -1164,9 +1174,15 @@ export default function Payments() {
                               if (a.is_paid !== b.is_paid)
                                 return a.is_paid - b.is_paid;
                               const getGRaw = (row: LpoRow) => {
-                                if (gs.col === "outstanding") return row.is_paid === 1 ? 0 : Number(row.outstanding ?? 0);
-                                if (gs.col === "due_date") return getDueDateTimestamp(row);
-                                const v = (row as Record<string, unknown>)[gs.col];
+                                if (gs.col === "outstanding")
+                                  return row.is_paid === 1
+                                    ? 0
+                                    : Number(row.outstanding ?? 0);
+                                if (gs.col === "due_date")
+                                  return getDueDateTimestamp(row);
+                                const v = (row as Record<string, unknown>)[
+                                  gs.col
+                                ];
                                 return v == null ? null : Number(v);
                               };
                               const aVal = getGRaw(a);
@@ -1262,16 +1278,17 @@ export default function Payments() {
                                       </Button>
                                     </div>
                                   ) : (
-                                    <span style={{ color: "#aaa" }}>-</span>
+                                    <span>-</span>
                                   )}
                                 </td>
                                 <td>
                                   <SupplierTypePill type={row.supplier_type} />
                                 </td>
                                 <td style={{ whiteSpace: "nowrap" }}>
-                                  AED{" "}
-                                  {formatAED(
-                                    isPaid ? 0 : Number(row.outstanding),
+                                  {isPaid ? (
+                                    <span>N/A</span>
+                                  ) : (
+                                    `AED ${formatAED(Number(row.outstanding))}`
                                   )}
                                 </td>
                                 <td style={{ whiteSpace: "nowrap" }}>
@@ -1281,7 +1298,37 @@ export default function Payments() {
                                   <StatusPill isPaid={isPaid} />
                                 </td>
                                 <td>
-                                  {[8, 10].includes(userInfo?.departmentID ?? 0) && (
+                                  {(() => {
+                                    const invoiceUrl = parseInvoiceUrl(
+                                      row.invoice_file,
+                                    );
+                                    return invoiceUrl ? (
+                                      <Button
+                                        componentType="link"
+                                        bgColor="rgba(239,239,239,1)"
+                                        borderColor="rgba(223,223,223,1)"
+                                        textColor="black"
+                                        href={invoiceUrl}
+                                        target="_blank"
+                                        style={{ padding: "7px 7px" }}
+                                        onClick={(e: React.MouseEvent) =>
+                                          e.stopPropagation()
+                                        }
+                                      >
+                                        <img
+                                          src={downloadIcon}
+                                          alt="download"
+                                        />
+                                      </Button>
+                                    ) : (
+                                      <span>N/A</span>
+                                    );
+                                  })()}
+                                </td>
+                                <td>
+                                  {[8, 10].includes(
+                                    userInfo?.departmentID ?? 0,
+                                  ) && (
                                     <Button
                                       componentType="link"
                                       bgColor="rgba(239, 239, 239, 1)"
@@ -1316,6 +1363,7 @@ export default function Payments() {
             style={{ tableLayout: "fixed", width: "100%" }}
           >
             <colgroup>
+              <col style={{ width: "36px" }} />
               <col style={{ width: "125px" }} />
               <col style={{ width: "250px" }} />
               <col style={{ width: "200px" }} />
@@ -1323,10 +1371,32 @@ export default function Payments() {
               <col style={{ width: "180px" }} />
               <col style={{ width: "130px" }} />
               <col style={{ width: "100px" }} />
+              <col style={{ width: "90px" }} />
               <col style={{ width: "60px" }} />
             </colgroup>
             <thead>
               <tr>
+                <th style={{ padding: "0 0 0 12px" }}>
+                  <input
+                    type="checkbox"
+                    checked={flatAllSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = flatSomeSelected;
+                    }}
+                    onChange={() => {
+                      setSelectedRowIds((prev) => {
+                        const next = new Set(prev);
+                        if (flatAllSelected) {
+                          unpaidPaginated.forEach((r) => next.delete(r.id));
+                        } else {
+                          unpaidPaginated.forEach((r) => next.add(r.id));
+                        }
+                        return next;
+                      });
+                    }}
+                    className="manager-checkbox"
+                  />
+                </th>
                 <th>LPO NUMBER</th>
                 <th>VENDOR</th>
                 <th>PROJECT</th>
@@ -1344,6 +1414,7 @@ export default function Payments() {
                   DUE DATE{sortIcon("due_date")}
                 </th>
                 <th>STATUS</th>
+                <th>INVOICE</th>
                 <th></th>
               </tr>
             </thead>
@@ -1351,9 +1422,27 @@ export default function Payments() {
               {paginated.map((row) => {
                 const isPaid = row.is_paid === 1;
                 const dueDate = getDueDate(row);
+                const isChecked = selectedRowIds.has(row.id);
 
                 return (
-                  <tr key={row.id}>
+                  <tr
+                    key={row.id}
+                    style={
+                      isChecked
+                        ? { backgroundColor: "rgba(240,253,247,1)" }
+                        : undefined
+                    }
+                  >
+                    <td style={{ padding: "0 0 0 12px" }}>
+                      {!isPaid && (
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleRow(row.id)}
+                          className="manager-checkbox"
+                        />
+                      )}
+                    </td>
                     {/* LPO NUMBER */}
                     <td>
                       <div
@@ -1439,7 +1528,7 @@ export default function Payments() {
                           </Button>
                         </div>
                       ) : (
-                        <span style={{ color: "#aaa" }}>-</span>
+                        <span>-</span>
                       )}
                     </td>
 
@@ -1450,7 +1539,11 @@ export default function Payments() {
 
                     {/* OUTSTANDING AMOUNT */}
                     <td style={{ whiteSpace: "nowrap" }}>
-                      AED {formatAED(isPaid ? 0 : Number(row.outstanding))}
+                      {isPaid ? (
+                        <span>N/A</span>
+                      ) : (
+                        `AED ${formatAED(Number(row.outstanding))}`
+                      )}
                     </td>
 
                     {/* DUE DATE */}
@@ -1459,6 +1552,28 @@ export default function Payments() {
                     {/* STATUS */}
                     <td>
                       <StatusPill isPaid={isPaid} />
+                    </td>
+
+                    {/* INVOICE */}
+                    <td>
+                      {(() => {
+                        const invoiceUrl = parseInvoiceUrl(row.invoice_file);
+                        return invoiceUrl ? (
+                          <Button
+                            componentType="link"
+                            bgColor="rgba(239,239,239,1)"
+                            borderColor="rgba(223,223,223,1)"
+                            textColor="black"
+                            href={invoiceUrl}
+                            target="_blank"
+                            style={{ padding: "7px 7px" }}
+                          >
+                            <img src={downloadIcon} alt="download" />
+                          </Button>
+                        ) : (
+                          <span>N/A</span>
+                        );
+                      })()}
                     </td>
 
                     {/* MR payment detail link — manager & finance only */}

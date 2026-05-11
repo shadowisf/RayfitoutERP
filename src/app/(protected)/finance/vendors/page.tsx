@@ -14,7 +14,7 @@ import VendorsFilterButton, {
 } from "./components/_VendorsFilterButton";
 import DateRangeButton, {
   DateRange,
-} from "../transactions/components/_DateRangeButton";
+} from "../../../components/_DateRangeButton";
 import DownloadVendorsButton from "./components/_DownloadVendorsButton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import { pdf } from "@react-pdf/renderer";
 import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
 import { VendorsPDF, type VendorRow } from "./VendorsPDF";
-import type { DateRange } from "../../transactions/components/_DateRangeButton";
+import type { DateRange } from "../../../../components/_DateRangeButton";
 
 type Vendor = {
   supplier_id: number;
@@ -149,7 +149,13 @@ export default function DownloadVendorsButton({
             }
           >
             <span>All</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(130,130,130,1)" }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "rgba(130,130,130,1)",
+              }}
+            >
               {allRows.length.toLocaleString()}
             </span>
           </button>
@@ -182,7 +188,13 @@ export default function DownloadVendorsButton({
             }
           >
             <span>Selected</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(130,130,130,1)" }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "rgba(130,130,130,1)",
+              }}
+            >
               {selectedCount.toLocaleString()}
             </span>
           </button>

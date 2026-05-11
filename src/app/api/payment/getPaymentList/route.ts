@@ -23,6 +23,8 @@ export async function GET() {
         l.total,
         l.payment_status,
         l.payment_terms,
+        l.invoice_file,
+        l.signed_file,
         l.created_at,
         s.name        AS supplier_name,
         s.type        AS supplier_type,

@@ -317,7 +317,7 @@ export default function BulkRecordPaymentButton({
                     r={r}
                     fill="none"
                     stroke="rgba(220,220,220,1)"
-                    strokeWidth="9"
+                    strokeWidth="14"
                     strokeLinecap="butt"
                     strokeDasharray={`${arc} ${circ}`}
                   />
@@ -339,7 +339,7 @@ export default function BulkRecordPaymentButton({
                     r={r}
                     fill="none"
                     stroke={gaugeColor}
-                    strokeWidth="9"
+                    strokeWidth="14"
                     strokeLinecap="butt"
                     strokeDasharray={`${(gaugePct / 100) * arc} ${circ}`}
                     style={{ transition: "stroke-dasharray 0.4s ease-out" }}
@@ -384,22 +384,42 @@ export default function BulkRecordPaymentButton({
             />
           </div>
 
-          {/* ── Exceeds warning ───────────────────────────────────────────── */}
-          {isExceeding && (
-            <>
-              <div
-                style={{ display: "flex", gap: "10px", alignItems: "center" }}
-              >
-                <img src="/icons/warning.svg" alt="warning" />
-                <p style={{ color: "red" }}>
-                  Payment amount exceeds outstanding amount
-                </p>
-              </div>
+          {/* ── Exceeds warning + Max shortcut ─────────────────────────────── */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginTop: "-7px",
+            }}
+          >
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              {isExceeding && (
+                <>
+                  <img src="/icons/warning.svg" alt="warning" />
+                  <p style={{ color: "red", margin: 0 }}>
+                    Payment amount exceeds outstanding amount
+                  </p>
+                </>
+              )}
+            </div>
+            <p
+              style={{
+                cursor: "pointer",
+                color: "rgba(10, 82, 184, 1)",
+                fontWeight: "600",
+                fontSize: "9px",
+              }}
+              onClick={() =>
+                setPaymentAmount(formatWithCommas(totalOutstanding.toFixed(2)))
+              }
+            >
+              <span style={{ textDecoration: "underline" }}>Max</span> (AED{" "}
+              {formatWithCommas(totalOutstanding.toFixed(2))})
+            </p>
+          </div>
 
-              <br />
-              <br />
-            </>
-          )}
+          <br />
 
           <div className="input-row full">
             <InputItem
