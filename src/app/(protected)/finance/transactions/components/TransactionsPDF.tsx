@@ -239,7 +239,7 @@ export function TransactionsPDF({
             const rowStyle =
               index % 2 === 0 ? styles.tableRowOdd : styles.tableRowEven;
             return (
-              <View key={tx.id} style={rowStyle} wrap={false}>
+              <View key={tx.lpo_id} style={rowStyle} wrap={false}>
                 <Text style={styles.colLpo}>{tx.display_id}</Text>
                 <Text style={styles.colVendor}>{tx.vendor_name || "-"}</Text>
                 <Text style={styles.colRequester}>{tx.requester || "-"}</Text>
