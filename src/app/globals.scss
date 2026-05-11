@@ -118,7 +118,7 @@ button {
     gap: 10px;
     border-radius: 5px;
     padding: 7px 20px;
-    font-size: 14px;
+    font-size: 14.1px;
     font-weight: 600;
     text-wrap: nowrap;
 
@@ -524,9 +524,9 @@ label {
 
   /* New scrollable content wrapper */
   .form-content {
+    flex: 1;
     overflow-y: auto;
     overflow-x: visible; /* Changed from hidden to visible */
-    max-height: calc(95dvh - 200px);
     min-height: 175px;
     padding-right: 30px;
   }
@@ -888,7 +888,7 @@ label {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  border-radius: 5px;
+  border-radius: 10px;
   border: 1px solid rgba(239, 239, 239, 1);
   overflow: hidden;
 

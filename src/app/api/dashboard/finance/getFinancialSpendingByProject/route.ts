@@ -33,28 +33,16 @@ export async function GET(request: Request) {
       : "";
     const dateArgs = hasDateFilter ? [startStr, endStr] : [];
 
-    // 1. Chart data — two-case: old LPOs use l.total, new LPOs use lpo_payments sum
+    // 1. Chart data — committed means the full LPO total regardless of payment status
     const [chartRows] = await db.query<RowDataPacket[]>(
       `SELECT
          DATE_FORMAT(l.created_at, ?) AS period_key,
          DATE_FORMAT(l.created_at, ?) AS period_label,
          COALESCE(p.name, 'Unspecified') AS project_name,
-         COALESCE(SUM(
-           CASE
-             WHEN LOWER(IFNULL(l.payment_status, ''))
-                  IN ('approved','paid','fully paid','completed','done')
-               THEN l.total
-             ELSE COALESCE(pay.total_paid, 0)
-           END
-         ), 0) AS total_spent
+         COALESCE(SUM(l.total), 0) AS total_spent
        FROM lpo l
        JOIN mr_headers mh ON l.mr_header_id = mh.id
        LEFT JOIN projects p ON mh.project_id = p.id
-       LEFT JOIN (
-         SELECT lpo_id, SUM(amount) AS total_paid
-         FROM lpo_payments
-         GROUP BY lpo_id
-       ) pay ON pay.lpo_id = l.id
        WHERE l.progress_id NOT IN (13) ${dateWhere}
        GROUP BY period_key, period_label, p.id, p.name
        ORDER BY period_key ASC`,

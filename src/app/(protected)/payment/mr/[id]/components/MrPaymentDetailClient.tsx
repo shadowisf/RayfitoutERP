@@ -779,7 +779,7 @@ export default function FinanceDetailClient({
                   setRejectReason("");
                   setIsRejectOpen(true);
                 }}
-                disabled={!selectedLpo}
+                disabled={!selectedLpo || balance <= 0}
                 full
               >
                 Reject Payment

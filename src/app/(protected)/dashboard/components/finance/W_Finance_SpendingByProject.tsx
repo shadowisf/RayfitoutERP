@@ -748,7 +748,7 @@ function ProjectsTable({
                     userSelect: "none",
                   }}
                 >
-                  COMMITTED + CASH
+                  UNPAID + PAID
                   <span
                     style={{
                       marginLeft: 4,
@@ -876,7 +876,6 @@ function ProjectsTable({
               >
                 <thead>
                   <tr>
-                    <th>MR NUMBER</th>
                     <th>LPO NUMBER</th>
                     <th>TOTAL PRICE</th>
                     <th>DATE</th>
@@ -886,9 +885,6 @@ function ProjectsTable({
                 <tbody>
                   {currentRows.map((row, i) => (
                     <tr key={i}>
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        MR-{String(row.mr_header_id).padStart(5, "0")}
-                      </td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         LPO-{String(row.lpo_id).padStart(5, "0")}
                       </td>
@@ -903,9 +899,7 @@ function ProjectsTable({
                           borderColor="rgba(223,223,223,1)"
                           textColor="black"
                           style={{ padding: "7px 7px" }}
-                          onClick={(e: React.MouseEvent) =>
-                            e.stopPropagation()
-                          }
+                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
                           href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
                         >
                           <img src="/icons/external-link.svg" alt="open" />

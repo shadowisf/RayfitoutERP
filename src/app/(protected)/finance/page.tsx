@@ -2,7 +2,7 @@
 
 import FinanceTotalSpentWidget from "@/app/(protected)/dashboard/components/finance/W_Finance_TotalSpent";
 import FinanceOutstandingPayablesWidget from "@/app/(protected)/dashboard/components/finance/W_Finance_OutstandingPayables";
-import FinanceCommittedSpentWidget from "@/app/(protected)/dashboard/components/finance/W_Finance_MedianPaymentDelay";
+import FinanceCommittedSpentWidget from "@/app/(protected)/dashboard/components/finance/W_Finance_CommittedSpent";
 import FinanceRecentTransactionsWidget from "@/app/(protected)/dashboard/components/finance/W_Finance_RecentTransactions";
 import FinanceSpendingByProjectWidget from "@/app/(protected)/dashboard/components/finance/W_Finance_SpendingByProject";
 import FinanceTopVendorsBySpendWidget from "@/app/(protected)/dashboard/components/finance/W_Finance_TopVendorsBySpend";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import Button from "./Button";
 
@@ -73,6 +73,8 @@ export default function SingleSelectDropdown({
   });
   const [isMounted, setIsMounted] = useState(false);
 
+  const [containerWidth, setContainerWidth] = useState(0);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dropdownId = useRef(
@@ -82,6 +84,42 @@ export default function SingleSelectDropdown({
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setContainerWidth(el.getBoundingClientRect().width);
+    const observer = new ResizeObserver(() => {
+      setContainerWidth(el.getBoundingClientRect().width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  function truncateToFit(text: string, availableWidth: number): string {
+    if (typeof document === "undefined" || availableWidth <= 0) return text;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return text;
+    ctx.font = "600 12px Mont, sans-serif";
+    if (ctx.measureText(text).width <= availableWidth) return text;
+    const ellipsis = "…";
+    const ellipsisWidth = ctx.measureText(ellipsis).width;
+    let lo = 0,
+      hi = text.length;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi + 1) / 2);
+      if (
+        ctx.measureText(text.slice(0, mid)).width + ellipsisWidth <=
+        availableWidth
+      ) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return text.slice(0, lo) + ellipsis;
+  }
 
   function getOptions(): OptionType[] {
     if (selectOptions) {
@@ -278,7 +316,9 @@ export default function SingleSelectDropdown({
       (option) => String(option.id) === String(selectedValue),
     );
 
-    return selectedOption ? selectedOption.label : placeholder;
+    const label = selectedOption ? selectedOption.label : placeholder;
+    // Reserve: 7px left pad + 20px native chevron + 20px × button + 18px gap = 65px
+    return truncateToFit(label, containerWidth - 75);
   }
 
   const displayText = getDisplayText();

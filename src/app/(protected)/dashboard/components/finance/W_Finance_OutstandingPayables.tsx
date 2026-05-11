@@ -222,9 +222,8 @@ export default function FinanceOutstandingPayablesWidget() {
               >
                 <thead>
                   <tr>
-                    <th>MR NUMBER</th>
                     <th>LPO NUMBER</th>
-                    <th>TOTAL PRICE</th>
+                    <th>OUTSTANDING AMOUNT</th>
                     <th>DATE</th>
                     <th></th>
                   </tr>
@@ -232,9 +231,6 @@ export default function FinanceOutstandingPayablesWidget() {
                 <tbody>
                   {lpoRows.map((row, i) => (
                     <tr key={i}>
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        MR-{String(row.mr_header_id).padStart(5, "0")}
-                      </td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         LPO-{String(row.lpo_id).padStart(5, "0")}
                       </td>
@@ -250,7 +246,7 @@ export default function FinanceOutstandingPayablesWidget() {
                           textColor="black"
                           style={{ padding: "7px 7px" }}
                           onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                          href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
+                          href={`/payment/mr/${row.mr_header_id}`}
                         >
                           <img src="/icons/external-link.svg" alt="open" />
                         </Button>

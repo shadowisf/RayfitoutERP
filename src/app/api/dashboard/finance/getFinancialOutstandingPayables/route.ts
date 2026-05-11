@@ -6,17 +6,22 @@ export async function GET() {
   try {
     const [rows] = await db.query<RowDataPacket[]>(
       `SELECT
-         COALESCE(SUM(GREATEST(0, COALESCE(l.total, 0) - COALESCE(pay.total_paid, 0))), 0) AS amount,
+         COALESCE(SUM(ROUND(GREATEST(l.total - COALESCE(pay.total_paid, 0), 0), 2)), 0) AS amount,
          COUNT(*) AS lpo_count
        FROM lpo l
+       JOIN mr_headers mh ON l.mr_header_id = mh.id
        LEFT JOIN (
          SELECT lpo_id, SUM(amount) AS total_paid
          FROM lpo_payments
          GROUP BY lpo_id
        ) pay ON pay.lpo_id = l.id
-       WHERE LOWER(IFNULL(l.payment_status, ''))
-               NOT IN ('approved','paid','fully paid','completed','done')
-         AND NOT (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)`,
+       WHERE mh.progress_id = 26
+         AND l.progress_id > 14
+         AND NOT (
+           LOWER(TRIM(IFNULL(l.payment_status, '')))
+             IN ('approved','paid','fully paid','completed','done')
+           OR (l.total > 0 AND ROUND(COALESCE(pay.total_paid, 0), 2) >= ROUND(l.total, 2))
+         )`,
     );
 
     const row = (rows as any[])[0];

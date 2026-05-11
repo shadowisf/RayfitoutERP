@@ -4,8 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
 import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
-import { MaterialsPDF, type MaterialRow, type CategoryRow } from "./MaterialsPDF";
-import type { DateRange } from "../../transactions/components/_DateRangeButton";
+import {
+  MaterialsPDF,
+  type MaterialRow,
+  type CategoryRow,
+} from "./MaterialsPDF";
+import type { DateRange } from "../../../../components/_DateRangeButton";
 
 type Props = {
   allRows: MaterialRow[];
@@ -146,7 +150,11 @@ export default function DownloadMaterialsButton({
           >
             <span>All</span>
             <span
-              style={{ fontSize: 11, fontWeight: 600, color: "rgba(130,130,130,1)" }}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "rgba(130,130,130,1)",
+              }}
             >
               {allRows.length.toLocaleString()}
             </span>
@@ -181,7 +189,11 @@ export default function DownloadMaterialsButton({
           >
             <span>Selected</span>
             <span
-              style={{ fontSize: 11, fontWeight: 600, color: "rgba(130,130,130,1)" }}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "rgba(130,130,130,1)",
+              }}
             >
               {selectedCount.toLocaleString()}
             </span>

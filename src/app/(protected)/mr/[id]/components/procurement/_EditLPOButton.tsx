@@ -6,6 +6,7 @@ import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { LpoHeader } from "../../types/lpoHeader";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 
@@ -254,14 +255,16 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
         <img src={pencilIcon} alt="pencil" />
       </Button>
 
-      {isOpen && (
-        <FormPopUp
-          header={"UPDATE LOCAL PURCHASE ORDER"}
-          setIsOpen={setIsOpen}
-          handleSubmit={handleSubmit}
-          addButtonLabel={"CONFIRM"}
-          style={{ width: "1000px" }}
-        >
+      {isOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <FormPopUp
+            header={"UPDATE LOCAL PURCHASE ORDER"}
+            setIsOpen={setIsOpen}
+            handleSubmit={handleSubmit}
+            addButtonLabel={"CONFIRM"}
+            style={{ width: "1000px" }}
+          >
           {lpoData ? (
             <>
               <div className="input-row three-col">
@@ -491,8 +494,9 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
           ) : (
             <p>Loading...</p>
           )}
-        </FormPopUp>
-      )}
+          </FormPopUp>,
+          document.body,
+        )}
     </>
   );
 }

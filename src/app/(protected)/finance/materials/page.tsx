@@ -26,7 +26,7 @@ import MaterialsFilterButton, {
 import DateRangeButton, {
   DateRange,
   formatRangeLabel,
-} from "../transactions/components/_DateRangeButton";
+} from "../../../components/_DateRangeButton";
 import DownloadMaterialsButton from "./components/_DownloadMaterialsButton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -38,7 +38,13 @@ type MaterialRow = {
   lowest_price: number;
   total_spent: number;
   projects: string[];
-  lpo_details: { mr_header_id: number; lpo_id: number; qty: number; unit_price: number; total_price: number }[];
+  lpo_details: {
+    mr_header_id: number;
+    lpo_id: number;
+    qty: number;
+    unit_price: number;
+    total_price: number;
+  }[];
 };
 
 type CategoryRow = {
@@ -514,7 +520,9 @@ export default function MaterialsReportPage() {
 
   // Column hover popup (QTY ORDERED / LOWEST PRICE / TOTAL SPENT)
   const [hoveredMatKey, setHoveredMatKey] = useState<string | null>(null);
-  const [hoveredMatCol, setHoveredMatCol] = useState<"qty" | "lowest_price" | "total_spent" | null>(null);
+  const [hoveredMatCol, setHoveredMatCol] = useState<
+    "qty" | "lowest_price" | "total_spent" | null
+  >(null);
   const [matPopupRect, setMatPopupRect] = useState<DOMRect | null>(null);
   const matHideTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -536,7 +544,9 @@ export default function MaterialsReportPage() {
 
   // ── Fetch category hierarchy once on mount ─────────────────────────────────
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`)
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
+    )
       .then((r) => r.json())
       .then((d) => setCategoryHierarchy(Array.isArray(d) ? d : []))
       .catch(console.error);
@@ -884,7 +894,9 @@ export default function MaterialsReportPage() {
                 }}
               >
                 {chartData.map((item, i) => {
-                  const isActive = filters.selectedCategories.includes(item.name);
+                  const isActive = filters.selectedCategories.includes(
+                    item.name,
+                  );
                   return (
                     <div
                       key={i}
@@ -1220,7 +1232,10 @@ export default function MaterialsReportPage() {
                             className="manager-checkbox"
                             checked={selectedKeys.has(rowKey)}
                             onChange={() => toggleKey(rowKey)}
-                            style={{ cursor: "pointer", accentColor: "#10b981" }}
+                            style={{
+                              cursor: "pointer",
+                              accentColor: "#10b981",
+                            }}
                           />
                         </td>
                         <td>{rowNum}</td>
@@ -1254,7 +1269,9 @@ export default function MaterialsReportPage() {
                             setHoveredMatKey(rowKey);
                             setHoveredMatCol("qty");
                             setMatPopupRect(
-                              (e.currentTarget as HTMLElement).getBoundingClientRect(),
+                              (
+                                e.currentTarget as HTMLElement
+                              ).getBoundingClientRect(),
                             );
                           }}
                           onMouseLeave={startMatHideTimer}
@@ -1286,7 +1303,9 @@ export default function MaterialsReportPage() {
                             setHoveredMatKey(rowKey);
                             setHoveredMatCol("lowest_price");
                             setMatPopupRect(
-                              (e.currentTarget as HTMLElement).getBoundingClientRect(),
+                              (
+                                e.currentTarget as HTMLElement
+                              ).getBoundingClientRect(),
                             );
                           }}
                           onMouseLeave={startMatHideTimer}
@@ -1303,7 +1322,9 @@ export default function MaterialsReportPage() {
                             setHoveredMatKey(rowKey);
                             setHoveredMatCol("total_spent");
                             setMatPopupRect(
-                              (e.currentTarget as HTMLElement).getBoundingClientRect(),
+                              (
+                                e.currentTarget as HTMLElement
+                              ).getBoundingClientRect(),
                             );
                           }}
                           onMouseLeave={startMatHideTimer}
@@ -1476,7 +1497,10 @@ export default function MaterialsReportPage() {
                   </thead>
                   <tbody>
                     {material.lpo_details.map(
-                      ({ mr_header_id, lpo_id, qty, unit_price, total_price }, idx) => (
+                      (
+                        { mr_header_id, lpo_id, qty, unit_price, total_price },
+                        idx,
+                      ) => (
                         <tr key={idx}>
                           <td style={{ whiteSpace: "nowrap" }}>
                             MR-{String(mr_header_id).padStart(5, "0")}

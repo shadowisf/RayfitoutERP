@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import Button from "./Button";
 
@@ -63,7 +63,7 @@ export default function MultiSelectDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredOption, setHoveredOption] = useState<string | number | null>(
-    null
+    null,
   );
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [dropdownPosition, setDropdownPosition] = useState({
@@ -73,15 +73,53 @@ export default function MultiSelectDropdown({
   });
   const [isMounted, setIsMounted] = useState(false);
 
+  const [containerWidth, setContainerWidth] = useState(0);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dropdownId = useRef(
-    `dropdown-${Math.random().toString(36).substr(2, 9)}`
+    `dropdown-${Math.random().toString(36).substr(2, 9)}`,
   );
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setContainerWidth(el.getBoundingClientRect().width);
+    const observer = new ResizeObserver(() => {
+      setContainerWidth(el.getBoundingClientRect().width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  function truncateToFit(text: string, availableWidth: number): string {
+    if (typeof document === "undefined" || availableWidth <= 0) return text;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return text;
+    ctx.font = "600 12px Mont, sans-serif";
+    if (ctx.measureText(text).width <= availableWidth) return text;
+    const ellipsis = "…";
+    const ellipsisWidth = ctx.measureText(ellipsis).width;
+    let lo = 0,
+      hi = text.length;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi + 1) / 2);
+      if (
+        ctx.measureText(text.slice(0, mid)).width + ellipsisWidth <=
+        availableWidth
+      ) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return text.slice(0, lo) + ellipsis;
+  }
 
   function getOptions(): OptionType[] {
     if (selectOptions) {
@@ -112,7 +150,7 @@ export default function MultiSelectDropdown({
   const options = getOptions();
 
   const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(searchQuery.toLowerCase())
+    option.label.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   // Group options by category and subcategory if categorized
@@ -163,7 +201,7 @@ export default function MultiSelectDropdown({
 
       const clickedElement = target as HTMLElement;
       const isOnAnotherDropdown = clickedElement.closest(
-        ".select-dropdown-portal"
+        ".select-dropdown-portal",
       );
       const isOnModal =
         clickedElement.closest(".form-popup-overlay") ||
@@ -252,7 +290,7 @@ export default function MultiSelectDropdown({
 
   function handleMouseEnter(
     optionId: string | number,
-    event: React.MouseEvent<HTMLDivElement>
+    event: React.MouseEvent<HTMLDivElement>,
   ) {
     setHoveredOption(optionId);
     const rect = event.currentTarget.getBoundingClientRect();
@@ -278,13 +316,15 @@ export default function MultiSelectDropdown({
       })
       .filter((label) => label !== "");
 
-    return selectedLabels.join(", ");
+    const joined = selectedLabels.join(", ");
+    // Reserve: 7px left pad + 20px native chevron + 20px × button + 18px gap = 65px
+    return truncateToFit(joined, containerWidth - 75);
   }
 
   const displayText = getDisplayText();
   const isPlaceholder = selectedValues.length === 0;
   const hoveredOptionData = options.find(
-    (option) => option.id === hoveredOption
+    (option) => option.id === hoveredOption,
   );
 
   const dropdownContent = isOpen && (
@@ -447,7 +487,7 @@ export default function MultiSelectDropdown({
                         );
                       })}
                     </div>
-                  )
+                  ),
                 )}
               </div>
             ))
