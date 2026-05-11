@@ -12,7 +12,8 @@ import {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Transaction = {
-  id: number;
+  lpo_id: number;
+  payment_entry_id: number | null;
   mr_header_id: number;
   display_id: string;
   vendor_name: string;
@@ -20,8 +21,9 @@ type Transaction = {
   requester: string;
   project_name: string;
   total: number;
-  paid_at: string | null;
+  payment_date: string | null;
   created_at: string;
+  payment_file: string | null;
   material_categories: string[];
 };
 
@@ -42,9 +44,9 @@ function buildDateLabel(rows: Transaction[]): string {
       year: "numeric",
     });
 
-  // Only use actual paid_at values — ignore rows with no payment date
+  // Only use actual payment_date values — ignore rows with no payment date
   const timestamps = rows
-    .map((r) => r.paid_at)
+    .map((r) => r.payment_date)
     .filter(Boolean)
     .map((d) => new Date(d!).getTime());
 
@@ -81,7 +83,7 @@ export default function DownloadTransactionsButton({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const selectedRows = allRows.filter((r) => selectedIds.has(r.id));
+  const selectedRows = allRows.filter((r) => selectedIds.has(r.lpo_id));
   const selectedCount = selectedRows.length;
 
   const handleDownload = async (mode: "all" | "selected") => {

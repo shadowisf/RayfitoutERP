@@ -25,8 +25,9 @@ export async function GET() {
             IN ('approved','paid','fully paid','completed','done')
           OR (l.total > 0 AND ROUND(COALESCE(pay.total_paid, 0), 2) >= ROUND(l.total, 2))
         )
-        -- Exclude credit suppliers unless their payment is due today or overdue
-        AND (
+        -- Only count cash suppliers (credit LPO overdue counting commented out for now)
+        AND LOWER(TRIM(IFNULL(s.type, ''))) != 'credit'
+        /* AND (
           LOWER(TRIM(IFNULL(s.type, ''))) != 'credit'
           OR DATE_ADD(
                l.created_at,
@@ -36,7 +37,7 @@ export async function GET() {
                  0
                ) DAY
              ) <= CURDATE()
-        )
+        ) */
     `);
 
     return NextResponse.json(
