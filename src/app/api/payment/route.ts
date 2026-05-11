@@ -52,10 +52,10 @@ export async function POST(request: NextRequest) {
           GROUP BY lpo_id
         ) pay ON pay.lpo_id = l.id
         WHERE l.mr_header_id = ?
-          AND l.progress_id NOT IN (13, 25)
+          AND l.progress_id NOT IN (13)
           AND LOWER(IFNULL(l.payment_status, ''))
               NOT IN ('approved','paid','fully paid','completed','done')
-          AND NOT (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)
+          AND NOT (l.total > 0 AND ROUND(COALESCE(pay.total_paid, 0), 2) >= ROUND(l.total, 2))
         ORDER BY l.id ASC`,
         [mrHeaderId],
       );

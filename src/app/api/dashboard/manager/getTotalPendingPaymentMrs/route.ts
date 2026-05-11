@@ -10,13 +10,25 @@ const lpoPaymentsJoin = `
   ) pay ON pay.lpo_id = l.id
 `;
 
-// Same filter logic as the payments page kanban — excludes fully-paid LPOs.
-// l.progress_id > 14 matches getPaymentKanban and getUnpaidCount exactly.
+// Shared JOIN for suppliers — needed for type breakdown and outstanding calc
+const suppliersJoin = `
+  JOIN suppliers s ON s.id = l.supplier_id
+`;
+
+// Mirrors getPaymentList exactly:
+//  • mh.progress_id = 26  → MR is fully approved
+//  • l.progress_id > 14   → LPO is past initial stages
+//  • NOT IS_PAID_EXPR      → excludes fully-paid LPOs (payment_status string
+//                            OR lpo_payments total >= LPO total, with ROUND
+//                            to avoid floating-point drift)
 const pendingPaymentFilter = `
   mh.progress_id = 26
   AND l.progress_id > 14
-  AND LOWER(IFNULL(l.payment_status, '')) NOT IN ('approved','paid','fully paid','completed','done')
-  AND NOT (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)
+  AND NOT (
+    LOWER(TRIM(IFNULL(l.payment_status, '')))
+      IN ('approved','paid','fully paid','completed','done')
+    OR (l.total > 0 AND ROUND(COALESCE(pay.total_paid, 0), 2) >= ROUND(l.total, 2))
+  )
 `;
 
 export async function POST(request: Request) {
@@ -43,7 +55,7 @@ export async function POST(request: Request) {
         ? `AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL ${filter} DAY)`
         : "";
 
-    // ── Count (all-time or period comparison) ──────────────────────────
+    // ── Count + outstanding (all-time or period comparison) ────────────
     let thisWeekCount = 0;
     let lastWeekCount = 0;
     let totalOutstanding = 0;
@@ -54,6 +66,7 @@ export async function POST(request: Request) {
                SUM(GREATEST(l.total - COALESCE(pay.total_paid, 0), 0)) AS outstanding
         FROM lpo l
         JOIN mr_headers mh ON mh.id = l.mr_header_id
+        ${suppliersJoin}
         ${lpoPaymentsJoin}
         WHERE ${pendingPaymentFilter}
       `);
@@ -69,6 +82,7 @@ export async function POST(request: Request) {
           SUM(GREATEST(l.total - COALESCE(pay.total_paid, 0), 0))                                                                                           AS outstanding
         FROM lpo l
         JOIN mr_headers mh ON mh.id = l.mr_header_id
+        ${suppliersJoin}
         ${lpoPaymentsJoin}
         WHERE ${pendingPaymentFilter}
         `,
@@ -84,8 +98,8 @@ export async function POST(request: Request) {
       `
       SELECT l.id AS lpo_id, l.mr_header_id, l.total, s.name AS supplier_name
       FROM lpo l
-      JOIN suppliers s ON s.id = l.supplier_id
       JOIN mr_headers mh ON mh.id = l.mr_header_id
+      ${suppliersJoin}
       ${lpoPaymentsJoin}
       WHERE ${pendingPaymentFilter}
       ${dateClause}
@@ -108,7 +122,7 @@ export async function POST(request: Request) {
       SELECT s.type AS supplier_type, COUNT(*) AS lpo_count
       FROM lpo l
       JOIN mr_headers mh ON mh.id = l.mr_header_id
-      JOIN suppliers s ON s.id = l.supplier_id
+      ${suppliersJoin}
       ${lpoPaymentsJoin}
       WHERE ${pendingPaymentFilter}
       ${dateClause}
@@ -127,6 +141,7 @@ export async function POST(request: Request) {
       SELECT p.name AS project_name, COUNT(*) AS mr_count
       FROM lpo l
       JOIN mr_headers mh ON mh.id = l.mr_header_id
+      ${suppliersJoin}
       ${lpoPaymentsJoin}
       LEFT JOIN projects p ON p.id = l.project_id
       WHERE ${pendingPaymentFilter}
@@ -144,7 +159,7 @@ export async function POST(request: Request) {
              SUM(GREATEST(l.total - COALESCE(pay.total_paid, 0), 0)) AS outstanding
       FROM lpo l
       JOIN mr_headers mh ON mh.id = l.mr_header_id
-      JOIN suppliers s ON s.id = l.supplier_id
+      ${suppliersJoin}
       ${lpoPaymentsJoin}
       WHERE ${pendingPaymentFilter}
       ${dateClause}
@@ -160,6 +175,7 @@ export async function POST(request: Request) {
       SELECT MIN(l.created_at) AS earliest, MAX(l.created_at) AS latest
       FROM lpo l
       JOIN mr_headers mh ON mh.id = l.mr_header_id
+      ${suppliersJoin}
       ${lpoPaymentsJoin}
       WHERE ${pendingPaymentFilter}
       ${dateClause}

@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 // Shared helper expression — true when an LPO is considered fully paid.
-// Priority: payment_status (TRIM + LOWER to handle stray whitespace/casing),
-//           then fall back to lpo_payments total vs. LPO face value.
+// Checks payment_status string (legacy / manual overrides) and
+// lpo_payments total vs. LPO face value.
+// NOTE: progress_id = 25 (Completed) is NOT treated as paid here —
+// a completed LPO may still be awaiting payment.
 const IS_PAID_EXPR = `(
   LOWER(TRIM(IFNULL(l.payment_status, '')))
     IN ('approved','paid','fully paid','completed','done')
-  OR (l.total > 0 AND COALESCE(pay.total_paid, 0) >= l.total)
+  OR (l.total > 0 AND ROUND(COALESCE(pay.total_paid, 0), 2) >= ROUND(l.total, 2))
 )`;
 
 export async function GET() {
@@ -61,7 +63,7 @@ export async function GET() {
 
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {
-    console.error("getPaymentKanban error:", err.sqlMessage || err.message);
+    console.error("getPaymentList error:", err.sqlMessage || err.message);
     return NextResponse.json({ error: err.sqlMessage || err.message }, { status: 500 });
   }
 }
