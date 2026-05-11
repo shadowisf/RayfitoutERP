@@ -11,16 +11,19 @@ import DownloadTransactionsButton from "./components/_DownloadTransactionsButton
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Transaction = {
-  id: number;
+  lpo_id: number;
+  payment_entry_id: number | null;
   mr_header_id: number;
   display_id: string;
   vendor_name: string;
   vendor_type: string;
   requester: string;
   project_name: string;
+  payment_status: string | null;
   total: number;
-  paid_at: string | null;
+  payment_date: string | null;
   created_at: string;
+  payment_file: string | null;
   material_categories: string[];
 };
 
@@ -174,8 +177,8 @@ export default function AllTransactionsPage() {
 
     return data.filter((row) => {
       if (dateRange.start || dateRange.end) {
-        if (!row.paid_at) return false;
-        const rowDate = new Date(row.paid_at);
+        if (!row.payment_date) return false;
+        const rowDate = new Date(row.payment_date);
         const rangeStart = dateRange.start;
         const rangeEnd = dateRange.end
           ? dateRange.end
@@ -238,7 +241,7 @@ export default function AllTransactionsPage() {
       if (aVal == null) return 1;
       if (bVal == null) return -1;
       let cmp: number;
-      if (sortCol === "paid_at") {
+      if (sortCol === "payment_date") {
         cmp =
           new Date(aVal as string).getTime() -
           new Date(bVal as string).getTime();
@@ -301,13 +304,13 @@ export default function AllTransactionsPage() {
 
   // ── Checkbox helpers ──────────────────────────────────────────────────────
   const allFilteredIds = useMemo(
-    () => new Set(sorted.map((r) => r.id)),
+    () => new Set(sorted.map((r) => r.lpo_id)),
     [sorted],
   );
   const allSelected =
-    sorted.length > 0 && sorted.every((r) => selectedIds.has(r.id));
+    sorted.length > 0 && sorted.every((r) => selectedIds.has(r.lpo_id));
   const someSelected =
-    !allSelected && sorted.some((r) => selectedIds.has(r.id));
+    !allSelected && sorted.some((r) => selectedIds.has(r.lpo_id));
 
   // Sync native indeterminate state on header checkbox
   useEffect(() => {
@@ -602,9 +605,10 @@ export default function AllTransactionsPage() {
               <col style={{ width: "160px" }} />
               <col />
               <col style={{ width: "200px" }} />
-              <col style={{ width: "300px" }} />
-              <col style={{ width: "200px" }} />
-              <col style={{ width: "200px" }} />
+              <col style={{ width: "250px" }} />
+              <col style={{ width: "225px" }} />
+              <col style={{ width: "180px" }} />
+              <col style={{ width: "160px" }} />
               <col style={{ width: "200px" }} />
             </colgroup>
             <thead>
@@ -632,18 +636,19 @@ export default function AllTransactionsPage() {
                 </th>
                 <th
                   style={{ cursor: "pointer", userSelect: "none" }}
-                  onClick={() => handleSort("paid_at")}
+                  onClick={() => handleSort("payment_date")}
                 >
-                  PAYMENT DATE{sortIcon("paid_at")}
+                  PAYMENT DATE{sortIcon("payment_date")}
                 </th>
+                <th>PAYMENT</th>
               </tr>
             </thead>
             <tbody>
               {paginated.map((row) => (
                 <tr
-                  key={row.id}
+                  key={`${row.lpo_id}-${row.payment_entry_id ?? "legacy"}`}
                   style={{
-                    backgroundColor: selectedIds.has(row.id)
+                    backgroundColor: selectedIds.has(row.lpo_id)
                       ? "rgba(240,250,244,1)"
                       : undefined,
                   }}
@@ -652,8 +657,8 @@ export default function AllTransactionsPage() {
                     <input
                       type="checkbox"
                       className="manager-checkbox"
-                      checked={selectedIds.has(row.id)}
-                      onChange={() => toggleRow(row.id)}
+                      checked={selectedIds.has(row.lpo_id)}
+                      onChange={() => toggleRow(row.lpo_id)}
                       style={{ cursor: "pointer", accentColor: "#10b981" }}
                     />
                   </td>
@@ -672,7 +677,7 @@ export default function AllTransactionsPage() {
                         borderColor={"rgba(223, 223, 223, 1)"}
                         textColor={"black"}
                         style={{ padding: "7px 7px" }}
-                        href={`/mr/${row.mr_header_id}/lpo/${row.id}`}
+                        href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
                         target="_blank"
                       >
                         <img src={externalLinkIcon} alt="external link" />
@@ -694,7 +699,32 @@ export default function AllTransactionsPage() {
                     <VendorTypePill type={row.vendor_type} />
                   </td>
                   <td>AED {formatAED(row.total)}</td>
-                  <td>{formatDate(row.paid_at)}</td>
+                  <td>{formatDate(row.payment_date)}</td>
+                  <td>
+                    {!row.payment_file ? (
+                      <span style={{ color: "#aaa" }}>-</span>
+                    ) : (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <Button
+                          componentType="link"
+                          bgColor="rgba(239,239,239,1)"
+                          borderColor="rgba(223,223,223,1)"
+                          textColor="black"
+                          href={row.payment_file}
+                          target="_blank"
+                          style={{ padding: "7px 7px", flexShrink: 0 }}
+                        >
+                          <img src={externalLinkIcon} alt="open" />
+                        </Button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -704,7 +734,7 @@ export default function AllTransactionsPage() {
                 <td style={{ fontWeight: "600", whiteSpace: "nowrap" }}>
                   AED {formatAED(filteredTotal)}
                 </td>
-                <td />
+                <td colSpan={2} />
               </tr>
             </tfoot>
           </table>

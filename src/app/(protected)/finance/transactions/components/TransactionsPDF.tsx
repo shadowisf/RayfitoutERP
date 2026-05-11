@@ -16,7 +16,8 @@ Font.registerHyphenationCallback((word) => [word]);
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type TransactionRow = {
-  id: number;
+  lpo_id: number;
+  payment_entry_id: number | null;
   mr_header_id: number;
   display_id: string;
   vendor_name: string;
@@ -24,8 +25,9 @@ export type TransactionRow = {
   requester: string;
   project_name: string;
   total: number;
-  paid_at: string | null;
+  payment_date: string | null;
   created_at: string;
+  payment_file: string | null;
 };
 
 type Props = {
@@ -249,7 +251,7 @@ export function TransactionsPDF({
                     : "-"}
                 </Text>
                 <Text style={styles.colAmount}>{formatAED(tx.total)}</Text>
-                <Text style={styles.colDate}>{formatDate(tx.paid_at)}</Text>
+                <Text style={styles.colDate}>{formatDate(tx.payment_date)}</Text>
               </View>
             );
           })}

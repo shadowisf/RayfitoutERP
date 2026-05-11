@@ -256,6 +256,8 @@ export default function MR() {
   useEffect(() => {
     if (lpoCards.length === 0) return;
 
+    const controller = new AbortController();
+
     const fetchLpoDurations = async () => {
       const durationsMap: {
         [key: string]: { duration: string; hoursDecimal: number; style: any };
@@ -273,6 +275,7 @@ export default function MR() {
                   lpo_id: lpoCard.id,
                   progress_id: lpoCard.progress_id,
                 }),
+                signal: controller.signal,
               },
             );
             const data = await res.json();
@@ -327,7 +330,9 @@ export default function MR() {
               hoursDecimal,
               style: durationStyle,
             };
-          } catch (err) {
+          } catch (err: any) {
+            // Silently ignore aborts (navigation away mid-fetch)
+            if (err?.name === "AbortError") return;
             console.error(
               `Error fetching duration for LPO ${lpoCard.id}:`,
               err,
@@ -344,14 +349,21 @@ export default function MR() {
         }),
       );
 
-      setLpoDurations(durationsMap);
+      // Don't update state if the effect was cleaned up
+      if (!controller.signal.aborted) {
+        setLpoDurations(durationsMap);
+      }
     };
 
     fetchLpoDurations();
+
+    return () => controller.abort();
   }, [lpoCards]);
 
   useEffect(() => {
     if (mrHeaders.length === 0) return;
+
+    const controller = new AbortController();
 
     const fetchDurations = async () => {
       const durationsMap: {
@@ -370,6 +382,7 @@ export default function MR() {
                   mr_header_id: mr.id,
                   progress_id: mr.progress_id,
                 }),
+                signal: controller.signal,
               },
             );
             const data = await res.json();
@@ -424,7 +437,9 @@ export default function MR() {
               hoursDecimal,
               style: durationStyle,
             };
-          } catch (err) {
+          } catch (err: any) {
+            // Silently ignore aborts (navigation away mid-fetch)
+            if (err?.name === "AbortError") return;
             console.error(`Error fetching duration for MR ${mr.id}:`, err);
             durationsMap[`${mr.id}-${mr.progress_id}`] = {
               duration: "0m",
@@ -438,10 +453,15 @@ export default function MR() {
         }),
       );
 
-      setMrDurations(durationsMap);
+      // Don't update state if the effect was cleaned up
+      if (!controller.signal.aborted) {
+        setMrDurations(durationsMap);
+      }
     };
 
     fetchDurations();
+
+    return () => controller.abort();
   }, [mrHeaders]);
 
   const progressToResponsibleDepartment: { [key: number]: number } = {

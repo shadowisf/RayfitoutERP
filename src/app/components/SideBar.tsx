@@ -176,6 +176,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       path: "/payment",
       icon: "/icons/payment-black.svg",
       count: paymentUnpaidCount,
+      visibleTo: [8, 16, 9, 10],
     },
     /* {
       label: "Local Purchase Orders",

@@ -574,16 +574,19 @@ export default function NewMrButton() {
             </div>
           </div>
 
-          {mode === "material" && (
-            <div className="input-row full">
-              <InputItem
-                label="REQUESTED FOR"
-                value={requestedFor}
-                type="text"
-                onChange={(e) => setRequestedFor(e.target.value as string)}
-              />
-            </div>
-          )}
+          {mode === "material" &&
+            (userInfo?.departmentID === 8 ||
+              userInfo?.departmentID === 16 ||
+              userInfo?.departmentID === 9) && (
+              <div className="input-row full">
+                <InputItem
+                  label="REQUESTED FOR"
+                  value={requestedFor}
+                  type="text"
+                  onChange={(e) => setRequestedFor(e.target.value as string)}
+                />
+              </div>
+            )}
 
           {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) &&
             mode === "material" && (
