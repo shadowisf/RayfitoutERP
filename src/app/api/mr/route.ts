@@ -672,9 +672,22 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitForInitialApproval") {
-      // PRs go through Manager Approval (3); JOs and MRs go to QS Review (2) first, then Quotations (7)
       const isPaymentType = body.type === "payment";
-      const nextProgressId = isPaymentType ? 3 : 2;
+      const fromProgress = Number(body.from_progress_id) || 1;
+
+      // Stage routing:
+      //   Payment (any stage)  → 3 (Manager Approval)
+      //   JO/MR from stage 1   → 2 (QS Review)
+      //   JO from stage 2      → 3 (Manager Review after QS)
+      //   MR from stage 2      → 7 (Quotations, skip manager review)
+      let nextProgressId: number;
+      if (isPaymentType) {
+        nextProgressId = 3;
+      } else if (fromProgress === 2) {
+        nextProgressId = body.type === "job" ? 3 : 7;
+      } else {
+        nextProgressId = 2;
+      }
 
       await db.query(
         `UPDATE mr_headers SET progress_id = ? WHERE id = ?`,
@@ -683,7 +696,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, ?, ?, ?)`,
-        [body.id, nextProgressId, body.from_progress_id || 1, body.changed_by],
+        [body.id, nextProgressId, fromProgress, body.changed_by],
       );
 
       // Create a single consolidated replacement note for all replaced lines
@@ -736,8 +749,50 @@ export async function PUT(req: Request) {
             `Your ${formattedId} is awaiting manager approval`,
           ],
         );
+      } else if (fromProgress === 2 && body.type === "job") {
+        // JO: QS review complete → notify manager for review
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            8,
+            "Manager Review Required",
+            `${formattedId} has completed QS review and is awaiting your approval`,
+          ],
+        );
+
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            body.department_id,
+            `${prefix} QS Review Complete`,
+            `Your ${formattedId} has passed QS review`,
+          ],
+        );
+      } else if (fromProgress === 2) {
+        // MR: QS review complete → notify Procurement for quotations
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            9,
+            "Quotations Required",
+            `${formattedId} is awaiting quotations`,
+          ],
+        );
+
+        await db.query(
+          `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
+          [
+            body.id,
+            body.department_id,
+            `${prefix} QS Review Complete`,
+            `Your ${formattedId} has passed QS review and is awaiting quotations`,
+          ],
+        );
       } else if (body.type === "job") {
-        // JO: notify QS for review
+        // JO initial submit (1 → 2): notify QS for review
         await db.query(
           `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
           [
@@ -758,13 +813,13 @@ export async function PUT(req: Request) {
           ],
         );
       } else {
-        // MR: notify Procurement directly
+        // MR initial submit (1 → 2): notify QS for review
         await db.query(
           `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
           [
             body.id,
-            9,
-            "Quotations Required",
+            16,
+            "QS Review Required",
             `${formattedId} is awaiting your review`,
           ],
         );
@@ -775,7 +830,7 @@ export async function PUT(req: Request) {
             body.id,
             body.department_id,
             `${prefix} Submitted`,
-            `Your ${formattedId} is awaiting quotations`,
+            `Your ${formattedId} is awaiting QS review`,
           ],
         );
       }
