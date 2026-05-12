@@ -1,5 +1,5 @@
 import Button from "@/app/components/Button";
-import { MrHeader } from "../../../mr/[id]/types/mrHeader";
+import { MrHeader } from "../../../../mr/[id]/types/mrHeader";
 import FinanceDetailClient from "./components/MrPaymentDetailClient";
 
 export default async function PaymentWithID({
@@ -71,7 +71,7 @@ export default async function PaymentWithID({
     <div className="dashboard">
       {/* ── Breadcrumb — full width ────────────────────────────────────────── */}
       <h1 style={{ marginBottom: "25px" }}>
-        <a href="/payment">PAYMENTS</a> &gt; MR-
+        <a href="/payment">PAYMENTS</a> &gt; <a href="/payment/cash">CASH</a> &gt; MR-
         {String(mrHeader.id).padStart(5, "0")}
       </h1>
 

@@ -289,10 +289,7 @@ export default function EditMrItemButton({
         body: JSON.stringify({
           action: "updateAll",
           id: Number(item.id),
-          changed_by:
-            userInfo?.name && userInfo?.role
-              ? `${userInfo.name}, ${userInfo.role}`
-              : userInfo?.name || null,
+          changed_by: userInfo?.name || null,
           stage_name: stageName || "INITIAL APPROVAL",
           boq_line_ids: boqLineIDs,
           material_category_id: Number(selectedRow.categoryId),
@@ -506,7 +503,7 @@ export default function EditMrItemButton({
                     <tr>
                       <td>1</td>
                       <td>
-                        <SingleSelectDropdown
+                        {/* <SingleSelectDropdown
                           label=""
                           noLabel
                           dbData={categoryValues}
@@ -514,10 +511,11 @@ export default function EditMrItemButton({
                           onChange={handleCategoryChange}
                           placeholder="SELECT CATEGORY"
                           style={{ width: "200px" }}
-                        />
+                        /> */}
+                        <span>{item.material_category || "—"}</span>
                       </td>
                       <td>
-                        <SingleSelectDropdown
+                        {/* <SingleSelectDropdown
                           label=""
                           noLabel
                           dbData={subcategoryValues}
@@ -531,10 +529,11 @@ export default function EditMrItemButton({
                           }
                           placeholder="SELECT SUBCATEGORY"
                           style={{ width: "200px" }}
-                        />
+                        /> */}
+                        <span>{item.material_subcategory || "—"}</span>
                       </td>
                       <td>
-                        <InputItem
+                        {/* <InputItem
                           label=""
                           value={selectedRow.materialDescription}
                           type="text"
@@ -551,7 +550,8 @@ export default function EditMrItemButton({
                                 : prev,
                             )
                           }
-                        />
+                        /> */}
+                        <span>{item.material_description || "—"}</span>
                       </td>
 
                       <td>

@@ -142,11 +142,17 @@ export default function MrLinesView({
     Record<number, { min: number; max: number }>
   >({});
 
-  // ── Lowest price hover popup ───────────────────────────────────────────────
+  // ── Price hover popups (lowest & prev) ────────────────────────────────────
+  type PriceHoverRow = { lpo_id: number; mr_header_id: number; project_name: string; vendor_name: string; unit_price: number };
   const [hoveredLowestDesc, setHoveredLowestDesc] = useState<string | null>(null);
   const [hoveredLowestRect, setHoveredLowestRect] = useState<DOMRect | null>(null);
-  const [lpoHistoryCache, setLpoHistoryCache] = useState<Record<string, any[] | "loading">>({});
+  const [hoveredPrevDesc, setHoveredPrevDesc] = useState<string | null>(null);
+  const [hoveredPrevRect, setHoveredPrevRect] = useState<DOMRect | null>(null);
+  const [priceHoverCache, setPriceHoverCache] = useState<
+    Record<string, { lowest?: PriceHoverRow | "loading" | null; prev?: PriceHoverRow | "loading" | null }>
+  >({});
   const lowestHideTimer = useRef<NodeJS.Timeout | null>(null);
+  const prevHideTimer = useRef<NodeJS.Timeout | null>(null);
 
   const startLowestHideTimer = useCallback(() => {
     if (lowestHideTimer.current) clearTimeout(lowestHideTimer.current);
@@ -157,37 +163,69 @@ export default function MrLinesView({
   }, []);
 
   const cancelLowestHideTimer = useCallback(() => {
-    if (lowestHideTimer.current) {
-      clearTimeout(lowestHideTimer.current);
-      lowestHideTimer.current = null;
-    }
+    if (lowestHideTimer.current) { clearTimeout(lowestHideTimer.current); lowestHideTimer.current = null; }
   }, []);
 
+  const startPrevHideTimer = useCallback(() => {
+    if (prevHideTimer.current) clearTimeout(prevHideTimer.current);
+    prevHideTimer.current = setTimeout(() => {
+      setHoveredPrevDesc(null);
+      setHoveredPrevRect(null);
+    }, 120);
+  }, []);
+
+  const cancelPrevHideTimer = useCallback(() => {
+    if (prevHideTimer.current) { clearTimeout(prevHideTimer.current); prevHideTimer.current = null; }
+  }, []);
+
+  const fetchPriceHoverDetail = useCallback(
+    async (materialDesc: string, type: "lowest" | "prev") => {
+      if (priceHoverCache[materialDesc]?.[type] !== undefined) return;
+      setPriceHoverCache((prev) => ({
+        ...prev,
+        [materialDesc]: { ...prev[materialDesc], [type]: "loading" },
+      }));
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialPriceHoverDetail?material=${encodeURIComponent(materialDesc)}&type=${type}`,
+        );
+        const data = res.ok ? await res.json() : null;
+        setPriceHoverCache((prev) => ({
+          ...prev,
+          [materialDesc]: { ...prev[materialDesc], [type]: data },
+        }));
+      } catch {
+        setPriceHoverCache((prev) => ({
+          ...prev,
+          [materialDesc]: { ...prev[materialDesc], [type]: null },
+        }));
+      }
+    },
+    [priceHoverCache],
+  );
+
   const handleLowestPriceEnter = useCallback(
-    async (e: React.MouseEvent, materialDesc: string) => {
+    (e: React.MouseEvent, materialDesc: string) => {
       const stats = materialPriceStats[materialDesc];
       if (!stats?.lowest_price) return;
       cancelLowestHideTimer();
       setHoveredLowestDesc(materialDesc);
-      setHoveredLowestRect(
-        (e.currentTarget as HTMLElement).getBoundingClientRect(),
-      );
-      if (lpoHistoryCache[materialDesc]) return;
-      setLpoHistoryCache((prev) => ({ ...prev, [materialDesc]: "loading" }));
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialLPOHistory?material=${encodeURIComponent(materialDesc)}`,
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setLpoHistoryCache((prev) => ({ ...prev, [materialDesc]: data }));
-        }
-      } catch (err) {
-        console.error("Failed to fetch LPO history:", err);
-        setLpoHistoryCache((prev) => ({ ...prev, [materialDesc]: [] }));
-      }
+      setHoveredLowestRect((e.currentTarget as HTMLElement).getBoundingClientRect());
+      fetchPriceHoverDetail(materialDesc, "lowest");
     },
-    [materialPriceStats, lpoHistoryCache, cancelLowestHideTimer],
+    [materialPriceStats, cancelLowestHideTimer, fetchPriceHoverDetail],
+  );
+
+  const handlePrevPriceEnter = useCallback(
+    (e: React.MouseEvent, materialDesc: string) => {
+      const stats = materialPriceStats[materialDesc];
+      if (!stats?.prev_price) return;
+      cancelPrevHideTimer();
+      setHoveredPrevDesc(materialDesc);
+      setHoveredPrevRect((e.currentTarget as HTMLElement).getBoundingClientRect());
+      fetchPriceHoverDetail(materialDesc, "prev");
+    },
+    [materialPriceStats, cancelPrevHideTimer, fetchPriceHoverDetail],
   );
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -420,8 +458,8 @@ export default function MrLinesView({
     // ACTIONS columns before price (progress 1, 5, 11, 3, 2 — mostly not at >= 10 except 11)
     if (pid === 11 && dept === mrHeader.department_id) count += 1; // ACTIONS
     if (pid === 11 && dept === 9) count += 1; // ACTIONS
-    // VENDOR & QUOTATION (progress >= 10 and !== 11)
-    if (pid >= 10 && pid !== 11) count += 1;
+    // VENDOR & QUOTATION (progress >= 10 except pid 11; at pid 11 only dept 8)
+    if (pid >= 10 && (pid !== 11 || dept === 8)) count += 1;
     return count;
   })();
 
@@ -2621,10 +2659,11 @@ export default function MrLinesView({
         {showByItem &&
           (activeCategory === "ALL"
             ? Object.entries(regroupedMrLines).map(
-                ([category, subCategoriesData], categoryIndex) =>
+                ([category, subCategoriesData], categoryIndex, allCategories) =>
                   Object.entries(subCategoriesData).map(function (
                     [subCategory, suppliers],
                     subCategoryIndex,
+                    allSubCategories,
                   ) {
                     const allItems = getAllItemsInSubCategory(suppliers);
                     const firstItem = allItems[0];
@@ -2683,7 +2722,7 @@ export default function MrLinesView({
                         <br />
 
                         {Object.entries(suppliers).map(
-                          ([supplier, items], supplierIndex) => (
+                          ([supplier, items], supplierIndex, allSuppliers) => (
                             <div
                               key={supplier}
                               style={{ marginBottom: "2rem" }}
@@ -2866,7 +2905,8 @@ export default function MrLinesView({
                                         </th>
                                       )}
                                     {mrHeader.progress_id >= 10 &&
-                                      mrHeader.progress_id !== 11 &&
+                                      (mrHeader.progress_id !== 11 ||
+                                        userInfo?.departmentID === 8) &&
                                       !isManagerPriceApproval && (
                                         <th style={{ width: "160px" }}>
                                           <span>VENDOR & QUOTATION</span>
@@ -3439,7 +3479,11 @@ export default function MrLinesView({
                                                       color:
                                                         "rgba(37,150,190,1)",
                                                       fontWeight: 600,
-                                                      cursor: stats?.lowest_price != null ? "default" : undefined,
+                                                      cursor:
+                                                        stats?.lowest_price !=
+                                                        null
+                                                          ? "default"
+                                                          : undefined,
                                                     }}
                                                     onMouseEnter={(e) =>
                                                       handleLowestPriceEnter(
@@ -3467,7 +3511,15 @@ export default function MrLinesView({
                                                       color:
                                                         "rgba(37,150,190,1)",
                                                       fontWeight: 600,
+                                                      cursor: stats?.prev_price != null ? "default" : undefined,
                                                     }}
+                                                    onMouseEnter={(e) =>
+                                                      handlePrevPriceEnter(
+                                                        e,
+                                                        item.material_description,
+                                                      )
+                                                    }
+                                                    onMouseLeave={startPrevHideTimer}
                                                   >
                                                     {fmt(stats?.prev_price)}
                                                   </td>
@@ -3634,7 +3686,11 @@ export default function MrLinesView({
                                                       color:
                                                         "rgba(37,150,190,1)",
                                                       fontWeight: 600,
-                                                      cursor: stats?.lowest_price != null ? "default" : undefined,
+                                                      cursor:
+                                                        stats?.lowest_price !=
+                                                        null
+                                                          ? "default"
+                                                          : undefined,
                                                     }}
                                                     onMouseEnter={(e) =>
                                                       handleLowestPriceEnter(
@@ -3662,7 +3718,15 @@ export default function MrLinesView({
                                                       color:
                                                         "rgba(37,150,190,1)",
                                                       fontWeight: 600,
+                                                      cursor: stats?.prev_price != null ? "default" : undefined,
                                                     }}
+                                                    onMouseEnter={(e) =>
+                                                      handlePrevPriceEnter(
+                                                        e,
+                                                        item.material_description,
+                                                      )
+                                                    }
+                                                    onMouseLeave={startPrevHideTimer}
                                                   >
                                                     {fmt(stats?.prev_price)}
                                                   </td>
@@ -3707,13 +3771,19 @@ export default function MrLinesView({
                                                           item.id
                                                         ];
                                                       if (!range) return "N/A";
+                                                      if (range.min === range.max) return formatPriceAED(range.min);
                                                       return `${formatPriceAED(range.min)} – ${formatPriceAED(range.max)}`;
                                                     })()}
                                                   </td>
                                                   <td>
-                                                    {item.approved_total_price != null &&
-                                                    Number(item.approved_total_price) > 0
-                                                      ? formatPriceAED(item.approved_total_price)
+                                                    {item.approved_total_price !=
+                                                      null &&
+                                                    Number(
+                                                      item.approved_total_price,
+                                                    ) > 0
+                                                      ? formatPriceAED(
+                                                          item.approved_total_price,
+                                                        )
                                                       : formatPriceAED(0)}
                                                   </td>
                                                 </>
@@ -3915,6 +3985,7 @@ export default function MrLinesView({
             : Object.entries(subCategories).map(function (
                 [subCategory, suppliers],
                 index,
+                allSubCategories,
               ) {
                 const allItems = getAllItemsInSubCategory(suppliers);
                 const firstItem = allItems[0];
@@ -3974,7 +4045,7 @@ export default function MrLinesView({
                     <br />
 
                     {Object.entries(suppliers).map(
-                      ([supplier, items], supplierIndex) => (
+                      ([supplier, items], supplierIndex, allSuppliers) => (
                         <div key={supplier} style={{ marginBottom: "2rem" }}>
                           <table className="items-table two-toned fixed-layout">
                             <thead>
@@ -4134,7 +4205,8 @@ export default function MrLinesView({
                                     <th style={{ width: "160px" }}>ACTIONS</th>
                                   )}
                                 {mrHeader.progress_id >= 10 &&
-                                  mrHeader.progress_id !== 11 &&
+                                  (mrHeader.progress_id !== 11 ||
+                                    userInfo?.departmentID === 8) &&
                                   !isManagerPriceApproval && (
                                     <th style={{ width: "160px" }}>
                                       <span>VENDOR & QUOTATION</span>
@@ -4663,7 +4735,10 @@ export default function MrLinesView({
                                                 style={{
                                                   color: "rgba(37,150,190,1)",
                                                   fontWeight: 600,
-                                                  cursor: stats?.lowest_price != null ? "default" : undefined,
+                                                  cursor:
+                                                    stats?.lowest_price != null
+                                                      ? "default"
+                                                      : undefined,
                                                 }}
                                                 onMouseEnter={(e) =>
                                                   handleLowestPriceEnter(
@@ -4689,7 +4764,15 @@ export default function MrLinesView({
                                                 style={{
                                                   color: "rgba(37,150,190,1)",
                                                   fontWeight: 600,
+                                                  cursor: stats?.prev_price != null ? "default" : undefined,
                                                 }}
+                                                onMouseEnter={(e) =>
+                                                  handlePrevPriceEnter(
+                                                    e,
+                                                    item.material_description,
+                                                  )
+                                                }
+                                                onMouseLeave={startPrevHideTimer}
                                               >
                                                 {fmt(stats?.prev_price)}
                                               </td>
@@ -4845,7 +4928,10 @@ export default function MrLinesView({
                                                 style={{
                                                   color: "rgba(37,150,190,1)",
                                                   fontWeight: 600,
-                                                  cursor: stats?.lowest_price != null ? "default" : undefined,
+                                                  cursor:
+                                                    stats?.lowest_price != null
+                                                      ? "default"
+                                                      : undefined,
                                                 }}
                                                 onMouseEnter={(e) =>
                                                   handleLowestPriceEnter(
@@ -4871,7 +4957,15 @@ export default function MrLinesView({
                                                 style={{
                                                   color: "rgba(37,150,190,1)",
                                                   fontWeight: 600,
+                                                  cursor: stats?.prev_price != null ? "default" : undefined,
                                                 }}
+                                                onMouseEnter={(e) =>
+                                                  handlePrevPriceEnter(
+                                                    e,
+                                                    item.material_description,
+                                                  )
+                                                }
+                                                onMouseLeave={startPrevHideTimer}
                                               >
                                                 {fmt(stats?.prev_price)}
                                               </td>
@@ -4916,13 +5010,19 @@ export default function MrLinesView({
                                                       item.id
                                                     ];
                                                   if (!range) return "N/A";
+                                                  if (range.min === range.max) return formatPriceAED(range.min);
                                                   return `${formatPriceAED(range.min)} – ${formatPriceAED(range.max)}`;
                                                 })()}
                                               </td>
                                               <td>
-                                                {item.approved_total_price != null &&
-                                                Number(item.approved_total_price) > 0
-                                                  ? formatPriceAED(item.approved_total_price)
+                                                {item.approved_total_price !=
+                                                  null &&
+                                                Number(
+                                                  item.approved_total_price,
+                                                ) > 0
+                                                  ? formatPriceAED(
+                                                      item.approved_total_price,
+                                                    )
                                                   : "–"}
                                               </td>
                                             </>
@@ -5049,9 +5149,7 @@ export default function MrLinesView({
                                         )}
                                       </td>
                                       {subtotalTrailingColSpan > 0 && (
-                                        <td
-                                          colSpan={subtotalTrailingColSpan}
-                                        />
+                                        <td colSpan={subtotalTrailingColSpan} />
                                       )}
                                     </tr>
                                   )}
@@ -5116,110 +5214,134 @@ export default function MrLinesView({
               }))}
 
         {showBySupplier &&
-          Object.entries(mrLinesBySupplier).map(([supplier, items], index) => (
-            <div key={supplier} className="subcategory-section">
-              <div className="subcategory-header">
-                <div
-                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
-                >
-                  <h2
+          Object.entries(mrLinesBySupplier).map(
+            ([supplier, items], index, allSuppliers) => (
+              <div key={supplier} className="subcategory-section">
+                <div className="subcategory-header">
+                  <div
                     style={{
-                      textTransform: "uppercase",
                       display: "flex",
-                      alignItems: "center",
                       gap: "10px",
+                      alignItems: "center",
                     }}
                   >
-                    {supplier}
-                  </h2>
+                    <h2
+                      style={{
+                        textTransform: "uppercase",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                      }}
+                    >
+                      {supplier}
+                    </h2>
 
-                  <SupplierDetailsPopUp
-                    item={items[0]}
-                    style={{
-                      padding: "7px 7px",
-                      backgroundColor: "rgba(239, 239, 239, 1)",
-                      borderColor: "rgba(223, 223, 223, 1)",
-                    }}
-                  >
-                    <img
-                      src={externalLinkIcon}
-                      alt="external link"
-                      style={{ width: "12px" }}
-                    />
-                  </SupplierDetailsPopUp>
+                    <SupplierDetailsPopUp
+                      item={items[0]}
+                      style={{
+                        padding: "7px 7px",
+                        backgroundColor: "rgba(239, 239, 239, 1)",
+                        borderColor: "rgba(223, 223, 223, 1)",
+                      }}
+                    >
+                      <img
+                        src={externalLinkIcon}
+                        alt="external link"
+                        style={{ width: "12px" }}
+                      />
+                    </SupplierDetailsPopUp>
 
-                  {/* LPO Progress Badge + View LPO link */}
-                  {mrHeader.progress_id >= 13 &&
-                    items[0]?.approved_supplier_id &&
-                    lpoPerSupplier[items[0].approved_supplier_id] &&
-                    (() => {
-                      const lpoInfo =
-                        lpoPerSupplier[items[0].approved_supplier_id];
-                      const isLpoRejected = ["reject", "fail"].some((word) =>
-                        lpoInfo.progressName?.toLowerCase().includes(word),
-                      );
-                      const isLpoCompleted = lpoInfo.progressId === 25;
-                      const lpoProgressStyle = isLpoRejected
-                        ? {
-                            backgroundColor: "rgba(255, 181, 181, 1)",
-                            color: "rgba(248, 77, 77, 1)",
-                          }
-                        : isLpoCompleted
+                    {/* LPO Progress Badge + View LPO link */}
+                    {mrHeader.progress_id >= 13 &&
+                      items[0]?.approved_supplier_id &&
+                      lpoPerSupplier[items[0].approved_supplier_id] &&
+                      (() => {
+                        const lpoInfo =
+                          lpoPerSupplier[items[0].approved_supplier_id];
+                        const isLpoRejected = ["reject", "fail"].some((word) =>
+                          lpoInfo.progressName?.toLowerCase().includes(word),
+                        );
+                        const isLpoCompleted = lpoInfo.progressId === 25;
+                        const lpoProgressStyle = isLpoRejected
                           ? {
-                              backgroundColor: "rgba(87, 244, 176, 1)",
-                              color: "rgba(31, 101, 71, 1)",
+                              backgroundColor: "rgba(255, 181, 181, 1)",
+                              color: "rgba(248, 77, 77, 1)",
                             }
-                          : {
-                              backgroundColor: "rgba(255, 250, 189, 1)",
-                              color: "rgba(134, 83, 47, 1)",
-                            };
+                          : isLpoCompleted
+                            ? {
+                                backgroundColor: "rgba(87, 244, 176, 1)",
+                                color: "rgba(31, 101, 71, 1)",
+                              }
+                            : {
+                                backgroundColor: "rgba(255, 250, 189, 1)",
+                                color: "rgba(134, 83, 47, 1)",
+                              };
 
-                      return (
-                        <>
-                          <span
-                            className="approval-pill normal-text"
-                            style={{
-                              ...lpoProgressStyle,
-                              textTransform: "uppercase",
-                              fontSize: "11px",
-                              padding: "4px 10px",
-                            }}
-                          >
-                            {lpoInfo.progressName}
-                          </span>
-                          <Button
-                            componentType="link"
-                            bgColor="black"
-                            borderColor="black"
-                            textColor="white"
-                            href={`/mr/${mrHeader.id}/lpo/${lpoInfo.lpoId}`}
-                            style={{
-                              padding: "5px 15px",
-                              borderRadius: "50px",
-                              fontSize: "11px",
-                              fontWeight: "600",
-                            }}
-                          >
-                            VIEW LPO &gt;
-                          </Button>
-                        </>
-                      );
-                    })()}
-                </div>
+                        return (
+                          <>
+                            <span
+                              className="approval-pill normal-text"
+                              style={{
+                                ...lpoProgressStyle,
+                                textTransform: "uppercase",
+                                fontSize: "11px",
+                                padding: "4px 10px",
+                              }}
+                            >
+                              {lpoInfo.progressName}
+                            </span>
+                            <Button
+                              componentType="link"
+                              bgColor="black"
+                              borderColor="black"
+                              textColor="white"
+                              href={`/mr/${mrHeader.id}/lpo/${lpoInfo.lpoId}`}
+                              style={{
+                                padding: "5px 15px",
+                                borderRadius: "50px",
+                                fontSize: "11px",
+                                fontWeight: "600",
+                              }}
+                            >
+                              VIEW LPO &gt;
+                            </Button>
+                          </>
+                        );
+                      })()}
+                  </div>
 
-                <div className="right">
-                  {mrHeader.progress_id === 23 &&
-                    userInfo?.departmentID === 9 && (
-                      <QCRecheckButton mrHeader={mrHeader} />
+                  <div className="right">
+                    {mrHeader.progress_id === 23 &&
+                      userInfo?.departmentID === 9 && (
+                        <QCRecheckButton mrHeader={mrHeader} />
+                      )}
+
+                    {mrHeader.progress_id >= 12 && (
+                      <IssueLPOButton mrHeader={mrHeader} mrLines={items} />
                     )}
 
-                  {mrHeader.progress_id >= 12 && (
-                    <IssueLPOButton mrHeader={mrHeader} mrLines={items} />
-                  )}
+                    {(userInfo?.departmentID === 10 ||
+                      userInfo?.departmentID === 11) &&
+                      mrHeader.progress_id === 13 && (
+                        <PaymentButtons
+                          mrHeader={mrHeader}
+                          mrLine={items[0]}
+                          supplierId={items[0].approved_supplier_id}
+                        />
+                      )}
 
-                  {(userInfo?.departmentID === 10 ||
-                    userInfo?.departmentID === 11) &&
-                    mrHeader.progress_id === 13 && (
+                    {(userInfo?.departmentID === 8 ||
+                      userInfo?.departmentID === 9) &&
+                      mrHeader.progress_id === 13 && (
+                        <PaymentButtons
+                          mrHeader={mrHeader}
+                          mrLine={items[0]}
+                          supplierId={items[0].approved_supplier_id}
+                        />
+                      )}
+
+                    {/* progress_id > 14 — payment stage (14) skipped so flow goes 12 → 17; 17 > 14 still evaluates true */}
+                    {mrHeader.progress_id > 14 && (
                       <PaymentButtons
                         mrHeader={mrHeader}
                         mrLine={items[0]}
@@ -5227,28 +5349,17 @@ export default function MrLinesView({
                       />
                     )}
 
-                  {(userInfo?.departmentID === 8 ||
-                    userInfo?.departmentID === 9) &&
-                    mrHeader.progress_id === 13 && (
-                      <PaymentButtons
-                        mrHeader={mrHeader}
-                        mrLine={items[0]}
-                        supplierId={items[0].approved_supplier_id}
-                      />
-                    )}
+                    {(mrHeader.progress_id === 16 ||
+                      mrHeader.progress_id === 17) &&
+                      userInfo?.departmentID === 11 && (
+                        <CreateGRNButton
+                          mrHeader={mrHeader}
+                          mrLines={items}
+                          progress_id={mrHeader.progress_id}
+                        />
+                      )}
 
-                  {/* progress_id > 14 — payment stage (14) skipped so flow goes 12 → 17; 17 > 14 still evaluates true */}
-                  {mrHeader.progress_id > 14 && (
-                    <PaymentButtons
-                      mrHeader={mrHeader}
-                      mrLine={items[0]}
-                      supplierId={items[0].approved_supplier_id}
-                    />
-                  )}
-
-                  {(mrHeader.progress_id === 16 ||
-                    mrHeader.progress_id === 17) &&
-                    userInfo?.departmentID === 11 && (
+                    {mrHeader.progress_id >= 18 && (
                       <CreateGRNButton
                         mrHeader={mrHeader}
                         mrLines={items}
@@ -5256,15 +5367,7 @@ export default function MrLinesView({
                       />
                     )}
 
-                  {mrHeader.progress_id >= 18 && (
-                    <CreateGRNButton
-                      mrHeader={mrHeader}
-                      mrLines={items}
-                      progress_id={mrHeader.progress_id}
-                    />
-                  )}
-
-                  {/* {(mrHeader.progress_id >= 18 ||
+                    {/* {(mrHeader.progress_id >= 18 ||
                   mrHeader.progress_id === 17 ||
                   mrHeader.progress_id === 16) &&
                   userInfo?.departmentID === 11 && (
@@ -5274,159 +5377,164 @@ export default function MrLinesView({
                       progress_id={mrHeader.progress_id}
                     />
                   )} */}
+                  </div>
                 </div>
-              </div>
 
-              <br />
+                <br />
 
-              <table className="items-table two-toned fixed-layout">
-                <thead>
-                  <tr>
-                    <th style={{ width: "40px" }}>#</th>
-                    <th style={{ width: "120px" }}>CATEGORY</th>
-                    <th style={{ width: "120px" }}>SUBCATEGORY</th>
-                    <th style={{ width: "120px" }}>ITEM</th>
-                    {mrHeader.progress_id >= 9 ? (
-                      <>
-                        <th style={{ width: "80px" }}>QTY USE</th>
-                        {hasAnyQtyStocks && (
-                          <th style={{ width: "90px" }}>QTY STOCKS</th>
-                        )}
-                        {hasAnyQtyStocks && (
-                          <th style={{ width: "80px" }}>TOTAL QTY</th>
-                        )}
-                      </>
-                    ) : (
-                      <th style={{ width: "120px" }}>REQ. QTY</th>
-                    )}
-                    <th style={{ width: "90px" }}>BOQ REF.</th>
-                    {hasAnyBrandSpecs && (
-                      <th style={{ width: "110px" }}>BRAND & SPECS</th>
-                    )}
-                    {/* {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>} */}
-                    {hasAnyAttachment && (
-                      <th style={{ width: "90px" }}>ATTACHMENT</th>
-                    )}
-                    {mrHeader.progress_id >= 10 && canSeePrice && (
-                      <th style={{ width: "100px" }}>UNIT PRICE</th>
-                    )}
-                    {mrHeader.progress_id >= 10 && canSeePrice && (
-                      <th style={{ width: "100px" }}>TOTAL PRICE</th>
-                    )}
-                    {userInfo?.departmentID === 12 &&
-                      mrHeader.progress_id === 21 && (
-                        <th style={{ width: "160px" }}>QUALITY CONTROL</th>
-                      )}
-                    {mrHeader.progress_id === 24 &&
-                      userInfo?.departmentID === 11 && (
-                        <th style={{ width: "120px" }}>STOCKS</th>
-                      )}
-                    {mrHeader.progress_id === 23 &&
-                      userInfo?.departmentID === 9 && (
-                        <th style={{ width: "140px" }}>RESOLUTION</th>
-                      )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item: MrLine, itemIndex: number) => (
-                    <tr key={item.id}>
-                      <td>{itemIndex + 1}</td>
-                      <td>{item.material_category}</td>
-                      <td>{item.material_subcategory}</td>
-                      <td>
-                        {item.material_description}
-                        {item.qs_review_type === "item_available" &&
-                          mrHeader.progress_id <= 4 &&
-                          item.linked_inventory_item_description && (
-                            <div
-                              style={{
-                                fontSize: "10px",
-                                color: "rgba(26, 216, 135, 1)",
-                                marginTop: "4px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "4px",
-                              }}
-                            >
-                              Item available:{" "}
-                              {item.linked_inventory_item_description}
-                              <img
-                                src={externalLinkIcon}
-                                alt=""
-                                style={{
-                                  width: "10px",
-                                  height: "10px",
-                                  filter:
-                                    "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
-                                }}
-                              />
-                            </div>
-                          )}
-                      </td>
+                <table className="items-table two-toned fixed-layout">
+                  <thead>
+                    <tr>
+                      <th style={{ width: "40px" }}>#</th>
+                      <th style={{ width: "120px" }}>CATEGORY</th>
+                      <th style={{ width: "120px" }}>SUBCATEGORY</th>
+                      <th style={{ width: "120px" }}>ITEM</th>
                       {mrHeader.progress_id >= 9 ? (
                         <>
-                          <td>
-                            {formatNumber(item?.quantity)} {item.unit}
-                          </td>
+                          <th style={{ width: "80px" }}>QTY USE</th>
                           {hasAnyQtyStocks && (
-                            <td>
-                              {(() => {
-                                const proposedQty =
-                                  Number(item.approved_proposed_quantity) || 0;
-                                const requestedQty = Number(item.quantity) || 0;
-                                const stockQty =
-                                  proposedQty > requestedQty
-                                    ? proposedQty - requestedQty
-                                    : 0;
-                                return stockQty > 0
-                                  ? `${formatNumber(stockQty)} ${item.unit}`
-                                  : "-";
-                              })()}
-                            </td>
+                            <th style={{ width: "90px" }}>QTY STOCKS</th>
                           )}
                           {hasAnyQtyStocks && (
-                            <td>
-                              {formatNumber(item?.approved_proposed_quantity)}{" "}
-                              {item.unit}
-                            </td>
+                            <th style={{ width: "80px" }}>TOTAL QTY</th>
                           )}
                         </>
                       ) : (
-                        <td>
-                          {formatNumber(item?.quantity)} {item.unit}
-                        </td>
+                        <th style={{ width: "120px" }}>REQ. QTY</th>
                       )}
-                      <td>
-                        {item.boq_line_ids ? (
-                          <BoqReferencePopUp item={item} mrHeader={mrHeader} />
-                        ) : (
-                          "-"
-                        )}
-                      </td>
+                      <th style={{ width: "90px" }}>BOQ REF.</th>
                       {hasAnyBrandSpecs && (
+                        <th style={{ width: "110px" }}>BRAND & SPECS</th>
+                      )}
+                      {/* {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>} */}
+                      {hasAnyAttachment && (
+                        <th style={{ width: "90px" }}>ATTACHMENT</th>
+                      )}
+                      {mrHeader.progress_id >= 10 && canSeePrice && (
+                        <th style={{ width: "100px" }}>UNIT PRICE</th>
+                      )}
+                      {mrHeader.progress_id >= 10 && canSeePrice && (
+                        <th style={{ width: "100px" }}>TOTAL PRICE</th>
+                      )}
+                      {userInfo?.departmentID === 12 &&
+                        mrHeader.progress_id === 21 && (
+                          <th style={{ width: "160px" }}>QUALITY CONTROL</th>
+                        )}
+                      {mrHeader.progress_id === 24 &&
+                        userInfo?.departmentID === 11 && (
+                          <th style={{ width: "120px" }}>STOCKS</th>
+                        )}
+                      {mrHeader.progress_id === 23 &&
+                        userInfo?.departmentID === 9 && (
+                          <th style={{ width: "140px" }}>RESOLUTION</th>
+                        )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item: MrLine, itemIndex: number) => (
+                      <tr key={item.id}>
+                        <td>{itemIndex + 1}</td>
+                        <td>{item.material_category}</td>
+                        <td>{item.material_subcategory}</td>
                         <td>
-                          {item.brand || item.specification ? (
-                            <InfoPopUpButton
-                              text={
-                                <>
-                                  <small>BRAND</small>
-                                  <h2>{item.brand || "-"}</h2>
-
-                                  <br />
-
-                                  <small>SPECIFICATION</small>
-                                  <h2>{item.specification || "-"}</h2>
-                                </>
-                              }
-                              header="BRAND & SPECIFICATION"
+                          {item.material_description}
+                          {item.qs_review_type === "item_available" &&
+                            mrHeader.progress_id <= 4 &&
+                            item.linked_inventory_item_description && (
+                              <div
+                                style={{
+                                  fontSize: "10px",
+                                  color: "rgba(26, 216, 135, 1)",
+                                  marginTop: "4px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                }}
+                              >
+                                Item available:{" "}
+                                {item.linked_inventory_item_description}
+                                <img
+                                  src={externalLinkIcon}
+                                  alt=""
+                                  style={{
+                                    width: "10px",
+                                    height: "10px",
+                                    filter:
+                                      "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
+                                  }}
+                                />
+                              </div>
+                            )}
+                        </td>
+                        {mrHeader.progress_id >= 9 ? (
+                          <>
+                            <td>
+                              {formatNumber(item?.quantity)} {item.unit}
+                            </td>
+                            {hasAnyQtyStocks && (
+                              <td>
+                                {(() => {
+                                  const proposedQty =
+                                    Number(item.approved_proposed_quantity) ||
+                                    0;
+                                  const requestedQty =
+                                    Number(item.quantity) || 0;
+                                  const stockQty =
+                                    proposedQty > requestedQty
+                                      ? proposedQty - requestedQty
+                                      : 0;
+                                  return stockQty > 0
+                                    ? `${formatNumber(stockQty)} ${item.unit}`
+                                    : "-";
+                                })()}
+                              </td>
+                            )}
+                            {hasAnyQtyStocks && (
+                              <td>
+                                {formatNumber(item?.approved_proposed_quantity)}{" "}
+                                {item.unit}
+                              </td>
+                            )}
+                          </>
+                        ) : (
+                          <td>
+                            {formatNumber(item?.quantity)} {item.unit}
+                          </td>
+                        )}
+                        <td>
+                          {item.boq_line_ids ? (
+                            <BoqReferencePopUp
+                              item={item}
+                              mrHeader={mrHeader}
                             />
                           ) : (
                             "-"
                           )}
                         </td>
-                      )}
+                        {hasAnyBrandSpecs && (
+                          <td>
+                            {item.brand || item.specification ? (
+                              <InfoPopUpButton
+                                text={
+                                  <>
+                                    <small>BRAND</small>
+                                    <h2>{item.brand || "-"}</h2>
 
-                      {/* {mrHeader.progress_id >= 12 && (
+                                    <br />
+
+                                    <small>SPECIFICATION</small>
+                                    <h2>{item.specification || "-"}</h2>
+                                  </>
+                                }
+                                header="BRAND & SPECIFICATION"
+                              />
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        )}
+
+                        {/* {mrHeader.progress_id >= 12 && (
                       <td>
                         <div
                           style={{
@@ -5456,135 +5564,161 @@ export default function MrLinesView({
                       </td>
                     )} */}
 
-                      {hasAnyAttachment && (
-                        <td>
-                          {item.attachment ? (
-                            <Button
-                              componentType={"link"}
-                              bgColor={"rgba(239, 239, 239, 1)"}
-                              borderColor={"rgba(223, 223, 223, 1)"}
-                              textColor={"black"}
-                              style={{ padding: "7px 7px" }}
-                              href={item.attachment}
-                              target="_blank"
-                            >
-                              <img src={externalLinkIcon} alt="external link" />
-                            </Button>
-                          ) : (
-                            "-"
+                        {hasAnyAttachment && (
+                          <td>
+                            {item.attachment ? (
+                              <Button
+                                componentType={"link"}
+                                bgColor={"rgba(239, 239, 239, 1)"}
+                                borderColor={"rgba(223, 223, 223, 1)"}
+                                textColor={"black"}
+                                style={{ padding: "7px 7px" }}
+                                href={item.attachment}
+                                target="_blank"
+                              >
+                                <img
+                                  src={externalLinkIcon}
+                                  alt="external link"
+                                />
+                              </Button>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        )}
+
+                        {mrHeader.progress_id >= 10 && canSeePrice && (
+                          <td>
+                            {(() => {
+                              let unitPrice: number;
+
+                              if (
+                                mrHeader.progress_id >= 12 &&
+                                lpoLinePrices[item.id]
+                              ) {
+                                // Use LPO prices
+                                unitPrice = lpoLinePrices[item.id].unitPrice;
+                                //vatRate = lpoLinePrices[item.id].vatRate;
+                              } else {
+                                // Use quotation prices
+                                unitPrice =
+                                  Number(item.approved_unit_price) || 0;
+                                //vatRate = Number(item.approved_vat_rate) || 0;
+                              }
+
+                              //const priceWithVat = unitPrice * (1 + vatRate / 100);
+                              return formatPriceAED(unitPrice);
+                            })()}
+                          </td>
+                        )}
+
+                        {mrHeader.progress_id >= 10 && canSeePrice && (
+                          <td>
+                            {(() => {
+                              let totalPrice: number;
+
+                              if (
+                                mrHeader.progress_id >= 12 &&
+                                lpoLinePrices[item.id]
+                              ) {
+                                // Use LPO prices
+                                totalPrice = lpoLinePrices[item.id].totalPrice;
+                                /* vatRate = lpoLinePrices[item.id].vatRate; */
+                              } else {
+                                // Use quotation prices
+                                totalPrice =
+                                  Number(item.approved_total_price) || 0;
+                                /* vatRate = Number(item.approved_vat_rate) || 0; */
+                              }
+
+                              /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
+                              return formatPriceAED(totalPrice);
+                            })()}
+                          </td>
+                        )}
+
+                        {userInfo?.departmentID === 12 &&
+                          mrHeader.progress_id === 21 && (
+                            <td>
+                              <QCCheckListButton
+                                item={item}
+                                mrHeader={mrHeader}
+                              />
+                            </td>
                           )}
+
+                        {userInfo?.departmentID === 11 &&
+                          mrHeader.progress_id === 24 && (
+                            <td>
+                              <AddToInventoryButton mrLine={item} />
+                            </td>
+                          )}
+
+                        {mrHeader.progress_id === 23 &&
+                          userInfo?.departmentID === 9 && (
+                            <td>
+                              <ResolutionButton
+                                mrHeader={mrHeader}
+                                item={item}
+                              />
+                            </td>
+                          )}
+                      </tr>
+                    ))}
+                  </tbody>
+
+                  {mrHeader.progress_id >= 10 && canSeePrice && (
+                    <tfoot
+                      style={{
+                        borderTop: "1px solid rgba(239, 239, 239, 1)",
+                      }}
+                    >
+                      <tr>
+                        <td colSpan={subtotalLabelColSpanByItem} />
+                        <td
+                          style={{
+                            fontWeight: "600",
+                          }}
+                        >
+                          SUBTOTAL
                         </td>
-                      )}
-
-                      {mrHeader.progress_id >= 10 && canSeePrice && (
-                        <td>
-                          {(() => {
-                            let unitPrice: number;
-
-                            if (
-                              mrHeader.progress_id >= 12 &&
-                              lpoLinePrices[item.id]
-                            ) {
-                              // Use LPO prices
-                              unitPrice = lpoLinePrices[item.id].unitPrice;
-                              //vatRate = lpoLinePrices[item.id].vatRate;
-                            } else {
-                              // Use quotation prices
-                              unitPrice = Number(item.approved_unit_price) || 0;
-                              //vatRate = Number(item.approved_vat_rate) || 0;
-                            }
-
-                            //const priceWithVat = unitPrice * (1 + vatRate / 100);
-                            return formatPriceAED(unitPrice);
-                          })()}
+                        <td
+                          style={{
+                            fontWeight: "600",
+                          }}
+                        >
+                          {formatPriceAED(calculateItemsTotal(items))}
                         </td>
-                      )}
-
-                      {mrHeader.progress_id >= 10 && canSeePrice && (
-                        <td>
-                          {(() => {
-                            let totalPrice: number;
-
-                            if (
-                              mrHeader.progress_id >= 12 &&
-                              lpoLinePrices[item.id]
-                            ) {
-                              // Use LPO prices
-                              totalPrice = lpoLinePrices[item.id].totalPrice;
-                              /* vatRate = lpoLinePrices[item.id].vatRate; */
-                            } else {
-                              // Use quotation prices
-                              totalPrice =
-                                Number(item.approved_total_price) || 0;
-                              /* vatRate = Number(item.approved_vat_rate) || 0; */
-                            }
-
-                            /* const priceWithVat = totalPrice * (1 + vatRate / 100); */
-                            return formatPriceAED(totalPrice);
-                          })()}
-                        </td>
-                      )}
-
-                      {userInfo?.departmentID === 12 &&
-                        mrHeader.progress_id === 21 && (
-                          <td>
-                            <QCCheckListButton
-                              item={item}
-                              mrHeader={mrHeader}
-                            />
-                          </td>
+                        {subtotalTrailingColSpan > 0 && (
+                          <td colSpan={subtotalTrailingColSpan} />
                         )}
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
 
-                      {userInfo?.departmentID === 11 &&
-                        mrHeader.progress_id === 24 && (
-                          <td>
-                            <AddToInventoryButton mrLine={item} />
-                          </td>
-                        )}
+                <br />
+              </div>
+            ),
+          )}
 
-                      {mrHeader.progress_id === 23 &&
-                        userInfo?.departmentID === 9 && (
-                          <td>
-                            <ResolutionButton mrHeader={mrHeader} item={item} />
-                          </td>
-                        )}
-                    </tr>
-                  ))}
-                </tbody>
-
-                {mrHeader.progress_id >= 10 && canSeePrice && (
-                  <tfoot
-                    style={{
-                      borderTop: "1px solid rgba(239, 239, 239, 1)",
-                    }}
-                  >
-                    <tr>
-                      <td colSpan={subtotalLabelColSpanByItem} />
-                      <td
-                        style={{
-                          fontWeight: "600",
-                        }}
-                      >
-                        SUBTOTAL
-                      </td>
-                      <td
-                        style={{
-                          fontWeight: "600",
-                        }}
-                      >
-                        {formatPriceAED(calculateItemsTotal(items))}
-                      </td>
-                      {subtotalTrailingColSpan > 0 && (
-                        <td colSpan={subtotalTrailingColSpan} />
-                      )}
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-
-              <br />
-            </div>
-          ))}
+        {mrHeader.progress_id >= 10 && canSeePrice && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "12px 0",
+              borderTop: "1px solid rgba(200, 200, 200, 1)",
+              marginTop: "8px",
+            }}
+          >
+            <h2>MR TOTAL</h2>
+            <h2>
+              {formatPriceAED(calculateItemsTotalWithVat(getAllFlatItems()))}
+            </h2>
+          </div>
+        )}
       </div>
       {/* end mr-with-id */}
 
@@ -5896,128 +6030,85 @@ export default function MrLinesView({
         </div>
       )}
 
-      {/* ── Lowest price hover popup ─────────────────────────────────────── */}
-      {hoveredLowestDesc && hoveredLowestRect &&
-        (() => {
-          const history = lpoHistoryCache[hoveredLowestDesc];
-          const popupWidth = 500;
-          const spaceRight = window.innerWidth - hoveredLowestRect.right;
-          const left =
-            spaceRight >= popupWidth + 10
-              ? hoveredLowestRect.right + 8
-              : hoveredLowestRect.left - popupWidth - 8;
-          const top = Math.min(
-            hoveredLowestRect.top,
-            window.innerHeight - 420,
-          );
-          return (
-            <div
-              onMouseEnter={cancelLowestHideTimer}
-              onMouseLeave={() => {
-                setHoveredLowestDesc(null);
-                setHoveredLowestRect(null);
-              }}
-              style={{
-                position: "fixed",
-                left: Math.max(8, left),
-                top: Math.max(8, top),
-                backgroundColor: "white",
-                border: "1px solid rgba(223,223,223,1)",
-                borderRadius: "10px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                zIndex: 10000,
-                minWidth: `${popupWidth}px`,
-                maxWidth: `${popupWidth}px`,
-                maxHeight: "420px",
-                overflowY: "auto",
-              }}
-            >
-              <div style={{ padding: "12px" }}>
-                {history === "loading" || !history ? (
-                  <div
-                    style={{
-                      padding: "16px",
-                      textAlign: "center",
-                      color: "rgba(128,128,128,1)",
-                      fontSize: "13px",
-                    }}
-                  >
-                    Loading...
+      {/* ── Price hover popups (lowest & prev) ──────────────────────────── */}
+      {[
+        { desc: hoveredLowestDesc, rect: hoveredLowestRect, type: "lowest" as const, onCancel: cancelLowestHideTimer, onHide: () => { setHoveredLowestDesc(null); setHoveredLowestRect(null); } },
+        { desc: hoveredPrevDesc, rect: hoveredPrevRect, type: "prev" as const, onCancel: cancelPrevHideTimer, onHide: () => { setHoveredPrevDesc(null); setHoveredPrevRect(null); } },
+      ].map(({ desc, rect, type, onCancel, onHide }) =>
+        desc && rect
+          ? (() => {
+              const row = priceHoverCache[desc]?.[type];
+              if (row === null) return null;
+              const popupWidth = 420;
+              const spaceRight = window.innerWidth - rect.right;
+              const left = spaceRight >= popupWidth + 10 ? rect.right + 8 : rect.left - popupWidth - 8;
+              const top = Math.min(rect.top, window.innerHeight - 200);
+              return (
+                <div
+                  key={type}
+                  onMouseEnter={onCancel}
+                  onMouseLeave={onHide}
+                  style={{
+                    position: "fixed",
+                    left: Math.max(8, left),
+                    top: Math.max(8, top),
+                    backgroundColor: "white",
+                    border: "1px solid rgba(223,223,223,1)",
+                    borderRadius: "10px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                    zIndex: 10000,
+                    minWidth: `${popupWidth}px`,
+                    maxWidth: `${popupWidth}px`,
+                  }}
+                >
+                  <div style={{ padding: "12px" }}>
+                    {row === "loading" || row === undefined ? (
+                      <div style={{ padding: "16px", textAlign: "center", color: "rgba(128,128,128,1)", fontSize: "13px" }}>
+                        Loading...
+                      </div>
+                    ) : (
+                      <table className="items-table popup-hover" style={{ width: "100%" }}>
+                        <thead>
+                          <tr>
+                            <th>LPO NUMBER</th>
+                            <th>PROJECT</th>
+                            <th>VENDOR</th>
+                            <th>PRICE</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              LPO-{String(row.lpo_id).padStart(5, "0")}
+                            </td>
+                            <td style={{ whiteSpace: "nowrap" }}>{row.project_name}</td>
+                            <td style={{ whiteSpace: "nowrap" }}>{row.vendor_name}</td>
+                            <td style={{ whiteSpace: "nowrap", fontWeight: 600, color: "rgba(2,122,70,1)" }}>
+                              {formatPriceAED(row.unit_price)}
+                            </td>
+                            <td>
+                              <Button
+                                componentType={"link"}
+                                bgColor={"rgba(239, 239, 239, 1)"}
+                                borderColor={"rgba(223, 223, 223, 1)"}
+                                textColor={"black"}
+                                style={{ padding: "7px 7px" }}
+                                href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
+                              >
+                                <img src="/icons/external-link.svg" alt="open" />
+                              </Button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    )}
                   </div>
-                ) : history.length === 0 ? (
-                  <div
-                    style={{
-                      padding: "16px",
-                      textAlign: "center",
-                      color: "rgba(128,128,128,1)",
-                      fontSize: "13px",
-                    }}
-                  >
-                    No history found
-                  </div>
-                ) : (
-                  <table
-                    className="items-table popup-hover"
-                    style={{ width: "100%" }}
-                  >
-                    <thead>
-                      <tr>
-                        <th>MR NUMBER</th>
-                        <th>LPO NUMBER</th>
-                        <th>QTY</th>
-                        <th>PRICE</th>
-                        <th>DATE</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {history.map((row: any, idx: number) => (
-                        <tr key={idx}>
-                          <td style={{ whiteSpace: "nowrap" }}>
-                            MR-{String(row.mr_header_id).padStart(5, "0")}
-                          </td>
-                          <td style={{ whiteSpace: "nowrap" }}>
-                            LPO-{String(row.lpo_id).padStart(5, "0")}
-                          </td>
-                          <td style={{ whiteSpace: "nowrap" }}>
-                            {row.qty ?? "—"}
-                          </td>
-                          <td
-                            style={{
-                              whiteSpace: "nowrap",
-                              fontWeight: 600,
-                              color: "rgba(2,122,70,1)",
-                            }}
-                          >
-                            {formatPriceAED(row.unit_price)}
-                          </td>
-                          <td style={{ whiteSpace: "nowrap" }}>
-                            {row.date ?? "—"}
-                          </td>
-                          <td>
-                            <Button
-                              componentType={"link"}
-                              bgColor={"rgba(239, 239, 239, 1)"}
-                              borderColor={"rgba(223, 223, 223, 1)"}
-                              textColor={"black"}
-                              style={{ padding: "7px 7px" }}
-                              href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
-                            >
-                              <img
-                                src="/icons/external-link.svg"
-                                alt="open"
-                              />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+                </div>
+              );
+            })()
+          : null,
+      )}
     </>
   );
 }

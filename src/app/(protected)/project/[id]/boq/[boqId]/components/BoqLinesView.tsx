@@ -965,10 +965,14 @@ export default function BoqLinesView({
               <small>LOCATION</small>
               <h2>{boqHeader?.location}</h2>
             </div>
-            <div>
-              <small>CLIENT NAME</small>
-              <h2>{boqHeader?.client_name}</h2>
-            </div>
+            {(userInfo?.departmentID === 8 ||
+              userInfo?.departmentID === 16 ||
+              userInfo?.departmentID === 10) && (
+              <div>
+                <small>CLIENT NAME</small>
+                <h2>{boqHeader?.client_name}</h2>
+              </div>
+            )}
             <div>
               <small>DATE</small>
               <h2>
@@ -992,60 +996,64 @@ export default function BoqLinesView({
         <br />
         <br />
 
-        <div
-          style={{ display: "flex", gap: "10px", textTransform: "uppercase" }}
-        >
-          <InfoPopUpButton
-            text={boqHeader.payment_terms}
-            header={"PAYMENT TERMS"}
-            style={{ padding: "7px 25px", borderRadius: "50px" }}
-            bgColor="transparent"
-            borderColor="rgba(207, 207, 207, 1)"
-            textColor="black"
+        {(userInfo?.departmentID === 8 ||
+          userInfo?.departmentID === 16 ||
+          userInfo?.departmentID === 10) && (
+          <div
+            style={{ display: "flex", gap: "10px", textTransform: "uppercase" }}
           >
-            PAYMENT TERMS <img src={externalLinkIcon} />
-          </InfoPopUpButton>
-          <InfoPopUpButton
-            text={boqHeader.validity_terms}
-            header={"VALIDITY TERMS"}
-            style={{ padding: "7px 25px", borderRadius: "50px" }}
-            bgColor="transparent"
-            borderColor="rgba(207, 207, 207, 1)"
-            textColor="black"
-          >
-            VALIDITY TERMS <img src={externalLinkIcon} />
-          </InfoPopUpButton>
-          <InfoPopUpButton
-            text={boqHeader.warranty}
-            header={"WARRANTY"}
-            style={{ padding: "7px 25px", borderRadius: "50px" }}
-            bgColor="transparent"
-            borderColor="rgba(207, 207, 207, 1)"
-            textColor="black"
-          >
-            WARRANTY <img src={externalLinkIcon} />
-          </InfoPopUpButton>
-          <InfoPopUpButton
-            text={boqHeader.completion}
-            header={"COMPLETION"}
-            style={{ padding: "7px 25px", borderRadius: "50px" }}
-            bgColor="transparent"
-            borderColor="rgba(207, 207, 207, 1)"
-            textColor="black"
-          >
-            COMPLETION <img src={externalLinkIcon} />
-          </InfoPopUpButton>
-          <InfoPopUpButton
-            text={boqHeader.exclusion}
-            header={"EXCLUSIONS"}
-            style={{ padding: "7px 25px", borderRadius: "50px" }}
-            bgColor="transparent"
-            borderColor="rgba(207, 207, 207, 1)"
-            textColor="black"
-          >
-            EXCLUSIONS <img src={externalLinkIcon} />
-          </InfoPopUpButton>
-        </div>
+            <InfoPopUpButton
+              text={boqHeader.payment_terms}
+              header={"PAYMENT TERMS"}
+              style={{ padding: "7px 25px", borderRadius: "50px" }}
+              bgColor="transparent"
+              borderColor="rgba(207, 207, 207, 1)"
+              textColor="black"
+            >
+              PAYMENT TERMS <img src={externalLinkIcon} />
+            </InfoPopUpButton>
+            <InfoPopUpButton
+              text={boqHeader.validity_terms}
+              header={"VALIDITY TERMS"}
+              style={{ padding: "7px 25px", borderRadius: "50px" }}
+              bgColor="transparent"
+              borderColor="rgba(207, 207, 207, 1)"
+              textColor="black"
+            >
+              VALIDITY TERMS <img src={externalLinkIcon} />
+            </InfoPopUpButton>
+            <InfoPopUpButton
+              text={boqHeader.warranty}
+              header={"WARRANTY"}
+              style={{ padding: "7px 25px", borderRadius: "50px" }}
+              bgColor="transparent"
+              borderColor="rgba(207, 207, 207, 1)"
+              textColor="black"
+            >
+              WARRANTY <img src={externalLinkIcon} />
+            </InfoPopUpButton>
+            <InfoPopUpButton
+              text={boqHeader.completion}
+              header={"COMPLETION"}
+              style={{ padding: "7px 25px", borderRadius: "50px" }}
+              bgColor="transparent"
+              borderColor="rgba(207, 207, 207, 1)"
+              textColor="black"
+            >
+              COMPLETION <img src={externalLinkIcon} />
+            </InfoPopUpButton>
+            <InfoPopUpButton
+              text={boqHeader.exclusion}
+              header={"EXCLUSIONS"}
+              style={{ padding: "7px 25px", borderRadius: "50px" }}
+              bgColor="transparent"
+              borderColor="rgba(207, 207, 207, 1)"
+              textColor="black"
+            >
+              EXCLUSIONS <img src={externalLinkIcon} />
+            </InfoPopUpButton>
+          </div>
+        )}
       </div>
 
       <br />

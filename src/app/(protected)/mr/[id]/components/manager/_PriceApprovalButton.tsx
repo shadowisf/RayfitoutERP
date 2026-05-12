@@ -567,218 +567,31 @@ export default function PriceApprovalButton({
     if (approvedQuotation) {
       return (
         <>
-          <Button
-            componentType={"button"}
-            bgColor={"rgba(239, 239, 239, 1)"}
-            borderColor={"rgba(223, 223, 223, 1)"}
-            textColor={"black"}
-            onClick={() => setIsOpen(true)}
-            style={{ padding: "7px 7px" }}
+          <div
+            className="approval-pill"
+            style={{
+              backgroundColor: "rgba(34, 150, 100, 1)",
+              color: "white",
+              maxWidth: "150px",
+            }}
           >
-            <img src={externalLinkIcon} alt="edit" />
-          </Button>
-
-          {isOpen &&
-            (() => {
-              const anyHasStocks = supplierQuotations.some((q) => {
-                const propQty = Number(q.proposed_quantity) || 0;
-                const reqQty = Number(mrLine.quantity) || 0;
-                return propQty > reqQty;
-              });
-
-              return (
-                <FormPopUp
-                  header={"CHOOSE VENDOR & QUOTATION"}
-                  setIsOpen={setIsOpen}
-                  handleSubmit={(e) => handleApproveSupplierAndQuotation(e)}
-                  addButtonLabel={"CONFIRM"}
-                  secondButton={
-                    <Button
-                      componentType={"button"}
-                      bgColor={"white"}
-                      borderColor={"black"}
-                      textColor={"black"}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setIsRejectOpen(true);
-                      }}
-                    >
-                      REJECT
-                    </Button>
-                  }
-                >
-                  <table className="items-table">
-                    <thead>
-                      <tr>
-                        <th></th>
-                        <th>VENDOR</th>
-                        <th>QUOTATION</th>
-                        <th>QTY USE</th>
-                        {anyHasStocks && <th>QTY STOCKS</th>}
-                        <th>UNIT PRICE</th>
-                        <th>TOTAL PRICE</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        const lowestTotalPrice = supplierQuotations.reduce(
-                          (min, q) => {
-                            const v = parseFloat(String(q.total_price) || "");
-                            return !isNaN(v) && v > 0 ? Math.min(min, v) : min;
-                          },
-                          Infinity,
-                        );
-                        return supplierQuotations.map(
-                          (quotation: SupplierQuotation, index: number) => {
-                            const requestedQty = Number(mrLine.quantity) || 0;
-                            const proposedQty =
-                              Number(quotation.proposed_quantity) || 0;
-                            const stockQty =
-                              proposedQty > requestedQty
-                                ? proposedQty - requestedQty
-                                : 0;
-
-                            const totalVal = parseFloat(
-                              String(quotation.total_price) || "",
-                            );
-                            const totalAlert =
-                              !isNaN(totalVal) &&
-                              totalVal > 0 &&
-                              lowestTotalPrice !== Infinity
-                                ? totalVal <= lowestTotalPrice
-                                  ? "lowest"
-                                  : `+${Math.round(((totalVal - lowestTotalPrice) / lowestTotalPrice) * 100)}% vs lowest`
-                                : null;
-
-                            return (
-                              <tr key={index}>
-                                <td>
-                                  <input
-                                    type="radio"
-                                    name="supplier"
-                                    value={quotation.id}
-                                    defaultChecked={
-                                      String(quotation.id) ===
-                                      String(approvedQuotation?.id)
-                                    }
-                                  onChange={(e) =>
-                                    setSelectedQuotationID(e.target.value)
-                                  }
-                                  required
-                                />
-                              </td>
-                              <td>
-                                <SupplierDetailsPopUp
-                                  item={quotation}
-                                  style={{
-                                    padding: "7px 20px",
-                                    textWrap: "nowrap",
-                                    minWidth: "300px",
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    borderRadius: "25px",
-                                  }}
-                                >
-                                  {quotation.supplier_name}
-                                  <img
-                                    src="/icons/external-link.svg"
-                                    alt="external link icon"
-                                  />
-                                </SupplierDetailsPopUp>
-                              </td>
-                              <td>
-                                <Button
-                                  componentType={"link"}
-                                  bgColor={"white"}
-                                  borderColor={"rgba(207, 207, 207, 1)"}
-                                  textColor={"black"}
-                                  href={quotation.quotation_file[0]}
-                                  target="_blank"
-                                  style={{
-                                    padding: "7px 20px",
-                                    borderRadius: "25px",
-                                  }}
-                                >
-                                  Quotation
-                                  <img
-                                    src={externalLinkIcon}
-                                    alt="external link icon"
-                                  />
-                                </Button>
-                              </td>
-                              <td>
-                                {formatQuantity(requestedQty)} {mrLine.unit}
-                              </td>
-                              {anyHasStocks && (
-                                <td>
-                                  {stockQty > 0
-                                    ? `${formatQuantity(stockQty)} ${mrLine.unit}`
-                                    : "-"}
-                                </td>
-                              )}
-                              <td>{formatPriceAED(quotation.unit_price)}</td>
-                              <td style={{ position: "relative" }}>
-                                {formatPriceAED(quotation.total_price)}
-                                {totalAlert && (
-                                  <div
-                                    style={{
-                                      height: 0,
-                                      overflow: "visible",
-                                      position: "relative",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        position: "absolute",
-                                        top: "4px",
-                                        left: 0,
-                                        fontSize: "10px",
-                                        fontWeight: 600,
-                                        whiteSpace: "nowrap",
-                                        color:
-                                          totalAlert === "lowest"
-                                            ? "rgba(0,163,93,1)"
-                                            : "rgba(220,38,38,1)",
-                                      }}
-                                    >
-                                      {totalAlert === "lowest"
-                                        ? "Lowest ✓"
-                                        : totalAlert}
-                                    </div>
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        },
-                        );
-                      })()}
-                    </tbody>
-                  </table>
-                </FormPopUp>
-              );
-            })()}
-
-          {isRejectOpen && (
-            <FormPopUp
-              header={"REJECT ALL VENDOR AND QUOTATION"}
-              setIsOpen={setIsRejectOpen}
-              handleSubmit={(e) => handleRejectAll(e)}
-              style={{ whiteSpace: "pre-wrap" }}
-              addButtonLabel="CONFIRM"
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
             >
-              <div className="input-row full">
-                <InputItem
-                  label={"COMMENTS"}
-                  value={rejectText}
-                  type={"textarea"}
-                  placeholder={"ENTER COMMENTS"}
-                  required
-                  onChange={(e) => setRejectText(e.target.value)}
-                />
-              </div>
-            </FormPopUp>
-          )}
+              {approvedQuotation.supplier_name}
+            </span>
+            <img
+              src={crossIcon}
+              alt="reset"
+              style={{ filter: "invert(1)", cursor: "pointer", flexShrink: 0 }}
+              onClick={handleReset}
+            />
+          </div>
+
         </>
       );
     }

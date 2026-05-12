@@ -139,14 +139,15 @@ export async function POST(request: NextRequest) {
         payment_method,
         amount,
         receipt_file,
+        supplier_statement,
         notes,
         recorded_by,
       } = body;
 
       await db.query(
         `INSERT INTO lpo_payments
-          (lpo_id, mr_header_id, payment_type, payment_method, amount, receipt_file, notes, recorded_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          (lpo_id, mr_header_id, payment_type, payment_method, amount, receipt_file, supplier_statement, notes, recorded_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           Number(lpo_id),
           Number(mr_header_id),
@@ -154,6 +155,7 @@ export async function POST(request: NextRequest) {
           payment_method,
           Number(amount),
           receipt_file || null,
+          supplier_statement || null,
           notes || null,
           recorded_by,
         ],

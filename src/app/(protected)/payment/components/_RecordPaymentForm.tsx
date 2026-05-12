@@ -17,6 +17,24 @@ function formatWithCommas(raw: string): string {
   return decPart !== undefined ? `${formattedInt}.${decPart}` : formattedInt;
 }
 
+// Sequential distribution: fill smallest LPOs first to maximise fully-paid records
+function distribute(lpos: LpoPaymentItem[], totalAmount: number): number[] {
+  const sorted = lpos
+    .map((l, i) => ({ i, outstanding: Number(l.outstanding) }))
+    .sort((a, b) => a.outstanding - b.outstanding);
+
+  let remaining = totalAmount;
+  const amounts = new Array<number>(lpos.length).fill(0);
+
+  for (const { i, outstanding } of sorted) {
+    const amt = Math.min(outstanding, Math.max(0, remaining));
+    amounts[i] = amt;
+    remaining -= amt;
+  }
+
+  return amounts;
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 export const PAYMENT_TYPES = [
@@ -34,36 +52,41 @@ export const PAYMENT_METHODS = [
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type RecordPaymentFormProps = {
-  /** The LPO id to record payment against */
-  lpoId: number;
-  mrHeaderId: number;
-  supplierName: string;
-  /** Current outstanding balance (total − already paid) */
+export type LpoPaymentItem = {
+  id: number;
+  mr_header_id: number;
   outstanding: number;
+};
+
+export type RecordPaymentFormProps = {
+  lpos: LpoPaymentItem[];
+  supplierName: string;
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
-  /** Called after a successful submission */
   onSuccess: () => void;
   recordedBy: string;
+  /** Show the Supplier Statement upload field (required when shown) */
+  showSupplierStatement?: boolean;
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function RecordPaymentForm({
-  lpoId,
-  mrHeaderId,
+  lpos,
   supplierName,
-  outstanding,
   isOpen,
   setIsOpen,
   onSuccess,
   recordedBy,
+  showSupplierStatement = false,
 }: RecordPaymentFormProps) {
+  const totalOutstanding = lpos.reduce((s, l) => s + Number(l.outstanding), 0);
+
   const [paymentType, setPaymentType] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
+  const [statementFile, setStatementFile] = useState<File | null>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
   const reset = () => {
@@ -71,6 +94,7 @@ export default function RecordPaymentForm({
     setPaymentMethod("");
     setPaymentAmount("");
     setPaymentNotes("");
+    setStatementFile(null);
     setReceiptFile(null);
   };
 
@@ -79,8 +103,34 @@ export default function RecordPaymentForm({
     setIsOpen(v);
   };
 
+  const enteredAmt = Math.max(0, Number(paymentAmount.replace(/,/g, "")) || 0);
+  const isExceeding = enteredAmt > totalOutstanding && enteredAmt > 0;
+  const capped = Math.min(enteredAmt, totalOutstanding);
+  const distribution = distribute(lpos, capped);
+
   const handleSubmit = async () => {
+    if (isExceeding) {
+      toast("Payment amount exceeds the total outstanding balance", "error");
+      return;
+    }
     try {
+      // Upload supplier statement
+      let statementUrl: string | null = null;
+      if (showSupplierStatement && statementFile) {
+        const fd = new FormData();
+        fd.append("folder", "supplier-statements");
+        fd.append("files", statementFile);
+        const up = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`, {
+          method: "POST",
+          body: fd,
+        });
+        if (up.ok) {
+          const d = await up.json();
+          statementUrl = d.urls?.[0] ?? null;
+        }
+      }
+
+      // Upload receipt
       let receiptUrl: string | null = null;
       if (receiptFile) {
         const fd = new FormData();
@@ -95,70 +145,83 @@ export default function RecordPaymentForm({
           receiptUrl = d.urls?.[0] ?? null;
         }
       }
-      const numericAmount = Number(paymentAmount.replace(/,/g, ""));
-      if (numericAmount > outstanding) {
-        toast("Payment amount exceeds the outstanding balance", "error");
-        return;
-      }
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "recordPayment",
-            lpo_id: lpoId,
-            mr_header_id: mrHeaderId,
-            payment_type: paymentType,
-            payment_method: paymentMethod,
-            amount: numericAmount,
-            receipt_file: receiptUrl,
-            notes: paymentNotes || null,
-            recorded_by: recordedBy,
-          }),
-        },
+      // Only submit LPOs that received a non-zero allocation
+      const toSubmit = lpos
+        .map((lpo, i) => ({ lpo, amount: distribution[i] }))
+        .filter(({ amount }) => amount > 0);
+
+      const results = await Promise.all(
+        toSubmit.map(({ lpo, amount }) =>
+          fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/payment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "recordPayment",
+              lpo_id: lpo.id,
+              mr_header_id: lpo.mr_header_id,
+              payment_type: paymentType,
+              payment_method: paymentMethod,
+              amount,
+              receipt_file: receiptUrl,
+              supplier_statement: statementUrl,
+              notes: paymentNotes || null,
+              recorded_by: recordedBy,
+            }),
+          }).then((r) => r.json()),
+        ),
       );
-      const data = await res.json();
-      if (data.success) {
-        toast("Payment recorded", "success");
+
+      const failed = results.filter((r) => !r.success);
+      if (failed.length === 0) {
+        toast(
+          toSubmit.length > 1
+            ? `${toSubmit.length} payments recorded`
+            : "Payment recorded",
+          "success",
+        );
         reset();
         setIsOpen(false);
         onSuccess();
       } else {
-        toast("Failed to record payment", "error");
+        toast(`${failed.length} payment(s) failed`, "error");
       }
     } catch (err) {
       console.error(err);
-      toast("Error recording payment", "error");
+      toast("Error recording payments", "error");
     }
   };
 
   if (!isOpen) return null;
 
   // ── 270° arc gauge ──────────────────────────────────────────────────────────
-  const enteredAmt = Number(paymentAmount.replace(/,/g, "")) || 0;
-  const isExceeding = enteredAmt > outstanding && enteredAmt > 0;
   const gaugePct =
-    outstanding > 0 ? Math.min((enteredAmt / outstanding) * 100, 100) : 0;
+    totalOutstanding > 0
+      ? Math.min((enteredAmt / totalOutstanding) * 100, 100)
+      : 0;
   const gaugeColor = isExceeding ? "rgba(248,77,77,1)" : "rgba(26,216,135,1)";
   const r = 33;
   const circ = 2 * Math.PI * r;
   const arc = circ * 0.75;
 
+  const lpoNumbers = lpos
+    .map((l) => `LPO-${String(l.id).padStart(5, "0")}`)
+    .join(", ");
+
   return (
     <FormPopUp
-      header="Record Payment"
+      header="RECORD PAYMENT"
       setIsOpen={handleClose as React.Dispatch<React.SetStateAction<boolean>>}
       handleSubmit={handleSubmit}
       addButtonLabel="CONFIRM"
       style={{ maxWidth: "520px" }}
     >
+      {/* LPO NUMBER + VENDOR */}
       <div className="input-row half">
         <InputItem
           label="LPO NUMBER"
           type="text"
-          value={`LPO-${String(lpoId).padStart(5, "0")}`}
+          value={lpoNumbers}
           onChange={() => {}}
           disabled
           required
@@ -175,6 +238,7 @@ export default function RecordPaymentForm({
         />
       </div>
 
+      {/* PAYMENT TYPE + METHOD */}
       <div className="input-row half">
         <InputItem
           label="PAYMENT TYPE"
@@ -194,7 +258,7 @@ export default function RecordPaymentForm({
         />
       </div>
 
-      {/* Outstanding indicator */}
+      {/* Outstanding indicator + gauge */}
       <div
         style={{
           backgroundColor: "rgba(248, 249, 251, 1)",
@@ -205,14 +269,13 @@ export default function RecordPaymentForm({
           alignItems: "center",
         }}
       >
-        {/* Left — stats */}
         <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
           <div>
             <small style={{ color: "rgba(120,120,120,1)" }}>
               OUTSTANDING AMOUNT
             </small>
             <div style={{ fontWeight: "600", fontSize: "16px" }}>
-              {formatPriceAED(outstanding)}
+              {formatPriceAED(totalOutstanding)}
             </div>
           </div>
           <div>
@@ -220,12 +283,11 @@ export default function RecordPaymentForm({
               PAYMENT AMOUNT
             </small>
             <div style={{ fontWeight: "600", fontSize: "16px" }}>
-              {paymentAmount ? paymentAmount : "-"}
+              AED {formatWithCommas(enteredAmt.toFixed(2))}
             </div>
           </div>
         </div>
 
-        {/* Right — gauge */}
         <div
           style={{
             display: "flex",
@@ -236,7 +298,6 @@ export default function RecordPaymentForm({
           }}
         >
           <div style={{ position: "relative", width: "90px", height: "90px" }}>
-            {/* track */}
             <svg
               width="90"
               height="90"
@@ -259,7 +320,6 @@ export default function RecordPaymentForm({
                 strokeDasharray={`${arc} ${circ}`}
               />
             </svg>
-            {/* fill */}
             <svg
               width="90"
               height="90"
@@ -283,7 +343,6 @@ export default function RecordPaymentForm({
                 style={{ transition: "stroke-dasharray 0.4s ease-out" }}
               />
             </svg>
-            {/* label */}
             <div
               style={{
                 position: "absolute",
@@ -321,7 +380,7 @@ export default function RecordPaymentForm({
         />
       </div>
 
-      {/* ── Exceeds warning + Max shortcut ─────────────────────────────────── */}
+      {/* Exceeds warning + Max shortcut */}
       <div
         style={{
           display: "flex",
@@ -348,11 +407,11 @@ export default function RecordPaymentForm({
             fontSize: "9px",
           }}
           onClick={() =>
-            setPaymentAmount(formatWithCommas(outstanding.toFixed(2)))
+            setPaymentAmount(formatWithCommas(totalOutstanding.toFixed(2)))
           }
         >
           <span style={{ textDecoration: "underline" }}>Max</span> (AED{" "}
-          {formatWithCommas(outstanding.toFixed(2))})
+          {formatWithCommas(totalOutstanding.toFixed(2))})
         </p>
       </div>
 
@@ -366,6 +425,20 @@ export default function RecordPaymentForm({
           onChange={(e) => setPaymentNotes(e.target.value)}
         />
       </div>
+
+      {showSupplierStatement && (
+        <div className="input-row full">
+          <SingleUploadFileBox
+            fileState={statementFile}
+            setFileState={setStatementFile}
+            label="SUPPLIER STATEMENT"
+            acceptedFileTypes=".pdf,.jpg,.jpeg,.png"
+            placeholder="UPLOAD SUPPLIER STATEMENT"
+            buttonLabel="UPLOAD STATEMENT"
+            required
+          />
+        </div>
+      )}
 
       <div className="input-row full">
         <SingleUploadFileBox

@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { RowDataPacket } from "mysql2";
 
-// Shared material-categories correlated subquery
 const MATERIAL_CATEGORIES_SUBQUERY = `(
   SELECT GROUP_CONCAT(DISTINCT lmc.value ORDER BY lmc.value SEPARATOR '||')
   FROM lpo_mr_line  lml2
@@ -15,8 +14,16 @@ const MATERIAL_CATEGORIES_SUBQUERY = `(
 
 const PAID_STATUS_LIST = `('approved','paid','fully paid','completed','done')`;
 
-export async function GET() {
+export async function POST(request: NextRequest) {
   try {
+    const { supplier_id } = await request.json();
+    const sid = Number(supplier_id);
+    if (!sid)
+      return NextResponse.json(
+        { error: "supplier_id required" },
+        { status: 400 },
+      );
+
     const [rows] = await db.query<RowDataPacket[]>(
       `SELECT *
        FROM (
@@ -42,6 +49,7 @@ export async function GET() {
          LEFT JOIN mr_headers mh ON l.mr_header_id = mh.id
          LEFT JOIN projects   p  ON mh.project_id  = p.id
          WHERE l.progress_id NOT IN (13)
+           AND l.supplier_id = ?
            AND LOWER(TRIM(IFNULL(l.payment_status, ''))) IN ${PAID_STATUS_LIST}
 
          UNION ALL
@@ -68,19 +76,22 @@ export async function GET() {
          LEFT JOIN mr_headers mh ON l.mr_header_id = mh.id
          LEFT JOIN projects   p  ON mh.project_id  = p.id
          WHERE l.progress_id NOT IN (13)
+           AND l.supplier_id = ?
            AND LOWER(TRIM(IFNULL(l.payment_status, ''))) NOT IN ${PAID_STATUS_LIST}
 
        ) combined
-       ORDER BY created_at DESC, lpo_id ASC, payment_entry_id ASC`,
+       ORDER BY payment_date DESC, lpo_id ASC, payment_entry_id ASC`,
+      [sid, sid],
     );
 
     const data = (rows as any[]).map((row) => {
-      // Legacy payment_file may be a JSON array or a plain URL
       let paymentFile: string | null = null;
       if (row.payment_file_raw) {
         try {
           const parsed = JSON.parse(row.payment_file_raw);
-          paymentFile = Array.isArray(parsed) ? (parsed[0] ?? null) : row.payment_file_raw;
+          paymentFile = Array.isArray(parsed)
+            ? (parsed[0] ?? null)
+            : row.payment_file_raw;
         } catch {
           paymentFile = row.payment_file_raw;
         }
@@ -109,9 +120,9 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (err: any) {
-    console.error("getAllTransactions error:", err.sqlMessage || err.message);
+    console.error("getSupplierTransactions error:", err.sqlMessage || err.message);
     return NextResponse.json(
       { error: err.sqlMessage || err.message },
       { status: 500 },

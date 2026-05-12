@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
+import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { toast } from "@/app/components/Toast";
@@ -20,6 +21,27 @@ function formatWithCommas(raw: string): string {
     ? intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
     : "";
   return decPart !== undefined ? `${formattedInt}.${decPart}` : formattedInt;
+}
+
+// Sequential distribution: fill smallest LPOs first to maximise fully-paid records
+function distribute(
+  lpos: { outstanding: number }[],
+  totalAmount: number,
+): number[] {
+  const sorted = lpos
+    .map((l, i) => ({ i, outstanding: Number(l.outstanding) }))
+    .sort((a, b) => a.outstanding - b.outstanding);
+
+  let remaining = totalAmount;
+  const amounts = new Array<number>(lpos.length).fill(0);
+
+  for (const { i, outstanding } of sorted) {
+    const amt = Math.min(outstanding, Math.max(0, remaining));
+    amounts[i] = amt;
+    remaining -= amt;
+  }
+
+  return amounts;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -49,7 +71,7 @@ export default function NewPaymentButton({ onSuccess }: Props) {
 
   // Selection state
   const [selectedVendor, setSelectedVendor] = useState("");
-  const [selectedLpoId, setSelectedLpoId] = useState<number | "">("");
+  const [selectedLpoIds, setSelectedLpoIds] = useState<(string | number)[]>([]);
 
   // Payment form state
   const [paymentType, setPaymentType] = useState("");
@@ -87,7 +109,7 @@ export default function NewPaymentButton({ onSuccess }: Props) {
 
   const reset = () => {
     setSelectedVendor("");
-    setSelectedLpoId("");
+    setSelectedLpoIds([]);
     setPaymentType("");
     setPaymentMethod("");
     setPaymentAmount("");
@@ -107,29 +129,53 @@ export default function NewPaymentButton({ onSuccess }: Props) {
 
   // ── Derived data ────────────────────────────────────────────────────────────
 
-  const vendorList = Array.from(
-    new Map(lpoOptions.map((l) => [l.supplier_id, l.supplier_name])).entries(),
-  )
-    .map(([, name]) => name)
-    .sort((a, b) => a.localeCompare(b));
+  const vendorList = useMemo(
+    () =>
+      Array.from(
+        new Map(lpoOptions.map((l) => [l.supplier_id, l.supplier_name])).entries(),
+      )
+        .map(([, name]) => name)
+        .sort((a, b) => a.localeCompare(b)),
+    [lpoOptions],
+  );
 
-  const filteredLpos = selectedVendor
-    ? lpoOptions.filter((l) => l.supplier_name === selectedVendor)
-    : [];
+  const filteredLpos = useMemo(
+    () =>
+      selectedVendor
+        ? lpoOptions.filter((l) => l.supplier_name === selectedVendor)
+        : [],
+    [selectedVendor, lpoOptions],
+  );
 
-  const selectedLpo =
-    selectedLpoId !== ""
-      ? (lpoOptions.find((l) => l.id === selectedLpoId) ?? null)
-      : null;
-  const outstanding = selectedLpo?.outstanding ?? 0;
-  const showForm = !!selectedLpo;
+  const selectedLpos = useMemo(
+    () =>
+      selectedLpoIds
+        .map((id) => lpoOptions.find((l) => l.id === Number(id)))
+        .filter((l): l is LpoOption => !!l),
+    [selectedLpoIds, lpoOptions],
+  );
+
+  const totalOutstanding = useMemo(
+    () => selectedLpos.reduce((s, l) => s + l.outstanding, 0),
+    [selectedLpos],
+  );
+
+  const showForm = selectedLpos.length > 0;
 
   // ── Gauge ───────────────────────────────────────────────────────────────────
 
-  const enteredAmt = Number(paymentAmount.replace(/,/g, "")) || 0;
-  const isExceeding = enteredAmt > outstanding && enteredAmt > 0;
+  const enteredAmt = Math.max(0, Number(paymentAmount.replace(/,/g, "")) || 0);
+  const isExceeding = enteredAmt > totalOutstanding && enteredAmt > 0;
+  const capped = Math.min(enteredAmt, totalOutstanding);
+  const distribution = useMemo(
+    () => distribute(selectedLpos, capped),
+    [selectedLpos, capped],
+  );
+
   const gaugePct =
-    outstanding > 0 ? Math.min((enteredAmt / outstanding) * 100, 100) : 0;
+    totalOutstanding > 0
+      ? Math.min((enteredAmt / totalOutstanding) * 100, 100)
+      : 0;
   const gaugeColor = isExceeding ? "rgba(248,77,77,1)" : "rgba(26,216,135,1)";
   const r = 33;
   const circ = 2 * Math.PI * r;
@@ -138,7 +184,11 @@ export default function NewPaymentButton({ onSuccess }: Props) {
   // ── Submit ──────────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
-    if (!selectedLpo) return;
+    if (!showForm) return;
+    if (isExceeding) {
+      toast("Payment amount exceeds the total outstanding balance", "error");
+      return;
+    }
     try {
       let receiptUrl: string | null = null;
       if (receiptFile) {
@@ -155,38 +205,44 @@ export default function NewPaymentButton({ onSuccess }: Props) {
         }
       }
 
-      const numericAmount = Number(paymentAmount.replace(/,/g, ""));
-      if (numericAmount > outstanding) {
-        toast("Payment amount exceeds the outstanding balance", "error");
-        return;
-      }
+      // Only submit LPOs with non-zero allocation
+      const toSubmit = selectedLpos
+        .map((lpo, i) => ({ lpo, amount: distribution[i] }))
+        .filter(({ amount }) => amount > 0);
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "recordPayment",
-            lpo_id: selectedLpo.id,
-            mr_header_id: selectedLpo.mr_header_id,
-            payment_type: paymentType,
-            payment_method: paymentMethod,
-            amount: numericAmount,
-            receipt_file: receiptUrl,
-            notes: paymentNotes || null,
-            recorded_by: userInfo?.name || userInfo?.email || "Finance",
-          }),
-        },
+      const results = await Promise.all(
+        toSubmit.map(({ lpo, amount }) =>
+          fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/payment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "recordPayment",
+              lpo_id: lpo.id,
+              mr_header_id: lpo.mr_header_id,
+              payment_type: paymentType,
+              payment_method: paymentMethod,
+              amount,
+              receipt_file: receiptUrl,
+              notes: paymentNotes || null,
+              recorded_by: userInfo?.name || userInfo?.email || "Finance",
+            }),
+          }).then((res) => res.json()),
+        ),
       );
-      const data = await res.json();
-      if (data.success) {
-        toast("Payment recorded", "success");
+
+      const failed = results.filter((res) => !res.success);
+      if (failed.length === 0) {
+        toast(
+          toSubmit.length > 1
+            ? `${toSubmit.length} payments recorded`
+            : "Payment recorded",
+          "success",
+        );
         reset();
         setIsOpen(false);
         onSuccess?.();
       } else {
-        toast("Failed to record payment", "error");
+        toast(`${failed.length} payment(s) failed`, "error");
       }
     } catch (err) {
       console.error(err);
@@ -228,7 +284,7 @@ export default function NewPaymentButton({ onSuccess }: Props) {
               </div>
             ) : (
               <>
-                {/* ── VENDOR + LPO (half layout) ───────────────────────────── */}
+                {/* ── VENDOR + LPO ─────────────────────────────────────────── */}
                 <div className="input-row half">
                   <SingleSelectDropdown
                     label="VENDOR"
@@ -236,32 +292,32 @@ export default function NewPaymentButton({ onSuccess }: Props) {
                     selectedValue={selectedVendor}
                     onChange={(val) => {
                       setSelectedVendor(String(val));
-                      setSelectedLpoId("");
+                      setSelectedLpoIds([]);
                       setPaymentAmount("");
                     }}
                     selectOptions={vendorList}
                     required
                   />
 
-                  <SingleSelectDropdown
+                  <MultiSelectDropdown
                     label="LPO"
-                    placeholder="SELECT LPO"
-                    selectedValue={selectedLpoId}
-                    onChange={(val) => {
-                      setSelectedLpoId(val === "" ? "" : Number(val));
+                    placeholder="SELECT LPOs"
+                    selectedValues={selectedLpoIds}
+                    onChange={(vals) => {
+                      setSelectedLpoIds(vals);
                       setPaymentAmount("");
                     }}
                     dbData={filteredLpos}
                     idField="id"
-                    formatOptionLabel={(l) =>
-                      `LPO-${String(l.id).padStart(5, "0")} - ${l.project_name || "—"} - ${l.requested_by || "—"}`
+                    formatOptionLabel={(l: LpoOption) =>
+                      `LPO-${String(l.id).padStart(5, "0")} - ${formatPriceAED(l.outstanding)} - ${l.project_name || "—"}`
                     }
                     disabled={!selectedVendor}
                     required
                   />
                 </div>
 
-                {/* ── REST OF FORM (only when LPO selected) ────────────────── */}
+                {/* ── REST OF FORM (only when at least one LPO selected) ─────── */}
                 {showForm && (
                   <>
                     {/* PAYMENT TYPE + METHOD */}
@@ -307,7 +363,7 @@ export default function NewPaymentButton({ onSuccess }: Props) {
                             OUTSTANDING AMOUNT
                           </small>
                           <div style={{ fontWeight: "600", fontSize: "16px" }}>
-                            {formatPriceAED(outstanding)}
+                            {formatPriceAED(totalOutstanding)}
                           </div>
                         </div>
                         <div>
@@ -315,7 +371,7 @@ export default function NewPaymentButton({ onSuccess }: Props) {
                             PAYMENT AMOUNT
                           </small>
                           <div style={{ fontWeight: "600", fontSize: "16px" }}>
-                            {paymentAmount ? paymentAmount : "-"}
+                            AED {formatWithCommas(enteredAmt.toFixed(2))}
                           </div>
                         </div>
                       </div>
@@ -461,12 +517,12 @@ export default function NewPaymentButton({ onSuccess }: Props) {
                         }}
                         onClick={() =>
                           setPaymentAmount(
-                            formatWithCommas(outstanding.toFixed(2)),
+                            formatWithCommas(totalOutstanding.toFixed(2)),
                           )
                         }
                       >
                         <span style={{ textDecoration: "underline" }}>Max</span>{" "}
-                        (AED {formatWithCommas(outstanding.toFixed(2))})
+                        (AED {formatWithCommas(totalOutstanding.toFixed(2))})
                       </p>
                     </div>
 
