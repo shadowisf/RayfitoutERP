@@ -682,247 +682,251 @@ export default function LpoLinesView({
   return (
     <>
       <div className="mr-with-id">
-      {/* Supplier header */}
-      <div className="subcategory-section">
-        <div className="subcategory-header">
-          <div style={{ display: "flex", gap: "10px" }}>
-            <h2
-              style={{
-                textTransform: "uppercase",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-              }}
-            >
-              {lpo.supplier_name}
-            </h2>
-
-            {allItems.length > 0 && (
-              <SupplierDetailsPopUp
-                item={allItems[0]}
+        {/* Supplier header */}
+        <div className="subcategory-section">
+          <div className="subcategory-header">
+            <div style={{ display: "flex", gap: "10px" }}>
+              <h2
                 style={{
-                  padding: "7px 7px",
-                  backgroundColor: "rgba(239, 239, 239, 1)",
-                  borderColor: "rgba(223, 223, 223, 1)",
+                  textTransform: "uppercase",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
                 }}
               >
-                <img
-                  src={externalLinkIcon}
-                  alt="external link"
-                  style={{ width: "12px" }}
-                />
-              </SupplierDetailsPopUp>
-            )}
-          </div>
+                {lpo.supplier_name}
+              </h2>
 
-          <div className="right">
-            {/* At Stock Entry stage (24) show the unified Documents popup */}
-            {progressId === 24 ? (
-              <DocumentsPopup lpoId={lpoId} />
-            ) : (
-              <>
-                {progressId >= 12 && (
-                  <IssueLPOButton mrHeader={lpoAsMrHeader} mrLines={allItems} />
-                )}
-
-                {(userInfo?.departmentID === 10 ||
-                  userInfo?.departmentID === 11) &&
-                  progressId === 13 && (
-                    <PaymentButtons
-                      mrHeader={lpoAsMrHeader}
-                      mrLine={allItems[0]}
-                      supplierId={allItems[0]?.approved_supplier_id}
-                    />
-                  )}
-
-                {(userInfo?.departmentID === 8 ||
-                  userInfo?.departmentID === 9) &&
-                  progressId === 13 && (
-                    <PaymentButtons
-                      mrHeader={lpoAsMrHeader}
-                      mrLine={allItems[0]}
-                      supplierId={allItems[0]?.approved_supplier_id}
-                    />
-                  )}
-
-                {progressId > 14 && (
-                  <PaymentButtons
-                    mrHeader={lpoAsMrHeader}
-                    mrLine={allItems[0]}
-                    supplierId={allItems[0]?.approved_supplier_id}
+              {allItems.length > 0 && (
+                <SupplierDetailsPopUp
+                  item={allItems[0]}
+                  style={{
+                    padding: "7px 7px",
+                    backgroundColor: "rgba(239, 239, 239, 1)",
+                    borderColor: "rgba(223, 223, 223, 1)",
+                  }}
+                >
+                  <img
+                    src={externalLinkIcon}
+                    alt="external link"
+                    style={{ width: "12px" }}
                   />
-                )}
+                </SupplierDetailsPopUp>
+              )}
+            </div>
 
-                {(progressId === 16 || progressId === 17) &&
-                  userInfo?.departmentID === 11 && (
+            <div className="right">
+              {/* At Stock Entry stage (24) show the unified Documents popup */}
+              {progressId === 24 ? (
+                <DocumentsPopup lpoId={lpoId} />
+              ) : (
+                <>
+                  {progressId >= 12 && (
+                    <IssueLPOButton
+                      mrHeader={lpoAsMrHeader}
+                      mrLines={allItems}
+                    />
+                  )}
+
+                  {(userInfo?.departmentID === 10 ||
+                    userInfo?.departmentID === 11) &&
+                    progressId === 13 && (
+                      <PaymentButtons
+                        mrHeader={lpoAsMrHeader}
+                        mrLine={allItems[0]}
+                        supplierId={allItems[0]?.approved_supplier_id}
+                      />
+                    )}
+
+                  {(userInfo?.departmentID === 8 ||
+                    userInfo?.departmentID === 9) &&
+                    progressId === 13 && (
+                      <PaymentButtons
+                        mrHeader={lpoAsMrHeader}
+                        mrLine={allItems[0]}
+                        supplierId={allItems[0]?.approved_supplier_id}
+                      />
+                    )}
+
+                  {progressId > 14 && (
+                    <PaymentButtons
+                      mrHeader={lpoAsMrHeader}
+                      mrLine={allItems[0]}
+                      supplierId={allItems[0]?.approved_supplier_id}
+                    />
+                  )}
+
+                  {(progressId === 16 || progressId === 17) &&
+                    userInfo?.departmentID === 11 && (
+                      <CreateGRNButton
+                        mrHeader={lpoAsMrHeader}
+                        mrLines={allItems}
+                        progress_id={progressId}
+                      />
+                    )}
+
+                  {progressId >= 18 && (
                     <CreateGRNButton
                       mrHeader={lpoAsMrHeader}
                       mrLines={allItems}
                       progress_id={progressId}
                     />
                   )}
-
-                {progressId >= 18 && (
-                  <CreateGRNButton
-                    mrHeader={lpoAsMrHeader}
-                    mrLines={allItems}
-                    progress_id={progressId}
-                  />
-                )}
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
 
-        <br />
+          <br />
 
-        <table className="items-table two-toned">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>CATEGORY</th>
-              <th>SUBCATEGORY</th>
-              <th>ITEM</th>
-              <th>QTY USE</th>
-              {hasAnyQtyStocks && <th>QTY STOCKS</th>}
-              <th>TOTAL QTY</th>
-              <th>BOQ REF.</th>
-              {hasAnyBrandSpecs && <th>BRAND & SPECS</th>}
-              {hasAnyAttachment && <th>ATTACHMENT</th>}
-              {canSeePrice && <th>UNIT PRICE</th>}
-              {canSeePrice && <th>TOTAL PRICE</th>}
-              {/* TEMPORARILY DISABLED QC/CR
+          <table className="items-table two-toned">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>CATEGORY</th>
+                <th>SUBCATEGORY</th>
+                <th>ITEM</th>
+                <th>QTY USE</th>
+                {hasAnyQtyStocks && <th>QTY STOCKS</th>}
+                <th>TOTAL QTY</th>
+                <th>BOQ REF.</th>
+                {hasAnyBrandSpecs && <th>BRAND & SPECS</th>}
+                {hasAnyAttachment && <th>ATTACHMENT</th>}
+                {canSeePrice && <th>UNIT PRICE</th>}
+                {canSeePrice && <th>TOTAL PRICE</th>}
+                {/* TEMPORARILY DISABLED QC/CR
               {userInfo?.departmentID === 12 && progressId === 21 && (
                 <th>QC</th>
               )}
               {hasCrColumn && <th>CR</th>}
               */}
-              {progressId === 24 && userInfo?.departmentID === 11 && (
-                <th>STOCKS</th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {displayItems.map((item: MrLine, itemIndex: number) => {
-              const flatLine = flatLines.find((fl: any) => fl.id === item.id);
-              const unitPrice = flatLine
-                ? Number(flatLine.lpo_unit_price) || 0
-                : Number(item.approved_unit_price) || 0;
-              const proposedQty = Number(item.approved_proposed_quantity) || 0;
-              const requestedQty = Number(item.quantity) || 0;
-              const qtyForStocks =
-                proposedQty > 0 ? proposedQty - requestedQty : 0;
-              const totalQty = proposedQty > 0 ? proposedQty : requestedQty;
-              const totalPrice = unitPrice * totalQty;
+                {progressId === 24 && userInfo?.departmentID === 11 && (
+                  <th>STOCKS</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {displayItems.map((item: MrLine, itemIndex: number) => {
+                const flatLine = flatLines.find((fl: any) => fl.id === item.id);
+                const unitPrice = flatLine
+                  ? Number(flatLine.lpo_unit_price) || 0
+                  : Number(item.approved_unit_price) || 0;
+                const proposedQty =
+                  Number(item.approved_proposed_quantity) || 0;
+                const requestedQty = Number(item.quantity) || 0;
+                const qtyForStocks =
+                  proposedQty > 0 ? proposedQty - requestedQty : 0;
+                const totalQty = proposedQty > 0 ? proposedQty : requestedQty;
+                const totalPrice = unitPrice * totalQty;
 
-              return (
-                <tr key={item.id}>
-                  <td>{itemIndex + 1}</td>
-                  <td>{item.material_category}</td>
-                  <td>{item.material_subcategory}</td>
-                  <td>
-                    {item.material_description}
-                    {progressId === 25 && item.stock_inventory_item_id && (
-                      <div
-                        style={{
-                          fontStyle: "italic",
-                          marginTop: "4px",
-                          fontSize: "10px",
-                        }}
-                      >
-                        <span style={{ color: "rgba(150, 150, 150, 1)" }}>
-                          Stock added for:{" "}
-                        </span>
-                        <a
-                          href={`/inventory/${item.stock_inventory_item_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                return (
+                  <tr key={item.id}>
+                    <td>{itemIndex + 1}</td>
+                    <td>{item.material_category}</td>
+                    <td>{item.material_subcategory}</td>
+                    <td>
+                      {item.material_description}
+                      {progressId === 25 && item.stock_inventory_item_id && (
+                        <div
                           style={{
-                            fontWeight: "600",
-                            color: "black",
-                            textDecoration: "none",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "5px",
+                            fontStyle: "italic",
+                            marginTop: "4px",
+                            fontSize: "10px",
                           }}
                         >
-                          &ldquo;{item.stock_inventory_item_name}&rdquo;
-                          <img
-                            src="/icons/external-link.svg"
-                            alt=""
-                            style={{ width: "10px", height: "10px" }}
+                          <span style={{ color: "rgba(150, 150, 150, 1)" }}>
+                            Stock added for:{" "}
+                          </span>
+                          <a
+                            href={`/inventory/${item.stock_inventory_item_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontWeight: "600",
+                              color: "black",
+                              textDecoration: "none",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "5px",
+                            }}
+                          >
+                            &ldquo;{item.stock_inventory_item_name}&rdquo;
+                            <img
+                              src="/icons/external-link.svg"
+                              alt=""
+                              style={{ width: "10px", height: "10px" }}
+                            />
+                          </a>
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {formatNumber(item?.quantity)} {item.unit}
+                    </td>
+                    {hasAnyQtyStocks && (
+                      <td>
+                        {qtyForStocks > 0
+                          ? `${formatNumber(qtyForStocks)} ${item.unit}`
+                          : "-"}
+                      </td>
+                    )}
+                    <td>
+                      {formatNumber(totalQty)} {item.unit}
+                    </td>
+                    <td>
+                      {item.boq_line_ids ? (
+                        <BoqReferencePopUp item={item} mrHeader={mrHeader} />
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    {hasAnyBrandSpecs && (
+                      <td>
+                        {item.brand || item.specification ? (
+                          <InfoPopUpButton
+                            text={
+                              <>
+                                <small>BRAND</small>
+                                <h2>{item.brand || "-"}</h2>
+
+                                <br />
+
+                                <small>SPECIFICATION</small>
+                                <h2>{item.specification || "-"}</h2>
+                              </>
+                            }
+                            header="BRAND & SPECIFICATION"
                           />
-                        </a>
-                      </div>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
                     )}
-                  </td>
-                  <td>
-                    {formatNumber(item?.quantity)} {item.unit}
-                  </td>
-                  {hasAnyQtyStocks && (
-                    <td>
-                      {qtyForStocks > 0
-                        ? `${formatNumber(qtyForStocks)} ${item.unit}`
-                        : "-"}
-                    </td>
-                  )}
-                  <td>
-                    {formatNumber(totalQty)} {item.unit}
-                  </td>
-                  <td>
-                    {item.boq_line_ids ? (
-                      <BoqReferencePopUp item={item} mrHeader={mrHeader} />
-                    ) : (
-                      "-"
+                    {hasAnyAttachment && (
+                      <td>
+                        {item.attachment ? (
+                          <Button
+                            componentType={"link"}
+                            bgColor={"rgba(239, 239, 239, 1)"}
+                            borderColor={"rgba(223, 223, 223, 1)"}
+                            textColor={"black"}
+                            style={{ padding: "7px 7px" }}
+                            href={item.attachment}
+                            target="_blank"
+                          >
+                            <img src={externalLinkIcon} alt="external link" />
+                          </Button>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
                     )}
-                  </td>
-                  {hasAnyBrandSpecs && (
-                    <td>
-                      {item.brand || item.specification ? (
-                        <InfoPopUpButton
-                          text={
-                            <>
-                              <small>BRAND</small>
-                              <h2>{item.brand || "-"}</h2>
 
-                              <br />
+                    {canSeePrice && <td>{formatPriceAED(unitPrice)}</td>}
 
-                              <small>SPECIFICATION</small>
-                              <h2>{item.specification || "-"}</h2>
-                            </>
-                          }
-                          header="BRAND & SPECIFICATION"
-                        />
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  )}
-                  {hasAnyAttachment && (
-                    <td>
-                      {item.attachment ? (
-                        <Button
-                          componentType={"link"}
-                          bgColor={"rgba(239, 239, 239, 1)"}
-                          borderColor={"rgba(223, 223, 223, 1)"}
-                          textColor={"black"}
-                          style={{ padding: "7px 7px" }}
-                          href={item.attachment}
-                          target="_blank"
-                        >
-                          <img src={externalLinkIcon} alt="external link" />
-                        </Button>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  )}
+                    {canSeePrice && <td>{formatPriceAED(totalPrice)}</td>}
 
-                  {canSeePrice && <td>{formatPriceAED(unitPrice)}</td>}
-
-                  {canSeePrice && <td>{formatPriceAED(totalPrice)}</td>}
-
-                  {/* TEMPORARILY DISABLED QC/CR
+                    {/* TEMPORARILY DISABLED QC/CR
                   {userInfo?.departmentID === 12 && progressId === 21 && (
                     <td>
                       <QCCheckListButton item={item} mrHeader={lpoAsMrHeader} />
@@ -941,46 +945,23 @@ export default function LpoLinesView({
                   )}
                   */}
 
-                  {userInfo?.departmentID === 11 && progressId === 24 && (
-                    <td>
-                      <AddToInventoryButton mrLine={item} />
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
+                    {userInfo?.departmentID === 11 && progressId === 24 && (
+                      <td>
+                        <AddToInventoryButton mrLine={item} />
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
 
-          {canSeePrice && (
-            <tfoot
-              style={{
-                borderTop: "1px solid rgba(239, 239, 239, 1)",
-              }}
-            >
-              {/* Subtotal Row */}
-              <tr>
-                <td colSpan={summaryLabelColSpan} />
-                <td
-                  style={{
-                    fontWeight: "600",
-                  }}
-                >
-                  SUBTOTAL
-                </td>
-                <td
-                  style={{
-                    fontWeight: "600",
-                  }}
-                >
-                  {formatPriceAED(calculateItemsTotal(displayItems))}
-                </td>
-                {summaryTrailingColSpan > 0 && (
-                  <td colSpan={summaryTrailingColSpan} />
-                )}
-              </tr>
-
-              {/* Discount Row */}
-              {getDiscountRate() > 0 && (
+            {canSeePrice && (
+              <tfoot
+                style={{
+                  borderTop: "1px solid rgba(239, 239, 239, 1)",
+                }}
+              >
+                {/* Subtotal Row */}
                 <tr>
                   <td colSpan={summaryLabelColSpan} />
                   <td
@@ -988,82 +969,125 @@ export default function LpoLinesView({
                       fontWeight: "600",
                     }}
                   >
-                    DISCOUNT ({getDiscountRate()}%)
+                    SUBTOTAL
                   </td>
                   <td
                     style={{
                       fontWeight: "600",
                     }}
                   >
-                    -{" "}
+                    {formatPriceAED(calculateItemsTotal(displayItems))}
+                  </td>
+                  {summaryTrailingColSpan > 0 && (
+                    <td colSpan={summaryTrailingColSpan} />
+                  )}
+                </tr>
+
+                {/* Discount Row */}
+                {getDiscountRate() > 0 && (
+                  <tr>
+                    <td colSpan={summaryLabelColSpan} />
+                    <td
+                      style={{
+                        fontWeight: "600",
+                      }}
+                    >
+                      DISCOUNT ({getDiscountRate()}%)
+                    </td>
+                    <td
+                      style={{
+                        fontWeight: "600",
+                      }}
+                    >
+                      -{" "}
+                      {formatPriceAED(
+                        calculateItemsTotal(displayItems) *
+                          (getDiscountRate() / 100),
+                      )}
+                    </td>
+                    {summaryTrailingColSpan > 0 && (
+                      <td colSpan={summaryTrailingColSpan} />
+                    )}
+                  </tr>
+                )}
+
+                {/* Shipping & Handling Row */}
+                {getShippingAndHandling() > 0 && (
+                  <tr>
+                    <td colSpan={summaryLabelColSpan} />
+                    <td
+                      style={{
+                        fontWeight: "600",
+                      }}
+                    >
+                      S&H
+                    </td>
+                    <td
+                      style={{
+                        fontWeight: "600",
+                      }}
+                    >
+                      {formatPriceAED(getShippingAndHandling())}
+                    </td>
+                    {summaryTrailingColSpan > 0 && (
+                      <td colSpan={summaryTrailingColSpan} />
+                    )}
+                  </tr>
+                )}
+
+                {/* Total with VAT Row */}
+                <tr>
+                  <td colSpan={summaryLabelColSpan} />
+                  <td
+                    style={{
+                      fontWeight: "600",
+                    }}
+                  >
+                    TOTAL W/ VAT
+                  </td>
+                  <td
+                    style={{
+                      fontWeight: "600",
+                    }}
+                  >
                     {formatPriceAED(
-                      calculateItemsTotal(displayItems) *
-                        (getDiscountRate() / 100),
+                      calculateTotalWithVAT(calculateItemsTotal(displayItems)),
                     )}
                   </td>
                   {summaryTrailingColSpan > 0 && (
                     <td colSpan={summaryTrailingColSpan} />
                   )}
                 </tr>
+              </tfoot>
+            )}
+          </table>
+
+          <br />
+          <br />
+          <br />
+        </div>
+
+        {progressId >= 10 && canSeePrice && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "12px 0",
+              borderTop: "1px solid rgba(200, 200, 200, 1)",
+              marginTop: "8px",
+            }}
+          >
+            <h2>MR TOTAL</h2>
+            <h2>
+              {formatPriceAED(
+                calculateTotalWithVAT(calculateItemsTotal(displayItems)),
               )}
-
-              {/* Shipping & Handling Row */}
-              {getShippingAndHandling() > 0 && (
-                <tr>
-                  <td colSpan={summaryLabelColSpan} />
-                  <td
-                    style={{
-                      fontWeight: "600",
-                    }}
-                  >
-                    S&H
-                  </td>
-                  <td
-                    style={{
-                      fontWeight: "600",
-                    }}
-                  >
-                    {formatPriceAED(getShippingAndHandling())}
-                  </td>
-                  {summaryTrailingColSpan > 0 && (
-                    <td colSpan={summaryTrailingColSpan} />
-                  )}
-                </tr>
-              )}
-
-              {/* Total with VAT Row */}
-              <tr>
-                <td colSpan={summaryLabelColSpan} />
-                <td
-                  style={{
-                    fontWeight: "600",
-                  }}
-                >
-                  TOTAL W/ VAT
-                </td>
-                <td
-                  style={{
-                    fontWeight: "600",
-                  }}
-                >
-                  {formatPriceAED(
-                    calculateTotalWithVAT(calculateItemsTotal(displayItems)),
-                  )}
-                </td>
-                {summaryTrailingColSpan > 0 && (
-                  <td colSpan={summaryTrailingColSpan} />
-                )}
-              </tr>
-            </tfoot>
-          )}
-        </table>
-
-        <br />
-        <br />
-        <br />
+            </h2>
+          </div>
+        )}
       </div>
-
-      </div>{/* end mr-with-id */}
+      {/* end mr-with-id */}
 
       <CommentsSection
         mrHeaderId={mrHeader.id}

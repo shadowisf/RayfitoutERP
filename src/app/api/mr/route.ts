@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 import { ResultSetHeader } from "mysql2";
 import { db } from "@/lib/db";
 
+function normalizeStageNameForLog(stageName: string | null | undefined): string {
+  if (!stageName) return "DRAFT";
+  if (stageName.toUpperCase() === "INITIAL APPROVAL") return "DRAFT";
+  return stageName;
+}
+
+function formatQtyForLog(qty: any, unit?: string | null): string {
+  const num = parseFloat(String(qty));
+  const formatted = Number.isInteger(num) ? String(num) : String(num);
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
 export async function GET() {
   try {
     const [rows]: any = await db.query(`
@@ -321,7 +333,7 @@ export async function POST(req: Request) {
             Number(body.mr_header_id),
             mrLineId,
             body.changed_by || null,
-            body.stage_name || "DEPARTMENT",
+            normalizeStageNameForLog(body.stage_name),
             body.material_description || null,
           ],
         );
@@ -1903,7 +1915,7 @@ export async function PUT(req: Request) {
                 oldAllLine.mr_header_id,
                 Number(body.id),
                 body.changed_by || null,
-                body.stage_name || "DEPARTMENT",
+                normalizeStageNameForLog(body.stage_name),
                 oldAllLine.material_description || null,
                 body.material_description || null,
               ],
@@ -1911,8 +1923,8 @@ export async function PUT(req: Request) {
           }
 
           if (qtyChanged) {
-            const oldQ = `${oldAllLine.quantity}${oldAllLine.unit ? " " + oldAllLine.unit : ""}`;
-            const newQ = `${body.quantity}${body.unit ? " " + body.unit : ""}`;
+            const oldQ = formatQtyForLog(oldAllLine.quantity, oldAllLine.unit);
+            const newQ = formatQtyForLog(body.quantity, body.unit);
             await db.query(
               `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, old_value, new_value)
                VALUES (?, ?, 'QTY_EDITED', ?, ?, ?, ?)`,
@@ -1920,7 +1932,7 @@ export async function PUT(req: Request) {
                 oldAllLine.mr_header_id,
                 Number(body.id),
                 body.changed_by || null,
-                body.stage_name || "DEPARTMENT",
+                normalizeStageNameForLog(body.stage_name),
                 oldQ,
                 newQ,
               ],
@@ -1935,7 +1947,7 @@ export async function PUT(req: Request) {
                 oldAllLine.mr_header_id,
                 Number(body.id),
                 body.changed_by || null,
-                body.stage_name || "DEPARTMENT",
+                normalizeStageNameForLog(body.stage_name),
                 body.material_description || null,
               ],
             );
@@ -1985,8 +1997,8 @@ export async function PUT(req: Request) {
 
       // ── Activity log: QTY_EDITED ──────────────────────────────────────────
       if (oldLine) {
-        const oldQtyStr = `${oldLine.quantity}${oldLine.unit ? " " + oldLine.unit : ""}`;
-        const newQtyStr = `${body.quantity}${body.unit ? " " + body.unit : ""}`;
+        const oldQtyStr = formatQtyForLog(oldLine.quantity, oldLine.unit);
+        const newQtyStr = formatQtyForLog(body.quantity, body.unit);
         await db.query(
           `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, old_value, new_value)
            VALUES (?, ?, 'QTY_EDITED', ?, ?, ?, ?)`,
@@ -1994,7 +2006,7 @@ export async function PUT(req: Request) {
             oldLine.mr_header_id,
             Number(body.id),
             body.changed_by || null,
-            body.stage_name || null,
+            normalizeStageNameForLog(body.stage_name),
             oldQtyStr,
             newQtyStr,
           ],
@@ -2032,7 +2044,7 @@ export async function PUT(req: Request) {
             oldBsLine.mr_header_id,
             Number(body.id),
             body.changed_by || null,
-            body.stage_name || null,
+            normalizeStageNameForLog(body.stage_name),
             oldBs,
             newBs,
           ],
@@ -2088,7 +2100,7 @@ export async function DELETE(req: Request) {
             delLine.mr_header_id,
             lineId,
             body.changed_by || null,
-            body.stage_name || "DEPARTMENT",
+            normalizeStageNameForLog(body.stage_name),
             delLine.material_description || null,
           ],
         );

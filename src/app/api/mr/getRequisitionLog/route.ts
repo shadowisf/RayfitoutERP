@@ -48,7 +48,7 @@ function getActivityLabel(progressId: number, isRollback: boolean): string {
 // ── Header progress_id → stage label ─────────────────────────────────────────
 function getStageFromProgressId(progressId: number): string {
   const map: Record<number, string> = {
-    1:  "INITIAL APPROVAL",
+    1:  "DRAFT",
     2:  "QS REVIEW",
     3:  "MANAGER APPROVAL",
     4:  "STOCK TRANSFER",
@@ -68,6 +68,15 @@ function getStageFromProgressId(progressId: number): string {
     26: "SEGREGATION",
   };
   return map[progressId] ?? "—";
+}
+
+// ── Strip unnecessary decimal zeros from numeric strings ─────────────────────
+function formatLogValue(val: string): string {
+  if (val && /^\d+(\.\d+)?$/.test(val.trim())) {
+    const num = parseFloat(val);
+    return String(num);
+  }
+  return val;
 }
 
 // ── Line activity_type → display label ────────────────────────────────────────
@@ -145,7 +154,7 @@ export async function POST(req: Request) {
         source:     "header",
         activity:   "REQUEST CREATED",
         handled_by: meta.requested_by || "—",
-        stage:      "INITIAL APPROVAL",
+        stage:      "DRAFT",
         remarks:    null,
         created_at: meta.date_requested,
       });
@@ -153,13 +162,16 @@ export async function POST(req: Request) {
 
     // Add header progress entries
     for (const entry of headerRows) {
+      const isRollback = entry.is_rollback === 1;
       combined.push({
         id:         `h_${entry.id}`,
         source:     "header",
-        activity:   getActivityLabel(entry.progress_id, entry.is_rollback === 1),
+        activity:   getActivityLabel(entry.progress_id, isRollback),
         handled_by: entry.changed_by || "—",
         stage:      getStageFromProgressId(entry.progress_id),
-        remarks:    null,
+        remarks:    isRollback
+          ? `ROLLED BACK TO ${getStageFromProgressId(entry.progress_id)}`
+          : null,
         created_at: entry.changed_at,
       });
     }
@@ -168,11 +180,11 @@ export async function POST(req: Request) {
     for (const entry of lineRows) {
       let remarks: string | null = null;
       if (entry.old_value && entry.new_value) {
-        remarks = `${entry.old_value} → ${entry.new_value}`;
+        remarks = `${formatLogValue(entry.old_value)} → ${formatLogValue(entry.new_value)}`;
       } else if (entry.new_value) {
-        remarks = entry.new_value;
+        remarks = formatLogValue(entry.new_value);
       } else if (entry.old_value) {
-        remarks = entry.old_value;
+        remarks = formatLogValue(entry.old_value);
       }
 
       combined.push({

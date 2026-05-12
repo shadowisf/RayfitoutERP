@@ -69,9 +69,7 @@ export default function DeleteMrItemButton({
         body: JSON.stringify({
           action: "deleteItem",
           id: item.id,
-          changed_by: userInfo?.name && userInfo?.role
-            ? `${userInfo.name}, ${userInfo.role}`
-            : (userInfo?.name || null),
+          changed_by: userInfo?.name || null,
           stage_name: stageName || "INITIAL APPROVAL",
         }),
       });

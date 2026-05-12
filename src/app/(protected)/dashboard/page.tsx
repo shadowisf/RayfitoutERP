@@ -284,18 +284,18 @@ export default function Dashboard() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "2fr 1.2fr 2.2fr",
+              gridTemplateColumns: "1.2fr 2fr 2.2fr",
               gap: "16px",
               alignItems: "stretch",
             }}
           >
-            <FinanceTotalSpentWidget />
             <div
               style={{ display: "flex", flexDirection: "column", gap: "16px" }}
             >
               <FinanceOutstandingPayablesWidget />
               <FinanceCommittedSpentWidget />
             </div>
+            <FinanceTotalSpentWidget />
             <FinanceRecentTransactionsWidget />
           </div>
 

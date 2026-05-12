@@ -198,6 +198,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       label: "Vendors & Subcontractors",
       path: "/vendor",
       icon: "/icons/vendors.svg",
+      visibleTo: [8, 16, 11, 9],
     },
 
     /* TEMPORARILY DISABLED - Resolution Center
@@ -214,6 +215,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       path: "/inventory",
       icon: "/icons/inventory.svg",
       count: inventoryActionCount,
+      visibleTo: [8, 16],
     },
   ];
 

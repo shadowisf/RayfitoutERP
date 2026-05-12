@@ -347,31 +347,6 @@ export default function Payments() {
     [lpoRows],
   );
 
-  // ── Widget stats — computed from ALL loaded rows (not filtered) ─────────
-  const outstandingStats = useMemo(() => {
-    const unpaid = lpoRows.filter((r) => r.is_paid !== 1);
-    const cash = unpaid.filter(
-      (r) => (r.supplier_type ?? "").toLowerCase() === "cash",
-    );
-    const credit = unpaid.filter(
-      (r) => (r.supplier_type ?? "").toLowerCase() === "credit",
-    );
-    return {
-      total: {
-        amount: unpaid.reduce((s, r) => s + Number(r.outstanding), 0),
-        count: unpaid.length,
-      },
-      cash: {
-        amount: cash.reduce((s, r) => s + Number(r.outstanding), 0),
-        count: cash.length,
-      },
-      credit: {
-        amount: credit.reduce((s, r) => s + Number(r.outstanding), 0),
-        count: credit.length,
-      },
-    };
-  }, [lpoRows]);
-
   // ── Search ──────────────────────────────────────────────────────────────
   const searched = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -437,6 +412,31 @@ export default function Payments() {
       return true;
     });
   }, [searched, filters, dateRange]);
+
+  // ── Widget stats — computed from filtered rows ───────────────────────────
+  const outstandingStats = useMemo(() => {
+    const unpaid = filtered.filter((r) => r.is_paid !== 1);
+    const cash = unpaid.filter(
+      (r) => (r.supplier_type ?? "").toLowerCase() === "cash",
+    );
+    const credit = unpaid.filter(
+      (r) => (r.supplier_type ?? "").toLowerCase() === "credit",
+    );
+    return {
+      total: {
+        amount: unpaid.reduce((s, r) => s + Number(r.outstanding), 0),
+        count: unpaid.length,
+      },
+      cash: {
+        amount: cash.reduce((s, r) => s + Number(r.outstanding), 0),
+        count: cash.length,
+      },
+      credit: {
+        amount: credit.reduce((s, r) => s + Number(r.outstanding), 0),
+        count: credit.length,
+      },
+    };
+  }, [filtered]);
 
   // Always keep unpaid first, paid last; then apply column sort within each group
   const sorted = useMemo(() => {
@@ -1101,7 +1101,7 @@ export default function Payments() {
                       >
                         <colgroup>
                           <col style={{ width: "36px" }} />
-                          <col style={{ width: "100px" }} />
+                          <col style={{ width: "125px" }} />
                           <col style={{ width: "200px" }} />
                           <col style={{ width: "200px" }} />
                           <col style={{ width: "200px" }} />
@@ -1285,11 +1285,7 @@ export default function Payments() {
                                   <SupplierTypePill type={row.supplier_type} />
                                 </td>
                                 <td style={{ whiteSpace: "nowrap" }}>
-                                  {isPaid ? (
-                                    <span>N/A</span>
-                                  ) : (
-                                    `AED ${formatAED(Number(row.outstanding))}`
-                                  )}
+                                  {`AED ${formatAED(isPaid ? 0 : Number(row.outstanding))}`}
                                 </td>
                                 <td style={{ whiteSpace: "nowrap" }}>
                                   {dueDate}
@@ -1334,7 +1330,13 @@ export default function Payments() {
                                       bgColor="rgba(239, 239, 239, 1)"
                                       borderColor="rgba(223, 223, 223, 1)"
                                       textColor="black"
-                                      href={`/payment/mr/${row.mr_header_id}`}
+                                      href={
+                                        (
+                                          row.supplier_type ?? ""
+                                        ).toLowerCase() === "credit"
+                                          ? `/payment/credit/supplier/${row.supplier_id}`
+                                          : `/payment/cash/mr/${row.mr_header_id}`
+                                      }
                                       style={{ padding: "7px 7px" }}
                                     >
                                       <img src={externalLinkIcon} alt="open" />
@@ -1539,11 +1541,7 @@ export default function Payments() {
 
                     {/* OUTSTANDING AMOUNT */}
                     <td style={{ whiteSpace: "nowrap" }}>
-                      {isPaid ? (
-                        <span>N/A</span>
-                      ) : (
-                        `AED ${formatAED(Number(row.outstanding))}`
-                      )}
+                      {`AED ${formatAED(isPaid ? 0 : Number(row.outstanding))}`}
                     </td>
 
                     {/* DUE DATE */}
@@ -1584,7 +1582,11 @@ export default function Payments() {
                           bgColor="rgba(239, 239, 239, 1)"
                           borderColor="rgba(223, 223, 223, 1)"
                           textColor="black"
-                          href={`/payment/mr/${row.mr_header_id}`}
+                          href={
+                            (row.supplier_type ?? "").toLowerCase() === "credit"
+                              ? `/payment/credit/supplier/${row.supplier_id}`
+                              : `/payment/cash/mr/${row.mr_header_id}`
+                          }
                           style={{ padding: "7px 7px" }}
                         >
                           <img src={externalLinkIcon} alt="open" />
@@ -1613,6 +1615,7 @@ export default function Payments() {
             mr_header_id: r.mr_header_id,
             supplier_name: r.supplier_name,
             outstanding: Number(r.outstanding),
+            supplier_type: r.supplier_type ?? "",
           }))}
           onSuccess={handlePaymentSuccess}
           recordedBy={recordedBy}

@@ -26,6 +26,7 @@ type Transaction = {
   payment_date: string | null;
   created_at: string;
   payment_file: string | null;
+  supplier_statement: string | null;
   material_categories: string[];
 };
 
@@ -49,7 +50,7 @@ function formatAED(val: number): string {
 }
 
 function formatDate(raw: string | null): string {
-  if (!raw) return "Pending";
+  if (!raw) return "N/A";
   const d = new Date(raw);
   return d
     .toLocaleDateString("en-GB", {
@@ -605,12 +606,12 @@ export default function AllTransactionsPage() {
             <colgroup>
               <col style={{ width: "44px" }} />
               <col style={{ width: "160px" }} />
-              <col />
+              <col style={{ width: "200px" }} />
               <col style={{ width: "200px" }} />
               <col style={{ width: "250px" }} />
               <col style={{ width: "225px" }} />
-              <col style={{ width: "180px" }} />
-              <col style={{ width: "160px" }} />
+              <col />
+              <col />
               <col style={{ width: "200px" }} />
             </colgroup>
             <thead>
@@ -731,6 +732,20 @@ export default function AllTransactionsPage() {
                         >
                           <img src={externalLinkIcon} alt="open" />
                         </Button>
+                        {row.vendor_type?.toLowerCase() === "credit" &&
+                          row.supplier_statement && (
+                            <Button
+                              componentType="link"
+                              bgColor="rgba(239,239,239,1)"
+                              borderColor="rgba(223,223,223,1)"
+                              textColor="black"
+                              href={row.supplier_statement}
+                              target="_blank"
+                              style={{ padding: "7px 7px", flexShrink: 0 }}
+                            >
+                              <img src={externalLinkIcon} alt="statement" />
+                            </Button>
+                          )}
                       </div>
                     )}
                   </td>

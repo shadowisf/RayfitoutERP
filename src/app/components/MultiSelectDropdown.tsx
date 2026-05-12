@@ -460,8 +460,8 @@ export default function MultiSelectDropdown({
                                 alignItems: "center",
                                 justifyContent: "center",
                                 flexShrink: 0,
-                                backgroundColor: isChecked ? "#000" : "white",
-                                borderColor: isChecked ? "#000" : "#d9d9d9",
+                                backgroundColor: isChecked ? "rgba(0,163,93,1)" : "white",
+                                borderColor: isChecked ? "rgba(0,163,93,1)" : "#d9d9d9",
                               }}
                             >
                               {isChecked && (
@@ -548,8 +548,8 @@ export default function MultiSelectDropdown({
                         alignItems: "center",
                         justifyContent: "center",
                         flexShrink: 0,
-                        backgroundColor: isChecked ? "#000" : "white",
-                        borderColor: isChecked ? "#000" : "#d9d9d9",
+                        backgroundColor: isChecked ? "rgba(0,163,93,1)" : "white",
+                        borderColor: isChecked ? "rgba(0,163,93,1)" : "#d9d9d9",
                       }}
                     >
                       {isChecked && (

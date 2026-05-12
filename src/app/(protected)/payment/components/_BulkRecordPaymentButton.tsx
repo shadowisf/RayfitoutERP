@@ -27,6 +27,7 @@ export type BulkLpoRow = {
   mr_header_id: number;
   supplier_name: string;
   outstanding: number;
+  supplier_type: string;
 };
 
 type Props = {
@@ -80,6 +81,16 @@ export default function BulkRecordPaymentButton({
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [statementFile, setStatementFile] = useState<File | null>(null);
+
+  const hasCredit = selectedRows.some(
+    (r) => r.supplier_type.toLowerCase() === "credit",
+  );
+  const hasCashOrMarketplace = selectedRows.some((r) => {
+    const t = r.supplier_type.toLowerCase();
+    return t === "cash" || t.startsWith("marketplace");
+  });
+  const showSupplierStatement = hasCredit && hasCashOrMarketplace;
 
   const totalOutstanding = useMemo(
     () => selectedRows.reduce((s, r) => s + Number(r.outstanding), 0),
@@ -109,6 +120,7 @@ export default function BulkRecordPaymentButton({
     setPaymentAmount("");
     setPaymentNotes("");
     setReceiptFile(null);
+    setStatementFile(null);
   };
 
   const handleClose = (v: boolean) => {
@@ -137,6 +149,22 @@ export default function BulkRecordPaymentButton({
         }
       }
 
+      // Upload supplier statement (only used for credit rows)
+      let statementUrl: string | null = null;
+      if (showSupplierStatement && statementFile) {
+        const fd = new FormData();
+        fd.append("folder", "supplier-statements");
+        fd.append("files", statementFile);
+        const up = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`, {
+          method: "POST",
+          body: fd,
+        });
+        if (up.ok) {
+          const d = await up.json();
+          statementUrl = d.urls?.[0] ?? null;
+        }
+      }
+
       // Only submit LPOs that received a non-zero allocation
       const toSubmit = selectedRows
         .map((row, i) => ({ row, amount: distribution[i] }))
@@ -155,6 +183,10 @@ export default function BulkRecordPaymentButton({
               payment_method: paymentMethod,
               amount,
               receipt_file: receiptUrl,
+              supplier_statement:
+                row.supplier_type.toLowerCase() === "credit"
+                  ? statementUrl
+                  : null,
               notes: paymentNotes || null,
               recorded_by: recordedBy,
             }),
@@ -283,7 +315,7 @@ export default function BulkRecordPaymentButton({
                   PAYMENT AMOUNT
                 </small>
                 <div style={{ fontWeight: "600", fontSize: "16px" }}>
-                  {paymentAmount ? paymentAmount : "-"}
+                  AED {formatWithCommas(enteredAmt.toFixed(2))}
                 </div>
               </div>
             </div>
@@ -429,6 +461,20 @@ export default function BulkRecordPaymentButton({
               onChange={(e) => setPaymentNotes(e.target.value)}
             />
           </div>
+
+          {showSupplierStatement && (
+            <div className="input-row full">
+              <SingleUploadFileBox
+                fileState={statementFile}
+                setFileState={setStatementFile}
+                label="SUPPLIER STATEMENT"
+                acceptedFileTypes=".pdf,.jpg,.jpeg,.png"
+                placeholder="UPLOAD SUPPLIER STATEMENT"
+                buttonLabel="UPLOAD STATEMENT"
+                required
+              />
+            </div>
+          )}
 
           <div className="input-row full">
             <SingleUploadFileBox

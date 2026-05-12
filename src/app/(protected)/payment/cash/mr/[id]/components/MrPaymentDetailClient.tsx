@@ -957,10 +957,14 @@ export default function FinanceDetailClient({
       {/* ── RECORD PAYMENT MODAL ────────────────────────────────────────────── */}
       {selectedLpo && (
         <RecordPaymentForm
-          lpoId={selectedLpo.id}
-          mrHeaderId={mrHeaderId}
+          lpos={[
+            {
+              id: selectedLpo.id,
+              mr_header_id: mrHeaderId,
+              outstanding: balance,
+            },
+          ]}
           supplierName={selectedLpo.supplier_name}
-          outstanding={balance}
           isOpen={isRecordOpen}
           setIsOpen={setIsRecordOpen}
           onSuccess={async () => {

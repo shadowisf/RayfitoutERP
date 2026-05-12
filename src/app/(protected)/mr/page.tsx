@@ -655,6 +655,9 @@ export default function MR() {
     }
 
     // ───── Non-managers ─────
+    // Always show cards that belong to the user's own department
+    if (lpoCard.department_id === userDeptId) return true;
+
     if ([5].includes(lpoCard.progress_id)) {
       return lpoCard.department_id === userDeptId;
     }
@@ -694,6 +697,9 @@ export default function MR() {
     }
 
     // ───── Normal users ─────
+    // Always show cards that belong to the user's own department
+    if (mr.department_id === userDeptId) return true;
+
     if (mr.progress_id === 1) {
       return mr.department_id === userDeptId;
     }

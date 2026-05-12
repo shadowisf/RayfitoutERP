@@ -391,9 +391,7 @@ export default function AddMrItemButton({
           body: JSON.stringify({
             action: "createMrLine",
             mr_header_id: mrHeaderID,
-            changed_by: userInfo?.name && userInfo?.role
-              ? `${userInfo.name}, ${userInfo.role}`
-              : (userInfo?.name || null),
+            changed_by: userInfo?.name || null,
             stage_name: stageName || "INITIAL APPROVAL",
             material_category_id:
               row.categoryIdOverride ?? row.predefinedItem.category_id,
@@ -796,7 +794,7 @@ export default function AddMrItemButton({
                                   alignItems: "center",
                                 }}
                               >
-                                <Button
+                                {/* <Button
                                   componentType={"button"}
                                   bgColor={"rgba(239,239,239,1)"}
                                   borderColor={"rgba(223,223,223,1)"}
@@ -808,7 +806,7 @@ export default function AddMrItemButton({
                                   }}
                                 >
                                   <img src={pencilIcon} alt="edit" />
-                                </Button>
+                                </Button> */}
                                 <Button
                                   componentType={"button"}
                                   bgColor={"transparent"}
