@@ -522,11 +522,10 @@ label {
     }
   }
 
-  /* New scrollable content wrapper */
   .form-content {
-    flex: 1;
     overflow-y: auto;
     overflow-x: visible; /* Changed from hidden to visible */
+    max-height: calc(95dvh - 200px);
     min-height: 175px;
     padding-right: 30px;
   }
