@@ -215,7 +215,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       path: "/inventory",
       icon: "/icons/inventory.svg",
       count: inventoryActionCount,
-      visibleTo: [8, 16],
+      visibleTo: [8, 16, 11],
     },
   ];
 
