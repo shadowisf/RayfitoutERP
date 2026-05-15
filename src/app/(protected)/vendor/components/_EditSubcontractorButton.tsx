@@ -40,6 +40,9 @@ export default function EditSubcontractorButton({
   const [materialCategoryID, setMaterialCategoryID] = useState<
     (string | number)[]
   >(parseCategoryIds(subcontractor?.material_category_ids));
+  const [scopeOfWork, setScopeOfWork] = useState(
+    subcontractor?.scope_of_work || "",
+  );
   const [trn, setTrn] = useState(subcontractor?.trn_number || "");
 
   // New file states (for newly uploaded files)
@@ -242,6 +245,7 @@ export default function EditSubcontractorButton({
             id: subcontractor.id,
             name,
             material_categories: materialCategoryID,
+            scope_of_work: scopeOfWork || null,
             trn_number: trn,
             trn_certificate: trnCertificateUrl,
             contract: contractUrl,
@@ -284,9 +288,7 @@ export default function EditSubcontractorButton({
         onClick={() => setIsOpen(true)}
         full={!iconOnly}
         style={
-          iconOnly
-            ? { padding: "7px 7px" }
-            : { justifyContent: "flex-start" }
+          iconOnly ? { padding: "7px 7px" } : { justifyContent: "flex-start" }
         }
       >
         <img src={pencilIcon} alt="pencil" />
@@ -313,7 +315,7 @@ export default function EditSubcontractorButton({
           </div>
 
           <div className="input-row half">
-            <MultiSelectDropdown
+            {/* <MultiSelectDropdown
               dbData={materialCategoryValues}
               selectedValues={materialCategoryID}
               onChange={(categoryIds) => {
@@ -321,6 +323,13 @@ export default function EditSubcontractorButton({
               }}
               label="MATERIAL CATEGORIES"
               style={{ width: "410px" }}
+              required
+            /> */}
+            <InputItem
+              label={"SCOPE OF WORK"}
+              value={scopeOfWork}
+              type={"text"}
+              onChange={(e) => setScopeOfWork(e.target.value)}
               required
             />
           </div>

@@ -31,7 +31,7 @@ export default async function CreditSupplierPaymentPage({
   return (
     <div className="dashboard">
       <h1 style={{ marginBottom: "25px" }}>
-        <a href="/payment">PAYMENTS</a> &gt; CREDIT &gt; {supplierName}
+        <a href="/payment">PAYMENTS</a> &gt; VENDOR &gt; {supplierName}
       </h1>
 
       <CreditSupplierPaymentClient supplierId={supplierId} />

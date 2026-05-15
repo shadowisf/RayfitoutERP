@@ -34,6 +34,7 @@ function getActivityColor(activity: string): string {
     upper.includes("PASSED")
   )
     return "rgba(26, 216, 135, 1)";
+  if (upper.includes("ROLLED BACK")) return "rgba(255, 153, 36, 1)";
   if (
     upper.includes("CHANGED") ||
     upper.includes("EDITED") ||

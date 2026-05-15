@@ -22,12 +22,15 @@ type JoRfqButtonProps = {
   mrHeader: MrHeader;
   selectedIds: number[];
   onRfqLoaded: (rfq: RfqData | null) => void;
+  /** When true, only render a download-only pill (no create/edit/delete). */
+  downloadOnly?: boolean;
 };
 
 export default function JoRfqButton({
   mrHeader,
   selectedIds,
   onRfqLoaded,
+  downloadOnly = false,
 }: JoRfqButtonProps) {
   const pencilIcon = "/icons/pencil.svg";
   const downloadIcon = "/icons/download.svg";
@@ -212,6 +215,33 @@ export default function JoRfqButton({
       setRfqLoading(false);
     }
   };
+
+  // Download-only mode: just show the download pill if RFQ exists, nothing otherwise
+  if (downloadOnly) {
+    if (!rfqData) return null;
+    return (
+      <Button
+        componentType={"none"}
+        bgColor={"white"}
+        borderColor={"rgba(207, 207, 207, 1)"}
+        textColor={"black"}
+        style={{ padding: "7px 20px", borderRadius: "25px" }}
+      >
+        RFQ
+        <Button
+          componentType={"button"}
+          bgColor={"transparent"}
+          borderColor={"transparent"}
+          textColor={"black"}
+          style={{ padding: "0px" }}
+          onClick={handleDownload}
+          disabled={rfqLoading}
+        >
+          <img src={downloadIcon} alt="download" />
+        </Button>
+      </Button>
+    );
+  }
 
   return (
     <>

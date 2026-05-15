@@ -5,91 +5,31 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Get PR lines (JO lines from referenced JO)
     if (body.action === "getPrLines") {
       const mrHeaderId = Number(body.mr_header_id);
 
-      // Get the JO reference from the payment request
-      const [headerRows]: any = await db.query(
-        `SELECT payment_jo_reference_id FROM mr_headers WHERE id = ?`,
+      // pr_lines are created when the payment MR is created, so they should always exist.
+      // Just query and return them — no auto-create here.
+      const [rows]: any = await db.query(
+        `SELECT
+           pl.id, pl.mr_header_id, pl.boq_line_id, pl.jo_line_id,
+           pl.subcontracted_qty, pl.completed_qty, pl.retention, pl.attachment,
+           pl.qs_approval_status, pl.qs_reject_comment,
+           pl.approval_status, pl.reject_comment,
+           bl.item_name, bl.item_description,
+           bl.quantity AS boq_qty, bl.unit AS boq_unit, bl.rate_per_quantity,
+           jl.job_scope_name, jl.job_description, jl.contract_type,
+           jl.boq_line_ids, jl.boq_line_names,
+           jl.quantity, jl.unit, jl.budget_estimate, jl.approved_total_price
+         FROM pr_lines pl
+         JOIN boq_lines bl ON bl.id = pl.boq_line_id
+         JOIN vw_jo_lines jl ON jl.id = pl.jo_line_id
+         WHERE pl.mr_header_id = ?
+         ORDER BY pl.jo_line_id ASC, bl.category_order ASC, bl.subcategory_order ASC, bl.item_order ASC`,
         [mrHeaderId],
       );
 
-      if (!headerRows?.[0]?.payment_jo_reference_id) {
-        return NextResponse.json([], { status: 200 });
-      }
-
-      const joHeaderId = headerRows[0].payment_jo_reference_id;
-
-      // Get all JO lines from the referenced JO
-      const [joRows]: any = await db.query(
-        `SELECT * FROM vw_jo_lines WHERE mr_header_id = ? ORDER BY id ASC`,
-        [joHeaderId],
-      );
-
-      const prLines = [];
-
-      for (const joLine of joRows) {
-        // Check if pr_line already exists for this MR header + jo line
-        const [existingPrLine]: any = await db.query(
-          `SELECT * FROM pr_lines WHERE mr_header_id = ? AND jo_line_id = ?`,
-          [mrHeaderId, joLine.id],
-        );
-
-        if (existingPrLine.length > 0) {
-          prLines.push({
-            ...existingPrLine[0],
-            // Merge JO line data
-            job_scope_name: joLine.job_scope_name,
-            job_description: joLine.job_description,
-            contract_type: joLine.contract_type,
-            boq_line_ids: joLine.boq_line_ids,
-            boq_line_names: joLine.boq_line_names,
-            boq_item_numbers: joLine.boq_item_numbers,
-            quantity: joLine.quantity,
-            unit: joLine.unit,
-            start_date: joLine.start_date,
-            end_date: joLine.end_date,
-            budget_estimate: joLine.budget_estimate,
-            approved_total_price: joLine.approved_total_price,
-            attachment: existingPrLine[0].attachment,
-            jo_attachment: joLine.attachment,
-          });
-        } else {
-          // Auto-create pr_line
-          const [insertResult]: any = await db.query(
-            `INSERT INTO pr_lines (mr_header_id, boq_line_id, jo_line_id, completed_qty, retention, attachment)
-             VALUES (?, 0, ?, 0, 0, NULL)`,
-            [mrHeaderId, joLine.id],
-          );
-
-          prLines.push({
-            id: insertResult.insertId,
-            mr_header_id: mrHeaderId,
-            boq_line_id: 0,
-            jo_line_id: joLine.id,
-            completed_qty: 0,
-            retention: 0,
-            attachment: null,
-            // JO line data
-            job_scope_name: joLine.job_scope_name,
-            job_description: joLine.job_description,
-            contract_type: joLine.contract_type,
-            boq_line_ids: joLine.boq_line_ids,
-            boq_line_names: joLine.boq_line_names,
-            boq_item_numbers: joLine.boq_item_numbers,
-            quantity: joLine.quantity,
-            unit: joLine.unit,
-            start_date: joLine.start_date,
-            end_date: joLine.end_date,
-            budget_estimate: joLine.budget_estimate,
-            approved_total_price: joLine.approved_total_price,
-            jo_attachment: joLine.attachment,
-          });
-        }
-      }
-
-      return NextResponse.json(prLines, { status: 200 });
+      return NextResponse.json(rows, { status: 200 });
     }
 
     // Update PR line (completed_qty, retention, attachment)

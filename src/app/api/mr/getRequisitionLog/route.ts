@@ -30,7 +30,7 @@ function getActivityLabel(progressId: number, isRollback: boolean): string {
     5:  "REQUEST REJECTED",
     7:  "SUBMITTED FOR QUOTATIONS",
     9:  "QS PRICE CHECK",
-    10: "SUBMITTED FOR PRICING APPROVAL",
+    10: "SUBMITTED FOR MANAGER PRICE APPROVAL",
     11: "PRICE REJECTED",
     12: "VENDOR APPROVED",
     13: "PAYMENT REJECTED",
@@ -103,9 +103,11 @@ export async function POST(req: Request) {
 
     // ── 1. MR header creation data ────────────────────────────────────────────
     const [headerMeta]: any = await db.query(
-      `SELECT requested_by, date_requested FROM mr_headers WHERE id = ?`,
+      `SELECT requested_by, date_requested, type FROM mr_headers WHERE id = ?`,
       [mr_header_id],
     );
+
+    const isPaymentRequest = headerMeta[0]?.type === "payment";
 
     // ── 2. Header-level progress log ──────────────────────────────────────────
     // When lpo_id is provided: include all MR-level entries (lpo_id IS NULL)
@@ -113,7 +115,7 @@ export async function POST(req: Request) {
     let headerRows: any[];
     if (lpo_id) {
       const [rows]: any = await db.query(
-        `SELECT id, progress_id, changed_by, changed_at, is_rollback
+        `SELECT id, progress_id, from_progress_id, changed_by, changed_at, is_rollback
          FROM mr_header_progress_log
          WHERE mr_header_id = ?
            AND (lpo_id IS NULL OR lpo_id = ?)
@@ -123,7 +125,7 @@ export async function POST(req: Request) {
       headerRows = rows;
     } else {
       const [rows]: any = await db.query(
-        `SELECT id, progress_id, changed_by, changed_at, is_rollback
+        `SELECT id, progress_id, from_progress_id, changed_by, changed_at, is_rollback
          FROM mr_header_progress_log
          WHERE mr_header_id = ?
          ORDER BY changed_at ASC, id ASC`,
@@ -168,7 +170,9 @@ export async function POST(req: Request) {
         source:     "header",
         activity:   getActivityLabel(entry.progress_id, isRollback),
         handled_by: entry.changed_by || "—",
-        stage:      getStageFromProgressId(entry.progress_id),
+        stage:      isRollback
+          ? getStageFromProgressId(entry.from_progress_id ?? entry.progress_id)
+          : getStageFromProgressId(entry.progress_id),
         remarks:    isRollback
           ? `ROLLED BACK TO ${getStageFromProgressId(entry.progress_id)}`
           : null,

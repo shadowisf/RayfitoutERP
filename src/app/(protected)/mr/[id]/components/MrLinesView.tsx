@@ -143,13 +143,29 @@ export default function MrLinesView({
   >({});
 
   // ── Price hover popups (lowest & prev) ────────────────────────────────────
-  type PriceHoverRow = { lpo_id: number; mr_header_id: number; project_name: string; vendor_name: string; unit_price: number };
-  const [hoveredLowestDesc, setHoveredLowestDesc] = useState<string | null>(null);
-  const [hoveredLowestRect, setHoveredLowestRect] = useState<DOMRect | null>(null);
+  type PriceHoverRow = {
+    lpo_id: number;
+    mr_header_id: number;
+    project_name: string;
+    vendor_name: string;
+    unit_price: number;
+  };
+  const [hoveredLowestDesc, setHoveredLowestDesc] = useState<string | null>(
+    null,
+  );
+  const [hoveredLowestRect, setHoveredLowestRect] = useState<DOMRect | null>(
+    null,
+  );
   const [hoveredPrevDesc, setHoveredPrevDesc] = useState<string | null>(null);
   const [hoveredPrevRect, setHoveredPrevRect] = useState<DOMRect | null>(null);
   const [priceHoverCache, setPriceHoverCache] = useState<
-    Record<string, { lowest?: PriceHoverRow | "loading" | null; prev?: PriceHoverRow | "loading" | null }>
+    Record<
+      string,
+      {
+        lowest?: PriceHoverRow | "loading" | null;
+        prev?: PriceHoverRow | "loading" | null;
+      }
+    >
   >({});
   const lowestHideTimer = useRef<NodeJS.Timeout | null>(null);
   const prevHideTimer = useRef<NodeJS.Timeout | null>(null);
@@ -163,7 +179,10 @@ export default function MrLinesView({
   }, []);
 
   const cancelLowestHideTimer = useCallback(() => {
-    if (lowestHideTimer.current) { clearTimeout(lowestHideTimer.current); lowestHideTimer.current = null; }
+    if (lowestHideTimer.current) {
+      clearTimeout(lowestHideTimer.current);
+      lowestHideTimer.current = null;
+    }
   }, []);
 
   const startPrevHideTimer = useCallback(() => {
@@ -175,7 +194,10 @@ export default function MrLinesView({
   }, []);
 
   const cancelPrevHideTimer = useCallback(() => {
-    if (prevHideTimer.current) { clearTimeout(prevHideTimer.current); prevHideTimer.current = null; }
+    if (prevHideTimer.current) {
+      clearTimeout(prevHideTimer.current);
+      prevHideTimer.current = null;
+    }
   }, []);
 
   const fetchPriceHoverDetail = useCallback(
@@ -210,7 +232,9 @@ export default function MrLinesView({
       if (!stats?.lowest_price) return;
       cancelLowestHideTimer();
       setHoveredLowestDesc(materialDesc);
-      setHoveredLowestRect((e.currentTarget as HTMLElement).getBoundingClientRect());
+      setHoveredLowestRect(
+        (e.currentTarget as HTMLElement).getBoundingClientRect(),
+      );
       fetchPriceHoverDetail(materialDesc, "lowest");
     },
     [materialPriceStats, cancelLowestHideTimer, fetchPriceHoverDetail],
@@ -222,7 +246,9 @@ export default function MrLinesView({
       if (!stats?.prev_price) return;
       cancelPrevHideTimer();
       setHoveredPrevDesc(materialDesc);
-      setHoveredPrevRect((e.currentTarget as HTMLElement).getBoundingClientRect());
+      setHoveredPrevRect(
+        (e.currentTarget as HTMLElement).getBoundingClientRect(),
+      );
       fetchPriceHoverDetail(materialDesc, "prev");
     },
     [materialPriceStats, cancelPrevHideTimer, fetchPriceHoverDetail],
@@ -3511,7 +3537,11 @@ export default function MrLinesView({
                                                       color:
                                                         "rgba(37,150,190,1)",
                                                       fontWeight: 600,
-                                                      cursor: stats?.prev_price != null ? "default" : undefined,
+                                                      cursor:
+                                                        stats?.prev_price !=
+                                                        null
+                                                          ? "default"
+                                                          : undefined,
                                                     }}
                                                     onMouseEnter={(e) =>
                                                       handlePrevPriceEnter(
@@ -3519,7 +3549,9 @@ export default function MrLinesView({
                                                         item.material_description,
                                                       )
                                                     }
-                                                    onMouseLeave={startPrevHideTimer}
+                                                    onMouseLeave={
+                                                      startPrevHideTimer
+                                                    }
                                                   >
                                                     {fmt(stats?.prev_price)}
                                                   </td>
@@ -3718,7 +3750,11 @@ export default function MrLinesView({
                                                       color:
                                                         "rgba(37,150,190,1)",
                                                       fontWeight: 600,
-                                                      cursor: stats?.prev_price != null ? "default" : undefined,
+                                                      cursor:
+                                                        stats?.prev_price !=
+                                                        null
+                                                          ? "default"
+                                                          : undefined,
                                                     }}
                                                     onMouseEnter={(e) =>
                                                       handlePrevPriceEnter(
@@ -3726,7 +3762,9 @@ export default function MrLinesView({
                                                         item.material_description,
                                                       )
                                                     }
-                                                    onMouseLeave={startPrevHideTimer}
+                                                    onMouseLeave={
+                                                      startPrevHideTimer
+                                                    }
                                                   >
                                                     {fmt(stats?.prev_price)}
                                                   </td>
@@ -3771,7 +3809,12 @@ export default function MrLinesView({
                                                           item.id
                                                         ];
                                                       if (!range) return "N/A";
-                                                      if (range.min === range.max) return formatPriceAED(range.min);
+                                                      if (
+                                                        range.min === range.max
+                                                      )
+                                                        return formatPriceAED(
+                                                          range.min,
+                                                        );
                                                       return `${formatPriceAED(range.min)} – ${formatPriceAED(range.max)}`;
                                                     })()}
                                                   </td>
@@ -3885,13 +3928,20 @@ export default function MrLinesView({
                                             fontWeight: "600",
                                           }}
                                         >
-                                          {formatPriceAED(
-                                            calculateItemsTotal(
-                                              getAllItemsInSubCategory(
-                                                suppliers,
-                                              ),
-                                            ),
-                                          )}
+                                          {!!(
+                                            items[0]?.approved_supplier_id &&
+                                            lpoInvoiceStatus[
+                                              items[0].approved_supplier_id
+                                            ]?.hasLpo
+                                          )
+                                            ? formatPriceAED(
+                                                calculateItemsTotal(
+                                                  getAllItemsInSubCategory(
+                                                    suppliers,
+                                                  ),
+                                                ),
+                                              )
+                                            : "N/A"}
                                         </td>
                                         {subtotalTrailingColSpan > 0 && (
                                           <td
@@ -3906,13 +3956,20 @@ export default function MrLinesView({
                                             SUBTOTAL W/ VAT
                                           </td>
                                           <td style={{ fontWeight: "600" }}>
-                                            {formatPriceAED(
-                                              calculateItemsTotalWithVat(
-                                                getAllItemsInSubCategory(
-                                                  suppliers,
-                                                ),
-                                              ),
-                                            )}
+                                            {!!(
+                                              items[0]?.approved_supplier_id &&
+                                              lpoInvoiceStatus[
+                                                items[0].approved_supplier_id
+                                              ]?.hasLpo
+                                            )
+                                              ? formatPriceAED(
+                                                  calculateItemsTotalWithVat(
+                                                    getAllItemsInSubCategory(
+                                                      suppliers,
+                                                    ),
+                                                  ),
+                                                )
+                                              : "N/A"}
                                           </td>
                                           {subtotalTrailingColSpan > 0 && (
                                             <td
@@ -4764,7 +4821,10 @@ export default function MrLinesView({
                                                 style={{
                                                   color: "rgba(37,150,190,1)",
                                                   fontWeight: 600,
-                                                  cursor: stats?.prev_price != null ? "default" : undefined,
+                                                  cursor:
+                                                    stats?.prev_price != null
+                                                      ? "default"
+                                                      : undefined,
                                                 }}
                                                 onMouseEnter={(e) =>
                                                   handlePrevPriceEnter(
@@ -4772,7 +4832,9 @@ export default function MrLinesView({
                                                     item.material_description,
                                                   )
                                                 }
-                                                onMouseLeave={startPrevHideTimer}
+                                                onMouseLeave={
+                                                  startPrevHideTimer
+                                                }
                                               >
                                                 {fmt(stats?.prev_price)}
                                               </td>
@@ -4957,7 +5019,10 @@ export default function MrLinesView({
                                                 style={{
                                                   color: "rgba(37,150,190,1)",
                                                   fontWeight: 600,
-                                                  cursor: stats?.prev_price != null ? "default" : undefined,
+                                                  cursor:
+                                                    stats?.prev_price != null
+                                                      ? "default"
+                                                      : undefined,
                                                 }}
                                                 onMouseEnter={(e) =>
                                                   handlePrevPriceEnter(
@@ -4965,7 +5030,9 @@ export default function MrLinesView({
                                                     item.material_description,
                                                   )
                                                 }
-                                                onMouseLeave={startPrevHideTimer}
+                                                onMouseLeave={
+                                                  startPrevHideTimer
+                                                }
                                               >
                                                 {fmt(stats?.prev_price)}
                                               </td>
@@ -5010,7 +5077,10 @@ export default function MrLinesView({
                                                       item.id
                                                     ];
                                                   if (!range) return "N/A";
-                                                  if (range.min === range.max) return formatPriceAED(range.min);
+                                                  if (range.min === range.max)
+                                                    return formatPriceAED(
+                                                      range.min,
+                                                    );
                                                   return `${formatPriceAED(range.min)} – ${formatPriceAED(range.max)}`;
                                                 })()}
                                               </td>
@@ -5125,11 +5195,20 @@ export default function MrLinesView({
                                         fontWeight: "600",
                                       }}
                                     >
-                                      {formatPriceAED(
-                                        calculateItemsTotal(
-                                          getAllItemsInSubCategory(suppliers),
-                                        ),
-                                      )}
+                                      {!!(
+                                        items[0]?.approved_supplier_id &&
+                                        lpoInvoiceStatus[
+                                          items[0].approved_supplier_id
+                                        ]?.hasLpo
+                                      )
+                                        ? formatPriceAED(
+                                            calculateItemsTotal(
+                                              getAllItemsInSubCategory(
+                                                suppliers,
+                                              ),
+                                            ),
+                                          )
+                                        : "N/A"}
                                     </td>
                                     {subtotalTrailingColSpan > 0 && (
                                       <td colSpan={subtotalTrailingColSpan} />
@@ -5142,11 +5221,20 @@ export default function MrLinesView({
                                         SUBTOTAL W/ VAT
                                       </td>
                                       <td style={{ fontWeight: "600" }}>
-                                        {formatPriceAED(
-                                          calculateItemsTotalWithVat(
-                                            getAllItemsInSubCategory(suppliers),
-                                          ),
-                                        )}
+                                        {!!(
+                                          items[0]?.approved_supplier_id &&
+                                          lpoInvoiceStatus[
+                                            items[0].approved_supplier_id
+                                          ]?.hasLpo
+                                        )
+                                          ? formatPriceAED(
+                                              calculateItemsTotalWithVat(
+                                                getAllItemsInSubCategory(
+                                                  suppliers,
+                                                ),
+                                              ),
+                                            )
+                                          : "N/A"}
                                       </td>
                                       {subtotalTrailingColSpan > 0 && (
                                         <td colSpan={subtotalTrailingColSpan} />
@@ -6032,8 +6120,26 @@ export default function MrLinesView({
 
       {/* ── Price hover popups (lowest & prev) ──────────────────────────── */}
       {[
-        { desc: hoveredLowestDesc, rect: hoveredLowestRect, type: "lowest" as const, onCancel: cancelLowestHideTimer, onHide: () => { setHoveredLowestDesc(null); setHoveredLowestRect(null); } },
-        { desc: hoveredPrevDesc, rect: hoveredPrevRect, type: "prev" as const, onCancel: cancelPrevHideTimer, onHide: () => { setHoveredPrevDesc(null); setHoveredPrevRect(null); } },
+        {
+          desc: hoveredLowestDesc,
+          rect: hoveredLowestRect,
+          type: "lowest" as const,
+          onCancel: cancelLowestHideTimer,
+          onHide: () => {
+            setHoveredLowestDesc(null);
+            setHoveredLowestRect(null);
+          },
+        },
+        {
+          desc: hoveredPrevDesc,
+          rect: hoveredPrevRect,
+          type: "prev" as const,
+          onCancel: cancelPrevHideTimer,
+          onHide: () => {
+            setHoveredPrevDesc(null);
+            setHoveredPrevRect(null);
+          },
+        },
       ].map(({ desc, rect, type, onCancel, onHide }) =>
         desc && rect
           ? (() => {
@@ -6041,7 +6147,10 @@ export default function MrLinesView({
               if (row === null) return null;
               const popupWidth = 420;
               const spaceRight = window.innerWidth - rect.right;
-              const left = spaceRight >= popupWidth + 10 ? rect.right + 8 : rect.left - popupWidth - 8;
+              const left =
+                spaceRight >= popupWidth + 10
+                  ? rect.right + 8
+                  : rect.left - popupWidth - 8;
               const top = Math.min(rect.top, window.innerHeight - 200);
               return (
                 <div
@@ -6063,11 +6172,21 @@ export default function MrLinesView({
                 >
                   <div style={{ padding: "12px" }}>
                     {row === "loading" || row === undefined ? (
-                      <div style={{ padding: "16px", textAlign: "center", color: "rgba(128,128,128,1)", fontSize: "13px" }}>
+                      <div
+                        style={{
+                          padding: "16px",
+                          textAlign: "center",
+                          color: "rgba(128,128,128,1)",
+                          fontSize: "13px",
+                        }}
+                      >
                         Loading...
                       </div>
                     ) : (
-                      <table className="items-table popup-hover" style={{ width: "100%" }}>
+                      <table
+                        className="items-table popup-hover"
+                        style={{ width: "100%" }}
+                      >
                         <thead>
                           <tr>
                             <th>LPO NUMBER</th>
@@ -6082,9 +6201,19 @@ export default function MrLinesView({
                             <td style={{ whiteSpace: "nowrap" }}>
                               LPO-{String(row.lpo_id).padStart(5, "0")}
                             </td>
-                            <td style={{ whiteSpace: "nowrap" }}>{row.project_name}</td>
-                            <td style={{ whiteSpace: "nowrap" }}>{row.vendor_name}</td>
-                            <td style={{ whiteSpace: "nowrap", fontWeight: 600, color: "rgba(2,122,70,1)" }}>
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              {row.project_name}
+                            </td>
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              {row.vendor_name}
+                            </td>
+                            <td
+                              style={{
+                                whiteSpace: "nowrap",
+                                fontWeight: 600,
+                                color: "rgba(2,122,70,1)",
+                              }}
+                            >
                               {formatPriceAED(row.unit_price)}
                             </td>
                             <td>
@@ -6096,7 +6225,10 @@ export default function MrLinesView({
                                 style={{ padding: "7px 7px" }}
                                 href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
                               >
-                                <img src="/icons/external-link.svg" alt="open" />
+                                <img
+                                  src="/icons/external-link.svg"
+                                  alt="open"
+                                />
                               </Button>
                             </td>
                           </tr>
