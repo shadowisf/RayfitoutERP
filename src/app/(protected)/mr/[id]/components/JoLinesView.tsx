@@ -21,6 +21,7 @@ import SubmitForPricingResubmissionButton from "./manager/_SubmitForPriceResubmi
 import SubmitForJoCompletionButton from "./procurement/_SubmitForJoCompletionButton";
 import IssueJoLpoButton from "./procurement/_IssueJoLpoButton";
 import SubmitJoFromLpoButton from "./procurement/_SubmitJoFromLpoButton";
+import UploadJoInvoiceButton from "./procurement/_UploadJoInvoiceButton";
 import CommentsSection from "@/app/components/CommentsSection";
 import { formatPriceAED } from "@/lib/formatPrice";
 import JoRfqButton from "./procurement/_JoRfqButton";
@@ -120,6 +121,20 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
   const [joLpoVatRate, setJoLpoVatRate] = useState<number>(5);
   const [hasLpo, setHasLpo] = useState<boolean>(false);
   const [lpoUpdateCounter, setLpoUpdateCounter] = useState(0);
+
+  // Invoice files for JO (stored on mr_headers.jo_invoice_file)
+  const [joInvoiceFiles, setJoInvoiceFiles] = useState<string[]>(() => {
+    if (!mrHeader.jo_invoice_file) return [];
+    try {
+      const parsed =
+        typeof mrHeader.jo_invoice_file === "string"
+          ? JSON.parse(mrHeader.jo_invoice_file)
+          : mrHeader.jo_invoice_file;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
 
   const handleTotalPriceChange = (joLineId: number, totalPrice: number) => {
     setLivePrices((prev) => ({ ...prev, [joLineId]: totalPrice }));
@@ -312,7 +327,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                 <div id="jo-smart-select-portal"></div>
               )}
 
-              {/* RFQ Button (Create / Edit / Download / Delete) */}
+              {/* RFQ Button (Create / Edit / Download / Delete) — procurement quotation stages only */}
               {isProcurementQuotation && (
                 <JoRfqButton
                   mrHeader={mrHeader}
@@ -340,6 +355,35 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                   }}
                 />
               ) : null}
+
+              {/* Invoice upload/download */}
+              {((mrHeader.progress_id === 12 && userInfo?.departmentID === 9) ||
+                mrHeader.progress_id === 25) && (
+                  <UploadJoInvoiceButton
+                    mrHeader={mrHeader}
+                    invoiceFiles={joInvoiceFiles}
+                    onFilesUpdate={setJoInvoiceFiles}
+                    canUpload={
+                      mrHeader.progress_id === 12 &&
+                      userInfo?.departmentID === 9
+                    }
+                    canDelete={
+                      mrHeader.progress_id === 12 &&
+                      userInfo?.departmentID === 9
+                    }
+                  />
+                )}
+
+              {/* RFQ download-only pill (LPO & Invoice or Completed stage) */}
+              {((mrHeader.progress_id === 12 && userInfo?.departmentID === 9) ||
+                mrHeader.progress_id === 25) && (
+                <JoRfqButton
+                  mrHeader={mrHeader}
+                  selectedIds={rfqSelectedIds}
+                  onRfqLoaded={() => {}}
+                  downloadOnly={true}
+                />
+              )}
             </div>
           </div>
 
@@ -631,8 +675,9 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                   if (showPriceApprovalColumn) trailingCols += 1;
 
                   const showVatRows = mrHeader.progress_id >= 12;
-                  // When in LPO & Invoice stage but no LPO created yet, show 0s
-                  const displaySubtotal = showVatRows && !hasLpo ? 0 : liveTotalPrice;
+                  const noLpoYet = showVatRows && !hasLpo;
+                  // When in LPO & Invoice stage but no LPO created yet, keep 0 for calculations
+                  const displaySubtotal = noLpoYet ? 0 : liveTotalPrice;
                   const vatAmount = displaySubtotal * (joLpoVatRate / 100);
                   const totalWithVat = displaySubtotal + vatAmount;
 
@@ -642,7 +687,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                         <td colSpan={labelColSpan - 1} />
                         <td style={{ fontWeight: "600" }}>SUBTOTAL</td>
                         <td style={{ fontWeight: "600" }}>
-                          {formatPriceAED(displaySubtotal)}
+                          {noLpoYet ? "N/A" : formatPriceAED(displaySubtotal)}
                         </td>
                         {trailingCols > 0 && <td colSpan={trailingCols} />}
                       </tr>
@@ -651,7 +696,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                           <td colSpan={labelColSpan - 1} />
                           <td style={{ fontWeight: "600" }}>SUBTOTAL W/ VAT</td>
                           <td style={{ fontWeight: "600" }}>
-                            {formatPriceAED(totalWithVat)}
+                            {noLpoYet ? "N/A" : formatPriceAED(totalWithVat)}
                           </td>
                           {trailingCols > 0 && <td colSpan={trailingCols} />}
                         </tr>

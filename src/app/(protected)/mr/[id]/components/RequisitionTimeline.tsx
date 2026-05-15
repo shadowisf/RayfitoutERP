@@ -96,13 +96,13 @@ const FULL_MR_STAGES_ALL_AVAILABLE = [1, 2, 4, 25];
 const JO_STAGES_IDS = [1, 2, 7, 10, 12, 25];
 
 // Payment Request Stages
-// REQUEST CREATED (1) → QS REVIEW (2) → MANAGER APPROVAL (3) → COMPLETED (25)
-const PR_STAGES_IDS = [1, 2, 3, 25];
+// REQUEST CREATED (1) → QS REVIEW (2) → MANAGER PRICE APPROVAL (10) → COMPLETED (25)
+const PR_STAGES_IDS = [1, 2, 10, 25];
 
 const PR_STAGE_LABELS: { [key: number]: string } = {
   1: "REQUEST CREATED",
   2: "QS REVIEW",
-  3: "MANAGER APPROVAL",
+  10: "MANAGER PRICE APPROVAL",
   5: "REQUEST REJECTED",
   14: "PAYMENT",
   25: "COMPLETED",
@@ -304,18 +304,27 @@ export default function RequisitionTimeline({
     return true;
   });
 
+  // For payment requests, remap any stale progress_id=3 (Manager Approval) entries to
+  // progress_id=10 (Manager Price Approval) — payment requests use 10, not 3.
+  const displayVisited =
+    type === "payment"
+      ? filteredVisited.map((v) =>
+          v.stageId === 3 ? { ...v, stageId: 10 } : v,
+        )
+      : filteredVisited;
+
   const timelineStages: TimelineStage[] = [];
-  const visitedStageIds = new Set(filteredVisited.map((v) => v.stageId));
+  const visitedStageIds = new Set(displayVisited.map((v) => v.stageId));
   let highestVisitedBaseIndex = -1;
 
-  for (const v of filteredVisited) {
+  for (const v of displayVisited) {
     const idx = baseStageIds.indexOf(v.stageId);
     if (idx > highestVisitedBaseIndex) {
       highestVisitedBaseIndex = idx;
     }
   }
 
-  for (const visit of filteredVisited) {
+  for (const visit of displayVisited) {
     timelineStages.push({
       id: visit.stageId,
       label: visit.isRollback

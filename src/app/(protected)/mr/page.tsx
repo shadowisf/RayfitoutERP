@@ -1454,6 +1454,7 @@ export default function MR() {
             <MassPriceApprovalButton
               selectedMrIds={selectedManagerMrIds}
               setSelectedMrIds={setSelectedManagerMrIds}
+              mrHeaders={mrHeaders}
               onRefresh={() => setTableRefreshKey((k) => k + 1)}
             />
             <MassDownloadMrPDFButton

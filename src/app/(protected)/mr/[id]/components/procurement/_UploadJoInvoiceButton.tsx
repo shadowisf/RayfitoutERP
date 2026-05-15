@@ -10,12 +10,18 @@ type UploadJoInvoiceButtonProps = {
   mrHeader: MrHeader;
   invoiceFiles: string[];
   onFilesUpdate: (files: string[]) => void;
+  /** Show upload button when no invoice exists (default true). Set false for read-only/completed stage. */
+  canUpload?: boolean;
+  /** Show delete icon on the invoice pill (default true) */
+  canDelete?: boolean;
 };
 
 export default function UploadJoInvoiceButton({
   mrHeader,
   invoiceFiles,
   onFilesUpdate,
+  canUpload = true,
+  canDelete = true,
 }: UploadJoInvoiceButtonProps) {
   const router = useRouter();
 
@@ -27,7 +33,9 @@ export default function UploadJoInvoiceButton({
   const downloadIcon = "/icons/download.svg";
   const uploadIcon = "/icons/upload.svg";
 
-  function handleUploadClick() {}
+  function handleUploadClick() {
+    fileInputRef.current?.click();
+  }
 
   async function handleDownload(url: string, event: React.MouseEvent) {
     event.stopPropagation();
@@ -78,7 +86,7 @@ export default function UploadJoInvoiceButton({
       const uploadedUrl = data.urls[0];
 
       // Since we allow ONLY ONE invoice, replace (don't append)
-      const updatedInvoiceFiles = [uploadedUrl]; // ← overwrite with new one
+      const updatedInvoiceFiles = [uploadedUrl];
 
       const updateRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
@@ -233,7 +241,6 @@ export default function UploadJoInvoiceButton({
               bgColor={"white"}
               borderColor={"rgba(207, 207, 207, 1)"}
               textColor={"black"}
-              onClick={() => {}}
               componentType="none"
               style={{ padding: "7px 20px", borderRadius: "25px" }}
               key={fileUrl}
@@ -243,20 +250,22 @@ export default function UploadJoInvoiceButton({
                 src={downloadIcon}
                 alt="download"
                 onClick={(e) => handleDownload(fileUrl, e)}
+                style={{ cursor: "pointer" }}
               />
-              <img
-                src={closeIcon}
-                alt="remove"
-                onClick={(e) => handleRemoveFile(fileUrl, e)}
-                style={{
-                  cursor: "pointer",
-                }}
-              />
+              {canDelete && (
+                <img
+                  src={closeIcon}
+                  alt="remove"
+                  onClick={(e) => handleRemoveFile(fileUrl, e)}
+                  style={{ cursor: "pointer" }}
+                />
+              )}
             </Button>
           ))}
           {/* NO upload button shown when invoice already exists */}
         </>
-      ) : (
+      ) : canUpload ? (
+        /* Upload button — only shown when upload is allowed and no invoice exists */
         <Button
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -287,7 +296,7 @@ export default function UploadJoInvoiceButton({
             </>
           )}
         </Button>
-      )}
+      ) : null /* canUpload=false + no invoice → render nothing */}
     </>
   );
 }

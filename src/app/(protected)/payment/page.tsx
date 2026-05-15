@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Button from "@/app/components/Button";
+import FormPopUp from "@/app/components/FormPopup";
 import PaymentFilterButton, {
   defaultPaymentFilters,
   PaymentFilters,
@@ -24,6 +26,7 @@ type LpoRow = {
   invoice_file: string | null;
   signed_file: string | null;
   supplier_payment_terms: string | null;
+  supplier_due_date: string | null;
   created_at: string;
   supplier_name: string;
   supplier_type: string | null;
@@ -102,13 +105,24 @@ function parseDays(terms: string | null): number | null {
 }
 
 function getDueDate(lpo: LpoRow): string {
+  // Prefer supplier-level due_date when set
+  if (lpo.supplier_due_date) {
+    const d = new Date(lpo.supplier_due_date);
+    if (!isNaN(d.getTime()))
+      return d
+        .toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+        .toUpperCase();
+  }
+  // Fallback: compute from credit terms
   const t = (lpo.supplier_type ?? "").toLowerCase();
   if (t !== "credit") return "N/A";
-
   const days =
     parseDays(lpo.payment_terms) ?? parseDays(lpo.supplier_payment_terms);
   if (!days || !lpo.created_at) return "N/A";
-
   const due = new Date(lpo.created_at);
   due.setDate(due.getDate() + days);
   return due.toLocaleDateString("en-GB", {
@@ -119,6 +133,15 @@ function getDueDate(lpo: LpoRow): string {
 }
 
 function isDueOverdue(lpo: LpoRow): boolean {
+  if (lpo.supplier_due_date) {
+    const due = new Date(lpo.supplier_due_date);
+    if (!isNaN(due.getTime())) {
+      due.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return due < today;
+    }
+  }
   const t = (lpo.supplier_type ?? "").toLowerCase();
   if (t !== "credit") return false;
   const days =
@@ -133,8 +156,12 @@ function isDueOverdue(lpo: LpoRow): boolean {
 }
 
 // Returns epoch ms for the due date (used for sort comparison).
-// Non-credit LPOs or missing terms → Infinity (sort to end).
+// No due date → Infinity (sort to end).
 function getDueDateTimestamp(lpo: LpoRow): number {
+  if (lpo.supplier_due_date) {
+    const d = new Date(lpo.supplier_due_date);
+    if (!isNaN(d.getTime())) return d.getTime();
+  }
   const t = (lpo.supplier_type ?? "").toLowerCase();
   if (t !== "credit") return Infinity;
   const days =
@@ -172,6 +199,45 @@ function normaliseType(type: string | null): string {
   if (t.startsWith("marketplace")) return "Marketplace/Online";
   return type ?? "";
 }
+
+// ── PR status pill ───────────────────────────────────────────────────────────
+function PrStatusPill({ isPaid }: { isPaid: boolean }) {
+  return (
+    <div
+      className="approval-pill normal-text centered"
+      style={
+        isPaid
+          ? {
+              backgroundColor: "rgba(187,247,208,1)",
+              color: "rgba(3,130,46,1)",
+            }
+          : {
+              backgroundColor: "rgba(255,181,181,1)",
+              color: "rgba(248,77,77,1)",
+            }
+      }
+    >
+      {isPaid ? "PAID" : "UNPAID"}
+    </div>
+  );
+}
+
+// ── Payment request row type ─────────────────────────────────────────────────
+type PrRequestRow = {
+  id: number;
+  progress_id: number;
+  progress_name: string | null;
+  requested_by: string;
+  department_name: string;
+  project_name: string | null;
+  date_requested: string;
+  payment_jo_reference_id: number | null;
+  total_paid: number;
+  outstanding: number;
+  is_paid: 0 | 1;
+  subcontractor_id: number | null;
+  subcontractor_name: string | null;
+};
 
 // ── Pagination ───────────────────────────────────────────────────────────────
 const ITEMS_PER_PAGE = 50;
@@ -290,6 +356,19 @@ export default function Payments() {
 
   const { userInfo } = useAuth();
 
+  // ── Tab state ────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<
+    "material-requests" | "payment-requests"
+  >("material-requests");
+
+  // ── Payment requests state ────────────────────────────────────────────────
+  const [prRows, setPrRows] = useState<PrRequestRow[]>([]);
+  const [prLoading, setPrLoading] = useState(false);
+  const [prSearchQuery, setPrSearchQuery] = useState("");
+  const [prCurrentPage, setPrCurrentPage] = useState(1);
+  const [prSortCol, setPrSortCol] = useState<string | null>(null);
+  const [prSortDir, setPrSortDir] = useState<"asc" | "desc">("desc");
+
   const [lpoRows, setLpoRows] = useState<LpoRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -300,6 +379,13 @@ export default function Payments() {
   const [groupByVendor, setGroupByVendor] = useState(true);
   const [collapsedVendors, setCollapsedVendors] = useState<
     Record<string, boolean>
+  >({});
+  const [groupBySubcontractor, setGroupBySubcontractor] = useState(true);
+  const [collapsedSubcontractors, setCollapsedSubcontractors] = useState<
+    Record<number, boolean>
+  >({});
+  const [prGroupSortState, setPrGroupSortState] = useState<
+    Record<number, { col: string; dir: "asc" | "desc" }>
   >({});
 
   // ── Date range filter (due date) ─────────────────────────────────────────
@@ -318,15 +404,37 @@ export default function Payments() {
   // ── Bulk reject modal ────────────────────────────────────────────────────
   const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
 
+  // ── Supplier due date edit modal ─────────────────────────────────────────
+  const [dueDateEdit, setDueDateEdit] = useState<{
+    supplierId: number;
+    supplierName: string;
+    currentDate: string | null;
+  } | null>(null);
+  const [dueDateInput, setDueDateInput] = useState("");
+  const [dueDateSaving, setDueDateSaving] = useState(false);
+
   useEffect(() => {
     setIsLoading(true);
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/getPaymentList`)
-      .then((r) => r.json())
-      .then((data: LpoRow[]) => {
-        if (Array.isArray(data)) setLpoRows(data);
-      })
+    setPrLoading(true);
+    Promise.all([
+      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/getPaymentList`)
+        .then((r) => r.json())
+        .then((data: LpoRow[]) => {
+          if (Array.isArray(data)) setLpoRows(data);
+        }),
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/getPaymentRequestList`,
+      )
+        .then((r) => r.json())
+        .then((data: PrRequestRow[]) => {
+          if (Array.isArray(data)) setPrRows(data);
+        }),
+    ])
       .catch(console.error)
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        setIsLoading(false);
+        setPrLoading(false);
+      });
   }, []);
 
   // ── Unique vendor list derived from data ────────────────────────────────
@@ -345,6 +453,19 @@ export default function Payments() {
         new Set(lpoRows.map((r) => r.project_name).filter(Boolean)),
       ).sort((a, b) => a.localeCompare(b)),
     [lpoRows],
+  );
+
+  // ── Unique subcontractor list derived from PR data ───────────────────────
+  const subcontractorList = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          prRows
+            .map((r) => r.subcontractor_name)
+            .filter((n): n is string => !!n),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    [prRows],
   );
 
   // ── Search ──────────────────────────────────────────────────────────────
@@ -393,13 +514,22 @@ export default function Payments() {
 
       // ── Due date range filter ──────────────────────────────────────────
       if (dateRange.start || dateRange.end) {
-        const t = (row.supplier_type ?? "").toLowerCase();
-        if (t !== "credit") return false; // non-credit rows have no due date
-        const days =
-          parseDays(row.payment_terms) ?? parseDays(row.supplier_payment_terms);
-        if (!days || !row.created_at) return false;
-        const due = new Date(row.created_at);
-        due.setDate(due.getDate() + days);
+        let due: Date | null = null;
+        if (row.supplier_due_date) {
+          const d = new Date(row.supplier_due_date);
+          if (!isNaN(d.getTime())) due = d;
+        }
+        if (!due) {
+          const t = (row.supplier_type ?? "").toLowerCase();
+          if (t !== "credit") return false;
+          const days =
+            parseDays(row.payment_terms) ??
+            parseDays(row.supplier_payment_terms);
+          if (!days || !row.created_at) return false;
+          const computed = new Date(row.created_at);
+          computed.setDate(computed.getDate() + days);
+          due = computed;
+        }
         due.setHours(0, 0, 0, 0);
         if (dateRange.start && due < dateRange.start) return false;
         if (dateRange.end) {
@@ -555,19 +685,167 @@ export default function Payments() {
   const flatSomeSelected =
     !flatAllSelected && unpaidPaginated.some((r) => selectedRowIds.has(r.id));
 
+  // ── PR search ────────────────────────────────────────────────────────────
+  const prSearched = useMemo(() => {
+    const q = prSearchQuery.toLowerCase();
+    if (!q) return prRows;
+    return prRows.filter(
+      (row) =>
+        `pr-${String(row.id).padStart(5, "0")}`.includes(q) ||
+        (row.requested_by ?? "").toLowerCase().includes(q) ||
+        (row.project_name ?? "").toLowerCase().includes(q) ||
+        (row.department_name ?? "").toLowerCase().includes(q) ||
+        (row.progress_name ?? "").toLowerCase().includes(q),
+    );
+  }, [prRows, prSearchQuery]);
+
+  // ── PR filter ────────────────────────────────────────────────────────────
+  const prFiltered = useMemo(() => {
+    return prSearched.filter((row) => {
+      if (
+        filters.selectedProjects.length > 0 &&
+        !filters.selectedProjects.includes(row.project_name ?? "")
+      )
+        return false;
+
+      if (filters.selectedStatuses.length > 0) {
+        const statusLabel = row.is_paid === 1 ? "Paid" : "Unpaid";
+        if (!filters.selectedStatuses.includes(statusLabel)) return false;
+      }
+
+      if (
+        filters.selectedSubcontractors.length > 0 &&
+        !filters.selectedSubcontractors.includes(row.subcontractor_name ?? "")
+      )
+        return false;
+
+      return true;
+    });
+  }, [prSearched, filters]);
+
+  // ── PR sort ──────────────────────────────────────────────────────────────
+  const handlePrSort = (col: string) => {
+    if (prSortCol !== col) {
+      setPrSortCol(col);
+      setPrSortDir("desc");
+    } else if (prSortDir === "desc") {
+      setPrSortDir("asc");
+    } else {
+      setPrSortCol(null);
+      setPrSortDir("desc");
+    }
+  };
+
+  const prSortIcon = (col: string) => (
+    <span
+      style={{
+        marginLeft: 4,
+        fontSize: 10,
+        opacity: prSortCol === col ? 1 : 0.35,
+      }}
+    >
+      {prSortCol === col ? (prSortDir === "asc" ? "↑" : "↓") : "↕"}
+    </span>
+  );
+
+  const prSorted = useMemo(() => {
+    const base = [...prFiltered].sort((a, b) => a.is_paid - b.is_paid);
+    if (!prSortCol) return base;
+    return base.sort((a, b) => {
+      if (a.is_paid !== b.is_paid) return a.is_paid - b.is_paid;
+      const aVal = Number((a as Record<string, unknown>)[prSortCol] ?? 0);
+      const bVal = Number((b as Record<string, unknown>)[prSortCol] ?? 0);
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return prSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [prFiltered, prSortCol, prSortDir]);
+
+  // ── Group by subcontractor ───────────────────────────────────────────────
+  const subcontractorGroups = useMemo(() => {
+    const map = new Map<
+      number,
+      {
+        subcontractorId: number;
+        subcontractorName: string;
+        rows: PrRequestRow[];
+      }
+    >();
+    for (const row of prSorted) {
+      const key = row.subcontractor_id ?? 0;
+      if (!map.has(key)) {
+        map.set(key, {
+          subcontractorId: key,
+          subcontractorName: row.subcontractor_name ?? "UNASSIGNED",
+          rows: [],
+        });
+      }
+      map.get(key)!.rows.push(row);
+    }
+    return Array.from(map.values());
+  }, [prSorted]);
+
+  const toggleSubcontractorCollapse = (id: number) => {
+    setCollapsedSubcontractors((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const handlePrGroupSort = (subcontractorId: number, col: string) => {
+    setPrGroupSortState((prev) => {
+      const cur = prev[subcontractorId];
+      if (!cur || cur.col !== col) {
+        return { ...prev, [subcontractorId]: { col, dir: "desc" } };
+      } else if (cur.dir === "desc") {
+        return { ...prev, [subcontractorId]: { col, dir: "asc" } };
+      } else {
+        const next = { ...prev };
+        delete next[subcontractorId];
+        return next;
+      }
+    });
+  };
+
+  const prGroupSortIcon = (subcontractorId: number, col: string) => {
+    const cur = prGroupSortState[subcontractorId];
+    const active = cur?.col === col;
+    return (
+      <span style={{ marginLeft: 4, fontSize: 10, opacity: active ? 1 : 0.35 }}>
+        {active ? (cur.dir === "asc" ? "↑" : "↓") : "↕"}
+      </span>
+    );
+  };
+
+  // ── PR pagination ────────────────────────────────────────────────────────
+  const prTotalPages = Math.ceil(prSorted.length / ITEMS_PER_PAGE);
+  const prStartIndex = (prCurrentPage - 1) * ITEMS_PER_PAGE;
+  const prPaginated = prSorted.slice(
+    prStartIndex,
+    prStartIndex + ITEMS_PER_PAGE,
+  );
+
   // Reset to page 1 on search / filter / sort change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, filters, sortCol, sortDir]);
 
+  // Reset PR page on search/filter/sort change
+  useEffect(() => {
+    setPrCurrentPage(1);
+  }, [prSearchQuery, filters, prSortCol, prSortDir]);
+
   // ── Active filter helpers ───────────────────────────────────────────────
   const hasActiveDateRange = !!(dateRange.start || dateRange.end);
   const hasActiveFilters =
-    filters.selectedVendors.length > 0 ||
-    filters.selectedPaymentTypes.length > 0 ||
-    filters.selectedStatuses.length > 0 ||
-    filters.selectedProjects.length > 0 ||
-    hasActiveDateRange;
+    activeTab === "payment-requests"
+      ? filters.selectedStatuses.length > 0 ||
+        filters.selectedProjects.length > 0 ||
+        filters.selectedSubcontractors.length > 0
+      : filters.selectedVendors.length > 0 ||
+        filters.selectedPaymentTypes.length > 0 ||
+        filters.selectedStatuses.length > 0 ||
+        filters.selectedProjects.length > 0 ||
+        hasActiveDateRange;
 
   const resetAllFilters = () => {
     setFilters({
@@ -575,6 +853,7 @@ export default function Payments() {
       selectedPaymentTypes: [],
       selectedStatuses: [],
       selectedProjects: [],
+      selectedSubcontractors: [],
     });
     setDateRange({ start: null, end: null, preset: null });
   };
@@ -612,6 +891,28 @@ export default function Payments() {
   const handlePaymentSuccess = () => {
     setSelectedRowIds(new Set());
     refetchLpos(false); // silent — no loading spinner, no scroll jump
+  };
+
+  const handleSaveDueDate = async () => {
+    if (!dueDateEdit || !dueDateInput) return;
+    setDueDateSaving(true);
+    try {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/updateSupplierDueDate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            supplier_id: dueDateEdit.supplierId,
+            due_date: dueDateInput,
+          }),
+        },
+      );
+      setDueDateEdit(null);
+      refetchLpos(false);
+    } finally {
+      setDueDateSaving(false);
+    }
   };
 
   /*
@@ -675,8 +976,14 @@ export default function Payments() {
               <input
                 type="text"
                 placeholder="SEARCH"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={
+                  activeTab === "payment-requests" ? prSearchQuery : searchQuery
+                }
+                onChange={(e) =>
+                  activeTab === "payment-requests"
+                    ? setPrSearchQuery(e.target.value)
+                    : setSearchQuery(e.target.value)
+                }
                 style={{
                   width: "350px",
                   padding: "7px 40px 7px 15px",
@@ -720,55 +1027,110 @@ export default function Payments() {
               flexWrap: "wrap",
             }}
           >
-            {/* GROUP BY VENDOR toggle */}
-            <Button
-              componentType="button"
-              bgColor="white"
-              borderColor="rgba(241, 244, 246, 1)"
-              textColor="black"
-              onClick={() => setGroupByVendor((v) => !v)}
-              style={{ padding: "7px 20px", borderRadius: "50px" }}
-            >
-              GROUP BY VENDOR{" "}
-              <div
-                style={{
-                  position: "relative",
-                  width: "30px",
-                  height: "17px",
-                  backgroundColor: groupByVendor
-                    ? "rgb(34, 197, 94)"
-                    : "rgba(200, 200, 200, 1)",
-                  borderRadius: "34px",
-                }}
-              >
+            {/* GROUP BY VENDOR toggle — only in material-requests tab */}
+            {activeTab === "material-requests" && (
+              <>
+                <Button
+                  componentType="button"
+                  bgColor="white"
+                  borderColor="rgba(241, 244, 246, 1)"
+                  textColor="black"
+                  onClick={() => setGroupByVendor((v) => !v)}
+                  style={{ padding: "7px 20px", borderRadius: "50px" }}
+                >
+                  GROUP BY VENDOR{" "}
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "30px",
+                      height: "17px",
+                      backgroundColor: groupByVendor
+                        ? "rgb(34, 197, 94)"
+                        : "rgba(200, 200, 200, 1)",
+                      borderRadius: "34px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "0px",
+                        left: groupByVendor ? "15px" : "0px",
+                        width: "17px",
+                        border: "1px solid rgba(217, 217, 217, 1)",
+                        height: "17px",
+                        backgroundColor: "white",
+                        borderRadius: "50%",
+                        transition: "left 0.15s ease",
+                      }}
+                    />
+                  </div>
+                </Button>
+
+                {/* Divider */}
                 <div
                   style={{
-                    position: "absolute",
-                    top: "0px",
-                    left: groupByVendor ? "15px" : "0px",
-                    width: "17px",
-                    border: "1px solid rgba(217, 217, 217, 1)",
-                    height: "17px",
-                    backgroundColor: "white",
-                    borderRadius: "50%",
-                    transition: "left 0.15s ease",
+                    borderRight: "1px solid rgba(207, 207, 207, 1)",
+                    height: "30px",
+                    alignSelf: "center",
                   }}
                 />
-              </div>
-            </Button>
+              </>
+            )}
 
-            {/* Divider */}
-            <div
-              style={{
-                borderRight: "1px solid rgba(207, 207, 207, 1)",
-                height: "30px",
-                alignSelf: "center",
-              }}
-            />
+            {/* GROUP BY SUBCONTRACTOR toggle — only in payment-requests tab */}
+            {activeTab === "payment-requests" && (
+              <>
+                <Button
+                  componentType="button"
+                  bgColor="white"
+                  borderColor="rgba(241, 244, 246, 1)"
+                  textColor="black"
+                  onClick={() => setGroupBySubcontractor((v) => !v)}
+                  style={{ padding: "7px 20px", borderRadius: "50px" }}
+                >
+                  GROUP BY SUBCONTRACTOR{" "}
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "30px",
+                      height: "17px",
+                      backgroundColor: groupBySubcontractor
+                        ? "rgb(34, 197, 94)"
+                        : "rgba(200, 200, 200, 1)",
+                      borderRadius: "34px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "0px",
+                        left: groupBySubcontractor ? "15px" : "0px",
+                        width: "17px",
+                        border: "1px solid rgba(217, 217, 217, 1)",
+                        height: "17px",
+                        backgroundColor: "white",
+                        borderRadius: "50%",
+                        transition: "left 0.15s ease",
+                      }}
+                    />
+                  </div>
+                </Button>
+
+                {/* Divider */}
+                <div
+                  style={{
+                    borderRight: "1px solid rgba(207, 207, 207, 1)",
+                    height: "30px",
+                    alignSelf: "center",
+                  }}
+                />
+              </>
+            )}
 
             <PaymentFilterButton
               vendors={vendorList}
               projects={projectList}
+              subcontractors={subcontractorList}
               onApplyFilters={setFilters}
               currentFilters={filters}
               dateRange={dateRange}
@@ -777,7 +1139,8 @@ export default function Payments() {
 
             {hasActiveFilters && (
               <>
-                {hasActiveDateRange && (
+                {/* Due date pill — material-requests only */}
+                {activeTab === "material-requests" && hasActiveDateRange && (
                   <Button
                     style={{
                       borderRadius: "50px",
@@ -809,48 +1172,54 @@ export default function Payments() {
                     </span>
                   </Button>
                 )}
-                {filters.selectedVendors.length > 0 && (
-                  <Button
-                    style={{
-                      borderRadius: "50px",
-                      fontWeight: 600,
-                      textWrap: "nowrap",
-                    }}
-                    componentType="none"
-                    bgColor="rgba(239, 239, 239, 1)"
-                    borderColor="transparent"
-                    textColor="black"
-                  >
-                    VENDOR:{" "}
-                    <span style={{ color: "rgba(16, 185, 129, 1)" }}>
-                      {filters.selectedVendors[0].toUpperCase()}
-                      {filters.selectedVendors.length > 1 &&
-                        `, +${filters.selectedVendors.length - 1} MORE`}
-                    </span>
-                  </Button>
-                )}
 
-                {filters.selectedPaymentTypes.length > 0 && (
-                  <Button
-                    style={{
-                      borderRadius: "50px",
-                      fontWeight: 600,
-                      textWrap: "nowrap",
-                    }}
-                    componentType="none"
-                    bgColor="rgba(239, 239, 239, 1)"
-                    borderColor="transparent"
-                    textColor="black"
-                  >
-                    TYPE:{" "}
-                    <span style={{ color: "rgba(16, 185, 129, 1)" }}>
-                      {filters.selectedPaymentTypes[0].toUpperCase()}
-                      {filters.selectedPaymentTypes.length > 1 &&
-                        `, +${filters.selectedPaymentTypes.length - 1} MORE`}
-                    </span>
-                  </Button>
-                )}
+                {/* Vendor pill — material-requests only */}
+                {activeTab === "material-requests" &&
+                  filters.selectedVendors.length > 0 && (
+                    <Button
+                      style={{
+                        borderRadius: "50px",
+                        fontWeight: 600,
+                        textWrap: "nowrap",
+                      }}
+                      componentType="none"
+                      bgColor="rgba(239, 239, 239, 1)"
+                      borderColor="transparent"
+                      textColor="black"
+                    >
+                      VENDOR:{" "}
+                      <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                        {filters.selectedVendors[0].toUpperCase()}
+                        {filters.selectedVendors.length > 1 &&
+                          `, +${filters.selectedVendors.length - 1} MORE`}
+                      </span>
+                    </Button>
+                  )}
 
+                {/* Payment type pill — material-requests only */}
+                {activeTab === "material-requests" &&
+                  filters.selectedPaymentTypes.length > 0 && (
+                    <Button
+                      style={{
+                        borderRadius: "50px",
+                        fontWeight: 600,
+                        textWrap: "nowrap",
+                      }}
+                      componentType="none"
+                      bgColor="rgba(239, 239, 239, 1)"
+                      borderColor="transparent"
+                      textColor="black"
+                    >
+                      TYPE:{" "}
+                      <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                        {filters.selectedPaymentTypes[0].toUpperCase()}
+                        {filters.selectedPaymentTypes.length > 1 &&
+                          `, +${filters.selectedPaymentTypes.length - 1} MORE`}
+                      </span>
+                    </Button>
+                  )}
+
+                {/* Status pill — both tabs */}
                 {filters.selectedStatuses.length > 0 && (
                   <Button
                     style={{
@@ -872,6 +1241,7 @@ export default function Payments() {
                   </Button>
                 )}
 
+                {/* Project pill — both tabs */}
                 {filters.selectedProjects.length > 0 && (
                   <Button
                     style={{
@@ -892,6 +1262,29 @@ export default function Payments() {
                     </span>
                   </Button>
                 )}
+
+                {/* Subcontractor pill — payment-requests only */}
+                {activeTab === "payment-requests" &&
+                  filters.selectedSubcontractors.length > 0 && (
+                    <Button
+                      style={{
+                        borderRadius: "50px",
+                        fontWeight: 600,
+                        textWrap: "nowrap",
+                      }}
+                      componentType="none"
+                      bgColor="rgba(239, 239, 239, 1)"
+                      borderColor="transparent"
+                      textColor="black"
+                    >
+                      SUBCONTRACTOR:{" "}
+                      <span style={{ color: "rgba(16, 185, 129, 1)" }}>
+                        {filters.selectedSubcontractors[0].toUpperCase()}
+                        {filters.selectedSubcontractors.length > 1 &&
+                          `, +${filters.selectedSubcontractors.length - 1} MORE`}
+                      </span>
+                    </Button>
+                  )}
 
                 <Button
                   onClick={resetAllFilters}
@@ -932,140 +1325,172 @@ export default function Payments() {
           </div>
           {/* end RIGHT */}
         </div>
+
+        {/* ── Tabs ─────────────────────────────────────────────────────────── */}
+        <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            alignItems: "center",
+            marginTop: "20px",
+          }}
+        >
+          <Button
+            componentType="button"
+            bgColor={
+              activeTab === "material-requests" ? "black" : "transparent"
+            }
+            textColor={activeTab === "material-requests" ? "white" : "black"}
+            borderColor="black"
+            onClick={() => setActiveTab("material-requests")}
+            style={{ borderRadius: "25px", padding: "7px 20px" }}
+          >
+            MATERIAL REQUESTS
+          </Button>
+          <Button
+            componentType="button"
+            bgColor={activeTab === "payment-requests" ? "black" : "transparent"}
+            textColor={activeTab === "payment-requests" ? "white" : "black"}
+            borderColor="black"
+            onClick={() => setActiveTab("payment-requests")}
+            style={{ borderRadius: "25px", padding: "7px 20px" }}
+          >
+            JOB ORDERS
+          </Button>
+        </div>
       </div>
       {/* ── End sticky toolbar ───────────────────────────────────────────────── */}
 
-      <div style={{ display: "flex", gap: "10px" }}>
-        {[
-          {
-            label: "Total Outstanding Amount",
-            stats: outstandingStats.total,
-          },
-          {
-            label: "Cash Outstanding Amount",
-            stats: outstandingStats.cash,
-          },
-          {
-            label: "Credit Outstanding Amount",
-            stats: outstandingStats.credit,
-          },
-        ].map(({ label, stats }) => (
-          <div
-            key={label}
-            className="widget-container"
-            style={{
-              width: "300px",
-              height: "175px",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              borderRadius: "15px",
-            }}
-          >
-            <h3 style={{ color: "rgba(74, 85, 101, 1)" }}>{label}</h3>
-            <div>
-              <h2 style={{ fontSize: "28px" }}>
-                {isLoading ? "..." : `${formatAED(stats.amount)} AED`}
-              </h2>
-              <p style={{ color: "rgba(74, 85, 101, 1)" }}>
-                {isLoading
-                  ? "—"
-                  : `${stats.count} Pending LPO${stats.count !== 1 ? "s" : ""}`}
-              </p>
-            </div>
+      {activeTab === "material-requests" && (
+        <>
+          <div style={{ display: "flex", gap: "10px" }}>
+            {[
+              {
+                label: "Total Outstanding Amount",
+                stats: outstandingStats.total,
+              },
+              {
+                label: "Cash Outstanding Amount",
+                stats: outstandingStats.cash,
+              },
+              {
+                label: "Credit Outstanding Amount",
+                stats: outstandingStats.credit,
+              },
+            ].map(({ label, stats }) => (
+              <div
+                key={label}
+                className="widget-container"
+                style={{
+                  width: "300px",
+                  height: "175px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  borderRadius: "15px",
+                }}
+              >
+                <h3 style={{ color: "rgba(74, 85, 101, 1)" }}>{label}</h3>
+                <div>
+                  <h2 style={{ fontSize: "28px" }}>
+                    {isLoading ? "..." : `AED ${formatAED(stats.amount)}`}
+                  </h2>
+                  <p style={{ color: "rgba(74, 85, 101, 1)" }}>
+                    {isLoading
+                      ? "—"
+                      : `${stats.count} Pending LPO${stats.count !== 1 ? "s" : ""}`}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <br />
-      <br />
-      <br />
+          <br />
+          <br />
+          <br />
+        </>
+      )}
 
-      {/* ── Table ─────────────────────────────────────────────────────────── */}
-      {isLoading ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "#888" }}>
-          Loading...
-        </div>
-      ) : sorted.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "#888" }}>
-          {searchQuery || hasActiveFilters
-            ? "No results found"
-            : "No payment records found"}
-        </div>
-      ) : groupByVendor ? (
-        /* ── Grouped by vendor ── */
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {vendorGroups.map((group) => {
-            const isCollapsed = collapsedVendors[group.supplierId] ?? false;
-            const groupOutstanding = group.rows
-              .filter((r) => r.is_paid !== 1)
-              .reduce((s, r) => s + Number(r.outstanding), 0);
-            return (
-              <div key={group.supplierId}>
-                {/* Group header */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    marginBottom: isCollapsed ? "0px" : "20px",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    backgroundColor: "rgba(239, 239, 239, 1)",
-                    width: "fit-content",
-                    padding: "5px 12px",
-                    borderRadius: "50px",
-                  }}
-                  onClick={() => toggleVendorCollapse(group.supplierId)}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    style={{
-                      transition: "transform 0.2s ease",
-                      transform: isCollapsed
-                        ? "rotate(-90deg)"
-                        : "rotate(0deg)",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <path
-                      d="M3.5 5.25L7 8.75L10.5 5.25"
-                      stroke="black"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-
-                  <h2>{group.supplierName}</h2>
-                  <Button
-                    componentType="link"
-                    bgColor="transparent"
-                    borderColor="transparent"
-                    textColor="black"
-                    href={`/vendor/${group.supplierId}`}
-                    style={{ padding: "0px", marginBottom: "2px" }}
-                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                  >
-                    <img src={externalLinkIcon} alt="open" />
-                  </Button>
+      {/* ── Payment Requests Table ────────────────────────────────────────── */}
+      {activeTab === "payment-requests" &&
+        (prLoading ? (
+          <div style={{ textAlign: "center", padding: "60px", color: "#888" }}>
+            Loading...
+          </div>
+        ) : prSorted.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px", color: "#888" }}>
+            {prSearchQuery || hasActiveFilters
+              ? "No results found"
+              : "No payment requests found"}
+          </div>
+        ) : groupBySubcontractor ? (
+          /* ── Grouped by subcontractor ── */
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {subcontractorGroups.map((group) => {
+              const isCollapsed =
+                collapsedSubcontractors[group.subcontractorId] ?? false;
+              const groupOutstanding = group.rows
+                .filter((r) => r.is_paid !== 1)
+                .reduce((s, r) => s + Number(r.outstanding), 0);
+              return (
+                <div key={group.subcontractorId}>
+                  {/* Group header */}
                   <div
                     style={{
-                      backgroundColor: "black",
-                      color: "white",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      marginBottom: isCollapsed ? "0px" : "20px",
+                      cursor: "pointer",
+                      userSelect: "none",
+                      backgroundColor: "rgba(239, 239, 239, 1)",
+                      width: "fit-content",
+                      padding: "5px 12px",
                       borderRadius: "50px",
-                      padding: "3px 12px",
-                      fontWeight: "600",
-                      fontSize: "14px",
                     }}
+                    onClick={() =>
+                      toggleSubcontractorCollapse(group.subcontractorId)
+                    }
                   >
-                    {group.rows.length} LPO{group.rows.length !== 1 ? "s" : ""}
-                  </div>
-                  {groupOutstanding > 0 && (
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{
+                        transition: "transform 0.2s ease",
+                        transform: isCollapsed
+                          ? "rotate(-90deg)"
+                          : "rotate(0deg)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <path
+                        d="M3.5 5.25L7 8.75L10.5 5.25"
+                        stroke="black"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+
+                    <h2>{group.subcontractorName}</h2>
+
+                    {group.subcontractorId !== 0 && (
+                      <Button
+                        componentType="link"
+                        bgColor="transparent"
+                        borderColor="transparent"
+                        textColor="black"
+                        href={`/payment/credit/subcontractor/${group.subcontractorId}`}
+                        style={{ padding: "0px", marginBottom: "2px" }}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                      >
+                        <img src={externalLinkIcon} alt="open" />
+                      </Button>
+                    )}
+
                     <div
                       style={{
                         backgroundColor: "black",
@@ -1076,146 +1501,87 @@ export default function Payments() {
                         fontSize: "14px",
                       }}
                     >
-                      {formatAED(groupOutstanding)} AED Outstanding
+                      {group.rows.length} PR{group.rows.length !== 1 ? "s" : ""}
                     </div>
-                  )}
-                </div>
 
-                {/* Group table */}
-                {!isCollapsed &&
-                  (() => {
-                    const unpaidRows = group.rows.filter(
-                      (r) => r.is_paid !== 1,
-                    );
-                    const groupAllSelected =
-                      unpaidRows.length > 0 &&
-                      unpaidRows.every((r) => selectedRowIds.has(r.id));
-                    const groupSomeSelected =
-                      !groupAllSelected &&
-                      unpaidRows.some((r) => selectedRowIds.has(r.id));
-
-                    return (
-                      <table
-                        className="items-table"
-                        style={{ tableLayout: "fixed", width: "100%" }}
+                    {groupOutstanding > 0 && (
+                      <div
+                        style={{
+                          backgroundColor: "black",
+                          color: "white",
+                          borderRadius: "50px",
+                          padding: "3px 12px",
+                          fontWeight: "600",
+                          fontSize: "14px",
+                        }}
                       >
-                        <colgroup>
-                          <col style={{ width: "36px" }} />
-                          <col style={{ width: "125px" }} />
-                          <col style={{ width: "200px" }} />
-                          <col style={{ width: "200px" }} />
-                          <col style={{ width: "200px" }} />
-                          <col style={{ width: "140px" }} />
-                          <col style={{ width: "110px" }} />
-                          <col style={{ width: "90px" }} />
-                          <col style={{ width: "60px" }} />
-                        </colgroup>
-                        <thead>
-                          <tr>
-                            <th style={{ padding: "0 0 0 12px" }}>
-                              <input
-                                type="checkbox"
-                                checked={groupAllSelected}
-                                ref={(el) => {
-                                  if (el) el.indeterminate = groupSomeSelected;
+                        {formatAED(groupOutstanding)} AED Outstanding
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Group table */}
+                  {!isCollapsed &&
+                    (() => {
+                      const gs = prGroupSortState[group.subcontractorId];
+                      const rows = gs
+                        ? [...group.rows].sort((a, b) => {
+                            if (a.is_paid !== b.is_paid)
+                              return a.is_paid - b.is_paid;
+                            const aVal = Number(
+                              (a as Record<string, unknown>)[gs.col] ?? 0,
+                            );
+                            const bVal = Number(
+                              (b as Record<string, unknown>)[gs.col] ?? 0,
+                            );
+                            const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                            return gs.dir === "asc" ? cmp : -cmp;
+                          })
+                        : group.rows;
+                      return (
+                        <table
+                          className="items-table"
+                          style={{ tableLayout: "fixed", width: "100%" }}
+                        >
+                          <colgroup>
+                            <col style={{ width: "125px" }} />
+                            <col style={{ width: "125px" }} />
+                            <col style={{ width: "280px" }} />
+                            <col style={{ width: "150px" }} />
+                            <col style={{ width: "200px" }} />
+                            <col style={{ width: "60px" }} />
+                          </colgroup>
+                          <thead>
+                            <tr>
+                              <th>PR NUMBER</th>
+                              <th>JO NUMBER</th>
+                              <th>PROJECT</th>
+                              <th>STATUS</th>
+                              <th
+                                style={{
+                                  cursor: "pointer",
+                                  userSelect: "none",
                                 }}
-                                onChange={() => {
-                                  setSelectedRowIds((prev) => {
-                                    const next = new Set(prev);
-                                    if (groupAllSelected) {
-                                      unpaidRows.forEach((r) =>
-                                        next.delete(r.id),
-                                      );
-                                    } else {
-                                      unpaidRows.forEach((r) => next.add(r.id));
-                                    }
-                                    return next;
-                                  });
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePrGroupSort(
+                                    group.subcontractorId,
+                                    "outstanding",
+                                  );
                                 }}
-                                className="manager-checkbox"
-                              />
-                            </th>
-                            <th>LPO NUMBER</th>
-                            <th>PROJECT</th>
-                            <th>TYPE</th>
-                            <th
-                              style={{ cursor: "pointer", userSelect: "none" }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleGroupSort(
-                                  group.supplierId,
-                                  "outstanding",
-                                );
-                              }}
-                            >
-                              OUTSTANDING AMOUNT
-                              {groupSortIcon(group.supplierId, "outstanding")}
-                            </th>
-                            <th
-                              style={{ cursor: "pointer", userSelect: "none" }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleGroupSort(group.supplierId, "due_date");
-                              }}
-                            >
-                              DUE DATE
-                              {groupSortIcon(group.supplierId, "due_date")}
-                            </th>
-                            <th>STATUS</th>
-                            <th>INVOICE</th>
-                            <th></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(() => {
-                            const gs = groupSortState[group.supplierId];
-                            if (!gs) return group.rows;
-                            return [...group.rows].sort((a, b) => {
-                              if (a.is_paid !== b.is_paid)
-                                return a.is_paid - b.is_paid;
-                              const getGRaw = (row: LpoRow) => {
-                                if (gs.col === "outstanding")
-                                  return row.is_paid === 1
-                                    ? 0
-                                    : Number(row.outstanding ?? 0);
-                                if (gs.col === "due_date")
-                                  return getDueDateTimestamp(row);
-                                const v = (row as Record<string, unknown>)[
-                                  gs.col
-                                ];
-                                return v == null ? null : Number(v);
-                              };
-                              const aVal = getGRaw(a);
-                              const bVal = getGRaw(b);
-                              if (aVal == null) return 1;
-                              if (bVal == null) return -1;
-                              const cmp =
-                                aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-                              return gs.dir === "asc" ? cmp : -cmp;
-                            });
-                          })().map((row) => {
-                            const isPaid = row.is_paid === 1;
-                            const dueDate = getDueDate(row);
-                            const isChecked = selectedRowIds.has(row.id);
-                            return (
-                              <tr
-                                key={row.id}
-                                style={
-                                  isChecked
-                                    ? { backgroundColor: "rgba(240,253,247,1)" }
-                                    : undefined
-                                }
                               >
-                                <td style={{ padding: "0 0 0 12px" }}>
-                                  {!isPaid && (
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={() => toggleRow(row.id)}
-                                      className="manager-checkbox"
-                                    />
-                                  )}
-                                </td>
+                                OUTSTANDING AMOUNT
+                                {prGroupSortIcon(
+                                  group.subcontractorId,
+                                  "outstanding",
+                                )}
+                              </th>
+                              <th></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rows.map((row) => (
+                              <tr key={row.id}>
                                 <td>
                                   <div
                                     style={{
@@ -1225,14 +1591,14 @@ export default function Payments() {
                                     }}
                                   >
                                     <span>
-                                      LPO-{String(row.id).padStart(5, "0")}
+                                      PR-{String(row.id).padStart(5, "0")}
                                     </span>
                                     <Button
                                       componentType="link"
-                                      bgColor="rgba(239, 239, 239, 1)"
-                                      borderColor="rgba(223, 223, 223, 1)"
+                                      bgColor="rgba(239,239,239,1)"
+                                      borderColor="rgba(223,223,223,1)"
                                       textColor="black"
-                                      href={`/mr/${row.mr_header_id}/lpo/${row.id}`}
+                                      href={`/mr/${row.id}`}
                                       style={{
                                         padding: "7px 7px",
                                         flexShrink: 0,
@@ -1243,7 +1609,7 @@ export default function Payments() {
                                   </div>
                                 </td>
                                 <td>
-                                  {row.mr_project_id && row.project_name ? (
+                                  {row.payment_jo_reference_id ? (
                                     <div
                                       style={{
                                         display: "flex",
@@ -1251,21 +1617,18 @@ export default function Payments() {
                                         gap: "8px",
                                       }}
                                     >
-                                      <span
-                                        style={{
-                                          overflow: "hidden",
-                                          textOverflow: "ellipsis",
-                                          whiteSpace: "nowrap",
-                                        }}
-                                      >
-                                        {row.project_name}
+                                      <span>
+                                        JO-
+                                        {String(
+                                          row.payment_jo_reference_id,
+                                        ).padStart(5, "0")}
                                       </span>
                                       <Button
                                         componentType="link"
-                                        bgColor="rgba(239, 239, 239, 1)"
-                                        borderColor="rgba(223, 223, 223, 1)"
+                                        bgColor="rgba(239,239,239,1)"
+                                        borderColor="rgba(223,223,223,1)"
                                         textColor="black"
-                                        href={`/project/${row.mr_project_id}`}
+                                        href={`/mr/${row.payment_jo_reference_id}`}
                                         style={{
                                           padding: "7px 7px",
                                           flexShrink: 0,
@@ -1282,170 +1645,95 @@ export default function Payments() {
                                   )}
                                 </td>
                                 <td>
-                                  <SupplierTypePill type={row.supplier_type} />
-                                </td>
-                                <td style={{ whiteSpace: "nowrap" }}>
-                                  {`AED ${formatAED(isPaid ? 0 : Number(row.outstanding))}`}
-                                </td>
-                                <td style={{ whiteSpace: "nowrap" }}>
-                                  {dueDate}
-                                </td>
-                                <td>
-                                  <StatusPill isPaid={isPaid} />
-                                </td>
-                                <td>
-                                  {(() => {
-                                    const invoiceUrl = parseInvoiceUrl(
-                                      row.invoice_file,
-                                    );
-                                    return invoiceUrl ? (
-                                      <Button
-                                        componentType="link"
-                                        bgColor="rgba(239,239,239,1)"
-                                        borderColor="rgba(223,223,223,1)"
-                                        textColor="black"
-                                        href={invoiceUrl}
-                                        target="_blank"
-                                        style={{ padding: "7px 7px" }}
-                                        onClick={(e: React.MouseEvent) =>
-                                          e.stopPropagation()
-                                        }
-                                      >
-                                        <img
-                                          src={downloadIcon}
-                                          alt="download"
-                                        />
-                                      </Button>
-                                    ) : (
-                                      <span>N/A</span>
-                                    );
-                                  })()}
+                                  <span
+                                    style={{
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                      display: "block",
+                                    }}
+                                  >
+                                    {row.project_name ?? "-"}
+                                  </span>
                                 </td>
                                 <td>
-                                  {[8, 10].includes(
-                                    userInfo?.departmentID ?? 0,
-                                  ) && (
+                                  <PrStatusPill isPaid={row.is_paid === 1} />
+                                </td>
+                                <td>
+                                  AED{" "}
+                                  {formatAED(
+                                    row.is_paid === 1
+                                      ? 0
+                                      : Number(row.outstanding),
+                                  )}
+                                </td>
+                                <td>
+                                  {row.subcontractor_id ? (
                                     <Button
                                       componentType="link"
-                                      bgColor="rgba(239, 239, 239, 1)"
-                                      borderColor="rgba(223, 223, 223, 1)"
+                                      bgColor="rgba(239,239,239,1)"
+                                      borderColor="rgba(223,223,223,1)"
                                       textColor="black"
-                                      href={
-                                        (
-                                          row.supplier_type ?? ""
-                                        ).toLowerCase() === "credit"
-                                          ? `/payment/credit/supplier/${row.supplier_id}`
-                                          : `/payment/cash/mr/${row.mr_header_id}`
-                                      }
-                                      style={{ padding: "7px 7px" }}
+                                      href={`/payment/credit/subcontractor/${row.subcontractor_id}`}
+                                      style={{
+                                        padding: "7px 7px",
+                                        flexShrink: 0,
+                                      }}
                                     >
                                       <img src={externalLinkIcon} alt="open" />
                                     </Button>
+                                  ) : (
+                                    <span>-</span>
                                   )}
                                 </td>
                               </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    );
-                  })()}
+                            ))}
+                          </tbody>
+                        </table>
+                      );
+                    })()}
 
-                <br />
-                <br />
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        /* ── Flat table ── */
-        <>
-          <table
-            className="items-table"
-            style={{ tableLayout: "fixed", width: "100%" }}
-          >
-            <colgroup>
-              <col style={{ width: "36px" }} />
-              <col style={{ width: "125px" }} />
-              <col style={{ width: "250px" }} />
-              <col style={{ width: "200px" }} />
-              <col style={{ width: "175px" }} />
-              <col style={{ width: "180px" }} />
-              <col style={{ width: "130px" }} />
-              <col style={{ width: "100px" }} />
-              <col style={{ width: "90px" }} />
-              <col style={{ width: "60px" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th style={{ padding: "0 0 0 12px" }}>
-                  <input
-                    type="checkbox"
-                    checked={flatAllSelected}
-                    ref={(el) => {
-                      if (el) el.indeterminate = flatSomeSelected;
-                    }}
-                    onChange={() => {
-                      setSelectedRowIds((prev) => {
-                        const next = new Set(prev);
-                        if (flatAllSelected) {
-                          unpaidPaginated.forEach((r) => next.delete(r.id));
-                        } else {
-                          unpaidPaginated.forEach((r) => next.add(r.id));
-                        }
-                        return next;
-                      });
-                    }}
-                    className="manager-checkbox"
-                  />
-                </th>
-                <th>LPO NUMBER</th>
-                <th>VENDOR</th>
-                <th>PROJECT</th>
-                <th>TYPE</th>
-                <th
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                  onClick={() => handleSort("outstanding")}
-                >
-                  OUTSTANDING AMOUNT{sortIcon("outstanding")}
-                </th>
-                <th
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                  onClick={() => handleSort("due_date")}
-                >
-                  DUE DATE{sortIcon("due_date")}
-                </th>
-                <th>STATUS</th>
-                <th>INVOICE</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.map((row) => {
-                const isPaid = row.is_paid === 1;
-                const dueDate = getDueDate(row);
-                const isChecked = selectedRowIds.has(row.id);
-
-                return (
-                  <tr
-                    key={row.id}
-                    style={
-                      isChecked
-                        ? { backgroundColor: "rgba(240,253,247,1)" }
-                        : undefined
-                    }
+                  <br />
+                  <br />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* ── Flat table ── */
+          <>
+            <table
+              className="items-table"
+              style={{ tableLayout: "fixed", width: "100%" }}
+            >
+              <colgroup>
+                <col style={{ width: "125px" }} />
+                <col style={{ width: "125px" }} />
+                <col style={{ width: "200px" }} />
+                <col style={{ width: "220px" }} />
+                <col style={{ width: "150px" }} />
+                <col style={{ width: "180px" }} />
+                <col style={{ width: "60px" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>PR NUMBER</th>
+                  <th>JO NUMBER</th>
+                  <th>SUBCONTRACTOR</th>
+                  <th>PROJECT</th>
+                  <th>STATUS</th>
+                  <th
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handlePrSort("outstanding")}
                   >
-                    <td style={{ padding: "0 0 0 12px" }}>
-                      {!isPaid && (
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleRow(row.id)}
-                          className="manager-checkbox"
-                        />
-                      )}
-                    </td>
-                    {/* LPO NUMBER */}
+                    OUTSTANDING AMOUNT{prSortIcon("outstanding")}
+                  </th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {prPaginated.map((row) => (
+                  <tr key={row.id}>
                     <td>
                       <div
                         style={{
@@ -1454,54 +1742,52 @@ export default function Payments() {
                           gap: "8px",
                         }}
                       >
-                        <span>LPO-{String(row.id).padStart(5, "0")}</span>
+                        <span>PR-{String(row.id).padStart(5, "0")}</span>
                         <Button
                           componentType="link"
-                          bgColor="rgba(239, 239, 239, 1)"
-                          borderColor="rgba(223, 223, 223, 1)"
+                          bgColor="rgba(239,239,239,1)"
+                          borderColor="rgba(223,223,223,1)"
                           textColor="black"
-                          href={`/mr/${row.mr_header_id}/lpo/${row.id}`}
+                          href={`/mr/${row.id}`}
                           style={{ padding: "7px 7px", flexShrink: 0 }}
                         >
                           <img src={externalLinkIcon} alt="open" />
                         </Button>
                       </div>
                     </td>
-
-                    {/* SUPPLIER */}
                     <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        <span
+                      {row.payment_jo_reference_id ? (
+                        <div
                           style={{
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
                           }}
                         >
-                          {row.supplier_name}
-                        </span>
-                        <Button
-                          componentType="link"
-                          bgColor="rgba(239, 239, 239, 1)"
-                          borderColor="rgba(223, 223, 223, 1)"
-                          textColor="black"
-                          href={`/vendor/${row.supplier_id}`}
-                          style={{ padding: "7px 7px", flexShrink: 0 }}
-                        >
-                          <img src={externalLinkIcon} alt="open" />
-                        </Button>
-                      </div>
+                          <span>
+                            JO-
+                            {String(row.payment_jo_reference_id).padStart(
+                              5,
+                              "0",
+                            )}
+                          </span>
+                          <Button
+                            componentType="link"
+                            bgColor="rgba(239,239,239,1)"
+                            borderColor="rgba(223,223,223,1)"
+                            textColor="black"
+                            href={`/mr/${row.payment_jo_reference_id}`}
+                            style={{ padding: "7px 7px", flexShrink: 0 }}
+                          >
+                            <img src={externalLinkIcon} alt="open" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span>-</span>
+                      )}
                     </td>
-
-                    {/* PROJECT */}
                     <td>
-                      {row.mr_project_id && row.project_name ? (
+                      {row.subcontractor_id && row.subcontractor_name ? (
                         <div
                           style={{
                             display: "flex",
@@ -1516,14 +1802,14 @@ export default function Payments() {
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {row.project_name}
+                            {row.subcontractor_name}
                           </span>
                           <Button
                             componentType="link"
-                            bgColor="rgba(239, 239, 239, 1)"
-                            borderColor="rgba(223, 223, 223, 1)"
+                            bgColor="rgba(239,239,239,1)"
+                            borderColor="rgba(223,223,223,1)"
                             textColor="black"
-                            href={`/project/${row.mr_project_id}`}
+                            href={`/payment/credit/subcontractor/${row.subcontractor_id}`}
                             style={{ padding: "7px 7px", flexShrink: 0 }}
                           >
                             <img src={externalLinkIcon} alt="open" />
@@ -1533,79 +1819,704 @@ export default function Payments() {
                         <span>-</span>
                       )}
                     </td>
-
-                    {/* TYPE */}
                     <td>
-                      <SupplierTypePill type={row.supplier_type} />
+                      <span
+                        style={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          display: "block",
+                        }}
+                      >
+                        {row.project_name ?? "-"}
+                      </span>
                     </td>
-
-                    {/* OUTSTANDING AMOUNT */}
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      {`AED ${formatAED(isPaid ? 0 : Number(row.outstanding))}`}
-                    </td>
-
-                    {/* DUE DATE */}
-                    <td style={{ whiteSpace: "nowrap" }}>{dueDate}</td>
-
-                    {/* STATUS */}
                     <td>
-                      <StatusPill isPaid={isPaid} />
+                      <PrStatusPill isPaid={row.is_paid === 1} />
                     </td>
-
-                    {/* INVOICE */}
-                    <td>
-                      {(() => {
-                        const invoiceUrl = parseInvoiceUrl(row.invoice_file);
-                        return invoiceUrl ? (
-                          <Button
-                            componentType="link"
-                            bgColor="rgba(239,239,239,1)"
-                            borderColor="rgba(223,223,223,1)"
-                            textColor="black"
-                            href={invoiceUrl}
-                            target="_blank"
-                            style={{ padding: "7px 7px" }}
-                          >
-                            <img src={downloadIcon} alt="download" />
-                          </Button>
-                        ) : (
-                          <span>N/A</span>
-                        );
-                      })()}
+                    <td style={{ whiteSpace: "nowrap", fontWeight: 700 }}>
+                      AED{" "}
+                      {formatAED(
+                        row.is_paid === 1 ? 0 : Number(row.outstanding),
+                      )}
                     </td>
-
-                    {/* MR payment detail link — manager & finance only */}
                     <td>
-                      {[8, 10].includes(userInfo?.departmentID ?? 0) && (
+                      {row.subcontractor_id ? (
                         <Button
                           componentType="link"
-                          bgColor="rgba(239, 239, 239, 1)"
-                          borderColor="rgba(223, 223, 223, 1)"
+                          bgColor="rgba(239,239,239,1)"
+                          borderColor="rgba(223,223,223,1)"
                           textColor="black"
-                          href={
-                            (row.supplier_type ?? "").toLowerCase() === "credit"
-                              ? `/payment/credit/supplier/${row.supplier_id}`
-                              : `/payment/cash/mr/${row.mr_header_id}`
-                          }
-                          style={{ padding: "7px 7px" }}
+                          href={`/payment/credit/subcontractor/${row.subcontractor_id}`}
+                          style={{ padding: "7px 7px", flexShrink: 0 }}
                         >
                           <img src={externalLinkIcon} alt="open" />
                         </Button>
+                      ) : (
+                        <span>-</span>
                       )}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
 
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        </>
-      )}
+            <PaginationControls
+              currentPage={prCurrentPage}
+              totalPages={prTotalPages}
+              onPageChange={setPrCurrentPage}
+            />
+          </>
+        ))}
+
+      {/* ── Material Requests (LPO) Table ─────────────────────────────────── */}
+      {activeTab === "material-requests" &&
+        (isLoading ? (
+          <div style={{ textAlign: "center", padding: "60px", color: "#888" }}>
+            Loading...
+          </div>
+        ) : sorted.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px", color: "#888" }}>
+            {searchQuery || hasActiveFilters
+              ? "No results found"
+              : "No payment records found"}
+          </div>
+        ) : groupByVendor ? (
+          /* ── Grouped by vendor ── */
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {vendorGroups.map((group) => {
+              const isCollapsed = collapsedVendors[group.supplierId] ?? false;
+              const groupOutstanding = group.rows
+                .filter((r) => r.is_paid !== 1)
+                .reduce((s, r) => s + Number(r.outstanding), 0);
+              return (
+                <div key={group.supplierId}>
+                  {/* Group header */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      marginBottom: isCollapsed ? "0px" : "20px",
+                      cursor: "pointer",
+                      userSelect: "none",
+                      backgroundColor: "rgba(239, 239, 239, 1)",
+                      width: "fit-content",
+                      padding: "5px 12px",
+                      borderRadius: "50px",
+                    }}
+                    onClick={() => toggleVendorCollapse(group.supplierId)}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{
+                        transition: "transform 0.2s ease",
+                        transform: isCollapsed
+                          ? "rotate(-90deg)"
+                          : "rotate(0deg)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <path
+                        d="M3.5 5.25L7 8.75L10.5 5.25"
+                        stroke="black"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+
+                    <h2>{group.supplierName}</h2>
+                    <Button
+                      componentType="link"
+                      bgColor="transparent"
+                      borderColor="transparent"
+                      textColor="black"
+                      href={`/vendor/${group.supplierId}`}
+                      style={{ padding: "0px", marginBottom: "2px" }}
+                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    >
+                      <img src={externalLinkIcon} alt="open" />
+                    </Button>
+                    <div
+                      style={{
+                        backgroundColor: "black",
+                        color: "white",
+                        borderRadius: "50px",
+                        padding: "3px 12px",
+                        fontWeight: "600",
+                        fontSize: "14px",
+                      }}
+                    >
+                      {group.rows.length} LPO
+                      {group.rows.length !== 1 ? "s" : ""}
+                    </div>
+                    {groupOutstanding > 0 && (
+                      <div
+                        style={{
+                          backgroundColor: "black",
+                          color: "white",
+                          borderRadius: "50px",
+                          padding: "3px 12px",
+                          fontWeight: "600",
+                          fontSize: "14px",
+                        }}
+                      >
+                        {formatAED(groupOutstanding)} AED Outstanding
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Group table */}
+                  {!isCollapsed &&
+                    (() => {
+                      const unpaidRows = group.rows.filter(
+                        (r) => r.is_paid !== 1,
+                      );
+                      const groupAllSelected =
+                        unpaidRows.length > 0 &&
+                        unpaidRows.every((r) => selectedRowIds.has(r.id));
+                      const groupSomeSelected =
+                        !groupAllSelected &&
+                        unpaidRows.some((r) => selectedRowIds.has(r.id));
+
+                      return (
+                        <table
+                          className="items-table"
+                          style={{ tableLayout: "fixed", width: "100%" }}
+                        >
+                          <colgroup>
+                            <col style={{ width: "36px" }} />
+                            <col style={{ width: "125px" }} />
+                            <col style={{ width: "200px" }} />
+                            <col style={{ width: "200px" }} />
+                            <col style={{ width: "200px" }} />
+                            <col style={{ width: "140px" }} />
+                            <col style={{ width: "110px" }} />
+                            <col style={{ width: "90px" }} />
+                            <col style={{ width: "60px" }} />
+                          </colgroup>
+                          <thead>
+                            <tr>
+                              <th style={{ padding: "0 0 0 12px" }}>
+                                <input
+                                  type="checkbox"
+                                  checked={groupAllSelected}
+                                  ref={(el) => {
+                                    if (el)
+                                      el.indeterminate = groupSomeSelected;
+                                  }}
+                                  onChange={() => {
+                                    setSelectedRowIds((prev) => {
+                                      const next = new Set(prev);
+                                      if (groupAllSelected) {
+                                        unpaidRows.forEach((r) =>
+                                          next.delete(r.id),
+                                        );
+                                      } else {
+                                        unpaidRows.forEach((r) =>
+                                          next.add(r.id),
+                                        );
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  className="manager-checkbox"
+                                />
+                              </th>
+                              <th>LPO NUMBER</th>
+                              <th>PROJECT</th>
+                              <th>TYPE</th>
+                              <th
+                                style={{
+                                  cursor: "pointer",
+                                  userSelect: "none",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleGroupSort(
+                                    group.supplierId,
+                                    "outstanding",
+                                  );
+                                }}
+                              >
+                                OUTSTANDING AMOUNT
+                                {groupSortIcon(group.supplierId, "outstanding")}
+                              </th>
+                              <th
+                                style={{
+                                  cursor: "pointer",
+                                  userSelect: "none",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleGroupSort(group.supplierId, "due_date");
+                                }}
+                              >
+                                DUE DATE
+                                {groupSortIcon(group.supplierId, "due_date")}
+                              </th>
+                              <th>STATUS</th>
+                              <th>INVOICE</th>
+                              <th></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(() => {
+                              const gs = groupSortState[group.supplierId];
+                              if (!gs) return group.rows;
+                              return [...group.rows].sort((a, b) => {
+                                if (a.is_paid !== b.is_paid)
+                                  return a.is_paid - b.is_paid;
+                                const getGRaw = (row: LpoRow) => {
+                                  if (gs.col === "outstanding")
+                                    return row.is_paid === 1
+                                      ? 0
+                                      : Number(row.outstanding ?? 0);
+                                  if (gs.col === "due_date")
+                                    return getDueDateTimestamp(row);
+                                  const v = (row as Record<string, unknown>)[
+                                    gs.col
+                                  ];
+                                  return v == null ? null : Number(v);
+                                };
+                                const aVal = getGRaw(a);
+                                const bVal = getGRaw(b);
+                                if (aVal == null) return 1;
+                                if (bVal == null) return -1;
+                                const cmp =
+                                  aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                                return gs.dir === "asc" ? cmp : -cmp;
+                              });
+                            })().map((row) => {
+                              const isPaid = row.is_paid === 1;
+                              const dueDate = getDueDate(row);
+                              const isChecked = selectedRowIds.has(row.id);
+                              return (
+                                <tr
+                                  key={row.id}
+                                  style={
+                                    isChecked
+                                      ? {
+                                          backgroundColor:
+                                            "rgba(240,253,247,1)",
+                                        }
+                                      : undefined
+                                  }
+                                >
+                                  <td style={{ padding: "0 0 0 12px" }}>
+                                    {!isPaid && (
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => toggleRow(row.id)}
+                                        className="manager-checkbox"
+                                      />
+                                    )}
+                                  </td>
+                                  <td>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                      }}
+                                    >
+                                      <span>
+                                        LPO-{String(row.id).padStart(5, "0")}
+                                      </span>
+                                      <Button
+                                        componentType="link"
+                                        bgColor="rgba(239, 239, 239, 1)"
+                                        borderColor="rgba(223, 223, 223, 1)"
+                                        textColor="black"
+                                        href={`/mr/${row.mr_header_id}/lpo/${row.id}`}
+                                        style={{
+                                          padding: "7px 7px",
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        <img
+                                          src={externalLinkIcon}
+                                          alt="open"
+                                        />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    {row.mr_project_id && row.project_name ? (
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                        }}
+                                      >
+                                        <span
+                                          style={{
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap",
+                                          }}
+                                        >
+                                          {row.project_name}
+                                        </span>
+                                        <Button
+                                          componentType="link"
+                                          bgColor="rgba(239, 239, 239, 1)"
+                                          borderColor="rgba(223, 223, 223, 1)"
+                                          textColor="black"
+                                          href={`/project/${row.mr_project_id}`}
+                                          style={{
+                                            padding: "7px 7px",
+                                            flexShrink: 0,
+                                          }}
+                                        >
+                                          <img
+                                            src={externalLinkIcon}
+                                            alt="open"
+                                          />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <span>-</span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <SupplierTypePill
+                                      type={row.supplier_type}
+                                    />
+                                  </td>
+                                  <td style={{ whiteSpace: "nowrap" }}>
+                                    {`AED ${formatAED(isPaid ? 0 : Number(row.outstanding))}`}
+                                  </td>
+                                  <td style={{ whiteSpace: "nowrap" }}>
+                                    {dueDate}
+                                  </td>
+                                  <td>
+                                    <StatusPill isPaid={isPaid} />
+                                  </td>
+                                  <td>
+                                    {(() => {
+                                      const invoiceUrl = parseInvoiceUrl(
+                                        row.invoice_file,
+                                      );
+                                      return invoiceUrl ? (
+                                        <Button
+                                          componentType="link"
+                                          bgColor="rgba(239,239,239,1)"
+                                          borderColor="rgba(223,223,223,1)"
+                                          textColor="black"
+                                          href={invoiceUrl}
+                                          target="_blank"
+                                          style={{ padding: "7px 7px" }}
+                                          onClick={(e: React.MouseEvent) =>
+                                            e.stopPropagation()
+                                          }
+                                        >
+                                          <img
+                                            src={downloadIcon}
+                                            alt="download"
+                                          />
+                                        </Button>
+                                      ) : (
+                                        <span>N/A</span>
+                                      );
+                                    })()}
+                                  </td>
+                                  <td>
+                                    {[8, 10].includes(
+                                      userInfo?.departmentID ?? 0,
+                                    ) && (
+                                      <Button
+                                        componentType="link"
+                                        bgColor="rgba(239, 239, 239, 1)"
+                                        borderColor="rgba(223, 223, 223, 1)"
+                                        textColor="black"
+                                        href={
+                                          (
+                                            row.supplier_type ?? ""
+                                          ).toLowerCase() === "credit"
+                                            ? `/payment/credit/supplier/${row.supplier_id}`
+                                            : `/payment/cash/mr/${row.mr_header_id}`
+                                        }
+                                        style={{ padding: "7px 7px" }}
+                                      >
+                                        <img
+                                          src={externalLinkIcon}
+                                          alt="open"
+                                        />
+                                      </Button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      );
+                    })()}
+
+                  <br />
+                  <br />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* ── Flat table ── */
+          <>
+            <table
+              className="items-table"
+              style={{ tableLayout: "fixed", width: "100%" }}
+            >
+              <colgroup>
+                <col style={{ width: "36px" }} />
+                <col style={{ width: "125px" }} />
+                <col style={{ width: "250px" }} />
+                <col style={{ width: "200px" }} />
+                <col style={{ width: "175px" }} />
+                <col style={{ width: "180px" }} />
+                <col style={{ width: "130px" }} />
+                <col style={{ width: "100px" }} />
+                <col style={{ width: "90px" }} />
+                <col style={{ width: "60px" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th style={{ padding: "0 0 0 12px" }}>
+                    <input
+                      type="checkbox"
+                      checked={flatAllSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = flatSomeSelected;
+                      }}
+                      onChange={() => {
+                        setSelectedRowIds((prev) => {
+                          const next = new Set(prev);
+                          if (flatAllSelected) {
+                            unpaidPaginated.forEach((r) => next.delete(r.id));
+                          } else {
+                            unpaidPaginated.forEach((r) => next.add(r.id));
+                          }
+                          return next;
+                        });
+                      }}
+                      className="manager-checkbox"
+                    />
+                  </th>
+                  <th>LPO NUMBER</th>
+                  <th>VENDOR</th>
+                  <th>PROJECT</th>
+                  <th>TYPE</th>
+                  <th
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSort("outstanding")}
+                  >
+                    OUTSTANDING AMOUNT{sortIcon("outstanding")}
+                  </th>
+                  <th
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSort("due_date")}
+                  >
+                    DUE DATE{sortIcon("due_date")}
+                  </th>
+                  <th>STATUS</th>
+                  <th>INVOICE</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginated.map((row) => {
+                  const isPaid = row.is_paid === 1;
+                  const dueDate = getDueDate(row);
+                  const isChecked = selectedRowIds.has(row.id);
+
+                  return (
+                    <tr
+                      key={row.id}
+                      style={
+                        isChecked
+                          ? { backgroundColor: "rgba(240,253,247,1)" }
+                          : undefined
+                      }
+                    >
+                      <td style={{ padding: "0 0 0 12px" }}>
+                        {!isPaid && (
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleRow(row.id)}
+                            className="manager-checkbox"
+                          />
+                        )}
+                      </td>
+                      {/* LPO NUMBER */}
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <span>LPO-{String(row.id).padStart(5, "0")}</span>
+                          <Button
+                            componentType="link"
+                            bgColor="rgba(239, 239, 239, 1)"
+                            borderColor="rgba(223, 223, 223, 1)"
+                            textColor="black"
+                            href={`/mr/${row.mr_header_id}/lpo/${row.id}`}
+                            style={{ padding: "7px 7px", flexShrink: 0 }}
+                          >
+                            <img src={externalLinkIcon} alt="open" />
+                          </Button>
+                        </div>
+                      </td>
+
+                      {/* SUPPLIER */}
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {row.supplier_name}
+                          </span>
+                          <Button
+                            componentType="link"
+                            bgColor="rgba(239, 239, 239, 1)"
+                            borderColor="rgba(223, 223, 223, 1)"
+                            textColor="black"
+                            href={`/vendor/${row.supplier_id}`}
+                            style={{ padding: "7px 7px", flexShrink: 0 }}
+                          >
+                            <img src={externalLinkIcon} alt="open" />
+                          </Button>
+                        </div>
+                      </td>
+
+                      {/* PROJECT */}
+                      <td>
+                        {row.mr_project_id && row.project_name ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {row.project_name}
+                            </span>
+                            <Button
+                              componentType="link"
+                              bgColor="rgba(239, 239, 239, 1)"
+                              borderColor="rgba(223, 223, 223, 1)"
+                              textColor="black"
+                              href={`/project/${row.mr_project_id}`}
+                              style={{ padding: "7px 7px", flexShrink: 0 }}
+                            >
+                              <img src={externalLinkIcon} alt="open" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span>-</span>
+                        )}
+                      </td>
+
+                      {/* TYPE */}
+                      <td>
+                        <SupplierTypePill type={row.supplier_type} />
+                      </td>
+
+                      {/* OUTSTANDING AMOUNT */}
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {`AED ${formatAED(isPaid ? 0 : Number(row.outstanding))}`}
+                      </td>
+
+                      {/* DUE DATE */}
+                      <td style={{ whiteSpace: "nowrap" }}>{dueDate}</td>
+
+                      {/* STATUS */}
+                      <td>
+                        <StatusPill isPaid={isPaid} />
+                      </td>
+
+                      {/* INVOICE */}
+                      <td>
+                        {(() => {
+                          const invoiceUrl = parseInvoiceUrl(row.invoice_file);
+                          return invoiceUrl ? (
+                            <Button
+                              componentType="link"
+                              bgColor="rgba(239,239,239,1)"
+                              borderColor="rgba(223,223,223,1)"
+                              textColor="black"
+                              href={invoiceUrl}
+                              target="_blank"
+                              style={{ padding: "7px 7px" }}
+                            >
+                              <img src={downloadIcon} alt="download" />
+                            </Button>
+                          ) : (
+                            <span>N/A</span>
+                          );
+                        })()}
+                      </td>
+
+                      {/* MR payment detail link — manager & finance only */}
+                      <td>
+                        {[8, 10].includes(userInfo?.departmentID ?? 0) && (
+                          <Button
+                            componentType="link"
+                            bgColor="rgba(239, 239, 239, 1)"
+                            borderColor="rgba(223, 223, 223, 1)"
+                            textColor="black"
+                            href={
+                              (row.supplier_type ?? "").toLowerCase() ===
+                              "credit"
+                                ? `/payment/credit/supplier/${row.supplier_id}`
+                                : `/payment/cash/mr/${row.mr_header_id}`
+                            }
+                            style={{ padding: "7px 7px" }}
+                          >
+                            <img src={externalLinkIcon} alt="open" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </>
+        ))}
 
       {/* ── Bulk record payment modal ────────────────────────────────────────── */}
       {selectedRows.length > 0 && (
@@ -1637,6 +2548,40 @@ export default function Payments() {
           setIsOpenControlled={setBulkRejectOpen}
         />
       )}
+
+      {/* ── Supplier due date edit modal ──────────────────────────────────────── */}
+      {dueDateEdit &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <FormPopUp
+            header={`EDIT DUE DATE — ${dueDateEdit.supplierName.toUpperCase()}`}
+            setIsOpen={() => setDueDateEdit(null)}
+            addButtonLabel={dueDateSaving ? "SAVING..." : "CONFIRM"}
+            handleSubmit={handleSaveDueDate}
+            style={{ minWidth: "380px" }}
+          >
+            <div style={{ marginBottom: "20px" }}>
+              <small style={{ display: "block", marginBottom: "8px" }}>
+                DUE DATE *
+              </small>
+              <input
+                type="date"
+                required
+                value={dueDateInput}
+                onChange={(e) => setDueDateInput(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 15px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(223, 223, 223, 1)",
+                  fontSize: "14px",
+                  backgroundColor: "rgba(245, 245, 245, 1)",
+                }}
+              />
+            </div>
+          </FormPopUp>,
+          document.body,
+        )}
     </div>
   );
 }

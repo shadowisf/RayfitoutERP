@@ -28,12 +28,13 @@ type BoqLineDetail = {
 };
 
 type PrLine = {
-  id: number;
+  id: number | null;
   mr_header_id: number;
   boq_line_id: number;
   jo_line_id: number;
   completed_qty: number;
   retention: number;
+  subcontracted_qty: number;
   attachment: string | null;
   qs_approval_status: string | null;
   qs_reject_comment: string | null;
@@ -45,11 +46,17 @@ type PrLine = {
   contract_type?: string | null;
   boq_line_ids: string;
   boq_line_names: string;
-  boq_item_numbers: string;
+  // boq_item_numbers: string; // column not in vw_jo_lines
   quantity: number;
   unit: string;
   budget_estimate: number;
   approved_total_price: number;
+  // BOQ item fields
+  item_name: string | null;
+  item_description: string | null;
+  boq_qty: number | null;
+  boq_unit: string | null;
+  rate_per_quantity: number | null;
 };
 
 type PrLinesViewProps = {
@@ -90,34 +97,34 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
   const [prLines, setPrLines] = useState<PrLine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editedLines, setEditedLines] = useState<
-    Record<number, { completed_qty: string }>
+    Record<number, { completed_qty: string; retention: string }>
   >({});
 
-  // Invoice upload
-  const invoiceInputRef = useRef<HTMLInputElement>(null);
-  const [invoiceFile, setInvoiceFile] = useState<string | null>(
-    mrHeader.jo_invoice_file || null,
-  );
-  const [isUploadingInvoice, setIsUploadingInvoice] = useState(false);
+  // // Invoice upload — moved to Payments tab
+  // const invoiceInputRef = useRef<HTMLInputElement>(null);
+  // const [invoiceFile, setInvoiceFile] = useState<string | null>(
+  //   mrHeader.jo_invoice_file || null,
+  // );
+  // const [isUploadingInvoice, setIsUploadingInvoice] = useState(false);
 
-  // Payment receipt
-  const [paymentReceipt, setPaymentReceipt] = useState<string | null>(
-    mrHeader.pr_payment_receipt || null,
-  );
-  const [selectedPaymentFile, setSelectedPaymentFile] = useState<File | null>(
-    null,
-  );
-  const [prPaymentStatus, setPrPaymentStatus] = useState<
-    "pending" | "paid" | "rejected"
-  >(
-    mrHeader.progress_id === 25
-      ? "paid"
-      : mrHeader.progress_id === 5 && mrHeader.pr_payment_receipt
-        ? "rejected"
-        : mrHeader.pr_payment_receipt
-          ? "paid"
-          : "pending",
-  );
+  // // Payment receipt — moved to Payments tab
+  // const [paymentReceipt, setPaymentReceipt] = useState<string | null>(
+  //   mrHeader.pr_payment_receipt || null,
+  // );
+  // const [selectedPaymentFile, setSelectedPaymentFile] = useState<File | null>(
+  //   null,
+  // );
+  // const [prPaymentStatus, setPrPaymentStatus] = useState<
+  //   "pending" | "paid" | "rejected"
+  // >(
+  //   mrHeader.progress_id === 25
+  //     ? "paid"
+  //     : mrHeader.progress_id === 5 && mrHeader.pr_payment_receipt
+  //       ? "rejected"
+  //       : mrHeader.pr_payment_receipt
+  //         ? "paid"
+  //         : "pending",
+  // );
 
   // Popups
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
@@ -131,19 +138,19 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
   const [isQsSubmitManagerOpen, setIsQsSubmitManagerOpen] = useState(false);
   const [isManagerReturnOpen, setIsManagerReturnOpen] = useState(false);
   const [isManagerApproveOpen, setIsManagerApproveOpen] = useState(false);
-  const [isProceedPaymentOpen, setIsProceedPaymentOpen] = useState(false);
-  const [isSubmitCompletionOpen, setIsSubmitCompletionOpen] = useState(false);
+  // const [isProceedPaymentOpen, setIsProceedPaymentOpen] = useState(false); // moved to Payments tab
+  // const [isSubmitCompletionOpen, setIsSubmitCompletionOpen] = useState(false); // moved to Payments tab
 
-  // Payment reject popup
-  const [isPaymentRejectOpen, setIsPaymentRejectOpen] = useState(false);
-  const [paymentRejectReason, setPaymentRejectReason] = useState("");
+  // // Payment reject popup — moved to Payments tab
+  // const [isPaymentRejectOpen, setIsPaymentRejectOpen] = useState(false);
+  // const [paymentRejectReason, setPaymentRejectReason] = useState("");
 
   // Per-line attachment upload
   const lineAttachmentRefs = useRef<Record<number, HTMLInputElement | null>>(
     {},
   );
 
-  // Collapsible cards
+  // Collapsible cards — all expanded by default
   const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set());
   const [boqLinesByJoLine, setBoqLinesByJoLine] = useState<
     Record<number, BoqLineDetail[]>
@@ -160,6 +167,12 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
     Record<number, string[]>
   >({});
   const boqLineUploadRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  // Upload popup state for BOQ line attachments
+  const [uploadPopupBoqLineId, setUploadPopupBoqLineId] = useState<
+    number | null
+  >(null);
+  const [uploadPopupFile, setUploadPopupFile] = useState<File | null>(null);
 
   async function fetchBoqLinesForJoLine(joLineId: number) {
     if (boqLinesByJoLine[joLineId] !== undefined) return; // already loaded
@@ -180,7 +193,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
         const next = { ...prev };
         for (const b of data || []) {
           if (!(b.boq_line_id in next)) {
-            next[b.boq_line_id] = { completed_qty: "0", retention: "0" };
+            next[b.boq_line_id] = { completed_qty: "", retention: "" };
           }
         }
         return next;
@@ -192,14 +205,13 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
     }
   }
 
-  const toggleExpanded = (id: number, joLineId: number) => {
+  const toggleExpanded = (joLineId: number) => {
     setExpandedLines((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
+      if (next.has(joLineId)) {
+        next.delete(joLineId);
       } else {
-        next.add(id);
-        fetchBoqLinesForJoLine(joLineId);
+        next.add(joLineId);
       }
       return next;
     });
@@ -222,13 +234,29 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
       const data = await res.json();
       setPrLines(data);
 
-      const initial: Record<number, { completed_qty: string }> = {};
+      // Key by boq_line_id — stable before and after DB rows exist
+      const initial: Record<
+        number,
+        { completed_qty: string; retention: string }
+      > = {};
       for (const line of data) {
-        initial[line.id] = {
-          completed_qty: String(line.completed_qty || 0),
+        initial[line.boq_line_id] = {
+          completed_qty:
+            Number(line.completed_qty) > 0 ? String(line.completed_qty) : "",
+          retention: Number(line.retention) > 0 ? String(line.retention) : "",
         };
       }
       setEditedLines(initial);
+
+      // Derive unique jo_line_ids for expansion (one card per JO line)
+      const uniqueJoLineIds: number[] = [
+        ...new Set<number>(
+          (data as PrLine[])
+            .map((l) => l.jo_line_id)
+            .filter((id): id is number => id != null),
+        ),
+      ];
+      setExpandedLines(new Set(uniqueJoLineIds));
     } catch (err) {
       console.error("Error fetching PR lines:", err);
     } finally {
@@ -269,108 +297,48 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
     }
   }
 
-  async function handleUploadInvoice(file: File) {
-    setIsUploadingInvoice(true);
-    try {
-      const formData = new FormData();
-      formData.append("folder", "pr-invoices");
-      formData.append("files", file);
+  // async function handleUploadInvoice(file: File) { // moved to Payments tab
+  //   setIsUploadingInvoice(true);
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append("folder", "pr-invoices");
+  //     formData.append("files", file);
+  //     const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`, { method: "POST", body: formData });
+  //     if (!uploadRes.ok) { toast("Failed to upload invoice", "error"); return; }
+  //     const uploadData = await uploadRes.json();
+  //     const url = uploadData.url || uploadData.urls?.[0];
+  //     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`, {
+  //       method: "POST", headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ action: "updateInvoiceFile", mr_header_id: mrHeader.id, invoice_file: url }),
+  //     });
+  //     if (res.ok) { setInvoiceFile(url); toast("Invoice uploaded", "success"); router.refresh(); }
+  //     else { toast("Failed to save invoice", "error"); }
+  //   } catch { toast("Failed to upload invoice", "error"); }
+  //   finally { setIsUploadingInvoice(false); }
+  // }
 
-      const uploadRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
-        { method: "POST", body: formData },
-      );
-
-      if (!uploadRes.ok) {
-        toast("Failed to upload invoice", "error");
-        return;
-      }
-
-      const uploadData = await uploadRes.json();
-      const url = uploadData.url || uploadData.urls?.[0];
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "updateInvoiceFile",
-          mr_header_id: mrHeader.id,
-          invoice_file: url,
-        }),
-      });
-
-      if (res.ok) {
-        setInvoiceFile(url);
-        toast("Invoice uploaded", "success");
-        router.refresh();
-      } else {
-        toast("Failed to save invoice", "error");
-      }
-    } catch {
-      toast("Failed to upload invoice", "error");
-    } finally {
-      setIsUploadingInvoice(false);
-    }
-  }
-
-  async function handleProceedPayment(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (!selectedPaymentFile) {
-      toast("Please upload a payment receipt", "error");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append("folder", "pr-payment-receipts");
-      formData.append("files", selectedPaymentFile);
-
-      const uploadRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`,
-        { method: "POST", body: formData },
-      );
-
-      if (!uploadRes.ok) {
-        toast("Failed to upload payment receipt", "error");
-        return;
-      }
-
-      const uploadData = await uploadRes.json();
-      const url = uploadData.url || uploadData.urls?.[0];
-
-      // Save payment receipt to db
-      const saveRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "updatePaymentReceipt",
-            mr_header_id: mrHeader.id,
-            payment_receipt: url,
-          }),
-        },
-      );
-
-      if (!saveRes.ok) {
-        toast("Failed to save payment receipt", "error");
-        return;
-      }
-
-      setPaymentReceipt(url);
-      setPrPaymentStatus("paid");
-      setSelectedPaymentFile(null);
-      setIsProceedPaymentOpen(false);
-      toast("Payment approved", "success");
-      router.refresh();
-    } catch {
-      toast("Failed to process payment", "error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+  // async function handleProceedPayment(e: React.FormEvent) { // moved to Payments tab
+  //   e.preventDefault();
+  //   if (!selectedPaymentFile) { toast("Please upload a payment receipt", "error"); return; }
+  //   setIsSubmitting(true);
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append("folder", "pr-payment-receipts");
+  //     formData.append("files", selectedPaymentFile);
+  //     const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/s3`, { method: "POST", body: formData });
+  //     if (!uploadRes.ok) { toast("Failed to upload payment receipt", "error"); return; }
+  //     const uploadData = await uploadRes.json();
+  //     const url = uploadData.url || uploadData.urls?.[0];
+  //     const saveRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`, {
+  //       method: "POST", headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ action: "updatePaymentReceipt", mr_header_id: mrHeader.id, payment_receipt: url }),
+  //     });
+  //     if (!saveRes.ok) { toast("Failed to save payment receipt", "error"); return; }
+  //     setPaymentReceipt(url); setPrPaymentStatus("paid"); setSelectedPaymentFile(null);
+  //     setIsProceedPaymentOpen(false); toast("Payment approved", "success"); router.refresh();
+  //   } catch { toast("Failed to process payment", "error"); }
+  //   finally { setIsSubmitting(false); }
+  // }
 
   async function handleUploadLineAttachment(prLineId: number, file: File) {
     try {
@@ -458,7 +426,6 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
       body: JSON.stringify({ action: "approvePrLineQS", pr_line_id: prLineId }),
     });
     if (res.ok) {
-      toast("Line approved", "success");
       fetchPrLines();
     } else {
       toast("Failed to approve line", "error");
@@ -477,7 +444,6 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
       }),
     });
     if (res.ok) {
-      toast("Line rejected", "success");
       setRejectLineId(null);
       setRejectComment("");
       fetchPrLines();
@@ -502,7 +468,6 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
       body: JSON.stringify({ action: "approvePrLine", pr_line_id: prLineId }),
     });
     if (res.ok) {
-      toast("Line approved", "success");
       fetchPrLines();
     } else {
       toast("Failed to approve line", "error");
@@ -521,7 +486,6 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
       }),
     });
     if (res.ok) {
-      toast("Line rejected", "success");
       setRejectLineId(null);
       setRejectComment("");
       fetchPrLines();
@@ -560,15 +524,15 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
   const isDraft = mrHeader.progress_id === 1;
   const isRejected = mrHeader.progress_id === 5;
   const isQsReview = mrHeader.progress_id === 2;
-  const isManagerApproval = mrHeader.progress_id === 3;
-  const isPaymentStage = mrHeader.progress_id === 14;
+  const isManagerApproval = mrHeader.progress_id === 10;
+  // const isPaymentStage = mrHeader.progress_id === 14; // moved to Payments tab
   const isCompleted = mrHeader.progress_id === 25;
   const canEdit =
     (isDraft || isRejected) &&
     userInfo?.departmentID === mrHeader.department_id;
   const isQsDept = userInfo?.departmentID === 16;
   const isManagerDept = userInfo?.departmentID === 8;
-  const isFinanceDept = userInfo?.departmentID === 10;
+  // const isFinanceDept = userInfo?.departmentID === 10; // moved to Payments tab
 
   // Show approval columns
   const showQsApproval = isQsReview;
@@ -612,151 +576,9 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
             className="right"
             style={{ display: "flex", gap: "10px", alignItems: "center" }}
           >
-            {/* Payment Receipt download (completed or paid) */}
-            {(isCompleted || prPaymentStatus === "paid") && paymentReceipt && (
-              <Button
-                componentType={"button"}
-                bgColor={"white"}
-                borderColor={"rgba(223, 223, 223, 1)"}
-                textColor={"black"}
-                style={{ borderRadius: "25px", padding: "7px 20px" }}
-                onClick={() => downloadFile(paymentReceipt)}
-              >
-                Payment Receipt <img src={downloadIcon} alt="download" />
-              </Button>
-            )}
-
-            {/* Payment stage: Proceed / Reject / Paid / Rejected */}
-            {isPaymentStage &&
-              prPaymentStatus === "pending" &&
-              isFinanceDept && (
-                <div style={{ display: "flex", gap: "5px" }}>
-                  <Button
-                    componentType={"button"}
-                    bgColor={"rgba(34, 150, 100, 1)"}
-                    borderColor={"rgba(34, 150, 100, 1)"}
-                    textColor={"white"}
-                    onClick={() => setIsProceedPaymentOpen(true)}
-                    style={{
-                      borderRadius: "25px",
-                      padding: "7px 20px",
-                      flexGrow: 1,
-                      textWrap: "nowrap",
-                    }}
-                  >
-                    Proceed to Payment
-                  </Button>
-                  <Button
-                    componentType={"button"}
-                    bgColor={"rgba(185, 28, 28, 1)"}
-                    borderColor={"rgba(185, 28, 28, 1)"}
-                    textColor={"white"}
-                    onClick={() => setIsPaymentRejectOpen(true)}
-                    style={{
-                      borderRadius: "25px",
-                      padding: "7px 20px",
-                      flexGrow: 1,
-                      textWrap: "nowrap",
-                    }}
-                  >
-                    Reject Payment
-                  </Button>
-                </div>
-              )}
-
-            {isPaymentStage &&
-              prPaymentStatus === "pending" &&
-              !isFinanceDept && (
-                <div
-                  className="approval-pill"
-                  style={{
-                    backgroundColor: "gray",
-                    color: "white",
-                    fontSize: "14.1px",
-                  }}
-                >
-                  <span style={{ fontSize: "14.1px" }}>Payment Pending</span>
-                </div>
-              )}
-
-            {isPaymentStage && prPaymentStatus === "paid" && (
-              <div
-                className="approval-pill"
-                style={{
-                  backgroundColor: "rgba(34, 150, 100, 1)",
-                  color: "white",
-                  minWidth: "200px",
-                  fontSize: "14.1px",
-                }}
-              >
-                <span style={{ fontSize: "14.1px" }}>Paid</span>
-                {paymentReceipt && (
-                  <Button
-                    componentType={"link"}
-                    bgColor={"transparent"}
-                    borderColor={"transparent"}
-                    textColor={"black"}
-                    style={{ border: "none", padding: "0px" }}
-                    href={paymentReceipt}
-                    target="_blank"
-                  >
-                    <img
-                      src={externalLinkIcon}
-                      alt="view"
-                      style={{ filter: "invert(1)", cursor: "pointer" }}
-                    />
-                  </Button>
-                )}
-              </div>
-            )}
-
-            {isPaymentStage && prPaymentStatus === "rejected" && (
-              <div
-                className="approval-pill"
-                style={{
-                  backgroundColor: "rgba(185, 28, 28, 1)",
-                  color: "white",
-                  minWidth: "200px",
-                  fontSize: "14.1px",
-                }}
-              >
-                <span style={{ fontSize: "14.1px" }}>Rejected</span>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "10px",
-                    alignItems: "center",
-                  }}
-                >
-                  {paymentRejectReason && (
-                    <InfoPopUpButton
-                      text={paymentRejectReason}
-                      header="REJECTION COMMENT"
-                      bgColor="rgba(185, 28, 28, 1)"
-                      borderColor="rgba(185, 28, 28, 1)"
-                      textColor="white"
-                    />
-                  )}
-                  {paymentReceipt && (
-                    <Button
-                      componentType={"link"}
-                      bgColor={"transparent"}
-                      borderColor={"transparent"}
-                      textColor={"black"}
-                      style={{ border: "none", padding: "0px" }}
-                      href={paymentReceipt}
-                      target="_blank"
-                    >
-                      <img
-                        src={externalLinkIcon}
-                        alt="view"
-                        style={{ filter: "invert(1)", cursor: "pointer" }}
-                      />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Payment Receipt download + Payment stage UI — moved to Payments tab */}
+            {/* {(isCompleted || prPaymentStatus === "paid") && paymentReceipt && ( ... )} */}
+            {/* {isPaymentStage && ( ... )} */}
           </div>
         </div>
 
@@ -778,9 +600,21 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
             <div
               style={{ display: "flex", flexDirection: "column", gap: "8px" }}
             >
-              {prLines.map((line, index) => {
-                const isExpanded = expandedLines.has(line.id);
-                const edited = editedLines[line.id] || { completed_qty: "0" };
+              {(() => {
+                // Deduplicate: one card per jo_line_id
+                const seenJoLineIds = new Set<number>();
+                const uniqueLines = prLines.filter((l) => {
+                  if (seenJoLineIds.has(l.jo_line_id)) return false;
+                  seenJoLineIds.add(l.jo_line_id);
+                  return true;
+                });
+                return uniqueLines;
+              })().map((line, index) => {
+                const isExpanded = expandedLines.has(line.jo_line_id);
+                const edited = editedLines[line.boq_line_id] || {
+                  completed_qty: "",
+                  retention: "",
+                };
                 const completedQty = parseFloat(edited.completed_qty || "0");
                 const orderedQty = line.quantity || 0;
                 const retention =
@@ -794,7 +628,6 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                   id: line.jo_line_id,
                   boq_line_ids: line.boq_line_ids,
                   boq_line_names: line.boq_line_names,
-                  boq_item_numbers: line.boq_item_numbers,
                 } as any;
 
                 const infoLabelStyle: React.CSSProperties = {
@@ -808,8 +641,8 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                 };
 
                 return (
-                  <React.Fragment key={line.id}>
-                  <div className="mr-with-id">
+                  <React.Fragment key={line.jo_line_id}>
+                    <div className="mr-with-id">
                       {/* ── Card Header ── */}
                       <div
                         style={{
@@ -819,7 +652,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                           cursor: "pointer",
                           gap: "20px",
                         }}
-                        onClick={() => toggleExpanded(line.id, line.jo_line_id)}
+                        onClick={() => toggleExpanded(line.jo_line_id)}
                       >
                         {/* Left: chevron + # + info columns */}
                         <div
@@ -938,175 +771,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                             flexShrink: 0,
                           }}
                           onClick={(e) => e.stopPropagation()}
-                        >
-                          {/* QS status pill */}
-                          {showQsApproval &&
-                            line.qs_approval_status === "Approved" && (
-                              <div
-                                className="approval-pill"
-                                style={{
-                                  backgroundColor: "rgba(34,150,100,1)",
-                                  color: "white",
-                                }}
-                              >
-                                <span>QS Approved</span>
-                                {isQsDept && isQsReview && (
-                                  <img
-                                    src={crossIcon}
-                                    alt="reset"
-                                    style={{
-                                      filter: "invert(1)",
-                                      cursor: "pointer",
-                                    }}
-                                    onClick={() => handleResetLineQS(line.id)}
-                                  />
-                                )}
-                              </div>
-                            )}
-                          {showQsApproval &&
-                            line.qs_approval_status === "Rejected" && (
-                              <div
-                                className="approval-pill"
-                                style={{
-                                  backgroundColor: "rgba(185,28,28,1)",
-                                  color: "white",
-                                }}
-                              >
-                                <span>QS Rejected</span>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    gap: "10px",
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  {line.qs_reject_comment && (
-                                    <InfoPopUpButton
-                                      text={line.qs_reject_comment}
-                                      header="REJECTION COMMENT"
-                                      bgColor="transparent"
-                                      borderColor="transparent"
-                                      style={{
-                                        filter: "invert(1)",
-                                        padding: "0px",
-                                      }}
-                                    />
-                                  )}
-                                  {isQsDept && isQsReview && (
-                                    <img
-                                      src={crossIcon}
-                                      alt="reset"
-                                      style={{
-                                        filter: "invert(1)",
-                                        cursor: "pointer",
-                                      }}
-                                      onClick={() => handleResetLineQS(line.id)}
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          {showQsApproval &&
-                            !line.qs_approval_status &&
-                            !isQsDept && (
-                              <div
-                                className="approval-pill"
-                                style={{
-                                  backgroundColor: "gray",
-                                  color: "white",
-                                }}
-                              >
-                                <span style={{ whiteSpace: "nowrap" }}>
-                                  Pending QS
-                                </span>
-                              </div>
-                            )}
-
-                          {/* Manager status pill */}
-                          {showManagerApproval &&
-                            line.approval_status === "Approved" && (
-                              <div
-                                className="approval-pill"
-                                style={{
-                                  backgroundColor: "rgba(34,150,100,1)",
-                                  color: "white",
-                                }}
-                              >
-                                <span>Approved</span>
-                                {isManagerDept && isManagerApproval && (
-                                  <img
-                                    src={crossIcon}
-                                    alt="reset"
-                                    style={{
-                                      filter: "invert(1)",
-                                      cursor: "pointer",
-                                      width: "12px",
-                                    }}
-                                    onClick={() => handleResetLine(line.id)}
-                                  />
-                                )}
-                              </div>
-                            )}
-                          {showManagerApproval &&
-                            line.approval_status === "Rejected" && (
-                              <div
-                                className="approval-pill"
-                                style={{
-                                  backgroundColor: "rgba(185,28,28,1)",
-                                  color: "white",
-                                }}
-                              >
-                                <span>Rejected</span>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    gap: "10px",
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  {line.reject_comment && (
-                                    <InfoPopUpButton
-                                      text={line.reject_comment}
-                                      header="REJECTION COMMENT"
-                                      bgColor="transparent"
-                                      borderColor="transparent"
-                                      textColor="white"
-                                      style={{
-                                        filter: "invert(1)",
-                                        padding: "0px",
-                                      }}
-                                    />
-                                  )}
-                                  {isManagerDept && isManagerApproval && (
-                                    <img
-                                      src={crossIcon}
-                                      alt="reset"
-                                      style={{
-                                        filter: "invert(1)",
-                                        cursor: "pointer",
-                                      }}
-                                      onClick={() => handleResetLine(line.id)}
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          {showManagerApproval &&
-                            !line.approval_status &&
-                            !isManagerDept && (
-                              <div
-                                className="approval-pill"
-                                style={{
-                                  backgroundColor: "gray",
-                                  color: "white",
-                                }}
-                              >
-                                <span style={{ whiteSpace: "nowrap" }}>
-                                  Pending Manager
-                                </span>
-                              </div>
-                            )}
-                        </div>
+                        ></div>
                       </div>
 
                       <br />
@@ -1119,143 +784,14 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                             backgroundColor: "rgba(248,249,251,0.6)",
                           }}
                         >
-                          {/* Approval action buttons strip (only shown when actions are available) */}
-                          {((showQsApproval &&
-                            isQsDept &&
-                            isQsReview &&
-                            !line.qs_approval_status) ||
-                            (showManagerApproval &&
-                              isManagerDept &&
-                              isManagerApproval &&
-                              !line.approval_status)) && (
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: "30px",
-                                alignItems: "flex-start",
-                                flexWrap: "wrap",
-                                padding: "16px 25px",
-                                borderBottom: "1px solid rgba(239,239,239,1)",
-                              }}
-                            >
-                              {showQsApproval &&
-                                isQsDept &&
-                                isQsReview &&
-                                !line.qs_approval_status && (
-                                  <div>
-                                    <div style={infoLabelStyle}>
-                                      QS APPROVAL
-                                    </div>
-                                    <div
-                                      style={{ display: "flex", gap: "10px" }}
-                                    >
-                                      <Button
-                                        componentType="button"
-                                        bgColor="white"
-                                        borderColor="rgba(207,207,207,1)"
-                                        textColor="black"
-                                        onClick={() =>
-                                          handleApproveLineQS(line.id)
-                                        }
-                                        style={{
-                                          borderRadius: "20px",
-                                          padding: "5px 20px",
-                                        }}
-                                      >
-                                        <img src={checkIcon} alt="approve" />
-                                      </Button>
-                                      <Button
-                                        componentType="button"
-                                        bgColor="white"
-                                        borderColor="rgba(207,207,207,1)"
-                                        textColor="black"
-                                        onClick={() => {
-                                          setRejectLineId(line.id);
-                                          setRejectType("qs");
-                                        }}
-                                        style={{
-                                          borderRadius: "20px",
-                                          padding: "5px 20px",
-                                        }}
-                                      >
-                                        <img src={crossIcon} alt="reject" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                )}
-                              {showManagerApproval &&
-                                isManagerDept &&
-                                isManagerApproval &&
-                                !line.approval_status && (
-                                  <div>
-                                    <div style={infoLabelStyle}>
-                                      MANAGER APPROVAL
-                                    </div>
-                                    <div
-                                      style={{ display: "flex", gap: "10px" }}
-                                    >
-                                      <Button
-                                        componentType="button"
-                                        bgColor="white"
-                                        borderColor="rgba(207,207,207,1)"
-                                        textColor="black"
-                                        onClick={() =>
-                                          handleApproveLine(line.id)
-                                        }
-                                        style={{
-                                          borderRadius: "20px",
-                                          padding: "5px 20px",
-                                        }}
-                                      >
-                                        <img src={checkIcon} alt="approve" />
-                                      </Button>
-                                      <Button
-                                        componentType="button"
-                                        bgColor="white"
-                                        borderColor="rgba(207,207,207,1)"
-                                        textColor="black"
-                                        onClick={() => {
-                                          setRejectLineId(line.id);
-                                          setRejectType("manager");
-                                        }}
-                                        style={{
-                                          borderRadius: "20px",
-                                          padding: "5px 20px",
-                                        }}
-                                      >
-                                        <img src={crossIcon} alt="reject" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                )}
-                            </div>
-                          )}
-
                           {/* BOQ lines table */}
-                          {loadingBoqLines[line.jo_line_id] ? (
-                            <div
-                              style={{
-                                padding: "20px 25px",
-                                color: "rgba(150,150,150,1)",
-                                fontSize: "13px",
-                              }}
-                            >
-                              Loading BOQ lines...
-                            </div>
-                          ) : (boqLinesByJoLine[line.jo_line_id] || [])
-                              .length === 0 ? (
-                            <div
-                              style={{
-                                padding: "20px 25px",
-                                color: "rgba(150,150,150,1)",
-                                fontSize: "13px",
-                              }}
-                            >
-                              No BOQ lines referenced.
-                            </div>
+                          {prLines.filter(
+                            (b) => b.jo_line_id === line.jo_line_id,
+                          ).length === 0 ? (
+                            <div>No BOQ lines referenced.</div>
                           ) : (
                             <table
-                              className="items-table"
+                              className="items-table fixed-layout"
                               style={{
                                 borderRadius: 0,
                                 border: "none",
@@ -1265,24 +801,50 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                               <thead>
                                 <tr>
                                   <th style={{ width: "40px" }}>#</th>
-                                  <th>ITEM</th>
-                                  <th>BOQ RATE</th>
-                                  <th>SUBCONTRACTED QTY</th>
-                                  <th style={{ minWidth: "160px" }}>
+                                  <th>BOQ ITEM</th>
+                                  <th style={{ width: "160px" }}>BOQ RATE</th>
+                                  <th style={{ width: "160px" }}>
+                                    SUBCONTRACTED QTY
+                                  </th>
+                                  <th
+                                    style={{
+                                      width: canEdit ? "275px" : "160px",
+                                    }}
+                                  >
                                     COMPLETED QTY
                                   </th>
-                                  <th style={{ minWidth: "130px" }}>
+                                  <th
+                                    style={{
+                                      width: canEdit ? "225px" : "160px",
+                                    }}
+                                  >
                                     RETENTION
                                   </th>
-                                  <th>ATTACHMENT(S)</th>
+                                  <th style={{ width: "160px" }}>AMOUNT</th>
+                                  <th style={{ width: "160px" }}>
+                                    ATTACHMENT(S)
+                                  </th>
+                                  {showManagerApproval && (
+                                    <th style={{ width: "200px" }}>
+                                      MANAGER PRICE APPROVAL
+                                    </th>
+                                  )}
+                                  {showQsApproval && (
+                                    <th style={{ width: "200px" }}>
+                                      QS APPROVAL
+                                    </th>
+                                  )}
                                 </tr>
                               </thead>
                               <tbody>
-                                {(boqLinesByJoLine[line.jo_line_id] || []).map(
-                                  (boqLine, bIdx) => {
-                                    const boqEdited = editedBoqLines[
+                                {prLines
+                                  .filter(
+                                    (b) => b.jo_line_id === line.jo_line_id,
+                                  )
+                                  .map((boqLine, bIdx) => {
+                                    const boqEdited = editedLines[
                                       boqLine.boq_line_id
-                                    ] || { completed_qty: "0", retention: "0" };
+                                    ] || { completed_qty: "", retention: "" };
                                     const completedQtyVal =
                                       parseFloat(
                                         boqEdited.completed_qty || "0",
@@ -1290,9 +852,6 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                     const retentionVal =
                                       parseFloat(boqEdited.retention || "0") ||
                                       0;
-                                    const subcontractorPrice =
-                                      completedQtyVal *
-                                      (Number(boqLine.rate_per_quantity) || 0);
                                     const attachments =
                                       boqLineAttachments[boqLine.boq_line_id] ||
                                       [];
@@ -1301,19 +860,13 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                       <tr key={boqLine.boq_line_id}>
                                         <td>{bIdx + 1}</td>
                                         <td>
-                                          <div style={{ fontWeight: 600 }}>
-                                            {boqLine.item_name}
-                                          </div>
+                                          <strong>{boqLine.item_name}</strong>
                                           {boqLine.item_description && (
-                                            <div
-                                              style={{
-                                                fontSize: "11px",
-                                                color: "rgba(120,120,120,1)",
-                                                marginTop: "2px",
-                                              }}
-                                            >
+                                            <>
+                                              <br />
+                                              <br />
                                               {boqLine.item_description}
-                                            </div>
+                                            </>
                                           )}
                                         </td>
                                         <td>
@@ -1325,17 +878,18 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                           {formatNumber(
                                             boqLine.subcontracted_qty,
                                           )}{" "}
-                                          {boqLine.unit}
+                                          {boqLine.boq_unit}
                                         </td>
                                         <td>
                                           {canEdit ? (
                                             <InputItem
-                                              style={{ width: "140px" }}
                                               label=""
                                               value={boqEdited.completed_qty}
                                               type="text postfix"
-                                              postfixText={boqLine.unit}
-                                              placeholder="0"
+                                              postfixText={
+                                                boqLine.boq_unit || ""
+                                              }
+                                              placeholder="ENTER COMPLETED QTY"
                                               noOptionalLabel
                                               onChange={(e) => {
                                                 const val = e.target.value;
@@ -1343,7 +897,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                                   val === "" ||
                                                   /^\d*\.?\d*$/.test(val)
                                                 ) {
-                                                  setEditedBoqLines((prev) => ({
+                                                  setEditedLines((prev) => ({
                                                     ...prev,
                                                     [boqLine.boq_line_id]: {
                                                       ...prev[
@@ -1357,21 +911,20 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                               required
                                             />
                                           ) : (
-                                            <span style={{ fontWeight: 600 }}>
+                                            <span>
                                               {formatNumber(completedQtyVal)}{" "}
-                                              {boqLine.unit}
+                                              {boqLine.boq_unit}
                                             </span>
                                           )}
                                         </td>
                                         <td>
                                           {canEdit ? (
                                             <InputItem
-                                              style={{ width: "110px" }}
                                               label=""
                                               value={boqEdited.retention}
                                               type="text postfix"
                                               postfixText="%"
-                                              placeholder="0"
+                                              placeholder="ENTER RETENTION"
                                               noOptionalLabel
                                               onChange={(e) => {
                                                 const val = e.target.value;
@@ -1379,7 +932,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                                   val === "" ||
                                                   /^\d*\.?\d*$/.test(val)
                                                 ) {
-                                                  setEditedBoqLines((prev) => ({
+                                                  setEditedLines((prev) => ({
                                                     ...prev,
                                                     [boqLine.boq_line_id]: {
                                                       ...prev[
@@ -1393,31 +946,25 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                               required
                                             />
                                           ) : (
-                                            <span style={{ fontWeight: 600 }}>
+                                            <span>
                                               {retentionVal.toFixed(1)}%
                                             </span>
                                           )}
                                         </td>
+                                        {/* AMOUNT column — after_retention per line */}
                                         <td>
-                                          <input
-                                            ref={(el) => {
-                                              boqLineUploadRefs.current[
-                                                boqLine.boq_line_id
-                                              ] = el;
-                                            }}
-                                            type="file"
-                                            style={{ display: "none" }}
-                                            accept=".pdf,.jpeg,.jpg,.png,.webp"
-                                            onChange={(e) => {
-                                              const file = e.target.files?.[0];
-                                              if (file)
-                                                handleUploadBoqLineAttachment(
-                                                  boqLine.boq_line_id,
-                                                  file,
-                                                );
-                                              e.target.value = "";
-                                            }}
-                                          />
+                                          {completedQtyVal > 0
+                                            ? formatPriceAED(
+                                                completedQtyVal *
+                                                  (Number(
+                                                    boqLine.rate_per_quantity,
+                                                  ) || 0) *
+                                                  (1 - retentionVal / 100),
+                                              )
+                                            : "N/A"}
+                                        </td>
+
+                                        <td>
                                           <div
                                             style={{
                                               display: "flex",
@@ -1453,60 +1000,403 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                             {canEdit && (
                                               <Button
                                                 componentType="button"
-                                                bgColor={
-                                                  attachments.length === 0
-                                                    ? "black"
-                                                    : "rgba(239,239,239,1)"
-                                                }
-                                                borderColor={
-                                                  attachments.length === 0
-                                                    ? "black"
-                                                    : "rgba(223,223,223,1)"
-                                                }
-                                                textColor={
-                                                  attachments.length === 0
-                                                    ? "white"
-                                                    : "black"
-                                                }
-                                                style={{
-                                                  padding: "5px 10px",
-                                                  whiteSpace: "nowrap",
-                                                }}
+                                                bgColor="rgba(239, 239, 239, 1)"
+                                                borderColor="rgba(223, 223, 223, 1)"
+                                                textColor="black"
+                                                style={{ padding: "7px 7px" }}
                                                 onClick={() =>
-                                                  boqLineUploadRefs.current[
-                                                    boqLine.boq_line_id
-                                                  ]?.click()
+                                                  setUploadPopupBoqLineId(
+                                                    boqLine.boq_line_id,
+                                                  )
                                                 }
                                               >
                                                 <img
                                                   src={uploadIcon}
                                                   alt="upload"
-                                                  style={
-                                                    attachments.length === 0
-                                                      ? { filter: "invert(1)" }
-                                                      : {}
-                                                  }
+                                                  style={{
+                                                    filter: "invert(1)",
+                                                  }}
                                                 />
                                               </Button>
                                             )}
                                           </div>
                                         </td>
+
+                                        {/* Manager Price Approval column — per BOQ item row */}
+                                        {showManagerApproval && (
+                                          <td>
+                                            {isManagerDept ? (
+                                              boqLine.approval_status ===
+                                              "Approved" ? (
+                                                <div
+                                                  className="approval-pill"
+                                                  style={{
+                                                    backgroundColor:
+                                                      "rgba(34,150,100,1)",
+                                                    color: "white",
+                                                  }}
+                                                >
+                                                  <span>Approved</span>
+                                                  <img
+                                                    src={crossIcon}
+                                                    alt="reset"
+                                                    style={{
+                                                      filter: "invert(1)",
+                                                      cursor: "pointer",
+                                                      width: "10px",
+                                                    }}
+                                                    onClick={() =>
+                                                      handleResetLine(
+                                                        boqLine.id!,
+                                                      )
+                                                    }
+                                                  />
+                                                </div>
+                                              ) : boqLine.approval_status ===
+                                                "Rejected" ? (
+                                                <div
+                                                  className="approval-pill"
+                                                  style={{
+                                                    backgroundColor:
+                                                      "rgba(185,28,28,1)",
+                                                    color: "white",
+                                                  }}
+                                                >
+                                                  <span>Rejected</span>
+                                                  <div
+                                                    style={{
+                                                      display: "flex",
+                                                      gap: "8px",
+                                                      alignItems: "center",
+                                                    }}
+                                                  >
+                                                    {boqLine.reject_comment && (
+                                                      <InfoPopUpButton
+                                                        text={
+                                                          boqLine.reject_comment
+                                                        }
+                                                        header="REJECTION COMMENT"
+                                                        bgColor="transparent"
+                                                        borderColor="transparent"
+                                                        style={{
+                                                          filter: "invert(1)",
+                                                          padding: "0px",
+                                                        }}
+                                                      />
+                                                    )}
+                                                    <img
+                                                      src={crossIcon}
+                                                      alt="reset"
+                                                      style={{
+                                                        filter: "invert(1)",
+                                                        cursor: "pointer",
+                                                        width: "10px",
+                                                      }}
+                                                      onClick={() =>
+                                                        handleResetLine(
+                                                          boqLine.id!,
+                                                        )
+                                                      }
+                                                    />
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    gap: "8px",
+                                                  }}
+                                                >
+                                                  <Button
+                                                    componentType="button"
+                                                    bgColor="white"
+                                                    borderColor="rgba(207,207,207,1)"
+                                                    textColor="black"
+                                                    onClick={() =>
+                                                      handleApproveLine(
+                                                        boqLine.id!,
+                                                      )
+                                                    }
+                                                    style={{
+                                                      borderRadius: "20px",
+                                                      padding: "5px 16px",
+                                                    }}
+                                                  >
+                                                    <img
+                                                      src={checkIcon}
+                                                      alt="approve"
+                                                    />
+                                                  </Button>
+                                                  <Button
+                                                    componentType="button"
+                                                    bgColor="white"
+                                                    borderColor="rgba(207,207,207,1)"
+                                                    textColor="black"
+                                                    onClick={() => {
+                                                      setRejectLineId(
+                                                        boqLine.id!,
+                                                      );
+                                                      setRejectType("manager");
+                                                    }}
+                                                    style={{
+                                                      borderRadius: "20px",
+                                                      padding: "5px 16px",
+                                                    }}
+                                                  >
+                                                    <img
+                                                      src={crossIcon}
+                                                      alt="reject"
+                                                    />
+                                                  </Button>
+                                                </div>
+                                              )
+                                            ) : boqLine.approval_status ===
+                                              "Approved" ? (
+                                              <div
+                                                className="approval-pill"
+                                                style={{
+                                                  backgroundColor:
+                                                    "rgba(34,150,100,1)",
+                                                  color: "white",
+                                                }}
+                                              >
+                                                <span>Approved</span>
+                                              </div>
+                                            ) : boqLine.approval_status ===
+                                              "Rejected" ? (
+                                              <div
+                                                className="approval-pill"
+                                                style={{
+                                                  backgroundColor:
+                                                    "rgba(185,28,28,1)",
+                                                  color: "white",
+                                                }}
+                                              >
+                                                <span>Rejected</span>
+                                                {boqLine.reject_comment && (
+                                                  <InfoPopUpButton
+                                                    text={
+                                                      boqLine.reject_comment
+                                                    }
+                                                    header="REJECTION COMMENT"
+                                                    bgColor="transparent"
+                                                    borderColor="transparent"
+                                                    style={{
+                                                      filter: "invert(1)",
+                                                      padding: "0px",
+                                                    }}
+                                                  />
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <div
+                                                className="approval-pill"
+                                                style={{
+                                                  backgroundColor: "gray",
+                                                  color: "white",
+                                                }}
+                                              >
+                                                <span>Pending</span>
+                                              </div>
+                                            )}
+                                          </td>
+                                        )}
+
+                                        {/* QS Approval column — per BOQ item row */}
+                                        {showQsApproval && (
+                                          <td>
+                                            {isQsDept ? (
+                                              boqLine.qs_approval_status ===
+                                              "Approved" ? (
+                                                <div
+                                                  className="approval-pill"
+                                                  style={{
+                                                    backgroundColor:
+                                                      "rgba(34,150,100,1)",
+                                                    color: "white",
+                                                  }}
+                                                >
+                                                  <span>Approved</span>
+                                                  <img
+                                                    src={crossIcon}
+                                                    alt="reset"
+                                                    style={{
+                                                      filter: "invert(1)",
+                                                      cursor: "pointer",
+                                                      width: "10px",
+                                                    }}
+                                                    onClick={() =>
+                                                      handleResetLineQS(
+                                                        boqLine.id!,
+                                                      )
+                                                    }
+                                                  />
+                                                </div>
+                                              ) : boqLine.qs_approval_status ===
+                                                "Rejected" ? (
+                                                <div
+                                                  className="approval-pill"
+                                                  style={{
+                                                    backgroundColor:
+                                                      "rgba(185,28,28,1)",
+                                                    color: "white",
+                                                  }}
+                                                >
+                                                  <span>Rejected</span>
+                                                  <div
+                                                    style={{
+                                                      display: "flex",
+                                                      gap: "8px",
+                                                      alignItems: "center",
+                                                    }}
+                                                  >
+                                                    {boqLine.qs_reject_comment && (
+                                                      <InfoPopUpButton
+                                                        text={
+                                                          boqLine.qs_reject_comment
+                                                        }
+                                                        header="REJECTION COMMENT"
+                                                        bgColor="transparent"
+                                                        borderColor="transparent"
+                                                        style={{
+                                                          filter: "invert(1)",
+                                                          padding: "0px",
+                                                        }}
+                                                      />
+                                                    )}
+                                                    <img
+                                                      src={crossIcon}
+                                                      alt="reset"
+                                                      style={{
+                                                        filter: "invert(1)",
+                                                        cursor: "pointer",
+                                                        width: "10px",
+                                                      }}
+                                                      onClick={() =>
+                                                        handleResetLineQS(
+                                                          boqLine.id!,
+                                                        )
+                                                      }
+                                                    />
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    gap: "8px",
+                                                  }}
+                                                >
+                                                  <Button
+                                                    componentType="button"
+                                                    bgColor="white"
+                                                    borderColor="rgba(207,207,207,1)"
+                                                    textColor="black"
+                                                    onClick={() =>
+                                                      handleApproveLineQS(
+                                                        boqLine.id!,
+                                                      )
+                                                    }
+                                                    style={{
+                                                      borderRadius: "20px",
+                                                      padding: "5px 16px",
+                                                    }}
+                                                  >
+                                                    <img
+                                                      src={checkIcon}
+                                                      alt="approve"
+                                                    />
+                                                  </Button>
+                                                  <Button
+                                                    componentType="button"
+                                                    bgColor="white"
+                                                    borderColor="rgba(207,207,207,1)"
+                                                    textColor="black"
+                                                    onClick={() => {
+                                                      setRejectLineId(
+                                                        boqLine.id!,
+                                                      );
+                                                      setRejectType("qs");
+                                                    }}
+                                                    style={{
+                                                      borderRadius: "20px",
+                                                      padding: "5px 16px",
+                                                    }}
+                                                  >
+                                                    <img
+                                                      src={crossIcon}
+                                                      alt="reject"
+                                                    />
+                                                  </Button>
+                                                </div>
+                                              )
+                                            ) : boqLine.qs_approval_status ===
+                                              "Approved" ? (
+                                              <div
+                                                className="approval-pill"
+                                                style={{
+                                                  backgroundColor:
+                                                    "rgba(34,150,100,1)",
+                                                  color: "white",
+                                                }}
+                                              >
+                                                <span>Approved</span>
+                                              </div>
+                                            ) : boqLine.qs_approval_status ===
+                                              "Rejected" ? (
+                                              <div
+                                                className="approval-pill"
+                                                style={{
+                                                  backgroundColor:
+                                                    "rgba(185,28,28,1)",
+                                                  color: "white",
+                                                }}
+                                              >
+                                                <span>Rejected</span>
+                                                {boqLine.qs_reject_comment && (
+                                                  <InfoPopUpButton
+                                                    text={
+                                                      boqLine.qs_reject_comment
+                                                    }
+                                                    header="REJECTION COMMENT"
+                                                    bgColor="transparent"
+                                                    borderColor="transparent"
+                                                    style={{
+                                                      filter: "invert(1)",
+                                                      padding: "0px",
+                                                    }}
+                                                  />
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <div
+                                                className="approval-pill"
+                                                style={{
+                                                  backgroundColor: "gray",
+                                                  color: "white",
+                                                }}
+                                              >
+                                                <span>Pending</span>
+                                              </div>
+                                            )}
+                                          </td>
+                                        )}
                                       </tr>
                                     );
-                                  },
-                                )}
+                                  })}
                               </tbody>
                               <tfoot style={{ pointerEvents: "none" }}>
                                 {(() => {
-                                  const boqRows =
-                                    boqLinesByJoLine[line.jo_line_id] || [];
+                                  const boqRows = prLines.filter(
+                                    (b) => b.jo_line_id === line.jo_line_id,
+                                  );
                                   const totalSubcontractorPrice =
                                     boqRows.reduce((sum, b) => {
-                                      const bEdited = editedBoqLines[
+                                      const bEdited = editedLines[
                                         b.boq_line_id
                                       ] || {
-                                        completed_qty: "0",
-                                        retention: "0",
+                                        completed_qty: "",
+                                        retention: "",
                                       };
                                       const cQty =
                                         parseFloat(
@@ -1520,11 +1410,11 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                     }, 0);
                                   const totalRetentionAmt = boqRows.reduce(
                                     (sum, b) => {
-                                      const bEdited = editedBoqLines[
+                                      const bEdited = editedLines[
                                         b.boq_line_id
                                       ] || {
-                                        completed_qty: "0",
-                                        retention: "0",
+                                        completed_qty: "",
+                                        retention: "",
                                       };
                                       const cQty =
                                         parseFloat(
@@ -1542,31 +1432,67 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                   );
                                   const totalAfterRetention =
                                     totalSubcontractorPrice - totalRetentionAmt;
+                                  const hasAnyQty =
+                                    totalSubcontractorPrice > 0;
+                                  // Total columns: 8 base (#, BOQ ITEM, BOQ RATE, SUBCONTRACTED QTY,
+                                  // COMPLETED QTY, RETENTION, AMOUNT, ATTACHMENT(S))
+                                  // + 1 if MANAGER PRICE APPROVAL shown
+                                  // + 1 if QS APPROVAL shown
+                                  // Label + value are always pinned to the last two columns.
+                                  const totalCols =
+                                    8 +
+                                    (showManagerApproval ? 1 : 0) +
+                                    (showQsApproval ? 1 : 0);
+                                  const leadSpan = totalCols - 2;
                                   return (
                                     <>
                                       <tr>
-                                        <td colSpan={5} />
-                                        <td style={{ color: "rgba(146,146,146,1)" }}>BEFORE RETENTION</td>
-                                        <td style={{ color: "rgba(146,146,146,1)" }}>
-                                          {formatPriceAED(
-                                            totalSubcontractorPrice,
-                                          )}
+                                        <td colSpan={leadSpan} />
+                                        <td
+                                          style={{
+                                            color: "rgba(146,146,146,1)",
+                                          }}
+                                        >
+                                          BEFORE RETENTION
+                                        </td>
+                                        <td
+                                          style={{
+                                            color: "rgba(146,146,146,1)",
+                                          }}
+                                        >
+                                          {hasAnyQty
+                                            ? formatPriceAED(
+                                                totalSubcontractorPrice,
+                                              )
+                                            : "N/A"}
                                         </td>
                                       </tr>
                                       <tr>
-                                        <td colSpan={5} />
-                                        <td style={{ color: "rgba(146,146,146,1)" }}>RETENTION</td>
-                                        <td style={{ color: "rgba(146,146,146,1)" }}>
-                                          − {formatPriceAED(totalRetentionAmt)}
+                                        <td colSpan={leadSpan} />
+                                        <td
+                                          style={{
+                                            color: "rgba(146,146,146,1)",
+                                          }}
+                                        >
+                                          RETENTION
+                                        </td>
+                                        <td
+                                          style={{
+                                            color: "rgba(146,146,146,1)",
+                                          }}
+                                        >
+                                          {hasAnyQty
+                                            ? `− ${formatPriceAED(totalRetentionAmt)}`
+                                            : "N/A"}
                                         </td>
                                       </tr>
-                                      <tr>
-                                        <td colSpan={5} />
-                                        <td style={{ fontWeight: 600 }}>
-                                          AFTER RETENTION
-                                        </td>
-                                        <td style={{ fontWeight: 600 }}>
-                                          {formatPriceAED(totalAfterRetention)}
+                                      <tr style={{ fontWeight: 600 }}>
+                                        <td colSpan={leadSpan} />
+                                        <td>AFTER RETENTION</td>
+                                        <td>
+                                          {hasAnyQty
+                                            ? formatPriceAED(totalAfterRetention)
+                                            : "N/A"}
                                         </td>
                                       </tr>
                                     </>
@@ -1587,6 +1513,40 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
           </>
         )}
       </div>
+
+      {/* BOQ line attachment upload popup */}
+      {uploadPopupBoqLineId !== null && (
+        <FormPopUp
+          header="UPLOAD ATTACHMENT"
+          setIsOpen={() => {
+            setUploadPopupBoqLineId(null);
+            setUploadPopupFile(null);
+          }}
+          handleSubmit={async (e) => {
+            e.preventDefault();
+            if (!uploadPopupFile) {
+              toast("Please select a file to upload", "error");
+              return;
+            }
+            await handleUploadBoqLineAttachment(
+              uploadPopupBoqLineId,
+              uploadPopupFile,
+            );
+            setUploadPopupBoqLineId(null);
+            setUploadPopupFile(null);
+          }}
+          addButtonLabel="UPLOAD"
+        >
+          <UploadFileBox
+            fileState={uploadPopupFile}
+            setFileState={setUploadPopupFile}
+            label="ATTACHMENT"
+            acceptedFileTypes=".pdf,.jpeg,.jpg,.png,.webp"
+            placeholder=""
+            buttonLabel="SELECT FILE"
+          />
+        </FormPopUp>
+      )}
 
       {/* Reject comment popup */}
       {rejectLineId !== null && (
@@ -1625,15 +1585,17 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
       {canEdit && prLines.length > 0 && (
         <>
           {(() => {
-            const allLinesHaveCompletedQty = prLines.every((l) => {
-              const edited = editedLines[l.id];
-              const qty = parseFloat(edited?.completed_qty || "0");
-              return qty > 0;
-            });
-            const allLinesHaveInvoice = prLines.every(
-              (l) => parseAttachments(l.attachment).length > 0,
-            );
-            const canSubmit = allLinesHaveInvoice && allLinesHaveCompletedQty;
+            const canSubmit =
+              prLines.length > 0 &&
+              prLines.every((b) => {
+                const edited = editedLines[b.boq_line_id];
+                return (
+                  edited?.completed_qty?.trim() !== "" &&
+                  edited?.completed_qty !== undefined &&
+                  edited?.retention?.trim() !== "" &&
+                  edited?.retention !== undefined
+                );
+              });
 
             return (
               <div className="bottom-nav">
@@ -1677,6 +1639,18 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                         changed_by: userInfo?.name,
                         department_id: mrHeader.department_id,
                         from_progress_id: mrHeader.progress_id,
+                        pr_line_data: prLines.map((l) => ({
+                          pr_line_id: l.id,
+                          completed_qty: parseFloat(
+                            editedLines[l.boq_line_id]?.completed_qty || "0",
+                          ),
+                          retention: parseFloat(
+                            editedLines[l.boq_line_id]?.retention || "0",
+                          ),
+                          attachment: boqLineAttachments[l.boq_line_id]?.length
+                            ? JSON.stringify(boqLineAttachments[l.boq_line_id])
+                            : null,
+                        })),
                       }),
                     },
                   );
@@ -1697,10 +1671,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
               }}
               addButtonLabel="CONFIRM"
             >
-              <p>
-                Are you sure you want to submit this payment request for QS
-                review?
-              </p>
+              <p>Are you sure you want to submit this payment request?</p>
             </FormPopUp>
           )}
         </>
@@ -1729,7 +1700,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                 textColor="black"
                 onClick={() => setIsQsSubmitManagerOpen(true)}
               >
-                SUBMIT FOR MANAGER APPROVAL
+                SUBMIT FOR MANAGER PRICE APPROVAL
               </Button>
             )}
           </div>
@@ -1773,7 +1744,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
 
           {isQsSubmitManagerOpen && (
             <FormPopUp
-              header="SUBMIT FOR MANAGER APPROVAL"
+              header="SUBMIT PAYMENT REQUEST"
               setIsOpen={setIsQsSubmitManagerOpen}
               handleSubmit={async (e) => {
                 e.preventDefault();
@@ -1791,7 +1762,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                   },
                 );
                 if (res.ok) {
-                  toast("Submitted for manager approval", "success");
+                  toast("Payment request submitted", "success");
                   setIsQsSubmitManagerOpen(false);
                   router.refresh();
                   router.replace("/mr/");
@@ -1801,16 +1772,13 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
               }}
               addButtonLabel="CONFIRM"
             >
-              <p>
-                Are you sure you want to submit this payment request for manager
-                approval?
-              </p>
+              <p>Are you sure you want to submit this payment request?</p>
             </FormPopUp>
           )}
         </>
       )}
 
-      {/* Manager Approval: Approve (→ Payment) or Reject */}
+      {/* Manager Price Approval: Approve (→ Payment) or Reject */}
       {isManagerApproval &&
         isManagerDept &&
         allManagerReviewed &&
@@ -1836,7 +1804,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                   textColor="black"
                   onClick={() => setIsManagerApproveOpen(true)}
                 >
-                  SUBMIT FOR PAYMENT
+                  SUBMIT FOR COMPLETION
                 </Button>
               )}
             </div>
@@ -1857,12 +1825,12 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                         id: mrHeader.id,
                         changed_by: userInfo?.name,
                         department_id: mrHeader.department_id,
-                        from_progress_id: 3,
+                        from_progress_id: 10,
                       }),
                     },
                   );
                   if (res.ok) {
-                    toast("Payment request returned for revision", "success");
+                    toast("Payment request submitted", "success");
                     setIsManagerReturnOpen(false);
                     router.refresh();
                     router.replace("/mr/");
@@ -1896,7 +1864,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                     },
                   );
                   if (res.ok) {
-                    toast("Payment request submitted", "success");
+                    toast("Payment request completed", "success");
                     setIsManagerApproveOpen(false);
                     router.refresh();
                     router.replace("/mr/");
@@ -1912,128 +1880,15 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
           </>
         )}
 
-      {/* Payment Stage: Submit for Completion after paid */}
-      {isPaymentStage &&
-        isFinanceDept &&
-        prPaymentStatus === "paid" &&
-        prLines.length > 0 && (
-          <>
-            <div className="bottom-nav">
-              <div></div>
-              <Button
-                componentType="button"
-                bgColor="white"
-                borderColor="white"
-                textColor="black"
-                onClick={() => setIsSubmitCompletionOpen(true)}
-              >
-                SUBMIT FOR COMPLETION
-              </Button>
-            </div>
+      {/* Payment Stage: Submit for Completion — moved to Payments tab */}
+      {/* {isPaymentStage && isFinanceDept && prPaymentStatus === "paid" && ( ... )} */}
 
-            {isSubmitCompletionOpen && (
-              <FormPopUp
-                header="SUBMIT FOR COMPLETION"
-                setIsOpen={setIsSubmitCompletionOpen}
-                handleSubmit={async (e) => {
-                  e.preventDefault();
-                  const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
-                    {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        action: "completePrPayment",
-                        id: mrHeader.id,
-                        changed_by: userInfo?.name,
-                        department_id: mrHeader.department_id,
-                      }),
-                    },
-                  );
-                  if (res.ok) {
-                    toast("Payment request completed", "success");
-                    setIsSubmitCompletionOpen(false);
-                    router.refresh();
-                    router.replace("/mr/");
-                  } else {
-                    toast("Failed to complete payment", "error");
-                  }
-                }}
-                addButtonLabel="CONFIRM"
-              >
-                <p>
-                  Are you sure you want to submit this payment request for
-                  completion?
-                </p>
-              </FormPopUp>
-            )}
-          </>
-        )}
+      {/* Proceed to Payment popup — moved to Payments tab */}
+      {/* {isProceedPaymentOpen && ( ... )} */}
 
-      {/* Proceed to Payment popup (uploads payment receipt) */}
-      {isProceedPaymentOpen && (
-        <FormPopUp
-          header="PROCEED PAYMENT"
-          setIsOpen={setIsProceedPaymentOpen}
-          handleSubmit={handleProceedPayment}
-          addButtonLabel="CONFIRM"
-        >
-          <UploadFileBox
-            fileState={selectedPaymentFile}
-            setFileState={setSelectedPaymentFile}
-            label=""
-            acceptedFileTypes=".pdf,.jpeg,.jpg,.png,.webp"
-            required
-            placeholder=""
-            buttonLabel="UPLOAD PAYMENT RECEIPT"
-          />
-        </FormPopUp>
-      )}
-
-      {/* Reject Payment popup */}
-      {isPaymentRejectOpen && (
-        <FormPopUp
-          header="REJECT PAYMENT"
-          setIsOpen={setIsPaymentRejectOpen}
-          handleSubmit={async (e) => {
-            e.preventDefault();
-            const res = await fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
-              {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  action: "rejectPrPayment",
-                  id: mrHeader.id,
-                  changed_by: userInfo?.name,
-                  department_id: mrHeader.department_id,
-                  reject_reason: paymentRejectReason,
-                }),
-              },
-            );
-            if (res.ok) {
-              toast("Payment rejected", "success");
-              setPrPaymentStatus("rejected");
-              setIsPaymentRejectOpen(false);
-              router.refresh();
-            } else {
-              toast("Failed to reject payment", "error");
-            }
-          }}
-          addButtonLabel="CONFIRM"
-        >
-          <div className="input-row full">
-            <InputItem
-              label={"COMMENTS"}
-              value={paymentRejectReason}
-              type={"textarea"}
-              placeholder={"ENTER COMMENTS"}
-              required
-              onChange={(e) => setPaymentRejectReason(e.target.value)}
-            />
-          </div>
-        </FormPopUp>
-      )}
+      {/* Reject Payment popup — moved to Payments tab */}
+      {/* {isPaymentRejectOpen && (
+      )} */}
     </>
   );
 }

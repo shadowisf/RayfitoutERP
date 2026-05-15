@@ -215,6 +215,30 @@ export async function POST(req: Request) {
           headerValues,
         );
         const mrHeaderId = headerResult.insertId;
+
+        // Create pr_lines for every BOQ item under each JO line of the referenced JO
+        const joHeaderId = Number(body.payment_jo_reference_id);
+        const [joLines]: any = await db.query(
+          `SELECT id FROM jo_lines WHERE mr_header_id = ? ORDER BY id ASC`,
+          [joHeaderId],
+        );
+        for (const joLine of joLines) {
+          const [boqItems]: any = await db.query(
+            `SELECT jt.boq_line_id, jt.subcontracted_qty
+             FROM jt_jo_lines_boq_lines jt
+             WHERE jt.jo_line_id = ?`,
+            [joLine.id],
+          );
+          for (const boqItem of boqItems) {
+            await db.query(
+              `INSERT INTO pr_lines
+                 (mr_header_id, boq_line_id, jo_line_id, subcontracted_qty, completed_qty, retention, attachment)
+               VALUES (?, ?, ?, ?, 0, 0, NULL)`,
+              [mrHeaderId, boqItem.boq_line_id, joLine.id, Number(boqItem.subcontracted_qty) || 0],
+            );
+          }
+        }
+
         return NextResponse.json({ success: true, mrHeaderId });
       }
 
@@ -397,6 +421,9 @@ export async function PUT(req: Request) {
 
       if (lpoId) {
         const rollbackId = Number(body.rollback_progress_id);
+
+        // Always clear payment records for this LPO on any LPO rollback
+        await db.query(`DELETE FROM lpo_payments WHERE lpo_id = ?`, [lpoId]);
 
         if (rollbackId >= 14) {
           // Rolling back within LPO stages (14, 17, 24): only update LPO's progress_id
@@ -832,6 +859,48 @@ export async function PUT(req: Request) {
 
     // Payment Request: Submit for QS Review (1 → 2)
     if (body.action === "submitForQsReview") {
+      // Update pr_lines with the entered completed_qty, retention, and attachment.
+      // Always reset QS approval so QS reviews fresh each submission/re-submission.
+      if (Array.isArray(body.pr_line_data) && body.pr_line_data.length > 0) {
+        await db.query(
+          `UPDATE pr_lines SET qs_approval_status = NULL, qs_reject_comment = NULL WHERE mr_header_id = ?`,
+          [body.id],
+        );
+
+        for (const item of body.pr_line_data) {
+          await db.query(
+            `UPDATE pr_lines SET completed_qty = ?, retention = ?, attachment = ? WHERE id = ?`,
+            [
+              Number(item.completed_qty) || 0,
+              Number(item.retention) || 0,
+              item.attachment || null,
+              Number(item.pr_line_id),
+            ],
+          );
+        }
+
+        // Recalculate and update jo_lines totals (before/after retention)
+        const [joTotals]: any = await db.query(
+          `SELECT
+             pl.jo_line_id,
+             SUM(pl.completed_qty * bl.rate_per_quantity)                              AS before_retention,
+             SUM(pl.completed_qty * bl.rate_per_quantity * pl.retention / 100)         AS retention_amt,
+             SUM(pl.completed_qty * bl.rate_per_quantity)
+               - SUM(pl.completed_qty * bl.rate_per_quantity * pl.retention / 100)    AS after_retention
+           FROM pr_lines pl
+           JOIN boq_lines bl ON bl.id = pl.boq_line_id
+           WHERE pl.mr_header_id = ?
+           GROUP BY pl.jo_line_id`,
+          [body.id],
+        );
+        for (const tot of joTotals) {
+          await db.query(
+            `UPDATE jo_lines SET before_retention = ?, retention = ?, after_retention = ? WHERE id = ?`,
+            [tot.before_retention, tot.retention_amt, tot.after_retention, tot.jo_line_id],
+          );
+        }
+      }
+
       await db.query(`UPDATE mr_headers SET progress_id = 2 WHERE id = ?`, [
         body.id,
       ]);
@@ -864,14 +933,20 @@ export async function PUT(req: Request) {
       return NextResponse.json({ status: 200 });
     }
 
-    // Payment Request: QS submits for Manager Approval (2 → 3)
+    // Payment Request: QS submits for Manager Price Approval (2 → 10)
     if (body.action === "submitPrForManagerApproval") {
-      await db.query(`UPDATE mr_headers SET progress_id = 3 WHERE id = ?`, [
+      // Reset all approval statuses so manager reviews fresh
+      await db.query(
+        `UPDATE pr_lines SET approval_status = NULL, reject_comment = NULL WHERE mr_header_id = ?`,
+        [body.id],
+      );
+
+      await db.query(`UPDATE mr_headers SET progress_id = 10 WHERE id = ?`, [
         body.id,
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 3, 2, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 10, 2, ?)`,
         [body.id, body.changed_by],
       );
 
@@ -880,28 +955,23 @@ export async function PUT(req: Request) {
         [
           body.id,
           8,
-          "Manager Approval Required",
-          `${formattedId} is awaiting your approval`,
+          "Manager Price Approval Required",
+          `${formattedId} is awaiting your price approval`,
         ],
       );
 
       return NextResponse.json({ status: 200 });
     }
 
-    // Payment Request: Manager approves → Payment stage (3 → 14)
+    // Payment Request: Manager approves → Completed (10 → 25)
     if (body.action === "submitPrForPayment") {
-      await db.query(`UPDATE mr_headers SET progress_id = 14 WHERE id = ?`, [
+      await db.query(`UPDATE mr_headers SET progress_id = 25 WHERE id = ?`, [
         body.id,
       ]);
 
       await db.query(
-        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 14, 3, ?)`,
+        `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by) VALUES (?, 25, 10, ?)`,
         [body.id, body.changed_by],
-      );
-
-      await db.query(
-        `INSERT INTO notification (mr_header_id, department_id, header, message) VALUES (?, ?, ?, ?)`,
-        [body.id, 10, "Payment Required", `${formattedId} is awaiting payment`],
       );
 
       await db.query(
@@ -909,8 +979,8 @@ export async function PUT(req: Request) {
         [
           body.id,
           body.department_id,
-          `${prefix} Approved`,
-          `Your ${formattedId} has been approved by manager`,
+          `${prefix} Completed`,
+          `Your ${formattedId} has been approved and completed`,
         ],
       );
 
@@ -941,7 +1011,7 @@ export async function PUT(req: Request) {
 
       await db.query(
         `INSERT INTO mr_header_progress_log (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason) VALUES (?, 5, ?, ?, ?)`,
-        [body.id, body.from_progress_id || 3, body.changed_by, rejectReason],
+        [body.id, body.from_progress_id || 10, body.changed_by, rejectReason],
       );
 
       await db.query(

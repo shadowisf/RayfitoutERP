@@ -268,6 +268,14 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (body.action === "updateJoLpoInvoice") {
+      await db.query(`UPDATE lpo SET invoice_file = ? WHERE id = ?`, [
+        body.invoice_file,
+        Number(body.lpo_id),
+      ]);
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "updateLPOInvoice") {
       const query = `
     UPDATE lpo

@@ -250,6 +250,40 @@ export async function POST(request: NextRequest) {
         { status: 200 },
       );
     }
+    // ── recordPrPayment ──────────────────────────────────────────────────────
+    if (body.action === "recordPrPayment") {
+      await db.query(`CREATE TABLE IF NOT EXISTS jo_payments (
+        id            INT NOT NULL AUTO_INCREMENT,
+        pr_id         INT NOT NULL,
+        jo_line_id    INT DEFAULT NULL,
+        payment_type  TEXT NOT NULL,
+        payment_method TEXT NOT NULL,
+        amount        DECIMAL(15,3) NOT NULL,
+        receipt_file  VARCHAR(500) DEFAULT NULL,
+        notes         TEXT DEFAULT NULL,
+        recorded_by   VARCHAR(255) NOT NULL DEFAULT 'Finance',
+        created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY pr_id (pr_id),
+        KEY jo_line_id (jo_line_id)
+      )`);
+      await db.query(
+        `INSERT INTO jo_payments (pr_id, jo_line_id, payment_type, payment_method, amount, receipt_file, notes, recorded_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          Number(body.pr_id),
+          body.jo_line_id ? Number(body.jo_line_id) : null,
+          body.payment_type ?? "Full Payment",
+          body.payment_method ?? "Bank Transfer",
+          Number(body.amount),
+          body.receipt_file ?? null,
+          body.notes ?? null,
+          body.recorded_by ?? "Finance",
+        ],
+      );
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (err: any) {
     console.error("Finance API error:", err);

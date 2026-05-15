@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/app/context/AuthContext";
 import { formatPriceAED } from "@/lib/formatPrice";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import Button from "@/app/components/Button";
+import FormPopUp from "@/app/components/FormPopup";
 import RecordPaymentForm from "@/app/(protected)/payment/components/_RecordPaymentForm";
 import DocumentsPopup from "@/app/(protected)/mr/[id]/lpo/[lpoId]/components/storekeeper/_DocumentPopUpButton";
 import BoqReferencePopUp from "@/app/(protected)/mr/components/BoqReferencePopUp";
+import InputItem from "@/app/components/InputItem";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -67,6 +70,7 @@ type Supplier = {
   name: string;
   type: string;
   payment_terms: string | null;
+  due_date: string | null;
   credit_limit: number | null;
   contact_person_name: string | null;
   phone: string | null;
@@ -144,13 +148,11 @@ function fmtDate(v: string | null | undefined) {
   const d = new Date(v);
   return isNaN(d.getTime())
     ? "-"
-    : d
-        .toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
-        .toUpperCase();
+    : d.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -183,10 +185,16 @@ export default function CreditSupplierPaymentClient({ supplierId }: Props) {
   // Record payment modal
   const [isRecordOpen, setIsRecordOpen] = useState(false);
 
+  // Due date edit
+  const [dueDateOpen, setDueDateOpen] = useState(false);
+  const [dueDateInput, setDueDateInput] = useState("");
+  const [dueDateSaving, setDueDateSaving] = useState(false);
+
   const externalLinkIcon = "/icons/external-link.svg";
   const contactPersonIcon = "/icons/supplier-contact-person.svg";
   const trnIcon = "/icons/supplier-trn.svg";
   const bankIcon = "/icons/supplier-bank.svg";
+  const pencilIcon = "/icons/pencil.svg";
 
   // ── Fetch both in parallel ─────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -234,6 +242,29 @@ export default function CreditSupplierPaymentClient({ supplierId }: Props) {
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  // ── Due date save ──────────────────────────────────────────────────────────
+  const handleSaveDueDate = async () => {
+    if (!dueDateInput) return;
+    setDueDateSaving(true);
+    try {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/updateSupplierDueDate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            supplier_id: supplierId,
+            due_date: dueDateInput,
+          }),
+        },
+      );
+      setDueDateOpen(false);
+      fetchAll();
+    } finally {
+      setDueDateSaving(false);
+    }
+  };
 
   // ── Checkbox helpers ───────────────────────────────────────────────────────
   const unpaidLpos = lpos.filter((l) => !l.is_paid);
@@ -365,6 +396,44 @@ export default function CreditSupplierPaymentClient({ supplierId }: Props) {
               <div>
                 <small>CREDIT TERMS</small>
                 <h2>{supplier.payment_terms || "N/A"}</h2>
+              </div>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "10px" }}
+              >
+                <div>
+                  <small>DUE DATE</small>
+                  <h2>
+                    {supplier.due_date
+                      ? new Date(supplier.due_date).toLocaleDateString(
+                          "en-GB",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          },
+                        )
+                      : "N/A"}
+                  </h2>
+                </div>
+                <Button
+                  componentType={"button"}
+                  bgColor="rgba(239,239,239,1)"
+                  borderColor="rgba(223,223,223,1)"
+                  textColor={"black"}
+                  onClick={() => {
+                    setDueDateInput(
+                      supplier.due_date
+                        ? new Date(supplier.due_date)
+                            .toISOString()
+                            .split("T")[0]
+                        : "",
+                    );
+                    setDueDateOpen(true);
+                  }}
+                  style={{ padding: "7px 7px" }}
+                >
+                  <img src={pencilIcon} alt="edit" />
+                </Button>
               </div>
               <div>
                 <small>NOTES</small>
@@ -570,10 +639,14 @@ export default function CreditSupplierPaymentClient({ supplierId }: Props) {
           <Button
             componentType="button"
             bgColor={
-              selectedLpos.length === 0 ? "rgba(180,180,180,1)" : "black"
+              selectedLpos.length === 0
+                ? "rgba(180,180,180,1)"
+                : "rgba(0, 163, 93, 1)"
             }
             borderColor={
-              selectedLpos.length === 0 ? "rgba(180,180,180,1)" : "black"
+              selectedLpos.length === 0
+                ? "rgba(180,180,180,1)"
+                : "rgba(0, 163, 93, 1)"
             }
             textColor="white"
             disabled={selectedLpos.length === 0}
@@ -762,7 +835,7 @@ export default function CreditSupplierPaymentClient({ supplierId }: Props) {
                       </div>
                       <div>
                         <small>DUE DATE</small>
-                        <h2>{fmtDate(lpo.required_date)}</h2>
+                        <h2>{fmtDate(supplier?.due_date)}</h2>
                       </div>
                     </div>
 
@@ -1078,6 +1151,31 @@ export default function CreditSupplierPaymentClient({ supplierId }: Props) {
           fetchAll();
         }}
       />
+
+      {/* ── Due Date Edit Popup ──────────────────────────────────────────────── */}
+      {dueDateOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <FormPopUp
+            header="EDIT DUE DATE"
+            setIsOpen={setDueDateOpen}
+            addButtonLabel={"CONFIRM"}
+            handleSubmit={handleSaveDueDate}
+            style={{ minWidth: "360px" }}
+          >
+            <div className="input-row full">
+              <InputItem
+                label={"REQUIRED DATE"}
+                value={dueDateInput}
+                type={"date"}
+                placeholder={"SELECT DATE"}
+                onChange={(e) => setDueDateInput(e.target.value)}
+                required
+              />
+            </div>
+          </FormPopUp>,
+          document.body,
+        )}
     </>
   );
 }
@@ -1306,7 +1404,10 @@ function HistoryTransactionsTable({
                             bgColor="rgba(239,239,239,1)"
                             borderColor="rgba(223,223,223,1)"
                             textColor="black"
-                            href={row.supplier_statement.replace(/^"+|"+$/g, "")}
+                            href={row.supplier_statement.replace(
+                              /^"+|"+$/g,
+                              "",
+                            )}
                             target="_blank"
                             style={{ padding: "7px 7px", flexShrink: 0 }}
                           >

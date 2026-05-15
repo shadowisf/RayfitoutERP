@@ -497,16 +497,19 @@ export default function BoqReferencePopUp({
                   }}
                 >
                   BOQ-{uniqueBoqIds[0].toString().padStart(5, "0")}
-                  <Button
-                    componentType={"link"}
-                    bgColor={"rgba(239, 239, 239, 1)"}
-                    borderColor={"rgba(223, 223, 223, 1)"}
-                    textColor={"black"}
-                    href={`/project/${mrHeader.project_id}/boq/${uniqueBoqIds[0]}`}
-                    style={{ padding: "7px 7px" }}
-                  >
-                    <img src={externalLinkIcon} alt="Open BOQ" />
-                  </Button>
+                  {(userInfo?.departmentID === 8 ||
+                    userInfo?.departmentID === 16) && (
+                    <Button
+                      componentType={"link"}
+                      bgColor={"rgba(239, 239, 239, 1)"}
+                      borderColor={"rgba(223, 223, 223, 1)"}
+                      textColor={"black"}
+                      href={`/project/${mrHeader.project_id}/boq/${uniqueBoqIds[0]}`}
+                      style={{ padding: "7px 7px" }}
+                    >
+                      <img src={externalLinkIcon} alt="Open BOQ" />
+                    </Button>
+                  )}
                 </div>
               );
             }
@@ -899,7 +902,10 @@ export default function BoqReferencePopUp({
                 </tbody>
                 {(canSeePrice || (showJoColumns && canSeeWorksValue)) && (
                   <tfoot
-                    style={{ borderTop: "1px solid rgba(232, 223, 223, 1)", pointerEvents: "none" }}
+                    style={{
+                      borderTop: "1px solid rgba(232, 223, 223, 1)",
+                      pointerEvents: "none",
+                    }}
                   >
                     <tr>
                       <td

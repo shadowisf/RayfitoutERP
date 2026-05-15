@@ -29,6 +29,7 @@ export async function GET() {
         s.name        AS supplier_name,
         s.type        AS supplier_type,
         s.payment_terms AS supplier_payment_terms,
+        s.due_date    AS supplier_due_date,
         mh.requested_by,
         mh.department_id,
         mh.required_date,

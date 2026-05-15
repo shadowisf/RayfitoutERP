@@ -7,16 +7,19 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { useAuth } from "@/app/context/AuthContext";
 import { toast } from "@/app/components/Toast";
+import { MrHeader } from "../[id]/types/mrHeader";
 
 type Props = {
   selectedMrIds: Set<number>;
   setSelectedMrIds: (ids: Set<number>) => void;
+  mrHeaders: MrHeader[];
   onRefresh?: () => void;
 };
 
 export default function MassPriceApprovalButton({
   selectedMrIds,
   setSelectedMrIds,
+  mrHeaders,
   onRefresh,
 }: Props) {
   const router = useRouter();
@@ -28,7 +31,6 @@ export default function MassPriceApprovalButton({
   const [rejectText, setRejectText] = useState("");
 
   const diamondIcon = "/icons/diamond.svg";
-
   const actionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,24 +42,23 @@ export default function MassPriceApprovalButton({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Flatten grouped MR lines into a flat array of line IDs
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
   function flattenLineIds(grouped: any): number[] {
     const ids: number[] = [];
     for (const category in grouped) {
       for (const subCategory in grouped[category]) {
         for (const supplier in grouped[category][subCategory]) {
           const items = grouped[category][subCategory][supplier];
-          if (Array.isArray(items)) {
+          if (Array.isArray(items))
             items.forEach((item: any) => ids.push(item.id));
-          }
         }
       }
     }
     return ids;
   }
 
-  // Fetch all MR line IDs for a given MR header
-  async function fetchLineIds(mrHeaderId: number): Promise<number[]> {
+  async function fetchMrLineIds(mrHeaderId: number): Promise<number[]> {
     const res = await fetch("/api/mr/getMrLinesByMrHeaderID", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -68,108 +69,218 @@ export default function MassPriceApprovalButton({
     return flattenLineIds(grouped);
   }
 
+  async function fetchJoLineIds(mrHeaderId: number): Promise<number[]> {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "getJoLinesByMrHeaderID",
+        mr_header_id: mrHeaderId,
+      }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data.map((l: any) => l.id) : [];
+  }
+
+  async function fetchPrLineIds(mrHeaderId: number): Promise<number[]> {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "getPrLines", mr_header_id: mrHeaderId }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data)
+      ? data.map((l: any) => l.id).filter(Boolean)
+      : [];
+  }
+
+  // ── AUTO SELECT ──────────────────────────────────────────────────────────
+
   async function handleAutoSelect() {
     setAutoSelectOpen(false);
 
     const mrIds = Array.from(selectedMrIds);
-    let mrSuccess = 0;
-    let mrFailed = 0;
+    let success = 0;
+    let failed = 0;
 
     for (const mrId of mrIds) {
+      const mrHeader = mrHeaders.find((m) => m.id === mrId);
+      const type = mrHeader?.type ?? "material";
+
       try {
-        const lineIds = await fetchLineIds(mrId);
-        if (lineIds.length === 0) {
-          mrFailed++;
-          continue;
-        }
+        if (type === "material") {
+          // ── MR: select cheapest quotation per line, submit to LPO ────────
+          const lineIds = await fetchMrLineIds(mrId);
+          if (lineIds.length === 0) {
+            failed++;
+            continue;
+          }
 
-        // For each line, get quotations and approve the cheapest/only one
-        const approvedSuppliers: {
-          mr_line_id: number;
-          quotation_id: number;
-        }[] = [];
+          const approvedSuppliers: {
+            mr_line_id: number;
+            quotation_id: number;
+          }[] = [];
 
-        for (const lineId of lineIds) {
-          const qRes = await fetch(
-            "/api/supplier/getAllSupplierAndQuotationByMrLineID",
-            {
-              method: "POST",
+          for (const lineId of lineIds) {
+            const qRes = await fetch(
+              "/api/supplier/getAllSupplierAndQuotationByMrLineID",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: lineId }),
+              },
+            );
+            if (!qRes.ok) continue;
+            const quotations = await qRes.json();
+            if (!Array.isArray(quotations) || quotations.length === 0) continue;
+
+            const lowest = quotations.reduce((prev: any, curr: any) =>
+              Number(curr.total_price) < Number(prev.total_price) ? curr : prev,
+            );
+
+            await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
+              method: "PUT",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: lineId }),
-            },
-          );
-          if (!qRes.ok) continue;
+              body: JSON.stringify({
+                action: "approveSupplierAndQuotation",
+                quotation_id: lowest.id,
+                mr_line_id: lineId,
+                supplier_id: lowest.supplier_id,
+              }),
+            });
 
-          const quotations = await qRes.json();
-          if (!Array.isArray(quotations) || quotations.length === 0) continue;
-
-          // Pick cheapest (or only) quotation
-          const lowest = quotations.reduce((prev: any, curr: any) =>
-            Number(curr.total_price) < Number(prev.total_price) ? curr : prev,
-          );
+            approvedSuppliers.push({
+              mr_line_id: lineId,
+              quotation_id: lowest.quotation_id || lowest.id,
+            });
+          }
 
           await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
-            method: "PUT",
+            method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              action: "approveSupplierAndQuotation",
-              quotation_id: lowest.id,
-              mr_line_id: lineId,
-              supplier_id: lowest.supplier_id,
+              action: "deleteNonApprovedQuotationFiles",
+              approved_suppliers: approvedSuppliers,
             }),
           });
 
-          approvedSuppliers.push({
-            mr_line_id: lineId,
-            quotation_id: lowest.quotation_id || lowest.id,
-          });
-        }
+          const submitRes = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "submitForLPO",
+                id: mrId,
+                changed_by: userInfo?.name,
+              }),
+            },
+          );
 
-        // Delete non-approved quotation files
-        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "deleteNonApprovedQuotationFiles",
-            approved_suppliers: approvedSuppliers,
-          }),
-        });
+          submitRes.ok ? success++ : failed++;
+        } else if (type === "job") {
+          // ── JO: select cheapest subcontractor per line, submit to LPO & Invoice ──
+          const lineIds = await fetchJoLineIds(mrId);
+          if (lineIds.length === 0) {
+            failed++;
+            continue;
+          }
 
-        // Submit to LPO
-        const submitRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "submitForLPO",
-              id: mrId,
-              changed_by: userInfo?.name,
-            }),
-          },
-        );
+          for (const joLineId of lineIds) {
+            const qRes = await fetch(
+              "/api/subcontractor/getAllSubcontractorAndQuotationByJoLineID",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: joLineId }),
+              },
+            );
+            if (!qRes.ok) continue;
+            const quotations = await qRes.json();
+            if (!Array.isArray(quotations) || quotations.length === 0) continue;
 
-        if (submitRes.ok) {
-          mrSuccess++;
-        } else {
-          mrFailed++;
+            const lowest = quotations.reduce((prev: any, curr: any) =>
+              Number(curr.total_price) < Number(prev.total_price) ? curr : prev,
+            );
+
+            await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "approveSubcontractorQuotation",
+                  quotation_id: lowest.id,
+                  jo_line_id: joLineId,
+                }),
+              },
+            );
+          }
+
+          const submitRes = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "submitJoToLpoAndInvoice",
+                id: mrId,
+                changed_by: userInfo?.name,
+              }),
+            },
+          );
+
+          submitRes.ok ? success++ : failed++;
+        } else if (type === "payment") {
+          // ── PR: approve all pr_lines, submit for completion ──────────────
+          const lineIds = await fetchPrLineIds(mrId);
+
+          await Promise.all(
+            lineIds.map((lineId) =>
+              fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "approvePrLine",
+                  pr_line_id: lineId,
+                }),
+              }),
+            ),
+          );
+
+          const submitRes = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "submitPrForPayment",
+                id: mrId,
+                changed_by: userInfo?.name,
+              }),
+            },
+          );
+
+          submitRes.ok ? success++ : failed++;
         }
       } catch (err) {
-        console.error(`Error processing MR ${mrId}:`, err);
-        mrFailed++;
+        console.error(`Error processing ${type} ${mrId}:`, err);
+        failed++;
       }
     }
 
     setSelectedMrIds(new Set());
 
-    if (mrSuccess > 0 && mrFailed === 0) {
+    if (success > 0 && failed === 0) {
       toast(
-        `Mass auto-select: ${mrSuccess} MR${mrSuccess > 1 ? "s" : ""} submitted to LPO`,
+        `Mass auto-select: ${success} item${success > 1 ? "s" : ""} submitted`,
         "success",
       );
-    } else if (mrSuccess > 0) {
+    } else if (success > 0) {
       toast(
-        `Mass auto-select: ${mrSuccess} submitted, ${mrFailed} failed`,
+        `Mass auto-select: ${success} submitted, ${failed} failed`,
         "warning",
       );
     } else {
@@ -180,72 +291,139 @@ export default function MassPriceApprovalButton({
     router.refresh();
   }
 
+  // ── REJECT ───────────────────────────────────────────────────────────────
+
   async function handleReject() {
     setRejectOpen(false);
 
     const mrIds = Array.from(selectedMrIds);
-    let mrSuccess = 0;
-    let mrFailed = 0;
+    let success = 0;
+    let failed = 0;
 
     for (const mrId of mrIds) {
-      try {
-        const lineIds = await fetchLineIds(mrId);
+      const mrHeader = mrHeaders.find((m) => m.id === mrId);
+      const type = mrHeader?.type ?? "material";
 
-        // Reject all quotations for each line
-        await Promise.all(
-          lineIds.map((lineId) =>
-            fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
+      try {
+        if (type === "material") {
+          // ── MR: reject all quotations → price rejected (11) ──────────────
+          const lineIds = await fetchMrLineIds(mrId);
+
+          await Promise.all(
+            lineIds.map((lineId) =>
+              fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "rejectAllSupplierAndQuotation",
+                  reject_comment: rejectText,
+                  mr_line_id: lineId,
+                }),
+              }),
+            ),
+          );
+
+          const submitRes = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+            {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                action: "rejectAllSupplierAndQuotation",
-                reject_comment: rejectText,
-                mr_line_id: lineId,
+                action: "submitForPricingResubmission",
+                id: mrId,
+                changed_by: userInfo?.name,
+                user_name: userInfo?.name,
+                user_role: userInfo?.role,
               }),
-            }),
-          ),
-        );
+            },
+          );
 
-        // Submit to Price Approval Rejected (progress 11)
-        const submitRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "submitForPricingResubmission",
-              id: mrId,
-              changed_by: userInfo?.name,
-              user_name: userInfo?.name,
-              user_role: userInfo?.role,
-            }),
-          },
-        );
+          submitRes.ok ? success++ : failed++;
+        } else if (type === "job") {
+          // ── JO: reject all subcontractor quotations → price rejected (11) ─
+          const lineIds = await fetchJoLineIds(mrId);
 
-        if (submitRes.ok) {
-          mrSuccess++;
-        } else {
-          mrFailed++;
+          await Promise.all(
+            lineIds.map((joLineId) =>
+              fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "rejectAllSubcontractorQuotations",
+                  reject_comment: rejectText,
+                  jo_line_id: joLineId,
+                }),
+              }),
+            ),
+          );
+
+          const submitRes = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "submitForPricingResubmission",
+                id: mrId,
+                changed_by: userInfo?.name,
+                user_name: userInfo?.name,
+                user_role: userInfo?.role,
+              }),
+            },
+          );
+
+          submitRes.ok ? success++ : failed++;
+        } else if (type === "payment") {
+          // ── PR: reject all pr_lines → request rejected (5) ───────────────
+          const lineIds = await fetchPrLineIds(mrId);
+
+          await Promise.all(
+            lineIds.map((lineId) =>
+              fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "rejectPrLine",
+                  pr_line_id: lineId,
+                  comment: rejectText,
+                }),
+              }),
+            ),
+          );
+
+          const submitRes = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "submitPrForRejection",
+                id: mrId,
+                changed_by: userInfo?.name,
+                department_id: mrHeader?.department_id,
+                from_progress_id: 10,
+              }),
+            },
+          );
+
+          submitRes.ok ? success++ : failed++;
         }
       } catch (err) {
-        console.error(`Error rejecting MR ${mrId}:`, err);
-        mrFailed++;
+        console.error(`Error rejecting ${type} ${mrId}:`, err);
+        failed++;
       }
     }
 
     setSelectedMrIds(new Set());
     setRejectText("");
 
-    if (mrSuccess > 0 && mrFailed === 0) {
+    if (success > 0 && failed === 0) {
       toast(
-        `Mass reject: ${mrSuccess} MR${mrSuccess > 1 ? "s" : ""} sent to Price Approval Rejected`,
+        `Mass reject: ${success} item${success > 1 ? "s" : ""} rejected`,
         "success",
       );
-    } else if (mrSuccess > 0) {
-      toast(
-        `Mass reject: ${mrSuccess} rejected, ${mrFailed} failed`,
-        "warning",
-      );
+    } else if (success > 0) {
+      toast(`Mass reject: ${success} rejected, ${failed} failed`, "warning");
     } else {
       toast("Mass reject failed", "error");
     }
@@ -253,6 +431,8 @@ export default function MassPriceApprovalButton({
     onRefresh && onRefresh();
     router.refresh();
   }
+
+  // ── UI ────────────────────────────────────────────────────────────────────
 
   const dropdownStyle: React.CSSProperties = {
     position: "absolute",
@@ -282,25 +462,40 @@ export default function MassPriceApprovalButton({
     fontSize: "13px",
   };
 
+  const selectedCount = selectedMrIds.size;
+  const selectedTypes = Array.from(selectedMrIds)
+    .map((id) => mrHeaders.find((m) => m.id === id)?.type ?? "material")
+    .reduce(
+      (acc, t) => {
+        acc[t] = (acc[t] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+  const typeSummary = Object.entries(selectedTypes)
+    .map(
+      ([t, n]) =>
+        `${n} ${t === "material" ? "MR" : t === "job" ? "JO" : "PR"}${n > 1 ? "s" : ""}`,
+    )
+    .join(", ");
+
   return (
     <>
       <div ref={actionsRef} style={{ position: "relative" }}>
         <Button
           componentType="button"
-          bgColor={selectedMrIds.size === 0 ? "white" : "black"}
-          borderColor={
-            selectedMrIds.size === 0 ? "rgba(211, 211, 211, 1)" : "black"
-          }
-          textColor={selectedMrIds.size === 0 ? "black" : "white"}
-          disabled={selectedMrIds.size === 0}
-          onClick={() => selectedMrIds.size > 0 && setActionsOpen((v) => !v)}
+          bgColor={selectedCount === 0 ? "white" : "black"}
+          borderColor={selectedCount === 0 ? "rgba(211, 211, 211, 1)" : "black"}
+          textColor={selectedCount === 0 ? "black" : "white"}
+          disabled={selectedCount === 0}
+          onClick={() => selectedCount > 0 && setActionsOpen((v) => !v)}
         >
           ACTIONS
         </Button>
 
         {actionsOpen && (
           <div style={dropdownStyle}>
-            {/* Auto select */}
             <button
               type="button"
               onClick={() => {
@@ -317,18 +512,16 @@ export default function MassPriceApprovalButton({
                   "transparent")
               }
             >
-              <span>Auto select ({selectedMrIds.size})</span>
+              <span>Auto select ({selectedCount})</span>
               <img src={diamondIcon} alt="smart select" />
             </button>
-
-            {/* Reject */}
             <button
               type="button"
               onClick={() => {
                 setActionsOpen(false);
                 setRejectOpen(true);
               }}
-              style={{ ...dropdownItemStyle }}
+              style={dropdownItemStyle}
               onMouseEnter={(e) =>
                 ((e.target as HTMLElement).style.backgroundColor =
                   "rgba(245,245,245,1)")
@@ -347,7 +540,7 @@ export default function MassPriceApprovalButton({
       {/* Auto-select confirmation */}
       {autoSelectOpen && (
         <FormPopUp
-          header="MASS APPROVE MATERIAL REQUESTS"
+          header="MASS APPROVE REQUESTS"
           setIsOpen={(open) => {
             if (!open) setAutoSelectOpen(false);
           }}
@@ -357,26 +550,14 @@ export default function MassPriceApprovalButton({
           }}
           addButtonLabel="CONFIRM"
         >
-          <p>
-            Are you sure you want to mass approve {selectedMrIds.size} selected
-            MR
-            {selectedMrIds.size !== 1 ? "s" : ""}?
-          </p>
-          <p
-            style={{
-              marginTop: "6px",
-            }}
-          >
-            The cheapest quotation for each line will be automatically selected
-            and submitted to LPO.
-          </p>
+          <p>Are you sure you want to mass approve {typeSummary}?</p>
         </FormPopUp>
       )}
 
       {/* Reject confirmation */}
       {rejectOpen && (
         <FormPopUp
-          header="MASS REJECT MATERIAL REQUESTS"
+          header="MASS REJECT"
           setIsOpen={(open) => {
             if (!open) {
               setRejectOpen(false);
@@ -389,18 +570,17 @@ export default function MassPriceApprovalButton({
           }}
           addButtonLabel="CONFIRM"
         >
-          <p>
-            Are you sure you want to reject all quotations for{" "}
-            {selectedMrIds.size} selected MR
-            {selectedMrIds.size !== 1 ? "s" : ""}?
-          </p>
+          <p>Are you sure you want to reject {typeSummary}?</p>
           <p
             style={{
               marginTop: "6px",
               marginBottom: "16px",
+              color: "rgba(100,100,100,1)",
+              fontSize: "13px",
             }}
           >
-            All items will be moved to Price Approval Rejected.
+            • MRs &amp; JOs → Price Approval Rejected
+            <br />• PRs → Request Rejected
           </p>
           <div className="input-row full">
             <InputItem
