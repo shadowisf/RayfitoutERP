@@ -110,8 +110,9 @@ type SelectedRow = {
 };
 
 type Props = {
-  selectedCount: number;
-  selectedRows: SelectedRow[];
+  selectedCount: number; // unpaid-only count — used for actions labels
+  selectedRows: SelectedRow[]; // unpaid-only — used for Record/Reject actions
+  downloadRows: SelectedRow[]; // all selected (paid + unpaid) — used for downloads
   onReset: () => void;
   onRecordPayment: () => void;
   onReject: () => void;
@@ -135,6 +136,7 @@ const dropdownItemStyle: React.CSSProperties = {
 export default function PaymentActionsButton({
   selectedCount,
   selectedRows,
+  downloadRows,
   onReset,
   onRecordPayment,
   onReject,
@@ -168,14 +170,15 @@ export default function PaymentActionsButton({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const hasSelection = selectedCount > 0;
+  const hasSelection = selectedCount > 0; // unpaid selected → enables ACTIONS
+  const hasAnySelection = downloadRows.length > 0; // any selected → enables RESET + DOWNLOAD
 
-  // ── Unique MR count ─────────────────────────────────────────────────────────
-  const uniqueMrCount = new Set(selectedRows.map((r) => r.mr_header_id)).size;
-  const invoiceCount = selectedRows.filter((r) =>
+  // ── Unique MR count (from all selected rows for downloads) ──────────────────
+  const uniqueMrCount = new Set(downloadRows.map((r) => r.mr_header_id)).size;
+  const invoiceCount = downloadRows.filter((r) =>
     parseFileUrl(r.invoice_file),
   ).length;
-  const lpoFileCount = selectedRows.filter((r) =>
+  const lpoFileCount = downloadRows.filter((r) =>
     parseFileUrl(r.signed_lpo_file),
   ).length;
 
@@ -186,7 +189,7 @@ export default function PaymentActionsButton({
     setIsDownloading(true);
 
     const uniqueMrIds = Array.from(
-      new Set(selectedRows.map((r) => r.mr_header_id)),
+      new Set(downloadRows.map((r) => r.mr_header_id)),
     );
     let successCount = 0;
 
@@ -273,18 +276,18 @@ export default function PaymentActionsButton({
 
     let successCount = 0;
     try {
-      for (const row of selectedRows) {
+      for (const row of downloadRows) {
         const url = parseFileUrl(row.signed_lpo_file);
         if (!url) continue;
         await triggerDownload(url, `LPO-${String(row.id).padStart(5, "0")}`);
         successCount++;
         // Small delay between multiple downloads to avoid browser blocking
-        if (selectedRows.length > 1)
+        if (downloadRows.length > 1)
           await new Promise((r) => setTimeout(r, 300));
       }
       if (successCount > 0) {
         toast(
-          `Downloading ${successCount} LPO file${successCount !== 1 ? "s" : ""}`,
+          `Downloaded ${successCount} LPO file${successCount !== 1 ? "s" : ""}`,
           "success",
         );
       } else {
@@ -299,13 +302,13 @@ export default function PaymentActionsButton({
 
   // ── Download invoice files ───────────────────────────────────────────────────
   async function handleDownloadInvoice() {
-    if (!hasSelection || isDownloading) return;
+    if (!hasAnySelection || isDownloading) return;
     setDownloadOpen(false);
     setIsDownloading(true);
 
     let successCount = 0;
     try {
-      for (const row of selectedRows) {
+      for (const row of downloadRows) {
         const url = parseFileUrl(row.invoice_file);
         if (!url) continue;
         await triggerDownload(
@@ -313,12 +316,12 @@ export default function PaymentActionsButton({
           `Invoice-LPO-${String(row.id).padStart(5, "0")}`,
         );
         successCount++;
-        if (selectedRows.length > 1)
+        if (downloadRows.length > 1)
           await new Promise((r) => setTimeout(r, 300));
       }
       if (successCount > 0) {
         toast(
-          `Downloading ${successCount} invoice${successCount !== 1 ? "s" : ""}`,
+          `Downloaded ${successCount} invoice${successCount !== 1 ? "s" : ""}`,
           "success",
         );
       } else {
@@ -351,10 +354,10 @@ export default function PaymentActionsButton({
         {/* Reset selection */}
         <Button
           componentType="button"
-          bgColor={hasSelection ? "black" : "white"}
-          borderColor={hasSelection ? "black" : "rgba(211,211,211,1)"}
-          textColor={hasSelection ? "white" : "black"}
-          disabled={!hasSelection}
+          bgColor={hasAnySelection ? "black" : "white"}
+          borderColor={hasAnySelection ? "black" : "rgba(211,211,211,1)"}
+          textColor={hasAnySelection ? "white" : "black"}
+          disabled={!hasAnySelection}
           onClick={onReset}
         >
           RESET
@@ -416,23 +419,23 @@ export default function PaymentActionsButton({
         <div ref={downloadRef} style={{ position: "relative" }}>
           <Button
             componentType="button"
-            bgColor={hasSelection ? "black" : "white"}
-            borderColor={hasSelection ? "black" : "rgba(211,211,211,1)"}
-            textColor={hasSelection ? "white" : "black"}
-            disabled={!hasSelection || isDownloading}
+            bgColor={hasAnySelection ? "black" : "white"}
+            borderColor={hasAnySelection ? "black" : "rgba(211,211,211,1)"}
+            textColor={hasAnySelection ? "white" : "black"}
+            disabled={!hasAnySelection || isDownloading}
             onClick={() =>
-              hasSelection && !isDownloading && setDownloadOpen((v) => !v)
+              hasAnySelection && !isDownloading && setDownloadOpen((v) => !v)
             }
             style={{ padding: "9.5px 9.5px" }}
           >
             {isDownloading ? (
-              <Spinner color={hasSelection ? "white" : "black"} />
+              <Spinner color={hasAnySelection ? "white" : "black"} />
             ) : (
               <img
                 src={downloadIcon}
                 alt="download"
                 style={{
-                  filter: hasSelection ? "invert(1)" : "none",
+                  filter: hasAnySelection ? "invert(1)" : "none",
                   display: "block",
                 }}
               />

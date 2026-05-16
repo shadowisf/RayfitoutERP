@@ -669,13 +669,11 @@ export default function Payments() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginated = sorted.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  // ── Flat table select-all helpers ───────────────────────────────────────
-  const unpaidPaginated = paginated.filter((r) => r.is_paid !== 1);
+  // ── Flat table select-all helpers (all rows, paid + unpaid) ────────────────
   const flatAllSelected =
-    unpaidPaginated.length > 0 &&
-    unpaidPaginated.every((r) => selectedRowIds.has(r.id));
+    paginated.length > 0 && paginated.every((r) => selectedRowIds.has(r.id));
   const flatSomeSelected =
-    !flatAllSelected && unpaidPaginated.some((r) => selectedRowIds.has(r.id));
+    !flatAllSelected && paginated.some((r) => selectedRowIds.has(r.id));
 
   // ── PR search ────────────────────────────────────────────────────────────
   const prSearched = useMemo(() => {
@@ -875,8 +873,15 @@ export default function Payments() {
     });
   };
 
+  // Unpaid only — for Record Payment / Reject actions
   const selectedRows = useMemo(
     () => sorted.filter((r) => selectedRowIds.has(r.id) && r.is_paid !== 1),
+    [sorted, selectedRowIds],
+  );
+
+  // All selected (paid + unpaid) — for PDF/file downloads
+  const selectedAllRows = useMemo(
+    () => sorted.filter((r) => selectedRowIds.has(r.id)),
     [sorted, selectedRowIds],
   );
 
@@ -1321,6 +1326,12 @@ export default function Payments() {
             <PaymentActionsButton
               selectedCount={selectedRows.length}
               selectedRows={selectedRows.map((r) => ({
+                id: r.id,
+                mr_header_id: r.mr_header_id,
+                invoice_file: r.invoice_file,
+                signed_lpo_file: r.signed_file,
+              }))}
+              downloadRows={selectedAllRows.map((r) => ({
                 id: r.id,
                 mr_header_id: r.mr_header_id,
                 invoice_file: r.invoice_file,
@@ -1982,15 +1993,12 @@ export default function Payments() {
                   {/* Group table */}
                   {!isCollapsed &&
                     (() => {
-                      const unpaidRows = group.rows.filter(
-                        (r) => r.is_paid !== 1,
-                      );
                       const groupAllSelected =
-                        unpaidRows.length > 0 &&
-                        unpaidRows.every((r) => selectedRowIds.has(r.id));
+                        group.rows.length > 0 &&
+                        group.rows.every((r) => selectedRowIds.has(r.id));
                       const groupSomeSelected =
                         !groupAllSelected &&
-                        unpaidRows.some((r) => selectedRowIds.has(r.id));
+                        group.rows.some((r) => selectedRowIds.has(r.id));
 
                       return (
                         <table
@@ -2022,11 +2030,11 @@ export default function Payments() {
                                     setSelectedRowIds((prev) => {
                                       const next = new Set(prev);
                                       if (groupAllSelected) {
-                                        unpaidRows.forEach((r) =>
+                                        group.rows.forEach((r) =>
                                           next.delete(r.id),
                                         );
                                       } else {
-                                        unpaidRows.forEach((r) =>
+                                        group.rows.forEach((r) =>
                                           next.add(r.id),
                                         );
                                       }
@@ -2117,14 +2125,12 @@ export default function Payments() {
                                   }
                                 >
                                   <td style={{ padding: "0 0 0 12px" }}>
-                                    {!isPaid && (
-                                      <input
-                                        type="checkbox"
-                                        checked={isChecked}
-                                        onChange={() => toggleRow(row.id)}
-                                        className="manager-checkbox"
-                                      />
-                                    )}
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => toggleRow(row.id)}
+                                      className="manager-checkbox"
+                                    />
                                   </td>
                                   <td>
                                     <div
@@ -2307,9 +2313,9 @@ export default function Payments() {
                         setSelectedRowIds((prev) => {
                           const next = new Set(prev);
                           if (flatAllSelected) {
-                            unpaidPaginated.forEach((r) => next.delete(r.id));
+                            paginated.forEach((r) => next.delete(r.id));
                           } else {
-                            unpaidPaginated.forEach((r) => next.add(r.id));
+                            paginated.forEach((r) => next.add(r.id));
                           }
                           return next;
                         });
@@ -2354,14 +2360,12 @@ export default function Payments() {
                       }
                     >
                       <td style={{ padding: "0 0 0 12px" }}>
-                        {!isPaid && (
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggleRow(row.id)}
-                            className="manager-checkbox"
-                          />
-                        )}
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleRow(row.id)}
+                          className="manager-checkbox"
+                        />
                       </td>
                       {/* LPO NUMBER */}
                       <td>

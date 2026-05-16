@@ -84,6 +84,18 @@ function getVendorTypeStyle(type: string): {
   return { backgroundColor: "rgba(231,231,231,1)", color: "black" };
 }
 
+function parseFileUrl(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed[0] ?? null;
+    if (typeof parsed === "string") return parsed;
+  } catch {
+    // not JSON — return as-is
+  }
+  return raw;
+}
+
 function VendorTypePill({ type }: { type: string }) {
   if (!type) return <span>-</span>;
   return (
@@ -704,7 +716,7 @@ export default function AllTransactionsPage() {
                   <td>AED {formatAED(row.total)}</td>
                   <td>{formatDate(row.payment_date)}</td>
                   <td>
-                    {!row.payment_file ? (
+                    {!parseFileUrl(row.payment_file) ? (
                       <span style={{ color: "#aaa" }}>-</span>
                     ) : (
                       <div
@@ -726,20 +738,20 @@ export default function AllTransactionsPage() {
                           bgColor="rgba(239,239,239,1)"
                           borderColor="rgba(223,223,223,1)"
                           textColor="black"
-                          href={row.payment_file}
+                          href={parseFileUrl(row.payment_file)!}
                           target="_blank"
                           style={{ padding: "7px 7px", flexShrink: 0 }}
                         >
                           <img src={externalLinkIcon} alt="open" />
                         </Button>
                         {row.vendor_type?.toLowerCase() === "credit" &&
-                          row.supplier_statement && (
+                          parseFileUrl(row.supplier_statement) && (
                             <Button
                               componentType="link"
                               bgColor="rgba(239,239,239,1)"
                               borderColor="rgba(223,223,223,1)"
                               textColor="black"
-                              href={row.supplier_statement}
+                              href={parseFileUrl(row.supplier_statement)!}
                               target="_blank"
                               style={{ padding: "7px 7px", flexShrink: 0 }}
                             >
