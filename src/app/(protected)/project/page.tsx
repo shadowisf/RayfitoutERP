@@ -9,6 +9,8 @@ export default function Project() {
 
   const [projectsWithBOQ, setProjectsWithBOQ] = useState<any[]>([]);
   const [quotationProjects, setQuotationProjects] = useState<any[]>([]);
+  const [collapsedSigned, setCollapsedSigned] = useState(false);
+  const [collapsedQuotation, setCollapsedQuotation] = useState(false);
 
   async function fetchProjects() {
     try {
@@ -38,15 +40,14 @@ export default function Project() {
         }),
       );
 
-      const quotationProjects = await fetch(
+      const quotationProjectsData = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getAllQuotationProjects`,
         { cache: "no-store" },
       )
         .then((res) => res.json())
         .catch(() => []);
 
-      setQuotationProjects(quotationProjects);
-
+      setQuotationProjects(quotationProjectsData);
       setProjectsWithBOQ(projectsWithBOQData);
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -65,31 +66,133 @@ export default function Project() {
       <br />
       <br />
 
-      <h3>SIGNED</h3>
-      <br />
-      <div className="widget-grid active-projects">
-        {projectsWithBOQ.map((proj: any, index) => (
-          <ProjectCard project={proj} key={index} />
-        ))}
+      {/* ── SIGNED ─────────────────────────────────────────────────────────── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "15px",
+          marginBottom: collapsedSigned ? "0px" : "20px",
+          cursor: "pointer",
+          userSelect: "none",
+        }}
+        onClick={() => setCollapsedSigned((v) => !v)}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{
+            transition: "transform 0.2s ease",
+            transform: collapsedSigned ? "rotate(-90deg)" : "rotate(0deg)",
+            flexShrink: 0,
+          }}
+        >
+          <path
+            d="M3.5 5.25L7 8.75L10.5 5.25"
+            stroke="black"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+
+        <h2 style={{ margin: 0 }}>SIGNED</h2>
+
+        <div
+          style={{
+            backgroundColor: "black",
+            color: "white",
+            borderRadius: "50px",
+            padding: "3px 12px",
+            fontWeight: "600",
+            fontSize: "14px",
+          }}
+        >
+          {projectsWithBOQ.length} Project
+          {projectsWithBOQ.length !== 1 ? "s" : ""}
+        </div>
       </div>
 
+      {!collapsedSigned && (
+        <div className="widget-grid active-projects">
+          {projectsWithBOQ.map((proj: any, index) => (
+            <ProjectCard project={proj} key={index} />
+          ))}
+        </div>
+      )}
+
+      {/* ── QUOTATION ──────────────────────────────────────────────────────── */}
       {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
         <>
           <br />
           <br />
           <br />
 
-          <h3>QUOTATION</h3>
-          <br />
-          <div className="widget-grid active-projects">
-            {quotationProjects.map((proj: any, index) => (
-              <ProjectCard
-                project={proj}
-                key={index}
-                onSuccess={() => fetchProjects()}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "15px",
+              marginBottom: collapsedQuotation ? "0px" : "20px",
+              cursor: "pointer",
+              userSelect: "none",
+            }}
+            onClick={() => setCollapsedQuotation((v) => !v)}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              style={{
+                transition: "transform 0.2s ease",
+                transform: collapsedQuotation
+                  ? "rotate(-90deg)"
+                  : "rotate(0deg)",
+                flexShrink: 0,
+              }}
+            >
+              <path
+                d="M3.5 5.25L7 8.75L10.5 5.25"
+                stroke="black"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-            ))}
+            </svg>
+
+            <h2 style={{ margin: 0 }}>QUOTATION</h2>
+
+            <div
+              style={{
+                backgroundColor: "black",
+                color: "white",
+                borderRadius: "50px",
+                padding: "3px 12px",
+                fontWeight: "600",
+                fontSize: "14px",
+              }}
+            >
+              {quotationProjects.length} Project
+              {quotationProjects.length !== 1 ? "s" : ""}
+            </div>
           </div>
+
+          {!collapsedQuotation && (
+            <div className="widget-grid active-projects">
+              {quotationProjects.map((proj: any, index) => (
+                <ProjectCard
+                  project={proj}
+                  key={index}
+                  onSuccess={() => fetchProjects()}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>

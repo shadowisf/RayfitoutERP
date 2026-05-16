@@ -105,7 +105,19 @@ export default function NewMrButton() {
     fetch("/api/mr")
       .then((res) => res.json())
       .then(function (data) {
-        const jos = data.filter((mr: any) => mr.type === "job");
+        const usedJoIds = new Set(
+          data
+            .filter(
+              (mr: any) => mr.type === "payment" && mr.payment_jo_reference_id,
+            )
+            .map((mr: any) => mr.payment_jo_reference_id),
+        );
+        const jos = data.filter(
+          (mr: any) =>
+            mr.type === "job" &&
+            mr.progress_id === 25 &&
+            !usedJoIds.has(mr.id),
+        );
         setJobOrders(jos);
       });
   }, []);
