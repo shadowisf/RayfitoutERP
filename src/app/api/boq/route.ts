@@ -416,8 +416,8 @@ export async function POST(req: Request) {
       const baseCatSet = new Set<string>(baseCombos.map((r: any) => r.category));
       const allKnownCats = new Set<string>(baseCatSet);
 
-      const uniqueSourceCats = [
-        ...new Set(lines.map((l: any) => l.category as string)),
+      const uniqueSourceCats: string[] = [
+        ...new Set<string>(lines.map((l: any) => l.category as string)),
       ];
 
       const catRenameMap = new Map<string, string>(); // original cat → final cat
