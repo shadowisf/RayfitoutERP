@@ -205,6 +205,308 @@ export async function POST(req: Request) {
       }
     }
 
+    if (body.action === "createBoqRevision") {
+      const safeAttachments = (val: any): string | null => {
+        if (val == null) return null;
+        if (typeof val === "string") return val || null;
+        try { return JSON.stringify(val) || null; } catch { return null; }
+      };
+
+      const origId = Number(body.revision_of);
+
+      // Determine the next revision number for this parent
+      const [revCount]: any = await db.query(
+        `SELECT COUNT(*) AS count FROM boq_headers WHERE revision_of = ?`,
+        [origId],
+      );
+      const revNumber = Number(revCount[0].count) + 1;
+
+      const [result] = await db.query<ResultSetHeader>(
+        `INSERT INTO boq_headers
+          (project_id, name, company_name, client_name, location, date, discount,
+           payment_terms, validity_terms, warranty, completion, exclusion,
+           terms_and_conditions, is_draft, is_primary, revision_of)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?)`,
+        [
+          Number(body.project_id),
+          body.name,
+          body.company_name,
+          body.client_name,
+          body.location,
+          body.date || null,
+          body.discount || 0,
+          body.payment_terms,
+          body.validity_terms,
+          body.warranty,
+          body.completion,
+          body.exclusion,
+          body.terms_and_conditions,
+          origId,
+        ],
+      );
+
+      const newBoqId = result.insertId;
+
+      // Copy all lines + location associations from the original BOQ
+      const [lines]: any = await db.query(
+        `SELECT * FROM boq_lines WHERE boq_id = ? ORDER BY id ASC`,
+        [origId],
+      );
+
+      for (const line of lines) {
+        const [lineResult] = await db.query<ResultSetHeader>(
+          `INSERT INTO boq_lines
+            (boq_id, item_name, category, sub_category, scope_of_work, quantity,
+             unit, rate_per_quantity, total_cost, item_description, attachments,
+             category_order, subcategory_order, item_order, dn_number_and_date, remarks)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            newBoqId,
+            line.item_name,
+            line.category,
+            line.sub_category,
+            line.scope_of_work,
+            line.quantity,
+            line.unit,
+            line.rate_per_quantity,
+            line.total_cost,
+            line.item_description,
+            safeAttachments(line.attachments),
+            line.category_order,
+            line.subcategory_order,
+            line.item_order,
+            line.dn_number_and_date,
+            line.remarks,
+          ],
+        );
+
+        const newLineId = lineResult.insertId;
+
+        // Copy location associations for this line
+        await db.query(
+          `INSERT INTO jt_boq_line_location (boq_line_id, location_id)
+           SELECT ?, location_id FROM jt_boq_line_location WHERE boq_line_id = ?`,
+          [newLineId, line.id],
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        id: newBoqId,
+        rev_number: revNumber,
+      });
+    }
+
+    if (body.action === "duplicateBoqHeader") {
+      // mysql2 auto-parses JSON columns → arrays. Passing an array as a `?` param
+      // expands it like IN (...); an empty array produces ,, → syntax error.
+      const safeAttachments = (val: any): string | null => {
+        if (val == null) return null;
+        if (typeof val === "string") return val || null;
+        try { return JSON.stringify(val) || null; } catch { return null; }
+      };
+
+      const origId = Number(body.id);
+
+      // 1. Copy header — name prefixed with "Copy of ", always draft, never primary,
+      //    same created_at so it sorts right after the original
+      const [headerResult] = await db.query<ResultSetHeader>(
+        `INSERT INTO boq_headers
+          (project_id, name, company_name, client_name, location, date, discount,
+           payment_terms, validity_terms, warranty, completion, exclusion,
+           terms_and_conditions, is_draft, is_primary, created_on)
+         SELECT project_id, CONCAT('Copy of ', name), company_name, client_name,
+                location, date, discount, payment_terms, validity_terms, warranty,
+                completion, exclusion, terms_and_conditions, 1, 0, created_on
+         FROM boq_headers WHERE id = ?`,
+        [origId],
+      );
+      const newBoqId = headerResult.insertId;
+
+      // 2. Copy all lines one-by-one so we can replicate location associations
+      const [lines]: any = await db.query(
+        `SELECT * FROM boq_lines WHERE boq_id = ? ORDER BY id ASC`,
+        [origId],
+      );
+
+      for (const line of lines) {
+        const [lineResult] = await db.query<ResultSetHeader>(
+          `INSERT INTO boq_lines
+            (boq_id, item_name, category, sub_category, scope_of_work, quantity,
+             unit, rate_per_quantity, total_cost, item_description, attachments,
+             category_order, subcategory_order, item_order, dn_number_and_date, remarks)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            newBoqId,
+            line.item_name,
+            line.category,
+            line.sub_category,
+            line.scope_of_work,
+            line.quantity,
+            line.unit,
+            line.rate_per_quantity,
+            line.total_cost,
+            line.item_description,
+            safeAttachments(line.attachments),
+            line.category_order,
+            line.subcategory_order,
+            line.item_order,
+            line.dn_number_and_date,
+            line.remarks,
+          ],
+        );
+
+        const newLineId = lineResult.insertId;
+
+        // 3. Copy location associations for this line
+        await db.query(
+          `INSERT INTO jt_boq_line_location (boq_line_id, location_id)
+           SELECT ?, location_id FROM jt_boq_line_location WHERE boq_line_id = ?`,
+          [newLineId, line.id],
+        );
+      }
+
+      return NextResponse.json({ success: true, id: newBoqId });
+    }
+
+    if (body.action === "mergeBoqHeaders") {
+      const baseId = Number(body.base_id);
+      const sourceId = Number(body.source_id);
+
+      // 1. Combine names: "Merged: {base} + {source}"
+      const [baseHeaders]: any = await db.query(
+        `SELECT name FROM boq_headers WHERE id = ?`, [baseId],
+      );
+      const [sourceHeaders]: any = await db.query(
+        `SELECT name FROM boq_headers WHERE id = ?`, [sourceId],
+      );
+      const baseName = baseHeaders[0]?.name ?? "";
+      const sourceName = sourceHeaders[0]?.name ?? "";
+      await db.query(
+        `UPDATE boq_headers SET name = ? WHERE id = ?`,
+        [`Merged: ${baseName} + ${sourceName}`, baseId],
+      );
+
+      // 2. Get existing (category, sub_category) combos in base with max orders
+      const [baseCombos]: any = await db.query(
+        `SELECT category, sub_category,
+                MAX(category_order)   AS cat_order,
+                MAX(subcategory_order) AS sub_order,
+                MAX(item_order)        AS max_item_order
+         FROM boq_lines WHERE boq_id = ?
+         GROUP BY category, sub_category`,
+        [baseId],
+      );
+
+      let maxBaseCatOrder = 0;
+      for (const row of baseCombos) {
+        maxBaseCatOrder = Math.max(maxBaseCatOrder, Number(row.cat_order));
+      }
+
+      // 3. Fetch source lines in display order
+      const [lines]: any = await db.query(
+        `SELECT * FROM boq_lines WHERE boq_id = ?
+         ORDER BY category_order ASC, subcategory_order ASC, item_order ASC`,
+        [sourceId],
+      );
+
+      // 4. Build category rename map for conflicts.
+      //    If a source category already exists in base → rename to "CAT (1)", "(2)", etc.
+      //    Renamed categories are always treated as brand-new groups (new cat order).
+      const baseCatSet = new Set<string>(baseCombos.map((r: any) => r.category));
+      const allKnownCats = new Set<string>(baseCatSet);
+
+      const uniqueSourceCats = [
+        ...new Set(lines.map((l: any) => l.category as string)),
+      ];
+
+      const catRenameMap = new Map<string, string>(); // original cat → final cat
+
+      for (const cat of uniqueSourceCats) {
+        if (allKnownCats.has(cat)) {
+          let suffix = 1;
+          while (allKnownCats.has(`${cat} (${suffix})`)) suffix++;
+          catRenameMap.set(cat, `${cat} (${suffix})`);
+          allKnownCats.add(`${cat} (${suffix})`);
+        } else {
+          allKnownCats.add(cat);
+        }
+      }
+
+      // 5. All source categories get fresh catOrders appended after base.
+      //    Subcategory/item orders are copied as-is (no conflicts since categories are distinct).
+      let nextCatOrder = maxBaseCatOrder + 1;
+      const newCatOrderMap = new Map<string, number>(); // finalCat → catOrder
+
+      // Helper: mysql2 auto-parses JSON columns into JS arrays/objects.
+      // Passing an array as a bare `?` param expands it like an IN list —
+      // an empty array produces `,,` which is a syntax error. Always re-serialise.
+      const safeAttachments = (val: any): string | null => {
+        if (val == null) return null;
+        if (typeof val === "string") return val || null;
+        try { return JSON.stringify(val) || null; } catch { return null; }
+      };
+
+      // 6. Insert lines with resolved category names and fresh orders
+      for (const line of lines) {
+        const finalCat = catRenameMap.get(line.category) ?? line.category;
+
+        // All source categories are appended after base — assign a new catOrder
+        // the first time we see each finalCat, then reuse it for subsequent lines.
+        if (!newCatOrderMap.has(finalCat)) {
+          newCatOrderMap.set(finalCat, nextCatOrder++);
+        }
+        const catOrder = newCatOrderMap.get(finalCat)!;
+
+        // subcategory_order and item_order: copy from source as-is.
+        // Since the category is either new or renamed, there are no clashes.
+        const subOrder = Number.isFinite(Number(line.subcategory_order))
+          ? Number(line.subcategory_order)
+          : 0;
+        const itemOrder = Number.isFinite(Number(line.item_order))
+          ? Number(line.item_order)
+          : 0;
+
+        const [lineResult] = await db.query<ResultSetHeader>(
+          `INSERT INTO boq_lines
+            (boq_id, item_name, category, sub_category, scope_of_work, quantity,
+             unit, rate_per_quantity, total_cost, item_description, attachments,
+             category_order, subcategory_order, item_order, dn_number_and_date, remarks)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            baseId,
+            line.item_name ?? null,
+            finalCat ?? null,
+            line.sub_category ?? null,
+            line.scope_of_work ?? null,
+            Number(line.quantity) || 0,
+            line.unit ?? null,
+            Number(line.rate_per_quantity) || 0,
+            Number(line.total_cost) || 0,
+            line.item_description ?? null,
+            safeAttachments(line.attachments),
+            catOrder,
+            subOrder,
+            itemOrder,
+            line.dn_number_and_date ?? null,
+            line.remarks ?? null,
+          ],
+        );
+
+        // Copy location associations
+        await db.query(
+          `INSERT INTO jt_boq_line_location (boq_line_id, location_id)
+           SELECT ?, location_id FROM jt_boq_line_location WHERE boq_line_id = ?`,
+          [lineResult.insertId, line.id],
+        );
+      }
+
+      // 7. Delete source BOQ
+      await db.query(`DELETE FROM boq_headers WHERE id = ?`, [sourceId]);
+
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "addLocation") {
       await db.query(
         `

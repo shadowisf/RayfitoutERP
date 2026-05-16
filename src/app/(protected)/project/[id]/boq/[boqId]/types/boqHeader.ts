@@ -28,4 +28,5 @@ export type BoqHeader = {
   project_currency: string;
   is_draft: boolean;
   is_primary: boolean;
+  revision_of: number | null;
 };

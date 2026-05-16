@@ -6,10 +6,10 @@ import Button from "@/app/components/Button";
 
 // Progression order: normal flow first, then rejected at the bottom
 const PROGRESSION_ORDER: Record<string, number> = {
-  "Draft": 1,
+  Draft: 1,
   "QS Review": 2,
   "Manager Approval": 3,
-  "Quotations": 4,
+  Quotations: 4,
   "QS Price Check": 5,
   "Manager Price Approval": 6,
   "LPO & Invoice": 7,
@@ -17,8 +17,8 @@ const PROGRESSION_ORDER: Record<string, number> = {
   "Awaiting Delivery": 9,
   "QC Check": 10,
   "Stock Entry": 11,
-  "Completed": 12,
-  "Segregated": 13,
+  Completed: 12,
+  Segregated: 13,
   // Rejected statuses at the bottom
   "Request Rejected": 100,
   "Price Approval Rejected": 101,
@@ -104,9 +104,8 @@ export default function MrStatusFilterButton({
         <FormPopUp
           header={"FILTER MATERIAL REQUESTS"}
           setIsOpen={setIsOpen}
-          addButtonLabel="APPLY FILTER"
+          addButtonLabel="CONFIRM"
           handleSubmit={handleApply}
-          style={{ minWidth: "500px" }}
           secondButton={
             <Button
               componentType={"button"}
@@ -115,7 +114,7 @@ export default function MrStatusFilterButton({
               textColor={"black"}
               onClick={handleReset}
             >
-              RESET FILTER
+              RESET
             </Button>
           }
         >

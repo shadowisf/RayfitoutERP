@@ -10,8 +10,6 @@ type props = {
 };
 
 export function SetBoqDraftButton({ boqHeader, onSuccess }: props) {
-  const pencilIcon = "/icons/pencil.svg";
-
   const handleClick = async () => {
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/boq`, {
       method: "PUT",
@@ -40,7 +38,6 @@ export function SetBoqDraftButton({ boqHeader, onSuccess }: props) {
       full
       style={{ justifyContent: "flex-start" }}
     >
-      <img src={pencilIcon} alt="pencil" />
       {boqHeader.is_draft ? "Set Active" : "Set Draft"}
     </Button>
   );

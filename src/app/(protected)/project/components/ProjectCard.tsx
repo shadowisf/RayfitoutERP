@@ -24,10 +24,13 @@ export default function ProjectCard({ project, onSuccess }: props) {
 
   const allocatedBudget = Number(project.allocated_budget) || 0;
 
-  const [isHovering, setIsHovering] = useState(false);
+  const [hoveredBar, setHoveredBar] = useState<"spent" | "committed" | null>(
+    null,
+  );
   const [boqs, setBoqs] = useState([]);
   const [projectValue, setProjectValue] = useState<number | null>(null);
   const [spendToDate, setSpendToDate] = useState<number | null>(null);
+  const [committedTotal, setCommittedTotal] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(
@@ -55,6 +58,7 @@ export default function ProjectCard({ project, onSuccess }: props) {
       .then((data) => {
         setProjectValue(Number(data.value) || 0);
         setSpendToDate(Number(data.spend_to_date) || 0);
+        setCommittedTotal(Number(data.committed_total) || 0);
       })
       .catch((err) => console.error("Error fetching project stats:", err));
   }, [project.id]);
@@ -142,8 +146,8 @@ export default function ProjectCard({ project, onSuccess }: props) {
             <h2>
               {project.currency}{" "}
               {allocatedBudget.toLocaleString("en-GB", {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
               })}
             </h2>
           </div>
@@ -154,153 +158,205 @@ export default function ProjectCard({ project, onSuccess }: props) {
             <div>
               <small>SPEND TO DATE</small>
               <h2>
-                {spendToDate === null ? "..." : `AED ${formatAED(spendToDate)}`}
+                {spendToDate === null
+                  ? "..."
+                  : `AED ${formatAED(spendToDate)}${committedTotal !== null && committedTotal > 0 ? ` (AED ${formatAED(committedTotal)})` : ""}`}
               </h2>
             </div>
             <br />
 
             <div>
               <small>PROGRESS</small>
-              <div style={{ marginTop: "3px", position: "relative" }}>
-                <div
-                  style={{
-                    width: "100%",
-                    height: "25px",
-                    backgroundColor: "rgba(238, 238, 238, 1)",
-                    borderRadius: "25px",
-                    overflow: "hidden",
-                    position: "relative",
-                  }}
-                  onMouseEnter={() => setIsHovering(true)}
-                  onMouseLeave={() => setIsHovering(false)}
-                >
-                  <div
-                    style={{
-                      width: `${progressPercentage}%`,
-                      height: "100%",
-                      backgroundColor: progressColor,
-                      borderRadius: "25px",
-                      position: "relative",
-                    }}
-                  >
-                    {progressPercentage > 10 && (
+              {(() => {
+                const committedPct =
+                  allocatedBudget > 0
+                    ? Math.min(
+                        ((committedTotal ?? 0) / allocatedBudget) * 100,
+                        100,
+                      )
+                    : 0;
+                const tooltipStyle: React.CSSProperties = {
+                  position: "absolute",
+                  top: "-44px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  backgroundColor: "rgba(0,0,0,0.88)",
+                  color: "white",
+                  padding: "6px 12px",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  zIndex: 20,
+                  pointerEvents: "none",
+                };
+                const tooltipArrow: React.CSSProperties = {
+                  position: "absolute",
+                  bottom: "-5px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 0,
+                  height: 0,
+                  borderLeft: "5px solid transparent",
+                  borderRight: "5px solid transparent",
+                  borderTop: "5px solid rgba(0,0,0,0.88)",
+                };
+                return (
+                  <div style={{ marginTop: "3px", position: "relative" }}>
+                    {/* Single bar track */}
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "25px",
+                        backgroundColor: "rgba(238,238,238,1)",
+                        borderRadius: "25px",
+                        overflow: "hidden",
+                        position: "relative",
+                      }}
+                    >
+                      {/* COMMITTED layer (bottom, darker green, wider) */}
                       <div
                         style={{
                           position: "absolute",
-                          top: "50%",
-                          right: "10px",
-                          transform: "translateY(-50%)",
-                          fontWeight: "bold",
-                          color: progressPercentage >= 80 ? "black" : "white",
-                          whiteSpace: "nowrap",
+                          left: 0,
+                          top: 0,
+                          width: `${committedPct}%`,
+                          height: "100%",
+                          backgroundColor: "rgb(23, 185, 114)",
+                          borderRadius: "25px",
+                          transition: "width 0.3s ease",
+                        }}
+                      />
+                      {/* SPENT layer (top, lighter green, narrower) */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          width: `${progressPercentage}%`,
+                          height: "100%",
+                          backgroundColor: progressColor,
+                          borderRadius: "25px",
+                          transition: "width 0.3s ease",
+                        }}
+                      />
+                      {/* Invisible hover zones */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          width: `${progressPercentage}%`,
+                          height: "100%",
+                          zIndex: 10,
+                          cursor: "pointer",
+                        }}
+                        onMouseEnter={() => setHoveredBar("spent")}
+                        onMouseLeave={() => setHoveredBar(null)}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: `${progressPercentage}%`,
+                          top: 0,
+                          width: `${Math.max(committedPct - progressPercentage, 0)}%`,
+                          height: "100%",
+                          zIndex: 10,
+                          cursor: "pointer",
+                        }}
+                        onMouseEnter={() => setHoveredBar("committed")}
+                        onMouseLeave={() => setHoveredBar(null)}
+                      />
+                    </div>
+
+                    {/* Tooltips */}
+                    {hoveredBar === "spent" && (
+                      <div
+                        style={{
+                          ...tooltipStyle,
+                          left: `${progressPercentage / 2}%`,
                         }}
                       >
-                        {progressPercentage.toFixed(0)}%
+                        SPENT: AED {formatAED(spendToDate ?? 0)}
+                        <div style={tooltipArrow} />
                       </div>
                     )}
-                  </div>
-                  {progressPercentage <= 10 && (
+                    {hoveredBar === "committed" && (
+                      <div
+                        style={{
+                          ...tooltipStyle,
+                          left: `${progressPercentage + (committedPct - progressPercentage) / 2}%`,
+                        }}
+                      >
+                        COMMITTED: AED {formatAED(committedTotal ?? 0)}
+                        <div style={tooltipArrow} />
+                      </div>
+                    )}
+
+                    {/* Legend */}
                     <div
                       style={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        fontWeight: "bold",
-                        color: "black",
-                        whiteSpace: "nowrap",
+                        display: "flex",
+                        gap: "20px",
+                        marginTop: "5px",
+                        alignItems: "center",
                       }}
                     >
-                      {progressPercentage.toFixed(0)}%
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "12px",
+                            height: "12px",
+                            backgroundColor: progressColor,
+                            borderRadius: "50%",
+                          }}
+                        />
+                        <small style={{ color: "black" }}>SPENT</small>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "12px",
+                            height: "12px",
+                            backgroundColor: "rgb(23, 185, 114)",
+                            borderRadius: "50%",
+                          }}
+                        />
+                        <small style={{ color: "black" }}>COMMITTED</small>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "12px",
+                            height: "12px",
+                            backgroundColor: "rgba(238,238,238,1)",
+                            borderRadius: "50%",
+                          }}
+                        />
+                        <small style={{ color: "black" }}>BUDGET</small>
+                      </div>
                     </div>
-                  )}
-                </div>
-
-                {/* Tooltip popup */}
-                {isHovering && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "-40px",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      backgroundColor: "rgba(0, 0, 0, 0.9)",
-                      color: "white",
-                      padding: "8px 16px",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      whiteSpace: "nowrap",
-                      zIndex: 10,
-                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                    }}
-                  >
-                    AED{" "}
-                    {(spendToDate ?? 0).toLocaleString("en-US", {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    })}
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: "-6px",
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        width: 0,
-                        height: 0,
-                        borderLeft: "6px solid transparent",
-                        borderRight: "6px solid transparent",
-                        borderTop: "6px solid rgba(0, 0, 0, 0.9)",
-                      }}
-                    />
                   </div>
-                )}
-
-                {/* Legend */}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "20px",
-                    marginTop: "5px",
-                    alignItems: "center",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "12px",
-                        height: "12px",
-                        backgroundColor: progressColor,
-                        borderRadius: "50%",
-                      }}
-                    />
-                    <small style={{ color: "black" }}>SPENT</small>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "12px",
-                        height: "12px",
-                        backgroundColor: "rgba(238, 238, 238, 1)",
-                        borderRadius: "50%",
-                      }}
-                    />
-                    <small style={{ color: "black" }}>BUDGET</small>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           </>
         )}
