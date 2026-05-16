@@ -178,13 +178,20 @@ export default function FinanceDetailClient({
 
   // ── Calculations ─────────────────────────────────────────────────────────
   const lpoValue = Number(selectedLpo?.total ?? 0);
-  const totalPaid = (selectedLpo?.payments ?? []).reduce(
-    (s, p) => s + Number(p.amount),
-    0,
-  );
-  const balance = lpoValue - totalPaid;
-  const paidPct =
-    lpoValue > 0 ? Math.min((totalPaid / lpoValue) * 100, 100) : 0;
+  const isApproved =
+    (selectedLpo?.payment_status ?? "").toLowerCase() === "approved";
+  const totalPaid = isApproved
+    ? lpoValue
+    : (selectedLpo?.payments ?? []).reduce(
+        (s, p) => s + Number(p.amount),
+        0,
+      );
+  const balance = isApproved ? 0 : lpoValue - totalPaid;
+  const paidPct = isApproved
+    ? 100
+    : lpoValue > 0
+      ? Math.min((totalPaid / lpoValue) * 100, 100)
+      : 0;
 
   // ── Modal helpers ─────────────────────────────────────────────────────────
   const openRecord = () => setIsRecordOpen(true);
@@ -643,74 +650,118 @@ export default function FinanceDetailClient({
             <br />
 
             {/* PREVIOUSLY PAID */}
-            {selectedLpo && (selectedLpo.payments ?? []).length > 0 && (
-              <>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "8px",
-                  }}
-                >
-                  <span style={{ fontWeight: 600 }}>PREVIOUSLY PAID</span>
-                  <span
+            {selectedLpo &&
+              (isApproved || (selectedLpo.payments ?? []).length > 0) && (
+                <>
+                  <div
                     style={{
-                      fontWeight: "600",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "8px",
                     }}
                   >
-                    - {formatPriceAED(totalPaid)}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "5px",
-                  }}
-                >
-                  {selectedLpo.payments.map((p) => (
-                    <div
-                      key={p.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "5px",
-                        }}
-                      >
-                        <span>PAY-{String(p.id).padStart(4, "0")}</span>
-                        {p.receipt_file && (
-                          <a
-                            href={p.receipt_file}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                    <span style={{ fontWeight: 600 }}>PREVIOUSLY PAID</span>
+                    <span style={{ fontWeight: "600" }}>
+                      - {formatPriceAED(lpoValue)}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "5px",
+                    }}
+                  >
+                    {isApproved ? (
+                      // Approved LPO — single synthetic row linked to payment_file
+                      (() => {
+                        const paymentUrl =
+                          parseFiles(selectedLpo.payment_file)[0] ?? null;
+                        return (
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
                           >
-                            <img src={externalLinkIcon} alt="receipt" />
-                          </a>
-                        )}
-                      </div>
-                      <span
-                        style={{
-                          fontWeight: 600,
-                          color: "rgba(248,77,77,1)",
-                        }}
-                      >
-                        - {formatPriceAED(p.amount)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "5px",
+                              }}
+                            >
+                              <span>
+                                PAY-{String(selectedLpo.id).padStart(4, "0")}
+                              </span>
+                              {paymentUrl && (
+                                <a
+                                  href={paymentUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <img src={externalLinkIcon} alt="payment" />
+                                </a>
+                              )}
+                            </div>
+                            <span
+                              style={{
+                                fontWeight: 600,
+                                color: "rgba(248,77,77,1)",
+                              }}
+                            >
+                              - {formatPriceAED(lpoValue)}
+                            </span>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      // Normal LPOs — real payment rows
+                      selectedLpo.payments.map((p) => (
+                        <div
+                          key={p.id}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "5px",
+                            }}
+                          >
+                            <span>PAY-{String(p.id).padStart(4, "0")}</span>
+                            {p.receipt_file && (
+                              <a
+                                href={p.receipt_file}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <img src={externalLinkIcon} alt="receipt" />
+                              </a>
+                            )}
+                          </div>
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              color: "rgba(248,77,77,1)",
+                            }}
+                          >
+                            - {formatPriceAED(p.amount)}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
 
-                <br />
-              </>
-            )}
+                  <br />
+                </>
+              )}
 
             {/* BALANCE */}
             <div

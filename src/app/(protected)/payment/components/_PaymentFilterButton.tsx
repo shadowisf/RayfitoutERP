@@ -399,8 +399,8 @@ export default function PaymentFilterButton({
               </div>
             )}
 
-            {/* SUBCONTRACTOR */}
-            <div style={{ marginBottom: "30px" }}>
+            {/* SUBCONTRACTOR — payment-requests only */}
+            {!isMR && <div style={{ marginBottom: "30px" }}>
               <h3
                 style={{
                   marginBottom: "15px",
@@ -502,7 +502,7 @@ export default function PaymentFilterButton({
                   )}
                 </div>
               </div>
-            </div>
+            </div>}
 
             {/* PROJECT */}
             <div>

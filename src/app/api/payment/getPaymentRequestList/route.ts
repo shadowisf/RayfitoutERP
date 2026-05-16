@@ -9,7 +9,7 @@ export async function GET() {
         mh.progress_id,
         mh.requested_by,
         mh.date_requested,
-        mh.created_at,
+        mh.date_requested AS created_at,
         mh.payment_jo_reference_id,
         vw.project_name,
         vw.department_name,
@@ -39,7 +39,10 @@ export async function GET() {
     `);
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {
-    console.error("getPaymentRequestList error:", err.sqlMessage || err.message);
+    console.error(
+      "getPaymentRequestList error:",
+      err.sqlMessage || err.message,
+    );
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
