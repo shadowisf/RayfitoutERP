@@ -44,19 +44,31 @@ export function EditProjectButton({ project, onSuccess }: props) {
       setName(project.name || "");
       setPropertyTypeID(project.property_type_id || 0);
       setID(project.id || "");
-      setSize(project.size || "");
+      setSize(
+        project.size
+          ? Number(String(project.size).replace(/,/g, "")).toLocaleString(
+              "en-US",
+            )
+          : "",
+      );
       setStatus(project.status || "");
       setScopeIDs(
         project.scope_ids
           ? String(project.scope_ids)
               .split(",")
               .map((id: any) => Number(id.trim()))
-          : []
+          : [],
       );
       setTypeOfWork(project.type_of_work || "");
       setQuotedBudget(project.quoted_budget || "");
       setCurrency(project.currency || "");
-      setAllocatedBudget(project.allocated_budget || "");
+      setAllocatedBudget(
+        project.allocated_budget
+          ? Number(
+              String(project.allocated_budget).replace(/,/g, ""),
+            ).toLocaleString("en-US")
+          : "",
+      );
       setStartDate(project.start_date || "");
       setEndDate(project.end_date || "");
       setType(project.type || "");
@@ -65,7 +77,7 @@ export function EditProjectButton({ project, onSuccess }: props) {
 
   useEffect(() => {
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getPropertyTypeValues`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getPropertyTypeValues`,
     )
       .then((res) => res.json())
       .then((data: []) => setPropertyTypes(data))
@@ -101,7 +113,7 @@ export function EditProjectButton({ project, onSuccess }: props) {
           start_date: startDate,
           end_date: endDate,
         }),
-      }
+      },
     );
 
     if (res.ok) {
@@ -134,6 +146,7 @@ export function EditProjectButton({ project, onSuccess }: props) {
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
+          style={{ width: "50dvw" }}
         >
           {/* 1st row */}
           <div className="input-row three-col">
@@ -173,75 +186,55 @@ export function EditProjectButton({ project, onSuccess }: props) {
 
           {/* 2nd row */}
           <div className="input-row">
-            <div className="input-item">
-              <label>ID</label>
-              <div className="input-prefix left">
-                <span>RAY-</span>
-                <input
-                  style={{ padding: "10px 42px" }}
-                  type="text"
-                  value={id}
-                  onChange={(e) => {
-                    const val = e.target.value;
+            <InputItem
+              label={"PROJECT NUMBER"}
+              value={id}
+              type={"text prefix"}
+              postfixText="RAY-"
+              onChange={(e) => {
+                const val = e.target.value;
 
-                    if (val === "" || (/^\d+$/.test(val) && val.length <= 5)) {
-                      setID(val === "" ? "" : Number(val));
-                    }
-                  }}
-                  placeholder="00000"
-                  required
-                  disabled
-                />
-              </div>
-            </div>
+                if (val === "" || (/^\d+$/.test(val) && val.length <= 5)) {
+                  setID(val === "" ? "" : Number(val));
+                }
+              }}
+              placeholder="00000"
+              required
+            />
 
-            <div className="input-item">
-              <label>SIZE</label>
-              <div className="input-prefix right">
-                <span>SQFT</span>
-                <input
-                  style={{ paddingRight: "50px" }}
-                  type="text"
-                  value={size}
-                  /* onChange={(e) => {
-                          const val = e.target.value;
-      
-                          if (val === "" || /^\d+$/.test(val)) {
-                            setSize(val === "" ? "" : Number(val));
-                          }
-                        }} */
-                  onChange={(e) => {
-                    let val = e.target.value;
-                    val = val.replace(/,/g, "");
+            <InputItem
+              label={"SIZE"}
+              value={size}
+              type={"text postfix"}
+              postfixText="SQFT"
+              onChange={(e) => {
+                let val = e.target.value;
+                val = val.replace(/,/g, "");
 
-                    if (val === "") {
-                      setSize("");
-                      return;
-                    }
+                if (val === "") {
+                  setSize("");
+                  return;
+                }
 
-                    if (!/^\d*\.?\d*$/.test(val)) {
-                      return;
-                    }
+                if (!/^\d*\.?\d*$/.test(val)) {
+                  return;
+                }
 
-                    const parts = val.split(".");
-                    const integer = parts[0];
-                    const decimal = parts[1];
+                const parts = val.split(".");
+                const integer = parts[0];
+                const decimal = parts[1];
 
-                    const formattedInt =
-                      Number(integer).toLocaleString("en-US");
+                const formattedInt = Number(integer).toLocaleString("en-US");
 
-                    const finalValue =
-                      decimal !== undefined
-                        ? `${formattedInt}.${decimal}`
-                        : formattedInt;
+                const finalValue =
+                  decimal !== undefined
+                    ? `${formattedInt}.${decimal}`
+                    : formattedInt;
 
-                    setSize(finalValue);
-                  }}
-                  placeholder="ENTER SIZE"
-                  required
-                />
-              </div>
-            </div>
+                setSize(finalValue);
+              }}
+              required
+            />
           </div>
 
           {/* 3rd row */}
@@ -252,7 +245,7 @@ export function EditProjectButton({ project, onSuccess }: props) {
               type={"select"}
               placeholder={"SELECT STATUS"}
               onChange={(e) => setStatus(e.target.value)}
-              selectOptions={["In progress", "Complete", "Mobilization"]}
+              selectOptions={["Ongoing", "Complete", "Mobilization"]}
               required
             />
 
@@ -276,7 +269,6 @@ export function EditProjectButton({ project, onSuccess }: props) {
               selectedValues={scopeIDs}
               onChange={setScopeIDs}
               placeholder="SELECT SCOPE"
-              style={{ maxWidth: "260px" }}
               required
             />
 
@@ -293,50 +285,40 @@ export function EditProjectButton({ project, onSuccess }: props) {
 
           {/* 4th row */}
           <div className="input-row">
-            <div className="input-item">
-              <label className="custom">
-                <span>QUOTED PRICE</span>
-                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                  (OPTIONAL)
-                </small>
-              </label>
-              <div className="input-prefix right">
-                <span>{currency}</span>
-                <input
-                  style={{ paddingRight: "50px" }}
-                  type="text"
-                  value={quotedBudget}
-                  onChange={(e) => {
-                    let val = e.target.value;
-                    val = val.replace(/,/g, "");
+            <InputItem
+              label={"BUDGET"}
+              value={allocatedBudget}
+              type={"text postfix"}
+              onChange={(e) => {
+                let val = e.target.value;
 
-                    if (val === "") {
-                      setQuotedBudget("");
-                      return;
-                    }
+                val = val.replace(/,/g, "");
 
-                    if (!/^\d*\.?\d*$/.test(val)) {
-                      return;
-                    }
+                if (val === "") {
+                  setAllocatedBudget("");
+                  return;
+                }
 
-                    const parts = val.split(".");
-                    const integer = parts[0];
-                    const decimal = parts[1];
+                if (!/^\d*\.?\d*$/.test(val)) {
+                  return;
+                }
 
-                    const formattedInt =
-                      Number(integer).toLocaleString("en-US");
+                const parts = val.split(".");
+                const integer = parts[0];
+                const decimal = parts[1];
 
-                    const finalValue =
-                      decimal !== undefined
-                        ? `${formattedInt}.${decimal}`
-                        : formattedInt;
+                const formattedInt = Number(integer).toLocaleString("en-US");
 
-                    setQuotedBudget(finalValue);
-                  }}
-                  placeholder="ENTER QUOTED BUDGET"
-                />
-              </div>
-            </div>
+                const finalValue =
+                  decimal !== undefined
+                    ? `${formattedInt}.${decimal}`
+                    : formattedInt;
+
+                setAllocatedBudget(finalValue);
+              }}
+              postfixText={currency}
+              required
+            />
 
             <InputItem
               label={"CURRENCY"}
@@ -361,54 +343,6 @@ export function EditProjectButton({ project, onSuccess }: props) {
                 "CNY",
               ]}
             />
-          </div>
-
-          {/* 5th row */}
-          <div className="input-row full">
-            <div className="input-item">
-              <label className="custom">
-                <span>ALLOCATED BUDGET</span>
-                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                  (OPTIONAL)
-                </small>
-              </label>
-              <div className="input-prefix right">
-                <span>{currency}</span>
-                <input
-                  style={{ paddingRight: "50px" }}
-                  type="text"
-                  value={allocatedBudget}
-                  onChange={(e) => {
-                    let val = e.target.value;
-                    val = val.replace(/,/g, "");
-
-                    if (val === "") {
-                      setAllocatedBudget("");
-                      return;
-                    }
-
-                    if (!/^\d*\.?\d*$/.test(val)) {
-                      return;
-                    }
-
-                    const parts = val.split(".");
-                    const integer = parts[0];
-                    const decimal = parts[1];
-
-                    const formattedInt =
-                      Number(integer).toLocaleString("en-US");
-
-                    const finalValue =
-                      decimal !== undefined
-                        ? `${formattedInt}.${decimal}`
-                        : formattedInt;
-
-                    setAllocatedBudget(finalValue);
-                  }}
-                  placeholder="ENTER ALLOCATED BUDGET"
-                />
-              </div>
-            </div>
           </div>
 
           {/* 6th row */}

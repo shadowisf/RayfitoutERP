@@ -135,7 +135,7 @@ export default function InputItem({
             <span>{label}</span>{" "}
             {!required && (
               <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                (OPTIONAL)
+                OPTIONAL
               </small>
             )}
           </label>
@@ -183,7 +183,7 @@ export default function InputItem({
               </span>
               {!required && !noOptionalLabel && (
                 <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                  (OPTIONAL)
+                  OPTIONAL
                 </small>
               )}
             </label>
@@ -224,7 +224,7 @@ export default function InputItem({
             <span>{label}</span>{" "}
             {!required && !noOptionalLabel && (
               <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                (OPTIONAL)
+                OPTIONAL
               </small>
             )}
           </label>
@@ -270,7 +270,7 @@ export default function InputItem({
             <span>{label}</span>{" "}
             {!required && !noOptionalLabel && (
               <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                (OPTIONAL)
+                OPTIONAL
               </small>
             )}
           </label>
@@ -299,7 +299,7 @@ export default function InputItem({
             <span>{label}</span>{" "}
             {!required && (
               <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                (OPTIONAL)
+                OPTIONAL
               </small>
             )}
           </label>
@@ -323,7 +323,7 @@ export default function InputItem({
             <span>{label}</span>{" "}
             {!required && (
               <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                (OPTIONAL)
+                OPTIONAL
               </small>
             )}
           </label>
@@ -358,7 +358,7 @@ export default function InputItem({
             </span>{" "}
             {!required && (
               <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                (OPTIONAL)
+                OPTIONAL
               </small>
             )}
           </label>
@@ -380,7 +380,7 @@ export default function InputItem({
             <span>{label}</span>{" "}
             {!required && (
               <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                (OPTIONAL)
+                OPTIONAL
               </small>
             )}
           </label>

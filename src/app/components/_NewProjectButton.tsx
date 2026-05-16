@@ -117,11 +117,12 @@ export default function NewProjectButton() {
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
+          style={{ width: "50dvw" }}
         >
           {/* 1st row */}
           <div className="input-row three-col">
             <InputItem
-              label={"NAME"}
+              label={"PROJECT NAME"}
               value={name}
               type={"text"}
               placeholder={"ENTER NAME"}
@@ -156,30 +157,21 @@ export default function NewProjectButton() {
 
           {/* 2nd row */}
           <div className="input-row">
-            <div className="input-item">
-              <label>ID</label>
-              <div className="input-prefix left">
-                <span>RAY-</span>
-                <input
-                  style={{
-                    padding: "7px 42px",
-                    width: "100%",
-                    borderRadius: "5px",
-                  }}
-                  type="text"
-                  value={id}
-                  onChange={(e) => {
-                    const val = e.target.value;
+            <InputItem
+              label={"PROJECT NUMBER"}
+              value={id}
+              type={"text prefix"}
+              onChange={(e) => {
+                const val = e.target.value;
 
-                    if (val === "" || (/^\d+$/.test(val) && val.length <= 5)) {
-                      setID(val === "" ? "" : Number(val));
-                    }
-                  }}
-                  placeholder="00000"
-                  required
-                />
-              </div>
-            </div>
+                if (val === "" || (/^\d+$/.test(val) && val.length <= 5)) {
+                  setID(val === "" ? "" : Number(val));
+                }
+              }}
+              placeholder="00000"
+              required
+              postfixText="RAY-"
+            />
 
             <div className="input-item">
               <label>SIZE</label>
@@ -238,7 +230,7 @@ export default function NewProjectButton() {
               type={"select"}
               placeholder={"SELECT STATUS"}
               onChange={(e) => setStatus(e.target.value)}
-              selectOptions={["In progress", "Complete", "Mobilization"]}
+              selectOptions={["Ongoing", "Complete", "Mobilization"]}
               required
             />
 
@@ -262,7 +254,6 @@ export default function NewProjectButton() {
               selectedValues={scopeIDs}
               onChange={setScopeIDs}
               placeholder="SELECT SCOPE"
-              style={{ maxWidth: "260px" }}
               required
             />
 
@@ -278,9 +269,9 @@ export default function NewProjectButton() {
           </div>
 
           {/* 4th row */}
-          <div className="input-row">
+          {/* <div className="input-row">
             <InputItem
-              label={"QUOTED PRICE"}
+              label={"PROJECT VALUE"}
               value={quotedBudget}
               type={"text postfix"}
               onChange={(e) => {
@@ -306,7 +297,7 @@ export default function NewProjectButton() {
               postfixText={currency}
             />
 
-            {/* <div className="input-item">
+            <div className="input-item">
               <label className="custom">
                 <span>QUOTED PRICE</span>
                 <small style={{ fontStyle: "italic", fontWeight: "100" }}>
@@ -350,7 +341,7 @@ export default function NewProjectButton() {
                   placeholder="ENTER QUOTED BUDGET"
                 />
               </div>
-            </div> */}
+            </div>
 
             <InputItem
               label={"CURRENCY"}
@@ -375,10 +366,10 @@ export default function NewProjectButton() {
                 "CNY",
               ]}
             />
-          </div>
+          </div> */}
 
           {/* 5th row */}
-          <div className="input-row full">
+          <div className="input-row">
             {/* <div className="input-item">
               <label className="custom">
                 <span>ALLOCATED BUDGET</span>
@@ -425,30 +416,62 @@ export default function NewProjectButton() {
             </div> */}
 
             <InputItem
-              label={"ALLOCATED BUDGET"}
+              label={"BUDGET"}
               value={allocatedBudget}
               type={"text postfix"}
               onChange={(e) => {
                 let val = e.target.value;
 
-                // Remove any commas
                 val = val.replace(/,/g, "");
 
-                // Clear input if empty
                 if (val === "") {
                   setAllocatedBudget("");
                   return;
                 }
 
-                // Allow only numbers and a single decimal point
                 if (!/^\d*\.?\d*$/.test(val)) {
                   return;
                 }
 
-                // Set the value as-is (with decimal if present)
-                setAllocatedBudget(val);
+                const parts = val.split(".");
+                const integer = parts[0];
+                const decimal = parts[1];
+
+                const formattedInt = Number(integer).toLocaleString("en-US");
+
+                const finalValue =
+                  decimal !== undefined
+                    ? `${formattedInt}.${decimal}`
+                    : formattedInt;
+
+                setAllocatedBudget(finalValue);
               }}
               postfixText={currency}
+              required
+            />
+
+            <InputItem
+              label={"CURRENCY"}
+              value={currency}
+              type={"select"}
+              placeholder={"SELECT CURRENCY"}
+              required
+              onChange={(e) => {
+                setCurrency(e.target.value);
+              }}
+              selectOptions={[
+                "AED",
+                "USD",
+                "EUR",
+                "GBP",
+                "SAR",
+                "KES",
+                "JPY",
+                "CAD",
+                "CHF",
+                "AUD",
+                "CNY",
+              ]}
             />
           </div>
 

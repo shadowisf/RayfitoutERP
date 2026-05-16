@@ -32,6 +32,7 @@ type Props = {
   currentFilters: PaymentFilters;
   dateRange: DateRange;
   onDateRangeChange: (range: DateRange) => void;
+  tab: "material-requests" | "payment-requests";
 };
 
 const PAYMENT_TYPE_OPTIONS = ["Cash", "Credit", "Marketplace/Online"];
@@ -45,7 +46,9 @@ export default function PaymentFilterButton({
   currentFilters,
   dateRange,
   onDateRangeChange,
+  tab,
 }: Props) {
+  const isMR = tab === "material-requests";
   const searchIcon = "/icons/search.svg";
   const filterIcon = "/icons/filter.svg";
 
@@ -197,7 +200,7 @@ export default function PaymentFilterButton({
               </Button>
             }
           >
-            {/* DUE DATE */}
+            {/* CREATION DATE */}
             <div style={{ marginBottom: "30px" }}>
               <h3
                 style={{
@@ -206,7 +209,7 @@ export default function PaymentFilterButton({
                   fontWeight: 600,
                 }}
               >
-                DUE DATE
+                CREATION DATE
               </h3>
               <DateRangeButton
                 value={dateRange}
@@ -215,41 +218,43 @@ export default function PaymentFilterButton({
               />
             </div>
 
-            {/* PAYMENT TYPE */}
-            <div style={{ marginBottom: "30px" }}>
-              <h3
-                style={{
-                  marginBottom: "15px",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                }}
-              >
-                PAYMENT TYPE
-              </h3>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-                {PAYMENT_TYPE_OPTIONS.map((type) => (
-                  <label
-                    key={type}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      className="filter-checkbox"
-                      checked={selectedPaymentTypes.includes(type)}
-                      onChange={(e) =>
-                        handlePaymentTypeChange(type, e.target.checked)
-                      }
-                    />
-                    <h4>{type}</h4>
-                  </label>
-                ))}
+            {/* PAYMENT TYPE — material-requests only */}
+            {isMR && (
+              <div style={{ marginBottom: "30px" }}>
+                <h3
+                  style={{
+                    marginBottom: "15px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                  }}
+                >
+                  PAYMENT TYPE
+                </h3>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+                  {PAYMENT_TYPE_OPTIONS.map((type) => (
+                    <label
+                      key={type}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="filter-checkbox"
+                        checked={selectedPaymentTypes.includes(type)}
+                        onChange={(e) =>
+                          handlePaymentTypeChange(type, e.target.checked)
+                        }
+                      />
+                      <h4>{type}</h4>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* STATUS */}
             <div style={{ marginBottom: "30px" }}>
@@ -287,108 +292,112 @@ export default function PaymentFilterButton({
               </div>
             </div>
 
-            {/* VENDOR */}
-            <div style={{ marginBottom: "30px" }}>
-              <h3
-                style={{
-                  marginBottom: "15px",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                }}
-              >
-                VENDOR
-              </h3>
-              <div
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  padding: "10px",
-                }}
-              >
-                <div style={{ position: "relative", marginBottom: "15px" }}>
-                  <input
-                    type="text"
-                    placeholder="Search"
-                    value={vendorSearch}
-                    onChange={(e) => setVendorSearch(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 40px 10px 15px",
-                      borderRadius: "8px",
-                      border: "1px solid rgba(223, 223, 223, 1)",
-                      fontSize: "14px",
-                      backgroundColor: "rgba(245, 245, 245, 1)",
-                    }}
-                  />
-                  <img
-                    src={searchIcon}
-                    alt="search"
-                    style={{
-                      position: "absolute",
-                      right: "15px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      width: "16px",
-                      height: "16px",
-                      opacity: 0.5,
-                    }}
-                  />
-                </div>
-                <div style={{ marginBottom: "10px" }}>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      cursor: "pointer",
-                    }}
-                  >
+            {/* VENDOR — material-requests only */}
+            {isMR && (
+              <div style={{ marginBottom: "30px" }}>
+                <h3
+                  style={{
+                    marginBottom: "15px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                  }}
+                >
+                  VENDOR
+                </h3>
+                <div
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    padding: "10px",
+                  }}
+                >
+                  <div style={{ position: "relative", marginBottom: "15px" }}>
                     <input
-                      type="checkbox"
-                      className="filter-checkbox"
-                      checked={isAllVendorsSelected}
-                      onChange={(e) => handleSelectAllVendors(e.target.checked)}
-                    />
-                    <h4>Select All</h4>
-                  </label>
-                </div>
-                <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-                  {filteredVendors.map((vendor) => (
-                    <div key={vendor} style={{ marginBottom: "10px" }}>
-                      <label
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          className="filter-checkbox"
-                          checked={selectedVendors.includes(vendor)}
-                          onChange={(e) =>
-                            handleVendorChange(vendor, e.target.checked)
-                          }
-                        />
-                        <h4>{vendor}</h4>
-                      </label>
-                    </div>
-                  ))}
-                  {filteredVendors.length === 0 && (
-                    <div
+                      type="text"
+                      placeholder="Search"
+                      value={vendorSearch}
+                      onChange={(e) => setVendorSearch(e.target.value)}
                       style={{
-                        textAlign: "center",
-                        padding: "20px",
-                        color: "#888",
+                        width: "100%",
+                        padding: "10px 40px 10px 15px",
+                        borderRadius: "8px",
+                        border: "1px solid rgba(223, 223, 223, 1)",
+                        fontSize: "14px",
+                        backgroundColor: "rgba(245, 245, 245, 1)",
+                      }}
+                    />
+                    <img
+                      src={searchIcon}
+                      alt="search"
+                      style={{
+                        position: "absolute",
+                        right: "15px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        width: "16px",
+                        height: "16px",
+                        opacity: 0.5,
+                      }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: "10px" }}>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        cursor: "pointer",
                       }}
                     >
-                      No vendors found
-                    </div>
-                  )}
+                      <input
+                        type="checkbox"
+                        className="filter-checkbox"
+                        checked={isAllVendorsSelected}
+                        onChange={(e) =>
+                          handleSelectAllVendors(e.target.checked)
+                        }
+                      />
+                      <h4>Select All</h4>
+                    </label>
+                  </div>
+                  <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                    {filteredVendors.map((vendor) => (
+                      <div key={vendor} style={{ marginBottom: "10px" }}>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            className="filter-checkbox"
+                            checked={selectedVendors.includes(vendor)}
+                            onChange={(e) =>
+                              handleVendorChange(vendor, e.target.checked)
+                            }
+                          />
+                          <h4>{vendor}</h4>
+                        </label>
+                      </div>
+                    ))}
+                    {filteredVendors.length === 0 && (
+                      <div
+                        style={{
+                          textAlign: "center",
+                          padding: "20px",
+                          color: "#888",
+                        }}
+                      >
+                        No vendors found
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* SUBCONTRACTOR */}
             <div style={{ marginBottom: "30px" }}>

@@ -118,7 +118,12 @@ export default function FormPopUp({
           <form
             ref={formRef}
             onSubmit={onSubmit}
-            style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
+            }}
           >
             <fieldset
               disabled={isLoading}
@@ -186,7 +191,14 @@ export default function FormPopUp({
             </fieldset>
           </form>
         ) : (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
+            }}
+          >
             <div className="form-content">{children}</div>
 
             {addButtonLabel && (

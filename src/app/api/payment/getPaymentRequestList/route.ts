@@ -9,6 +9,7 @@ export async function GET() {
         mh.progress_id,
         mh.requested_by,
         mh.date_requested,
+        mh.created_at,
         mh.payment_jo_reference_id,
         vw.project_name,
         vw.department_name,

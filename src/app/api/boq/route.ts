@@ -356,6 +356,27 @@ export async function PUT(req: Request) {
       }
     }
 
+    if (body.action === "toggleBoqDraft") {
+      await db.query(`UPDATE boq_headers SET is_draft = ? WHERE id = ?`, [
+        body.is_draft ? 1 : 0,
+        Number(body.id),
+      ]);
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "setBoqPrimary") {
+      // Clear primary from all BOQs in this project first
+      await db.query(
+        `UPDATE boq_headers SET is_primary = 0 WHERE project_id = ?`,
+        [Number(body.project_id)],
+      );
+      // Set this one as primary
+      await db.query(`UPDATE boq_headers SET is_primary = 1 WHERE id = ?`, [
+        Number(body.id),
+      ]);
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "updateCategory") {
       const query = `
         UPDATE boq_lines 

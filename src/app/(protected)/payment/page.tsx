@@ -231,6 +231,7 @@ type PrRequestRow = {
   department_name: string;
   project_name: string | null;
   date_requested: string;
+  created_at: string;
   payment_jo_reference_id: number | null;
   total_paid: number;
   outstanding: number;
@@ -372,7 +373,8 @@ export default function Payments() {
   const [lpoRows, setLpoRows] = useState<LpoRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [filters, setFilters] = useState<PaymentFilters>(defaultPaymentFilters);
+  const [mrFilters, setMrFilters] = useState<PaymentFilters>(defaultPaymentFilters);
+  const [prFilters, setPrFilters] = useState<PaymentFilters>(defaultPaymentFilters);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -388,12 +390,15 @@ export default function Payments() {
     Record<number, { col: string; dir: "asc" | "desc" }>
   >({});
 
-  // ── Date range filter (due date) ─────────────────────────────────────────
-  const [dateRange, setDateRange] = useState<DateRange>({
-    start: null,
-    end: null,
-    preset: null,
-  });
+  // ── Date range filters (creation date, per tab) ─────────────────────────
+  const [mrDateRange, setMrDateRange] = useState<DateRange>({ start: null, end: null, preset: null });
+  const [prDateRange, setPrDateRange] = useState<DateRange>({ start: null, end: null, preset: null });
+
+  // ── Active filter helpers (derived from current tab) ─────────────────────
+  const activeFilters = activeTab === "material-requests" ? mrFilters : prFilters;
+  const setActiveFilters = activeTab === "material-requests" ? setMrFilters : setPrFilters;
+  const activeDateRange = activeTab === "material-requests" ? mrDateRange : prDateRange;
+  const setActiveDateRange = activeTab === "material-requests" ? setMrDateRange : setPrDateRange;
 
   // ── Row selection (group-by-vendor mode) ─────────────────────────────────
   const [selectedRowIds, setSelectedRowIds] = useState<Set<number>>(new Set());
@@ -487,61 +492,48 @@ export default function Payments() {
   const filtered = useMemo(() => {
     return searched.filter((row) => {
       if (
-        filters.selectedVendors.length > 0 &&
-        !filters.selectedVendors.includes(row.supplier_name)
+        mrFilters.selectedVendors.length > 0 &&
+        !mrFilters.selectedVendors.includes(row.supplier_name)
       )
         return false;
 
-      if (filters.selectedPaymentTypes.length > 0) {
+      if (mrFilters.selectedPaymentTypes.length > 0) {
         if (
-          !filters.selectedPaymentTypes.includes(
+          !mrFilters.selectedPaymentTypes.includes(
             normaliseType(row.supplier_type),
           )
         )
           return false;
       }
 
-      if (filters.selectedStatuses.length > 0) {
+      if (mrFilters.selectedStatuses.length > 0) {
         const statusLabel = row.is_paid === 1 ? "Paid" : "Unpaid";
-        if (!filters.selectedStatuses.includes(statusLabel)) return false;
+        if (!mrFilters.selectedStatuses.includes(statusLabel)) return false;
       }
 
       if (
-        filters.selectedProjects.length > 0 &&
-        !filters.selectedProjects.includes(row.project_name)
+        mrFilters.selectedProjects.length > 0 &&
+        !mrFilters.selectedProjects.includes(row.project_name)
       )
         return false;
 
-      // ── Due date range filter ──────────────────────────────────────────
-      if (dateRange.start || dateRange.end) {
-        let due: Date | null = null;
-        if (row.supplier_due_date) {
-          const d = new Date(row.supplier_due_date);
-          if (!isNaN(d.getTime())) due = d;
-        }
-        if (!due) {
-          const t = (row.supplier_type ?? "").toLowerCase();
-          if (t !== "credit") return false;
-          const days =
-            parseDays(row.payment_terms) ??
-            parseDays(row.supplier_payment_terms);
-          if (!days || !row.created_at) return false;
-          const computed = new Date(row.created_at);
-          computed.setDate(computed.getDate() + days);
-          due = computed;
-        }
-        due.setHours(0, 0, 0, 0);
-        if (dateRange.start && due < dateRange.start) return false;
-        if (dateRange.end) {
-          const endDay = new Date(dateRange.end);
+      // ── Creation date range filter ────────────────────────────────────
+      if (mrDateRange.start || mrDateRange.end) {
+        if (!row.created_at) return false;
+        const created = new Date(row.created_at);
+        if (isNaN(created.getTime())) return false;
+        created.setHours(0, 0, 0, 0);
+        if (mrDateRange.start && created < mrDateRange.start) return false;
+        if (mrDateRange.end) {
+          const endDay = new Date(mrDateRange.end);
           endDay.setHours(23, 59, 59, 999);
-          if (due > endDay) return false;
+          if (created > endDay) return false;
         }
       }
 
       return true;
     });
-  }, [searched, filters, dateRange]);
+  }, [searched, mrFilters, mrDateRange]);
 
   // ── Widget stats — computed from filtered rows ───────────────────────────
   const outstandingStats = useMemo(() => {
@@ -703,25 +695,39 @@ export default function Payments() {
   const prFiltered = useMemo(() => {
     return prSearched.filter((row) => {
       if (
-        filters.selectedProjects.length > 0 &&
-        !filters.selectedProjects.includes(row.project_name ?? "")
+        prFilters.selectedProjects.length > 0 &&
+        !prFilters.selectedProjects.includes(row.project_name ?? "")
       )
         return false;
 
-      if (filters.selectedStatuses.length > 0) {
+      if (prFilters.selectedStatuses.length > 0) {
         const statusLabel = row.is_paid === 1 ? "Paid" : "Unpaid";
-        if (!filters.selectedStatuses.includes(statusLabel)) return false;
+        if (!prFilters.selectedStatuses.includes(statusLabel)) return false;
       }
 
       if (
-        filters.selectedSubcontractors.length > 0 &&
-        !filters.selectedSubcontractors.includes(row.subcontractor_name ?? "")
+        prFilters.selectedSubcontractors.length > 0 &&
+        !prFilters.selectedSubcontractors.includes(row.subcontractor_name ?? "")
       )
         return false;
 
+      // ── Creation date range filter (using created_at for JOs) ────────────
+      if (prDateRange.start || prDateRange.end) {
+        if (!row.created_at) return false;
+        const created = new Date(row.created_at);
+        if (isNaN(created.getTime())) return false;
+        created.setHours(0, 0, 0, 0);
+        if (prDateRange.start && created < prDateRange.start) return false;
+        if (prDateRange.end) {
+          const endDay = new Date(prDateRange.end);
+          endDay.setHours(23, 59, 59, 999);
+          if (created > endDay) return false;
+        }
+      }
+
       return true;
     });
-  }, [prSearched, filters]);
+  }, [prSearched, prFilters, prDateRange]);
 
   // ── PR sort ──────────────────────────────────────────────────────────────
   const handlePrSort = (col: string) => {
@@ -827,35 +833,36 @@ export default function Payments() {
   // Reset to page 1 on search / filter / sort change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filters, sortCol, sortDir]);
+  }, [searchQuery, mrFilters, mrDateRange, sortCol, sortDir]);
 
   // Reset PR page on search/filter/sort change
   useEffect(() => {
     setPrCurrentPage(1);
-  }, [prSearchQuery, filters, prSortCol, prSortDir]);
+  }, [prSearchQuery, prFilters, prDateRange, prSortCol, prSortDir]);
 
   // ── Active filter helpers ───────────────────────────────────────────────
-  const hasActiveDateRange = !!(dateRange.start || dateRange.end);
+  const hasActiveDateRange = !!(activeDateRange.start || activeDateRange.end);
   const hasActiveFilters =
     activeTab === "payment-requests"
-      ? filters.selectedStatuses.length > 0 ||
-        filters.selectedProjects.length > 0 ||
-        filters.selectedSubcontractors.length > 0
-      : filters.selectedVendors.length > 0 ||
-        filters.selectedPaymentTypes.length > 0 ||
-        filters.selectedStatuses.length > 0 ||
-        filters.selectedProjects.length > 0 ||
+      ? prFilters.selectedStatuses.length > 0 ||
+        prFilters.selectedProjects.length > 0 ||
+        prFilters.selectedSubcontractors.length > 0 ||
+        hasActiveDateRange
+      : mrFilters.selectedVendors.length > 0 ||
+        mrFilters.selectedPaymentTypes.length > 0 ||
+        mrFilters.selectedStatuses.length > 0 ||
+        mrFilters.selectedProjects.length > 0 ||
         hasActiveDateRange;
 
   const resetAllFilters = () => {
-    setFilters({
+    setActiveFilters({
       selectedVendors: [],
       selectedPaymentTypes: [],
       selectedStatuses: [],
       selectedProjects: [],
       selectedSubcontractors: [],
     });
-    setDateRange({ start: null, end: null, preset: null });
+    setActiveDateRange({ start: null, end: null, preset: null });
   };
 
   // ── Selection helpers ───────────────────────────────────────────────────
@@ -1131,16 +1138,17 @@ export default function Payments() {
               vendors={vendorList}
               projects={projectList}
               subcontractors={subcontractorList}
-              onApplyFilters={setFilters}
-              currentFilters={filters}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
+              onApplyFilters={setActiveFilters}
+              currentFilters={activeFilters}
+              dateRange={activeDateRange}
+              onDateRangeChange={setActiveDateRange}
+              tab={activeTab}
             />
 
             {hasActiveFilters && (
               <>
-                {/* Due date pill — material-requests only */}
-                {activeTab === "material-requests" && hasActiveDateRange && (
+                {/* Creation date pill */}
+                {hasActiveDateRange && (
                   <Button
                     style={{
                       borderRadius: "50px",
@@ -1152,16 +1160,16 @@ export default function Payments() {
                     borderColor="transparent"
                     textColor="black"
                   >
-                    DUE DATE:{" "}
+                    CREATION DATE:{" "}
                     <span style={{ color: "rgba(16, 185, 129, 1)" }}>
-                      {dateRange.preset
-                        ? dateRange.preset.toUpperCase()
+                      {activeDateRange.preset
+                        ? activeDateRange.preset.toUpperCase()
                         : [
-                            dateRange.start?.toLocaleDateString("en-GB", {
+                            activeDateRange.start?.toLocaleDateString("en-GB", {
                               day: "2-digit",
                               month: "short",
                             }),
-                            dateRange.end?.toLocaleDateString("en-GB", {
+                            activeDateRange.end?.toLocaleDateString("en-GB", {
                               day: "2-digit",
                               month: "short",
                             }),
@@ -1175,7 +1183,7 @@ export default function Payments() {
 
                 {/* Vendor pill — material-requests only */}
                 {activeTab === "material-requests" &&
-                  filters.selectedVendors.length > 0 && (
+                  activeFilters.selectedVendors.length > 0 && (
                     <Button
                       style={{
                         borderRadius: "50px",
@@ -1189,16 +1197,16 @@ export default function Payments() {
                     >
                       VENDOR:{" "}
                       <span style={{ color: "rgba(16, 185, 129, 1)" }}>
-                        {filters.selectedVendors[0].toUpperCase()}
-                        {filters.selectedVendors.length > 1 &&
-                          `, +${filters.selectedVendors.length - 1} MORE`}
+                        {activeFilters.selectedVendors[0].toUpperCase()}
+                        {activeFilters.selectedVendors.length > 1 &&
+                          `, +${activeFilters.selectedVendors.length - 1} MORE`}
                       </span>
                     </Button>
                   )}
 
                 {/* Payment type pill — material-requests only */}
                 {activeTab === "material-requests" &&
-                  filters.selectedPaymentTypes.length > 0 && (
+                  activeFilters.selectedPaymentTypes.length > 0 && (
                     <Button
                       style={{
                         borderRadius: "50px",
@@ -1212,15 +1220,15 @@ export default function Payments() {
                     >
                       TYPE:{" "}
                       <span style={{ color: "rgba(16, 185, 129, 1)" }}>
-                        {filters.selectedPaymentTypes[0].toUpperCase()}
-                        {filters.selectedPaymentTypes.length > 1 &&
-                          `, +${filters.selectedPaymentTypes.length - 1} MORE`}
+                        {activeFilters.selectedPaymentTypes[0].toUpperCase()}
+                        {activeFilters.selectedPaymentTypes.length > 1 &&
+                          `, +${activeFilters.selectedPaymentTypes.length - 1} MORE`}
                       </span>
                     </Button>
                   )}
 
                 {/* Status pill — both tabs */}
-                {filters.selectedStatuses.length > 0 && (
+                {activeFilters.selectedStatuses.length > 0 && (
                   <Button
                     style={{
                       borderRadius: "50px",
@@ -1234,15 +1242,15 @@ export default function Payments() {
                   >
                     STATUS:{" "}
                     <span style={{ color: "rgba(16, 185, 129, 1)" }}>
-                      {filters.selectedStatuses[0].toUpperCase()}
-                      {filters.selectedStatuses.length > 1 &&
-                        `, +${filters.selectedStatuses.length - 1} MORE`}
+                      {activeFilters.selectedStatuses[0].toUpperCase()}
+                      {activeFilters.selectedStatuses.length > 1 &&
+                        `, +${activeFilters.selectedStatuses.length - 1} MORE`}
                     </span>
                   </Button>
                 )}
 
                 {/* Project pill — both tabs */}
-                {filters.selectedProjects.length > 0 && (
+                {activeFilters.selectedProjects.length > 0 && (
                   <Button
                     style={{
                       borderRadius: "50px",
@@ -1256,16 +1264,16 @@ export default function Payments() {
                   >
                     PROJECT:{" "}
                     <span style={{ color: "rgba(16, 185, 129, 1)" }}>
-                      {filters.selectedProjects[0].toUpperCase()}
-                      {filters.selectedProjects.length > 1 &&
-                        `, +${filters.selectedProjects.length - 1} MORE`}
+                      {activeFilters.selectedProjects[0].toUpperCase()}
+                      {activeFilters.selectedProjects.length > 1 &&
+                        `, +${activeFilters.selectedProjects.length - 1} MORE`}
                     </span>
                   </Button>
                 )}
 
                 {/* Subcontractor pill — payment-requests only */}
                 {activeTab === "payment-requests" &&
-                  filters.selectedSubcontractors.length > 0 && (
+                  activeFilters.selectedSubcontractors.length > 0 && (
                     <Button
                       style={{
                         borderRadius: "50px",
@@ -1279,9 +1287,9 @@ export default function Payments() {
                     >
                       SUBCONTRACTOR:{" "}
                       <span style={{ color: "rgba(16, 185, 129, 1)" }}>
-                        {filters.selectedSubcontractors[0].toUpperCase()}
-                        {filters.selectedSubcontractors.length > 1 &&
-                          `, +${filters.selectedSubcontractors.length - 1} MORE`}
+                        {activeFilters.selectedSubcontractors[0].toUpperCase()}
+                        {activeFilters.selectedSubcontractors.length > 1 &&
+                          `, +${activeFilters.selectedSubcontractors.length - 1} MORE`}
                       </span>
                     </Button>
                   )}

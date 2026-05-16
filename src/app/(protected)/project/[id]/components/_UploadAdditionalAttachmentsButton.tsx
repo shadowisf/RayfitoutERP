@@ -112,7 +112,7 @@ export default function UploadAdditionalAttachmentsButton({
         onClick={() => setIsOpen(true)}
         style={{ borderRadius: "50px" }}
       >
-        NEW ATTACHMENT +
+        New Attachment +
       </Button>
 
       {isOpen && (
