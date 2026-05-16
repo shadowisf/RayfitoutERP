@@ -11,12 +11,18 @@ type props = {
   boqHeader: BoqHeader | null;
   onSuccess?: () => void;
   threeDotsMenu?: boolean;
+  openImmediately?: boolean;
+  hideButton?: boolean;
+  onClose?: () => void;
 };
 
 export default function EditBoqHeaderButton({
   boqHeader,
   onSuccess,
   threeDotsMenu,
+  openImmediately,
+  hideButton,
+  onClose,
 }: props) {
   const router = useRouter();
 
@@ -24,7 +30,13 @@ export default function EditBoqHeaderButton({
 
   const pencilIcon = "/icons/pencil.svg";
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(openImmediately ?? false);
+
+  const handleSetIsOpen = (val: React.SetStateAction<boolean>) => {
+    const resolved = typeof val === "function" ? val(isOpen) : val;
+    setIsOpen(resolved);
+    if (!resolved) onClose?.();
+  };
 
   // Helper function to format date for input field
   const formatDateForInput = (dateString: string | null | undefined) => {
@@ -99,37 +111,44 @@ export default function EditBoqHeaderButton({
 
   return (
     <>
-      {threeDotsMenu ? (
-        <Button
-          componentType="button"
-          bgColor={"transparent"}
-          borderColor={"transparent"}
-          textColor={"black"}
-          onClick={() => setIsOpen(true)}
-          full
-          style={{ justifyContent: "flex-start" }}
-        >
-          <img src={pencilIcon} alt="pencil" /> Edit
-        </Button>
-      ) : (
-        <Button
-          componentType={"button"}
-          bgColor={"rgba(239, 239, 239, 1)"}
-          borderColor={"rgba(223, 223, 223, 1)"}
-          textColor={"black"}
-          onClick={() => setIsOpen(true)}
-          style={{ padding: "7px 7px" }}
-        >
-          <img src={pencilIcon} alt="pencil" />
-        </Button>
+      {!hideButton && (
+        <>
+          {threeDotsMenu ? (
+            <Button
+              componentType="button"
+              bgColor={"transparent"}
+              borderColor={"transparent"}
+              textColor={"black"}
+              onClick={() => setIsOpen(true)}
+              full
+              style={{ justifyContent: "flex-start" }}
+            >
+              <img src={pencilIcon} alt="pencil" /> Edit
+            </Button>
+          ) : (
+            <Button
+              componentType={"button"}
+              bgColor={"rgba(239, 239, 239, 1)"}
+              borderColor={"rgba(223, 223, 223, 1)"}
+              textColor={"black"}
+              onClick={() => setIsOpen(true)}
+              style={{ padding: "7px 7px" }}
+            >
+              <img src={pencilIcon} alt="pencil" />
+            </Button>
+          )}
+        </>
       )}
 
       {isOpen && (
         <FormPopUp
           header={"UPDATE BILL OF QUANTITY"}
-          setIsOpen={setIsOpen}
+          setIsOpen={
+            handleSetIsOpen as React.Dispatch<React.SetStateAction<boolean>>
+          }
           handleSubmit={(e) => handleSubmit(e)}
           addButtonLabel="CONFIRM"
+          style={{ width: "50dvw" }}
         >
           <div className="input-row three-col">
             <InputItem
@@ -159,7 +178,7 @@ export default function EditBoqHeaderButton({
             />
           </div>
 
-          <div className="input-row full">
+          {/*  <div className="input-row full">
             <div className="input-item">
               <label>DRAFT</label>
               <div
@@ -204,7 +223,7 @@ export default function EditBoqHeaderButton({
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
 
           <div className="input-row half">
             <InputItem

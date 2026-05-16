@@ -121,6 +121,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
           setIsOpen={setIsOpen}
           addButtonLabel="CONFIRM"
           handleSubmit={handleSubmit}
+          style={{ width: "50dvw" }}
         >
           <div className="input-row three-col">
             <InputItem
@@ -151,7 +152,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
             />
           </div>
 
-          <div className="input-row full">
+          {/* <div className="input-row full">
             <div className="input-item">
               <label>DRAFT</label>
               <div
@@ -196,7 +197,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
 
           <div className="input-row half">
             <InputItem

@@ -10,8 +10,12 @@ import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../mr/[id]/types/mrHeader";
 import UploadAdditionalAttachmentsButton from "./components/_UploadAdditionalAttachmentsButton";
 import AttachmentsList from "./components/AttachmentList";
-import BoqCard from "./boq/[boqId]/components/BoqCard";
 import CreateBoqHeaderButton from "./boq/[boqId]/components/manager/_CreateBoqHeaderButton";
+import ThreeDotsMenuButton from "@/app/components/_ThreeButtonsMenuButton";
+import EditBoqHeaderButton from "./boq/[boqId]/components/manager/_EditBoqHeaderButton";
+import { DeleteBoqHeaderButton } from "./boq/[boqId]/components/manager/_DeleteBoqHeaderButton";
+import { SetBoqDraftButton } from "./boq/[boqId]/components/manager/_SetBoqDraftButton";
+import { SetBoqPrimaryButton } from "./boq/[boqId]/components/manager/_SetBoqPrimaryButton";
 import { BoqHeader } from "./boq/[boqId]/types/boqHeader";
 import MrStatusFilterButton from "./components/_MrStatusFilterButton";
 
@@ -31,6 +35,10 @@ export default function ProjectWithID() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [boqs, setBoqs] = useState<BoqHeader[] | null>(null);
+  const [editingBoq, setEditingBoq] = useState<BoqHeader | null>(null);
+  const [deletingBoq, setDeletingBoq] = useState<BoqHeader | null>(null);
+  const [boqSortCol, setBoqSortCol] = useState<string | null>(null);
+  const [boqSortDir, setBoqSortDir] = useState<"asc" | "desc">("desc");
   const [mrs, setMrs] = useState<MrHeaderWithLpo[] | null>(null);
   const [mrStatusFilters, setMrStatusFilters] = useState<{
     selectedStatuses: string[];
@@ -152,6 +160,47 @@ export default function ProjectWithID() {
   const resetMrFilters = () => {
     setMrStatusFilters({ selectedStatuses: [] });
   };
+
+  const handleBoqSort = (col: string) => {
+    if (boqSortCol !== col) {
+      setBoqSortCol(col);
+      setBoqSortDir("desc");
+    } else if (boqSortDir === "desc") {
+      setBoqSortDir("asc");
+    } else {
+      setBoqSortCol(null);
+      setBoqSortDir("desc");
+    }
+  };
+
+  const boqSortIcon = (col: string) => (
+    <span
+      style={{
+        marginLeft: 4,
+        fontSize: 10,
+        opacity: boqSortCol === col ? 1 : 0.35,
+      }}
+    >
+      {boqSortCol === col ? (boqSortDir === "asc" ? "↑" : "↓") : "↕"}
+    </span>
+  );
+
+  const sortedBoqs = useMemo(() => {
+    if (!boqs) return null;
+    if (!boqSortCol) return boqs;
+    return [...boqs].sort((a, b) => {
+      let aVal: number;
+      let bVal: number;
+      if (boqSortCol === "created_on") {
+        aVal = a.created_on ? new Date(a.created_on).getTime() : 0;
+        bVal = b.created_on ? new Date(b.created_on).getTime() : 0;
+      } else {
+        aVal = Number(a.total_value) - Number(a.discount);
+        bVal = Number(b.total_value) - Number(b.discount);
+      }
+      return boqSortDir === "asc" ? aVal - bVal : bVal - aVal;
+    });
+  }, [boqs, boqSortCol, boqSortDir]);
 
   return (
     <div className="dashboard">
@@ -369,15 +418,162 @@ export default function ProjectWithID() {
         {boqs?.length === 0 ? (
           <div>No bill of quantities created</div>
         ) : (
-          <div className="widget-grid boqs">
-            {boqs?.map((boq: any, index) => (
-              <BoqCard
-                key={index}
-                boqHeader={boq}
-                onSuccess={() => fetchAllBoqsByProjectID()}
-              />
-            ))}
-          </div>
+          <table
+            className="items-table two-toned"
+            style={{ tableLayout: "fixed", width: "100%" }}
+          >
+            <colgroup>
+              <col style={{ width: "150px" }} />
+              <col style={{ width: "150px" }} />
+              <col style={{ width: "auto" }} />
+              <col style={{ width: "250px" }} />
+              <col style={{ width: "200px" }} />
+              <col style={{ width: "200px" }} />
+              <col style={{ width: "120px" }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>BOQ NUMBER</th>
+                <th
+                  onClick={() => handleBoqSort("created_on")}
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                >
+                  CREATION DATE{boqSortIcon("created_on")}
+                </th>
+                <th>NAME</th>
+                <th>LOCATION</th>
+                <th
+                  onClick={() => handleBoqSort("total_value")}
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                >
+                  TOTAL VALUE{boqSortIcon("total_value")}
+                </th>
+                <th>STATUS</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedBoqs?.map((boq: BoqHeader, index: number) => (
+                <tr key={index}>
+                  <td>BOQ-{String(boq.id).padStart(5, "0")}</td>
+                  <td>
+                    {boq.created_on
+                      ? new Date(boq.created_on).toLocaleDateString("en-GB")
+                      : "-"}
+                  </td>
+                  <td>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <span>{boq.name || "-"}</span>
+                      {boq.is_primary && (
+                        <span
+                          style={{
+                            padding: "4px 16px",
+                            backgroundColor: "rgba(235, 222, 151, 1)",
+                            color: "rgba(123, 109, 32, 1)",
+                            borderRadius: "50px",
+                            fontSize: "8px",
+                            fontWeight: "800",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          PRIMARY
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td>{boq.location || "-"}</td>
+                  <td>
+                    {userInfo?.departmentID === 8 ||
+                    userInfo?.departmentID === 16
+                      ? `${boq.project_currency} ${(
+                          Number(boq.total_value) - Number(boq.discount) || 0
+                        ).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`
+                      : "-"}
+                  </td>
+                  <td>
+                    <span
+                      className="approval-pill normal-text centered full"
+                      style={{
+                        backgroundColor: boq.is_draft
+                          ? "rgba(234, 234, 234, 1)"
+                          : "rgba(87, 244, 176, 1)",
+                        color: boq.is_draft
+                          ? "rgba(89, 89, 89, 1)"
+                          : "rgba(31, 101, 71, 1)",
+                      }}
+                    >
+                      {boq.is_draft ? "DRAFT" : "APPROVED"}
+                    </span>
+                  </td>
+                  <td>
+                    {(userInfo?.departmentID === 8 ||
+                      userInfo?.departmentID === 16) && (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "25px",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Button
+                          componentType={"link"}
+                          bgColor={"rgba(239, 239, 239, 1)"}
+                          borderColor={"rgba(223, 223, 223, 1)"}
+                          textColor={"black"}
+                          style={{ padding: "7px 7px" }}
+                          href={`/project/${boq.project_id}/boq/${boq.id}`}
+                        >
+                          <img src={externalLinkIcon} alt="view" />
+                        </Button>
+
+                        <ThreeDotsMenuButton>
+                          <Button
+                            componentType="button"
+                            bgColor="transparent"
+                            borderColor="transparent"
+                            textColor="black"
+                            onClick={() => setEditingBoq(boq)}
+                            full
+                            style={{ justifyContent: "flex-start" }}
+                          >
+                            <img src="/icons/pencil.svg" alt="pencil" /> Edit
+                          </Button>
+                          <SetBoqDraftButton
+                            boqHeader={boq}
+                            onSuccess={() => fetchAllBoqsByProjectID()}
+                          />
+                          <SetBoqPrimaryButton
+                            boqHeader={boq}
+                            onSuccess={() => fetchAllBoqsByProjectID()}
+                          />
+                          <Button
+                            componentType="button"
+                            bgColor="transparent"
+                            borderColor="transparent"
+                            textColor="black"
+                            onClick={() => setDeletingBoq(boq)}
+                            full
+                            style={{ justifyContent: "flex-start" }}
+                          >
+                            <img src="/icons/trash.svg" alt="trash" /> Delete
+                          </Button>
+                        </ThreeDotsMenuButton>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
@@ -536,6 +732,33 @@ export default function ProjectWithID() {
             })}
           </tbody>
         </table>
+      )}
+      {/* Page-level BOQ modals — rendered outside ThreeDotsMenu so they survive menu close */}
+      {editingBoq && (
+        <EditBoqHeaderButton
+          key={editingBoq.id}
+          boqHeader={editingBoq}
+          openImmediately
+          hideButton
+          onSuccess={() => {
+            setEditingBoq(null);
+            fetchAllBoqsByProjectID();
+          }}
+          onClose={() => setEditingBoq(null)}
+        />
+      )}
+      {deletingBoq && (
+        <DeleteBoqHeaderButton
+          key={deletingBoq.id}
+          boqHeader={deletingBoq}
+          openImmediately
+          hideButton
+          onSuccess={() => {
+            setDeletingBoq(null);
+            fetchAllBoqsByProjectID();
+          }}
+          onClose={() => setDeletingBoq(null)}
+        />
       )}
     </div>
   );

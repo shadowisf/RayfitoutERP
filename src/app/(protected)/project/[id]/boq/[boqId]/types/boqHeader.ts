@@ -27,4 +27,5 @@ export type BoqHeader = {
   project_created_at: string;
   project_currency: string;
   is_draft: boolean;
+  is_primary: boolean;
 };

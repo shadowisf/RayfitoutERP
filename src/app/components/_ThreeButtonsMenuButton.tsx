@@ -6,6 +6,7 @@ type props = {
 
 export default function ThreeDotsMenuButton({ children }: props) {
   const [isOpen, setIsOpen] = useState(false);
+  const [hasBeenOpened, setHasBeenOpened] = useState(false);
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -18,7 +19,7 @@ export default function ThreeDotsMenuButton({ children }: props) {
 
       // ✅ Check if there's any modal/popup currently open in the DOM
       const hasOpenModal = document.querySelector(
-        ".popup-overlay, .form-popup, .modal-overlay",
+        ".popup-overlay, .form-popup, .modal-overlay, .form-outer-container",
       );
 
       // ✅ If modal is open, don't close the menu
@@ -53,30 +54,44 @@ export default function ThreeDotsMenuButton({ children }: props) {
       style={{ position: "relative", display: "inline-block" }}
     >
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const opening = !isOpen;
+          setIsOpen(opening);
+          if (opening) setHasBeenOpened(true);
+        }}
         style={{
           background: "none",
           border: "none",
           cursor: "pointer",
           padding: "8px",
+          marginBottom: "-5px",
         }}
       >
         <img src={threeDotIcon} alt="Menu" />
       </button>
 
-      {isOpen && (
+      {/*
+        Keep children mounted after first open so their modal state
+        survives the menu closing. height:0 + overflow:hidden hides the
+        dropdown visually but does NOT clip position:fixed descendants
+        (like FormPopup's overlay), so modals still appear correctly.
+      */}
+      {hasBeenOpened && (
         <div
+          onClick={() => setIsOpen(false)}
           style={{
             position: "absolute",
             right: 0,
             top: "100%",
             marginTop: "4px",
             backgroundColor: "white",
-            border: "1px solid #e5e7eb",
+            border: isOpen ? "1px solid #e5e7eb" : "none",
             borderRadius: "12px",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+            boxShadow: isOpen ? "0 4px 6px rgba(0, 0, 0, 0.1)" : "none",
             minWidth: "200px",
             zIndex: 1000,
+            height: isOpen ? "auto" : 0,
+            overflow: "hidden",
           }}
         >
           {children}
