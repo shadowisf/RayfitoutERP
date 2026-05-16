@@ -14,13 +14,15 @@ export async function POST(req: Request) {
 
     const projectId = Number(body.project_id);
 
-    // Fetch ALL MR headers for the project.
-    const mrQuery = `
-      SELECT * FROM vw_mr_headers WHERE project_id = ?
-    `;
-    const [mrRows]: any = await db.query(mrQuery, [projectId]);
+    // Fetch ALL MR headers for the project (includes date_requested)
+    const [mrRows]: any = await db.query(
+      `SELECT vw.*, mh.date_requested
+       FROM vw_mr_headers vw
+       JOIN mr_headers mh ON mh.id = vw.id
+       WHERE vw.project_id = ?`,
+      [projectId],
+    );
 
-    // Separate non-segregated MRs and segregated MRs
     // Exclude rejected MRs (5 = Request Rejected, 11 = Price Rejected, 13 = Payment Rejected)
     const REJECTED_PROGRESS_IDS = [5, 11, 13];
     const nonSegregatedMrs = mrRows.filter(
@@ -28,39 +30,47 @@ export async function POST(req: Request) {
         mr.progress_id !== 26 &&
         !REJECTED_PROGRESS_IDS.includes(mr.progress_id),
     );
-    const segregatedMrIds = mrRows
-      .filter((mr: any) => mr.progress_id === 26)
-      .map((mr: any) => mr.id);
+    const segregatedMrs = mrRows.filter((mr: any) => mr.progress_id === 26);
+    const segregatedMrIds = segregatedMrs.map((mr: any) => mr.id);
 
-    // Build a map of segregated MR id -> MR data for reference
+    // Build a map of segregated MR id -> MR data
     const segregatedMrMap = new Map<number, any>();
-    mrRows
-      .filter((mr: any) => mr.progress_id === 26)
-      .forEach((mr: any) => {
-        segregatedMrMap.set(mr.id, mr);
-      });
+    segregatedMrs.forEach((mr: any) => segregatedMrMap.set(mr.id, mr));
 
-    // For segregated MRs, fetch all their LPOs with progress info
-    // EXCLUDE LPOs with progress_id = 13 (Payment Rejected)
+    // For segregated MRs, fetch all their LPOs with progress info + total_spent
     let lpoEntries: any[] = [];
 
     if (segregatedMrIds.length > 0) {
       const placeholders = segregatedMrIds.map(() => "?").join(",");
-      const lpoQuery = `
-        SELECT
-          l.id as lpo_id,
-          l.mr_header_id,
-          l.progress_id,
-          l.delivery_date,
-          p.value as progress_name
-        FROM lpo l
-        LEFT JOIN lut_mr_headers_progress p ON l.progress_id = p.id
-        WHERE l.mr_header_id IN (${placeholders})
-          AND l.progress_id != 13
-      `;
-      const [lpoRows]: any = await db.query(lpoQuery, segregatedMrIds);
+      const [lpoRows]: any = await db.query(
+        `SELECT
+           l.id                          AS lpo_id,
+           l.mr_header_id,
+           l.progress_id,
+           l.delivery_date,
+           l.total,
+           l.payment_status,
+           p.value                       AS progress_name,
+           COALESCE(
+             CASE
+               WHEN COALESCE(l.total, 0) > 0 THEN l.total
+               ELSE ROUND(COALESCE(pay.total_paid, 0), 2)
+             END,
+             0
+           )                             AS total_spent
+         FROM lpo l
+         LEFT JOIN lut_mr_headers_progress p  ON l.progress_id = p.id
+         LEFT JOIN (
+           SELECT lpo_id, SUM(amount) AS total_paid
+           FROM lpo_payments
+           GROUP BY lpo_id
+         ) pay ON pay.lpo_id = l.id
+         WHERE l.mr_header_id IN (${placeholders})
+           AND l.progress_id != 13`,
+        segregatedMrIds,
+      );
 
-      // Create one entry per LPO, carrying forward parent MR details
+      // Create one entry per LPO, merging parent MR data
       lpoEntries = lpoRows.map((lpo: any) => {
         const parentMr = segregatedMrMap.get(lpo.mr_header_id);
         return {
@@ -69,20 +79,23 @@ export async function POST(req: Request) {
           lpo_progress_id: lpo.progress_id,
           lpo_progress_name: lpo.progress_name || "Unknown",
           display_progress_name: lpo.progress_name || parentMr?.progress_name,
+          total_spent: Number(lpo.total_spent) || 0,
         };
       });
     }
 
-    // Build result: non-segregated MRs + LPO entries from segregated MRs
+    // Non-segregated entries: total_spent = sum of any LPOs attached even if not yet segregated
+    // For simplicity set to 0 — they haven't reached LPO stage yet
     const nonSegregatedEntries = nonSegregatedMrs.map((mr: any) => ({
       ...mr,
       lpo_id: null,
       lpo_progress_id: null,
       lpo_progress_name: null,
       display_progress_name: mr.progress_name,
+      total_spent: 0,
     }));
 
-    // Additional safety filter: exclude any LPO entries with progress_id 13
+    // Exclude rejected LPO entries
     const filteredLpoEntries = lpoEntries.filter(
       (entry) => entry.lpo_progress_id !== 13,
     );
@@ -90,15 +103,11 @@ export async function POST(req: Request) {
     const enrichedRows = [...nonSegregatedEntries, ...filteredLpoEntries];
 
     return NextResponse.json(
-      {
-        success: true,
-        count: enrichedRows.length,
-        data: enrichedRows,
-      },
+      { success: true, count: enrichedRows.length, data: enrichedRows },
       { status: 200 },
     );
   } catch (err: any) {
-    console.error(err.sqlMessage);
-    return NextResponse.json({ error: err.sqlMessage }, { status: 500 });
+    console.error(err.sqlMessage || err.message);
+    return NextResponse.json({ error: err.sqlMessage || err.message }, { status: 500 });
   }
 }

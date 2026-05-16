@@ -18,7 +18,7 @@ type props = {
 };
 
 export default function CreateBoqHeaderButton({
-  style = { borderRadius: "50px" },
+  style,
   bgColor = "black",
   borderColor = "black",
   textColor = "white",

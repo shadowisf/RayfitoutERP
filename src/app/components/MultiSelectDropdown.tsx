@@ -431,47 +431,29 @@ export default function MultiSelectDropdown({
                               alignItems: "center",
                               padding: "7px 12px 7px 40px",
                               cursor: "pointer",
-                              transition: "background-color 0.2s",
-                              backgroundColor: isChecked
-                                ? "#f0f0f0"
-                                : "transparent",
+                              transition: "background-color 0.15s",
+                              backgroundColor: "transparent",
                             }}
                             onMouseOver={(e) => {
-                              if (!isChecked) {
-                                e.currentTarget.style.backgroundColor =
-                                  "#f9f9f9";
-                              }
+                              e.currentTarget.style.backgroundColor = "#f5f5f5";
                             }}
                             onMouseOut={(e) => {
-                              if (!isChecked) {
-                                e.currentTarget.style.backgroundColor =
-                                  "transparent";
-                              }
+                              e.currentTarget.style.backgroundColor = "transparent";
                             }}
                           >
-                            <span
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              readOnly
                               style={{
-                                width: "18px",
-                                height: "18px",
-                                border: "2px solid #d9d9d9",
-                                borderRadius: "3px",
+                                width: "15px",
+                                height: "15px",
                                 marginRight: "8px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
+                                accentColor: "rgba(0,163,93,1)",
                                 flexShrink: 0,
-                                backgroundColor: isChecked ? "rgba(0,163,93,1)" : "white",
-                                borderColor: isChecked ? "rgba(0,163,93,1)" : "#d9d9d9",
+                                cursor: "pointer",
                               }}
-                            >
-                              {isChecked && (
-                                <span
-                                  style={{ color: "white", fontSize: "12px" }}
-                                >
-                                  ✓
-                                </span>
-                              )}
-                            </span>
+                            />
                             <span
                               style={{
                                 color: "#000",
@@ -523,41 +505,29 @@ export default function MultiSelectDropdown({
                       alignItems: "center",
                       padding: "7px",
                       cursor: "pointer",
-                      transition: "background-color 0.2s",
-                      backgroundColor: isChecked ? "#f0f0f0" : "transparent",
+                      transition: "background-color 0.15s",
+                      backgroundColor: "transparent",
                     }}
                     onMouseOver={(e) => {
-                      if (!isChecked) {
-                        e.currentTarget.style.backgroundColor = "#f5f5f5";
-                      }
+                      e.currentTarget.style.backgroundColor = "#f5f5f5";
                     }}
                     onMouseOut={(e) => {
-                      if (!isChecked) {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                      }
+                      e.currentTarget.style.backgroundColor = "transparent";
                     }}
                   >
-                    <span
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      readOnly
                       style={{
-                        width: "18px",
-                        height: "18px",
-                        border: "2px solid #d9d9d9",
-                        borderRadius: "3px",
+                        width: "15px",
+                        height: "15px",
                         marginRight: "8px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        accentColor: "rgba(0,163,93,1)",
                         flexShrink: 0,
-                        backgroundColor: isChecked ? "rgba(0,163,93,1)" : "white",
-                        borderColor: isChecked ? "rgba(0,163,93,1)" : "#d9d9d9",
+                        cursor: "pointer",
                       }}
-                    >
-                      {isChecked && (
-                        <span style={{ color: "white", fontSize: "12px" }}>
-                          ✓
-                        </span>
-                      )}
-                    </span>
+                    />
                     <span
                       style={{
                         color: "#000",

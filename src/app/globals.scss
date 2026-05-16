@@ -1550,3 +1550,12 @@ label {
 .form-outer-container .items-table tfoot tr:hover td {
   background-color: white !important;
 }
+
+/* ── Three-dots dropdown menu hover ── */
+.three-dots-dropdown > * {
+  transition: background-color 0.1s ease;
+}
+
+.three-dots-dropdown > *:hover {
+  background-color: rgba(253, 249, 249, 1) !important;
+}

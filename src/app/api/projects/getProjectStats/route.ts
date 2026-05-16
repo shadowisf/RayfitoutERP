@@ -12,12 +12,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── VALUE: sum of all BOQ line total_cost for this project ───────────────
+    // ── VALUE: sum of BOQ line total_cost for ACTIVE (non-draft) BOQs only ────
     const [[valueRow]]: any = await db.query(
       `SELECT COALESCE(SUM(bl.total_cost), 0) AS value
        FROM boq_lines bl
        JOIN boq_headers bh ON bh.id = bl.boq_id
-       WHERE bh.project_id = ?`,
+       WHERE bh.project_id = ?
+         AND bh.is_draft = 0`,
       [project_id],
     );
 
@@ -54,11 +55,21 @@ export async function POST(req: NextRequest) {
       [project_id],
     );
 
+    // ── COMMITTED TOTAL: face value of all non-rejected LPOs (paid + unpaid) ──
+    const [[committedRow]]: any = await db.query(
+      `SELECT COALESCE(SUM(l.total), 0) AS committed_total
+       FROM lpo l
+       WHERE l.project_id = ?
+         AND l.progress_id NOT IN (13)`,
+      [project_id],
+    );
+
     const value = Number(valueRow?.value ?? 0);
     const spendToDate =
       Number(lpoPayRow?.total ?? 0) + Number(joPayRow?.total ?? 0);
+    const committedTotal = Number(committedRow?.committed_total ?? 0);
 
-    return NextResponse.json({ value, spend_to_date: spendToDate });
+    return NextResponse.json({ value, spend_to_date: spendToDate, committed_total: committedTotal });
   } catch (err: any) {
     console.error("getProjectStats error:", err.sqlMessage || err.message);
     return NextResponse.json(
