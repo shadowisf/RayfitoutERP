@@ -12,6 +12,7 @@ import { MrHeader } from "../../types/mrHeader";
 import { JoLine } from "../../types/joLine";
 import { useAuth } from "@/app/context/AuthContext";
 import CreateSubcontractorButton from "../../../../vendor/components/_CreateSubcontractorButton";
+import { formatPriceAED } from "@/lib/formatPrice";
 
 type SubcontractorQuotation = {
   id?: number;
@@ -30,11 +31,29 @@ type SubcontractorQuotation = {
 type SubcontractorAndQuotationButtonProps = {
   mrHeader: MrHeader;
   joLine: JoLine;
+  boqLineId?: number; // per-BOQ-item quotation (hierarchical view)
+  boqItemName?: string; // BOQ line item name — used as form header
+  subcontractedWorksValue?: number; // subcontracted_qty × rate_per_quantity for this BOQ line
+  lockedSubcontractorId?: number | string; // subcontractor locked by the first BOQ item in the same JO line
+  onSubcontractorLocked?: (id: number | string) => void; // notify parent when a subcontractor is committed
+};
+
+// Add thousand-separator commas to the integer part while preserving decimals
+const formatInputPrice = (val: string): string => {
+  if (!val) return "";
+  const parts = val.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.join(".");
 };
 
 export default function SubcontractorAndQuotationButton({
   mrHeader,
   joLine,
+  boqLineId,
+  boqItemName,
+  subcontractedWorksValue,
+  lockedSubcontractorId,
+  onSubcontractorLocked,
 }: SubcontractorAndQuotationButtonProps) {
   const router = useRouter();
 
@@ -61,28 +80,10 @@ export default function SubcontractorAndQuotationButton({
   const [rejectComments, setRejectComments] = useState<string>("");
   const [subcontractors, setSubcontractors] = useState<any[]>([]);
 
-  // Initialize with 3 empty rows instead of 1
+  // Initialize with 1 empty row
   const [subcontractorQuotations, setSubcontractorQuotations] = useState<
     SubcontractorQuotation[]
   >([
-    {
-      subcontractor_id: "",
-      quotation_file: null,
-      quotation_url: "",
-      rating: "",
-      total_price: "",
-      created_by: "",
-      isModified: false,
-    },
-    {
-      subcontractor_id: "",
-      quotation_file: null,
-      quotation_url: "",
-      rating: "",
-      total_price: "",
-      created_by: "",
-      isModified: false,
-    },
     {
       subcontractor_id: "",
       quotation_file: null,
@@ -122,7 +123,7 @@ export default function SubcontractorAndQuotationButton({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: joLine.id }),
+          body: JSON.stringify({ id: joLine.id, boq_line_id: boqLineId }),
         },
       );
 
@@ -134,6 +135,11 @@ export default function SubcontractorAndQuotationButton({
 
       if (data && data.length > 0) {
         setMode("edit");
+
+        // Notify parent so sibling BOQ items get locked to the same subcontractor
+        if (data[0]?.subcontractor_id && onSubcontractorLocked) {
+          onSubcontractorLocked(data[0].subcontractor_id);
+        }
 
         const allRejected = data.every(
           (q: SubcontractorQuotation) => q.approval_status === "Rejected",
@@ -192,7 +198,7 @@ export default function SubcontractorAndQuotationButton({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: joLine.id }),
+          body: JSON.stringify({ id: joLine.id, boq_line_id: boqLineId }),
         },
       );
 
@@ -232,28 +238,10 @@ export default function SubcontractorAndQuotationButton({
       if (mode === "edit") {
         fetchExistingQuotations();
       } else {
-        // Reset to 3 empty rows in add mode
+        // Reset to 1 empty row in add mode; pre-fill locked subcontractor if available
         setSubcontractorQuotations([
           {
-            subcontractor_id: "",
-            quotation_file: null,
-            quotation_url: "",
-            rating: "",
-            total_price: "",
-            created_by: userInfo?.name || "",
-            isModified: true,
-          },
-          {
-            subcontractor_id: "",
-            quotation_file: null,
-            quotation_url: "",
-            rating: "",
-            total_price: "",
-            created_by: userInfo?.name || "",
-            isModified: true,
-          },
-          {
-            subcontractor_id: "",
+            subcontractor_id: lockedSubcontractorId ?? "",
             quotation_file: null,
             quotation_url: "",
             rating: "",
@@ -273,10 +261,13 @@ export default function SubcontractorAndQuotationButton({
   }, [isOpen]);
 
   function handleAddRow() {
+    // Inherit the first row's subcontractor so all rows stay locked to it
+    const firstSubcontractorId =
+      subcontractorQuotations[0]?.subcontractor_id ?? "";
     setSubcontractorQuotations([
       ...subcontractorQuotations,
       {
-        subcontractor_id: "",
+        subcontractor_id: firstSubcontractorId,
         quotation_file: null,
         quotation_url: "",
         rating: "",
@@ -288,9 +279,8 @@ export default function SubcontractorAndQuotationButton({
   }
 
   function handleRemoveRow(index: number) {
-    // Always require minimum 3 subcontractors
-    if (subcontractorQuotations.length <= 3) {
-      toast("You must have at least 3 subcontractors", "error");
+    if (subcontractorQuotations.length <= 1) {
+      toast("You must have at least 1 subcontractor", "error");
       return;
     }
 
@@ -305,14 +295,27 @@ export default function SubcontractorAndQuotationButton({
     field: keyof SubcontractorQuotation,
     value: string | number | File | null,
   ) {
-    const newQuotations = [...subcontractorQuotations];
-    newQuotations[index] = {
-      ...newQuotations[index],
-      [field]: value,
-      isModified: true,
-    };
+    setSubcontractorQuotations((prev) => {
+      const newQuotations = [...prev];
+      newQuotations[index] = {
+        ...newQuotations[index],
+        [field]: value,
+        isModified: true,
+      };
 
-    setSubcontractorQuotations(newQuotations);
+      // When the first row's subcontractor changes, lock all other rows to it
+      if (index === 0 && field === "subcontractor_id") {
+        for (let i = 1; i < newQuotations.length; i++) {
+          newQuotations[i] = {
+            ...newQuotations[i],
+            subcontractor_id: value as string | number,
+            isModified: true,
+          };
+        }
+      }
+
+      return newQuotations;
+    });
   }
 
   function handleFileSelection(index: number, file: File) {
@@ -428,13 +431,12 @@ export default function SubcontractorAndQuotationButton({
       (q: SubcontractorQuotation) => q.subcontractor_id !== "",
     );
 
-    // ALWAYS require minimum 3 subcontractors
-    if (validQuotations.length < 3) {
-      toast("Minimum 3 subcontractors are required", "error");
+    if (validQuotations.length < 1) {
+      toast("At least 1 subcontractor is required", "error");
       return;
     }
 
-    // Validate all 3+ quotations
+    // Validate all quotations
     for (let i = 0; i < validQuotations.length; i++) {
       const quotation = validQuotations[i];
 
@@ -481,6 +483,7 @@ export default function SubcontractorAndQuotationButton({
           ? {
               action: "updateSubcontractorQuotations",
               jo_line_id: joLine.id,
+              boq_line_id: boqLineId,
               quotations: quotationsWithUrls.map((q) => ({
                 id: q.id,
                 subcontractor_id: Number(q.subcontractor_id), // Ensure number
@@ -493,6 +496,7 @@ export default function SubcontractorAndQuotationButton({
           : {
               action: "addSubcontractorAndQuotation",
               jo_line_id: joLine.id,
+              boq_line_id: boqLineId,
               quotations: quotationsWithUrls.map((q) => ({
                 subcontractor_id: Number(q.subcontractor_id), // Ensure number
                 quotation_file: q.quotation_url, // Use the URL from upload
@@ -518,28 +522,16 @@ export default function SubcontractorAndQuotationButton({
             : `Subcontractors and quotations added for ${joLine.job_description}`,
           "success",
         );
+
+        // Lock sibling BOQ items in the same JO line to this subcontractor
+        if (validQuotations[0]?.subcontractor_id && onSubcontractorLocked) {
+          onSubcontractorLocked(validQuotations[0].subcontractor_id);
+        }
+
         setIsOpen(false);
 
-        // Reset to 3 empty rows
+        // Reset to 1 empty row
         setSubcontractorQuotations([
-          {
-            subcontractor_id: "",
-            quotation_file: null,
-            quotation_url: "",
-            rating: "",
-            total_price: "",
-            created_by: "",
-            isModified: false,
-          },
-          {
-            subcontractor_id: "",
-            quotation_file: null,
-            quotation_url: "",
-            rating: "",
-            total_price: "",
-            created_by: "",
-            isModified: false,
-          },
           {
             subcontractor_id: "",
             quotation_file: null,
@@ -679,9 +671,11 @@ export default function SubcontractorAndQuotationButton({
       {isOpen && (
         <FormPopUp
           header={
-            mode === "edit"
-              ? `UPDATE SUBCONTRACTORS & QUOTATIONS FOR ${joLine.job_description}`
-              : `ADD SUBCONTRACTORS & QUOTATIONS FOR ${joLine.job_description}`
+            boqItemName
+              ? `ADD SUBCONTRACTORS & QUOTATIONS FOR ${boqItemName}`
+              : mode === "edit"
+                ? `UPDATE SUBCONTRACTORS & QUOTATIONS FOR ${joLine.job_description}`
+                : `ADD SUBCONTRACTORS & QUOTATIONS FOR ${joLine.job_description}`
           }
           setIsOpen={setIsOpen}
           handleSubmit={handleSubcontractorAndQuotationSubmit}
@@ -689,6 +683,17 @@ export default function SubcontractorAndQuotationButton({
           style={{ minWidth: "1350px" }}
         >
           <>
+            {subcontractedWorksValue !== undefined && (
+              <div>
+                <small style={{ fontWeight: 600 }}>
+                  SUBCONTRACTED WORKS VALUE
+                </small>
+                <h3>{formatPriceAED(subcontractedWorksValue)}</h3>
+              </div>
+            )}
+
+            <br />
+
             <table className="items-table">
               <thead>
                 <tr>
@@ -718,11 +723,20 @@ export default function SubcontractorAndQuotationButton({
                           labelField="name"
                           noLabel
                           required
+                          disabled={
+                            index > 0 ||
+                            (index === 0 &&
+                              mode === "add" &&
+                              !!lockedSubcontractorId)
+                          }
                           bottomButtonComponent={
-                            <CreateSubcontractorButton
-                              onSuccess={() => fetchSubcontractors()}
-                              full
-                            />
+                            index === 0 &&
+                            !(mode === "add" && !!lockedSubcontractorId) ? (
+                              <CreateSubcontractorButton
+                                onSuccess={() => fetchSubcontractors()}
+                                full
+                              />
+                            ) : undefined
                           }
                         />
                       </td>
@@ -776,7 +790,9 @@ export default function SubcontractorAndQuotationButton({
                             style={{ paddingRight: "50px" }}
                             type="text"
                             placeholder="ENTER TOTAL PRICE"
-                            value={quotation.total_price}
+                            value={formatInputPrice(
+                              String(quotation.total_price),
+                            )}
                             onChange={(e) => {
                               let val = e.target.value;
 
@@ -803,9 +819,9 @@ export default function SubcontractorAndQuotationButton({
 
                       <td>{quotation.created_by || "-"}</td>
 
-                      {/* Show remove button only if more than 3 rows */}
-                      {subcontractorQuotations.length > 3 && (
-                        <td>
+                      {/* Show remove button only for 2nd row and beyond */}
+                      <td>
+                        {subcontractorQuotations.length > 1 && index > 0 && (
                           <Button
                             componentType={"button"}
                             bgColor={"rgba(239, 239, 239, 1)"}
@@ -819,11 +835,8 @@ export default function SubcontractorAndQuotationButton({
                           >
                             <img src={trashIcon} alt="trash icon" />
                           </Button>
-                        </td>
-                      )}
-
-                      {/* Empty cell for rows that don't have trash button */}
-                      {subcontractorQuotations.length <= 3 && <td></td>}
+                        )}
+                      </td>
                     </tr>
                   ),
                 )}
@@ -848,20 +861,26 @@ export default function SubcontractorAndQuotationButton({
             </Button>
 
             <br />
+            <br />
 
-            {/* Visual indicator for minimum subcontractor requirement */}
-            {/* {subcontractorQuotations.filter((q) => q.subcontractor_id !== "")
-              .length < 3 && (
-              <div
-                style={{
-                  padding: "10px 15px",
-                  color: "rgba(248, 77, 77, 1)",
-                  textAlign: "left",
-                }}
-              >
-                Minimum 3 subcontractors are required
-              </div>
-            )} */}
+            {/* Warning: any quotation price exceeds subcontracted works value */}
+            {subcontractedWorksValue !== undefined &&
+              subcontractedWorksValue > 0 &&
+              subcontractorQuotations.some(
+                (q) =>
+                  Number(String(q.total_price).replace(/,/g, "")) >
+                  subcontractedWorksValue,
+              ) && (
+                <div
+                  style={{ display: "flex", gap: "5px", alignItems: "center" }}
+                >
+                  <img src="/icons/warning.svg" alt="warning" />
+                  <p style={{ color: "rgba(175, 61, 61, 1)" }}>
+                    One or more quotations exceed the subcontracted works value
+                    of {formatPriceAED(subcontractedWorksValue)}.
+                  </p>
+                </div>
+              )}
           </>
         </FormPopUp>
       )}

@@ -20,10 +20,15 @@ export async function POST(req: Request) {
            bl.quantity AS boq_qty, bl.unit AS boq_unit, bl.rate_per_quantity,
            jl.job_scope_name, jl.job_description, jl.contract_type,
            jl.boq_line_ids, jl.boq_line_names,
-           jl.quantity, jl.unit, jl.budget_estimate, jl.approved_total_price
+           jl.quantity, jl.unit, jl.budget_estimate, jl.approved_total_price,
+           sq.total_price AS boq_approved_price
          FROM pr_lines pl
          JOIN boq_lines bl ON bl.id = pl.boq_line_id
          JOIN vw_jo_lines jl ON jl.id = pl.jo_line_id
+         LEFT JOIN jo_line_subcontractor_quotation sq
+           ON sq.jo_line_id = pl.jo_line_id
+           AND sq.boq_line_id = pl.boq_line_id
+           AND sq.approval_status = 'Approved'
          WHERE pl.mr_header_id = ?
          ORDER BY pl.jo_line_id ASC, bl.category_order ASC, bl.subcategory_order ASC, bl.item_order ASC`,
         [mrHeaderId],

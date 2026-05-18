@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ResultSetHeader } from "mysql2";
+import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { db } from "@/lib/db";
 
 function normalizeStageNameForLog(stageName: string | null | undefined): string {
@@ -422,8 +422,22 @@ export async function PUT(req: Request) {
       if (lpoId) {
         const rollbackId = Number(body.rollback_progress_id);
 
-        // Always clear payment records for this LPO on any LPO rollback
-        await db.query(`DELETE FROM lpo_payments WHERE lpo_id = ?`, [lpoId]);
+        // Block rollback if this LPO already has payment records
+        const [paymentRows] = await db.query<RowDataPacket[]>(
+          `SELECT COUNT(*) AS cnt FROM lpo_payments WHERE lpo_id = ?`,
+          [lpoId],
+        );
+        const paymentCount = (paymentRows as any[])[0]?.cnt ?? 0;
+        if (Number(paymentCount) > 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                "Rollback is disabled because this LPO already has payment records.",
+            },
+            { status: 400 },
+          );
+        }
 
         if (rollbackId >= 14) {
           // Rolling back within LPO stages (14, 17, 24): only update LPO's progress_id

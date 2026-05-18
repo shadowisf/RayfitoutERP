@@ -531,6 +531,7 @@ export default function IssueLPOButton({
               type={"date"}
               placeholder={"ENTER DELIVERY DATE"}
               required
+              min={new Date().toISOString().split("T")[0]}
               onChange={(e) => setDeliveryDate(e.target.value)}
             />
           </div>

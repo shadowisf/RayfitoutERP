@@ -148,7 +148,7 @@ export default function JoRfqButton({
 
   const handleDelete = async () => {
     if (!rfqData) return;
-    if (!confirm("Are you sure you want to delete this RFQ?")) return;
+
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/jo/rfq`,
@@ -264,8 +264,7 @@ export default function JoRfqButton({
         >
           {selectedIds.length === 0
             ? "Create RFQ"
-            : `Create RFQ for ${selectedIds.length} Job
-          ${selectedIds.length !== 1 ? "s" : ""} +`}
+            : `Create RFQ for ${selectedIds.length} Job${selectedIds.length !== 1 ? "s" : ""} +`}
         </Button>
       )}
 
@@ -333,6 +332,7 @@ export default function JoRfqButton({
               type={"date"}
               placeholder={"SELECT DATE"}
               onChange={(e) => setDeadline(e.target.value)}
+              min={new Date().toLocaleDateString("en-CA")}
               required
             />
           </div>

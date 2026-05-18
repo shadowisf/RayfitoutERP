@@ -21,6 +21,7 @@ type JoPriceApprovalButtonProps = {
   full?: boolean;
   style?: React.CSSProperties;
   onTotalPriceChange?: (joLineId: number, totalPrice: number) => void;
+  boqLineId?: number; // per-BOQ-item approval (hierarchical view)
   // Smart Select All props
   isSmartSelectPortal?: boolean;
   allJoLines?: JoLine[];
@@ -36,6 +37,7 @@ export default function JoPriceApprovalButton({
   full,
   style,
   onTotalPriceChange,
+  boqLineId,
   isSmartSelectPortal = false,
   allJoLines,
   portalTargetId = "jo-smart-select-portal",
@@ -82,7 +84,7 @@ export default function JoPriceApprovalButton({
     fetch("/api/subcontractor/getAllSubcontractorAndQuotationByJoLineID", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: joLine.id }),
+      body: JSON.stringify({ id: joLine.id, boq_line_id: boqLineId }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -164,52 +166,91 @@ export default function JoPriceApprovalButton({
 
     for (const item of allJoLines) {
       try {
-        const quotationsResponse = await fetch(
-          "/api/subcontractor/getAllSubcontractorAndQuotationByJoLineID",
+        // Fetch BOQ items for this JO line
+        const boqResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: item.id }),
-          },
-        );
-
-        if (!quotationsResponse.ok) {
-          failed++;
-          continue;
-        }
-
-        const quotations = await quotationsResponse.json();
-
-        if (!quotations || quotations.length === 0) {
-          failed++;
-          continue;
-        }
-
-        const lowestPriceQuotation = quotations.reduce(
-          (prev: any, current: any) => {
-            return Number(current.total_price) < Number(prev.total_price)
-              ? current
-              : prev;
-          },
-        );
-
-        const approveResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              action: "approveSubcontractorQuotation",
-              quotation_id: lowestPriceQuotation.id,
+              action: "getBoqLinesWithDetailsByJoLineID",
               jo_line_id: item.id,
             }),
           },
         );
 
-        if (approveResponse.ok) {
-          successful++;
-        } else {
+        if (!boqResponse.ok) {
           failed++;
+          continue;
+        }
+
+        const boqItems = await boqResponse.json();
+
+        if (!boqItems || boqItems.length === 0) {
+          failed++;
+          continue;
+        }
+
+        for (const boqItem of boqItems) {
+          try {
+            const quotationsResponse = await fetch(
+              "/api/subcontractor/getAllSubcontractorAndQuotationByJoLineID",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  id: item.id,
+                  boq_line_id: boqItem.boq_line_id,
+                }),
+              },
+            );
+
+            if (!quotationsResponse.ok) {
+              failed++;
+              continue;
+            }
+
+            const quotations = await quotationsResponse.json();
+
+            if (!quotations || quotations.length === 0) {
+              failed++;
+              continue;
+            }
+
+            const lowestPriceQuotation = quotations.reduce(
+              (prev: any, current: any) => {
+                return Number(current.total_price) < Number(prev.total_price)
+                  ? current
+                  : prev;
+              },
+            );
+
+            const approveResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "approveSubcontractorQuotation",
+                  quotation_id: lowestPriceQuotation.id,
+                  jo_line_id: item.id,
+                  boq_line_id: boqItem.boq_line_id,
+                }),
+              },
+            );
+
+            if (approveResponse.ok) {
+              successful++;
+            } else {
+              failed++;
+            }
+          } catch (error) {
+            failed++;
+            console.error(
+              `Error processing BOQ item ${boqItem.boq_line_id} for JO line ${item.id}:`,
+              error,
+            );
+          }
         }
       } catch (error) {
         failed++;
@@ -258,6 +299,7 @@ export default function JoPriceApprovalButton({
           action: "approveSubcontractorQuotation",
           quotation_id: selectedQuotation.id,
           jo_line_id: joLine.id,
+          boq_line_id: boqLineId,
         }),
       },
     );
@@ -288,6 +330,7 @@ export default function JoPriceApprovalButton({
           action: "rejectAllSubcontractorQuotations",
           reject_comment: rejectText,
           jo_line_id: joLine.id,
+          boq_line_id: boqLineId,
         }),
       },
     );
@@ -314,6 +357,7 @@ export default function JoPriceApprovalButton({
           body: JSON.stringify({
             action: "resetSubcontractorQuotation",
             jo_line_id: joLine.id,
+            boq_line_id: boqLineId,
             subcontractor_id: approvedQuotation.subcontractor_id,
           }),
         },
@@ -335,6 +379,7 @@ export default function JoPriceApprovalButton({
           body: JSON.stringify({
             action: "resetAllSubcontractorQuotations",
             jo_line_id: joLine.id,
+            boq_line_id: boqLineId,
           }),
         },
       );
@@ -519,7 +564,7 @@ export default function JoPriceApprovalButton({
 
         {isOpen && (
           <FormPopUp
-            header={"CHOOSE SUBCONTRACTOR AND QUOTATION"}
+            header={"CHOOSE SUBCONTRACTOR & QUOTATION"}
             setIsOpen={setIsOpen}
             handleSubmit={(e) => handleApproveSubcontractorQuotation(e)}
             addButtonLabel={"CONFIRM"}

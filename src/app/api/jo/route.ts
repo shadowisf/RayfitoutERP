@@ -149,9 +149,17 @@ export async function POST(req: Request) {
            bl.category_order,
            bl.subcategory_order,
            bl.item_order,
-           jt.subcontracted_qty
+           jt.subcontracted_qty,
+           s2.id              AS approved_subcontractor_id,
+           s2.name            AS approved_subcontractor_name,
+           sq.total_price     AS approved_total_price
          FROM jt_jo_lines_boq_lines jt
          JOIN boq_lines bl ON jt.boq_line_id = bl.id
+         LEFT JOIN jo_line_subcontractor_quotation sq
+           ON sq.jo_line_id = jt.jo_line_id
+           AND sq.boq_line_id = bl.id
+           AND sq.approval_status = 'Approved'
+         LEFT JOIN subcontractors s2 ON sq.subcontractor_id = s2.id
          WHERE jt.jo_line_id = ?
          ORDER BY bl.category_order ASC, bl.subcategory_order ASC, bl.item_order ASC`,
         [Number(body.jo_line_id)],

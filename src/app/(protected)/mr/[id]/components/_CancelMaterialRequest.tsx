@@ -41,6 +41,7 @@ export default function CancelMaterialRequestButton({
   >([]);
 
   const [reason, setReason] = useState("");
+  const [hasLpoPayments, setHasLpoPayments] = useState(false);
 
   const warningIcon = "/icons/warning.svg";
 
@@ -172,6 +173,20 @@ export default function CancelMaterialRequestButton({
     });
 
     setAvailableStages(previousStages);
+
+    // Check if this LPO already has payment records — if so, disable rollback
+    if (lpoId) {
+      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/getLpoPaymentCount`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lpo_id: lpoId }),
+      })
+        .then((r) => r.json())
+        .then((data) => setHasLpoPayments(Number(data.count ?? 0) > 0))
+        .catch(() => setHasLpoPayments(false));
+    } else {
+      setHasLpoPayments(false);
+    }
   }, [currentProgressId, lpoId, type]);
 
   const handleOpen = () => {
@@ -236,11 +251,17 @@ export default function CancelMaterialRequestButton({
     <>
       <Button
         componentType="button"
-        bgColor={bgColor}
-        borderColor={borderColor}
-        textColor={textColor}
-        onClick={handleOpen}
-        style={{ padding: "7px 20px" }}
+        bgColor={hasLpoPayments ? "rgba(200,200,200,1)" : bgColor}
+        borderColor={hasLpoPayments ? "rgba(200,200,200,1)" : borderColor}
+        textColor={hasLpoPayments ? "rgba(150,150,150,1)" : textColor}
+        onClick={hasLpoPayments ? undefined : handleOpen}
+        disabled={hasLpoPayments}
+        title={
+          hasLpoPayments
+            ? "Rollback disabled — this LPO already has payment records"
+            : undefined
+        }
+        style={{ padding: "7px 20px", cursor: hasLpoPayments ? "not-allowed" : undefined }}
       >
         {children}
       </Button>

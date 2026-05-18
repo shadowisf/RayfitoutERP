@@ -399,15 +399,34 @@ export default async function MrWithID({
                 </div>
 
                 {isPaymentRequest && mrHeader.payment_jo_reference_id && (
-                  <div>
-                    <small>JO NUMBER</small>
-                    <h2>
-                      JO-
-                      {String(mrHeader.payment_jo_reference_id).padStart(
-                        5,
-                        "0",
-                      )}
-                    </h2>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    <div>
+                      <small>JO NUMBER</small>
+                      <h2>
+                        JO-
+                        {String(mrHeader.payment_jo_reference_id).padStart(
+                          5,
+                          "0",
+                        )}
+                      </h2>
+                    </div>
+                    <Button
+                      componentType="link"
+                      bgColor="rgba(239, 239, 239, 1)"
+                      borderColor="rgba(223, 223, 223, 1)"
+                      textColor="black"
+                      href={`/mr/${mrHeader.payment_jo_reference_id}`}
+                      target="_blank"
+                      style={{ padding: "7px 7px" }}
+                    >
+                      <img src={externalLinkIcon} alt="open JO" />
+                    </Button>
                   </div>
                 )}
 

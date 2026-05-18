@@ -579,6 +579,7 @@ export default function NewMrButton() {
                 value={neededBy}
                 type={"date"}
                 placeholder={"ENTER DATE"}
+                min={new Date().toISOString().split("T")[0]}
                 onChange={(e) => setNeededBy(e.target.value)}
                 required
                 style={dateWarning ? { borderColor: "red" } : undefined}

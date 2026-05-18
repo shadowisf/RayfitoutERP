@@ -1853,7 +1853,7 @@ export default function Payments() {
                     <td>
                       <PrStatusPill isPaid={row.is_paid === 1} />
                     </td>
-                    <td style={{ whiteSpace: "nowrap", fontWeight: 700 }}>
+                    <td>
                       AED{" "}
                       {formatAED(
                         row.is_paid === 1 ? 0 : Number(row.outstanding),
