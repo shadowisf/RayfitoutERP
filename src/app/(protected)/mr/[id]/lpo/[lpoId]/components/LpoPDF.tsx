@@ -463,14 +463,18 @@ export function LpoPDF({ lpo, mr }: LpoPDFProps) {
           </View>
         </View>
 
-        {/* Delivery Date */}
+        {/* Delivery Date — hidden for JO LPOs */}
         <View style={styles.infoRow}>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Delivery Date</Text>
-            <Text style={styles.infoValue}>
-              {new Date(lpo.delivery_date).toLocaleDateString("en-GB")}
-            </Text>
-          </View>
+          {!isJoLpo && (
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Delivery Date</Text>
+              <Text style={styles.infoValue}>
+                {lpo.delivery_date
+                  ? new Date(lpo.delivery_date).toLocaleDateString("en-GB")
+                  : "-"}
+              </Text>
+            </View>
+          )}
 
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Project</Text>
@@ -576,12 +580,21 @@ export function LpoPDF({ lpo, mr }: LpoPDFProps) {
         <View style={styles.bottomSection} wrap={false}>
           {/* Left Column - Terms */}
           <View style={styles.termsColumn}>
-            {/* Delivery Terms */}
-            <Text style={styles.termsTitle}>DELIVERY TERMS</Text>
-            <Text style={styles.termItem}>{lpo.delivery_terms}</Text>
+            {/* Delivery Terms — hidden for JO LPOs */}
+            {!isJoLpo && (
+              <>
+                <Text style={styles.termsTitle}>DELIVERY TERMS</Text>
+                <Text style={styles.termItem}>{lpo.delivery_terms}</Text>
+              </>
+            )}
 
             {/* Payment Terms */}
-            <Text style={[styles.termsTitle, { marginTop: 15 }]}>
+            <Text
+              style={[
+                styles.termsTitle,
+                !isJoLpo ? { marginTop: 15 } : { marginTop: 0 },
+              ]}
+            >
               PAYMENT TERMS
             </Text>
             <Text style={styles.paymentTermsText}>{lpo.payment_terms}</Text>

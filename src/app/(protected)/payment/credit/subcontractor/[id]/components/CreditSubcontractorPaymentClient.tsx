@@ -24,6 +24,7 @@ type PrLine = {
   rate_per_quantity: number;
   boq_qty: number;
   boq_unit: string;
+  boq_approved_price: number | null;
   job_scope_name: string;
   job_description: string | null;
   contract_type: string | null;
@@ -48,9 +49,6 @@ type PaymentRequest = {
   requested_by: string;
   project_name: string | null;
   project_id: number | null;
-  before_retention_total: number;
-  retention_total: number;
-  after_retention_total: number;
   total_paid: number;
   outstanding: number;
   is_paid: 0 | 1;
@@ -105,6 +103,26 @@ function fmtDate(v: string | null | undefined) {
           year: "numeric",
         })
         .toUpperCase();
+}
+
+// Compute client-side after-retention total from boq_approved_price
+function computeAfterRetention(lines: PrLine[]): number {
+  const beforeRetention = lines.reduce((sum, b) => {
+    const subQty = Number(b.subcontracted_qty) || 0;
+    const approvedPrice = Number(b.boq_approved_price) || 0;
+    const cQty = Number(b.completed_qty) || 0;
+    if (subQty === 0 || approvedPrice === 0) return sum;
+    return sum + (cQty / subQty) * approvedPrice;
+  }, 0);
+  const retention = lines.reduce((sum, b) => {
+    const subQty = Number(b.subcontracted_qty) || 0;
+    const approvedPrice = Number(b.boq_approved_price) || 0;
+    const cQty = Number(b.completed_qty) || 0;
+    const retPct = Number(b.retention) || 0;
+    if (subQty === 0 || approvedPrice === 0) return sum;
+    return sum + (cQty / subQty) * approvedPrice * (retPct / 100);
+  }, 0);
+  return beforeRetention - retention;
 }
 
 // Group pr_lines by jo_line_id
@@ -215,10 +233,11 @@ export default function CreditSubcontractorPaymentClient({
 
   // ── Selected PRs ──────────────────────────────────────────────────────────
   const selectedPRs = paymentRequests.filter((pr) => checkedIds.has(pr.id));
-  const selectedOutstanding = selectedPRs.reduce(
-    (s, pr) => s + Number(pr.outstanding),
-    0,
-  );
+  const selectedOutstanding = selectedPRs.reduce((s, pr) => {
+    const afterRetention = computeAfterRetention(pr.pr_lines);
+    const totalPaid = pr.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    return s + Math.max(0, afterRetention - totalPaid);
+  }, 0);
 
   // ── Avatar letter ─────────────────────────────────────────────────────────
   const avatarLetter = (subcontractor?.name ?? "?")[0].toUpperCase();
@@ -553,7 +572,7 @@ export default function CreditSubcontractorPaymentClient({
                 setSearchQuery("");
               }}
             >
-              {tab === "unpaid" ? "UNPAID PAYMENT" : "HISTORY TRANSACTION"}
+              {tab === "unpaid" ? "UNPAID PAYMENT" : "TRANSACTION HISTORY"}
             </Button>
           ))}
         </div>
@@ -673,6 +692,24 @@ export default function CreditSubcontractorPaymentClient({
             {displayPRs.map((pr) => {
               const isChecked = checkedIds.has(pr.id);
               const joGroups = groupByJoLine(pr.pr_lines);
+
+              // Compute tfoot totals from boq_approved_price
+              const totalBeforeRetention = pr.pr_lines.reduce((sum, b) => {
+                const subQty = Number(b.subcontracted_qty) || 0;
+                const approvedPrice = Number(b.boq_approved_price) || 0;
+                const cQty = Number(b.completed_qty) || 0;
+                if (subQty === 0 || approvedPrice === 0) return sum;
+                return sum + (cQty / subQty) * approvedPrice;
+              }, 0);
+              const totalRetentionAmt = pr.pr_lines.reduce((sum, b) => {
+                const subQty = Number(b.subcontracted_qty) || 0;
+                const approvedPrice = Number(b.boq_approved_price) || 0;
+                const cQty = Number(b.completed_qty) || 0;
+                const retPct = Number(b.retention) || 0;
+                if (subQty === 0 || approvedPrice === 0) return sum;
+                return sum + (cQty / subQty) * approvedPrice * (retPct / 100);
+              }, 0);
+              const totalAfterRetention = totalBeforeRetention - totalRetentionAmt;
 
               return (
                 <div key={pr.id} className="mr-with-id">
@@ -856,7 +893,7 @@ export default function CreditSubcontractorPaymentClient({
                         <colgroup>
                           <col style={{ width: "40px" }} />
                           <col style={{ width: "400px" }} />
-                          <col style={{ width: "160px" }} />
+                          {/* <col style={{ width: "160px" }} /> */}
                           <col style={{ width: "130px" }} />
                           <col style={{ width: "130px" }} />
                           <col style={{ width: "130px" }} />
@@ -867,8 +904,8 @@ export default function CreditSubcontractorPaymentClient({
                           <tr>
                             <th>#</th>
                             <th>BOQ ITEM</th>
-                            <th>BOQ RATE</th>
-                            <th>SUBCONTRACTED QTY</th>
+                            {/* <th>SUBCONTRACTED QTY</th> */}
+                            <th>SUBCONTRACTOR PRICE</th>
                             <th>COMPLETED QTY</th>
                             <th>RETENTION</th>
                             <th>AMOUNT</th>
@@ -889,13 +926,17 @@ export default function CreditSubcontractorPaymentClient({
                                     const completedQty = Number(
                                       line.completed_qty ?? 0,
                                     );
-                                    const rate = Number(
-                                      line.rate_per_quantity ?? 0,
+                                    const approvedPrice = Number(
+                                      line.boq_approved_price ?? 0,
                                     );
                                     const retentionPct = Number(
                                       line.retention ?? 0,
                                     );
-                                    const amount = completedQty * rate;
+                                    const proportion =
+                                      subcontractedQty > 0
+                                        ? completedQty / subcontractedQty
+                                        : 0;
+                                    const amount = proportion * approvedPrice;
                                     const retentionAmt =
                                       amount * (retentionPct / 100);
                                     const afterRetention =
@@ -918,9 +959,13 @@ export default function CreditSubcontractorPaymentClient({
                                             )}
                                           </div>
                                         </td>
-                                        <td>{formatPriceAED(rate)}</td>
-                                        <td>
+                                        {/* <td>
                                           {subcontractedQty} {line.boq_unit}
+                                        </td> */}
+                                        <td>
+                                          {approvedPrice > 0
+                                            ? formatPriceAED(approvedPrice)
+                                            : "-"}
                                         </td>
                                         <td>
                                           {completedQty} {line.boq_unit}
@@ -965,7 +1010,7 @@ export default function CreditSubcontractorPaymentClient({
                         </tbody>
                         <tfoot>
                           <tr style={{ color: "rgba(146,146,146,1)" }}>
-                            <td colSpan={6} />
+                            <td colSpan={5} />
                             <td
                               style={{
                                 padding: "10px 20px",
@@ -980,13 +1025,11 @@ export default function CreditSubcontractorPaymentClient({
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              {formatPriceAED(
-                                Number(pr.before_retention_total),
-                              )}
+                              {formatPriceAED(totalBeforeRetention)}
                             </td>
                           </tr>
                           <tr style={{ color: "rgba(146,146,146,1)" }}>
-                            <td colSpan={6} />
+                            <td colSpan={5} />
                             <td
                               style={{
                                 padding: "10px 20px",
@@ -1001,11 +1044,11 @@ export default function CreditSubcontractorPaymentClient({
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              {formatPriceAED(Number(pr.retention_total))}
+                              {formatPriceAED(totalRetentionAmt)}
                             </td>
                           </tr>
                           <tr>
-                            <td colSpan={6} />
+                            <td colSpan={5} />
                             <td
                               style={{
                                 padding: "13px 20px",
@@ -1022,7 +1065,7 @@ export default function CreditSubcontractorPaymentClient({
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              {formatPriceAED(Number(pr.after_retention_total))}
+                              {formatPriceAED(totalAfterRetention)}
                             </td>
                           </tr>
 
@@ -1033,7 +1076,7 @@ export default function CreditSubcontractorPaymentClient({
                               : null;
                             return (
                               <tr key={p.id}>
-                                <td colSpan={6} />
+                                <td colSpan={5} />
                                 <td
                                   style={{
                                     padding: "10px 20px",
@@ -1084,7 +1127,7 @@ export default function CreditSubcontractorPaymentClient({
                           {/* Balance row */}
                           {pr.payments.length > 0 && (
                             <tr>
-                              <td colSpan={6} />
+                              <td colSpan={5} />
                               <td
                                 style={{
                                   padding: "13px 20px",
@@ -1101,9 +1144,10 @@ export default function CreditSubcontractorPaymentClient({
                                   whiteSpace: "nowrap",
                                 }}
                               >
-                                {formatPriceAED(
-                                  Math.max(0, Number(pr.outstanding)),
-                                )}
+                                {formatPriceAED(Math.max(0,
+                                  computeAfterRetention(pr.pr_lines) -
+                                  pr.payments.reduce((s, p) => s + Number(p.amount), 0)
+                                ))}
                               </td>
                             </tr>
                           )}
@@ -1293,7 +1337,11 @@ export default function CreditSubcontractorPaymentClient({
       <RecordPrPaymentForm
         prs={selectedPRs.map((pr) => ({
           id: pr.id,
-          outstanding: pr.outstanding,
+          outstanding: Math.max(
+            0,
+            computeAfterRetention(pr.pr_lines) -
+              pr.payments.reduce((s, p) => s + Number(p.amount), 0),
+          ),
         }))}
         subcontractorName={subcontractor?.name ?? ""}
         recordedBy={userInfo?.name || userInfo?.email || "Finance"}

@@ -85,12 +85,12 @@ export async function POST(req: Request) {
     }
 
     if (body.action === "addSubcontractorAndQuotation") {
-      const { jo_line_id, quotations } = body;
+      const { jo_line_id, boq_line_id, quotations } = body;
 
       const insertQuery = `
         INSERT INTO jo_line_subcontractor_quotation
-        (subcontractor_id, jo_line_id, quotation_file, rating, total_price, created_by)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (subcontractor_id, jo_line_id, boq_line_id, quotation_file, rating, total_price, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `;
 
       const insertedIds = [];
@@ -99,6 +99,7 @@ export async function POST(req: Request) {
         const [result]: any = await db.query(insertQuery, [
           quotation.subcontractor_id,
           jo_line_id,
+          boq_line_id,
           JSON.stringify([quotation.quotation_file]),
           quotation.rating || null,
           quotation.total_price,
@@ -183,19 +184,29 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "approveSubcontractorQuotation") {
-      // Clear any previous approval for this jo_line
+      // Step 1: Get boq_line_id from the quotation row so we can scope the clear
+      const [quotationRows]: any = await db.query(
+        `SELECT jo_line_id, boq_line_id FROM jo_line_subcontractor_quotation WHERE id = ?`,
+        [body.quotation_id],
+      );
+
+      if (!quotationRows || quotationRows.length === 0) {
+        return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
+      }
+
+      const { jo_line_id, boq_line_id } = quotationRows[0];
+
+      // Step 2: Clear any existing approval for this (jo_line_id, boq_line_id) pair
       await db.query(
         `UPDATE jo_line_subcontractor_quotation
          SET approval_status = NULL
-         WHERE jo_line_id = ? AND approval_status = 'Approved'`,
-        [body.jo_line_id],
+         WHERE jo_line_id = ? AND boq_line_id = ? AND approval_status = 'Approved'`,
+        [jo_line_id, boq_line_id],
       );
 
-      // Approve the selected quotation
+      // Step 3: Mark the selected quotation as approved
       await db.query(
-        `UPDATE jo_line_subcontractor_quotation
-         SET approval_status = 'Approved'
-         WHERE id = ?`,
+        `UPDATE jo_line_subcontractor_quotation SET approval_status = 'Approved' WHERE id = ?`,
         [body.quotation_id],
       );
 
@@ -206,8 +217,8 @@ export async function PUT(req: Request) {
       await db.query(
         `UPDATE jo_line_subcontractor_quotation
          SET approval_status = 'Rejected', reject_comment = ?
-         WHERE jo_line_id = ?`,
-        [body.reject_comment, body.jo_line_id],
+         WHERE jo_line_id = ? AND boq_line_id = ?`,
+        [body.reject_comment, body.jo_line_id, body.boq_line_id],
       );
 
       return NextResponse.json({ success: true });
@@ -217,8 +228,8 @@ export async function PUT(req: Request) {
       await db.query(
         `UPDATE jo_line_subcontractor_quotation
          SET approval_status = NULL, reject_comment = NULL
-         WHERE jo_line_id = ? AND subcontractor_id = ? AND approval_status = 'Approved'`,
-        [body.jo_line_id, body.subcontractor_id],
+         WHERE jo_line_id = ? AND boq_line_id = ? AND subcontractor_id = ? AND approval_status = 'Approved'`,
+        [body.jo_line_id, body.boq_line_id, body.subcontractor_id],
       );
 
       return NextResponse.json({ success: true });
@@ -228,20 +239,20 @@ export async function PUT(req: Request) {
       await db.query(
         `UPDATE jo_line_subcontractor_quotation
          SET approval_status = NULL, reject_comment = NULL
-         WHERE jo_line_id = ?`,
-        [body.jo_line_id],
+         WHERE jo_line_id = ? AND boq_line_id = ?`,
+        [body.jo_line_id, body.boq_line_id],
       );
 
       return NextResponse.json({ success: true });
     }
 
     if (body.action === "updateSubcontractorQuotations") {
-      const { jo_line_id, quotations } = body;
+      const { jo_line_id, boq_line_id, quotations } = body;
 
       // Get existing quotation IDs
       const [existingRows]: any = await db.query(
-        "SELECT id FROM jo_line_subcontractor_quotation WHERE jo_line_id = ?",
-        [jo_line_id],
+        "SELECT id FROM jo_line_subcontractor_quotation WHERE jo_line_id = ? AND boq_line_id = ?",
+        [jo_line_id, boq_line_id],
       );
 
       const existingIds = existingRows.map((row: any) => row.id);
@@ -252,6 +263,7 @@ export async function PUT(req: Request) {
           await db.query(
             `UPDATE jo_line_subcontractor_quotation
              SET subcontractor_id = ?,
+                 boq_line_id = ?,
                  quotation_file = ?,
                  rating = ?,
                  total_price = ?,
@@ -261,6 +273,7 @@ export async function PUT(req: Request) {
              WHERE id = ?`,
             [
               quotation.subcontractor_id,
+              boq_line_id,
               JSON.stringify([quotation.quotation_file]),
               quotation.rating,
               quotation.total_price,
@@ -272,11 +285,12 @@ export async function PUT(req: Request) {
         } else {
           const [result] = await db.query<ResultSetHeader>(
             `INSERT INTO jo_line_subcontractor_quotation
-             (subcontractor_id, jo_line_id, quotation_file, rating, total_price, created_by)
+             (subcontractor_id, jo_line_id, boq_line_id, quotation_file, rating, total_price, created_by)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
               quotation.subcontractor_id,
               jo_line_id,
+              boq_line_id,
               JSON.stringify([quotation.quotation_file]),
               quotation.rating,
               quotation.total_price,

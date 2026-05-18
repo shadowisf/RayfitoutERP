@@ -452,8 +452,9 @@ export default function EditJoItemButton({ item, projectID }: props) {
                     <th>ITEM</th>
                     <th>BOQ RATE</th>
                     <th>BOQ QTY</th>
-                    <th style={{ width: "275px" }}>SUBCONTRACTED QTY</th>
                     <th>BOQ TOTAL PRICE</th>
+                    <th style={{ width: "275px" }}>SUBCONTRACTED QTY</th>
+                    <th>SUBCONTRACTED WORKS VALUE</th>
                     <th style={{ width: "40px" }}></th>
                   </tr>
                 </thead>
@@ -528,6 +529,9 @@ export default function EditJoItemButton({ item, projectID }: props) {
                       </td>
                       <td>
                         {formatQty(boq.quantity)} {boq.unit}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {formatPriceAED(boq.total_cost)}
                       </td>
                       <td>
                         <div
@@ -622,7 +626,13 @@ export default function EditJoItemButton({ item, projectID }: props) {
                         </div>
                       </td>
                       <td style={{ whiteSpace: "nowrap" }}>
-                        {formatPriceAED(boq.total_cost)}
+                        {formatPriceAED(
+                          (Number(boq.rate_per_quantity) || 0) *
+                            getActualSubcontractedQty(
+                              boq.id,
+                              Number(boq.quantity) || 0,
+                            ),
+                        )}
                       </td>
                       <td>
                         <Button

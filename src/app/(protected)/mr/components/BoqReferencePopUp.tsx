@@ -396,9 +396,11 @@ export default function BoqReferencePopUp({
     userInfo?.departmentID === 10 ||
     userInfo?.departmentID === 16;
 
-  // Works value is only visible to Management (8) and Procurement (9)
+  // Works value is visible to Management (8), Procurement (9), and QS (16)
   const canSeeWorksValue =
-    userInfo?.departmentID === 8 || userInfo?.departmentID === 9;
+    userInfo?.departmentID === 8 ||
+    userInfo?.departmentID === 9 ||
+    userInfo?.departmentID === 16;
 
   // Whether to show JO-specific subcontracted columns
   const showJoColumns = !!joLine;

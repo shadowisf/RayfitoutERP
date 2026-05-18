@@ -28,9 +28,9 @@ export async function POST(req: Request) {
       JOIN subcontractors s ON sq.subcontractor_id = s.id
       LEFT JOIN jt_subcontractor_material_category jsmc ON s.id = jsmc.subcontractor_id
       LEFT JOIN lut_material_categories mc ON jsmc.material_category_id = mc.id
-      WHERE sq.jo_line_id = ?
+      WHERE sq.jo_line_id = ? AND sq.boq_line_id = ?
       GROUP BY sq.id`,
-      [Number(body.id)],
+      [Number(body.id), Number(body.boq_line_id)],
     );
 
     return NextResponse.json(rows, { status: 200 });

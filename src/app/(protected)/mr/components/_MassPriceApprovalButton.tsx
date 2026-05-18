@@ -181,7 +181,7 @@ export default function MassPriceApprovalButton({
 
           submitRes.ok ? success++ : failed++;
         } else if (type === "job") {
-          // ── JO: select cheapest subcontractor per line, submit to LPO & Invoice ──
+          // ── JO: select cheapest subcontractor per BOQ item, submit to LPO & Invoice ──
           const lineIds = await fetchJoLineIds(mrId);
           if (lineIds.length === 0) {
             failed++;
@@ -189,34 +189,59 @@ export default function MassPriceApprovalButton({
           }
 
           for (const joLineId of lineIds) {
-            const qRes = await fetch(
-              "/api/subcontractor/getAllSubcontractorAndQuotationByJoLineID",
+            // Fetch BOQ items for this JO line (mirrors Smart Select in JoPriceApprovalButton)
+            const boqRes = await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/jo`,
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: joLineId }),
-              },
-            );
-            if (!qRes.ok) continue;
-            const quotations = await qRes.json();
-            if (!Array.isArray(quotations) || quotations.length === 0) continue;
-
-            const lowest = quotations.reduce((prev: any, curr: any) =>
-              Number(curr.total_price) < Number(prev.total_price) ? curr : prev,
-            );
-
-            await fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`,
-              {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  action: "approveSubcontractorQuotation",
-                  quotation_id: lowest.id,
+                  action: "getBoqLinesWithDetailsByJoLineID",
                   jo_line_id: joLineId,
                 }),
               },
             );
+            if (!boqRes.ok) continue;
+            const boqItems = await boqRes.json();
+            if (!Array.isArray(boqItems) || boqItems.length === 0) continue;
+
+            for (const boqItem of boqItems) {
+              const qRes = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor/getAllSubcontractorAndQuotationByJoLineID`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    id: joLineId,
+                    boq_line_id: boqItem.boq_line_id,
+                  }),
+                },
+              );
+              if (!qRes.ok) continue;
+              const quotations = await qRes.json();
+              if (!Array.isArray(quotations) || quotations.length === 0)
+                continue;
+
+              const lowest = quotations.reduce((prev: any, curr: any) =>
+                Number(curr.total_price) < Number(prev.total_price)
+                  ? curr
+                  : prev,
+              );
+
+              await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/subcontractor`,
+                {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "approveSubcontractorQuotation",
+                    quotation_id: lowest.id,
+                    jo_line_id: joLineId,
+                    boq_line_id: boqItem.boq_line_id,
+                  }),
+                },
+              );
+            }
           }
 
           const submitRes = await fetch(

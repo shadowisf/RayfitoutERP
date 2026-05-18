@@ -59,23 +59,37 @@ export async function POST(request: NextRequest) {
         mh.requested_by,
         mh.project_id,
         p.name AS project_name,
-        COALESCE(SUM(jl.before_retention), 0) AS before_retention_total,
-        COALESCE(SUM(jl.retention), 0) AS retention_total,
-        COALESCE(SUM(jl.after_retention), 0) AS after_retention_total,
         ROUND(COALESCE(pmt.total_paid, 0), 2) AS total_paid,
-        ROUND(GREATEST(COALESCE(SUM(jl.after_retention), 0) - COALESCE(pmt.total_paid, 0), 0), 2) AS outstanding,
+        ROUND(GREATEST(COALESCE(pr_calc.after_retention_sum, 0) - COALESCE(pmt.total_paid, 0), 0), 2) AS outstanding,
         CASE
           WHEN COALESCE(pmt.total_paid, 0) > 0
-           AND ROUND(GREATEST(COALESCE(SUM(jl.after_retention), 0) - COALESCE(pmt.total_paid, 0), 0), 2) = 0
+           AND ROUND(GREATEST(COALESCE(pr_calc.after_retention_sum, 0) - COALESCE(pmt.total_paid, 0), 0), 2) = 0
           THEN 1 ELSE 0
         END AS is_paid
       FROM mr_headers mh
+      -- Only include payment requests whose referenced JO is completed (stage 25)
+      JOIN mr_headers jo_ref ON jo_ref.id = mh.payment_jo_reference_id AND jo_ref.progress_id = 25
       LEFT JOIN lpo l ON l.mr_header_id = mh.payment_jo_reference_id
       LEFT JOIN projects p ON mh.project_id = p.id
-      LEFT JOIN jo_lines jl ON jl.mr_header_id = mh.payment_jo_reference_id
+      LEFT JOIN (
+        SELECT
+          pl.mr_header_id,
+          SUM(
+            CASE WHEN COALESCE(pl.subcontracted_qty, 0) > 0 AND COALESCE(sq.total_price, 0) > 0
+              THEN (COALESCE(pl.completed_qty, 0) / pl.subcontracted_qty) * sq.total_price * (1 - COALESCE(pl.retention, 0) / 100)
+              ELSE 0
+            END
+          ) AS after_retention_sum
+        FROM pr_lines pl
+        LEFT JOIN jo_line_subcontractor_quotation sq
+          ON sq.jo_line_id = pl.jo_line_id
+          AND sq.boq_line_id = pl.boq_line_id
+          AND sq.approval_status = 'Approved'
+        GROUP BY pl.mr_header_id
+      ) pr_calc ON pr_calc.mr_header_id = mh.id
       LEFT JOIN (SELECT pr_id, SUM(amount) AS total_paid FROM jo_payments GROUP BY pr_id) pmt ON pmt.pr_id = mh.id
       WHERE mh.type = 'payment' AND l.subcontractor_id = ?
-      GROUP BY mh.id, pmt.total_paid, p.name
+      GROUP BY mh.id, pmt.total_paid, p.name, pr_calc.after_retention_sum
       ORDER BY is_paid ASC, mh.id DESC`,
       [subcontractorId],
     );
@@ -92,10 +106,15 @@ export async function POST(request: NextRequest) {
           pl.subcontracted_qty, pl.completed_qty, pl.retention, pl.attachment,
           bl.item_name, bl.item_description, bl.rate_per_quantity,
           bl.quantity AS boq_qty, bl.unit AS boq_unit,
-          jl.job_scope_name, jl.job_description, jl.contract_type
+          jl.job_scope_name, jl.job_description, jl.contract_type,
+          sq.total_price AS boq_approved_price
         FROM pr_lines pl
         JOIN boq_lines bl ON bl.id = pl.boq_line_id
         JOIN vw_jo_lines jl ON jl.id = pl.jo_line_id
+        LEFT JOIN jo_line_subcontractor_quotation sq
+          ON sq.jo_line_id = pl.jo_line_id
+          AND sq.boq_line_id = pl.boq_line_id
+          AND sq.approval_status = 'Approved'
         WHERE pl.mr_header_id IN (${placeholders})
         ORDER BY pl.mr_header_id, pl.jo_line_id, bl.item_order`,
         prIds,

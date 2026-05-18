@@ -57,6 +57,8 @@ type PrLine = {
   boq_qty: number | null;
   boq_unit: string | null;
   rate_per_quantity: number | null;
+  // Approved quotation price for this specific BOQ line item
+  boq_approved_price: number | null;
 };
 
 type PrLinesViewProps = {
@@ -579,6 +581,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
             {/* Payment Receipt download + Payment stage UI — moved to Payments tab */}
             {/* {(isCompleted || prPaymentStatus === "paid") && paymentReceipt && ( ... )} */}
             {/* {isPaymentStage && ( ... )} */}
+
           </div>
         </div>
 
@@ -751,14 +754,14 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                             </div>
 
                             {/* TOTAL PRICE */}
-                            <div>
+                            {/* <div>
                               <small>TOTAL PRICE</small>
                               <h2>
                                 {Number(line.approved_total_price) > 0
                                   ? formatPriceAED(line.approved_total_price)
                                   : "-"}
                               </h2>
-                            </div>
+                            </div> */}
                           </div>
                         </div>
 
@@ -802,9 +805,11 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                 <tr>
                                   <th style={{ width: "40px" }}>#</th>
                                   <th>BOQ ITEM</th>
-                                  <th style={{ width: "160px" }}>BOQ RATE</th>
                                   <th style={{ width: "160px" }}>
                                     SUBCONTRACTED QTY
+                                  </th>
+                                  <th style={{ width: "180px" }}>
+                                    SUBCONTRACTOR PRICE
                                   </th>
                                   <th
                                     style={{
@@ -870,46 +875,85 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                           )}
                                         </td>
                                         <td>
-                                          {formatPriceAED(
-                                            boqLine.rate_per_quantity,
-                                          )}
-                                        </td>
-                                        <td>
                                           {formatNumber(
                                             boqLine.subcontracted_qty,
                                           )}{" "}
                                           {boqLine.boq_unit}
                                         </td>
                                         <td>
+                                          {boqLine.boq_approved_price != null &&
+                                          Number(boqLine.boq_approved_price) > 0
+                                            ? formatPriceAED(
+                                                boqLine.boq_approved_price,
+                                              )
+                                            : "-"}
+                                        </td>
+                                        <td>
                                           {canEdit ? (
-                                            <InputItem
-                                              label=""
-                                              value={boqEdited.completed_qty}
-                                              type="text postfix"
-                                              postfixText={
-                                                boqLine.boq_unit || ""
-                                              }
-                                              placeholder="ENTER COMPLETED QTY"
-                                              noOptionalLabel
-                                              onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (
-                                                  val === "" ||
-                                                  /^\d*\.?\d*$/.test(val)
-                                                ) {
-                                                  setEditedLines((prev) => ({
-                                                    ...prev,
-                                                    [boqLine.boq_line_id]: {
-                                                      ...prev[
-                                                        boqLine.boq_line_id
-                                                      ],
-                                                      completed_qty: val,
-                                                    },
-                                                  }));
+                                            <div
+                                              style={{ position: "relative" }}
+                                            >
+                                              <InputItem
+                                                label=""
+                                                value={boqEdited.completed_qty}
+                                                type="text postfix"
+                                                postfixText={
+                                                  boqLine.boq_unit || ""
                                                 }
-                                              }}
-                                              required
-                                            />
+                                                placeholder="ENTER COMPLETED QTY"
+                                                noOptionalLabel
+                                                onChange={(e) => {
+                                                  const val = e.target.value;
+                                                  if (
+                                                    val === "" ||
+                                                    /^\d*\.?\d*$/.test(val)
+                                                  ) {
+                                                    setEditedLines((prev) => ({
+                                                      ...prev,
+                                                      [boqLine.boq_line_id]: {
+                                                        ...prev[
+                                                          boqLine.boq_line_id
+                                                        ],
+                                                        completed_qty: val,
+                                                      },
+                                                    }));
+                                                  }
+                                                }}
+                                                required
+                                              />
+                                              {completedQtyVal >
+                                                Number(
+                                                  boqLine.subcontracted_qty,
+                                                ) && (
+                                                <div
+                                                  style={{
+                                                    position: "absolute",
+                                                    top: "100%",
+                                                    left: 0,
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "6px",
+                                                    marginTop: "4px",
+                                                    whiteSpace: "nowrap",
+                                                  }}
+                                                >
+                                                  <img
+                                                    src="/icons/warning.svg"
+                                                    alt="warning"
+                                                    style={{ width: "14px" }}
+                                                  />
+                                                  <small
+                                                    style={{
+                                                      color:
+                                                        "rgba(175, 61, 61, 1)",
+                                                    }}
+                                                  >
+                                                    Exceeds subcontracted
+                                                    quantity
+                                                  </small>
+                                                </div>
+                                              )}
+                                            </div>
                                           ) : (
                                             <span>
                                               {formatNumber(completedQtyVal)}{" "}
@@ -951,17 +995,31 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                             </span>
                                           )}
                                         </td>
-                                        {/* AMOUNT column — after_retention per line */}
+                                        {/* AMOUNT column — proportion of approved price after retention */}
                                         <td>
-                                          {completedQtyVal > 0
-                                            ? formatPriceAED(
-                                                completedQtyVal *
-                                                  (Number(
-                                                    boqLine.rate_per_quantity,
-                                                  ) || 0) *
-                                                  (1 - retentionVal / 100),
-                                              )
-                                            : "N/A"}
+                                          {(() => {
+                                            const subQty =
+                                              Number(
+                                                boqLine.subcontracted_qty,
+                                              ) || 0;
+                                            const approvedPrice =
+                                              Number(
+                                                boqLine.boq_approved_price,
+                                              ) || 0;
+                                            if (
+                                              completedQtyVal <= 0 ||
+                                              subQty === 0 ||
+                                              approvedPrice === 0
+                                            )
+                                              return "N/A";
+                                            const proportion =
+                                              completedQtyVal / subQty;
+                                            const amount =
+                                              proportion *
+                                              approvedPrice *
+                                              (1 - retentionVal / 100);
+                                            return formatPriceAED(amount);
+                                          })()}
                                         </td>
 
                                         <td>
@@ -1402,10 +1460,14 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                         parseFloat(
                                           bEdited.completed_qty || "0",
                                         ) || 0;
+                                      const subQty =
+                                        Number(b.subcontracted_qty) || 0;
+                                      const approvedPrice =
+                                        Number(b.boq_approved_price) || 0;
+                                      if (subQty === 0 || approvedPrice === 0)
+                                        return sum;
                                       return (
-                                        sum +
-                                        cQty *
-                                          (Number(b.rate_per_quantity) || 0)
+                                        sum + (cQty / subQty) * approvedPrice
                                       );
                                     }, 0);
                                   const totalRetentionAmt = boqRows.reduce(
@@ -1423,19 +1485,29 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                       const retPct =
                                         parseFloat(bEdited.retention || "0") ||
                                         0;
+                                      const subQty =
+                                        Number(b.subcontracted_qty) || 0;
+                                      const approvedPrice =
+                                        Number(b.boq_approved_price) || 0;
+                                      if (subQty === 0 || approvedPrice === 0)
+                                        return sum;
                                       const price =
-                                        cQty *
-                                        (Number(b.rate_per_quantity) || 0);
+                                        (cQty / subQty) * approvedPrice;
                                       return sum + price * (retPct / 100);
                                     },
                                     0,
                                   );
                                   const totalAfterRetention =
                                     totalSubcontractorPrice - totalRetentionAmt;
-                                  const hasAnyQty =
-                                    totalSubcontractorPrice > 0;
-                                  // Total columns: 8 base (#, BOQ ITEM, BOQ RATE, SUBCONTRACTED QTY,
-                                  // COMPLETED QTY, RETENTION, AMOUNT, ATTACHMENT(S))
+                                  const hasAnyQty = totalSubcontractorPrice > 0;
+                                  // Sum of full approved prices (not proportional)
+                                  const totalApprovedPrice = boqRows.reduce(
+                                    (sum, b) =>
+                                      sum + (Number(b.boq_approved_price) || 0),
+                                    0,
+                                  );
+                                  // Total columns: 8 base (#, BOQ ITEM, SUBCONTRACTED QTY,
+                                  // SUBCONTRACTOR PRICE, COMPLETED QTY, RETENTION, AMOUNT, ATTACHMENT(S))
                                   // + 1 if MANAGER PRICE APPROVAL shown
                                   // + 1 if QS APPROVAL shown
                                   // Label + value are always pinned to the last two columns.
@@ -1444,6 +1516,9 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                     (showManagerApproval ? 1 : 0) +
                                     (showQsApproval ? 1 : 0);
                                   const leadSpan = totalCols - 2;
+                                  // cols 5 → (totalCols-2): middle gap between
+                                  // SUBTOTAL value (col 4) and AFTER RETENTION label
+                                  const middleSpan = totalCols - 6;
                                   return (
                                     <>
                                       <tr>
@@ -1486,12 +1561,24 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                             : "N/A"}
                                         </td>
                                       </tr>
+                                      {/* SUBTOTAL (col 3–4) + AFTER RETENTION (last 2 cols) on one row */}
                                       <tr style={{ fontWeight: 600 }}>
-                                        <td colSpan={leadSpan} />
+                                        <td colSpan={2} />
+                                        <td>SUBTOTAL</td>
+                                        <td>
+                                          {totalApprovedPrice > 0
+                                            ? formatPriceAED(totalApprovedPrice)
+                                            : "N/A"}
+                                        </td>
+                                        {middleSpan > 0 && (
+                                          <td colSpan={middleSpan} />
+                                        )}
                                         <td>AFTER RETENTION</td>
                                         <td>
                                           {hasAnyQty
-                                            ? formatPriceAED(totalAfterRetention)
+                                            ? formatPriceAED(
+                                                totalAfterRetention,
+                                              )
                                             : "N/A"}
                                         </td>
                                       </tr>
