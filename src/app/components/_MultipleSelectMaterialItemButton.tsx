@@ -560,7 +560,16 @@ export default function MultipleSelectMaterialItemButton({
   // Render items table for a subcategory
   const renderItemsTable = (items: PredefinedItem[]) => (
     <>
-      <table className="items-table two-toned">
+      <table
+        className="items-table two-toned"
+        style={{ tableLayout: "fixed", width: "100%" }}
+      >
+        <colgroup>
+          <col style={{ width: "50px" }} />
+          <col style={{ width: "140px" }} />
+          <col style={{ width: "auto" }} />
+          <col style={{ width: "100px" }} />
+        </colgroup>
         <thead>
           <tr>
             <th></th>

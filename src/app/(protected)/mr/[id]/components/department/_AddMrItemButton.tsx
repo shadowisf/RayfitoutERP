@@ -21,6 +21,7 @@ type SelectedMaterialRow = {
   quantity: string;
   unit: string;
   unitWasNull: boolean;
+  boqLineIDs: number[];
   // Per-row overrides (only used if explicitly set)
   descriptionOverride?: string;
   brandOverride?: string;
@@ -93,7 +94,6 @@ export default function AddMrItemButton({
   const [editSubcategoryValues, setEditSubcategoryValues] = useState<any[]>([]);
 
   // Shared fields
-  const [boqLineIDs, setBoqLineIDs] = useState<number[]>([]);
   const [brand, setBrand] = useState("");
   const [specification, setSpecification] = useState("");
   const [deliveryLocation, setDeliveryLocation] = useState("");
@@ -116,6 +116,7 @@ export default function AddMrItemButton({
       quantity: "",
       unit: newItem.unit ? mapPredefinedUnit(newItem.unit) : "",
       unitWasNull: !newItem.unit,
+      boqLineIDs: [],
     };
     setSelectedRows((prev) => [...prev, newRow]);
     setSelectedItemIDs((prev) => [...prev, newItem.id]);
@@ -187,6 +188,7 @@ export default function AddMrItemButton({
           quantity: "",
           unit: item.unit ? mapPredefinedUnit(item.unit) : "",
           unitWasNull: !item.unit,
+          boqLineIDs: [],
         };
       });
     });
@@ -331,9 +333,13 @@ export default function AddMrItemButton({
     setEditDraft(null);
   };
 
-  // Handle BOQ selection
-  const handleBoqSelection = (boqIDs: number[]) => {
-    setBoqLineIDs(boqIDs);
+  // Update per-row BOQ line IDs
+  const updateRowBoqLineIDs = (itemId: number, ids: number[]) => {
+    setSelectedRows((prev) =>
+      prev.map((r) =>
+        r.predefinedItem.id === itemId ? { ...r, boqLineIDs: ids } : r,
+      ),
+    );
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -361,9 +367,14 @@ export default function AddMrItemButton({
       }
     }
 
-    if (boqLineIDs.length === 0) {
-      toast("Please select at least one bill of quantity item", "error");
-      return;
+    for (const row of selectedRows) {
+      if (!row.boqLineIDs || row.boqLineIDs.length === 0) {
+        toast(
+          `BOQ reference is required for "${row.descriptionOverride?.trim() || row.predefinedItem.material_description}". Please add a BOQ reference before confirming.`,
+          "error",
+        );
+        return;
+      }
     }
 
     try {
@@ -417,7 +428,7 @@ export default function AddMrItemButton({
               row.deliveryLocationOverride !== ""
                 ? row.deliveryLocationOverride
                 : deliveryLocation,
-            boq_line_ids: boqLineIDs,
+            boq_line_ids: row.boqLineIDs,
             attachment: attachmentUrl ? JSON.stringify(attachmentUrl) : null,
           }),
         });
@@ -456,7 +467,6 @@ export default function AddMrItemButton({
       setIsOpen(false);
       setSelectedRows([]);
       setSelectedItemIDs([]);
-      setBoqLineIDs([]);
       setBrand("");
       setSpecification("");
       setDeliveryLocation("");
@@ -722,6 +732,7 @@ export default function AddMrItemButton({
                         <th>ITEM</th>
                         <th>QTY</th>
                         <th>UNIT</th>
+                        <th>BOQ REF.</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -787,6 +798,19 @@ export default function AddMrItemButton({
                             </td>
 
                             <td>
+                              <MultipleSelectBoqItemButton
+                                projectID={projectID}
+                                onSelectBoq={(ids) =>
+                                  updateRowBoqLineIDs(
+                                    row.predefinedItem.id,
+                                    ids,
+                                  )
+                                }
+                                currentBoqLineIDs={row.boqLineIDs}
+                                compact
+                              />
+                            </td>
+                            <td>
                               <div
                                 style={{
                                   display: "flex",
@@ -794,19 +818,6 @@ export default function AddMrItemButton({
                                   alignItems: "center",
                                 }}
                               >
-                                {/* <Button
-                                  componentType={"button"}
-                                  bgColor={"rgba(239,239,239,1)"}
-                                  borderColor={"rgba(223,223,223,1)"}
-                                  textColor={"black"}
-                                  style={{ padding: "7px 7px" }}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    openRowEdit(row);
-                                  }}
-                                >
-                                  <img src={pencilIcon} alt="edit" />
-                                </Button> */}
                                 <Button
                                   componentType={"button"}
                                   bgColor={"transparent"}
@@ -852,8 +863,8 @@ export default function AddMrItemButton({
             </>
           )}
 
-          {/* BOQ REF */}
-          <div className="input-row full">
+          {/* BOQ REF — moved to per-row column in preview table above */}
+          {/* <div className="input-row full">
             <div className="input-item">
               <label className="custom">
                 <span>BOQ REF.</span>
@@ -865,7 +876,7 @@ export default function AddMrItemButton({
                 currentBoqLineIDs={boqLineIDs}
               />
             </div>
-          </div>
+          </div> */}
 
           {/* Brand */}
           <div className="input-row full">
