@@ -265,6 +265,14 @@ export default function EditMrItemButton({
       return;
     }
 
+    if (boqLineIDs.length === 0) {
+      toast(
+        "BOQ reference is required. Please add a BOQ reference before confirming.",
+        "error",
+      );
+      return;
+    }
+
     try {
       let attachmentUrl = null;
 
@@ -365,7 +373,7 @@ export default function EditMrItemButton({
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
-          style={{ minWidth: "95dvw", height: "95dvh" }}
+          style={{ width: "75dvw", height: "95dvh" }}
         >
           {/* Material Items Selection */}
           <div className="input-row full">
@@ -497,6 +505,7 @@ export default function EditMrItemButton({
                       <th>ITEM</th>
                       <th>QTY</th>
                       <th>UNIT</th>
+                      <th>BOQ REF.</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -587,6 +596,14 @@ export default function EditMrItemButton({
                           style={{ width: "120px" }}
                         />
                       </td>
+                      <td>
+                        <MultipleSelectBoqItemButton
+                          projectID={projectID}
+                          onSelectBoq={(ids) => setBoqLineIDs(ids)}
+                          currentBoqLineIDs={boqLineIDs}
+                          compact
+                        />
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -596,8 +613,8 @@ export default function EditMrItemButton({
             </>
           )}
 
-          {/* BOQ REF */}
-          <div className="input-row full">
+          {/* BOQ REF — moved to per-row column in preview table above */}
+          {/* <div className="input-row full">
             <div className="input-item">
               <label className="custom">
                 <span>BOQ REF.</span>
@@ -609,7 +626,7 @@ export default function EditMrItemButton({
                 currentBoqLineIDs={boqLineIDs}
               />
             </div>
-          </div>
+          </div> */}
 
           {/* Brand */}
           <div className="input-row full">

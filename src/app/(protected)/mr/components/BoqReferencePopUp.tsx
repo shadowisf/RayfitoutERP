@@ -489,7 +489,7 @@ export default function BoqReferencePopUp({
             const uniqueBoqIds = [
               ...new Set(boqItems.map((b) => b.boq_header_id)),
             ];
-            if (uniqueBoqIds.length === 1 && uniqueBoqIds[0]) {
+            if (uniqueBoqIds.length > 0 && uniqueBoqIds[0]) {
               return (
                 <div
                   style={{
@@ -520,7 +520,7 @@ export default function BoqReferencePopUp({
           style={{
             whiteSpace: "pre-wrap",
             minWidth: "1500px",
-            minHeight: "85dvh",
+            minHeight: "95dvh",
           }}
         >
           <div
@@ -769,7 +769,7 @@ export default function BoqReferencePopUp({
           )}
 
           {/* Content Area */}
-          <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+          <div>
             {isLoading ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
                 Loading BOQ details...
@@ -780,7 +780,18 @@ export default function BoqReferencePopUp({
               </div>
             ) : activeCategory === "SUMMARY" ? (
               // SUMMARY View - Categories only (aggregated)
-              <table className="items-table">
+              <table
+                className="items-table"
+                style={{ tableLayout: "fixed", width: "100%" }}
+              >
+                <colgroup>
+                  <col style={{ width: "80px" }} />
+                  <col />
+                  {canSeePrice && <col style={{ width: "200px" }} />}
+                  {showJoColumns && canSeeWorksValue && (
+                    <col style={{ width: "250px" }} />
+                  )}
+                </colgroup>
                 <thead>
                   <tr>
                     <th
@@ -986,7 +997,22 @@ export default function BoqReferencePopUp({
                     <br />
 
                     {/* Items Table */}
-                    <table className="items-table">
+                    <table
+                      className="items-table"
+                      style={{ tableLayout: "fixed", width: "100%" }}
+                    >
+                      <colgroup>
+                        <col style={{ width: "120px" }} />
+                        <col />
+                        <col style={{ width: "160px" }} />
+                        <col style={{ width: "150px" }} />
+                        {canSeePrice && <col style={{ width: "180px" }} />}
+                        {showJoColumns && <col style={{ width: "180px" }} />}
+                        {showJoColumns && canSeeWorksValue && (
+                          <col style={{ width: "220px" }} />
+                        )}
+                        <col style={{ width: "160px" }} />
+                      </colgroup>
                       <thead>
                         <tr>
                           <th
@@ -1417,7 +1443,22 @@ export default function BoqReferencePopUp({
 
                       <br />
 
-                      <table className="items-table">
+                      <table
+                        className="items-table"
+                        style={{ tableLayout: "fixed", width: "100%" }}
+                      >
+                        <colgroup>
+                          <col style={{ width: "120px" }} />
+                          <col />
+                          <col style={{ width: "160px" }} />
+                          <col style={{ width: "150px" }} />
+                          {canSeePrice && <col style={{ width: "180px" }} />}
+                          {showJoColumns && <col style={{ width: "180px" }} />}
+                          {showJoColumns && canSeeWorksValue && (
+                            <col style={{ width: "220px" }} />
+                          )}
+                          <col style={{ width: "160px" }} />
+                        </colgroup>
                         <thead>
                           <tr>
                             <th

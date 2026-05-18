@@ -18,6 +18,7 @@ type ButtonProps = {
   onDragOver?: (e: any) => void;
   onDragLeave?: (e: any) => void;
   onDrop?: (e: any) => void;
+  title?: string;
 };
 
 export default function Button({
@@ -38,6 +39,7 @@ export default function Button({
   onDragOver,
   onDragLeave,
   onDrop,
+  title,
 }: ButtonProps) {
   if (componentType === "button") {
     return (
@@ -53,6 +55,7 @@ export default function Button({
         onClick={onClick}
         type={type ? type : undefined}
         disabled={disabled}
+        title={title}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         onDragOver={onDragOver}

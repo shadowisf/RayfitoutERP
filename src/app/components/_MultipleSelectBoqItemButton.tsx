@@ -20,6 +20,7 @@ type props = {
   disabled?: boolean;
   style?: React.CSSProperties;
   singleSelect?: boolean;
+  compact?: boolean;
 };
 
 type GroupedBoqLines = {
@@ -35,6 +36,7 @@ export default function MultipleSelectBoqItemButton({
   disabled,
   style,
   singleSelect = false,
+  compact = false,
 }: props) {
   const locationIcon = "/icons/location-boq.svg";
   const arrowRight = "/icons/arrow-right.svg";
@@ -932,7 +934,23 @@ export default function MultipleSelectBoqItemButton({
                           {!collapsedSubCategories[
                             `${category}::${subCategory}`
                           ] && (
-                            <table className="items-table two-toned">
+                            <table
+                              className="items-table two-toned"
+                              style={{ tableLayout: "fixed", width: "100%" }}
+                            >
+                              <colgroup>
+                                <col style={{ width: "50px" }} />
+                                <col style={{ width: "120px" }} />
+                                <col />
+                                <col style={{ width: "130px" }} />
+                                {canSeePrice && (
+                                  <>
+                                    <col style={{ width: "150px" }} />
+                                    <col style={{ width: "180px" }} />
+                                  </>
+                                )}
+                                <col style={{ width: "150px" }} />
+                              </colgroup>
                               <thead>
                                 <tr>
                                   <th></th>
@@ -1199,7 +1217,23 @@ export default function MultipleSelectBoqItemButton({
                   {!collapsedSubCategories[
                     `${activeBoqCategory}::${subCategory}`
                   ] && (
-                    <table className="items-table two-toned">
+                    <table
+                      className="items-table two-toned"
+                      style={{ tableLayout: "fixed", width: "100%" }}
+                    >
+                      <colgroup>
+                        <col style={{ width: "50px" }} />
+                        <col style={{ width: "120px" }} />
+                        <col />
+                        <col style={{ width: "130px" }} />
+                        {canSeePrice && (
+                          <>
+                            <col style={{ width: "150px" }} />
+                            <col style={{ width: "180px" }} />
+                          </>
+                        )}
+                        <col style={{ width: "150px" }} />
+                      </colgroup>
                       <thead>
                         <tr>
                           <th></th>
@@ -1343,40 +1377,69 @@ export default function MultipleSelectBoqItemButton({
 
   return (
     <>
-      <Button
-        componentType={"button"}
-        bgColor={"black"}
-        borderColor={"black"}
-        textColor={"white"}
-        onClick={(e) => {
-          e.preventDefault();
-          setIsOpen(true);
-        }}
-        full
-        disabled={disabled}
-        style={style}
-      >
-        {currentBoqLineIDs.length > 0 && selectedBoqInfo ? (
-          <>
-            <span>EDIT</span>
+      {compact ? (
+        <Button
+          componentType={"button"}
+          bgColor={"black"}
+          borderColor={"black"}
+          textColor={"white"}
+          onClick={(e) => {
+            (e as React.MouseEvent).preventDefault();
+            setIsOpen(true);
+          }}
+          disabled={disabled}
+          style={{ padding: "7px 7px", ...style }}
+        >
+          {currentBoqLineIDs.length > 0 ? (
             <img
               src="/icons/pencil.svg"
-              alt="edit"
-              style={{ filter: "invert(1)", marginBottom: "2px" }}
+              alt="edit boq"
+              style={{ filter: "invert(1)" }}
             />
-          </>
-        ) : (
-          <>
-            <span>SELECT BOQ ITEMS</span>
+          ) : (
             <img
               src={externalLinkIcon}
-              alt="external link"
-              style={{ filter: "invert(1)", marginBottom: "2px" }}
-              onClick={handleReset}
+              alt="select boq"
+              style={{ filter: "invert(1)" }}
             />
-          </>
-        )}
-      </Button>
+          )}
+        </Button>
+      ) : (
+        <Button
+          componentType={"button"}
+          bgColor={"black"}
+          borderColor={"black"}
+          textColor={"white"}
+          onClick={(e) => {
+            e.preventDefault();
+            setIsOpen(true);
+          }}
+          full
+          disabled={disabled}
+          style={style}
+        >
+          {currentBoqLineIDs.length > 0 && selectedBoqInfo ? (
+            <>
+              <span>EDIT</span>
+              <img
+                src="/icons/pencil.svg"
+                alt="edit"
+                style={{ filter: "invert(1)", marginBottom: "2px" }}
+              />
+            </>
+          ) : (
+            <>
+              <span>SELECT BOQ ITEMS</span>
+              <img
+                src={externalLinkIcon}
+                alt="external link"
+                style={{ filter: "invert(1)", marginBottom: "2px" }}
+                onClick={handleReset}
+              />
+            </>
+          )}
+        </Button>
+      )}
 
       {typeof window !== "undefined" &&
         modalContent &&
