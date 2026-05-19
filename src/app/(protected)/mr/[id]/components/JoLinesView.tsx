@@ -25,6 +25,11 @@ import UploadJoInvoiceButton from "./procurement/_UploadJoInvoiceButton";
 import CommentsSection from "@/app/components/CommentsSection";
 import { formatPriceAED } from "@/lib/formatPrice";
 import JoRfqButton from "./procurement/_JoRfqButton";
+import BulkSubcontractorButton, {
+  BulkQuotationData,
+} from "./procurement/_BulkSubcontractorButton";
+import InputItem from "@/app/components/InputItem";
+import CreatePaymentRequestButton from "./procurement/_CreatePaymentRequestButton";
 
 // BOQ item detail (fetched lazily per JO line card)
 type BoqLineDetail = {
@@ -60,6 +65,14 @@ const ATTACHMENT_TYPE_LABELS: Record<string, string> = {
   prequalification_admin: "Pre-qualification & admin",
 };
 
+// Add thousand-separator commas while preserving decimals
+const formatInputPrice = (val: string): string => {
+  if (!val) return "";
+  const parts = val.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.join(".");
+};
+
 // Strip trailing zeros — show "63" not "63.00", but keep "63.5"
 const formatQty = (value: unknown): string => {
   const num = Number(value);
@@ -79,6 +92,13 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
 
   const isProcurementQuotation =
     [7, 11].includes(mrHeader.progress_id) && userInfo?.departmentID === 9;
+
+  // Bulk subcontractor + quotation state (procurement quotation stage only)
+  const [bulkQuotationData, setBulkQuotationData] =
+    useState<BulkQuotationData | null>(null);
+  const [bulkTotalPrices, setBulkTotalPrices] = useState<{
+    [boq_line_id: number]: string;
+  }>({});
 
   const toggleRfqSelection = (id: number) => {
     setRfqSelectedIds((prev) =>
@@ -144,6 +164,7 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
   const [livePrices, setLivePrices] = useState<Record<number, number>>({});
   const [lpoId, setLpoId] = useState<number | null>(null);
   const [joLpoVatRate, setJoLpoVatRate] = useState<number>(5);
+  const [joLpoTotal, setJoLpoTotal] = useState<number | null>(null);
   const [hasLpo, setHasLpo] = useState<boolean>(false);
   const [lpoUpdateCounter, setLpoUpdateCounter] = useState(0);
 
@@ -174,6 +195,19 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
   const [boqItemsByJoLine, setBoqItemsByJoLine] = useState<
     Record<number, BoqLineDetail[]>
   >({});
+
+  // Bulk quotation flow: all JO lines must be expanded and every BOQ item must have a valid price
+  const allBulkPricesEntered =
+    bulkQuotationData !== null &&
+    joLines.length > 0 &&
+    joLines.every((line) => boqItemsByJoLine[line.id] !== undefined) &&
+    Object.values(boqItemsByJoLine)
+      .flat()
+      .every((item) => {
+        const val = bulkTotalPrices[item.boq_line_id];
+        return val && parseFloat(val) > 0;
+      });
+
   const [loadingBoqItems, setLoadingBoqItems] = useState<
     Record<number, boolean>
   >({});
@@ -239,8 +273,10 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
         const data = await res.json();
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
           setJoLpoVatRate(Number(data.data[0].vat_rate ?? 5));
+          setJoLpoTotal(Number(data.data[0].total) || null);
           setHasLpo(true);
         } else {
+          setJoLpoTotal(null);
           setHasLpo(false);
         }
       } catch (err) {
@@ -255,6 +291,9 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
 
   // Show subcontractor column from LPO & Invoice stage onwards (12 = LPO & Invoice, 25 = Completed)
   const showSubcontractorColumn = mrHeader.progress_id >= 12;
+
+  // Hide subcontracted works value column for procurement at quotation (7) or LPO & Invoice (12)
+  const showSubcontractedWorksValueColumn = userInfo?.departmentID !== 9;
 
   // Hide attachment column if no line has any attachments
   const showAttachmentsColumn = joLines.some(
@@ -449,6 +488,24 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                 />
               )}
 
+              {/* Bulk subcontractor & quotation — quotation stage only */}
+              {mrHeader.progress_id === 7 &&
+                userInfo?.departmentID === 9 &&
+                joLines.length > 0 && (
+                  <BulkSubcontractorButton
+                    joLine={joLines[0]}
+                    currentData={bulkQuotationData}
+                    onConfirm={(data) => {
+                      setBulkQuotationData(data);
+                      setBulkTotalPrices({});
+                    }}
+                    onDelete={() => {
+                      setBulkQuotationData(null);
+                      setBulkTotalPrices({});
+                    }}
+                  />
+                )}
+
               {/* LPO & Invoice (12) or Completed (25) */}
               {(mrHeader.progress_id === 12 && userInfo?.departmentID === 9) ||
               mrHeader.progress_id === 25 ? (
@@ -457,8 +514,9 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                   joLines={joLines}
                   boqItemsByJoLine={boqItemsByJoLine}
                   onLpoCreated={(id) => {
-                    setLpoId(id);
+                    setLpoId(id || null);
                     setHasLpo(!!id);
+                    if (!id) setJoLpoTotal(null);
                     setLpoUpdateCounter((c) => c + 1);
                   }}
                 />
@@ -489,6 +547,11 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                   onRfqLoaded={() => {}}
                   downloadOnly={true}
                 />
+              )}
+
+              {/* Create Payment Request — completed stage only */}
+              {mrHeader.progress_id === 25 && (
+                <CreatePaymentRequestButton mrHeader={mrHeader} />
               )}
             </div>
           </div>
@@ -681,7 +744,9 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                                 <col />
                                 <col style={{ width: "160px" }} />
                                 <col style={{ width: "200px" }} />
-                                <col style={{ width: "225px" }} />
+                                {showSubcontractedWorksValueColumn && (
+                                  <col style={{ width: "225px" }} />
+                                )}
                                 {showApprovedSubcontractorColumn && (
                                   <col style={{ width: "200px" }} />
                                 )}
@@ -689,7 +754,15 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                                   <col style={{ width: "240px" }} />
                                 )}
                                 {showQuotationColumn && (
-                                  <col style={{ width: "140px" }} />
+                                  <col
+                                    style={{
+                                      width:
+                                        mrHeader.progress_id === 7 &&
+                                        userInfo?.departmentID === 9
+                                          ? "250px"
+                                          : "140px",
+                                    }}
+                                  />
                                 )}
                                 {showPriceApprovalColumn && (
                                   <col style={{ width: "300px" }} />
@@ -704,14 +777,23 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                                   <th>BOQ ITEM</th>
                                   <th>BOQ RATE</th>
                                   <th>SUBCONTRACTED QTY</th>
-                                  <th>SUBCONTRACTED WORKS VALUE</th>
+                                  {showSubcontractedWorksValueColumn && (
+                                    <th>SUBCONTRACTED WORKS VALUE</th>
+                                  )}
                                   {showApprovedSubcontractorColumn && (
                                     <th>SUBCONTRACTOR PRICE</th>
                                   )}
                                   {showApprovedSubcontractorColumn && (
                                     <th>SUBCONTRACTOR</th>
                                   )}
-                                  {showQuotationColumn && <th>QUOTATIONS</th>}
+                                  {showQuotationColumn && (
+                                    <th>
+                                      {mrHeader.progress_id === 7 &&
+                                      userInfo?.departmentID === 9
+                                        ? "TOTAL PRICE"
+                                        : "QUOTATIONS"}
+                                    </th>
+                                  )}
                                   {showPriceApprovalColumn && (
                                     <th>PRICE APPROVAL</th>
                                   )}
@@ -739,12 +821,16 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                                       {formatQty(item.subcontracted_qty)}{" "}
                                       {item.unit}
                                     </td>
-                                    <td>
-                                      {formatPriceAED(
-                                        (Number(item.subcontracted_qty) || 0) *
-                                          (Number(item.rate_per_quantity) || 0),
-                                      )}
-                                    </td>
+                                    {showSubcontractedWorksValueColumn && (
+                                      <td>
+                                        {formatPriceAED(
+                                          (Number(item.subcontracted_qty) ||
+                                            0) *
+                                            (Number(item.rate_per_quantity) ||
+                                              0),
+                                        )}
+                                      </td>
+                                    )}
                                     {showApprovedSubcontractorColumn && (
                                       <td>
                                         {item.approved_total_price != null &&
@@ -796,31 +882,64 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                                     )}
                                     {showQuotationColumn && (
                                       <td>
-                                        <SubcontractorAndQuotationButton
-                                          mrHeader={mrHeader}
-                                          joLine={joLine}
-                                          boqLineId={item.boq_line_id}
-                                          boqItemName={item.item_name}
-                                          subcontractedWorksValue={
-                                            (Number(item.subcontracted_qty) ||
-                                              0) *
-                                            (Number(item.rate_per_quantity) ||
-                                              0)
-                                          }
-                                          lockedSubcontractorId={
-                                            lockedSubcontractorByJoLine[
-                                              joLine.id
-                                            ]
-                                          }
-                                          onSubcontractorLocked={(id) =>
-                                            setLockedSubcontractorByJoLine(
-                                              (prev) => ({
+                                        {mrHeader.progress_id === 7 &&
+                                        userInfo?.departmentID === 9 ? (
+                                          <InputItem
+                                            type="text postfix"
+                                            label=""
+                                            noOptionalLabel
+                                            postfixText="AED"
+                                            placeholder="ENTER TOTAL PRICE"
+                                            disabled={!bulkQuotationData}
+                                            value={formatInputPrice(
+                                              bulkTotalPrices[
+                                                item.boq_line_id
+                                              ] || "",
+                                            )}
+                                            style={{ marginBottom: 0 }}
+                                            onChange={(e) => {
+                                              if (!bulkQuotationData) return;
+                                              let val = (
+                                                e.target as HTMLInputElement
+                                              ).value.replace(/,/g, "");
+                                              if (
+                                                val !== "" &&
+                                                !/^\d*\.?\d*$/.test(val)
+                                              )
+                                                return;
+                                              setBulkTotalPrices((prev) => ({
                                                 ...prev,
-                                                [joLine.id]: id,
-                                              }),
-                                            )
-                                          }
-                                        />
+                                                [item.boq_line_id]: val,
+                                              }));
+                                            }}
+                                          />
+                                        ) : (
+                                          <SubcontractorAndQuotationButton
+                                            mrHeader={mrHeader}
+                                            joLine={joLine}
+                                            boqLineId={item.boq_line_id}
+                                            boqItemName={item.item_name}
+                                            subcontractedWorksValue={
+                                              (Number(item.subcontracted_qty) ||
+                                                0) *
+                                              (Number(item.rate_per_quantity) ||
+                                                0)
+                                            }
+                                            lockedSubcontractorId={
+                                              lockedSubcontractorByJoLine[
+                                                joLine.id
+                                              ]
+                                            }
+                                            onSubcontractorLocked={(id) =>
+                                              setLockedSubcontractorByJoLine(
+                                                (prev) => ({
+                                                  ...prev,
+                                                  [joLine.id]: id,
+                                                }),
+                                              )
+                                            }
+                                          />
+                                        )}
                                       </td>
                                     )}
                                     {showPriceApprovalColumn && (
@@ -900,27 +1019,60 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
                                     // Stages 12/25: SUBTOTAL aligned with SUBCONTRACTED QTY,
                                     // works value sum, approved price sum, empty SUBCONTRACTOR
                                     if (showApprovedSubcontractorColumn) {
+                                      const showVatRow =
+                                        (mrHeader.progress_id === 12 &&
+                                          userInfo?.departmentID === 9) ||
+                                        mrHeader.progress_id === 25;
                                       return (
-                                        <tr style={{ fontWeight: 600 }}>
-                                          <td colSpan={3} />
-                                          <td>SUBTOTAL</td>
-                                          <td>{formatPriceAED(subtotal)}</td>
-                                          <td>
-                                            {approvedPriceSubtotal > 0
-                                              ? formatPriceAED(
-                                                  approvedPriceSubtotal,
-                                                )
-                                              : "N/A"}
-                                          </td>
-                                          <td />
-                                        </tr>
+                                        <>
+                                          <tr style={{ fontWeight: 600 }}>
+                                            <td colSpan={3} />
+                                            <td>SUBTOTAL</td>
+                                            {showSubcontractedWorksValueColumn && (
+                                              <td>
+                                                {formatPriceAED(subtotal)}
+                                              </td>
+                                            )}
+                                            <td>
+                                              {approvedPriceSubtotal > 0
+                                                ? formatPriceAED(
+                                                    approvedPriceSubtotal,
+                                                  )
+                                                : "N/A"}
+                                            </td>
+                                            <td />
+                                          </tr>
+                                          {showVatRow && (
+                                            <tr style={{ fontWeight: 600 }}>
+                                              <td colSpan={3} />
+                                              <td>SUBTOTAL W/ VAT</td>
+                                              {showSubcontractedWorksValueColumn && (
+                                                <td />
+                                              )}
+                                              <td>
+                                                {!lpoId || joLpoTotal === null
+                                                  ? "N/A"
+                                                  : formatPriceAED(joLpoTotal)}
+                                              </td>
+                                              <td />
+                                            </tr>
+                                          )}
+                                        </>
                                       );
                                     }
                                     // Stages 11 etc: just works value subtotal
                                     return (
                                       <tr style={{ fontWeight: 600 }}>
-                                        <td colSpan={4} />
-                                        <td>{formatPriceAED(subtotal)}</td>
+                                        <td
+                                          colSpan={
+                                            showSubcontractedWorksValueColumn
+                                              ? 4
+                                              : 5
+                                          }
+                                        />
+                                        {showSubcontractedWorksValueColumn && (
+                                          <td>{formatPriceAED(subtotal)}</td>
+                                        )}
                                         {showQuotationColumn && <td />}
                                         {showPriceApprovalColumn && <td />}
                                       </tr>
@@ -1309,6 +1461,10 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             />
           )}
 
+        <br />
+        <br />
+        <br />
+
         {/* ── JO TOTAL (LPO & Invoice + Completed) ── */}
         {showApprovedSubcontractorColumn &&
           canSeePrice &&
@@ -1316,20 +1472,151 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             const joTotal = Object.values(boqItemsByJoLine)
               .flat()
               .reduce((s, i) => s + (Number(i.approved_total_price) || 0), 0);
+            const showVatRow =
+              mrHeader.progress_id === 12 && userInfo?.departmentID === 9;
             return (
-              <div
+              <table
+                className="items-table fixed-layout"
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "12px 0",
-                  borderTop: "1px solid rgba(200, 200, 200, 1)",
+                  borderRadius: 0,
+                  border: "none",
+                  width: "100%",
+                  tableLayout: "fixed",
                   marginTop: "8px",
                 }}
               >
-                <h2>JO TOTAL</h2>
-                <h2>{joTotal > 0 ? formatPriceAED(joTotal) : "N/A"}</h2>
-              </div>
+                <colgroup>
+                  <col style={{ width: "40px" }} />
+                  <col />
+                  <col style={{ width: "160px" }} />
+                  <col style={{ width: "200px" }} />
+                  {showSubcontractedWorksValueColumn && (
+                    <col style={{ width: "225px" }} />
+                  )}
+                  {showApprovedSubcontractorColumn && (
+                    <col style={{ width: "200px" }} />
+                  )}
+                  {showApprovedSubcontractorColumn && (
+                    <col style={{ width: "240px" }} />
+                  )}
+                  {showQuotationColumn && (
+                    <col
+                      style={{
+                        width:
+                          mrHeader.progress_id === 7 &&
+                          userInfo?.departmentID === 9
+                            ? "250px"
+                            : "140px",
+                      }}
+                    />
+                  )}
+                  {showPriceApprovalColumn && (
+                    <col style={{ width: "300px" }} />
+                  )}
+                  {showCardTotalPrice && <col style={{ width: "160px" }} />}
+                </colgroup>
+                <tfoot
+                  style={{ borderTop: "1px solid rgba(200, 200, 200, 1)" }}
+                >
+                  <tr style={{ fontWeight: 600 }}>
+                    <td colSpan={3} />
+                    <td>JO VALUE</td>
+                    {showSubcontractedWorksValueColumn && <td />}
+                    <td>{joTotal > 0 ? formatPriceAED(joTotal) : "N/A"}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            );
+          })()}
+        {/* Budget vs total price warning — stage 10, manager */}
+        {mrHeader.progress_id === 10 &&
+          userInfo?.departmentID === 8 &&
+          (() => {
+            const sumSelected = joLines.reduce((acc, line) => {
+              const price =
+                livePrices[line.id] !== undefined
+                  ? livePrices[line.id]
+                  : Number(line.approved_total_price) || 0;
+              return acc + price;
+            }, 0);
+            if (sumSelected === 0 || sumSelected <= totalBudget) return null;
+            return (
+              <>
+                <br />
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div></div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <img src="/icons/warning.svg" alt="warning" />
+                    <p
+                      style={{
+                        color: "rgba(175, 61, 61, 1)",
+                        fontSize: "13px",
+                      }}
+                    >
+                      Total price selected: {formatPriceAED(sumSelected)} /
+                      Budget: {formatPriceAED(totalBudget)} — exceeds budget
+                    </p>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+
+        {/* Budget vs total price warning — stage 7, procurement */}
+
+        {mrHeader.progress_id === 7 &&
+          userInfo?.departmentID === 9 &&
+          Object.keys(bulkTotalPrices).length > 0 &&
+          (() => {
+            const sumEntered = Object.values(bulkTotalPrices).reduce(
+              (acc, v) => acc + (parseFloat(v) || 0),
+              0,
+            );
+            const overBudget = sumEntered > totalBudget;
+            if (!overBudget) return null;
+            return (
+              <>
+                <br />
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div></div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <img src="/icons/warning.svg" alt="warning" />
+                    <p
+                      style={{
+                        color: "rgba(175, 61, 61, 1)",
+                        fontSize: "13px",
+                      }}
+                    >
+                      Total price entered: {formatPriceAED(sumEntered)} /
+                      Budget: {formatPriceAED(totalBudget)} — exceeds budget
+                    </p>
+                  </div>
+                </div>
+              </>
             );
           })()}
       </div>
@@ -1386,18 +1673,27 @@ export default function JoLinesView({ joLines, mrHeader }: JoLinesViewProps) {
             <SubmitForJoPriceApprovalButton
               mrHeaderID={mrHeader.id}
               progressId={mrHeader.progress_id}
-              disabled={hasAnyRejectedQuotation || !allLinesHaveQuotations}
+              bulkQuotationData={bulkQuotationData}
+              bulkTotalPrices={bulkTotalPrices}
+              boqItemsByJoLine={boqItemsByJoLine}
+              disabled={
+                hasAnyRejectedQuotation ||
+                (!allLinesHaveQuotations && !allBulkPricesEntered)
+              }
               style={{
                 opacity:
-                  hasAnyRejectedQuotation || !allLinesHaveQuotations
+                  hasAnyRejectedQuotation ||
+                  (!allLinesHaveQuotations && !allBulkPricesEntered)
                     ? "0.5"
                     : "1",
                 cursor:
-                  hasAnyRejectedQuotation || !allLinesHaveQuotations
+                  hasAnyRejectedQuotation ||
+                  (!allLinesHaveQuotations && !allBulkPricesEntered)
                     ? "not-allowed"
                     : "pointer",
                 pointerEvents:
-                  hasAnyRejectedQuotation || !allLinesHaveQuotations
+                  hasAnyRejectedQuotation ||
+                  (!allLinesHaveQuotations && !allBulkPricesEntered)
                     ? "none"
                     : "auto",
               }}

@@ -13,6 +13,8 @@ import InputItem from "@/app/components/InputItem";
 import UploadFileBox from "@/app/components/SingleUploadFileBox";
 import CommentsSection from "@/app/components/CommentsSection";
 import { formatPriceAED } from "@/lib/formatPrice";
+import BoqLineAttachmentUploadButton from "./procurement/_BoqLineAttachmentUploadButton";
+import EditBoqLineButton from "./quantitySurveyor/_EditBoqLineButton";
 
 type BoqLineDetail = {
   boq_line_id: number;
@@ -170,11 +172,28 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
   >({});
   const boqLineUploadRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
-  // Upload popup state for BOQ line attachments
-  const [uploadPopupBoqLineId, setUploadPopupBoqLineId] = useState<
-    number | null
-  >(null);
-  const [uploadPopupFile, setUploadPopupFile] = useState<File | null>(null);
+  const [joVatRate, setJoVatRate] = useState<number>(0);
+
+  useEffect(() => {
+    if (!mrHeader.payment_jo_reference_id) return;
+    async function fetchJoLpoVatRate() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mr_header_id: mrHeader.payment_jo_reference_id }),
+          },
+        );
+        const data = await res.json();
+        if (data.success && data.data?.length > 0) {
+          setJoVatRate(Number(data.data[0].vat_rate ?? 0));
+        }
+      } catch {}
+    }
+    fetchJoLpoVatRate();
+  }, [mrHeader.payment_jo_reference_id]);
 
   async function fetchBoqLinesForJoLine(joLineId: number) {
     if (boqLinesByJoLine[joLineId] !== undefined) return; // already loaded
@@ -249,6 +268,17 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
         };
       }
       setEditedLines(initial);
+
+      // Initialize per-BOQ-line attachments from persisted data
+      setBoqLineAttachments((prev) => {
+        const next = { ...prev };
+        for (const line of data as PrLine[]) {
+          if (!(line.boq_line_id in next)) {
+            next[line.boq_line_id] = parseAttachments(line.attachment);
+          }
+        }
+        return next;
+      });
 
       // Derive unique jo_line_ids for expansion (one card per JO line)
       const uniqueJoLineIds: number[] = [
@@ -410,10 +440,34 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
       }
       const uploadData = await uploadRes.json();
       const url = uploadData.url || uploadData.urls?.[0];
+      const updatedAttachments = [
+        ...(boqLineAttachments[boqLineId] || []),
+        url,
+      ];
       setBoqLineAttachments((prev) => ({
         ...prev,
-        [boqLineId]: [...(prev[boqLineId] || []), url],
+        [boqLineId]: updatedAttachments,
       }));
+
+      const prLine = prLines.find((l) => l.boq_line_id === boqLineId);
+      if (prLine?.id) {
+        const edited = editedLines[boqLineId] || {
+          completed_qty: "0",
+          retention: "0",
+        };
+        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "updatePrLine",
+            pr_line_id: prLine.id,
+            completed_qty: parseFloat(edited.completed_qty || "0") || 0,
+            retention: parseFloat(edited.retention || "0") || 0,
+            attachment: JSON.stringify(updatedAttachments),
+          }),
+        });
+      }
+
       toast("Attachment uploaded", "success");
     } catch {
       toast("Failed to upload attachment", "error");
@@ -549,6 +603,13 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
   const hasQsRejected = prLines.some(
     (l) => l.qs_approval_status === "Rejected",
   );
+  const allBoqLinesHaveAttachments =
+    prLines.length > 0 &&
+    prLines.every(
+      (l) =>
+        (boqLineAttachments[l.boq_line_id]?.length ?? 0) > 0 ||
+        parseAttachments(l.attachment).length > 0,
+    );
   const allQsApproved = prLines.every(
     (l) => l.qs_approval_status === "Approved",
   );
@@ -581,7 +642,6 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
             {/* Payment Receipt download + Payment stage UI — moved to Payments tab */}
             {/* {(isCompleted || prPaymentStatus === "paid") && paymentReceipt && ( ... )} */}
             {/* {isPaymentStage && ( ... )} */}
-
           </div>
         </div>
 
@@ -808,9 +868,6 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                   <th style={{ width: "160px" }}>
                                     SUBCONTRACTED QTY
                                   </th>
-                                  <th style={{ width: "180px" }}>
-                                    SUBCONTRACTOR PRICE
-                                  </th>
                                   <th
                                     style={{
                                       width: canEdit ? "275px" : "160px",
@@ -825,8 +882,11 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                   >
                                     RETENTION
                                   </th>
+                                  <th style={{ width: "180px" }}>
+                                    SUBCONTRACTOR PRICE
+                                  </th>
                                   <th style={{ width: "160px" }}>AMOUNT</th>
-                                  <th style={{ width: "160px" }}>
+                                  <th style={{ width: "200px" }}>
                                     ATTACHMENT(S)
                                   </th>
                                   {showManagerApproval && (
@@ -865,28 +925,96 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                       <tr key={boqLine.boq_line_id}>
                                         <td>{bIdx + 1}</td>
                                         <td>
-                                          <strong>{boqLine.item_name}</strong>
-                                          {boqLine.item_description && (
-                                            <>
-                                              <br />
-                                              <br />
-                                              {boqLine.item_description}
-                                            </>
-                                          )}
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: "8px",
+                                            }}
+                                          >
+                                            <div>
+                                              <strong>
+                                                {boqLine.item_name}
+                                              </strong>
+                                              {boqLine.item_description && (
+                                                <>
+                                                  <br />
+                                                  <br />
+                                                  {boqLine.item_description}
+                                                </>
+                                              )}
+                                            </div>
+                                            {((isQsReview && isQsDept) ||
+                                              (isManagerApproval &&
+                                                isManagerDept)) && (
+                                              <EditBoqLineButton
+                                                initialCompletedQty={
+                                                  editedLines[
+                                                    boqLine.boq_line_id
+                                                  ]?.completed_qty ?? ""
+                                                }
+                                                initialRetention={
+                                                  editedLines[
+                                                    boqLine.boq_line_id
+                                                  ]?.retention ?? ""
+                                                }
+                                                unit={boqLine.boq_unit}
+                                                onSave={async (qty, ret) => {
+                                                  setEditedLines((prev) => ({
+                                                    ...prev,
+                                                    [boqLine.boq_line_id]: {
+                                                      completed_qty: qty,
+                                                      retention: ret,
+                                                    },
+                                                  }));
+                                                  const attachment =
+                                                    boqLineAttachments[
+                                                      boqLine.boq_line_id
+                                                    ]?.length
+                                                      ? JSON.stringify(
+                                                          boqLineAttachments[
+                                                            boqLine.boq_line_id
+                                                          ],
+                                                        )
+                                                      : boqLine.attachment ||
+                                                        null;
+                                                  const res = await fetch(
+                                                    `${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`,
+                                                    {
+                                                      method: "POST",
+                                                      headers: {
+                                                        "Content-Type":
+                                                          "application/json",
+                                                      },
+                                                      body: JSON.stringify({
+                                                        action: "updatePrLine",
+                                                        pr_line_id: boqLine.id,
+                                                        completed_qty:
+                                                          parseFloat(qty) || 0,
+                                                        retention:
+                                                          parseFloat(ret) || 0,
+                                                        attachment,
+                                                      }),
+                                                    },
+                                                  );
+                                                  if (res.ok) {
+                                                    fetchPrLines();
+                                                  } else {
+                                                    toast(
+                                                      "Failed to save changes",
+                                                      "error",
+                                                    );
+                                                  }
+                                                }}
+                                              />
+                                            )}
+                                          </div>
                                         </td>
                                         <td>
                                           {formatNumber(
                                             boqLine.subcontracted_qty,
                                           )}{" "}
                                           {boqLine.boq_unit}
-                                        </td>
-                                        <td>
-                                          {boqLine.boq_approved_price != null &&
-                                          Number(boqLine.boq_approved_price) > 0
-                                            ? formatPriceAED(
-                                                boqLine.boq_approved_price,
-                                              )
-                                            : "-"}
                                         </td>
                                         <td>
                                           {canEdit ? (
@@ -995,6 +1123,14 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                             </span>
                                           )}
                                         </td>
+                                        <td>
+                                          {boqLine.boq_approved_price != null &&
+                                          Number(boqLine.boq_approved_price) > 0
+                                            ? formatPriceAED(
+                                                boqLine.boq_approved_price,
+                                              )
+                                            : "-"}
+                                        </td>
                                         {/* AMOUNT column — proportion of approved price after retention */}
                                         <td>
                                           {(() => {
@@ -1032,50 +1168,117 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                             }}
                                           >
                                             {attachments.map((url, aIdx) => (
-                                              <Button
+                                              <div
                                                 key={aIdx}
-                                                componentType="button"
-                                                bgColor="white"
-                                                borderColor="rgba(223,223,223,1)"
-                                                textColor="black"
                                                 style={{
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  gap: "15px",
+                                                  border:
+                                                    "1px solid rgba(223,223,223,1)",
                                                   borderRadius: "25px",
-                                                  padding: "5px 12px",
+                                                  padding: "5px 20px",
                                                   whiteSpace: "nowrap",
-                                                  fontSize: "12px",
+                                                  backgroundColor: "white",
                                                 }}
-                                                onClick={() =>
-                                                  downloadFile(url)
-                                                }
                                               >
                                                 {aIdx + 1}{" "}
-                                                <img
-                                                  src={downloadIcon}
-                                                  alt="download"
-                                                />
-                                              </Button>
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    gap: "5px",
+                                                    alignItems: "center",
+                                                  }}
+                                                >
+                                                  <Button
+                                                    componentType={"button"}
+                                                    bgColor={"transparent"}
+                                                    borderColor={"transparent"}
+                                                    textColor={"black"}
+                                                    onClick={() =>
+                                                      downloadFile(url)
+                                                    }
+                                                    style={{ padding: "0px" }}
+                                                  >
+                                                    <img
+                                                      src={downloadIcon}
+                                                      alt="download"
+                                                    />
+                                                  </Button>
+                                                  {canEdit && (
+                                                    <Button
+                                                      componentType={"button"}
+                                                      bgColor={"transparent"}
+                                                      borderColor={
+                                                        "transparent"
+                                                      }
+                                                      textColor={"black"}
+                                                      onClick={async () => {
+                                                        const updated =
+                                                          attachments.filter(
+                                                            (_, i) =>
+                                                              i !== aIdx,
+                                                          );
+                                                        setBoqLineAttachments(
+                                                          (prev) => ({
+                                                            ...prev,
+                                                            [boqLine.boq_line_id]:
+                                                              updated,
+                                                          }),
+                                                        );
+                                                        await fetch(
+                                                          `${process.env.NEXT_PUBLIC_BASE_URL}/api/pr`,
+                                                          {
+                                                            method: "POST",
+                                                            headers: {
+                                                              "Content-Type":
+                                                                "application/json",
+                                                            },
+                                                            body: JSON.stringify(
+                                                              {
+                                                                action:
+                                                                  "updatePrLine",
+                                                                pr_line_id:
+                                                                  boqLine.id,
+                                                                completed_qty:
+                                                                  parseFloat(
+                                                                    boqEdited.completed_qty ||
+                                                                      "0",
+                                                                  ) || 0,
+                                                                retention:
+                                                                  parseFloat(
+                                                                    boqEdited.retention ||
+                                                                      "0",
+                                                                  ) || 0,
+                                                                attachment:
+                                                                  updated.length
+                                                                    ? JSON.stringify(
+                                                                        updated,
+                                                                      )
+                                                                    : null,
+                                                              },
+                                                            ),
+                                                          },
+                                                        );
+                                                      }}
+                                                      style={{ padding: "0px" }}
+                                                    >
+                                                      <img
+                                                        src={crossIcon}
+                                                        alt="delete"
+                                                      />
+                                                    </Button>
+                                                  )}
+                                                </div>
+                                              </div>
                                             ))}
                                             {canEdit && (
-                                              <Button
-                                                componentType="button"
-                                                bgColor="rgba(239, 239, 239, 1)"
-                                                borderColor="rgba(223, 223, 223, 1)"
-                                                textColor="black"
-                                                style={{ padding: "7px 7px" }}
-                                                onClick={() =>
-                                                  setUploadPopupBoqLineId(
-                                                    boqLine.boq_line_id,
-                                                  )
+                                              <BoqLineAttachmentUploadButton
+                                                boqLineId={boqLine.boq_line_id}
+                                                onUpload={
+                                                  handleUploadBoqLineAttachment
                                                 }
-                                              >
-                                                <img
-                                                  src={uploadIcon}
-                                                  alt="upload"
-                                                  style={{
-                                                    filter: "invert(1)",
-                                                  }}
-                                                />
-                                              </Button>
+                                              />
                                             )}
                                           </div>
                                         </td>
@@ -1511,25 +1714,25 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                   // + 1 if MANAGER PRICE APPROVAL shown
                                   // + 1 if QS APPROVAL shown
                                   // Label + value are always pinned to the last two columns.
-                                  const totalCols =
-                                    8 +
+                                  // cols: #(1) BOQ ITEM(2) SUB QTY(3) COMPLETED QTY(4)
+                                  //       RETENTION(5) SUB PRICE(6) AMOUNT(7) ATTACHMENT(8) [+optional]
+                                  const trailingCols =
+                                    1 +
                                     (showManagerApproval ? 1 : 0) +
                                     (showQsApproval ? 1 : 0);
-                                  const leadSpan = totalCols - 2;
-                                  // cols 5 → (totalCols-2): middle gap between
-                                  // SUBTOTAL value (col 4) and AFTER RETENTION label
-                                  const middleSpan = totalCols - 6;
                                   return (
                                     <>
+                                      {/* SUBTOTAL row — label in col 5, proportional total in col 7 */}
                                       <tr>
-                                        <td colSpan={leadSpan} />
+                                        <td colSpan={4} />
                                         <td
                                           style={{
                                             color: "rgba(146,146,146,1)",
                                           }}
                                         >
-                                          BEFORE RETENTION
+                                          SUBTOTAL
                                         </td>
+                                        <td />
                                         <td
                                           style={{
                                             color: "rgba(146,146,146,1)",
@@ -1541,9 +1744,11 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                               )
                                             : "N/A"}
                                         </td>
+                                        <td colSpan={trailingCols} />
                                       </tr>
+                                      {/* RETENTION row — label in col 5, value in col 7 */}
                                       <tr>
-                                        <td colSpan={leadSpan} />
+                                        <td colSpan={4} />
                                         <td
                                           style={{
                                             color: "rgba(146,146,146,1)",
@@ -1551,6 +1756,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                         >
                                           RETENTION
                                         </td>
+                                        <td />
                                         <td
                                           style={{
                                             color: "rgba(146,146,146,1)",
@@ -1560,20 +1766,17 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                             ? `− ${formatPriceAED(totalRetentionAmt)}`
                                             : "N/A"}
                                         </td>
+                                        <td colSpan={trailingCols} />
                                       </tr>
-                                      {/* SUBTOTAL (col 3–4) + AFTER RETENTION (last 2 cols) on one row */}
+                                      {/* TOTAL row — label in col 5, sum of subcontractor price in col 6, after-retention in col 7 */}
                                       <tr style={{ fontWeight: 600 }}>
-                                        <td colSpan={2} />
-                                        <td>SUBTOTAL</td>
+                                        <td colSpan={4} />
+                                        <td>TOTAL</td>
                                         <td>
                                           {totalApprovedPrice > 0
                                             ? formatPriceAED(totalApprovedPrice)
                                             : "N/A"}
                                         </td>
-                                        {middleSpan > 0 && (
-                                          <td colSpan={middleSpan} />
-                                        )}
-                                        <td>AFTER RETENTION</td>
                                         <td>
                                           {hasAnyQty
                                             ? formatPriceAED(
@@ -1581,6 +1784,27 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                                               )
                                             : "N/A"}
                                         </td>
+                                        <td colSpan={trailingCols} />
+                                      </tr>
+                                      {/* TOTAL W/ VAT row — label col 5, subcontractor price w/ vat col 6, after-retention w/ vat col 7 */}
+                                      <tr style={{ fontWeight: 600 }}>
+                                        <td colSpan={4} />
+                                        <td>TOTAL W/ VAT</td>
+                                        <td>
+                                          {totalApprovedPrice > 0
+                                            ? formatPriceAED(
+                                                totalApprovedPrice * (1 + joVatRate / 100),
+                                              )
+                                            : "N/A"}
+                                        </td>
+                                        <td>
+                                          {hasAnyQty
+                                            ? formatPriceAED(
+                                                totalAfterRetention * (1 + joVatRate / 100),
+                                              )
+                                            : "N/A"}
+                                        </td>
+                                        <td colSpan={trailingCols} />
                                       </tr>
                                     </>
                                   );
@@ -1600,40 +1824,6 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
           </>
         )}
       </div>
-
-      {/* BOQ line attachment upload popup */}
-      {uploadPopupBoqLineId !== null && (
-        <FormPopUp
-          header="UPLOAD ATTACHMENT"
-          setIsOpen={() => {
-            setUploadPopupBoqLineId(null);
-            setUploadPopupFile(null);
-          }}
-          handleSubmit={async (e) => {
-            e.preventDefault();
-            if (!uploadPopupFile) {
-              toast("Please select a file to upload", "error");
-              return;
-            }
-            await handleUploadBoqLineAttachment(
-              uploadPopupBoqLineId,
-              uploadPopupFile,
-            );
-            setUploadPopupBoqLineId(null);
-            setUploadPopupFile(null);
-          }}
-          addButtonLabel="UPLOAD"
-        >
-          <UploadFileBox
-            fileState={uploadPopupFile}
-            setFileState={setUploadPopupFile}
-            label="ATTACHMENT"
-            acceptedFileTypes=".pdf,.jpeg,.jpg,.png,.webp"
-            placeholder=""
-            buttonLabel="SELECT FILE"
-          />
-        </FormPopUp>
-      )}
 
       {/* Reject comment popup */}
       {rejectLineId !== null && (
@@ -1676,12 +1866,15 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
               prLines.length > 0 &&
               prLines.every((b) => {
                 const edited = editedLines[b.boq_line_id];
-                return (
+                const hasFields =
                   edited?.completed_qty?.trim() !== "" &&
                   edited?.completed_qty !== undefined &&
                   edited?.retention?.trim() !== "" &&
-                  edited?.retention !== undefined
-                );
+                  edited?.retention !== undefined;
+                const hasAttachment =
+                  (boqLineAttachments[b.boq_line_id]?.length ?? 0) > 0 ||
+                  parseAttachments(b.attachment).length > 0;
+                return hasFields && hasAttachment;
               });
 
             return (
@@ -1765,7 +1958,7 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
       )}
 
       {/* QS Review: Submit for Manager Approval or Reject */}
-      {isQsReview && isQsDept && allQsReviewed && prLines.length > 0 && (
+      {isQsReview && isQsDept && prLines.length > 0 && (
         <>
           <div className="bottom-nav">
             <div></div>
@@ -1780,15 +1973,26 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
                 RETURN FOR REVISION
               </Button>
             ) : (
-              <Button
-                componentType="button"
-                bgColor="white"
-                borderColor="white"
-                textColor="black"
-                onClick={() => setIsQsSubmitManagerOpen(true)}
-              >
-                SUBMIT FOR MANAGER PRICE APPROVAL
-              </Button>
+              (() => {
+                const canSubmit = allQsReviewed;
+                return (
+                  <Button
+                    componentType="button"
+                    bgColor="white"
+                    borderColor="white"
+                    textColor="black"
+                    onClick={() => setIsQsSubmitManagerOpen(true)}
+                    disabled={!canSubmit}
+                    style={{
+                      opacity: canSubmit ? "1" : "0.5",
+                      cursor: canSubmit ? "pointer" : "not-allowed",
+                      pointerEvents: canSubmit ? "auto" : "none",
+                    }}
+                  >
+                    SUBMIT FOR MANAGER PRICE APPROVAL
+                  </Button>
+                );
+              })()
             )}
           </div>
 
@@ -1866,106 +2070,114 @@ export default function PrLinesView({ mrHeader }: PrLinesViewProps) {
       )}
 
       {/* Manager Price Approval: Approve (→ Payment) or Reject */}
-      {isManagerApproval &&
-        isManagerDept &&
-        allManagerReviewed &&
-        prLines.length > 0 && (
-          <>
-            <div className="bottom-nav">
-              <div></div>
-              {hasManagerRejected ? (
-                <Button
-                  componentType="button"
-                  bgColor="white"
-                  borderColor="white"
-                  textColor="black"
-                  onClick={() => setIsManagerReturnOpen(true)}
-                >
-                  RETURN FOR REVISION
-                </Button>
-              ) : (
-                <Button
-                  componentType="button"
-                  bgColor="white"
-                  borderColor="white"
-                  textColor="black"
-                  onClick={() => setIsManagerApproveOpen(true)}
-                >
-                  SUBMIT FOR COMPLETION
-                </Button>
-              )}
-            </div>
-
-            {isManagerReturnOpen && (
-              <FormPopUp
-                header="SUBMIT PAYMENT REQUEST"
-                setIsOpen={setIsManagerReturnOpen}
-                handleSubmit={async (e) => {
-                  e.preventDefault();
-                  const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
-                    {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        action: "submitPrForRejection",
-                        id: mrHeader.id,
-                        changed_by: userInfo?.name,
-                        department_id: mrHeader.department_id,
-                        from_progress_id: 10,
-                      }),
-                    },
-                  );
-                  if (res.ok) {
-                    toast("Payment request submitted", "success");
-                    setIsManagerReturnOpen(false);
-                    router.refresh();
-                    router.replace("/mr/");
-                  } else {
-                    toast("Failed to submit", "error");
-                  }
-                }}
-                addButtonLabel="CONFIRM"
+      {isManagerApproval && isManagerDept && prLines.length > 0 && (
+        <>
+          <div className="bottom-nav">
+            <div></div>
+            {hasManagerRejected ? (
+              <Button
+                componentType="button"
+                bgColor="white"
+                borderColor="white"
+                textColor="black"
+                onClick={() => setIsManagerReturnOpen(true)}
               >
-                <p>Are you sure you want to submit this payment request?</p>
-              </FormPopUp>
+                RETURN FOR REVISION
+              </Button>
+            ) : (
+              (() => {
+                const canSubmit = allManagerReviewed;
+                return (
+                  <Button
+                    componentType="button"
+                    bgColor="white"
+                    borderColor="white"
+                    textColor="black"
+                    onClick={() => setIsManagerApproveOpen(true)}
+                    disabled={!canSubmit}
+                    style={{
+                      opacity: canSubmit ? "1" : "0.5",
+                      cursor: canSubmit ? "pointer" : "not-allowed",
+                      pointerEvents: canSubmit ? "auto" : "none",
+                    }}
+                  >
+                    SUBMIT FOR COMPLETION
+                  </Button>
+                );
+              })()
             )}
+          </div>
 
-            {isManagerApproveOpen && (
-              <FormPopUp
-                header="SUBMIT PAYMENT REQUEST"
-                setIsOpen={setIsManagerApproveOpen}
-                handleSubmit={async (e) => {
-                  e.preventDefault();
-                  const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
-                    {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        action: "submitPrForPayment",
-                        id: mrHeader.id,
-                        changed_by: userInfo?.name,
-                        department_id: mrHeader.department_id,
-                      }),
-                    },
-                  );
-                  if (res.ok) {
-                    toast("Payment request completed", "success");
-                    setIsManagerApproveOpen(false);
-                    router.refresh();
-                    router.replace("/mr/");
-                  } else {
-                    toast("Failed to submit", "error");
-                  }
-                }}
-                addButtonLabel="CONFIRM"
-              >
-                <p>Are you sure you want to submit this payment request?</p>
-              </FormPopUp>
-            )}
-          </>
-        )}
+          {isManagerReturnOpen && (
+            <FormPopUp
+              header="SUBMIT PAYMENT REQUEST"
+              setIsOpen={setIsManagerReturnOpen}
+              handleSubmit={async (e) => {
+                e.preventDefault();
+                const res = await fetch(
+                  `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+                  {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      action: "submitPrForRejection",
+                      id: mrHeader.id,
+                      changed_by: userInfo?.name,
+                      department_id: mrHeader.department_id,
+                      from_progress_id: 10,
+                    }),
+                  },
+                );
+                if (res.ok) {
+                  toast("Payment request submitted", "success");
+                  setIsManagerReturnOpen(false);
+                  router.refresh();
+                  router.replace("/mr/");
+                } else {
+                  toast("Failed to submit", "error");
+                }
+              }}
+              addButtonLabel="CONFIRM"
+            >
+              <p>Are you sure you want to submit this payment request?</p>
+            </FormPopUp>
+          )}
+
+          {isManagerApproveOpen && (
+            <FormPopUp
+              header="SUBMIT PAYMENT REQUEST"
+              setIsOpen={setIsManagerApproveOpen}
+              handleSubmit={async (e) => {
+                e.preventDefault();
+                const res = await fetch(
+                  `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`,
+                  {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      action: "submitPrForPayment",
+                      id: mrHeader.id,
+                      changed_by: userInfo?.name,
+                      department_id: mrHeader.department_id,
+                    }),
+                  },
+                );
+                if (res.ok) {
+                  toast("Payment request completed", "success");
+                  setIsManagerApproveOpen(false);
+                  router.refresh();
+                  router.replace("/mr/");
+                } else {
+                  toast("Failed to submit", "error");
+                }
+              }}
+              addButtonLabel="CONFIRM"
+            >
+              <p>Are you sure you want to submit this payment request?</p>
+            </FormPopUp>
+          )}
+        </>
+      )}
 
       {/* Payment Stage: Submit for Completion — moved to Payments tab */}
       {/* {isPaymentStage && isFinanceDept && prPaymentStatus === "paid" && ( ... )} */}

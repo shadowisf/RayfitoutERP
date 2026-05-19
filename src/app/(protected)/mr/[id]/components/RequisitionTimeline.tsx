@@ -132,6 +132,7 @@ type TimelineStage = {
   isRejection: boolean;
   isRollback: boolean;
   isReplacementNote: boolean;
+  isSkipped: boolean;
   replacementItems?: ReplacementItem[];
   replacedItems?: ReplacementItem[]; // aggregated from all replacement notes on QS REVIEW
   arrivedEntry: ProgressLogEntry | null;
@@ -339,6 +340,7 @@ export default function RequisitionTimeline({
       isRejection: visit.isRejection,
       isRollback: visit.isRollback,
       isReplacementNote: false,
+      isSkipped: false,
       replacementItems: visit.replacementItems,
       replacedItems:
         visit.stageId === 2 && allReplacedItems.length > 0
@@ -359,15 +361,45 @@ export default function RequisitionTimeline({
         isRejection: false,
         isRollback: false,
         isReplacementNote: false,
+        isSkipped: false,
         arrivedEntry: null,
         departedEntry: null,
       });
     }
   }
 
+  // Detect silently-skipped stages: in baseStageIds, never visited, but already passed over.
+  // Covers skip_approvals=1 and QS/manager-created requests across all types.
+  const stage2BaseIndex = baseStageIds.indexOf(2);
+  if (
+    stage2BaseIndex !== -1 &&
+    !visitedStageIds.has(2) &&
+    highestVisitedBaseIndex > stage2BaseIndex
+  ) {
+    const stage1TimelineIndex = timelineStages.findIndex((s) => s.id === 1);
+    const insertAt = stage1TimelineIndex >= 0 ? stage1TimelineIndex + 1 : 0;
+    timelineStages.splice(insertAt, 0, {
+      id: 2,
+      label: stageLabels[2] || "QS REVIEW",
+      isRejection: false,
+      isRollback: false,
+      isReplacementNote: false,
+      isSkipped: true,
+      arrivedEntry: null,
+      departedEntry: null,
+    });
+  }
+
   return (
     <div className="mr-with-id">
-      <div className="subcategory-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div
+        className="subcategory-header"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <h2>REQUISITION TIMELINE</h2>
         <RequisitionLogButton mrHeaderId={mrHeaderId} lpoId={lpoId} />
       </div>
@@ -450,7 +482,9 @@ export default function RequisitionTimeline({
           }
 
           let circleColor = "white";
-          if (stage.isRejection) {
+          if (stage.isSkipped) {
+            circleColor = "rgb(251, 186, 111)";
+          } else if (stage.isRejection) {
             circleColor = "rgba(248, 77, 77, 1)";
           } else if (stage.isRollback) {
             circleColor = "rgba(255, 153, 36, 1)";
@@ -469,7 +503,7 @@ export default function RequisitionTimeline({
             labelColor = "rgba(255, 153, 36, 1)";
           } else if (stage.isReplacementNote) {
             labelColor = "rgba(209, 157, 90, 1)";
-          } else if (isFuture) {
+          } else if (isFuture && !stage.isSkipped) {
             labelColor = "rgba(217, 217, 217, 1)";
           }
 
@@ -510,9 +544,10 @@ export default function RequisitionTimeline({
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor: circleColor,
-                  border: isFuture
-                    ? "2px solid rgba(220, 220, 220, 1)"
-                    : "none",
+                  border:
+                    isFuture && !stage.isSkipped
+                      ? "2px solid rgba(220, 220, 220, 1)"
+                      : "none",
                   flexShrink: 0,
                   zIndex: 1,
                 }}
@@ -590,6 +625,22 @@ export default function RequisitionTimeline({
               >
                 {stage.label}
               </p>
+
+              {stage.isSkipped && (
+                <p
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: "700",
+                    color: "rgb(251, 186, 111)",
+                    marginTop: "2px",
+                    marginBottom: "2px",
+                    textAlign: "left",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  SKIPPED
+                </p>
+              )}
 
               {/* FIXED: Only show details if detailEntry exists (not for current stage) */}
               {detailEntry?.changed_at && (

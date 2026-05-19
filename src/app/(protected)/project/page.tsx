@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import ProjectCard from "@/app/(protected)/project/components/ProjectCard";
+import NewProjectButton from "@/app/(protected)/project/components/_NewProjectButton";
 import { useAuth } from "@/app/context/AuthContext";
 
 export default function Project() {
@@ -60,7 +61,28 @@ export default function Project() {
 
   return (
     <div className="dashboard">
-      <h1>PROJECTS</h1>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+        }}
+      >
+        <div>
+          <h1>PROJECTS</h1>
+
+          <br />
+          <br />
+
+          <h2 style={{ color: "rgba(120, 120, 120, 1)" }}>
+            Showing {projectsWithBOQ.length} Project
+            {projectsWithBOQ.length !== 1 ? "s" : ""} &{" "}
+            {quotationProjects.length} Quotation
+            {quotationProjects.length !== 1 ? "s" : ""}
+          </h2>
+        </div>
+        <NewProjectButton />
+      </div>
 
       <br />
       <br />

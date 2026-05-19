@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "../OverviewHoverPopup";
 
 type props = {
-  filterDays?: number;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
-export default function PendingQuotationsMrsWidget({ filterDays }: props) {
+export default function PendingQuotationsMrsWidget({ dateFrom, dateTo }: props) {
   const router = useRouter();
   const fileIcon = "/icons/file.svg";
   const upArrow = "/icons/arrow-up-chart-green-big.svg";
@@ -59,7 +60,7 @@ export default function PendingQuotationsMrsWidget({ filterDays }: props) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ filter: filterDays }),
+        body: JSON.stringify({ date_from: dateFrom, date_to: dateTo }),
       },
     )
       .then((res) => res.json())
@@ -93,7 +94,7 @@ export default function PendingQuotationsMrsWidget({ filterDays }: props) {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [filterDays]);
+  }, [dateFrom, dateTo]);
 
   const startHideTimer = () => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -142,16 +143,24 @@ export default function PendingQuotationsMrsWidget({ filterDays }: props) {
     : "rgba(255, 255, 255, 1)";
   const arrow = isIncrease ? upArrow : downArrow;
 
-  const isAllTime = filterDays === 0;
-  const periodLabel =
-    isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
+  const isAllTime = !dateFrom && !dateTo;
+  const periodLabel = isAllTime
+    ? "all time"
+    : dateFrom && dateTo
+      ? `${dateFrom} – ${dateTo}`
+      : dateFrom
+        ? `from ${dateFrom}`
+        : `to ${dateTo}`;
+  const filteredLabel = dateFrom && dateTo
+    ? `from ${dateFrom} to ${dateTo}`
+    : dateFrom
+      ? `from ${dateFrom}`
+      : `to ${dateTo}`;
   const changeText = hasNoPendingQuotations
     ? "No pending quotations"
     : isAllTime
       ? "Total pending quotations across all time"
-      : isIncrease
-        ? `${changeMagnitude} increase from last ${periodLabel}`
-        : `${changeMagnitude} decrease from last ${periodLabel}`;
+      : `Total pending quotations ${filteredLabel}`;
 
   return (
     <div

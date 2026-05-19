@@ -4,18 +4,14 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { filter } = body;
+    const { date_from, date_to } = body;
 
-    // Validate filter parameter (0 = all time, positive = days)
-    if (filter === undefined || filter === null || typeof filter !== "number" || filter < 0) {
-      return NextResponse.json(
-        { error: "Invalid 'filter' parameter. Must be a non-negative number." },
-        { status: 400 },
-      );
-    }
-
-    const dateFilter = filter > 0 ? `AND lpo.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)` : "";
-    const dateParams = filter > 0 ? [filter] : [];
+    const dateClauseParts: string[] = [];
+    if (date_from) dateClauseParts.push(`lpo.created_at >= '${date_from}'`);
+    if (date_to) dateClauseParts.push(`lpo.created_at <= '${date_to}'`);
+    const dateFilter = dateClauseParts.length > 0
+      ? `AND ${dateClauseParts.join(" AND ")}`
+      : "";
 
     const query = `
       SELECT
@@ -35,7 +31,7 @@ export async function POST(request: NextRequest) {
       LIMIT 3
     `;
 
-    const [rows] = await db.query(query, dateParams);
+    const [rows] = await db.query(query);
 
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {

@@ -683,14 +683,12 @@ export default function SubcontractorAndQuotationButton({
           style={{ minWidth: "1350px" }}
         >
           <>
-            {subcontractedWorksValue !== undefined && (
-              <div>
-                <small style={{ fontWeight: 600 }}>
-                  SUBCONTRACTED WORKS VALUE
-                </small>
-                <h3>{formatPriceAED(subcontractedWorksValue)}</h3>
-              </div>
-            )}
+            <div>
+              <small style={{ fontWeight: 600 }}>
+                BUDGET
+              </small>
+              <h3>{formatPriceAED(joLine.budget_estimate)}</h3>
+            </div>
 
             <br />
 

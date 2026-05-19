@@ -879,7 +879,7 @@ export default function AddMrItemButton({
           </div> */}
 
           {/* Brand */}
-          <div className="input-row full">
+          {/* <div className="input-row full">
             <InputItem
               label={"BRAND"}
               value={brand}
@@ -887,7 +887,7 @@ export default function AddMrItemButton({
               onChange={(e) => setBrand(e.target.value)}
               placeholder="ENTER BRAND"
             />
-          </div>
+          </div> */}
 
           {/* Specification */}
           <div className="input-row full">

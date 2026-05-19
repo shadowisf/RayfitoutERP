@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import OverviewHoverPopup from "../OverviewHoverPopup";
 
 type props = {
-  filterDays?: number;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
-export default function DraftMrsWidget({ filterDays }: props) {
+export default function DraftMrsWidget({ dateFrom, dateTo }: props) {
   const router = useRouter();
   const { userInfo } = useAuth();
 
@@ -66,7 +67,8 @@ export default function DraftMrsWidget({ filterDays }: props) {
         },
         body: JSON.stringify({
           department_id: userInfo?.departmentID,
-          filter: filterDays,
+          date_from: dateFrom,
+          date_to: dateTo,
         }),
       },
     )
@@ -101,7 +103,7 @@ export default function DraftMrsWidget({ filterDays }: props) {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [userInfo?.departmentID, filterDays]);
+  }, [userInfo?.departmentID, dateFrom, dateTo]);
 
   const startHideTimer = () => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -150,16 +152,24 @@ export default function DraftMrsWidget({ filterDays }: props) {
     : "rgba(255, 255, 255, 1)";
   const arrow = isIncrease ? upArrow : downArrow;
 
-  const isAllTime = filterDays === 0;
-  const periodLabel =
-    isAllTime ? "all time" : filterDays === 7 ? "week" : `${filterDays} days`;
+  const isAllTime = !dateFrom && !dateTo;
+  const periodLabel = isAllTime
+    ? "all time"
+    : dateFrom && dateTo
+      ? `${dateFrom} – ${dateTo}`
+      : dateFrom
+        ? `from ${dateFrom}`
+        : `to ${dateTo}`;
+  const filteredLabel = dateFrom && dateTo
+    ? `from ${dateFrom} to ${dateTo}`
+    : dateFrom
+      ? `from ${dateFrom}`
+      : `to ${dateTo}`;
   const changeText = hasNoDraftMrs
     ? "No draft MRs"
     : isAllTime
       ? "Total draft MRs across all time"
-      : isIncrease
-        ? `${changeMagnitude} increase from last ${periodLabel}`
-        : `${changeMagnitude} decrease from last ${periodLabel}`;
+      : `Total draft MRs ${filteredLabel}`;
 
   return (
     <div

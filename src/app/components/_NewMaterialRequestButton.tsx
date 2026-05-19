@@ -205,7 +205,7 @@ export default function NewMrButton() {
         requested_for: mode === "material" ? requestedFor || null : null,
         required_date: neededBy,
         purpose_id: purposeReasonID,
-        skip_approvals: mode === "material" ? skipApprovals : false,
+        skip_approvals: (mode === "material" || mode === "job") ? skipApprovals : false,
       }),
     });
 
@@ -602,7 +602,7 @@ export default function NewMrButton() {
             )}
 
           {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) &&
-            mode === "material" && (
+            (mode === "material" || mode === "job") && (
               <div
                 style={{
                   display: "flex",

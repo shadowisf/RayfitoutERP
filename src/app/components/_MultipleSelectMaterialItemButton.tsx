@@ -84,6 +84,32 @@ export default function MultipleSelectMaterialItemButton({
   const [subCategorySearchQuery, setSubCategorySearchQuery] = useState("");
   const filterIcon = "/icons/filter.svg";
 
+  // New state variables
+  const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [activeSubCategoryTab, setActiveSubCategoryTab] = useState("");
+
+  // Tab scroll arrows
+  const [showLeftTabArrow, setShowLeftTabArrow] = useState(false);
+  const [showRightTabArrow, setShowRightTabArrow] = useState(false);
+
+  const checkTabScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } =
+        scrollContainerRef.current;
+      setShowLeftTabArrow(scrollLeft > 0);
+      setShowRightTabArrow(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  const scrollTabs = (direction: "left" | "right") => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({
+        left: direction === "left" ? -300 : 300,
+        behavior: "smooth",
+      });
+    }
+  };
+
   const allCategoryNames = Object.keys(groupedItems);
 
   const getAvailableSubCategories = (
@@ -161,40 +187,30 @@ export default function MultipleSelectMaterialItemButton({
 
   const hasActiveFilters =
     filterCategories.size > 0 || filterSubCategories.size > 0;
-  const totalFilterCount = filterCategories.size + filterSubCategories.size;
-
-  // Collapsible state for categories and subcategories
-  const [collapsedCategories, setCollapsedCategories] = useState<
-    Record<string, boolean>
-  >({});
-  const [collapsedSubCategories, setCollapsedSubCategories] = useState<
-    Record<string, boolean>
-  >({});
-
-  // Category tab states
-  const [activeCategory, setActiveCategory] = useState<string>("ALL");
-  const [showLeftArrow, setShowLeftArrow] = useState(false);
-  const [showRightArrow, setShowRightArrow] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
 
-  const categories = Object.keys(filteredGroupedItems);
+  // Derived: available subcategory tabs from filtered items
+  const availableSubCategoryTabs = (() => {
+    const subs = new Set<string>();
+    Object.values(filteredGroupedItems).forEach((subCats) => {
+      Object.keys(subCats).forEach((sub) => subs.add(sub));
+    });
+    return Array.from(subs).sort();
+  })();
 
-  // Flatten items for current view (respecting active category + search)
+  // Flatten items for current view
   const flatItems = (() => {
-    const items: PredefinedItem[] = [];
-    if (activeCategory === "ALL") {
-      Object.values(filteredGroupedItems).forEach((subCats) => {
-        Object.values(subCats).forEach((subItems) => {
-          items.push(...subItems);
-        });
-      });
-    } else {
-      const subCats = filteredGroupedItems[activeCategory] || {};
-      Object.values(subCats).forEach((subItems) => {
+    let items: PredefinedItem[] = [];
+    Object.values(filteredGroupedItems).forEach((subCats) => {
+      Object.entries(subCats).forEach(([sub, subItems]) => {
+        if (activeSubCategoryTab && sub !== activeSubCategoryTab) return;
         items.push(...subItems);
       });
+    });
+    if (showOnlySelected) {
+      items = items.filter((item) => tempSelectedIDs.includes(item.id));
     }
     return items;
   })();
@@ -204,19 +220,6 @@ export default function MultipleSelectMaterialItemButton({
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
-
-  // Group paginated items back into category > subcategory for rendering
-  const paginatedGrouped = (() => {
-    const grouped: GroupedItems = {};
-    paginatedItems.forEach((item) => {
-      const cat = item.category_name || "Uncategorized";
-      const sub = item.subcategory_name || "General";
-      if (!grouped[cat]) grouped[cat] = {};
-      if (!grouped[cat][sub]) grouped[cat][sub] = [];
-      grouped[cat][sub].push(item);
-    });
-    return grouped;
-  })();
 
   // Filter items based on search query and category/subcategory filter
   useEffect(() => {
@@ -261,36 +264,6 @@ export default function MultipleSelectMaterialItemButton({
     setFilteredGroupedItems(filtered);
     setCurrentPage(1);
   }, [searchQuery, groupedItems, filterCategories, filterSubCategories]);
-
-  // Reset page on category change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeCategory]);
-
-  // Check scroll position for arrows
-  const checkScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } =
-        scrollContainerRef.current;
-      setShowLeftArrow(scrollLeft > 0);
-      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 1);
-    }
-  };
-
-  const scroll = (direction: "left" | "right") => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({
-        left: direction === "left" ? -300 : 300,
-        behavior: "smooth",
-      });
-    }
-  };
-
-  useEffect(() => {
-    checkScroll();
-    window.addEventListener("resize", checkScroll);
-    return () => window.removeEventListener("resize", checkScroll);
-  }, [categories]);
 
   // Fetch predefined items when popup opens
   useEffect(() => {
@@ -350,9 +323,44 @@ export default function MultipleSelectMaterialItemButton({
       setTempSelectedIDs(currentItemIDs || []);
       setSearchQuery("");
       setCurrentPage(1);
-      setActiveCategory("ALL");
+      setShowOnlySelected(false);
+      setActiveSubCategoryTab("");
     }
   }, [isOpen, currentItemIDs]);
+
+  // Reset page when switching subcategory tab
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeSubCategoryTab]);
+
+  // Re-check tab scroll arrows when available tabs change
+  useEffect(() => {
+    setTimeout(checkTabScroll, 50);
+  }, [availableSubCategoryTabs.length]);
+
+  const getItemsForSubCategory = (sub: string): PredefinedItem[] => {
+    const items: PredefinedItem[] = [];
+    Object.values(filteredGroupedItems).forEach((subCats) => {
+      if (subCats[sub]) items.push(...subCats[sub]);
+    });
+    return items;
+  };
+
+  const isSubCategoryFullySelected = (sub: string): boolean => {
+    const items = getItemsForSubCategory(sub);
+    return items.length > 0 && items.every((item) => tempSelectedIDs.includes(item.id));
+  };
+
+  const toggleSubCategorySelection = (sub: string) => {
+    const items = getItemsForSubCategory(sub);
+    const allSelected = items.every((item) => tempSelectedIDs.includes(item.id));
+    const ids = items.map((i) => i.id);
+    if (allSelected) {
+      setTempSelectedIDs((prev) => prev.filter((id) => !ids.includes(id)));
+    } else {
+      setTempSelectedIDs((prev) => [...new Set([...prev, ...ids])]);
+    }
+  };
 
   // Toggle individual item
   const handleCheckboxToggle = (itemId: number) => {
@@ -421,7 +429,6 @@ export default function MultipleSelectMaterialItemButton({
     onSelectItems([]);
   };
 
-  // Handle NEW MATERIAL subcategory selection — auto-fill category
   // Handle new material created from CreateNewMaterialButton
   const handleNewMaterialCreated = (newItem: PredefinedItem) => {
     setAllItems((prev) => [...prev, newItem]);
@@ -483,8 +490,7 @@ export default function MultipleSelectMaterialItemButton({
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          gap: "8px",
-          marginTop: "15px",
+          gap: "10px",
         }}
       >
         <button
@@ -492,16 +498,15 @@ export default function MultipleSelectMaterialItemButton({
           onClick={() => setCurrentPage(currentPage - 1)}
           disabled={currentPage === 1}
           style={{
-            padding: "6px 10px",
+            padding: "8px 12px",
             borderRadius: "5px",
-            border: "1px solid rgba(223, 223, 223, 1)",
+            border: "1px solid rgba(223,223,223,1)",
             backgroundColor: "white",
-            color: "black",
             cursor: currentPage === 1 ? "not-allowed" : "pointer",
-            fontWeight: "600",
-            minWidth: "36px",
-            fontSize: "13px",
+            fontWeight: 600,
+            minWidth: "40px",
             opacity: currentPage === 1 ? 0.4 : 1,
+            color: "black",
           }}
         >
           ‹
@@ -514,9 +519,9 @@ export default function MultipleSelectMaterialItemButton({
             onClick={() => typeof page === "number" && setCurrentPage(page)}
             disabled={page === "..."}
             style={{
-              padding: "6px 10px",
+              padding: "8px 12px",
               borderRadius: "5px",
-              border: "1px solid rgba(223, 223, 223, 1)",
+              border: "1px solid rgba(223,223,223,1)",
               backgroundColor:
                 page === currentPage
                   ? "black"
@@ -525,9 +530,8 @@ export default function MultipleSelectMaterialItemButton({
                     : "white",
               color: page === currentPage ? "white" : "black",
               cursor: page === "..." ? "default" : "pointer",
-              fontWeight: "600",
-              minWidth: "36px",
-              fontSize: "13px",
+              fontWeight: 600,
+              minWidth: "40px",
             }}
           >
             {page}
@@ -539,16 +543,15 @@ export default function MultipleSelectMaterialItemButton({
           onClick={() => setCurrentPage(currentPage + 1)}
           disabled={currentPage === totalPages}
           style={{
-            padding: "6px 10px",
+            padding: "8px 12px",
             borderRadius: "5px",
-            border: "1px solid rgba(223, 223, 223, 1)",
+            border: "1px solid rgba(223,223,223,1)",
             backgroundColor: "white",
-            color: "black",
             cursor: currentPage === totalPages ? "not-allowed" : "pointer",
-            fontWeight: "600",
-            minWidth: "36px",
-            fontSize: "13px",
+            fontWeight: 600,
+            minWidth: "40px",
             opacity: currentPage === totalPages ? 0.4 : 1,
+            color: "black",
           }}
         >
           ›
@@ -557,650 +560,454 @@ export default function MultipleSelectMaterialItemButton({
     );
   };
 
-  // Render items table for a subcategory
-  const renderItemsTable = (items: PredefinedItem[]) => (
-    <>
-      <table
-        className="items-table two-toned"
-        style={{ tableLayout: "fixed", width: "100%" }}
-      >
-        <colgroup>
-          <col style={{ width: "50px" }} />
-          <col style={{ width: "140px" }} />
-          <col style={{ width: "auto" }} />
-          <col style={{ width: "100px" }} />
-        </colgroup>
-        <thead>
-          <tr>
-            <th></th>
-            <th>CODE</th>
-            <th>ITEM</th>
-            <th>UNIT</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <tr key={item.id}>
-              <td onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  checked={tempSelectedIDs.includes(item.id)}
-                  onChange={() => handleCheckboxToggle(item.id)}
-                  style={{
-                    width: "18px",
-                    height: "18px",
-                    cursor: "pointer",
-                    accentColor: "rgba(0, 163, 93, 1)",
-                  }}
-                />
-              </td>
-              <td style={{ whiteSpace: "nowrap" }}>{item.item_code || "-"}</td>
-              <td>{item.material_description}</td>
-              <td>{item.unit || "-"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <br />
-      <br />
-    </>
-  );
-
-  // Subcategory header with checkbox & collapse
-  const renderSubCategoryHeader = (
-    category: string,
-    subCategory: string,
-    label: string,
-    itemCount: number,
-  ) => {
-    const subKey = `${category}::${subCategory}`;
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-          marginBottom: collapsedSubCategories[subKey] ? "0px" : "10px",
-          cursor: "pointer",
-          userSelect: "none",
-        }}
-        onClick={() =>
-          setCollapsedSubCategories((prev) => ({
-            ...prev,
-            [subKey]: !prev[subKey],
-          }))
-        }
-      >
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 14 14"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{
-            transition: "transform 0.2s ease",
-            transform: collapsedSubCategories[subKey]
-              ? "rotate(-90deg)"
-              : "rotate(0deg)",
-          }}
-        >
-          <path
-            d="M3.5 5.25L7 8.75L10.5 5.25"
-            stroke="black"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-
-        <span
-          style={{
-            fontWeight: 600,
-            fontSize: "14px",
-            textTransform: "uppercase",
-          }}
-        >
-          {label.toUpperCase()}
-        </span>
-
-        {/* Subcategory checkbox — commented out
-        <label
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            cursor: "pointer",
-            fontWeight: 600,
-            fontSize: "14px",
-            textTransform: "capitalize",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <input
-            type="checkbox"
-            checked={isSubCategorySelected(category, subCategory)}
-            onChange={(e) =>
-              toggleSubCategory(category, subCategory, e.target.checked)
-            }
-            style={{
-              width: "18px",
-              height: "18px",
-              cursor: "pointer",
-              accentColor: "rgba(0, 163, 93, 1)",
-            }}
-          />
-          {label.toUpperCase()}
-        </label>
-        */}
-
-        <div
-          style={{
-            backgroundColor: "rgba(239, 239, 239, 1)",
-            borderRadius: "50px",
-            padding: "2px 8px",
-            fontWeight: "600",
-            fontSize: "11px",
-            color: "rgba(100, 100, 100, 1)",
-          }}
-        >
-          {itemCount} Items
-        </div>
-      </div>
-    );
-  };
-
-  // Category tabs renderer (shared between select popup and could be reused)
-  const renderCategoryTabs = () => (
-    <div className="category-grid" style={{ marginBottom: "20px" }}>
-      <div style={{ position: "relative", flex: 1, maxWidth: "70dvw" }}>
-        {showLeftArrow && (
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: "300px",
-              background:
-                "linear-gradient(to right, white 0%, rgba(255, 255, 255, 0) 100%)",
-              pointerEvents: "none",
-              zIndex: 5,
-            }}
-          />
-        )}
-
-        {showLeftArrow && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              scroll("left");
-            }}
-            style={{
-              position: "absolute",
-              left: "10px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 10,
-              backgroundColor: "black",
-              color: "white",
-              border: "none",
-              borderRadius: "10px",
-              width: "40px",
-              height: "40px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
-          >
-            <img
-              src={arrowRight}
-              style={{ transform: "rotate(-180deg)", width: "12px" }}
-              alt="scroll left"
-            />
-          </button>
-        )}
-
-        <div
-          ref={scrollContainerRef}
-          onScroll={checkScroll}
-          style={{
-            overflowX: "auto",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          }}
-        >
-          <style jsx>{`
-            div::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
-          <div style={{ display: "flex", gap: "1px" }}>
-            <div
-              className={`item ${activeCategory === "ALL" ? "active" : ""}`}
-              onClick={() => setActiveCategory("ALL")}
-              style={{
-                flexShrink: 0,
-                cursor: "pointer",
-              }}
-            >
-              ALL
-            </div>
-
-            {categories.map((category) => (
-              <div
-                key={category}
-                className={`item ${activeCategory === category ? "active" : ""}`}
-                onClick={() => setActiveCategory(category)}
-                style={{
-                  flexShrink: 0,
-                  cursor: "pointer",
-                  textTransform: "capitalize",
-                }}
-              >
-                {category.toUpperCase()}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {showRightArrow && (
-          <div
-            style={{
-              position: "absolute",
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: "300px",
-              background:
-                "linear-gradient(to left, white 0%, rgba(255, 255, 255, 0) 100%)",
-              pointerEvents: "none",
-              zIndex: 5,
-            }}
-          />
-        )}
-
-        {showRightArrow && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              scroll("right");
-            }}
-            style={{
-              position: "absolute",
-              right: "10px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 10,
-              backgroundColor: "black",
-              borderRadius: "10px",
-              color: "white",
-              border: "none",
-              width: "40px",
-              height: "40px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
-          >
-            <img
-              src={arrowRight}
-              style={{ width: "12px" }}
-              alt="scroll right"
-            />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-
   const modalContent = isOpen && (
     <FormPopUp
-      header={"SELECT MATERIAL ITEMS"}
+      header={"SELECT MATERIAL(S)"}
       setIsOpen={setIsOpen}
       handleSubmit={handleSubmit}
       addButtonLabel={"CONFIRM"}
       style={{ width: "75dvw", height: "95dvh" }}
+      stickyFooter={
+        totalPages > 1 || tempSelectedIDs.length > 0 ? (
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "15px" }}
+          >
+            {totalPages > 1 && <PaginationControls />}
+            {tempSelectedIDs.length > 0 && (
+              <div>
+                <span
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    marginBottom: "10px",
+                    display: "block",
+                  }}
+                >
+                  ITEM SELECTED ({tempSelectedIDs.length})
+                </span>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {tempSelectedIDs.map((id) => {
+                    const item = allItems.find((i) => i.id === id);
+                    if (!item) return null;
+                    return (
+                      <Button
+                        key={id}
+                        componentType="button"
+                        bgColor="rgba(239,239,239,1)"
+                        borderColor="transparent"
+                        textColor="black"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setTempSelectedIDs((prev) =>
+                            prev.filter((i) => i !== id),
+                          );
+                        }}
+                        style={{
+                          borderRadius: "50px",
+                          fontWeight: 600,
+                          textWrap: "nowrap",
+                        }}
+                      >
+                        {item.material_description}{" "}
+                        <img src={crossSmallIcon} style={{ width: "12px" }} />
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : undefined
+      }
     >
-      {/* Search Bar + New Material Button */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-        }}
-      >
+      <div style={{ width: "100%", overflow: "hidden" }}>
+        {/* Search Bar + New Material Button */}
         <div
           style={{
-            position: "relative",
-            flex: 1,
-            maxWidth: "400px",
-            backgroundColor: "white",
+            display: "flex",
+            gap: "10px",
+            alignItems: "center",
+            marginBottom: "15px",
           }}
         >
-          <input
-            type="text"
-            placeholder="SEARCH"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: "400px",
-              padding: "8px 40px 8px 15px",
-              borderRadius: "8px",
-              border: "1px solid rgba(223, 223, 223, 1)",
-            }}
-          />
-          <img
-            src={searchIcon}
-            alt="search"
-            style={{
-              position: "absolute",
-              right: "15px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: "16px",
-              height: "16px",
-              opacity: 0.5,
-            }}
-          />
+          <div style={{ position: "relative", flex: 1 }}>
+            <input
+              type="text"
+              placeholder="SEARCH"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 40px 8px 15px",
+                borderRadius: "8px",
+                border: "1px solid rgba(223,223,223,1)",
+              }}
+            />
+            <img
+              src={searchIcon}
+              alt="search"
+              style={{
+                position: "absolute",
+                right: "15px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "16px",
+                height: "16px",
+                opacity: 0.5,
+              }}
+            />
+          </div>
+
+          {(userInfo?.departmentID === 16 || userInfo?.departmentID === 8) && (
+            <CreateNewMaterialButton
+              onSuccess={handleNewMaterialCreated}
+              style={{ padding: "7px 20px" }}
+            />
+          )}
         </div>
 
-        {(userInfo?.departmentID === 16 || userInfo?.departmentID === 8) && (
-          <CreateNewMaterialButton
-            onSuccess={handleNewMaterialCreated}
-            style={{ padding: "7px 20px" }}
-          />
-        )}
-      </div>
-
-      <br />
-
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <Button
-          componentType={"button"}
-          bgColor={"white"}
-          borderColor={"rgba(223, 223, 223, 1)"}
-          textColor={"black"}
-          onClick={(e) => {
-            e.preventDefault();
-            handleFilterOpen();
-          }}
+        {/* Filter row */}
+        <div
           style={{
-            padding: "7px 20px",
-            borderRadius: "25px",
+            display: "flex",
+            gap: "10px",
+            alignItems: "center",
+            flexWrap: "wrap",
+            marginBottom: "15px",
           }}
         >
-          <img src={filterIcon} alt="filter" />
-          FILTER
-        </Button>
-
-        {/* Active Filter Bubbles */}
-        {hasActiveFilters && (
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              alignItems: "center",
-              flexWrap: "wrap",
+          <Button
+            componentType="button"
+            bgColor="white"
+            borderColor="rgba(241,244,246,1)"
+            textColor="black"
+            onClick={(e) => {
+              e.preventDefault();
+              handleFilterOpen();
             }}
+            style={{ borderRadius: "50px" }}
           >
-            {filterCategories.size > 0 && (
-              <Button
-                style={{
-                  borderRadius: "25px",
-                  fontWeight: "600",
-                  textWrap: "nowrap",
-                }}
-                componentType="none"
-                bgColor="rgba(239, 239, 239, 1)"
-                borderColor="transparent"
-                textColor="black"
-              >
-                CATEGORY:{" "}
-                <span style={{ color: "rgba(1, 139, 80, 1)" }}>
-                  {Array.from(filterCategories)[0].toUpperCase()}
-                  {filterCategories.size > 1 &&
-                    `, +${filterCategories.size - 1} MORE`}
-                </span>
-              </Button>
-            )}
-            {filterSubCategories.size > 0 && (
-              <Button
-                style={{
-                  borderRadius: "25px",
-                  fontWeight: "600",
-                  textWrap: "nowrap",
-                }}
-                componentType="none"
-                bgColor="rgba(239, 239, 239, 1)"
-                borderColor="transparent"
-                textColor="black"
-              >
-                SUBCATEGORY:{" "}
-                <span style={{ color: "rgba(1, 139, 80, 1)" }}>
-                  {Array.from(filterSubCategories)[0].toUpperCase()}
-                  {filterSubCategories.size > 1 &&
-                    `, +${filterSubCategories.size - 1} MORE`}
-                </span>
-              </Button>
-            )}
+            FILTER <img src={filterIcon} alt="filter" />
+          </Button>
+
+          {/* Category filter chip */}
+          {filterCategories.size > 0 && (
             <Button
+              componentType="button"
+              bgColor="rgba(239,239,239,1)"
+              borderColor="transparent"
+              textColor="black"
               onClick={() => {
                 setFilterCategories(new Set());
                 setFilterSubCategories(new Set());
+                setActiveSubCategoryTab("");
               }}
-              componentType={"button"}
-              bgColor={"transparent"}
-              borderColor={"transparent"}
-              textColor={"black"}
-              style={{ padding: "0px" }}
+              style={{
+                borderRadius: "50px",
+                fontWeight: 600,
+                textWrap: "nowrap",
+              }}
             >
-              RESET FILTER
+              CATEGORY:{" "}
+              <span style={{ color: "rgba(16,185,129,1)" }}>
+                {Array.from(filterCategories)[0].toUpperCase()}
+                {filterCategories.size > 1
+                  ? `, +${filterCategories.size - 1} MORE`
+                  : ""}
+              </span>{" "}
+              <img src={crossSmallIcon} style={{ width: "12px" }} />
             </Button>
-          </div>
-        )}
-      </div>
+          )}
 
-      <br />
-      <br />
+          {/* Subcategory filter chip */}
+          {filterSubCategories.size > 0 && (
+            <Button
+              componentType="button"
+              bgColor="rgba(239,239,239,1)"
+              borderColor="transparent"
+              textColor="black"
+              onClick={() => {
+                setFilterSubCategories(new Set());
+                setActiveSubCategoryTab("");
+              }}
+              style={{
+                borderRadius: "50px",
+                fontWeight: 600,
+                textWrap: "nowrap",
+              }}
+            >
+              SUBCATEGORY:{" "}
+              <span style={{ color: "rgba(16,185,129,1)" }}>
+                {Array.from(filterSubCategories)[0].toUpperCase()}
+                {filterSubCategories.size > 1
+                  ? `, +${filterSubCategories.size - 1} MORE`
+                  : ""}
+              </span>{" "}
+              <img src={crossSmallIcon} style={{ width: "12px" }} />
+            </Button>
+          )}
+        </div>
 
-      {tempSelectedIDs.length > 0 && (
-        <>
-          <h3>ITEM(S) SELECTED ({tempSelectedIDs.length}):</h3>
-          <br />
+        {/* Subcategory tabs */}
+        {availableSubCategoryTabs.length > 1 && (
           <div
             style={{
-              display: "flex",
-              gap: "10px",
-              alignItems: "center",
-              flexWrap: "wrap",
+              position: "relative",
+              maxWidth: "calc(75dvw - 90px)",
+              overflow: "hidden",
             }}
           >
-            {tempSelectedIDs.map((id) => {
-              const item = allItems.find((i) => i.id === id);
-              if (!item) return null;
-              return (
-                <Button
-                  key={id}
-                  componentType="none"
-                  bgColor="rgba(239, 239, 239, 1)"
-                  borderColor="transparent"
-                  textColor="black"
-                  style={{
-                    borderRadius: "25px",
-                    fontWeight: "600",
-                    textWrap: "nowrap",
-                  }}
-                >
-                  {item.material_description}
-                  <Button
-                    componentType={"button"}
-                    bgColor={"transparent"}
-                    borderColor={"transparent"}
-                    textColor={"black"}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setTempSelectedIDs((prev) =>
-                        prev.filter((i) => i !== id),
-                      );
-                    }}
-                    style={{ padding: "0px" }}
-                  >
-                    <img src={crossSmallIcon} style={{ marginBottom: "2px" }} />
-                  </Button>
-                </Button>
-              );
-            })}
-          </div>
-          <br />
-          <br />
-        </>
-      )}
+            {/* Left fade + arrow */}
+            {showLeftTabArrow && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: "80px",
+                  background:
+                    "linear-gradient(to right, white 0%, rgba(255,255,255,0) 100%)",
+                  pointerEvents: "none",
+                  zIndex: 5,
+                }}
+              />
+            )}
+            {showLeftTabArrow && (
+              <button
+                type="button"
+                onClick={() => scrollTabs("left")}
+                style={{
+                  position: "absolute",
+                  left: "0px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  backgroundColor: "white",
+                  color: "black",
+                  border: "1px solid rgba(221,221,221,1)",
+                  borderRadius: "10px",
+                  width: "32px",
+                  height: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <img
+                  src={arrowRight}
+                  style={{ transform: "rotate(180deg)" }}
+                  alt="scroll left"
+                />
+              </button>
+            )}
 
-      {/* Category Tabs — commented out
-      {renderCategoryTabs()}
-      */}
-
-      {/* No Results */}
-      {searchQuery.trim() && categories.length === 0 && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "40px",
-            color: "rgba(128, 128, 128, 1)",
-          }}
-        >
-          <p>No results found for &quot;{searchQuery}&quot;</p>
-        </div>
-      )}
-
-      {/* Items — paginated */}
-      <div style={{ overflowY: "auto" }}>
-        {activeCategory === "ALL"
-          ? Object.entries(paginatedGrouped).map(
-              ([category, subCatsData], categoryIndex) => (
-                <div key={category} style={{ marginBottom: "30px" }}>
-                  <div
+            {/* Scrollable tab strip */}
+            <div
+              ref={scrollContainerRef}
+              onScroll={checkTabScroll}
+              style={{
+                display: "flex",
+                gap: "8px",
+                overflowX: "auto",
+                scrollbarWidth: "none",
+                msOverflowStyle:
+                  "none" as React.CSSProperties["msOverflowStyle"],
+                marginBottom: "0",
+                paddingLeft: showLeftTabArrow ? "44px" : "0",
+                paddingRight: showRightTabArrow ? "44px" : "0",
+              }}
+            >
+              {availableSubCategoryTabs.map((sub, idx) => {
+                const isActive = activeSubCategoryTab === sub;
+                const isChecked = isSubCategoryFullySelected(sub);
+                const isFirst = idx === 0;
+                const isLast = idx === availableSubCategoryTabs.length - 1;
+                return (
+                  <button
+                    key={sub}
+                    type="button"
+                    onClick={() => setActiveSubCategoryTab(isActive ? "" : sub)}
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "15px",
-                      marginBottom: collapsedCategories[category]
-                        ? "0px"
-                        : "15px",
-                      padding: "10px 0",
-                      borderBottom: "2px solid rgba(0, 0, 0, 0.1)",
+                      gap: "6px",
+                      padding: "6px 14px",
+                      borderRadius: isActive
+                        ? `${isFirst ? "0" : "6px"} ${isLast ? "0" : "6px"} 0 0`
+                        : "6px 6px 0 0",
+                      border: "none",
+                      borderBottom: "none",
+                      backgroundColor: isActive
+                        ? "rgba(239,239,239,1)"
+                        : "rgba(221,221,221,1)",
+                      color: "black",
                       cursor: "pointer",
-                      userSelect: "none",
+                      whiteSpace: "nowrap",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      flexShrink: 0,
+                      position: "relative",
+                      zIndex: isActive ? 1 : 0,
                     }}
-                    onClick={() =>
-                      setCollapsedCategories((prev) => ({
-                        ...prev,
-                        [category]: !prev[category],
-                      }))
-                    }
                   >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 14 14"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSubCategorySelection(sub);
+                      }}
                       style={{
-                        transition: "transform 0.2s ease",
-                        transform: collapsedCategories[category]
-                          ? "rotate(-90deg)"
-                          : "rotate(0deg)",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "14px",
+                        height: "14px",
+                        minWidth: "14px",
+                        borderRadius: "3px",
+                        border: isChecked
+                          ? "2px solid rgba(0,163,93,1)"
+                          : "2px solid rgba(180,180,180,1)",
+                        backgroundColor: isChecked ? "rgba(0,163,93,1)" : "white",
+                        flexShrink: 0,
+                        cursor: "pointer",
                       }}
                     >
-                      <path
-                        d="M3.5 5.25L7 8.75L10.5 5.25"
-                        stroke="black"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-
-                    <h2
-                      style={{
-                        margin: 0,
-                        fontSize: "18px",
-                        textTransform: "capitalize",
-                      }}
-                    >
-                      {categoryIndex + 1}. {category.toUpperCase()}
-                    </h2>
-
-                    <div
-                      style={{
-                        backgroundColor: "black",
-                        color: "white",
-                        borderRadius: "50px",
-                        padding: "3px 8px",
-                        fontWeight: "600",
-                        fontSize: "12px",
-                      }}
-                    >
-                      {Object.values(subCatsData).reduce(
-                        (sum, items) => sum + items.length,
-                        0,
-                      )}{" "}
-                      Items
-                    </div>
-                  </div>
-
-                  {!collapsedCategories[category] &&
-                    Object.entries(subCatsData).map(
-                      ([subCategory, items], subIndex) => (
-                        <div
-                          key={`${category}-${subCategory}`}
-                          style={{ marginBottom: "20px", marginLeft: "20px" }}
-                        >
-                          {renderSubCategoryHeader(
-                            category,
-                            subCategory,
-                            `${categoryIndex + 1}.${subIndex + 1} ${subCategory}`,
-                            items.length,
-                          )}
-                          {!collapsedSubCategories[
-                            `${category}::${subCategory}`
-                          ] && renderItemsTable(items)}
-                        </div>
-                      ),
-                    )}
-                </div>
-              ),
-            )
-          : Object.entries(paginatedGrouped).map(
-              ([category, subCatsData], catIdx) =>
-                Object.entries(subCatsData).map(
-                  ([subCategory, items], subIdx) => (
-                    <div
-                      key={`${category}-${subCategory}`}
-                      style={{ marginBottom: "30px" }}
-                    >
-                      {renderSubCategoryHeader(
-                        category,
-                        subCategory,
-                        `${categories.indexOf(activeCategory) + 1}.${subIdx + 1} ${subCategory}`,
-                        items.length,
+                      {isChecked && (
+                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                          <path
+                            d="M1 3.5L3.5 6L8 1"
+                            stroke="white"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
                       )}
-                      {!collapsedSubCategories[`${category}::${subCategory}`] &&
-                        renderItemsTable(items)}
-                    </div>
-                  ),
-                ),
-            )}
-      </div>
+                    </span>
+                    {sub.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
 
-      {/* Pagination */}
-      <PaginationControls />
+            {/* Right fade + arrow */}
+            {showRightTabArrow && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: "80px",
+                  background:
+                    "linear-gradient(to left, white 0%, rgba(255,255,255,0) 100%)",
+                  pointerEvents: "none",
+                  zIndex: 5,
+                }}
+              />
+            )}
+            {showRightTabArrow && (
+              <button
+                type="button"
+                onClick={() => scrollTabs("right")}
+                style={{
+                  position: "absolute",
+                  right: "0px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  backgroundColor: "white",
+                  color: "black",
+                  border: "1px solid rgba(221,221,221,1)",
+                  borderRadius: "10px",
+                  width: "24px",
+                  height: "24px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <img
+                  src={arrowRight}
+                  alt="scroll right"
+                  style={{ filter: "invert(1)" }}
+                />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* No results message */}
+        {flatItems.length === 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "40px",
+              color: "rgba(128,128,128,1)",
+            }}
+          >
+            {showOnlySelected
+              ? "No selected items match current filters."
+              : searchQuery.trim()
+                ? `No results for "${searchQuery}"`
+                : "No items found."}
+          </div>
+        )}
+
+        {/* Flat items table */}
+        {flatItems.length > 0 && (
+          <table
+            className="items-table two-toned"
+            style={{
+              tableLayout: "fixed",
+              width: "100%",
+              borderTopLeftRadius: "0",
+              borderTopRightRadius: "0",
+            }}
+          >
+            <colgroup>
+              <col style={{ width: "50px" }} />
+              <col style={{ width: "auto" }} />
+              <col style={{ width: "200px" }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th></th>
+                <th>MATERIAL</th>
+                <th>UNIT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedItems.map((item) => (
+                <tr
+                  key={item.id}
+                  onClick={() => handleCheckboxToggle(item.id)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={tempSelectedIDs.includes(item.id)}
+                      onChange={() => handleCheckboxToggle(item.id)}
+                      style={{
+                        width: "18px",
+                        height: "18px",
+                        cursor: "pointer",
+                        accentColor: "rgba(0,163,93,1)",
+                      }}
+                    />
+                  </td>
+                  <td>{item.material_description}</td>
+                  <td>{item.unit || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </FormPopUp>
   );
 

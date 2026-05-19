@@ -34,64 +34,33 @@ const pendingPaymentFilter = `
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { filter, limit: itemLimit } = body;
+    const { date_from, date_to, limit: itemLimit } = body;
     const maxItems =
       typeof itemLimit === "number" && itemLimit > 0 ? itemLimit : 20;
 
-    if (
-      filter === undefined ||
-      filter === null ||
-      typeof filter !== "number" ||
-      filter < 0
-    ) {
-      return NextResponse.json(
-        { error: "Invalid 'filter' parameter. Must be a non-negative number." },
-        { status: 400 },
-      );
-    }
+    const dateClauseParts: string[] = [];
+    if (date_from) dateClauseParts.push(`l.created_at >= '${date_from}'`);
+    if (date_to) dateClauseParts.push(`l.created_at <= '${date_to}'`);
+    const dateClause = dateClauseParts.length > 0
+      ? `AND ${dateClauseParts.join(" AND ")}`
+      : "";
 
-    const dateClause =
-      filter > 0
-        ? `AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL ${filter} DAY)`
-        : "";
-
-    // ── Count + outstanding (all-time or period comparison) ────────────
+    // ── Count + outstanding ────────────────────────────────────────────
     let thisWeekCount = 0;
-    let lastWeekCount = 0;
     let totalOutstanding = 0;
 
-    if (filter === 0) {
-      const [countRows]: any = await db.query(`
-        SELECT COUNT(*) AS cnt,
-               SUM(GREATEST(l.total - COALESCE(pay.total_paid, 0), 0)) AS outstanding
-        FROM lpo l
-        JOIN mr_headers mh ON mh.id = l.mr_header_id
-        ${suppliersJoin}
-        ${lpoPaymentsJoin}
-        WHERE ${pendingPaymentFilter}
-      `);
-      thisWeekCount = Number(countRows[0]?.cnt) || 0;
-      totalOutstanding = Number(countRows[0]?.outstanding) || 0;
-    } else {
-      const [countRows]: any = await db.query(
-        `
-        SELECT
-          SUM(CASE WHEN l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 ELSE 0 END)                                                              AS this_week,
-          SUM(CASE WHEN l.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-                    AND l.created_at <  DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 ELSE 0 END)                                                              AS last_week,
-          SUM(GREATEST(l.total - COALESCE(pay.total_paid, 0), 0))                                                                                           AS outstanding
-        FROM lpo l
-        JOIN mr_headers mh ON mh.id = l.mr_header_id
-        ${suppliersJoin}
-        ${lpoPaymentsJoin}
-        WHERE ${pendingPaymentFilter}
-        `,
-        [filter, filter * 2, filter],
-      );
-      thisWeekCount = Number(countRows[0]?.this_week) || 0;
-      lastWeekCount = Number(countRows[0]?.last_week) || 0;
-      totalOutstanding = Number(countRows[0]?.outstanding) || 0;
-    }
+    const [countRows]: any = await db.query(`
+      SELECT COUNT(*) AS cnt,
+             SUM(GREATEST(l.total - COALESCE(pay.total_paid, 0), 0)) AS outstanding
+      FROM lpo l
+      JOIN mr_headers mh ON mh.id = l.mr_header_id
+      ${suppliersJoin}
+      ${lpoPaymentsJoin}
+      WHERE ${pendingPaymentFilter}
+      ${dateClause}
+    `);
+    thisWeekCount = Number(countRows[0]?.cnt) || 0;
+    totalOutstanding = Number(countRows[0]?.outstanding) || 0;
 
     // ── Items (top LPOs by amount) ─────────────────────────────────────
     const [itemRows]: any = await db.query(
@@ -185,7 +154,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         this_week: thisWeekCount,
-        last_week: lastWeekCount,
+        last_week: 0,
         total_count: thisWeekCount,
         total_outstanding: totalOutstanding,
         items,

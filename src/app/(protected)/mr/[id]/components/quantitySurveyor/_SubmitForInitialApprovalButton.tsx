@@ -33,14 +33,25 @@ export default function SubmitForInitialApprovalButton({
 
   const [isOpen, setIsOpen] = useState(false);
 
+  const bypassQSReview =
+    mrHeader.type === "job" &&
+    (progressId === 1 || mrHeader.progress_id === 1) &&
+    (!!mrHeader.skip_approvals ||
+      userInfo?.departmentID === 8 ||
+      userInfo?.departmentID === 16);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    const action = bypassQSReview
+      ? "submitForSkipApprovalsQuotations"
+      : "submitForInitialApproval";
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "submitForInitialApproval",
+        action,
         id: mrHeader.id,
         type: mrHeader.type,
         changed_by: userInfo?.name,
@@ -82,7 +93,9 @@ export default function SubmitForInitialApprovalButton({
           : progressId === 2
             ? "SUBMIT FOR QUOTATIONS"
             : mrHeader.type === "job"
-              ? "SUBMIT FOR QS REVIEW"
+              ? bypassQSReview
+                ? "SUBMIT FOR QUOTATIONS"
+                : "SUBMIT FOR QS REVIEW"
               : "SUBMIT FOR QUOTATIONS"}
       </Button>
 

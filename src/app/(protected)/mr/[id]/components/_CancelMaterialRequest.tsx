@@ -123,16 +123,15 @@ export default function CancelMaterialRequestButton({
   const lpoProgressFlow = [12, 17, 24];
   // Full MR flow for LPO context (no Manager Approval for MRs) — payment stage (14) removed
   const fullProgressFlow = [1, 2, 7, 9, 10, 12, 17, 24];
-  // JO flow: Draft → Manager Approval → Quotations → Price Approval → LPO & Invoice
-  const joProgressFlow = [1, 3, 7, 10, 12];
+  // JO flow: Draft → Quotations → Price Approval → LPO & Invoice (Manager Approval not a rollback target)
+  const joProgressFlow = [1, 7, 10, 12];
   // PR flow: Draft → QS Review → Manager Approval → Payment
   const prProgressFlow = [1, 2, 3, 14];
 
   // Maps rejected/failed progress_ids to the last valid stage before rejection
-  // JOs and PRs go through Manager Approval (3), so their rejection cutoff is 3.
-  // MRs skip Manager Approval, so their rejection cutoff is 2 (QS Review).
+  // PRs go through Manager Approval (3); JOs and MRs do not use stage 3 as a rollback target.
   const rejectedToCutoff: { [key: number]: number } = {
-    5: type === "job" || type === "payment" ? 3 : 2, // Request Rejected → back to last valid stage
+    5: type === "payment" ? 3 : type === "job" ? 1 : 2, // Request Rejected → back to last valid stage
     11: 10, // Price Approval Rejected → roll back up to Manager Price Approval
     13: 12, // Payment Rejected → roll back up to LPO & Invoice
     16: 12, // GRN Failed → roll back up to LPO & Invoice (payment stage skipped)

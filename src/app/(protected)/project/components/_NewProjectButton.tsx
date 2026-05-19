@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import FormPopUp from "./FormPopup";
-import InputItem from "./InputItem";
-import Button from "./Button";
+import Button from "@/app/components/Button";
+import FormPopUp from "@/app/components/FormPopup";
+import InputItem from "@/app/components/InputItem";
+import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
+import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { toast } from "./Toast";
-import MultiSelectDropdown from "./MultiSelectDropdown";
+import { useState, useEffect } from "react";
 
 export default function NewProjectButton() {
   const router = useRouter();

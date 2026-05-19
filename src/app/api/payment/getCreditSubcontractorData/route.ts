@@ -59,11 +59,20 @@ export async function POST(request: NextRequest) {
         mh.requested_by,
         mh.project_id,
         p.name AS project_name,
+        COALESCE(l.vat_rate, 0) AS vat_rate,
+        ROUND(COALESCE(jl_totals.after_retention_sum, 0), 2) AS after_retention,
+        ROUND(COALESCE(jl_totals.after_retention_with_vat_sum, 0), 2) AS total_with_vat,
         ROUND(COALESCE(pmt.total_paid, 0), 2) AS total_paid,
-        ROUND(GREATEST(COALESCE(pr_calc.after_retention_sum, 0) - COALESCE(pmt.total_paid, 0), 0), 2) AS outstanding,
+        ROUND(GREATEST(
+          COALESCE(jl_totals.after_retention_with_vat_sum, 0) - COALESCE(pmt.total_paid, 0),
+          0
+        ), 2) AS outstanding,
         CASE
           WHEN COALESCE(pmt.total_paid, 0) > 0
-           AND ROUND(GREATEST(COALESCE(pr_calc.after_retention_sum, 0) - COALESCE(pmt.total_paid, 0), 0), 2) = 0
+           AND ROUND(GREATEST(
+             COALESCE(jl_totals.after_retention_with_vat_sum, 0) - COALESCE(pmt.total_paid, 0),
+             0
+           ), 2) = 0
           THEN 1 ELSE 0
         END AS is_paid
       FROM mr_headers mh
@@ -72,24 +81,15 @@ export async function POST(request: NextRequest) {
       LEFT JOIN lpo l ON l.mr_header_id = mh.payment_jo_reference_id
       LEFT JOIN projects p ON mh.project_id = p.id
       LEFT JOIN (
-        SELECT
-          pl.mr_header_id,
-          SUM(
-            CASE WHEN COALESCE(pl.subcontracted_qty, 0) > 0 AND COALESCE(sq.total_price, 0) > 0
-              THEN (COALESCE(pl.completed_qty, 0) / pl.subcontracted_qty) * sq.total_price * (1 - COALESCE(pl.retention, 0) / 100)
-              ELSE 0
-            END
-          ) AS after_retention_sum
-        FROM pr_lines pl
-        LEFT JOIN jo_line_subcontractor_quotation sq
-          ON sq.jo_line_id = pl.jo_line_id
-          AND sq.boq_line_id = pl.boq_line_id
-          AND sq.approval_status = 'Approved'
-        GROUP BY pl.mr_header_id
-      ) pr_calc ON pr_calc.mr_header_id = mh.id
+        SELECT mr_header_id,
+          SUM(COALESCE(after_retention, 0)) AS after_retention_sum,
+          SUM(COALESCE(after_retention_with_vat, 0)) AS after_retention_with_vat_sum
+        FROM jo_lines
+        GROUP BY mr_header_id
+      ) jl_totals ON jl_totals.mr_header_id = mh.payment_jo_reference_id
       LEFT JOIN (SELECT pr_id, SUM(amount) AS total_paid FROM jo_payments GROUP BY pr_id) pmt ON pmt.pr_id = mh.id
-      WHERE mh.type = 'payment' AND l.subcontractor_id = ?
-      GROUP BY mh.id, pmt.total_paid, p.name, pr_calc.after_retention_sum
+      WHERE mh.type = 'payment' AND mh.progress_id = 25 AND l.subcontractor_id = ?
+      GROUP BY mh.id, pmt.total_paid, p.name, jl_totals.after_retention_sum, jl_totals.after_retention_with_vat_sum, l.vat_rate
       ORDER BY is_paid ASC, mh.id DESC`,
       [subcontractorId],
     );
