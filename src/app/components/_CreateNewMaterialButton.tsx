@@ -142,24 +142,14 @@ export default function CreateNewMaterialButton({
       handleSubmit={handleNewMaterialSubmit}
       addButtonLabel={"CONFIRM"}
     >
-      <div className="input-row full">
+      {/* <div className="input-row full">
         <InputItem
           label={"CODE"}
           value={newMatItemCode}
           type={"text"}
           onChange={(e) => setNewMatItemCode(e.target.value)}
         />
-      </div>
-
-      <div className="input-row full">
-        <InputItem
-          label={"NAME"}
-          value={newMatDescription}
-          type={"text"}
-          required
-          onChange={(e) => setNewMatDescription(e.target.value)}
-        />
-      </div>
+      </div> */}
 
       <div className="input-row half">
         <SingleSelectDropdown
@@ -190,6 +180,13 @@ export default function CreateNewMaterialButton({
 
       <div className="input-row half">
         <InputItem
+          label={"NAME"}
+          value={newMatDescription}
+          type={"text"}
+          required
+          onChange={(e) => setNewMatDescription(e.target.value)}
+        />
+        <InputItem
           label={"UNIT"}
           value={newMatUnit}
           type={"select"}
@@ -197,13 +194,16 @@ export default function CreateNewMaterialButton({
           onChange={(e) => setNewMatUnit(e.target.value)}
           selectOptions={[...UNIT_OPTIONS]}
         />
+      </div>
+
+      {/* <div className="input-row half">
         <InputItem
           label={"BRAND"}
           value={newMatBrand}
           type={"text"}
           onChange={(e) => setNewMatBrand(e.target.value)}
         />
-      </div>
+      </div> */}
     </FormPopUp>
   );
 

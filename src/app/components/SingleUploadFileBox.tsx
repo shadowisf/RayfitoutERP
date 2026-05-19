@@ -163,7 +163,7 @@ export default function SingleUploadFileBox({
         <span>{label}</span>{" "}
         {!required && (
           <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-            (OPTIONAL)
+            OPTIONAL
           </small>
         )}
       </label>

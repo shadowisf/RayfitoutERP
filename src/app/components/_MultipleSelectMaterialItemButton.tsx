@@ -7,6 +7,30 @@ import Button from "./Button";
 import CreateNewMaterialButton from "./_CreateNewMaterialButton";
 import { useAuth } from "../context/AuthContext";
 
+function FilterCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = !!indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      className="filter-checkbox"
+      checked={checked}
+      onChange={onChange}
+    />
+  );
+}
+
 export type PredefinedItem = {
   id: number;
   item_code: string;
@@ -49,6 +73,7 @@ export default function MultipleSelectMaterialItemButton({
   const crossSmallIcon = "/icons/cross-small.svg";
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const catScrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -86,7 +111,30 @@ export default function MultipleSelectMaterialItemButton({
 
   // New state variables
   const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [activeCategoryTab, setActiveCategoryTab] = useState("");
   const [activeSubCategoryTab, setActiveSubCategoryTab] = useState("");
+
+  // Category tab scroll arrows
+  const [showLeftCatArrow, setShowLeftCatArrow] = useState(false);
+  const [showRightCatArrow, setShowRightCatArrow] = useState(false);
+
+  const checkCatScroll = () => {
+    if (catScrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } =
+        catScrollContainerRef.current;
+      setShowLeftCatArrow(scrollLeft > 0);
+      setShowRightCatArrow(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  const scrollCats = (direction: "left" | "right") => {
+    if (catScrollContainerRef.current) {
+      catScrollContainerRef.current.scrollBy({
+        left: direction === "left" ? -300 : 300,
+        behavior: "smooth",
+      });
+    }
+  };
 
   // Tab scroll arrows
   const [showLeftTabArrow, setShowLeftTabArrow] = useState(false);
@@ -169,8 +217,8 @@ export default function MultipleSelectMaterialItemButton({
   const handleFilterOpen = () => {
     setTempFilterCategories(new Set(filterCategories));
     setTempFilterSubCategories(new Set(filterSubCategories));
-    setCategorySearchQuery("");
-    setSubCategorySearchQuery("");
+    setFilterGroupSearch("");
+    setExpandedFilterGroups(new Set());
     setShowFilterPopup(true);
   };
 
@@ -185,17 +233,78 @@ export default function MultipleSelectMaterialItemButton({
     setTempFilterSubCategories(new Set());
   };
 
+  const [expandedFilterGroups, setExpandedFilterGroups] = useState<Set<string>>(
+    new Set(),
+  );
+  const [filterGroupSearch, setFilterGroupSearch] = useState("");
+
+  const toggleGroupedCategory = (category: string) => {
+    const subcats = Object.keys(groupedItems[category] || {});
+    const allSelected = subcats.every((sc) => tempFilterSubCategories.has(sc));
+    const willCheck = !allSelected;
+    setTempFilterSubCategories((prev) => {
+      const next = new Set(prev);
+      subcats.forEach((sc) => (willCheck ? next.add(sc) : next.delete(sc)));
+      return next;
+    });
+    setTempFilterCategories((prev) => {
+      const next = new Set(prev);
+      willCheck ? next.add(category) : next.delete(category);
+      return next;
+    });
+  };
+
+  const toggleGroupedSubCategory = (subCategory: string) => {
+    const parentCat = getCategoryForSubCategory(subCategory);
+    const wasSelected = tempFilterSubCategories.has(subCategory);
+    const newSubCats = new Set(tempFilterSubCategories);
+    wasSelected ? newSubCats.delete(subCategory) : newSubCats.add(subCategory);
+    setTempFilterSubCategories(newSubCats);
+    if (parentCat) {
+      const subcats = Object.keys(groupedItems[parentCat] || {});
+      const anyLeft = subcats.some((sc) => newSubCats.has(sc));
+      setTempFilterCategories((prev) => {
+        const next = new Set(prev);
+        anyLeft ? next.add(parentCat) : next.delete(parentCat);
+        return next;
+      });
+    }
+  };
+
   const hasActiveFilters =
     filterCategories.size > 0 || filterSubCategories.size > 0;
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Derived: available subcategory tabs from filtered items
+  // Derived: available category tabs (filtered to only cats with selected items when showOnlySelected)
+  const availableCategoryTabs = (() => {
+    if (showOnlySelected) {
+      const cats = new Set<string>();
+      Object.entries(filteredGroupedItems).forEach(([cat, subCats]) => {
+        const hasSelected = Object.values(subCats).some((items) =>
+          items.some((item) => tempSelectedIDs.includes(item.id)),
+        );
+        if (hasSelected) cats.add(cat);
+      });
+      return Array.from(cats).sort();
+    }
+    return Object.keys(filteredGroupedItems).sort();
+  })();
+
+  // Derived: available subcategory tabs filtered by active category (and selected when showOnlySelected)
   const availableSubCategoryTabs = (() => {
     const subs = new Set<string>();
-    Object.values(filteredGroupedItems).forEach((subCats) => {
-      Object.keys(subCats).forEach((sub) => subs.add(sub));
+    Object.entries(filteredGroupedItems).forEach(([cat, subCats]) => {
+      if (activeCategoryTab && cat !== activeCategoryTab) return;
+      Object.entries(subCats).forEach(([sub, items]) => {
+        if (
+          showOnlySelected &&
+          !items.some((item) => tempSelectedIDs.includes(item.id))
+        )
+          return;
+        subs.add(sub);
+      });
     });
     return Array.from(subs).sort();
   })();
@@ -203,7 +312,8 @@ export default function MultipleSelectMaterialItemButton({
   // Flatten items for current view
   const flatItems = (() => {
     let items: PredefinedItem[] = [];
-    Object.values(filteredGroupedItems).forEach((subCats) => {
+    Object.entries(filteredGroupedItems).forEach(([cat, subCats]) => {
+      if (activeCategoryTab && cat !== activeCategoryTab) return;
       Object.entries(subCats).forEach(([sub, subItems]) => {
         if (activeSubCategoryTab && sub !== activeSubCategoryTab) return;
         items.push(...subItems);
@@ -265,10 +375,13 @@ export default function MultipleSelectMaterialItemButton({
     setCurrentPage(1);
   }, [searchQuery, groupedItems, filterCategories, filterSubCategories]);
 
+  const [isFetchingItems, setIsFetchingItems] = useState(false);
+
   // Fetch predefined items when popup opens
   useEffect(() => {
     if (!isOpen) return;
 
+    setIsFetchingItems(true);
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`)
       .then((res) => res.json())
       .then((data) => {
@@ -297,7 +410,8 @@ export default function MultipleSelectMaterialItemButton({
         setAllItems([]);
         setGroupedItems({});
         setFilteredGroupedItems({});
-      });
+      })
+      .finally(() => setIsFetchingItems(false));
   }, [isOpen]);
 
   // Update info text when currentItemIDs change
@@ -328,15 +442,28 @@ export default function MultipleSelectMaterialItemButton({
     }
   }, [isOpen, currentItemIDs]);
 
-  // Reset page when switching subcategory tab
+  // Reset page when switching subcategory or category tab
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeSubCategoryTab]);
+  }, [activeSubCategoryTab, activeCategoryTab, showOnlySelected]);
+
+  // Exit "selected only" mode when nothing is selected
+  useEffect(() => {
+    if (showOnlySelected && tempSelectedIDs.length === 0) {
+      setShowOnlySelected(false);
+      setActiveCategoryTab("");
+      setActiveSubCategoryTab("");
+    }
+  }, [tempSelectedIDs, showOnlySelected]);
 
   // Re-check tab scroll arrows when available tabs change
   useEffect(() => {
     setTimeout(checkTabScroll, 50);
   }, [availableSubCategoryTabs.length]);
+
+  useEffect(() => {
+    setTimeout(checkCatScroll, 50);
+  }, [availableCategoryTabs.length]);
 
   const getItemsForSubCategory = (sub: string): PredefinedItem[] => {
     const items: PredefinedItem[] = [];
@@ -348,12 +475,17 @@ export default function MultipleSelectMaterialItemButton({
 
   const isSubCategoryFullySelected = (sub: string): boolean => {
     const items = getItemsForSubCategory(sub);
-    return items.length > 0 && items.every((item) => tempSelectedIDs.includes(item.id));
+    return (
+      items.length > 0 &&
+      items.every((item) => tempSelectedIDs.includes(item.id))
+    );
   };
 
   const toggleSubCategorySelection = (sub: string) => {
     const items = getItemsForSubCategory(sub);
-    const allSelected = items.every((item) => tempSelectedIDs.includes(item.id));
+    const allSelected = items.every((item) =>
+      tempSelectedIDs.includes(item.id),
+    );
     const ids = items.map((i) => i.id);
     if (allSelected) {
       setTempSelectedIDs((prev) => prev.filter((id) => !ids.includes(id)));
@@ -607,10 +739,12 @@ export default function MultipleSelectMaterialItemButton({
                           borderRadius: "50px",
                           fontWeight: 600,
                           textWrap: "nowrap",
+                          fontSize: "10px",
+                          padding: "4px 10px",
                         }}
                       >
                         {item.material_description}{" "}
-                        <img src={crossSmallIcon} style={{ width: "12px" }} />
+                        <img src={crossSmallIcon} style={{ width: "10px" }} />
                       </Button>
                     );
                   })}
@@ -628,10 +762,16 @@ export default function MultipleSelectMaterialItemButton({
             display: "flex",
             gap: "10px",
             alignItems: "center",
-            marginBottom: "15px",
+            justifyContent: "space-between",
           }}
         >
-          <div style={{ position: "relative", flex: 1 }}>
+          <div
+            style={{
+              position: "relative",
+              maxWidth: "250px",
+              flex: "0 0 250px",
+            }}
+          >
             <input
               type="text"
               placeholder="SEARCH"
@@ -659,13 +799,193 @@ export default function MultipleSelectMaterialItemButton({
             />
           </div>
 
-          {(userInfo?.departmentID === 16 || userInfo?.departmentID === 8) && (
+          {/* {(userInfo?.departmentID === 16 || userInfo?.departmentID === 8) && (
             <CreateNewMaterialButton
               onSuccess={handleNewMaterialCreated}
               style={{ padding: "7px 20px" }}
             />
-          )}
+          )} */}
+
+          <CreateNewMaterialButton
+            onSuccess={handleNewMaterialCreated}
+            style={{ padding: "7px 20px" }}
+          />
         </div>
+
+        <br />
+        <br />
+
+        {/* Category tabs */}
+        {availableCategoryTabs.length > 0 && (
+          <div
+            style={{
+              position: "relative",
+              maxWidth: "calc(75dvw - 90px)",
+              overflow: "hidden",
+            }}
+          >
+            {showLeftCatArrow && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: "120px",
+                  background:
+                    "linear-gradient(to right, white 0%, rgba(255,255,255,0) 100%)",
+                  pointerEvents: "none",
+                  zIndex: 5,
+                }}
+              />
+            )}
+            {showLeftCatArrow && (
+              <button
+                type="button"
+                onClick={() => scrollCats("left")}
+                style={{
+                  position: "absolute",
+                  left: "0px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  backgroundColor: "black",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "10px",
+                  width: "32px",
+                  height: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <img
+                  src={arrowRight}
+                  style={{ transform: "rotate(180deg)" }}
+                  alt="scroll left"
+                />
+              </button>
+            )}
+            <div
+              ref={catScrollContainerRef}
+              onScroll={checkCatScroll}
+              style={{
+                display: "flex",
+                gap: "8px",
+                overflowX: "auto",
+                scrollbarWidth: "none",
+                msOverflowStyle:
+                  "none" as React.CSSProperties["msOverflowStyle"],
+                paddingLeft: showLeftCatArrow ? "44px" : "0",
+                paddingRight: showRightCatArrow ? "44px" : "0",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCategoryTab("");
+                  setActiveSubCategoryTab("");
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "6px 14px",
+                  borderRadius: "6px",
+                  border: "none",
+                  backgroundColor: !activeCategoryTab
+                    ? "rgba(239,239,239,1)"
+                    : "rgba(221,221,221,1)",
+                  color: "black",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}
+              >
+                ALL
+              </button>
+              {availableCategoryTabs.map((cat) => {
+                const isActive = activeCategoryTab === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => {
+                      setActiveCategoryTab(isActive ? "" : cat);
+                      setActiveSubCategoryTab("");
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 14px",
+                      borderRadius: "6px",
+                      border: "none",
+                      backgroundColor: isActive
+                        ? "rgba(239,239,239,1)"
+                        : "rgba(221,221,221,1)",
+                      color: "black",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {cat.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
+            {showRightCatArrow && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: "120px",
+                  background:
+                    "linear-gradient(to left, white 0%, rgba(255,255,255,0) 100%)",
+                  pointerEvents: "none",
+                  zIndex: 5,
+                }}
+              />
+            )}
+            {showRightCatArrow && (
+              <button
+                type="button"
+                onClick={() => scrollCats("right")}
+                style={{
+                  position: "absolute",
+                  right: "0px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  backgroundColor: "black",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "10px",
+                  width: "32px",
+                  height: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <img src={arrowRight} alt="scroll right" />
+              </button>
+            )}
+          </div>
+        )}
+
+        <br />
+        <br />
 
         {/* Filter row */}
         <div
@@ -690,6 +1010,30 @@ export default function MultipleSelectMaterialItemButton({
           >
             FILTER <img src={filterIcon} alt="filter" />
           </Button>
+
+          {/* Selected items chip */}
+          {tempSelectedIDs.length > 0 && (
+            <Button
+              componentType="button"
+              bgColor={showOnlySelected ? "black" : "rgba(239,239,239,1)"}
+              borderColor="transparent"
+              textColor={showOnlySelected ? "white" : "black"}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowOnlySelected((v) => !v);
+                setActiveCategoryTab("");
+                setActiveSubCategoryTab("");
+              }}
+              style={{
+                borderRadius: "50px",
+                fontWeight: 600,
+                textWrap: "nowrap",
+              }}
+            >
+              SELECTED ITEMS ({tempSelectedIDs.length})
+            </Button>
+          )}
 
           {/* Category filter chip */}
           {filterCategories.size > 0 && (
@@ -750,7 +1094,7 @@ export default function MultipleSelectMaterialItemButton({
         </div>
 
         {/* Subcategory tabs */}
-        {availableSubCategoryTabs.length > 1 && (
+        {availableSubCategoryTabs.length > 0 && (
           <div
             style={{
               position: "relative",
@@ -766,7 +1110,7 @@ export default function MultipleSelectMaterialItemButton({
                   left: 0,
                   top: 0,
                   bottom: 0,
-                  width: "80px",
+                  width: "120px",
                   background:
                     "linear-gradient(to right, white 0%, rgba(255,255,255,0) 100%)",
                   pointerEvents: "none",
@@ -784,9 +1128,9 @@ export default function MultipleSelectMaterialItemButton({
                   top: "50%",
                   transform: "translateY(-50%)",
                   zIndex: 10,
-                  backgroundColor: "white",
-                  color: "black",
-                  border: "1px solid rgba(221,221,221,1)",
+                  backgroundColor: "black",
+                  color: "white",
+                  border: "none",
                   borderRadius: "10px",
                   width: "32px",
                   height: "32px",
@@ -869,7 +1213,9 @@ export default function MultipleSelectMaterialItemButton({
                         border: isChecked
                           ? "2px solid rgba(0,163,93,1)"
                           : "2px solid rgba(180,180,180,1)",
-                        backgroundColor: isChecked ? "rgba(0,163,93,1)" : "white",
+                        backgroundColor: isChecked
+                          ? "rgba(0,163,93,1)"
+                          : "white",
                         flexShrink: 0,
                         cursor: "pointer",
                       }}
@@ -900,7 +1246,7 @@ export default function MultipleSelectMaterialItemButton({
                   right: 0,
                   top: 0,
                   bottom: 0,
-                  width: "80px",
+                  width: "120px",
                   background:
                     "linear-gradient(to left, white 0%, rgba(255,255,255,0) 100%)",
                   pointerEvents: "none",
@@ -918,30 +1264,26 @@ export default function MultipleSelectMaterialItemButton({
                   top: "50%",
                   transform: "translateY(-50%)",
                   zIndex: 10,
-                  backgroundColor: "white",
-                  color: "black",
-                  border: "1px solid rgba(221,221,221,1)",
+                  backgroundColor: "black",
+                  color: "white",
+                  border: "none",
                   borderRadius: "10px",
-                  width: "24px",
-                  height: "24px",
+                  width: "32px",
+                  height: "32px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
                 }}
               >
-                <img
-                  src={arrowRight}
-                  alt="scroll right"
-                  style={{ filter: "invert(1)" }}
-                />
+                <img src={arrowRight} alt="scroll right" />
               </button>
             )}
           </div>
         )}
 
         {/* No results message */}
-        {flatItems.length === 0 && (
+        {!isFetchingItems && flatItems.length === 0 && (
           <div
             style={{
               textAlign: "center",
@@ -1072,7 +1414,7 @@ export default function MultipleSelectMaterialItemButton({
               </Button>
             }
           >
-            {/* Categories */}
+            {/* Grouped Category / Subcategory filter */}
             <div style={{ marginBottom: "30px" }}>
               <h3
                 style={{
@@ -1081,7 +1423,7 @@ export default function MultipleSelectMaterialItemButton({
                   fontWeight: "600",
                 }}
               >
-                CATEGORY
+                CATEGORY &amp; SUBCATEGORY
               </h3>
               <div
                 style={{
@@ -1090,19 +1432,20 @@ export default function MultipleSelectMaterialItemButton({
                   padding: "10px",
                 }}
               >
+                {/* Search */}
                 <div style={{ position: "relative", marginBottom: "15px" }}>
                   <input
                     type="text"
                     placeholder="SEARCH"
-                    value={categorySearchQuery}
-                    onChange={(e) => setCategorySearchQuery(e.target.value)}
+                    value={filterGroupSearch}
+                    onChange={(e) => setFilterGroupSearch(e.target.value)}
                     style={{
                       width: "100%",
                       padding: "10px 40px 10px 15px",
                       borderRadius: "8px",
-                      border: "1px solid rgba(223, 223, 223, 1)",
+                      border: "1px solid rgba(223,223,223,1)",
                       fontSize: "14px",
-                      backgroundColor: "rgba(245, 245, 245, 1)",
+                      backgroundColor: "rgba(245,245,245,1)",
                     }}
                   />
                   <img
@@ -1119,135 +1462,165 @@ export default function MultipleSelectMaterialItemButton({
                     }}
                   />
                 </div>
-                <div style={{ maxHeight: "250px", overflowY: "auto" }}>
-                  {allCategoryNames
-                    .filter((c) =>
-                      c
-                        .toLowerCase()
-                        .includes(categorySearchQuery.toLowerCase()),
-                    )
-                    .map((category) => (
-                      <div key={category} style={{ marginBottom: "10px" }}>
-                        <label
+
+                {/* Select All */}
+                {(() => {
+                  const allSubcats = allCategoryNames.flatMap((c) =>
+                    Object.keys(groupedItems[c] || {}),
+                  );
+                  const allChecked =
+                    allSubcats.length > 0 &&
+                    allSubcats.every((sc) => tempFilterSubCategories.has(sc));
+                  const anyChecked = allSubcats.some((sc) =>
+                    tempFilterSubCategories.has(sc),
+                  );
+                  return (
+                    <div style={{ marginBottom: "10px" }}>
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <FilterCheckbox
+                          checked={allChecked}
+                          indeterminate={!allChecked && anyChecked}
+                          onChange={() => {
+                            if (allChecked) {
+                              setTempFilterSubCategories(new Set());
+                              setTempFilterCategories(new Set());
+                            } else {
+                              setTempFilterSubCategories(new Set(allSubcats));
+                              setTempFilterCategories(
+                                new Set(allCategoryNames),
+                              );
+                            }
+                          }}
+                        />
+                        <h4>Select All</h4>
+                      </label>
+                    </div>
+                  );
+                })()}
+
+                {/* Groups */}
+                <div style={{ maxHeight: "320px", overflowY: "auto" }}>
+                  {(() => {
+                    const q = filterGroupSearch.trim().toLowerCase();
+                    const visibleGroups = allCategoryNames
+                      .map((cat) => ({
+                        cat,
+                        subcats: q
+                          ? Object.keys(groupedItems[cat] || {}).filter(
+                              (sc) =>
+                                sc.toLowerCase().includes(q) ||
+                                cat.toLowerCase().includes(q),
+                            )
+                          : Object.keys(groupedItems[cat] || {}),
+                      }))
+                      .filter((g) => g.subcats.length > 0);
+
+                    if (visibleGroups.length === 0) {
+                      return (
+                        <div
                           style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            cursor: "pointer",
+                            textAlign: "center",
+                            padding: "20px",
+                            color: "#888",
                           }}
                         >
-                          <input
-                            type="checkbox"
-                            checked={tempFilterCategories.has(category)}
-                            onChange={() => toggleFilterCategory(category)}
-                            style={{
-                              width: "18px",
-                              height: "18px",
-                              cursor: "pointer",
-                              accentColor: "#10b981",
-                            }}
-                          />
-                          <h4>{category}</h4>
-                        </label>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
+                          No results found
+                        </div>
+                      );
+                    }
 
-            {/* Subcategories */}
-            <div style={{ marginBottom: "30px" }}>
-              <h3
-                style={{
-                  marginBottom: "15px",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-              >
-                SUBCATEGORY
-              </h3>
-              <div
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  padding: "10px",
-                }}
-              >
-                <div style={{ position: "relative", marginBottom: "15px" }}>
-                  <input
-                    type="text"
-                    placeholder="SEARCH"
-                    value={subCategorySearchQuery}
-                    onChange={(e) => setSubCategorySearchQuery(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 40px 10px 15px",
-                      borderRadius: "8px",
-                      border: "1px solid rgba(223, 223, 223, 1)",
-                      fontSize: "14px",
-                      backgroundColor: "rgba(245, 245, 245, 1)",
-                    }}
-                  />
-                  <img
-                    src={searchIcon}
-                    alt="search"
-                    style={{
-                      position: "absolute",
-                      right: "15px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      width: "16px",
-                      height: "16px",
-                      opacity: 0.5,
-                    }}
-                  />
-                </div>
-                <div style={{ maxHeight: "250px", overflowY: "auto" }}>
-                  {getAvailableSubCategories().length === 0 ? (
-                    <div
-                      style={{
-                        textAlign: "center",
-                        padding: "20px",
-                        color: "#888",
-                      }}
-                    >
-                      Select a category to see subcategories
-                    </div>
-                  ) : (
-                    getAvailableSubCategories()
-                      .filter((sc) =>
-                        sc
-                          .toLowerCase()
-                          .includes(subCategorySearchQuery.toLowerCase()),
-                      )
-                      .map((subCategory) => (
-                        <div key={subCategory} style={{ marginBottom: "10px" }}>
-                          <label
+                    return visibleGroups.map(({ cat, subcats }) => {
+                      const allSubcatsChecked =
+                        subcats.length > 0 &&
+                        subcats.every((sc) => tempFilterSubCategories.has(sc));
+                      const someSubcatsChecked = subcats.some((sc) =>
+                        tempFilterSubCategories.has(sc),
+                      );
+                      const isExpanded =
+                        q !== "" ||
+                        expandedFilterGroups.has(cat) ||
+                        subcats.length === 1;
+
+                      return (
+                        <div key={cat} style={{ marginBottom: "10px" }}>
+                          {/* Category header row */}
+                          <div
                             style={{
                               display: "flex",
                               alignItems: "center",
                               gap: "10px",
-                              cursor: "pointer",
                             }}
                           >
-                            <input
-                              type="checkbox"
-                              checked={tempFilterSubCategories.has(subCategory)}
-                              onChange={() =>
-                                toggleFilterSubCategory(subCategory)
+                            <FilterCheckbox
+                              checked={allSubcatsChecked}
+                              indeterminate={
+                                !allSubcatsChecked && someSubcatsChecked
                               }
-                              style={{
-                                width: "18px",
-                                height: "18px",
-                                cursor: "pointer",
-                                accentColor: "#10b981",
-                              }}
+                              onChange={() => toggleGroupedCategory(cat)}
                             />
-                            <h4>{subCategory}</h4>
-                          </label>
+                            <h4
+                              style={{
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                flex: 1,
+                              }}
+                              onClick={() =>
+                                setExpandedFilterGroups((prev) => {
+                                  const next = new Set(prev);
+                                  next.has(cat)
+                                    ? next.delete(cat)
+                                    : next.add(cat);
+                                  return next;
+                                })
+                              }
+                            >
+                              {cat}
+                              <span style={{ fontSize: "10px", color: "#888" }}>
+                                {isExpanded ? "∧" : "∨"}
+                              </span>
+                            </h4>
+                          </div>
+
+                          {/* Subcategory items (indented) */}
+                          {isExpanded && (
+                            <div
+                              style={{ marginLeft: "28px", marginTop: "8px" }}
+                            >
+                              {subcats.map((sc) => (
+                                <div key={sc} style={{ marginBottom: "8px" }}>
+                                  <label
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "10px",
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    <FilterCheckbox
+                                      checked={tempFilterSubCategories.has(sc)}
+                                      onChange={() =>
+                                        toggleGroupedSubCategory(sc)
+                                      }
+                                    />
+                                    <h4>{sc}</h4>
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      ))
-                  )}
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             </div>

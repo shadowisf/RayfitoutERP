@@ -216,7 +216,9 @@ export async function POST(req: Request) {
         );
         const mrHeaderId = headerResult.insertId;
 
-        // Create pr_lines for every BOQ item under each JO line of the referenced JO
+        // Create pr_lines for BOQ items that still have remaining qty.
+        // remaining_qty = subcontracted_qty - SUM(completed_qty from all previous PRs).
+        // BOQ lines fully claimed (remaining_qty = 0) are skipped.
         const joHeaderId = Number(body.payment_jo_reference_id);
         const [joLines]: any = await db.query(
           `SELECT id FROM jo_lines WHERE mr_header_id = ? ORDER BY id ASC`,
@@ -224,17 +226,28 @@ export async function POST(req: Request) {
         );
         for (const joLine of joLines) {
           const [boqItems]: any = await db.query(
-            `SELECT jt.boq_line_id, jt.subcontracted_qty
+            `SELECT
+               jt.boq_line_id,
+               jt.subcontracted_qty,
+               GREATEST(jt.subcontracted_qty - COALESCE(prev.total_completed, 0), 0) AS remaining_qty
              FROM jt_jo_lines_boq_lines jt
-             WHERE jt.jo_line_id = ?`,
-            [joLine.id],
+             LEFT JOIN (
+               SELECT pl.boq_line_id, SUM(pl.completed_qty) AS total_completed
+               FROM pr_lines pl
+               JOIN mr_headers pr ON pr.id = pl.mr_header_id
+               WHERE pr.type = 'payment' AND pl.jo_line_id = ?
+               GROUP BY pl.boq_line_id
+             ) prev ON prev.boq_line_id = jt.boq_line_id
+             WHERE jt.jo_line_id = ?
+             HAVING remaining_qty > 0`,
+            [joLine.id, joLine.id],
           );
           for (const boqItem of boqItems) {
             await db.query(
               `INSERT INTO pr_lines
                  (mr_header_id, boq_line_id, jo_line_id, subcontracted_qty, completed_qty, retention, attachment)
                VALUES (?, ?, ?, ?, 0, 0, NULL)`,
-              [mrHeaderId, boqItem.boq_line_id, joLine.id, Number(boqItem.subcontracted_qty) || 0],
+              [mrHeaderId, boqItem.boq_line_id, joLine.id, Number(boqItem.remaining_qty) || 0],
             );
           }
         }

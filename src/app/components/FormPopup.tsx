@@ -141,60 +141,64 @@ export default function FormPopUp({
             >
               <div className="form-content">{children}</div>
 
-              {stickyFooter && (
-                <div style={{ flexShrink: 0, paddingTop: "15px" }}>
-                  {stickyFooter}
+              {(stickyFooter || addButtonLabel) && (
+                <div style={{ marginTop: "auto", flexShrink: 0 }}>
+                  {stickyFooter && (
+                    <div style={{ paddingTop: "15px" }}>{stickyFooter}</div>
+                  )}
+
+                  {addButtonLabel && (
+                    <>
+                      <br />
+                      <br />
+
+                      <div className="button-container">
+                        {secondButton}
+
+                        <Button
+                          componentType={"button"}
+                          bgColor={"black"}
+                          borderColor={"black"}
+                          textColor={"white"}
+                          type="submit"
+                          disabled={!isFormValid || isLoading}
+                          style={{
+                            cursor:
+                              isFormValid && !isLoading
+                                ? "pointer"
+                                : "not-allowed",
+                            opacity: isFormValid && !isLoading ? 1 : 0.5,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "10px",
+                            transition: "opacity 0.2s ease",
+                            pointerEvents: isLoading ? "none" : "auto",
+                            minWidth: "120px",
+                          }}
+                        >
+                          {isLoading ? (
+                            <>
+                              <div
+                                style={{
+                                  width: "16px",
+                                  height: "16px",
+                                  border: "2px solid white",
+                                  borderTop: "2px solid transparent",
+                                  borderRadius: "50%",
+                                  animation: "spin 0.6s linear infinite",
+                                }}
+                              />
+                              LOADING
+                            </>
+                          ) : (
+                            addButtonLabel
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
-              )}
-
-              {addButtonLabel && (
-                <>
-                  <br />
-                  <br />
-
-                  <div className="button-container">
-                    {secondButton}
-
-                    <Button
-                      componentType={"button"}
-                      bgColor={"black"}
-                      borderColor={"black"}
-                      textColor={"white"}
-                      type="submit"
-                      disabled={!isFormValid || isLoading}
-                      style={{
-                        cursor:
-                          isFormValid && !isLoading ? "pointer" : "not-allowed",
-                        opacity: isFormValid && !isLoading ? 1 : 0.5,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "10px",
-                        transition: "opacity 0.2s ease",
-                        pointerEvents: isLoading ? "none" : "auto",
-                        minWidth: "120px",
-                      }}
-                    >
-                      {isLoading ? (
-                        <>
-                          <div
-                            style={{
-                              width: "16px",
-                              height: "16px",
-                              border: "2px solid white",
-                              borderTop: "2px solid transparent",
-                              borderRadius: "50%",
-                              animation: "spin 0.6s linear infinite",
-                            }}
-                          />
-                          LOADING
-                        </>
-                      ) : (
-                        addButtonLabel
-                      )}
-                    </Button>
-                  </div>
-                </>
               )}
             </fieldset>
           </form>
@@ -209,31 +213,33 @@ export default function FormPopUp({
           >
             <div className="form-content">{children}</div>
 
-            {stickyFooter && (
-              <div style={{ flexShrink: 0, paddingTop: "15px" }}>
-                {stickyFooter}
+            {(stickyFooter || addButtonLabel) && (
+              <div style={{ marginTop: "auto", flexShrink: 0 }}>
+                {stickyFooter && (
+                  <div style={{ paddingTop: "15px" }}>{stickyFooter}</div>
+                )}
+
+                {addButtonLabel && (
+                  <>
+                    <br />
+                    <br />
+
+                    <div className="button-container">
+                      {secondButton}
+
+                      <Button
+                        componentType={"button"}
+                        bgColor={"black"}
+                        borderColor={"black"}
+                        textColor={"white"}
+                        type="submit"
+                      >
+                        {addButtonLabel}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
-            )}
-
-            {addButtonLabel && (
-              <>
-                <br />
-                <br />
-
-                <div className="button-container">
-                  {secondButton}
-
-                  <Button
-                    componentType={"button"}
-                    bgColor={"black"}
-                    borderColor={"black"}
-                    textColor={"white"}
-                    type="submit"
-                  >
-                    {addButtonLabel}
-                  </Button>
-                </div>
-              </>
             )}
           </div>
         )}

@@ -526,12 +526,12 @@ export default function AddMrItemButton({
                       gap: "10px",
                     }}
                   >
-                    {(userInfo?.departmentID === 16 ||
+                    {/* {(userInfo?.departmentID === 16 ||
                       userInfo?.departmentID === 8) && (
                       <CreateNewMaterialButton
                         onSuccess={handleNewMaterialCreated}
                       />
-                    )}
+                    )} */}
 
                     <MultipleSelectMaterialItemButton
                       onSelectItems={handleMaterialSelect}
@@ -888,6 +888,8 @@ export default function AddMrItemButton({
               placeholder="ENTER BRAND"
             />
           </div> */}
+
+          <br />
 
           {/* Specification */}
           <div className="input-row full">
