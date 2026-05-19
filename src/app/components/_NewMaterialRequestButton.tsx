@@ -101,24 +101,11 @@ export default function NewMrButton() {
         setProjects(data);
       });
 
-    // Fetch job orders for payment request
-    fetch("/api/mr")
+    // Fetch completed JOs that still have remaining BOQ qty for payment requests
+    fetch("/api/mr/getJosForPayment")
       .then((res) => res.json())
       .then(function (data) {
-        const usedJoIds = new Set(
-          data
-            .filter(
-              (mr: any) => mr.type === "payment" && mr.payment_jo_reference_id,
-            )
-            .map((mr: any) => mr.payment_jo_reference_id),
-        );
-        const jos = data.filter(
-          (mr: any) =>
-            mr.type === "job" &&
-            mr.progress_id === 25 &&
-            !usedJoIds.has(mr.id),
-        );
-        setJobOrders(jos);
+        if (Array.isArray(data)) setJobOrders(data);
       });
   }, []);
 

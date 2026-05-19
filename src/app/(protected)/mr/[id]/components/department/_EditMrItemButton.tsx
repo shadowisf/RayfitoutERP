@@ -639,6 +639,8 @@ export default function EditMrItemButton({
             />
           </div> */}
 
+          <br />
+
           {/* Specification */}
           <div className="input-row full">
             <InputItem
