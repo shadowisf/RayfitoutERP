@@ -29,6 +29,7 @@ import FinanceSpendingByProjectWidget from "./components/finance/W_Finance_Spend
 import FinanceTopMaterialsBySpendWidget from "./components/finance/W_Finance_TopMaterialsBySpend";
 import FinanceTopVendorsBySpendWidget from "./components/finance/W_Finance_TopVendorsBySpend";
 import FinanceTotalSpentWidget from "./components/finance/W_Finance_TotalSpent";
+import DateRangeButton, { DateRange } from "@/app/components/_DateRangeButton";
 
 export default function Dashboard() {
   const bannerBackground = "/images/welcome-banner.jpg";
@@ -36,7 +37,16 @@ export default function Dashboard() {
   const { userInfo } = useAuth();
 
   const [projects, setProjects] = useState<any[]>([]);
-  const [overviewFilter, setOverviewFilter] = useState(0);
+  const [dateRange, setDateRange] = useState<DateRange>({
+    start: null,
+    end: null,
+    preset: null,
+  });
+
+  const toDateStr = (d: Date | null) =>
+    d ? d.toISOString().split("T")[0] : "";
+  const dateFrom = toDateStr(dateRange.start);
+  const dateTo = toDateStr(dateRange.end);
 
   const DEPARTMENT_IDS = [1, 2, 3, 4, 5, 6, 7, 13, 14, 16];
 
@@ -130,28 +140,19 @@ export default function Dashboard() {
             }}
           >
             <h2>OVERVIEW</h2>
-            <select
-              onChange={(e) => setOverviewFilter(Number(e.target.value))}
-              value={overviewFilter}
-              style={{
-                width: "150px",
-                backgroundColor: "white",
-                borderRadius: "50px",
-              }}
-            >
-              <option value={0}>All Time</option>
-              <option value={7}>Last 7 Days</option>
-              <option value={14}>Last 14 Days</option>
-              <option value={30}>Last month</option>
-            </select>
+            <DateRangeButton
+              value={dateRange}
+              onChange={setDateRange}
+              popupAlign="right"
+            />
           </div>
           <br />
           <div className="widget-grid overview five-col">
-            <ActiveMrsWidget filterDays={overviewFilter} />
-            <PendingApprovalMrsWidget filterDays={overviewFilter} />
-            <PendingPaymentMrsWidget filterDays={overviewFilter} />
-            <OutboundPaymentMrsWidget filterDays={overviewFilter} />
-            <PendingDeliveryMrsWidget filterDays={overviewFilter} />
+            <ActiveMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
+            <PendingApprovalMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
+            <PendingPaymentMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
+            <OutboundPaymentMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
+            <PendingDeliveryMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
           </div>
           <br />
           <br />
@@ -217,33 +218,24 @@ export default function Dashboard() {
             }}
           >
             <h2>OVERVIEW</h2>
-            <select
-              onChange={(e) => setOverviewFilter(Number(e.target.value))}
-              value={overviewFilter}
-              style={{
-                width: "150px",
-                backgroundColor: "white",
-                borderRadius: "50px",
-              }}
-            >
-              <option value={0}>All Time</option>
-              <option value={7}>Last 7 Days</option>
-              <option value={14}>Last 14 Days</option>
-              <option value={30}>Last month</option>
-            </select>
+            <DateRangeButton
+              value={dateRange}
+              onChange={setDateRange}
+              popupAlign="right"
+            />
           </div>
           <br />
           <div className="widget-grid overview four-col">
-            <PendingQuotationsMrsWidget filterDays={overviewFilter} />
-            <PendingPaymentMrsWidget filterDays={overviewFilter} />
-            <PendingIncompleteDeliveriesWidget filterDays={overviewFilter} />
-            <PendingDeliveryMrsWidget filterDays={overviewFilter} />
+            <PendingQuotationsMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
+            <PendingPaymentMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
+            <PendingIncompleteDeliveriesWidget dateFrom={dateFrom} dateTo={dateTo} />
+            <PendingDeliveryMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
           </div>
           <br />
           <br />
           <br />
           <div className="widget-grid overview two-col">
-            <TopVendorsByVolumeWidget filterDays={overviewFilter} />
+            <TopVendorsByVolumeWidget dateFrom={dateFrom} dateTo={dateTo} />
             <TopVendorsBySpendWidget />
           </div>
           <br />
@@ -327,27 +319,18 @@ export default function Dashboard() {
             }}
           >
             <h2>OVERVIEW</h2>
-            <select
-              onChange={(e) => setOverviewFilter(Number(e.target.value))}
-              value={overviewFilter}
-              style={{
-                width: "150px",
-                backgroundColor: "white",
-                borderRadius: "50px",
-              }}
-            >
-              <option value={0}>All Time</option>
-              <option value={7}>Last 7 Days</option>
-              <option value={14}>Last 14 Days</option>
-              <option value={30}>Last month</option>
-            </select>
+            <DateRangeButton
+              value={dateRange}
+              onChange={setDateRange}
+              popupAlign="right"
+            />
           </div>
           <br />
           <div className="widget-grid overview four-col">
-            <DraftMrsWidget filterDays={overviewFilter} />
-            <PendingPaymentMrsWidget filterDays={overviewFilter} />
-            <PendingApprovalMrsWidget filterDays={overviewFilter} />
-            <PendingDeliveryMrsWidget filterDays={overviewFilter} />
+            <DraftMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
+            <PendingPaymentMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
+            <PendingApprovalMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
+            <PendingDeliveryMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
           </div>
           <br />
           <br />
@@ -356,7 +339,7 @@ export default function Dashboard() {
             <MrsRejectedCompleted />
             <TopProjectsWithMrs />
           </div>
-          <br />
+          {/* <br />
           <br />
           <br />
           <div
@@ -383,7 +366,7 @@ export default function Dashboard() {
             {projects.slice(0, 3).map((proj: any, index) => (
               <ProjectCard project={proj} key={index} />
             ))}
-          </div>
+          </div> */}
         </>
       )}
     </div>

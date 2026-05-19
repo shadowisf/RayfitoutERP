@@ -170,7 +170,12 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       icon: "/icons/mr.svg",
       count: mrActionCount,
     },
-    { label: "Projects", path: "/project", icon: "/icons/projects.svg" },
+    {
+      label: "Projects",
+      path: "/project",
+      icon: "/icons/projects.svg",
+      visibleTo: [8, 16],
+    },
     {
       label: "Payments",
       path: "/payment",

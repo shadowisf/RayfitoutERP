@@ -11,6 +11,7 @@ type FormPopUpProps = {
   addButtonLabel?: string;
   style?: React.CSSProperties;
   secondButton?: React.ReactNode;
+  stickyFooter?: React.ReactNode;
 };
 
 export default function FormPopUp({
@@ -21,6 +22,7 @@ export default function FormPopUp({
   children,
   style,
   secondButton,
+  stickyFooter,
 }: FormPopUpProps) {
   const cross_icon = "/icons/cross.svg";
 
@@ -139,6 +141,12 @@ export default function FormPopUp({
             >
               <div className="form-content">{children}</div>
 
+              {stickyFooter && (
+                <div style={{ flexShrink: 0, paddingTop: "15px" }}>
+                  {stickyFooter}
+                </div>
+              )}
+
               {addButtonLabel && (
                 <>
                   <br />
@@ -200,6 +208,12 @@ export default function FormPopUp({
             }}
           >
             <div className="form-content">{children}</div>
+
+            {stickyFooter && (
+              <div style={{ flexShrink: 0, paddingTop: "15px" }}>
+                {stickyFooter}
+              </div>
+            )}
 
             {addButtonLabel && (
               <>

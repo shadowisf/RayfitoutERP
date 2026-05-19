@@ -894,23 +894,55 @@ export async function PUT(req: Request) {
         }
 
         // Recalculate and update jo_lines totals (before/after retention)
+        // Uses (completed_qty / subcontracted_qty) × approved_quotation_price
+        // to match the frontend SUBTOTAL / AMOUNT display exactly.
         const [joTotals]: any = await db.query(
           `SELECT
              pl.jo_line_id,
-             SUM(pl.completed_qty * bl.rate_per_quantity)                              AS before_retention,
-             SUM(pl.completed_qty * bl.rate_per_quantity * pl.retention / 100)         AS retention_amt,
-             SUM(pl.completed_qty * bl.rate_per_quantity)
-               - SUM(pl.completed_qty * bl.rate_per_quantity * pl.retention / 100)    AS after_retention
+             SUM(
+               CASE WHEN COALESCE(pl.subcontracted_qty, 0) > 0 AND COALESCE(sq.total_price, 0) > 0
+                 THEN (pl.completed_qty / pl.subcontracted_qty) * sq.total_price
+                 ELSE 0
+               END
+             ) AS before_retention,
+             SUM(
+               CASE WHEN COALESCE(pl.subcontracted_qty, 0) > 0 AND COALESCE(sq.total_price, 0) > 0
+                 THEN (pl.completed_qty / pl.subcontracted_qty) * sq.total_price * pl.retention / 100
+                 ELSE 0
+               END
+             ) AS retention_amt,
+             SUM(
+               CASE WHEN COALESCE(pl.subcontracted_qty, 0) > 0 AND COALESCE(sq.total_price, 0) > 0
+                 THEN (pl.completed_qty / pl.subcontracted_qty) * sq.total_price * (1 - pl.retention / 100)
+                 ELSE 0
+               END
+             ) AS after_retention
            FROM pr_lines pl
-           JOIN boq_lines bl ON bl.id = pl.boq_line_id
+           LEFT JOIN jo_line_subcontractor_quotation sq
+             ON sq.jo_line_id = pl.jo_line_id
+             AND sq.boq_line_id = pl.boq_line_id
+             AND sq.approval_status = 'Approved'
            WHERE pl.mr_header_id = ?
            GROUP BY pl.jo_line_id`,
           [body.id],
         );
+        // Fetch VAT rate from the JO's LPO
+        const [prHeaderRows]: any = await db.query(
+          `SELECT mh.payment_jo_reference_id, COALESCE(l.vat_rate, 0) AS vat_rate
+           FROM mr_headers mh
+           LEFT JOIN lpo l ON l.mr_header_id = mh.payment_jo_reference_id
+           WHERE mh.id = ?
+           LIMIT 1`,
+          [body.id],
+        );
+        const vatRate = Number(prHeaderRows?.[0]?.vat_rate ?? 0);
+
         for (const tot of joTotals) {
+          const afterRetentionWithVat =
+            Number(tot.after_retention) * (1 + vatRate / 100);
           await db.query(
-            `UPDATE jo_lines SET before_retention = ?, retention = ?, after_retention = ? WHERE id = ?`,
-            [tot.before_retention, tot.retention_amt, tot.after_retention, tot.jo_line_id],
+            `UPDATE jo_lines SET before_retention = ?, retention = ?, after_retention = ?, after_retention_with_vat = ? WHERE id = ?`,
+            [tot.before_retention, tot.retention_amt, tot.after_retention, afterRetentionWithVat, tot.jo_line_id],
           );
         }
       }

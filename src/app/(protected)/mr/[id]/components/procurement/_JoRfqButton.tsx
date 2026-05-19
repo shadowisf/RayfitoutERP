@@ -257,9 +257,6 @@ export default function JoRfqButton({
           style={{
             padding: "7px 20px",
             borderRadius: "25px",
-            opacity: selectedIds.length === 0 ? 0.4 : 1,
-            cursor: selectedIds.length === 0 ? "not-allowed" : "pointer",
-            pointerEvents: selectedIds.length === 0 ? "none" : "auto",
           }}
         >
           {selectedIds.length === 0

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 // import HoverLoadingCursor from "../HoverLoadingCursor";
 
 type props = {
-  filterDays?: number;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
 type TopProject = {
@@ -18,7 +19,7 @@ type TopSupplier = {
   total_amount: number;
 };
 
-export default function OutboundPaymentMrsWidget({ filterDays }: props) {
+export default function OutboundPaymentMrsWidget({ dateFrom, dateTo }: props) {
   const router = useRouter();
   const outboundPaymentsIcon = "/icons/outbound-payments.svg";
   const upArrow = "/icons/arrow-up-chart-red-big.svg";
@@ -91,7 +92,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ filter: filterDays }),
+        body: JSON.stringify({ date_from: dateFrom, date_to: dateTo }),
       },
     )
       .then((res) => res.json())
@@ -131,7 +132,7 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [filterDays]);
+  }, [dateFrom, dateTo]);
 
   // Short grace-period so cursor can travel from widget edge to popup
   const startHideTimer = () => {
@@ -192,19 +193,24 @@ export default function OutboundPaymentMrsWidget({ filterDays }: props) {
 
   const arrow = isIncrease ? upArrow : downArrow;
 
-  const isAllTime = filterDays === 0;
+  const isAllTime = !dateFrom && !dateTo;
   const periodLabel = isAllTime
     ? "all time"
-    : filterDays === 7
-      ? "week"
-      : `${filterDays} days`;
+    : dateFrom && dateTo
+      ? `${dateFrom} – ${dateTo}`
+      : dateFrom
+        ? `from ${dateFrom}`
+        : `to ${dateTo}`;
+  const filteredLabel = dateFrom && dateTo
+    ? `from ${dateFrom} to ${dateTo}`
+    : dateFrom
+      ? `from ${dateFrom}`
+      : `to ${dateTo}`;
   const changeText = hasNoOutboundPayments
     ? "No outbound payments"
     : isAllTime
       ? "Total outbound payments across all time"
-      : isIncrease
-        ? `${changeMagnitude} increase from last ${periodLabel}`
-        : `${changeMagnitude} decrease from last ${periodLabel}`;
+      : `Total outbound payments ${filteredLabel}`;
 
   // Helper function to format numbers with commas and 2 decimal places
   const formatCurrency = (value: number) => {

@@ -120,7 +120,6 @@ export default function IssueJoLpoButton({
   }, [isOpen, existingLpoId]);
 
   async function checkExistingLpo() {
-    if (subtotal <= 0) return;
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,

@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import CreateNewMaterialButton from "./_CreateNewMaterialButton";
 
 import NewMrButton from "./_NewMaterialRequestButton";
-import NewProjectButton from "./_NewProjectButton";
+import NewProjectButton from "@/app/(protected)/project/components/_NewProjectButton";
 import Button from "./Button";
 import NotificationDropdown from "./NotificationButton";
 import SearchBar from "./SearchBar";
@@ -30,7 +30,7 @@ export default function Navbar() {
           {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
             <>
               <CreateNewMaterialButton style={{ border: "1px solid white" }} />
-              <NewProjectButton />
+              {/* <NewProjectButton /> */}
             </>
           )}
 

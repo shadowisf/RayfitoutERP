@@ -10,17 +10,15 @@ interface TopVendor {
 }
 
 type Props = {
-  filterDays?: number;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
-export default function TopVendorsByVolumeWidget({ filterDays }: Props) {
+export default function TopVendorsByVolumeWidget({ dateFrom, dateTo }: Props) {
   const [vendors, setVendors] = useState<TopVendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredVendorId, setHoveredVendorId] = useState<number | null>(null);
-  const [filter, setFilter] = useState(filterDays);
-
-  const downArrowIcon = "/icons/minimal-arrow-down.svg";
 
   useEffect(() => {
     async function fetchData() {
@@ -32,7 +30,7 @@ export default function TopVendorsByVolumeWidget({ filterDays }: Props) {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ filter }),
+            body: JSON.stringify({ date_from: dateFrom, date_to: dateTo }),
           },
         );
 
@@ -64,7 +62,7 @@ export default function TopVendorsByVolumeWidget({ filterDays }: Props) {
     }
 
     fetchData();
-  }, [filter]);
+  }, [dateFrom, dateTo]);
 
   // Format quantity
   const formatQuantity = (value: number) => {
@@ -102,40 +100,6 @@ export default function TopVendorsByVolumeWidget({ filterDays }: Props) {
           }}
         >
           <h3 style={{ margin: 0 }}>Top Vendors By Order Volume</h3>
-          <div style={{ position: "relative" }}>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(Number(e.target.value))}
-              style={{
-                padding: "8px 35px 8px 12px",
-                borderRadius: "50px",
-                border: "1px solid rgba(223, 223, 223, 1)",
-                backgroundColor: "white",
-                cursor: "pointer",
-                appearance: "none",
-                WebkitAppearance: "none",
-                MozAppearance: "none",
-              }}
-            >
-              <option value={0}>All Time</option>
-              <option value={7}>Last 7 Days</option>
-              <option value={14}>Last 14 Days</option>
-              <option value={30}>Last Month</option>
-            </select>
-            <img
-              src={downArrowIcon}
-              alt="dropdown"
-              style={{
-                position: "absolute",
-                right: "12px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                pointerEvents: "none",
-                width: "10px",
-                height: "10px",
-              }}
-            />
-          </div>
         </div>
         <div
           style={{
@@ -163,40 +127,6 @@ export default function TopVendorsByVolumeWidget({ filterDays }: Props) {
           }}
         >
           <h3 style={{ margin: 0 }}>Top Vendors By Order Volume</h3>
-          <div style={{ position: "relative" }}>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(Number(e.target.value))}
-              style={{
-                padding: "8px 35px 8px 12px",
-                borderRadius: "50px",
-                border: "1px solid rgba(223, 223, 223, 1)",
-                backgroundColor: "white",
-                cursor: "pointer",
-                appearance: "none",
-                WebkitAppearance: "none",
-                MozAppearance: "none",
-              }}
-            >
-              <option value={0}>All Time</option>
-              <option value={7}>Last 7 Days</option>
-              <option value={14}>Last 14 Days</option>
-              <option value={30}>Last Month</option>
-            </select>
-            <img
-              src={downArrowIcon}
-              alt="dropdown"
-              style={{
-                position: "absolute",
-                right: "12px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                pointerEvents: "none",
-                width: "10px",
-                height: "10px",
-              }}
-            />
-          </div>
         </div>
         <div
           style={{
@@ -225,39 +155,6 @@ export default function TopVendorsByVolumeWidget({ filterDays }: Props) {
         }}
       >
         <h3 style={{ margin: 0 }}>Top Vendors By Order Volume</h3>
-        <div style={{ position: "relative" }}>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(Number(e.target.value))}
-            style={{
-              padding: "8px 35px 8px 12px",
-              borderRadius: "50px",
-              border: "1px solid rgba(223, 223, 223, 1)",
-              backgroundColor: "white",
-              cursor: "pointer",
-              appearance: "none",
-              WebkitAppearance: "none",
-              MozAppearance: "none",
-            }}
-          >
-            <option value={7}>Last 7 Days</option>
-            <option value={14}>Last 14 Days</option>
-            <option value={30}>Last Month</option>
-          </select>
-          <img
-            src={downArrowIcon}
-            alt="dropdown"
-            style={{
-              position: "absolute",
-              right: "12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              pointerEvents: "none",
-              width: "10px",
-              height: "10px",
-            }}
-          />
-        </div>
       </div>
 
       <br />

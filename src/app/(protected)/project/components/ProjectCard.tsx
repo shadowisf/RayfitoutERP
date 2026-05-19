@@ -13,7 +13,7 @@ type props = {
 };
 
 function formatAED(val: number) {
-  return val.toLocaleString("en-US", {
+  return val.toLocaleString("en-GB", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -160,7 +160,7 @@ export default function ProjectCard({ project, onSuccess }: props) {
               <h2>
                 {spendToDate === null
                   ? "..."
-                  : `AED ${formatAED(spendToDate)}${committedTotal !== null && committedTotal > 0 ? ` (AED ${formatAED(committedTotal)})` : ""}`}
+                  : `AED ${committedTotal !== null && committedTotal > 0 ? `AED ${formatAED(committedTotal)}` : ""} (AED ${formatAED(spendToDate)})`}
               </h2>
             </div>
             <br />
@@ -214,7 +214,7 @@ export default function ProjectCard({ project, onSuccess }: props) {
                         position: "relative",
                       }}
                     >
-                      {/* COMMITTED layer (bottom, darker green, wider) */}
+                      {/* COMMITTED layer (bottom, wider) */}
                       <div
                         style={{
                           position: "absolute",
@@ -222,12 +222,12 @@ export default function ProjectCard({ project, onSuccess }: props) {
                           top: 0,
                           width: `${committedPct}%`,
                           height: "100%",
-                          backgroundColor: "rgb(23, 185, 114)",
+                          backgroundColor: progressColor,
                           borderRadius: "25px",
                           transition: "width 0.3s ease",
                         }}
                       />
-                      {/* SPENT layer (top, lighter green, narrower) */}
+                      {/* SPENT layer (top, narrower) */}
                       <div
                         style={{
                           position: "absolute",
@@ -235,7 +235,7 @@ export default function ProjectCard({ project, onSuccess }: props) {
                           top: 0,
                           width: `${progressPercentage}%`,
                           height: "100%",
-                          backgroundColor: progressColor,
+                          backgroundColor: "rgb(23, 185, 114)",
                           borderRadius: "25px",
                           transition: "width 0.3s ease",
                         }}
@@ -313,7 +313,7 @@ export default function ProjectCard({ project, onSuccess }: props) {
                           style={{
                             width: "12px",
                             height: "12px",
-                            backgroundColor: progressColor,
+                            backgroundColor: "rgb(23, 185, 114)",
                             borderRadius: "50%",
                           }}
                         />
@@ -330,7 +330,7 @@ export default function ProjectCard({ project, onSuccess }: props) {
                           style={{
                             width: "12px",
                             height: "12px",
-                            backgroundColor: "rgb(23, 185, 114)",
+                            backgroundColor: progressColor,
                             borderRadius: "50%",
                           }}
                         />

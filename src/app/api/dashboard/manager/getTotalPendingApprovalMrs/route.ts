@@ -18,12 +18,13 @@ function getMedian(values: number[]): number {
 // widget for any given stage.
 async function buildStageMediansMap(
   db: any,
-  filter: number,
+  date_from: string | undefined,
+  date_to: string | undefined,
 ): Promise<Record<number, number>> {
-  const whereClause =
-    filter > 0
-      ? `WHERE pl1.changed_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`
-      : "";
+  const parts: string[] = [];
+  if (date_from) parts.push(`pl1.changed_at >= '${date_from}'`);
+  if (date_to) parts.push(`pl1.changed_at <= '${date_to}'`);
+  const whereClause = parts.length > 0 ? `WHERE ${parts.join(" AND ")}` : "";
   const query = `
     SELECT
       pl1.progress_id,
@@ -43,8 +44,7 @@ async function buildStageMediansMap(
       )
     ${whereClause}
   `;
-  const params = filter > 0 ? [filter] : [];
-  const [rows]: any = await db.query(query, params);
+  const [rows]: any = await db.query(query);
 
   const durationsByStage: Record<number, number[]> = {};
   for (const row of rows) {
@@ -63,21 +63,9 @@ async function buildStageMediansMap(
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { filter, limit: itemLimit } = body;
+    const { date_from, date_to, limit: itemLimit } = body;
     const maxItems =
       typeof itemLimit === "number" && itemLimit > 0 ? itemLimit : 20;
-
-    if (
-      filter === undefined ||
-      filter === null ||
-      typeof filter !== "number" ||
-      filter < 0
-    ) {
-      return NextResponse.json(
-        { error: "Invalid 'filter' parameter. Must be a non-negative number." },
-        { status: 400 },
-      );
-    }
 
     // Pending approval includes:
     //   - Material MRs at progress 3 (initial) or 10 (price)
@@ -88,107 +76,22 @@ export async function POST(request: Request) {
         OR (type = 'payment' AND progress_id = 3)
       )`;
 
-    if (filter === 0) {
-      // Total + breakdown by type
-      const [breakdownRows]: any = await db.query(
-        `SELECT
-          SUM(CASE WHEN type = 'material' THEN 1 ELSE 0 END) AS mr_count,
-          SUM(CASE WHEN type = 'job' THEN 1 ELSE 0 END) AS jo_count,
-          SUM(CASE WHEN type = 'payment' THEN 1 ELSE 0 END) AS payment_count,
-          COUNT(*) AS this_week
-         FROM vw_mr_headers
-         WHERE ${pendingClause}`,
-      );
+    const dateFilterParts: string[] = [];
+    if (date_from) dateFilterParts.push(`date_requested >= '${date_from}'`);
+    if (date_to) dateFilterParts.push(`date_requested <= '${date_to}'`);
+    const dateFilterClause = dateFilterParts.length > 0
+      ? `AND ${dateFilterParts.join(" AND ")}`
+      : "";
 
-      const [itemRows]: any = await db.query(
-        `SELECT id, type, project_name,
-           CASE
-             WHEN type = 'job' THEN (SELECT COUNT(*) FROM jo_lines jl WHERE jl.mr_header_id = vw_mr_headers.id)
-             WHEN type = 'payment' THEN (SELECT COUNT(*) FROM pr_lines pl WHERE pl.mr_header_id = vw_mr_headers.id)
-             ELSE (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw_mr_headers.id)
-           END AS item_count
-         FROM vw_mr_headers
-         WHERE ${pendingClause}
-         ORDER BY date_requested DESC LIMIT ?`,
-        [maxItems],
-      );
-
-      const items = itemRows.map((mr: any) => ({
-        display_id: `${
-          mr.type === "job" ? "JO" : mr.type === "payment" ? "PR" : "MR"
-        }-${String(mr.id).padStart(5, "0")}`,
-        item_count: Number(mr.item_count) || 0,
-        raw_id: mr.id,
-        type: "mr",
-      }));
-
-      // Bottleneck stages: count per progress_id (current state),
-      // and use HISTORICAL median from mr_header_progress_log (same as Active MRs).
-      const [bottleneckCountRows]: any = await db.query(
-        `SELECT progress_id, progress_name, COUNT(*) AS mr_count
-         FROM vw_mr_headers
-         WHERE ${pendingClause}
-         GROUP BY progress_id, progress_name
-         ORDER BY mr_count DESC`,
-      );
-
-      const stageMediansMap = await buildStageMediansMap(db, filter);
-      const bottleneckRows = bottleneckCountRows.map((r: any) => ({
-        progress_id: Number(r.progress_id),
-        progress_name: r.progress_name,
-        mr_count: Number(r.mr_count),
-        median_minutes: stageMediansMap[Number(r.progress_id)] || 0,
-      }));
-
-      // Projects at risk: group pending approvals by project
-      const [projectRows]: any = await db.query(
-        `SELECT project_name, COUNT(*) AS mr_count
-         FROM vw_mr_headers
-         WHERE ${pendingClause}
-         GROUP BY project_name
-         ORDER BY mr_count DESC`,
-      );
-
-      // Date range: earliest and latest creation date within the current scope
-      const [dateRangeRows]: any = await db.query(
-        `SELECT
-           MIN(date_requested) AS earliest,
-           MAX(date_requested) AS latest
-         FROM vw_mr_headers
-         WHERE ${pendingClause}`,
-      );
-
-      const count = Number(breakdownRows[0].this_week) || 0;
-      return NextResponse.json(
-        {
-          this_week: count,
-          last_week: 0,
-          items,
-          total_count: count,
-          mr_count: Number(breakdownRows[0].mr_count) || 0,
-          jo_count: Number(breakdownRows[0].jo_count) || 0,
-          payment_count: Number(breakdownRows[0].payment_count) || 0,
-          bottleneck_stages: bottleneckRows,
-          projects_at_risk: projectRows,
-          date_range: {
-            earliest: dateRangeRows[0]?.earliest || null,
-            latest: dateRangeRows[0]?.latest || null,
-          },
-        },
-        { status: 200 },
-      );
-    }
-
-    const [rows]: any = await db.query(
+    // Total + breakdown by type
+    const [breakdownRows]: any = await db.query(
       `SELECT
-        SUM(date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)) AS this_week,
-        SUM(date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND date_requested < DATE_SUB(CURDATE(), INTERVAL ? DAY)) AS last_week,
-        SUM(CASE WHEN type = 'material' AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 ELSE 0 END) AS mr_count,
-        SUM(CASE WHEN type = 'job' AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 ELSE 0 END) AS jo_count,
-        SUM(CASE WHEN type = 'payment' AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 ELSE 0 END) AS payment_count
-      FROM vw_mr_headers
-      WHERE ${pendingClause}`,
-      [filter, filter * 2, filter, filter, filter, filter],
+        SUM(CASE WHEN type = 'material' THEN 1 ELSE 0 END) AS mr_count,
+        SUM(CASE WHEN type = 'job' THEN 1 ELSE 0 END) AS jo_count,
+        SUM(CASE WHEN type = 'payment' THEN 1 ELSE 0 END) AS payment_count,
+        COUNT(*) AS this_week
+       FROM vw_mr_headers
+       WHERE ${pendingClause} ${dateFilterClause}`,
     );
 
     const [itemRows]: any = await db.query(
@@ -199,10 +102,9 @@ export async function POST(request: Request) {
            ELSE (SELECT COUNT(*) FROM mr_lines ml WHERE ml.mr_header_id = vw_mr_headers.id)
          END AS item_count
        FROM vw_mr_headers
-       WHERE ${pendingClause}
-         AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       WHERE ${pendingClause} ${dateFilterClause}
        ORDER BY date_requested DESC LIMIT ?`,
-      [filter, maxItems],
+      [maxItems],
     );
 
     const items = itemRows.map((mr: any) => ({
@@ -214,19 +116,17 @@ export async function POST(request: Request) {
       type: "mr",
     }));
 
-    // Bottleneck stages (date-filtered) — count grouped by current progress,
-    // median comes from historical log via buildStageMediansMap.
+    // Bottleneck stages: count per progress_id (current state),
+    // and use HISTORICAL median from mr_header_progress_log (same as Active MRs).
     const [bottleneckCountRows]: any = await db.query(
       `SELECT progress_id, progress_name, COUNT(*) AS mr_count
        FROM vw_mr_headers
-       WHERE ${pendingClause}
-         AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       WHERE ${pendingClause} ${dateFilterClause}
        GROUP BY progress_id, progress_name
        ORDER BY mr_count DESC`,
-      [filter],
     );
 
-    const stageMediansMap = await buildStageMediansMap(db, filter);
+    const stageMediansMap = await buildStageMediansMap(db, date_from, date_to);
     const bottleneckRows = bottleneckCountRows.map((r: any) => ({
       progress_id: Number(r.progress_id),
       progress_name: r.progress_name,
@@ -234,38 +134,34 @@ export async function POST(request: Request) {
       median_minutes: stageMediansMap[Number(r.progress_id)] || 0,
     }));
 
-    // Projects at risk (filtered by date)
+    // Projects at risk: group pending approvals by project
     const [projectRows]: any = await db.query(
       `SELECT project_name, COUNT(*) AS mr_count
        FROM vw_mr_headers
-       WHERE ${pendingClause}
-         AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       WHERE ${pendingClause} ${dateFilterClause}
        GROUP BY project_name
        ORDER BY mr_count DESC`,
-      [filter],
     );
 
-    // Date range (filtered by date)
+    // Date range: earliest and latest creation date within the current scope
     const [dateRangeRows]: any = await db.query(
       `SELECT
          MIN(date_requested) AS earliest,
          MAX(date_requested) AS latest
        FROM vw_mr_headers
-       WHERE ${pendingClause}
-         AND date_requested >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
-      [filter],
+       WHERE ${pendingClause} ${dateFilterClause}`,
     );
 
-    const thisWeek = Number(rows[0].this_week) || 0;
+    const count = Number(breakdownRows[0].this_week) || 0;
     return NextResponse.json(
       {
-        this_week: thisWeek,
-        last_week: Number(rows[0].last_week) || 0,
+        this_week: count,
+        last_week: 0,
         items,
-        total_count: thisWeek,
-        mr_count: Number(rows[0].mr_count) || 0,
-        jo_count: Number(rows[0].jo_count) || 0,
-        payment_count: Number(rows[0].payment_count) || 0,
+        total_count: count,
+        mr_count: Number(breakdownRows[0].mr_count) || 0,
+        jo_count: Number(breakdownRows[0].jo_count) || 0,
+        payment_count: Number(breakdownRows[0].payment_count) || 0,
         bottleneck_stages: bottleneckRows,
         projects_at_risk: projectRows,
         date_range: {
