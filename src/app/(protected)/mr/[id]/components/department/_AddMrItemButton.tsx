@@ -1,6 +1,6 @@
 "use client";
 
-import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
+import SingleSelectBoqItemButton from "@/app/components/_SingleSelectBoqItemButton";
 import MultipleSelectMaterialItemButton, {
   PredefinedItem,
 } from "@/app/components/_MultipleSelectMaterialItemButton";
@@ -516,7 +516,7 @@ export default function AddMrItemButton({
                   }}
                 >
                   <label className="custom" style={{ margin: 0 }}>
-                    <span>MATERIAL ITEM(S)</span>
+                    <span>MATERIAL(S)</span>
                   </label>
 
                   <div
@@ -542,7 +542,7 @@ export default function AddMrItemButton({
               ) : (
                 <>
                   <label className="custom">
-                    <span>MATERIAL ITEM(S)</span>
+                    <span>MATERIAL(S)</span>
                     <small></small>
                   </label>
                   <MultipleSelectMaterialItemButton
@@ -781,6 +781,7 @@ export default function AddMrItemButton({
                                   width: "150px",
                                   backgroundColor: "white",
                                 }}
+                                required
                               />
                             </td>
                             <td>
@@ -794,21 +795,40 @@ export default function AddMrItemButton({
                                 }
                                 placeholder="SELECT UNIT"
                                 style={{ width: "150px" }}
+                                required
                               />
                             </td>
 
                             <td>
-                              <MultipleSelectBoqItemButton
-                                projectID={projectID}
-                                onSelectBoq={(ids) =>
-                                  updateRowBoqLineIDs(
-                                    row.predefinedItem.id,
-                                    ids,
-                                  )
-                                }
-                                currentBoqLineIDs={row.boqLineIDs}
-                                compact
-                              />
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                }}
+                              >
+                                <SingleSelectBoqItemButton
+                                  projectID={projectID}
+                                  onSelectBoq={(ids) =>
+                                    updateRowBoqLineIDs(
+                                      row.predefinedItem.id,
+                                      ids,
+                                    )
+                                  }
+                                  currentBoqLineIDs={row.boqLineIDs}
+                                  compact
+                                />
+                                <span
+                                  style={{
+                                    color: "red",
+                                    fontSize: "12px",
+                                    flexShrink: 0,
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  *
+                                </span>
+                              </div>
                             </td>
                             <td>
                               <div
@@ -870,7 +890,7 @@ export default function AddMrItemButton({
                 <span>BOQ REF.</span>
                 <small></small>
               </label>
-              <MultipleSelectBoqItemButton
+              <SingleSelectBoqItemButton
                 projectID={projectID}
                 onSelectBoq={handleBoqSelection}
                 currentBoqLineIDs={boqLineIDs}

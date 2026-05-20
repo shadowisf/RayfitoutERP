@@ -252,7 +252,7 @@ export default function OutboundPaymentMrsWidget({ dateFrom, dateTo }: props) {
       ref={widgetRef}
       className="item"
       style={{ cursor: "pointer" }}
-      onClick={() => router.push("/dashboard/details/outbound-payments")}
+      onClick={() => router.push("/finance/transactions")}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseDown={handleMouseDown}

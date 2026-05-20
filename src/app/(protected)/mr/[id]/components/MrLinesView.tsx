@@ -49,6 +49,9 @@ import QSEditQtyButton from "./quantitySurveyor/_QSEditQtyButton";
 import QSEditBrandSpecButton from "./quantitySurveyor/_QSEditBrandSpecButton";
 import ProcurementActionsButton from "./procurement/_ProcurementActionsButton";
 import ManagerPriceActionsButton from "./manager/_ManagerPriceActionsButton";
+import InventoryStatusCell, {
+  InventoryMatch,
+} from "./department/_InventoryStatusCell";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -136,6 +139,13 @@ export default function MrLinesView({
       }
     >
   >({});
+
+  // ── Inventory stock matches per material description (draft stage only) ─────
+  // null = not yet loaded (show blank); Record = loaded (empty array = no match)
+  const [itemInventoryStatus, setItemInventoryStatus] = useState<Record<
+    string,
+    InventoryMatch[]
+  > | null>(null);
 
   // ── Quotation price ranges per MR line (for PRICE RANGE column) ─────────
   const [quotationPriceRanges, setQuotationPriceRanges] = useState<
@@ -602,6 +612,37 @@ export default function MrLinesView({
       .then((res) => res.json())
       .then((data) => setMaterialPriceStats(data))
       .catch((err) => console.error("getMaterialPriceStats error:", err));
+  }, [mrHeader.progress_id, mrLines]);
+
+  // ── Fetch inventory status for draft stage ────────────────────────────────
+  useEffect(() => {
+    if (mrHeader.progress_id !== 1) return;
+
+    const descriptions: string[] = [];
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          for (const item of mrLines[category][subCategory][supplier]) {
+            if (
+              item.material_description &&
+              !descriptions.includes(item.material_description)
+            ) {
+              descriptions.push(item.material_description);
+            }
+          }
+        }
+      }
+    }
+
+    if (descriptions.length === 0) return;
+
+    const encoded = encodeURIComponent(descriptions.join("||"));
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getInventoryStatus?materials=${encoded}`,
+    )
+      .then((res) => res.json())
+      .then((data) => setItemInventoryStatus(data))
+      .catch((err) => console.error("getInventoryStatus error:", err));
   }, [mrHeader.progress_id, mrLines]);
 
   // ── Fetch quotation price ranges for PRICE RANGE column ───────────────────
@@ -2727,7 +2768,7 @@ export default function MrLinesView({
                             userInfo?.departmentID === mrHeader.department_id &&
                             firstItem && (
                               <div className="right">
-                                <RenameMrSubCategoryButton
+                                {/* <RenameMrSubCategoryButton
                                   items={allItems}
                                   categoryID={String(
                                     firstItem.material_category_id,
@@ -2735,7 +2776,7 @@ export default function MrLinesView({
                                   subCategoryID={String(
                                     firstItem.material_subcategory_id,
                                   )}
-                                />
+                                /> */}
 
                                 <DeleteMrSubCategoryButton
                                   items={allItems}
@@ -2846,6 +2887,11 @@ export default function MrLinesView({
                                     )}
                                     <th style={{ width: "40px" }}>#</th>
                                     <th style={{ width: "130px" }}>ITEM</th>
+                                    {mrHeader.progress_id === 1 && (
+                                      <th style={{ width: "150px" }}>
+                                        INVENTORY STATUS
+                                      </th>
+                                    )}
                                     {mrHeader.progress_id >= 9 ? (
                                       <>
                                         <th style={{ width: "80px" }}>
@@ -3171,6 +3217,20 @@ export default function MrLinesView({
                                               )}
                                             </div>
                                           </td>
+                                          {mrHeader.progress_id === 1 && (
+                                            <td style={{ overflow: "visible" }}>
+                                              <InventoryStatusCell
+                                                matches={
+                                                  itemInventoryStatus === null
+                                                    ? undefined
+                                                    : (itemInventoryStatus[
+                                                        item
+                                                          .material_description
+                                                      ] ?? [])
+                                                }
+                                              />
+                                            </td>
+                                          )}
                                           {mrHeader.progress_id >= 9 ? (
                                             <>
                                               <td>
@@ -3819,15 +3879,11 @@ export default function MrLinesView({
                                                     })()}
                                                   </td>
                                                   <td>
-                                                    {item.approved_total_price !=
-                                                      null &&
-                                                    Number(
-                                                      item.approved_total_price,
-                                                    ) > 0
-                                                      ? formatPriceAED(
-                                                          item.approved_total_price,
-                                                        )
-                                                      : formatPriceAED(0)}
+                                                    {formatPriceAED(
+                                                      Number(
+                                                        item.approved_total_price,
+                                                      ) || 0,
+                                                    )}
                                                   </td>
                                                 </>
                                               );
@@ -4081,7 +4137,7 @@ export default function MrLinesView({
                         userInfo?.departmentID === mrHeader.department_id &&
                         firstItem && (
                           <div className="right">
-                            <RenameMrSubCategoryButton
+                            {/* <RenameMrSubCategoryButton
                               items={allItems}
                               categoryID={String(
                                 firstItem.material_category_id,
@@ -4089,7 +4145,7 @@ export default function MrLinesView({
                               subCategoryID={String(
                                 firstItem.material_subcategory_id,
                               )}
-                            />
+                            /> */}
 
                             <DeleteMrSubCategoryButton
                               items={allItems}
@@ -4191,6 +4247,11 @@ export default function MrLinesView({
                                 )}
                                 <th style={{ width: "40px" }}>#</th>
                                 <th style={{ width: "130px" }}>ITEM</th>
+                                {mrHeader.progress_id === 1 && (
+                                  <th style={{ width: "200px" }}>
+                                    INVENTORY STATUS
+                                  </th>
+                                )}
                                 {mrHeader.progress_id >= 9 ? (
                                   <>
                                     <th style={{ width: "80px" }}>QTY USE</th>
@@ -4436,38 +4497,78 @@ export default function MrLinesView({
                                       )}
                                       <td>{itemIndex + 1}</td>
                                       <td>
-                                        {item.material_description}
-                                        {item.qs_review_type ===
-                                          "item_available" &&
-                                          mrHeader.progress_id <= 4 &&
-                                          item.linked_inventory_item_description && (
-                                            <div
-                                              style={{
-                                                fontSize: "10px",
-                                                color: "rgba(26, 216, 135, 1)",
-                                                marginTop: "4px",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "4px",
-                                              }}
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px",
+                                          }}
+                                        >
+                                          <div>
+                                            {item.material_description}
+                                            {item.qs_review_type ===
+                                              "item_available" &&
+                                              mrHeader.progress_id <= 4 &&
+                                              item.linked_inventory_item_description && (
+                                                <div
+                                                  style={{
+                                                    fontSize: "10px",
+                                                    color:
+                                                      "rgba(26, 216, 135, 1)",
+                                                    marginTop: "4px",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "4px",
+                                                  }}
+                                                >
+                                                  Item available:{" "}
+                                                  {
+                                                    item.linked_inventory_item_description
+                                                  }
+                                                  <img
+                                                    src={externalLinkIcon}
+                                                    alt=""
+                                                    style={{
+                                                      width: "10px",
+                                                      height: "10px",
+                                                      filter:
+                                                        "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
+                                                    }}
+                                                  />
+                                                </div>
+                                              )}
+                                          </div>
+                                          {(isManagerPriceApproval ||
+                                            isQSReview) && (
+                                            <EditMrItemButton
+                                              projectID={mrHeader.project_id}
+                                              item={item}
+                                              bgColor="rgba(239, 239, 239, 1)"
+                                              borderColor="rgba(223, 223, 223, 1)"
+                                              textColor="black"
+                                              stageName={currentStageName}
                                             >
-                                              Item available:{" "}
-                                              {
-                                                item.linked_inventory_item_description
-                                              }
                                               <img
-                                                src={externalLinkIcon}
-                                                alt=""
-                                                style={{
-                                                  width: "10px",
-                                                  height: "10px",
-                                                  filter:
-                                                    "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
-                                                }}
+                                                src={pencilIcon}
+                                                alt="edit"
                                               />
-                                            </div>
+                                            </EditMrItemButton>
                                           )}
+                                        </div>
                                       </td>
+                                      {mrHeader.progress_id === 1 && (
+                                        <td style={{ overflow: "visible" }}>
+                                          <InventoryStatusCell
+                                            matches={
+                                              itemInventoryStatus === null
+                                                ? undefined
+                                                : (itemInventoryStatus[
+                                                    item.material_description
+                                                  ] ?? [])
+                                            }
+                                          />
+                                        </td>
+                                      )}
                                       {mrHeader.progress_id >= 9 ? (
                                         <>
                                           <td>
@@ -5085,15 +5186,11 @@ export default function MrLinesView({
                                                 })()}
                                               </td>
                                               <td>
-                                                {item.approved_total_price !=
-                                                  null &&
-                                                Number(
-                                                  item.approved_total_price,
-                                                ) > 0
-                                                  ? formatPriceAED(
-                                                      item.approved_total_price,
-                                                    )
-                                                  : "–"}
+                                                {formatPriceAED(
+                                                  Number(
+                                                    item.approved_total_price,
+                                                  ) || 0,
+                                                )}
                                               </td>
                                             </>
                                           );
@@ -5470,52 +5567,77 @@ export default function MrLinesView({
 
                 <br />
 
-                <table className="items-table two-toned fixed-layout">
+                <table
+                  className="items-table two-toned fixed-layout"
+                  style={{ tableLayout: "fixed", width: "100%" }}
+                >
+                  <colgroup>
+                    <col style={{ width: "40px" }} />
+                    <col style={{ width: "120px" }} />
+                    <col style={{ width: "120px" }} />
+                    <col style={{ width: "120px" }} />
+                    {mrHeader.progress_id >= 9 ? (
+                      <>
+                        <col style={{ width: "80px" }} />
+                        {hasAnyQtyStocks && <col style={{ width: "90px" }} />}
+                        {hasAnyQtyStocks && <col style={{ width: "80px" }} />}
+                      </>
+                    ) : (
+                      <col style={{ width: "120px" }} />
+                    )}
+                    <col style={{ width: "90px" }} />
+                    {hasAnyBrandSpecs && <col style={{ width: "110px" }} />}
+                    {hasAnyAttachment && <col style={{ width: "90px" }} />}
+                    {mrHeader.progress_id >= 10 && canSeePrice && (
+                      <col style={{ width: "100px" }} />
+                    )}
+                    {mrHeader.progress_id >= 10 && canSeePrice && (
+                      <col style={{ width: "100px" }} />
+                    )}
+                    {userInfo?.departmentID === 12 &&
+                      mrHeader.progress_id === 21 && (
+                        <col style={{ width: "160px" }} />
+                      )}
+                    {mrHeader.progress_id === 24 &&
+                      userInfo?.departmentID === 11 && (
+                        <col style={{ width: "120px" }} />
+                      )}
+                    {mrHeader.progress_id === 23 &&
+                      userInfo?.departmentID === 9 && (
+                        <col style={{ width: "140px" }} />
+                      )}
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th style={{ width: "40px" }}>#</th>
-                      <th style={{ width: "120px" }}>CATEGORY</th>
-                      <th style={{ width: "120px" }}>SUBCATEGORY</th>
-                      <th style={{ width: "120px" }}>ITEM</th>
+                      <th>#</th>
+                      <th>CATEGORY</th>
+                      <th>SUBCATEGORY</th>
+                      <th>ITEM</th>
                       {mrHeader.progress_id >= 9 ? (
                         <>
-                          <th style={{ width: "80px" }}>QTY USE</th>
-                          {hasAnyQtyStocks && (
-                            <th style={{ width: "90px" }}>QTY STOCKS</th>
-                          )}
-                          {hasAnyQtyStocks && (
-                            <th style={{ width: "80px" }}>TOTAL QTY</th>
-                          )}
+                          <th>QTY USE</th>
+                          {hasAnyQtyStocks && <th>QTY STOCKS</th>}
+                          {hasAnyQtyStocks && <th>TOTAL QTY</th>}
                         </>
                       ) : (
-                        <th style={{ width: "120px" }}>REQ. QTY</th>
+                        <th>REQ. QTY</th>
                       )}
-                      <th style={{ width: "90px" }}>BOQ REF.</th>
-                      {hasAnyBrandSpecs && (
-                        <th style={{ width: "110px" }}>BRAND & SPECS</th>
-                      )}
+                      <th>BOQ REF.</th>
+                      {hasAnyBrandSpecs && <th>BRAND & SPECS</th>}
                       {/* {mrHeader.progress_id >= 12 && <th>VENDOR & QUOTATION</th>} */}
-                      {hasAnyAttachment && (
-                        <th style={{ width: "90px" }}>ATTACHMENT</th>
+                      {hasAnyAttachment && <th>ATTACHMENT</th>}
+                      {mrHeader.progress_id >= 10 && canSeePrice && (
+                        <th>UNIT PRICE</th>
                       )}
                       {mrHeader.progress_id >= 10 && canSeePrice && (
-                        <th style={{ width: "100px" }}>UNIT PRICE</th>
-                      )}
-                      {mrHeader.progress_id >= 10 && canSeePrice && (
-                        <th style={{ width: "100px" }}>TOTAL PRICE</th>
+                        <th>TOTAL PRICE</th>
                       )}
                       {userInfo?.departmentID === 12 &&
-                        mrHeader.progress_id === 21 && (
-                          <th style={{ width: "160px" }}>QUALITY CONTROL</th>
-                        )}
+                        mrHeader.progress_id === 21 && <th>QUALITY CONTROL</th>}
                       {mrHeader.progress_id === 24 &&
-                        userInfo?.departmentID === 11 && (
-                          <th style={{ width: "120px" }}>STOCKS</th>
-                        )}
+                        userInfo?.departmentID === 11 && <th>STOCKS</th>}
                       {mrHeader.progress_id === 23 &&
-                        userInfo?.departmentID === 9 && (
-                          <th style={{ width: "140px" }}>RESOLUTION</th>
-                        )}
+                        userInfo?.departmentID === 9 && <th>RESOLUTION</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -5791,21 +5913,58 @@ export default function MrLinesView({
           )}
 
         {mrHeader.progress_id >= 10 && canSeePrice && (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "12px 0",
-              borderTop: "1px solid rgba(200, 200, 200, 1)",
-              marginTop: "8px",
-            }}
+          <table
+            className="items-table two-toned fixed-layout"
+            style={{ tableLayout: "fixed", width: "100%" }}
           >
-            <h2>MR TOTAL</h2>
-            <h2>
-              {formatPriceAED(calculateItemsTotalWithVat(getAllFlatItems()))}
-            </h2>
-          </div>
+            <colgroup>
+              <col style={{ width: "40px" }} />
+              <col style={{ width: "120px" }} />
+              <col style={{ width: "120px" }} />
+              <col style={{ width: "120px" }} />
+              {mrHeader.progress_id >= 9 ? (
+                <>
+                  <col style={{ width: "80px" }} />
+                  {hasAnyQtyStocks && <col style={{ width: "90px" }} />}
+                  {hasAnyQtyStocks && <col style={{ width: "80px" }} />}
+                </>
+              ) : (
+                <col style={{ width: "120px" }} />
+              )}
+              <col style={{ width: "90px" }} />
+              {hasAnyBrandSpecs && <col style={{ width: "110px" }} />}
+              {hasAnyAttachment && <col style={{ width: "90px" }} />}
+              {mrHeader.progress_id >= 10 && canSeePrice && (
+                <col style={{ width: "100px" }} />
+              )}
+              {mrHeader.progress_id >= 10 && canSeePrice && (
+                <col style={{ width: "100px" }} />
+              )}
+              {userInfo?.departmentID === 12 && mrHeader.progress_id === 21 && (
+                <col style={{ width: "160px" }} />
+              )}
+              {mrHeader.progress_id === 24 && userInfo?.departmentID === 11 && (
+                <col style={{ width: "120px" }} />
+              )}
+              {mrHeader.progress_id === 23 && userInfo?.departmentID === 9 && (
+                <col style={{ width: "140px" }} />
+              )}
+            </colgroup>
+            <tfoot style={{ borderTop: "1px solid rgba(200, 200, 200, 1)" }}>
+              <tr style={{ fontWeight: 600 }}>
+                <td colSpan={subtotalLabelColSpanByItem} />
+                <td>MR VALUE</td>
+                <td>
+                  {formatPriceAED(
+                    calculateItemsTotalWithVat(getAllFlatItems()),
+                  )}
+                </td>
+                {subtotalTrailingColSpan > 0 && (
+                  <td colSpan={subtotalTrailingColSpan} />
+                )}
+              </tr>
+            </tfoot>
+          </table>
         )}
       </div>
       {/* end mr-with-id */}

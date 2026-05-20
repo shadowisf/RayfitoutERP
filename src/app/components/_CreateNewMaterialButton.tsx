@@ -10,6 +10,7 @@ import { UNIT_OPTIONS } from "@/constants/units";
 import { PredefinedItem } from "@/app/components/_MultipleSelectMaterialItemButton";
 import CreateCategoryButton from "../(protected)/mr/[id]/components/department/_CreateCategoryButton";
 import CreateSubCategoryButton from "../(protected)/mr/[id]/components/department/_CreateSubcategoryButton";
+import { toast } from "@/app/components/Toast";
 
 type CreateNewMaterialButtonProps = {
   onSuccess?: (newItem: PredefinedItem) => void;
@@ -35,6 +36,10 @@ export default function CreateNewMaterialButton({
   const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
     any[]
   >([]);
+
+  type InventorySuggestion = { id: number; description: string };
+  const [inventorySuggestion, setInventorySuggestion] =
+    useState<InventorySuggestion | null>(null);
 
   // Fetch all categories + all subcategories on mount
   useEffect(() => {
@@ -80,6 +85,36 @@ export default function CreateNewMaterialButton({
     }
   }, [newMatCategoryID]);
 
+  // Debounced inventory match search as user types the material name
+  useEffect(() => {
+    const trimmed = newMatDescription.trim();
+    if (trimmed.length < 3) {
+      setInventorySuggestion(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory/searchByDescription`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ descriptions: [trimmed] }),
+        },
+      )
+        .then((r) => r.json())
+        .then((data) => {
+          const match = data?.data?.[trimmed];
+          setInventorySuggestion(
+            match ? { id: match.id, description: match.description } : null,
+          );
+        })
+        .catch(() => setInventorySuggestion(null));
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [newMatDescription]);
+
   // Handle subcategory selection — always sync category
   const handleNewMatSubCategoryChange = (val: string | number) => {
     setNewMatSubCategoryID(val);
@@ -95,9 +130,18 @@ export default function CreateNewMaterialButton({
   const handleNewMaterialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!newMatDescription.trim()) return;
-    if (!newMatCategoryID) return;
-    if (!newMatSubCategoryID) return;
+    if (!newMatDescription.trim()) {
+      toast("Material name is required.", "error");
+      return;
+    }
+    if (!newMatCategoryID) {
+      toast("Category is required.", "error");
+      return;
+    }
+    if (!newMatSubCategoryID) {
+      toast("Subcategory is required.", "error");
+      return;
+    }
 
     try {
       const res = await fetch(
@@ -116,7 +160,11 @@ export default function CreateNewMaterialButton({
         },
       );
 
-      if (!res.ok) return;
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast(err?.error || "Failed to create material.", "error");
+        return;
+      }
 
       const newItem: PredefinedItem = await res.json();
 
@@ -130,8 +178,9 @@ export default function CreateNewMaterialButton({
       setNewMatSubCategoryID("");
       setNewMatUnit("");
       setNewMatBrand("");
-    } catch {
-      // silent
+      setInventorySuggestion(null);
+    } catch (err: any) {
+      toast(err?.message || "Something went wrong.", "error");
     }
   };
 
@@ -185,6 +234,18 @@ export default function CreateNewMaterialButton({
           type={"text"}
           required
           onChange={(e) => setNewMatDescription(e.target.value)}
+          itooltip={
+            <p>
+              Use standardized naming format.
+              <br />
+              <br />
+              Example: <br />
+              MATERIAL NAME – SIZE / VARIATION
+              <br />
+              <br />
+              Avoid using brand or supplier names unless required.
+            </p>
+          }
         />
         <InputItem
           label={"UNIT"}
@@ -195,6 +256,62 @@ export default function CreateNewMaterialButton({
           selectOptions={[...UNIT_OPTIONS]}
         />
       </div>
+
+      {inventorySuggestion && (
+        <div
+          style={{
+            marginTop: "-8px",
+            marginBottom: "12px",
+            fontSize: "10px",
+            fontStyle: "italic",
+            color: "rgba(130, 130, 130, 1)",
+          }}
+        >
+          Possible match in material database:&nbsp;
+          <span
+            style={{ fontWeight: 600, color: "black", fontStyle: "normal" }}
+          >
+            &ldquo;{inventorySuggestion.description}&rdquo;
+          </span>
+          &nbsp;
+          <a
+            href={`/inventory/${inventorySuggestion.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              verticalAlign: "middle",
+            }}
+          >
+            <img
+              src="/icons/external-link.svg"
+              alt="open"
+              style={{ width: "9px", height: "9px" }}
+            />
+          </a>
+          &nbsp;&nbsp;
+          <button
+            type="button"
+            onClick={() =>
+              setNewMatDescription(inventorySuggestion.description)
+            }
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "rgba(36, 160, 237, 1)",
+              fontStyle: "normal",
+              fontWeight: 600,
+              fontSize: "10px",
+              textDecoration: "underline",
+            }}
+          >
+            Use This Item
+          </button>
+        </div>
+      )}
 
       {/* <div className="input-row half">
         <InputItem

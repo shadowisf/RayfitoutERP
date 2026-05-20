@@ -625,6 +625,16 @@ export default function MultipleSelectBoqItemButton({
     setTimeout(checkCatScroll, 50);
   }, [availableCategoryTabs.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Re-check arrows after FormPopup's 500ms spinner clears
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setTimeout(() => {
+      checkCatScroll();
+      checkTabScroll();
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Reset page on tab/filter change
   useEffect(() => {
     setCurrentPage(1);
@@ -1568,7 +1578,6 @@ export default function MultipleSelectBoqItemButton({
             setIsOpen={setShowFilterPopup}
             handleSubmit={handleFilterApply}
             addButtonLabel="CONFIRM"
-            style={{ height: "95dvh" }}
             secondButton={
               <Button
                 componentType={"button"}

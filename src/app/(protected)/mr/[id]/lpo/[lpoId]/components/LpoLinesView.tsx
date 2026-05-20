@@ -779,7 +779,27 @@ export default function LpoLinesView({
 
           <br />
 
-          <table className="items-table two-toned">
+          <table
+            className="items-table two-toned"
+            style={{ tableLayout: "fixed", width: "100%" }}
+          >
+            <colgroup>
+              <col style={{ width: "75px" }} />
+              <col style={{ width: "175px" }} />
+              <col style={{ width: "175px" }} />
+              <col />
+              <col style={{ width: "100px" }} />
+              {hasAnyQtyStocks && <col style={{ width: "100px" }} />}
+              <col style={{ width: "100px" }} />
+              <col style={{ width: "100px" }} />
+              {hasAnyBrandSpecs && <col style={{ width: "150px" }} />}
+              {hasAnyAttachment && <col style={{ width: "150px" }} />}
+              {canSeePrice && <col style={{ width: "150px" }} />}
+              {canSeePrice && <col style={{ width: "150px" }} />}
+              {progressId === 24 && userInfo?.departmentID === 11 && (
+                <col style={{ width: "150px" }} />
+              )}
+            </colgroup>
             <thead>
               <tr>
                 <th>#</th>
@@ -1068,23 +1088,42 @@ export default function LpoLinesView({
         </div>
 
         {progressId >= 10 && canSeePrice && (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "12px 0",
-              borderTop: "1px solid rgba(200, 200, 200, 1)",
-              marginTop: "8px",
-            }}
+          <table
+            className="items-table two-toned"
+            style={{ tableLayout: "fixed", width: "100%" }}
           >
-            <h2>MR TOTAL</h2>
-            <h2>
-              {formatPriceAED(
-                calculateTotalWithVAT(calculateItemsTotal(displayItems)),
+            <colgroup>
+              <col style={{ width: "75px" }} />
+              <col style={{ width: "175px" }} />
+              <col style={{ width: "175px" }} />
+              <col />
+              <col style={{ width: "100px" }} />
+              {hasAnyQtyStocks && <col style={{ width: "100px" }} />}
+              <col style={{ width: "100px" }} />
+              <col style={{ width: "100px" }} />
+              {hasAnyBrandSpecs && <col style={{ width: "125px" }} />}
+              {hasAnyAttachment && <col style={{ width: "125px" }} />}
+              {canSeePrice && <col style={{ width: "125px" }} />}
+              {canSeePrice && <col style={{ width: "125px" }} />}
+              {progressId === 24 && userInfo?.departmentID === 11 && (
+                <col style={{ width: "125px" }} />
               )}
-            </h2>
-          </div>
+            </colgroup>
+            <tfoot style={{ borderTop: "1px solid rgba(200, 200, 200, 1)" }}>
+              <tr style={{ fontWeight: 600 }}>
+                <td colSpan={summaryLabelColSpan} />
+                <td>MR VALUE</td>
+                <td>
+                  {formatPriceAED(
+                    calculateTotalWithVAT(calculateItemsTotal(displayItems)),
+                  )}
+                </td>
+                {summaryTrailingColSpan > 0 && (
+                  <td colSpan={summaryTrailingColSpan} />
+                )}
+              </tr>
+            </tfoot>
+          </table>
         )}
       </div>
       {/* end mr-with-id */}

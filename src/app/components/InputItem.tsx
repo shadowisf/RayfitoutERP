@@ -24,7 +24,7 @@ type InputItemProps = {
   postfixText?: string;
   min?: string; // Add min prop for date inputs
   onBlur?: () => void;
-  itooltip?: string;
+  itooltip?: React.ReactNode;
 };
 
 export default function InputItem({
@@ -66,7 +66,7 @@ export default function InputItem({
           height: "16px",
           borderRadius: "50%",
           backgroundColor: "rgba(207, 207, 207, 1)",
-          color: "white",
+          color: "black",
           fontSize: "9px",
           display: "inline-flex",
           alignItems: "center",
@@ -130,15 +130,17 @@ export default function InputItem({
   switch (type) {
     case "date":
       return (
-        <div className="input-item">
-          <label className="custom">
-            <span>{label}</span>{" "}
-            {!required && (
-              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                OPTIONAL
-              </small>
-            )}
-          </label>
+        <div className="input-item" style={!label ? { flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
+          {label ? (
+            <label className="custom">
+              <span>{label}{required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}</span>{" "}
+              {!required && (
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  OPTIONAL
+                </small>
+              )}
+            </label>
+          ) : null}
           <input
             type="date"
             value={value}
@@ -146,12 +148,16 @@ export default function InputItem({
             placeholder={placeholder || `SELECT ${label}`}
             required={required}
             disabled={disabled}
-            min={min} // Add min attribute here
+            min={min}
+            style={!label ? { flex: "1 1 auto" } : undefined}
             onClick={(e) => {
               e.currentTarget.showPicker?.();
               onClick?.();
             }}
           />
+          {!label && required && (
+            <span style={{ color: "red", fontSize: "12px", flexShrink: 0, lineHeight: 1 }}>*</span>
+          )}
         </div>
       );
 
@@ -171,6 +177,9 @@ export default function InputItem({
             ...(!label
               ? {
                   marginBottom: 0,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: "6px",
                 }
               : {}),
           }}
@@ -179,6 +188,7 @@ export default function InputItem({
             <label className="custom">
               <span style={{ display: "inline-flex", alignItems: "center" }}>
                 {label}
+                {required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}
                 {tooltipBubble}
               </span>
               {!required && !noOptionalLabel && (
@@ -196,7 +206,11 @@ export default function InputItem({
             required={required}
             disabled={disabled}
             onClick={onClick}
+            style={!label ? { flex: "1 1 auto" } : undefined}
           />
+          {!label && required && (
+            <span style={{ color: "red", fontSize: "12px", flexShrink: 0, lineHeight: 1 }}>*</span>
+          )}
         </div>
       );
 
@@ -216,20 +230,25 @@ export default function InputItem({
             ...(!label
               ? {
                   marginBottom: 0,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: "6px",
                 }
               : {}),
           }}
         >
-          <label className="custom">
-            <span>{label}</span>{" "}
-            {!required && !noOptionalLabel && (
-              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                OPTIONAL
-              </small>
-            )}
-          </label>
+          {label ? (
+            <label className="custom">
+              <span>{label}{required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}</span>{" "}
+              {!required && !noOptionalLabel && (
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  OPTIONAL
+                </small>
+              )}
+            </label>
+          ) : null}
 
-          <div className="input-prefix right">
+          <div className="input-prefix right" style={!label ? { flex: "1 1 auto" } : undefined}>
             <span>{postfixText}</span>
             <input
               style={{ paddingRight: "50px" }}
@@ -243,6 +262,9 @@ export default function InputItem({
               onBlur={onBlur}
             />
           </div>
+          {!label && required && (
+            <span style={{ color: "red", fontSize: "12px", flexShrink: 0, lineHeight: 1 }}>*</span>
+          )}
         </div>
       );
 
@@ -262,20 +284,25 @@ export default function InputItem({
             ...(!label
               ? {
                   marginBottom: 0,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: "6px",
                 }
               : {}),
           }}
         >
-          <label className="custom">
-            <span>{label}</span>{" "}
-            {!required && !noOptionalLabel && (
-              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                OPTIONAL
-              </small>
-            )}
-          </label>
+          {label ? (
+            <label className="custom">
+              <span>{label}{required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}</span>{" "}
+              {!required && !noOptionalLabel && (
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  OPTIONAL
+                </small>
+              )}
+            </label>
+          ) : null}
 
-          <div className="input-prefix left">
+          <div className="input-prefix left" style={!label ? { flex: "1 1 auto" } : undefined}>
             <span>{postfixText}</span>
             <input
               style={{ paddingLeft: "50px" }}
@@ -289,20 +316,25 @@ export default function InputItem({
               onBlur={onBlur}
             />
           </div>
+          {!label && required && (
+            <span style={{ color: "red", fontSize: "12px", flexShrink: 0, lineHeight: 1 }}>*</span>
+          )}
         </div>
       );
 
     case "number":
       return (
-        <div className="input-item">
-          <label className="custom">
-            <span>{label}</span>{" "}
-            {!required && (
-              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                OPTIONAL
-              </small>
-            )}
-          </label>
+        <div className="input-item" style={!label ? { flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
+          {label ? (
+            <label className="custom">
+              <span>{label}{required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}</span>{" "}
+              {!required && (
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  OPTIONAL
+                </small>
+              )}
+            </label>
+          ) : null}
           <input
             type="number"
             value={value}
@@ -311,28 +343,35 @@ export default function InputItem({
             required={required}
             disabled={disabled}
             onClick={onClick}
-            min={min} // Also useful for number inputs
+            min={min}
+            style={!label ? { flex: "1 1 auto" } : undefined}
           />
+          {!label && required && (
+            <span style={{ color: "red", fontSize: "12px", flexShrink: 0, lineHeight: 1 }}>*</span>
+          )}
         </div>
       );
 
     case "select":
       return (
-        <div className="input-item">
-          <label className="custom">
-            <span>{label}</span>{" "}
-            {!required && (
-              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                OPTIONAL
-              </small>
-            )}
-          </label>
+        <div className="input-item" style={!label ? { flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
+          {label ? (
+            <label className="custom">
+              <span>{label}{required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}</span>{" "}
+              {!required && (
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  OPTIONAL
+                </small>
+              )}
+            </label>
+          ) : null}
           <select
             value={value ?? ""}
             onChange={onChange}
             required={required}
             disabled={disabled}
             onClick={onClick}
+            style={!label ? { flex: "1 1 auto" } : undefined}
           >
             <option value="" disabled>
               {placeholder || `SELECT ${label}`}
@@ -345,23 +384,29 @@ export default function InputItem({
                 ))
               : dbMap}
           </select>
+          {!label && required && (
+            <span style={{ color: "red", fontSize: "12px", flexShrink: 0, lineHeight: 1 }}>*</span>
+          )}
         </div>
       );
 
     case "textarea":
       return (
-        <div className="input-item">
-          <label className="custom">
-            <span style={{ display: "inline-flex", alignItems: "center" }}>
-              {label}
-              {tooltipBubble}
-            </span>{" "}
-            {!required && (
-              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                OPTIONAL
-              </small>
-            )}
-          </label>
+        <div className="input-item" style={!label ? { flexDirection: "row", alignItems: "flex-start", gap: "6px" } : {}}>
+          {label ? (
+            <label className="custom">
+              <span style={{ display: "inline-flex", alignItems: "center" }}>
+                {label}
+                {required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}
+                {tooltipBubble}
+              </span>{" "}
+              {!required && (
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  OPTIONAL
+                </small>
+              )}
+            </label>
+          ) : null}
           <textarea
             value={value}
             onChange={onChange}
@@ -369,32 +414,39 @@ export default function InputItem({
             placeholder={placeholder || `ENTER ${label}`}
             disabled={disabled}
             onClick={onClick}
+            style={!label ? { flex: "1 1 auto" } : undefined}
           />
+          {!label && required && (
+            <span style={{ color: "red", fontSize: "12px", flexShrink: 0, marginTop: "10px" }}>*</span>
+          )}
         </div>
       );
 
     case "password":
       return (
-        <div className="input-item" style={{ position: "relative" }}>
-          <label className="custom">
-            <span>{label}</span>{" "}
-            {!required && (
-              <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-                OPTIONAL
-              </small>
-            )}
-          </label>
+        <div className="input-item" style={!label ? { flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
+          {label ? (
+            <label className="custom">
+              <span>{label}{required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}</span>{" "}
+              {!required && (
+                <small style={{ fontStyle: "italic", fontWeight: "100" }}>
+                  OPTIONAL
+                </small>
+              )}
+            </label>
+          ) : null}
 
-          <input
-            type={showPassword ? "text" : "password"}
-            value={value}
-            onChange={onChange}
-            placeholder={placeholder || `ENTER ${label}`}
-            required={required}
-            disabled={disabled}
-            onClick={onClick}
-            style={{ paddingRight: "40px" }}
-          />
+          <div style={{ position: "relative", ...(label ? {} : { flex: "1 1 auto" }) }}>
+            <input
+              type={showPassword ? "text" : "password"}
+              value={value}
+              onChange={onChange}
+              placeholder={placeholder || `ENTER ${label}`}
+              required={required}
+              disabled={disabled}
+              onClick={onClick}
+              style={{ paddingRight: "40px", width: "100%" }}
+            />
 
           {/* Eye Toggle */}
           <button
@@ -405,7 +457,7 @@ export default function InputItem({
             style={{
               position: "absolute",
               right: "12px",
-              top: "75%",
+              top: "50%",
               transform: "translateY(-50%)",
               background: "transparent",
               border: "none",
@@ -452,6 +504,11 @@ export default function InputItem({
               </svg>
             )}
           </button>
+          </div>
+
+          {!label && required && (
+            <span style={{ color: "red", fontSize: "12px", flexShrink: 0, lineHeight: 1 }}>*</span>
+          )}
         </div>
       );
   }
