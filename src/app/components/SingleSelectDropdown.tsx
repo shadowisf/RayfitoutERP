@@ -588,15 +588,16 @@ export default function SingleSelectDropdown({
   return (
     <div
       className="input-item"
-      style={!label ? { marginBottom: 0 } : {}}
+      style={!label ? { marginBottom: 0, flexDirection: "row", alignItems: "center", gap: "6px" } : {}}
       ref={containerRef}
     >
-      {!noLabel && (
+      {!noLabel && label && (
         <label className="custom">
-          <span>{label}</span>{" "}
-          {required ? (
-            ""
-          ) : (
+          <span>
+            {label}
+            {required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}
+          </span>{" "}
+          {!required && (
             <small style={{ fontStyle: "italic", fontWeight: "100" }}>
               (OPTIONAL)
             </small>
@@ -606,7 +607,7 @@ export default function SingleSelectDropdown({
 
       <div
         className="select-wrapper"
-        style={{ position: "relative", ...style }}
+        style={{ position: "relative", flex: !label ? "1 1 auto" : undefined, ...style }}
       >
         <select
           className={`native-select ${disabled ? "disabled" : ""} ${
@@ -652,6 +653,10 @@ export default function SingleSelectDropdown({
           dropdownContent &&
           createPortal(dropdownContent, document.body)}
       </div>
+
+      {!label && required && (
+        <span style={{ color: "red", fontSize: "12px", flexShrink: 0, lineHeight: 1 }}>*</span>
+      )}
 
       {/* TOOLTIP */}
       {isOpen && hoveredOption && hoveredOptionData?.tooltip && (

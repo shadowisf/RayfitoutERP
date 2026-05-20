@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import SideBar from "../components/SideBar";
 import ProtectedRoute from "../components/ProtectedRoute";
 import GlobalToast from "../components/Toast";
+import NavigationLoader from "../components/_NavigationLoader";
 import { useState } from "react";
 
 export default function ProtectedLayout({
@@ -34,7 +35,7 @@ export default function ProtectedLayout({
           }}
         >
           <GlobalToast />
-          {children}
+          <NavigationLoader>{children}</NavigationLoader>
         </main>
       </div>
     </ProtectedRoute>

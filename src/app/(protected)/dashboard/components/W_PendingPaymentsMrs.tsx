@@ -231,7 +231,7 @@ export default function PendingPaymentMrsWidget({ dateFrom, dateTo }: props) {
       ref={widgetRef}
       className="item"
       style={{ cursor: "pointer" }}
-      onClick={() => router.push("/dashboard/details/pending-payments")}
+      onClick={() => router.push("/payment")}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >

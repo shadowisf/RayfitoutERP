@@ -6,7 +6,6 @@ import CancelMaterialRequestButton from "../../components/_CancelMaterialRequest
 import RequisitionTimeline from "../../components/RequisitionTimeline";
 import DownloadCompletedMrLpoPDFButton from "./components/_DownloadCompletedMrLpoPDFButton";
 import DownloadLPOButton from "./components/_DownloadLPOButton";
-import DocumentsPopup from "./components/storekeeper/_DocumentPopUpButton";
 
 export default async function LpoWithID({
   params,
@@ -305,7 +304,6 @@ export default async function LpoWithID({
         </h1>
 
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          {lpo.progress_id === 24 && <DocumentsPopup lpoId={lpo.id} />}
           {lpo.progress_id === 25 && (
             <DownloadCompletedMrLpoPDFButton
               mrHeader={mrHeader}

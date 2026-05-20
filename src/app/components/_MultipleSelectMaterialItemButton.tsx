@@ -465,6 +465,16 @@ export default function MultipleSelectMaterialItemButton({
     setTimeout(checkCatScroll, 50);
   }, [availableCategoryTabs.length]);
 
+  // Re-check arrows after FormPopup's 500ms spinner clears
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setTimeout(() => {
+      checkCatScroll();
+      checkTabScroll();
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const getItemsForSubCategory = (sub: string): PredefinedItem[] => {
     const items: PredefinedItem[] = [];
     Object.values(filteredGroupedItems).forEach((subCats) => {
@@ -563,25 +573,24 @@ export default function MultipleSelectMaterialItemButton({
 
   // Handle new material created from CreateNewMaterialButton
   const handleNewMaterialCreated = (newItem: PredefinedItem) => {
+    const cat = newItem.category_name || "Uncategorized";
+    const sub = newItem.subcategory_name || "General";
+
     setAllItems((prev) => [...prev, newItem]);
-    setGroupedItems((prev) => {
-      const cat = newItem.category_name || "Uncategorized";
-      const sub = newItem.subcategory_name || "General";
-      const updated = { ...prev };
-      if (!updated[cat]) updated[cat] = {};
-      if (!updated[cat][sub]) updated[cat][sub] = [];
-      updated[cat][sub] = [...updated[cat][sub], newItem];
-      return updated;
-    });
-    setFilteredGroupedItems((prev) => {
-      const cat = newItem.category_name || "Uncategorized";
-      const sub = newItem.subcategory_name || "General";
-      const updated = { ...prev };
-      if (!updated[cat]) updated[cat] = {};
-      if (!updated[cat][sub]) updated[cat][sub] = [];
-      updated[cat][sub] = [...updated[cat][sub], newItem];
-      return updated;
-    });
+    setGroupedItems((prev) => ({
+      ...prev,
+      [cat]: {
+        ...(prev[cat] || {}),
+        [sub]: [...(prev[cat]?.[sub] || []), newItem],
+      },
+    }));
+    setFilteredGroupedItems((prev) => ({
+      ...prev,
+      [cat]: {
+        ...(prev[cat] || {}),
+        [sub]: [...(prev[cat]?.[sub] || []), newItem],
+      },
+    }));
     setTempSelectedIDs((prev) => [...prev, newItem.id]);
   };
 
@@ -1401,7 +1410,6 @@ export default function MultipleSelectMaterialItemButton({
             setIsOpen={setShowFilterPopup}
             handleSubmit={handleFilterApply}
             addButtonLabel="CONFIRM"
-            style={{ height: "95dvh" }}
             secondButton={
               <Button
                 componentType={"button"}

@@ -28,8 +28,14 @@ export default function FormPopUp({
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [isOpening, setIsOpening] = useState(true);
 
   const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsOpening(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Lock background scroll while modal is open
   useEffect(() => {
@@ -70,6 +76,7 @@ export default function FormPopUp({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
 
     if (!handleSubmit || isLoading || !isFormValid) return;
 
@@ -116,7 +123,28 @@ export default function FormPopUp({
         <br />
         <br />
 
-        {handleSubmit ? (
+        {isOpening ? (
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: "120px",
+            }}
+          >
+            <div
+              style={{
+                width: "28px",
+                height: "28px",
+                border: "3px solid rgba(0,0,0,0.12)",
+                borderTop: "3px solid black",
+                borderRadius: "50%",
+                animation: "spin 0.7s linear infinite",
+              }}
+            />
+          </div>
+        ) : handleSubmit ? (
           <form
             ref={formRef}
             onSubmit={onSubmit}
@@ -161,13 +189,15 @@ export default function FormPopUp({
                           borderColor={"black"}
                           textColor={"white"}
                           type="submit"
-                          disabled={!isFormValid || isLoading}
+                          disabled={!isFormValid && !isLoading}
                           style={{
                             cursor:
-                              isFormValid && !isLoading
-                                ? "pointer"
-                                : "not-allowed",
-                            opacity: isFormValid && !isLoading ? 1 : 0.5,
+                              isLoading
+                                ? "not-allowed"
+                                : isFormValid
+                                  ? "pointer"
+                                  : "not-allowed",
+                            opacity: isLoading ? 1 : isFormValid ? 1 : 0.5,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -244,17 +274,6 @@ export default function FormPopUp({
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { MrLine } from "../../types/mrLine";
 import { toast } from "@/app/components/Toast";
-import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
+import SingleSelectBoqItemButton from "@/app/components/_SingleSelectBoqItemButton";
 import MultipleSelectMaterialItemButton, {
   PredefinedItem,
 } from "@/app/components/_MultipleSelectMaterialItemButton";
@@ -568,7 +568,7 @@ export default function EditMrItemButton({
                           label=""
                           value={selectedRow.quantity}
                           type="text"
-                          placeholder="QTY"
+                          placeholder="ENTER QTY"
                           noOptionalLabel
                           onChange={(e) => {
                             const val = e.target.value;
@@ -578,7 +578,8 @@ export default function EditMrItemButton({
                               );
                             }
                           }}
-                          style={{ width: "80px" }}
+                          style={{ width: "150px" }}
+                          required
                         />
                       </td>
                       <td>
@@ -593,16 +594,35 @@ export default function EditMrItemButton({
                             )
                           }
                           placeholder="SELECT UNIT"
-                          style={{ width: "120px" }}
+                          style={{ width: "150px" }}
+                          required
                         />
                       </td>
                       <td>
-                        <MultipleSelectBoqItemButton
-                          projectID={projectID}
-                          onSelectBoq={(ids) => setBoqLineIDs(ids)}
-                          currentBoqLineIDs={boqLineIDs}
-                          compact
-                        />
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          <SingleSelectBoqItemButton
+                            projectID={projectID}
+                            onSelectBoq={(ids) => setBoqLineIDs(ids)}
+                            currentBoqLineIDs={boqLineIDs}
+                            compact
+                          />
+                          <span
+                            style={{
+                              color: "red",
+                              fontSize: "12px",
+                              flexShrink: 0,
+                              lineHeight: 1,
+                            }}
+                          >
+                            *
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   </tbody>
@@ -620,7 +640,7 @@ export default function EditMrItemButton({
                 <span>BOQ REF.</span>
                 <small></small>
               </label>
-              <MultipleSelectBoqItemButton
+              <SingleSelectBoqItemButton
                 projectID={projectID}
                 onSelectBoq={handleBoqSelection}
                 currentBoqLineIDs={boqLineIDs}
