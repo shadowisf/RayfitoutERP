@@ -36,6 +36,8 @@ type EditMrItemButtonProps = {
   children?: React.ReactNode;
   full?: boolean;
   stageName?: string;
+  /** When true (QS Review / Manager Price Approval), shows category/subcategory/name editors */
+  canEditItemDetails?: boolean;
 };
 
 export default function EditMrItemButton({
@@ -47,6 +49,7 @@ export default function EditMrItemButton({
   children,
   full,
   stageName,
+  canEditItemDetails = false,
 }: EditMrItemButtonProps) {
   const router = useRouter();
   const { userInfo } = useAuth();
@@ -57,7 +60,9 @@ export default function EditMrItemButton({
   const [selectedRow, setSelectedRow] = useState<SelectedMaterialRow | null>(
     null,
   );
-  const [selectedItemIDs, setSelectedItemIDs] = useState<number[]>([]);
+  const [selectedItemIDs, setSelectedItemIDs] = useState<number[]>(() =>
+    item.predefined_item_id ? [item.predefined_item_id] : [],
+  );
 
   // Brand state
   const [brand, setBrand] = useState(item.brand ?? "");
@@ -291,6 +296,14 @@ export default function EditMrItemButton({
         attachmentUrl = uploadResult.urls[0];
       }
 
+      // Determine the predefined_item_id to persist on the mr_line:
+      // • If user picked a new item from the catalog → use that item's id.
+      // • If user edited inline (canEditItemDetails) without picking a new item → keep existing link.
+      // • Otherwise → keep existing link unchanged (pass through current value).
+      const newPredefinedItemId = selectedRow.predefinedItem
+        ? selectedRow.predefinedItem.id
+        : (item.predefined_item_id ?? null);
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -309,6 +322,7 @@ export default function EditMrItemButton({
           specification: specification || null,
           brand: brand || null,
           delivery_location: deliveryLocation,
+          predefined_item_id: newPredefinedItemId,
           attachment: attachmentUrl
             ? JSON.stringify(attachmentUrl)
             : item.attachment,
@@ -319,7 +333,7 @@ export default function EditMrItemButton({
         toast(`${selectedRow.materialDescription} updated`, "success");
         setIsOpen(false);
 
-        // Save unit back if it was null
+        // ── Save unit back if it was null on the predefined item ──────────────
         if (
           selectedRow.predefinedItem &&
           selectedRow.unitWasNull &&
@@ -336,6 +350,52 @@ export default function EditMrItemButton({
               }),
             },
           );
+        }
+
+        // ── Propagate inline edits back to lut_predefined_items ──────────────
+        // When the user directly edited name/category/subcategory (no new item
+        // selected from picker) and the line is linked to a predefined entry,
+        // keep the catalog in sync so all future MRs use the updated values.
+        if (
+          canEditItemDetails &&
+          !selectedRow.predefinedItem &&
+          item.predefined_item_id
+        ) {
+          const descChanged =
+            selectedRow.materialDescription.trim() !==
+            item.material_description;
+          const catChanged =
+            selectedRow.categoryId !== item.material_category_id;
+          const subCatChanged =
+            selectedRow.subcategoryId !==
+            (typeof item.material_subcategory_id === "number"
+              ? item.material_subcategory_id
+              : typeof item.material_subcategory_id === "string"
+                ? Number(item.material_subcategory_id.split(",")[0])
+                : Array.isArray(item.material_subcategory_id)
+                  ? item.material_subcategory_id[0]
+                  : 0);
+
+          if (descChanged || catChanged || subCatChanged) {
+            await fetch(
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  id: item.predefined_item_id,
+                  ...(descChanged && {
+                    material_description:
+                      selectedRow.materialDescription.trim(),
+                  }),
+                  ...(catChanged && { category_id: selectedRow.categoryId }),
+                  ...(subCatChanged && {
+                    subcategory_id: selectedRow.subcategoryId,
+                  }),
+                }),
+              },
+            );
+          }
         }
 
         window.dispatchEvent(new Event("quotationsUpdated"));
@@ -373,7 +433,7 @@ export default function EditMrItemButton({
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
-          style={{ width: "75dvw", height: "95dvh" }}
+          style={{ width: "95dvw", height: "95dvh" }}
         >
           {/* Material Items Selection */}
           <div className="input-row full">
@@ -391,22 +451,20 @@ export default function EditMrItemButton({
                     <span>MATERIAL ITEM(S)</span>
                   </label>
 
-                  {/* <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                    }}
-                  >
-                    <CreateNewMaterialButton
-                      onSuccess={handleNewMaterialCreated}
-                    />
-
-                    <MultipleSelectMaterialItemButton
-                      onSelectItems={handleMaterialSelect}
-                      currentItemIDs={selectedItemIDs}
-                    />
-                  </div> */}
+                  {/* {canEditItemDetails && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                      }}
+                    >
+                      <MultipleSelectMaterialItemButton
+                        onSelectItems={handleMaterialSelect}
+                        currentItemIDs={selectedItemIDs}
+                      />
+                    </div>
+                  )} */}
                 </div>
               ) : (
                 <>
@@ -512,55 +570,64 @@ export default function EditMrItemButton({
                     <tr>
                       <td>1</td>
                       <td>
-                        {/* <SingleSelectDropdown
-                          label=""
-                          noLabel
-                          dbData={categoryValues}
-                          selectedValue={selectedRow.categoryId}
-                          onChange={handleCategoryChange}
-                          placeholder="SELECT CATEGORY"
-                          style={{ width: "200px" }}
-                        /> */}
-                        <span>{item.material_category || "—"}</span>
+                        {canEditItemDetails ? (
+                          <SingleSelectDropdown
+                            label=""
+                            noLabel
+                            dbData={categoryValues}
+                            selectedValue={selectedRow.categoryId}
+                            onChange={handleCategoryChange}
+                            placeholder="SELECT CATEGORY"
+                            style={{ width: "200px" }}
+                          />
+                        ) : (
+                          <span>{item.material_category || "—"}</span>
+                        )}
                       </td>
                       <td>
-                        {/* <SingleSelectDropdown
-                          label=""
-                          noLabel
-                          dbData={subcategoryValues}
-                          selectedValue={selectedRow.subcategoryId}
-                          onChange={(val) =>
-                            setSelectedRow((prev) =>
-                              prev
-                                ? { ...prev, subcategoryId: Number(val) }
-                                : prev,
-                            )
-                          }
-                          placeholder="SELECT SUBCATEGORY"
-                          style={{ width: "200px" }}
-                        /> */}
-                        <span>{item.material_subcategory || "—"}</span>
+                        {canEditItemDetails ? (
+                          <SingleSelectDropdown
+                            label=""
+                            noLabel
+                            dbData={subcategoryValues}
+                            selectedValue={selectedRow.subcategoryId}
+                            onChange={(val) =>
+                              setSelectedRow((prev) =>
+                                prev
+                                  ? { ...prev, subcategoryId: Number(val) }
+                                  : prev,
+                              )
+                            }
+                            placeholder="SELECT SUBCATEGORY"
+                            style={{ width: "200px" }}
+                          />
+                        ) : (
+                          <span>{item.material_subcategory || "—"}</span>
+                        )}
                       </td>
                       <td>
-                        {/* <InputItem
-                          label=""
-                          value={selectedRow.materialDescription}
-                          type="text"
-                          placeholder="ITEM"
-                          noOptionalLabel
-                          style={{ width: "500px" }}
-                          onChange={(e) =>
-                            setSelectedRow((prev) =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    materialDescription: e.target.value,
-                                  }
-                                : prev,
-                            )
-                          }
-                        /> */}
-                        <span>{item.material_description || "—"}</span>
+                        {canEditItemDetails ? (
+                          <InputItem
+                            label=""
+                            value={selectedRow.materialDescription}
+                            type="text"
+                            placeholder="ITEM"
+                            noOptionalLabel
+                            style={{ width: "500px" }}
+                            onChange={(e) =>
+                              setSelectedRow((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      materialDescription: e.target.value,
+                                    }
+                                  : prev,
+                              )
+                            }
+                          />
+                        ) : (
+                          <span>{item.material_description || "—"}</span>
+                        )}
                       </td>
 
                       <td>

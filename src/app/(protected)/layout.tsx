@@ -16,18 +16,25 @@ export default function ProtectedLayout({
 
   return (
     <ProtectedRoute>
-      <Navbar />
+      <Navbar onHamburgerClick={() => setSidebarOpen(!sidebarOpen)} />
 
       <div style={{ display: "flex" }}>
         <SideBar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
 
+        {/* Mobile overlay backdrop */}
+        {sidebarOpen && (
+          <div
+            className="sidebar-backdrop"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         <main
+          className="protected-main"
           style={{
             flex: 1,
             paddingTop: "100px",
             paddingBottom: "100px",
-            paddingLeft: "40px",
-            paddingRight: "40px",
             marginLeft: sidebarOpen ? "300px" : "60px",
             transition: "margin-left 0.3s ease",
             width: "100%",

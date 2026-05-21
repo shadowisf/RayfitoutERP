@@ -52,15 +52,41 @@ export async function POST(request: NextRequest) {
         ml.brand,
         ml.specification,
         ml.approved_proposed_quantity,
-        ml.unit
+        ml.unit,
+        mlt.predefined_item_id
       FROM lpo_mr_line lml
       LEFT JOIN vw_mr_lines ml ON lml.mr_line_id = ml.id
+      LEFT JOIN mr_lines mlt ON lml.mr_line_id = mlt.id
       WHERE lml.lpo_id = ?
     `;
 
     const [linesRows] = await db.query<RowDataPacket[]>(linesQuery, [
       Number(lpo_id),
     ]);
+
+    // ── Resolve name/unit from lut_predefined_items when a link exists ──────
+    const lpoLinkedIds: number[] = Array.from(
+      new Set<number>(
+        (linesRows as any[])
+          .filter((r) => r.predefined_item_id)
+          .map((r) => Number(r.predefined_item_id)),
+      ),
+    );
+
+    if (lpoLinkedIds.length > 0) {
+      const [piRows] = await db.query<RowDataPacket[]>(
+        `SELECT id, material_description, unit FROM lut_predefined_items WHERE id IN (?)`,
+        [lpoLinkedIds],
+      );
+      const piMap = new Map((piRows as any[]).map((pi) => [pi.id, pi]));
+      (linesRows as any[]).forEach((row) => {
+        if (!row.predefined_item_id) return;
+        const pi: any = piMap.get(Number(row.predefined_item_id));
+        if (!pi) return;
+        row.material_description = pi.material_description;
+        if (pi.unit) row.unit = pi.unit;
+      });
+    }
 
     const joLinesQuery = `
       SELECT

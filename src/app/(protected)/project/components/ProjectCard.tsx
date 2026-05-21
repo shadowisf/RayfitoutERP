@@ -160,7 +160,7 @@ export default function ProjectCard({ project, onSuccess }: props) {
               <h2>
                 {spendToDate === null
                   ? "..."
-                  : `AED ${committedTotal !== null && committedTotal > 0 ? `AED ${formatAED(committedTotal)}` : ""} (AED ${formatAED(spendToDate)})`}
+                  : `${committedTotal !== null && committedTotal > 0 ? `AED ${formatAED(committedTotal)}` : ""} (AED ${formatAED(spendToDate)})`}
               </h2>
             </div>
             <br />

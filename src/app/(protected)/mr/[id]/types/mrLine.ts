@@ -1,5 +1,6 @@
 export type MrLine = {
   id: number;
+  predefined_item_id: number | null;
   project_id: number;
   project_name: string;
   mr_header_id: number;
@@ -8,6 +9,8 @@ export type MrLine = {
   material_subcategory_id: string | number | number[];
   material_subcategory: string;
   material_description: string;
+  /** Original stored description before predefined-item name resolution. Present only when the two differ. */
+  db_material_description?: string;
   quantity: number;
   unit: string;
   notes: string;

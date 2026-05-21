@@ -88,19 +88,42 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, unit } = body;
+    const { id, unit, material_description, category_id, subcategory_id } = body;
 
-    if (!id || !unit) {
-      return NextResponse.json(
-        { error: "Missing id or unit" },
-        { status: 400 },
-      );
+    if (!id) {
+      return NextResponse.json({ error: "Missing id" }, { status: 400 });
     }
 
-    await db.query(`UPDATE lut_predefined_items SET unit = ? WHERE id = ?`, [
-      unit,
-      id,
-    ]);
+    // Build a dynamic SET clause from whichever fields were supplied
+    const setClauses: string[] = [];
+    const values: any[] = [];
+
+    if (unit !== undefined) {
+      setClauses.push("unit = ?");
+      values.push(unit);
+    }
+    if (material_description !== undefined) {
+      setClauses.push("material_description = ?");
+      values.push(material_description);
+    }
+    if (category_id !== undefined) {
+      setClauses.push("category_id = ?");
+      values.push(Number(category_id));
+    }
+    if (subcategory_id !== undefined) {
+      setClauses.push("subcategory_id = ?");
+      values.push(Number(subcategory_id));
+    }
+
+    if (setClauses.length === 0) {
+      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+    }
+
+    values.push(id);
+    await db.query(
+      `UPDATE lut_predefined_items SET ${setClauses.join(", ")} WHERE id = ?`,
+      values,
+    );
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err: any) {

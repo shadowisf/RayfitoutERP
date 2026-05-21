@@ -2,6 +2,7 @@ export type LPOMrLine = {
   id: number;
   lpo_id: number;
   mr_line_id: number;
+  predefined_item_id: number | null;
   material_description: string;
   brand: string;
   specification: string;

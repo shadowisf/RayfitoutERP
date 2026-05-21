@@ -10,6 +10,7 @@ import { useAuth } from "@/app/context/AuthContext";
 export default function Login() {
   const logo = "/icons/logo.svg";
   const backgroundImg = "/images/hq.jpg";
+  const backgroundImgMobile = "/images/hq-mobile.jpg";
 
   const router = useRouter();
 
@@ -87,18 +88,34 @@ export default function Login() {
 
   return (
     <main className="login-page">
+      {/* Image — left on desktop, top banner on mobile */}
       <div className="left">
         <img
-          className="background-image"
+          className="background-image desktop-image"
           src={backgroundImg}
+          alt="rayfitout headquarters"
+        />
+        <img
+          className="background-image mobile-image"
+          src={backgroundImgMobile}
           alt="rayfitout headquarters"
         />
       </div>
 
+      {/* Form card — right on desktop, sliding card on mobile */}
       <div className="right">
-        <div className="title">
+        {/* Desktop title */}
+        <div className="title desktop-title">
           <img className="logo" src={logo} alt="logo" />
           <h2>PROCUREMENT MANAGEMENT</h2>
+        </div>
+
+        {/* Mobile title */}
+        <div className="mobile-title">
+          <p className="welcome-text">Welcome To</p>
+          <h1 className="brand-text">
+            <strong>Rayfitout</strong> MAESTRO
+          </h1>
         </div>
 
         <br />
@@ -109,7 +126,7 @@ export default function Login() {
         <div>
           {!isNewPasswordRequired && (
             <form
-              className="form-inner-container"
+              className="login-form"
               onSubmit={handleSubmit}
               style={{ margin: "0px" }}
             >
@@ -155,7 +172,7 @@ export default function Login() {
 
           {isNewPasswordRequired && (
             <form
-              className="form-inner-container"
+              className="login-form"
               onSubmit={handleNewPassword}
               style={{ margin: "0px" }}
             >

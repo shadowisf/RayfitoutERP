@@ -1087,10 +1087,11 @@ export default function LpoLinesView({
           <br />
         </div>
 
-        {progressId >= 10 && canSeePrice && (
+        {/* ── Duplicate empty table (same columns as main table, no rows) ── */}
+        {canSeePrice && (
           <table
-            className="items-table two-toned"
-            style={{ tableLayout: "fixed", width: "100%" }}
+            className="items-table two-toned fixed-layout"
+            style={{ minHeight: 0 }}
           >
             <colgroup>
               <col style={{ width: "75px" }} />
@@ -1101,19 +1102,20 @@ export default function LpoLinesView({
               {hasAnyQtyStocks && <col style={{ width: "100px" }} />}
               <col style={{ width: "100px" }} />
               <col style={{ width: "100px" }} />
-              {hasAnyBrandSpecs && <col style={{ width: "125px" }} />}
-              {hasAnyAttachment && <col style={{ width: "125px" }} />}
-              {canSeePrice && <col style={{ width: "125px" }} />}
-              {canSeePrice && <col style={{ width: "125px" }} />}
+              {hasAnyBrandSpecs && <col style={{ width: "150px" }} />}
+              {hasAnyAttachment && <col style={{ width: "150px" }} />}
+              {canSeePrice && <col style={{ width: "150px" }} />}
+              {canSeePrice && <col style={{ width: "150px" }} />}
               {progressId === 24 && userInfo?.departmentID === 11 && (
-                <col style={{ width: "125px" }} />
+                <col style={{ width: "150px" }} />
               )}
             </colgroup>
-            <tfoot style={{ borderTop: "1px solid rgba(200, 200, 200, 1)" }}>
-              <tr style={{ fontWeight: 600 }}>
+            <tbody />
+            <tfoot style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}>
+              <tr>
                 <td colSpan={summaryLabelColSpan} />
-                <td>MR VALUE</td>
-                <td>
+                <td style={{ fontWeight: "600" }}>MR VALUE</td>
+                <td style={{ fontWeight: "600" }}>
                   {formatPriceAED(
                     calculateTotalWithVAT(calculateItemsTotal(displayItems)),
                   )}

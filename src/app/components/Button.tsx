@@ -104,7 +104,7 @@ export default function Button({
           opacity: disabled ? 0.5 : 1,
         }}
         href={href}
-        target={target ? target : "_blank"}
+        target={target}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         onDragOver={onDragOver}

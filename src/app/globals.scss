@@ -190,7 +190,7 @@ button {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: 200;
   display: flex;
   justify-content: space-between;
   background-color: black;
@@ -223,6 +223,13 @@ button {
 
       height: 100%;
     }
+  }
+
+  /* Mobile-only elements — hidden on desktop */
+  .mobile-hamburger,
+  .mobile-nav-title,
+  .mobile-nav-right {
+    display: none;
   }
 }
 
@@ -262,8 +269,24 @@ button {
   }
 }
 
+/* ── Protected layout main content — desktop padding (overridden on mobile via !important) ── */
+.protected-main {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
 .dashboard {
   /* padding-bottom: 50px; */
+
+  /* Banner content wrapper — desktop keeps existing layout */
+  .banner-content {
+    display: contents; /* transparent wrapper on desktop */
+  }
+
+  /* NEW REQUEST button — desktop hidden, mobile shown */
+  .banner-new-request {
+    display: none;
+  }
 
   .widget-grid.overview {
     display: grid;
@@ -436,6 +459,26 @@ button {
   padding: 20px;
 }
 
+/* Desktop: mobile group-slider wrappers are invisible layout pass-throughs */
+.mobile-group-slider,
+.mobile-slide {
+  display: contents;
+}
+
+/* Bottom-sheet drag handle — hidden on desktop */
+.sheet-handle {
+  display: none !important;
+}
+
+/* MR detail page mobile-only elements — hidden on desktop */
+.timeline-subtitle {
+  display: none;
+}
+
+.mr-lines-mobile-header {
+  display: none;
+}
+
 .status {
   padding: 5px 10px;
   border-radius: 20px;
@@ -499,11 +542,12 @@ label {
 
 .form-inner-container {
   background-color: white;
+  color: black;
   padding: 30px;
   border-radius: 5px;
   position: relative;
   min-width: 750px;
-  max-width: 75dvw;
+  /* max-width: 75dvw; */
   margin: 30px;
   max-height: 95dvh;
   overflow: visible; /* Allow dropdowns to escape */
@@ -925,15 +969,22 @@ label {
   &.popup-hover {
     border: none;
     border-radius: 0;
+    width: auto;
 
     th {
       background-color: transparent;
-      padding: 4px 0px;
+      padding: 4px 12px;
       border-bottom: 1px solid rgba(239, 239, 239, 1);
+
+      &:first-child { padding-left: 0; }
+      &:last-child  { padding-right: 0; }
     }
 
     td {
-      padding: 4px 0px;
+      padding: 6px 12px;
+
+      &:first-child { padding-left: 0; }
+      &:last-child  { padding-right: 0; }
     }
   }
 
@@ -1002,6 +1053,7 @@ label {
 .login-page {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  width: 100%;
   height: 100vh;
   overflow: hidden;
 
@@ -1009,6 +1061,10 @@ label {
     width: 100%;
     height: 100vh;
     object-fit: cover;
+  }
+
+  .mobile-image {
+    display: none;
   }
 
   .logo {
@@ -1029,7 +1085,6 @@ label {
     padding: 80px;
     height: 100vh;
     width: 50dvw;
-    /* overflow: hidden; */
 
     .title {
       display: flex;
@@ -1043,9 +1098,92 @@ label {
     }
   }
 
-  .form-inner-container {
-    padding: 0px;
+  .mobile-title {
+    display: none;
+  }
+
+  .login-form {
+    padding: 0;
     background-color: transparent;
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 768px) {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: white;
+
+    .left {
+      width: 100%;
+      height: auto;
+      flex-shrink: 0;
+      overflow: hidden;
+
+      .desktop-image {
+        display: none;
+      }
+
+      .mobile-image {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+    }
+
+    .right {
+      width: 100%;
+      box-sizing: border-box;
+      flex: 1;
+      height: auto;
+      padding: 32px 28px 36px;
+      border-radius: 0;
+      margin-top: 0;
+      background: white;
+      z-index: 1;
+      justify-content: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
+      box-shadow: none;
+
+      .input-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .desktop-title {
+      display: none !important;
+    }
+
+    .mobile-title {
+      display: block;
+
+      .welcome-text {
+        font-size: 16px;
+        font-weight: 400;
+        color: rgba(80, 80, 80, 1);
+        margin-bottom: 4px;
+      }
+
+      .brand-text {
+        font-size: 28px;
+        font-weight: 400;
+        letter-spacing: -0.5px;
+
+        strong {
+          font-weight: 700;
+        }
+      }
+    }
+
+    .form-inner-container {
+      padding: 0;
+      background-color: transparent;
+      box-shadow: none;
+    }
   }
 }
 
@@ -1558,4 +1696,501 @@ label {
 
 .three-dots-dropdown > *:hover {
   background-color: rgba(253, 249, 249, 1) !important;
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE RESPONSIVE  (max-width: 768px)
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* ── Navbar ── */
+  .header {
+    background-color: white;
+    padding: 0 16px;
+    height: 56px;
+    align-items: center;
+    border-bottom: 1px solid #ebebeb;
+
+    /* Hide desktop elements */
+    .desktop-nav-left,
+    .desktop-nav-right {
+      display: none !important;
+    }
+
+    /* Show mobile elements */
+    .mobile-hamburger {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      width: 36px;
+      height: 36px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0;
+
+      span {
+        display: block;
+        width: 20px;
+        height: 2px;
+        background-color: black;
+        border-radius: 2px;
+      }
+    }
+
+    .mobile-nav-title {
+      display: block;
+      flex: 1;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: -0.3px;
+      color: black;
+
+      strong {
+        font-weight: 700;
+      }
+    }
+
+    .mobile-nav-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+
+      /* Make notification icon dark (icon is white by default) */
+      button,
+      button:hover {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+
+        img {
+          filter: invert(1) !important;
+        }
+      }
+    }
+
+    .nav-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: black;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+  }
+
+  /* ── Sidebar overlay ── */
+  .side-bar {
+    top: 56px !important;
+    height: calc(100dvh - 56px) !important;
+    z-index: 300 !important;
+    width: 280px !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease !important;
+    box-shadow: none;
+
+    &[data-open="true"] {
+      transform: translateX(0);
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    }
+  }
+
+  .sidebar-toggle-btn {
+    display: none !important;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 56px 0 0 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 250;
+  }
+
+  /* ── Main content ── */
+  .protected-main {
+    margin-left: 0 !important;
+    padding-top: 76px !important;
+    padding-bottom: 60px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  /* ── Disable hover states on overview widget cards ── */
+  .widget-grid.overview .item {
+    cursor: default !important;
+  }
+
+  /* ── Form popup — bottom sheet on mobile ── */
+  .form-outer-container {
+    align-items: flex-end !important;
+  }
+
+  .form-inner-container {
+    min-width: unset !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 20px 0 !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 88dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    /* entry animation — JS handles exit via transform transition */
+    animation: sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+
+
+    /* Stack all half-width form rows vertically, remove grid gap */
+    .input-row {
+      gap: 0 !important;
+    }
+
+    .input-row.half {
+      grid-template-columns: 1fr !important;
+    }
+
+    /* Confirm / action button full-width */
+    .button-container {
+      flex-direction: column !important;
+
+      button {
+        width: 100% !important;
+        justify-content: center !important;
+      }
+    }
+
+    /* Hide cross icon — drag-to-dismiss replaces it */
+    .form-close-btn {
+      display: none !important;
+    }
+  }
+
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  /* Drag handle pill — larger touch target */
+  .sheet-handle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 16px 0 12px;
+    flex-shrink: 0;
+    cursor: grab;
+    touch-action: none;
+
+    &::after {
+      content: "";
+      display: block;
+      width: 36px;
+      height: 4px;
+      background: rgba(210, 210, 210, 1);
+      border-radius: 2px;
+    }
+  }
+
+  /* Form content — no side padding inside the bottom sheet */
+  .form-inner-container .form-content {
+    padding-right: 0 !important;
+    max-height: unset !important;
+  }
+
+  /* Footer (stickyFooter + submit button) — pins to bottom of the sheet */
+  .form-inner-container .form-footer-block {
+    position: sticky !important;
+    bottom: 0 !important;
+    background: white !important;
+    padding-top: 12px !important;
+    padding-bottom: 36px !important;
+    z-index: 1 !important;
+
+    /* Remove the <br><br> spacer between stickyFooter and the button */
+    br {
+      display: none !important;
+    }
+
+    .button-container {
+      margin-top: 10px !important;
+    }
+  }
+
+  /* ── Dashboard ── */
+  .dashboard {
+    /* Banner: full bleed, text at top-left, extended bottom for overlap */
+    .banner-container {
+      margin-left: -20px !important;
+      margin-right: -20px !important;
+      width: calc(100% + 40px) !important;
+      min-height: 160px !important;
+      height: auto !important;
+      justify-content: flex-start !important;
+      align-items: flex-start !important;
+      padding: 24px 20px 90px !important;
+      border-radius: 0 !important;
+
+      h3 {
+        font-size: 13px !important;
+        font-weight: 300 !important;
+      }
+
+      h1 {
+        font-size: 22px !important;
+        line-height: 1.2;
+      }
+
+      .banner-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        width: 100%;
+      }
+
+      .banner-new-request {
+        display: inline-flex;
+        align-items: center;
+        background: white;
+        color: black;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 8px 12px;
+        border-radius: 8px;
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+    }
+
+    /* Hide OVERVIEW heading on mobile (card titles are self-explanatory) */
+    .dashboard-section-header {
+      display: none !important;
+    }
+
+    /* Section headings */
+    h2 {
+      font-size: 15px !important;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+
+    /* ── Widget slider shared styles ── */
+    %widget-slider {
+      display: flex !important;
+      flex-direction: row !important;
+      grid-template-columns: unset !important;
+      overflow-x: auto !important;
+      overflow-y: visible !important;
+      scroll-snap-type: x mandatory !important;
+      -webkit-overflow-scrolling: touch;
+      gap: 12px !important;
+      padding: 0 20px 20px !important;
+      margin-left: -20px !important;
+      margin-right: -20px !important;
+      width: calc(100% + 40px) !important;
+      scrollbar-width: none !important;
+      margin-bottom: 28px;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+
+      > * {
+        flex: 0 0 calc(100vw - 72px) !important;
+        scroll-snap-align: start !important;
+        min-width: 0;
+      }
+    }
+
+    /* First overview grid: overlaps the banner */
+    .widget-grid.overview.dashboard-first-grid {
+      @extend %widget-slider;
+      margin-top: -60px !important;
+      position: relative;
+      z-index: 2;
+      padding-top: 4px !important;
+
+      /* Overview card text sizing */
+      .item {
+        padding: 14px 16px !important;
+        min-height: 140px !important;
+        border-radius: 12px !important;
+
+        .number {
+          font-size: 22px !important;
+        }
+
+        .description {
+          font-size: 13px !important;
+        }
+      }
+    }
+
+    /* All other overview grids */
+    .widget-grid.overview {
+      @extend %widget-slider;
+
+      &.five-col,
+      &.four-col,
+      &.three-col,
+      &.two-col {
+        grid-template-columns: unset !important;
+      }
+    }
+
+    /* Active projects slider */
+    .widget-grid.active-projects {
+      @extend %widget-slider;
+      grid-template-columns: unset !important;
+    }
+
+    /* ── Mobile group slider (Quick Approvals | Active Projects | Expected Deliveries) ── */
+    .mobile-group-slider {
+      @extend %widget-slider;
+
+      > .mobile-slide {
+        display: block !important;                         /* override display:contents */
+        flex: 0 0 calc(100vw - 64px) !important;          /* matches overview card width; 32px peek on right */
+        scroll-snap-align: start !important;
+        min-width: 0;
+        overflow: hidden;
+
+        /* h2 headings inside slides */
+        > h2,
+        > div > h2 {
+          font-size: 14px !important;
+          margin-top: 0 !important;
+          margin-bottom: 8px;
+        }
+
+        /* Reset nested overview grid — no slider inside a slide */
+        .widget-grid.overview {
+          display: flex !important;
+          flex-direction: column !important;
+          overflow: visible !important;
+          width: 100% !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          padding: 0 !important;
+          scroll-snap-type: none !important;
+          scrollbar-width: auto !important;
+          gap: 10px !important;
+
+          > * {
+            flex: 0 0 auto !important;
+            width: 100% !important;
+            scroll-snap-align: none !important;
+          }
+        }
+
+        /* Reset active-projects grid inside slide — single column */
+        .widget-grid.active-projects {
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          overflow: visible !important;
+          width: 100% !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          padding: 0 !important;
+          scroll-snap-type: none !important;
+          gap: 10px !important;
+
+          > * {
+            flex: unset !important;
+            scroll-snap-align: none !important;
+          }
+        }
+      }
+    }
+
+    /* Section headings (non-OVERVIEW) get top margin since br is hidden */
+    > h2,
+    > * > h2 {
+      margin-top: 8px;
+      margin-bottom: 0;
+    }
+
+    /* Analytics widget text (Alerts, AvgTime, Median) */
+    .widget-container {
+      h3 {
+        font-size: 14px !important;
+      }
+    }
+  }
+
+  /* ── MR Detail page (mr/[id]) ── */
+  .dashboard {
+
+    /* Compact breadcrumb h1 */
+    h1 {
+      font-size: 13px !important;
+      font-weight: 400 !important;
+      a { color: rgba(150, 150, 150, 1); text-decoration: none; }
+    }
+
+    /* Hide desktop-only action buttons (Roll Back, Download) */
+    .mr-page-actions {
+      display: none !important;
+    }
+
+    /* Hide the detailed info card (PROJECT, PURPOSE, REQUESTED BY, etc.) */
+    .mr-info-card {
+      display: none !important;
+    }
+
+    /* Collapse the info-card + JoContract row — both hidden/irrelevant on mobile */
+    .mr-detail-row {
+      flex-direction: column !important;
+      gap: 0 !important;
+    }
+
+    /* Timeline subtitle — hidden on desktop, shown on mobile */
+    .timeline-subtitle {
+      display: block !important;
+      font-size: 11px !important;
+      color: rgba(130, 130, 130, 1) !important;
+      margin-top: 4px !important;
+      font-weight: 400 !important;
+    }
+
+    /* Scroll the timeline horizontally so stage labels don't wrap */
+    .mr-with-id > div[style*="overflowX"] {
+      overflow-x: auto !important;
+      padding-bottom: 8px;
+    }
+
+    /* "Material Requests" header — hidden on desktop, shown on mobile */
+    .mr-lines-mobile-header {
+      display: block !important;
+      margin-bottom: 16px !important;
+
+      h2 {
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        margin: 0 !important;
+      }
+    }
+
+    /* Remove card padding/margin from all mr-with-id sections */
+    .mr-with-id {
+      padding: 0 !important;
+      margin: 0 !important;
+      background-color: transparent !important;
+      border-radius: 0 !important;
+    }
+
+    /* No-items empty state — compact padding on mobile */
+    .no-items-container {
+      padding: 10px !important;
+    }
+  }
 }

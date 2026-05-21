@@ -92,6 +92,7 @@ export default function FinanceOutstandingPayablesWidget() {
   };
 
   const handleMouseEnter = () => {
+    if (window.matchMedia("(max-width: 768px)").matches) return;
     cancelHideTimer();
     setShowPopup(true);
     fetchLpos();
