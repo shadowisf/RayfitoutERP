@@ -72,7 +72,7 @@ export default function FormPopUp({
         input.removeEventListener("change", checkValidity);
       });
     };
-  }, [children]);
+  }, [children, isOpening]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

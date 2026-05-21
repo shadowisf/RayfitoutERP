@@ -231,7 +231,7 @@ export default function InventoryFilterButton({
   };
 
   // ✅ Stock Status handlers
-  const stockStatusOptions = ["IN STOCK", "LOW STOCK", "OUT OF STOCK"];
+  const stockStatusOptions = ["IN-STOCK", "LOW STOCK", "EMPTY STOCK"];
 
   const handleSelectAllStockStatuses = (checked: boolean) => {
     if (checked) {
