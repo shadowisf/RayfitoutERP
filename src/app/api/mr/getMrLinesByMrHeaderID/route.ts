@@ -35,13 +35,47 @@ export async function POST(req: Request) {
     }
 
     // ✅ Added ORDER BY id ASC to maintain insertion order
+    // Also pull predefined_item_id from the base table (not exposed by the view)
     const [rows]: any = await db.query(
       `
-      SELECT * FROM vw_mr_lines
-      WHERE mr_header_id = ?
-      ORDER BY id ASC`,
+      SELECT vml.*, ml.predefined_item_id
+      FROM vw_mr_lines vml
+      JOIN mr_lines ml ON ml.id = vml.id
+      WHERE vml.mr_header_id = ?
+      ORDER BY vml.id ASC`,
       [Number(body.id)],
     );
+
+    // ── Resolve name/unit from lut_predefined_items when a link exists ──────
+    const linkedIds: number[] = Array.from(
+      new Set<number>(
+        rows
+          .filter((r: any) => r.predefined_item_id)
+          .map((r: any) => Number(r.predefined_item_id)),
+      ),
+    );
+
+    if (linkedIds.length > 0) {
+      const [piRows]: any = await db.query(
+        `SELECT id, material_description, unit FROM lut_predefined_items WHERE id IN (?)`,
+        [linkedIds],
+      );
+      const piMap = new Map(piRows.map((pi: any) => [pi.id, pi]));
+
+      rows.forEach((row: any) => {
+        if (!row.predefined_item_id) return;
+        const pi: any = piMap.get(Number(row.predefined_item_id));
+        if (!pi) return;
+        // Save the original stored description so callers can use it as a
+        // secondary match key (e.g. inventory status similarity matching).
+        if (row.material_description !== pi.material_description) {
+          row.db_material_description = row.material_description;
+        }
+        // Override with current predefined values so renames propagate automatically
+        row.material_description = pi.material_description;
+        if (pi.unit) row.unit = pi.unit;
+      });
+    }
 
     let boqNumbering = new Map();
 

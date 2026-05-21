@@ -155,6 +155,7 @@ export default function PendingDeliveryMrsWidget({ dateFrom, dateTo }: props) {
 
   // Hover handlers — popup shows immediately, hides when cursor leaves both widget and popup
   const handleMouseEnter = (e: React.MouseEvent) => {
+    if (window.matchMedia("(max-width: 768px)").matches) return;
     const target = e.target as HTMLElement;
     if (target.closest("button, a, [role='button']")) return;
     window.dispatchEvent(

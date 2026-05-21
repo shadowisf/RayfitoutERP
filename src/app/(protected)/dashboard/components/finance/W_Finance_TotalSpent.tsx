@@ -124,6 +124,7 @@ export default function FinanceTotalSpentWidget() {
   };
 
   const handleMouseEnter = () => {
+    if (window.matchMedia("(max-width: 768px)").matches) return;
     cancelHideTimer();
     setShowPopup(true);
     fetchLpos();

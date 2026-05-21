@@ -5,6 +5,7 @@ import MultipleSelectMaterialItemButton, {
   PredefinedItem,
 } from "@/app/components/_MultipleSelectMaterialItemButton";
 import CreateNewMaterialButton from "@/app/components/_CreateNewMaterialButton";
+import MobileMaterialSelect from "@/app/components/_MobileMaterialSelect";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import { UNIT_OPTIONS, mapPredefinedUnit } from "@/constants/units";
@@ -67,6 +68,17 @@ export default function AddMrItemButton({
   const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  const [isMobileSelectOpen, setIsMobileSelectOpen] = useState(false);
 
   // Selected material items with qty/unit
   const [selectedRows, setSelectedRows] = useState<SelectedMaterialRow[]>([]);
@@ -409,6 +421,9 @@ export default function AddMrItemButton({
             material_subcategory_ids: [
               row.subcategoryIdOverride ?? row.predefinedItem.subcategory_id,
             ],
+            predefined_item_id: row.descriptionOverride?.trim()
+              ? null // override breaks the link — no longer tracking the predefined item
+              : row.predefinedItem.id,
             material_description:
               row.descriptionOverride?.trim() ||
               row.predefinedItem.material_description,
@@ -488,7 +503,10 @@ export default function AddMrItemButton({
         bgColor={bgColor}
         borderColor={borderColor}
         textColor={textColor}
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          if (isMobile) setIsMobileSelectOpen(true);
+          else setIsOpen(true);
+        }}
         full={full ? true : false}
         style={style}
       >
@@ -501,7 +519,7 @@ export default function AddMrItemButton({
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel={"CONFIRM"}
-          style={{ width: "75dvw", height: "95dvh" }}
+          style={{ width: "95dvw", height: "95dvh" }}
         >
           {/* Material Items Selection */}
           <div className="input-row full">
@@ -779,7 +797,6 @@ export default function AddMrItemButton({
                                 }
                                 style={{
                                   width: "150px",
-                                  backgroundColor: "white",
                                 }}
                                 required
                               />
@@ -944,6 +961,18 @@ export default function AddMrItemButton({
             />
           </div>
         </FormPopUp>
+      )}
+
+      {isMobile && isMobileSelectOpen && (
+        <MobileMaterialSelect
+          onSelectItems={(items) => {
+            handleMaterialSelect(items);
+            setIsMobileSelectOpen(false);
+            setIsOpen(true); // open the quantity/details form
+          }}
+          onClose={() => setIsMobileSelectOpen(false)}
+          currentItemIDs={selectedItemIDs}
+        />
       )}
 
       {/* Per-row edit popup — sibling to main FormPopUp to avoid nested <form> */}

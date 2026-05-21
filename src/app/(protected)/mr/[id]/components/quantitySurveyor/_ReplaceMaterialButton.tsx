@@ -397,6 +397,7 @@ export default function ReplaceMaterialButton({
             specification: item.specification || null,
             brand: item.brand || null,
             delivery_location: item.delivery_location,
+            predefined_item_id: tempSelected.id,
             boq_line_ids: item.boq_line_ids
               ? typeof item.boq_line_ids === "string"
                 ? item.boq_line_ids.split(",").map(Number).filter(Boolean)
@@ -470,6 +471,7 @@ export default function ReplaceMaterialButton({
           specification: specification || null,
           brand: brand || null,
           delivery_location: item.delivery_location,
+          predefined_item_id: selectedItem!.id,
           boq_line_ids: item.boq_line_ids
             ? typeof item.boq_line_ids === "string"
               ? item.boq_line_ids.split(",").map(Number).filter(Boolean)

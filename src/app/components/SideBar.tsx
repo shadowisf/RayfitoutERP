@@ -174,7 +174,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       label: "Projects",
       path: "/project",
       icon: "/icons/projects.svg",
-      visibleTo: [8, 16],
+      visibleTo: [8, 16, 10],
     },
     {
       label: "Payments",
@@ -249,6 +249,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       {/* Sidebar - Fixed position */}
       <div
         className="side-bar"
+        data-open={isOpen}
         style={{
           position: "fixed",
           left: 0,
@@ -381,16 +382,14 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
         </div>
       </div>
 
-      {/* Toggle Button - Fixed position, moves with sidebar state */}
+      {/* Toggle Button - Fixed position, moves with sidebar state — desktop only */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        className="sidebar-toggle-btn"
         style={{
           position: "fixed",
-          /* left: isOpen ? expandedWidth : collapsedWidth, */
           left: isOpen ? "260px" : "20px",
           top: "75px",
-          /* width: "32px",
-          height: "32px", */
           backgroundColor: "transparent",
           borderLeft: "none",
           borderRadius: "0 6px 6px 0",

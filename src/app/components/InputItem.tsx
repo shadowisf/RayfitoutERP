@@ -130,7 +130,7 @@ export default function InputItem({
   switch (type) {
     case "date":
       return (
-        <div className="input-item" style={!label ? { flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
+        <div className="input-item" style={!label ? { display: "flex", flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
           {label ? (
             <label className="custom">
               <span>{label}{required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}</span>{" "}
@@ -176,6 +176,7 @@ export default function InputItem({
               : {}),
             ...(!label
               ? {
+                  display: "flex",
                   marginBottom: 0,
                   flexDirection: "row",
                   alignItems: "center",
@@ -229,6 +230,7 @@ export default function InputItem({
               : {}),
             ...(!label
               ? {
+                  display: "flex",
                   marginBottom: 0,
                   flexDirection: "row",
                   alignItems: "center",
@@ -283,6 +285,7 @@ export default function InputItem({
               : {}),
             ...(!label
               ? {
+                  display: "flex",
                   marginBottom: 0,
                   flexDirection: "row",
                   alignItems: "center",
@@ -324,7 +327,7 @@ export default function InputItem({
 
     case "number":
       return (
-        <div className="input-item" style={!label ? { flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
+        <div className="input-item" style={!label ? { display: "flex", flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
           {label ? (
             <label className="custom">
               <span>{label}{required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}</span>{" "}
@@ -354,7 +357,7 @@ export default function InputItem({
 
     case "select":
       return (
-        <div className="input-item" style={!label ? { flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
+        <div className="input-item" style={!label ? { display: "flex", flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
           {label ? (
             <label className="custom">
               <span>{label}{required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}</span>{" "}
@@ -392,7 +395,7 @@ export default function InputItem({
 
     case "textarea":
       return (
-        <div className="input-item" style={!label ? { flexDirection: "row", alignItems: "flex-start", gap: "6px" } : {}}>
+        <div className="input-item" style={!label ? { display: "flex", flexDirection: "row", alignItems: "flex-start", gap: "6px" } : {}}>
           {label ? (
             <label className="custom">
               <span style={{ display: "inline-flex", alignItems: "center" }}>
@@ -424,7 +427,7 @@ export default function InputItem({
 
     case "password":
       return (
-        <div className="input-item" style={!label ? { flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
+        <div className="input-item" style={!label ? { display: "flex", flexDirection: "row", alignItems: "center", gap: "6px" } : {}}>
           {label ? (
             <label className="custom">
               <span>{label}{required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}</span>{" "}

@@ -329,7 +329,7 @@ export default async function MrWithID({
           {String(mrHeader.id).padStart(5, "0")}
         </h1>
 
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div className="mr-page-actions" style={{ display: "flex", gap: "10px" }}>
           {mrHeader?.progress_id !== 1 && mrHeader.progress_id !== 25 && (
             <CancelMaterialRequestButton
               mrHeader={mrHeader}
@@ -366,8 +366,8 @@ export default async function MrWithID({
 
       <br />
 
-      <div style={{ display: "flex", gap: "25px" }}>
-        <div className="mr-with-id" style={{ flex: 1 }}>
+      <div className="mr-detail-row" style={{ display: "flex", gap: "25px" }}>
+        <div className="mr-with-id mr-info-card" style={{ flex: 1 }}>
           <div className="top">
             <div
               style={{
@@ -680,6 +680,9 @@ export default async function MrWithID({
               ? "job"
               : "material"
         }
+        mrNumber={`${mrHeader.type === "payment" ? "PR" : mrHeader.type === "job" ? "JO" : "MR"}-${String(mrHeader.id).padStart(5, "0")}`}
+        projectName={mrHeader.project_name || undefined}
+        requiredDate={new Date(mrHeader.required_date).toLocaleDateString("en-GB")}
       />
 
       <br />

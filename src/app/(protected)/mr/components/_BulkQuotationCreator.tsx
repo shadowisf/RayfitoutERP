@@ -11,6 +11,7 @@ import CreateSupplierButton from "../../vendor/components/_CreateSupplierButton"
 import { useAuth } from "@/app/context/AuthContext";
 import { pdf } from "@react-pdf/renderer";
 import RequestedItemsPDF from "./RequestedItemsPDF";
+import InputItem from "@/app/components/InputItem";
 
 export type BulkQuotationItem = {
   line_id: number;
@@ -428,18 +429,32 @@ export default function BulkQuotationCreator({
                   VENDORS &amp; QUOTATIONS
                 </h4>
 
-                <table className="items-table">
+                <table
+                  className="items-table"
+                  style={{ tableLayout: "fixed", width: "100%" }}
+                >
+                  <colgroup>
+                    <col style={{ width: "75px" }} />
+                    <col style={{ width: "225px" }} />
+                    <col />
+                    <col style={{ width: "200px" }} />
+                    <col style={{ width: "275px" }} />
+                    <col style={{ width: "275px" }} />
+                    <col style={{ width: "125px" }} />
+                    <col style={{ width: "125px" }} />
+                    <col style={{ width: "100px" }} />
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th style={{ width: "40px" }}>#</th>
-                      <th style={{ width: "275px" }}>VENDOR</th>
+                      <th>#</th>
+                      <th>VENDOR</th>
                       <th>QUOTATION</th>
-                      <th style={{ width: "100px" }}>REQ. QTY</th>
-                      <th style={{ width: "180px" }}>UNIT PRICE</th>
-                      <th style={{ width: "180px" }}>TOTAL PRICE</th>
-                      <th style={{ width: "100px" }}>LEAD TIME</th>
-                      <th style={{ width: "130px" }}>PAYMENT TYPE</th>
-                      <th style={{ width: "40px" }}></th>
+                      <th>REQ. QTY</th>
+                      <th>UNIT PRICE</th>
+                      <th>TOTAL PRICE</th>
+                      <th>LEAD TIME</th>
+                      <th>PAYMENT TYPE</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -483,208 +498,252 @@ export default function BulkQuotationCreator({
                       return (
                         <tr key={index}>
                           <td>{index + 1}</td>
-                          <td style={{ width: "275px", maxWidth: "275px" }}>
-                            <SingleSelectDropdown
-                              label="VENDOR"
-                              selectedValue={row.supplier_id}
-                              onChange={(value) =>
-                                updateQuotationRow(index, "supplier_id", value)
-                              }
-                              placeholder="SELECT VENDOR"
-                              dbData={suppliers}
-                              idField="id"
-                              labelField="name"
-                              noLabel
-                              required
-                              bottomButtonComponent={
-                                <CreateSupplierButton
-                                  full
-                                  onSuccess={() => fetchSuppliers()}
+                          <td>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                              }}
+                            >
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <SingleSelectDropdown
+                                  label="VENDOR"
+                                  selectedValue={row.supplier_id}
+                                  onChange={(value) =>
+                                    updateQuotationRow(
+                                      index,
+                                      "supplier_id",
+                                      value,
+                                    )
+                                  }
+                                  placeholder="SELECT VENDOR"
+                                  dbData={suppliers}
+                                  idField="id"
+                                  labelField="name"
+                                  noLabel
+                                  required
+                                  bottomButtonComponent={
+                                    <CreateSupplierButton
+                                      full
+                                      onSuccess={() => fetchSuppliers()}
+                                    />
+                                  }
                                 />
-                              }
-                            />
-                          </td>
-                          <td style={{ width: "250px", maxWidth: "250px" }}>
-                            {hasFile ? (
-                              <div
+                              </div>
+                              <span
                                 style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  gap: "10px",
-                                  border: "1px solid rgba(207,207,207,1)",
-                                  borderRadius: "8px",
-                                  padding: "0px 8px",
-                                  height: "40px",
-                                  boxSizing: "border-box",
+                                  color: "red",
+                                  fontSize: "12px",
+                                  flexShrink: 0,
+                                  lineHeight: 1,
                                 }}
                               >
+                                *
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                              }}
+                            >
+                              {hasFile ? (
                                 <div
                                   style={{
                                     display: "flex",
                                     alignItems: "center",
+                                    justifyContent: "space-between",
                                     gap: "10px",
-                                    overflow: "hidden",
+                                    border: "1px solid rgba(207,207,207,1)",
+                                    borderRadius: "8px",
+                                    padding: "0px 8px",
+                                    height: "40px",
+                                    boxSizing: "border-box",
                                   }}
                                 >
-                                  {isImage ? (
-                                    <img
-                                      src={imagePreviewUrl!}
-                                      alt="preview"
-                                      style={{
-                                        width: "32px",
-                                        height: "32px",
-                                        objectFit: "cover",
-                                        borderRadius: "4px",
-                                        flexShrink: 0,
-                                      }}
-                                    />
-                                  ) : (
-                                    <img
-                                      src="/icons/pdf.svg"
-                                      alt="file"
-                                      style={{
-                                        width: "24px",
-                                        flexShrink: 0,
-                                      }}
-                                    />
-                                  )}
-                                  <div style={{ overflow: "hidden" }}>
-                                    <div
-                                      style={{
-                                        fontWeight: 600,
-                                        fontSize: "12px",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                      }}
-                                    >
-                                      {fileName}
-                                    </div>
-                                    {fileSize && (
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "10px",
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    {isImage ? (
+                                      <img
+                                        src={imagePreviewUrl!}
+                                        alt="preview"
+                                        style={{
+                                          width: "32px",
+                                          height: "32px",
+                                          objectFit: "cover",
+                                          borderRadius: "4px",
+                                          flexShrink: 0,
+                                        }}
+                                      />
+                                    ) : (
+                                      <img
+                                        src="/icons/pdf.svg"
+                                        alt="file"
+                                        style={{
+                                          width: "24px",
+                                          flexShrink: 0,
+                                        }}
+                                      />
+                                    )}
+                                    <div style={{ overflow: "hidden" }}>
                                       <div
                                         style={{
-                                          color: "rgba(150,150,150,1)",
-                                          fontSize: "10px",
+                                          fontWeight: 600,
+                                          fontSize: "12px",
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap",
                                         }}
                                       >
-                                        {fileSize}
+                                        {fileName}
                                       </div>
-                                    )}
+                                      {fileSize && (
+                                        <div
+                                          style={{
+                                            color: "rgba(150,150,150,1)",
+                                            fontSize: "10px",
+                                          }}
+                                        >
+                                          {fileSize}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
+                                  <Button
+                                    componentType={"button"}
+                                    bgColor={"rgba(239, 239, 239, 1)"}
+                                    borderColor={"rgba(223, 223, 223, 1)"}
+                                    textColor={"black"}
+                                    style={{ padding: "7px 7px" }}
+                                    onClick={() => {
+                                      const updated = [...quotationRows];
+                                      updated[index] = {
+                                        ...updated[index],
+                                        quotation_file: null,
+                                        quotation_url: "",
+                                      };
+                                      setQuotationRows(updated);
+                                    }}
+                                  >
+                                    <img src="/icons/trash.svg" alt="remove" />
+                                  </Button>
                                 </div>
-                                <Button
-                                  componentType={"button"}
-                                  bgColor={"rgba(239, 239, 239, 1)"}
-                                  borderColor={"rgba(223, 223, 223, 1)"}
-                                  textColor={"black"}
-                                  style={{ padding: "7px 7px" }}
-                                  onClick={() => {
-                                    const updated = [...quotationRows];
-                                    updated[index] = {
-                                      ...updated[index],
-                                      quotation_file: null,
-                                      quotation_url: "",
-                                    };
-                                    setQuotationRows(updated);
+                              ) : (
+                                <label
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent:
+                                      dragOverIndex === index
+                                        ? "center"
+                                        : "space-between",
+                                    gap: "10px",
+                                    border: `1.5px dashed ${dragOverIndex === index ? "rgba(169,255,218,1)" : "rgba(207,207,207,1)"}`,
+                                    borderRadius: "8px",
+                                    padding: "0px 8px",
+                                    height: "40px",
+                                    cursor: "pointer",
+                                    boxSizing: "border-box",
+                                    backgroundColor:
+                                      dragOverIndex === index
+                                        ? "rgba(169,255,218,1)"
+                                        : "white",
                                   }}
-                                >
-                                  <img src="/icons/trash.svg" alt="remove" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <label
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent:
-                                    dragOverIndex === index
-                                      ? "center"
-                                      : "space-between",
-                                  gap: "10px",
-                                  border: `1.5px dashed ${dragOverIndex === index ? "rgba(169,255,218,1)" : "rgba(207,207,207,1)"}`,
-                                  borderRadius: "8px",
-                                  padding: "0px 8px",
-                                  height: "40px",
-                                  cursor: "pointer",
-                                  boxSizing: "border-box",
-                                  backgroundColor:
-                                    dragOverIndex === index
-                                      ? "rgba(169,255,218,1)"
-                                      : "white",
-                                }}
-                                onDragOver={(e) => {
-                                  e.preventDefault();
-                                  setDragOverIndex(index);
-                                }}
-                                onDragLeave={() => setDragOverIndex(null)}
-                                onDrop={(e) => {
-                                  e.preventDefault();
-                                  setDragOverIndex(null);
-                                  const file = e.dataTransfer.files?.[0];
-                                  if (file)
-                                    updateQuotationRow(
-                                      index,
-                                      "quotation_file",
-                                      file,
-                                    );
-                                }}
-                              >
-                                <input
-                                  type="file"
-                                  style={{ display: "none" }}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    setDragOverIndex(index);
+                                  }}
+                                  onDragLeave={() => setDragOverIndex(null)}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    setDragOverIndex(null);
+                                    const file = e.dataTransfer.files?.[0];
                                     if (file)
                                       updateQuotationRow(
                                         index,
                                         "quotation_file",
                                         file,
                                       );
-                                    e.target.value = "";
                                   }}
-                                />
-                                {dragOverIndex === index ? (
-                                  <span
-                                    style={{
-                                      color: "rgba(34,150,100,1)",
-                                      fontSize: "12px",
-                                      fontWeight: 600,
+                                >
+                                  <input
+                                    type="file"
+                                    style={{ display: "none" }}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file)
+                                        updateQuotationRow(
+                                          index,
+                                          "quotation_file",
+                                          file,
+                                        );
+                                      e.target.value = "";
                                     }}
-                                  >
-                                    DROP HERE
-                                  </span>
-                                ) : (
-                                  <>
+                                  />
+                                  {dragOverIndex === index ? (
                                     <span
                                       style={{
-                                        color: "rgba(150,150,150,1)",
+                                        color: "rgba(34,150,100,1)",
                                         fontSize: "12px",
-                                        whiteSpace: "nowrap",
+                                        fontWeight: 600,
                                       }}
                                     >
-                                      Select File or Drop
+                                      DROP HERE
                                     </span>
-                                    <Button
-                                      componentType={"none"}
-                                      bgColor={"black"}
-                                      borderColor={"black"}
-                                      textColor={"black"}
-                                      style={{ padding: "7px 7px" }}
-                                    >
-                                      <img
-                                        src="/icons/upload.svg"
-                                        alt="upload"
-                                      />
-                                    </Button>
-                                  </>
-                                )}
-                              </label>
-                            )}
+                                  ) : (
+                                    <>
+                                      <span
+                                        style={{
+                                          color: "rgba(150,150,150,1)",
+                                          fontSize: "12px",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        Select File or Drop
+                                      </span>
+                                      <Button
+                                        componentType={"none"}
+                                        bgColor={"black"}
+                                        borderColor={"black"}
+                                        textColor={"black"}
+                                        style={{ padding: "7px 7px" }}
+                                      >
+                                        <img
+                                          src="/icons/upload.svg"
+                                          alt="upload"
+                                        />
+                                      </Button>
+                                    </>
+                                  )}
+                                </label>
+                              )}
+                              {!hasFile && (
+                                <span
+                                  style={{
+                                    color: "red",
+                                    fontSize: "12px",
+                                    flexShrink: 0,
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  *
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td>{formattedQty}</td>
-                          <td style={{ minWidth: "225px" }}>
-                            <div className="input-prefix right">
+                          <td>
+                            {/* <div className="input-prefix right">
                               <span>AED</span>
                               <input
                                 style={{ paddingRight: "50px" }}
@@ -696,10 +755,22 @@ export default function BulkQuotationCreator({
                                 }
                                 required
                               />
-                            </div>
+                            </div> */}
+
+                            <InputItem
+                              label={""}
+                              value={row.unit_price}
+                              type={"text postfix"}
+                              placeholder="ENTER UNIT PRICE"
+                              postfixText="AED"
+                              onChange={(e) =>
+                                handleNumericInput(index, e.target.value)
+                              }
+                              required
+                            />
                           </td>
-                          <td style={{ minWidth: "210px" }}>
-                            <div className="input-prefix right">
+                          <td>
+                            {/* <div className="input-prefix right">
                               <span>AED</span>
                               <input
                                 style={{ paddingRight: "50px" }}
@@ -708,7 +779,18 @@ export default function BulkQuotationCreator({
                                 value={row.total_price}
                                 disabled
                               />
-                            </div>
+                            </div> */}
+
+                            <InputItem
+                              label={""}
+                              value={row.unit_price}
+                              type={"text postfix"}
+                              placeholder="CALCULATING..."
+                              postfixText="AED"
+                              onChange={() => {}}
+                              disabled
+                            />
+
                             {totalAlert && (
                               <div
                                 style={{

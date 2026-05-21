@@ -9,16 +9,30 @@ import Button from "./Button";
 import NotificationDropdown from "./NotificationButton";
 import SearchBar from "./SearchBar";
 
-export default function Navbar() {
+type NavbarProps = {
+  onHamburgerClick?: () => void;
+};
+
+export default function Navbar({ onHamburgerClick }: NavbarProps) {
   const { userInfo, logout } = useAuth();
 
   const logoIcon = "/icons/logo.svg";
   const logoutIcon = "/icons/logout.svg";
 
+  const initials = userInfo?.name
+    ? userInfo.name
+        .split(" ")
+        .slice(0, 2)
+        .map((w: string) => w[0])
+        .join("")
+        .toUpperCase()
+    : "?";
+
   return (
     <>
       <div className="header">
-        <div className="left">
+        {/* ── Desktop layout ── */}
+        <div className="left desktop-nav-left">
           <a href="/dashboard" className="logo-link">
             <img src={logoIcon} alt="rayfitout logo" />
           </a>
@@ -26,7 +40,7 @@ export default function Navbar() {
           <SearchBar />
         </div>
 
-        <div className="right">
+        <div className="right desktop-nav-right">
           {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
             <>
               <CreateNewMaterialButton style={{ border: "1px solid white" }} />
@@ -52,6 +66,26 @@ export default function Navbar() {
           >
             <img src={logoutIcon} alt="logout" />
           </Button>
+        </div>
+
+        {/* ── Mobile layout ── */}
+        <button
+          className="mobile-hamburger"
+          onClick={onHamburgerClick}
+          aria-label="Open menu"
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+
+        <div className="mobile-nav-title">
+          <strong>Rayfitout</strong>&nbsp;MAESTRO
+        </div>
+
+        <div className="mobile-nav-right">
+          <NotificationDropdown />
+          <div className="nav-avatar">{initials}</div>
         </div>
       </div>
     </>

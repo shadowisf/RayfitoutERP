@@ -25,6 +25,9 @@ type RequisitionTimelineProps = {
   currentProgressId: number;
   lpoId?: number;
   type?: "material" | "job" | "payment";
+  mrNumber?: string;
+  projectName?: string;
+  requiredDate?: string;
 };
 
 // Rejection progress IDs for MR/LPO
@@ -144,6 +147,9 @@ export default function RequisitionTimeline({
   currentProgressId,
   lpoId,
   type = "material",
+  mrNumber,
+  projectName,
+  requiredDate,
 }: RequisitionTimelineProps) {
   const [progressLog, setProgressLog] = useState<ProgressLogEntry[]>([]);
   const [hasBoqReference, setHasBoqReference] = useState<boolean>(false);
@@ -400,7 +406,14 @@ export default function RequisitionTimeline({
           justifyContent: "space-between",
         }}
       >
-        <h2>REQUISITION TIMELINE</h2>
+        <div>
+          <h2>REQUISITION TIMELINE</h2>
+          {(mrNumber || projectName || requiredDate) && (
+            <p className="timeline-subtitle">
+              {[mrNumber, projectName, requiredDate].filter(Boolean).join(" • ")}
+            </p>
+          )}
+        </div>
         <RequisitionLogButton mrHeaderId={mrHeaderId} lpoId={lpoId} />
       </div>
 

@@ -36,6 +36,7 @@ export async function GET() {
         ) AS identifier
       FROM vw_mr_headers vw
       LEFT JOIN mr_headers mh ON mh.id = vw.id
+      WHERE (mh.is_archived IS NULL OR mh.is_archived = 0)
     `);
 
     return NextResponse.json(rows, { status: 200 });
@@ -51,7 +52,10 @@ export async function POST(req: Request) {
 
     if (body.action === "getMrHeaders") {
       const [rows]: any = await db.query(
-        `SELECT * FROM vw_mr_headers WHERE department_id = ?`,
+        `SELECT vw.* FROM vw_mr_headers vw
+         JOIN mr_headers mh ON mh.id = vw.id
+         WHERE vw.department_id = ?
+           AND (mh.is_archived IS NULL OR mh.is_archived = 0)`,
         [body.department_id],
       );
 
@@ -87,6 +91,7 @@ export async function POST(req: Request) {
         LEFT JOIN lut_material_categories mc ON mc.id = ml.material_category_id
         WHERE mh.type = 'material'
           AND vw.progress_id NOT IN (${LPO_STAGE_IDS.join(",")})
+          AND (mh.is_archived IS NULL OR mh.is_archived = 0)
         ORDER BY mc.value ASC, ml.material_description ASC
       `);
 
@@ -117,6 +122,7 @@ export async function POST(req: Request) {
         LEFT JOIN lut_mr_headers_progress lpo_pr ON lpo_pr.id = l.progress_id
         WHERE mh.type = 'material'
           AND vw.progress_id IN (${LPO_STAGE_IDS.join(",")})
+          AND (mh.is_archived IS NULL OR mh.is_archived = 0)
         ORDER BY mc.value ASC, ml.material_description ASC
       `);
 
@@ -159,6 +165,7 @@ export async function POST(req: Request) {
         LEFT JOIN jt_jo_lines_boq_lines jtjlbl ON jtjlbl.jo_line_id = jl.id
         LEFT JOIN boq_refs br ON br.id = jtjlbl.boq_line_id
         WHERE mh.type = 'job'
+          AND (mh.is_archived IS NULL OR mh.is_archived = 0)
         ORDER BY mh.id ASC, br.boq_ref_number ASC, jl.job_description ASC
       `);
 
@@ -183,6 +190,7 @@ export async function POST(req: Request) {
         JOIN jo_lines jl ON jl.id = pl.jo_line_id
         JOIN mr_headers jo_mh ON jo_mh.id = jl.mr_header_id
         WHERE mh.type = 'payment'
+          AND (mh.is_archived IS NULL OR mh.is_archived = 0)
         ORDER BY mh.id ASC, jl.job_description ASC
       `);
 
@@ -288,9 +296,9 @@ export async function POST(req: Request) {
       try {
         // ✅ Insert the main mr_line WITHOUT boq_line_id
         const lineQuery = `
-      INSERT INTO mr_lines 
-      (mr_header_id, material_category_id, material_description, quantity, unit, notes, specification, brand, delivery_location, attachment)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO mr_lines
+      (mr_header_id, material_category_id, material_description, quantity, unit, notes, specification, brand, delivery_location, attachment, predefined_item_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
         const lineValues = [
@@ -306,6 +314,7 @@ export async function POST(req: Request) {
           body.brand || null,
           body.delivery_location || null,
           body.attachment || null,
+          body.predefined_item_id ? Number(body.predefined_item_id) : null,
         ];
 
         const [lineResult] = await db.query<ResultSetHeader>(
@@ -399,6 +408,26 @@ export async function POST(req: Request) {
         "INSERT INTO lut_material_subcategories (category_id, value) VALUES (?, ?)";
       await db.query(query, [body.category_id, body.value]);
       return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "getRecentlyUsedItems") {
+      const { department_id } = body;
+      const [rows] = await db.query<RowDataPacket[]>(
+        `SELECT predefined_item_id FROM (
+           SELECT ml.predefined_item_id, MAX(ml.id) AS last_used
+           FROM mr_lines ml
+           JOIN mr_headers mh ON mh.id = ml.mr_header_id
+           WHERE mh.department_id = ?
+             AND ml.predefined_item_id IS NOT NULL
+             AND (mh.is_archived IS NULL OR mh.is_archived = 0)
+           GROUP BY ml.predefined_item_id
+           ORDER BY last_used DESC
+           LIMIT 30
+         ) AS recent`,
+        [department_id],
+      );
+      const ids = (rows as any[]).map((r) => r.predefined_item_id);
+      return NextResponse.json(ids);
     }
   } catch (err: any) {
     console.error(err.sqlMessage);
@@ -1929,6 +1958,12 @@ export async function PUT(req: Request) {
         const oldAllLine = oldAllRows?.[0];
 
         // ✅ Update the main mr_line WITHOUT boq_line_id
+        // Only include predefined_item_id in the SET clause when the caller
+        // explicitly provides it (undefined means "leave it untouched").
+        const predefinedClause =
+          "predefined_item_id" in body
+            ? ",\n          predefined_item_id = ?"
+            : "";
         const query = `
       UPDATE mr_lines
       SET material_category_id = ?,
@@ -1938,7 +1973,7 @@ export async function PUT(req: Request) {
           notes = ?,
           specification = ?,
           brand = ?,
-          delivery_location = ?,
+          delivery_location = ?${predefinedClause},
           approval_status = NULL,
           reject_comment = NULL,
           qs_approval_status = NULL,
@@ -1946,7 +1981,7 @@ export async function PUT(req: Request) {
       WHERE id = ?
     `;
 
-        const values = [
+        const values: any[] = [
           Number(body.material_category_id),
           body.material_description,
           Number(body.quantity),
@@ -1955,8 +1990,15 @@ export async function PUT(req: Request) {
           body.specification,
           body.brand,
           body.delivery_location,
-          Number(body.id),
         ];
+        if ("predefined_item_id" in body) {
+          values.push(
+            body.predefined_item_id !== null
+              ? Number(body.predefined_item_id)
+              : null,
+          );
+        }
+        values.push(Number(body.id));
 
         await db.query(query, values);
 
@@ -2274,7 +2316,10 @@ export async function DELETE(req: Request) {
         ],
       );
 
-      await db.query("DELETE FROM mr_headers WHERE id = ?", [Number(body.id)]);
+      await db.query(
+        "UPDATE mr_headers SET is_archived = 1 WHERE id = ?",
+        [Number(body.id)],
+      );
 
       return NextResponse.json({ success: true });
     }

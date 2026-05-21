@@ -619,6 +619,9 @@ export default function MrLinesView({
     if (mrHeader.progress_id !== 1) return;
 
     const descriptions: string[] = [];
+    // Map from db_material_description (alias) → material_description (display/primary key)
+    const aliasToDisplay = new Map<string, string>();
+
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
         for (const supplier in mrLines[category][subCategory]) {
@@ -628,6 +631,21 @@ export default function MrLinesView({
               !descriptions.includes(item.material_description)
             ) {
               descriptions.push(item.material_description);
+            }
+            // Also send the original stored description (before predefined-item
+            // name resolution) so the similarity check can leverage the richer
+            // branded name (e.g. "1HP CLEAN WATER PUMP - PCWP750F - PRAKASH")
+            // in addition to the cleaner predefined name.
+            if (
+              item.db_material_description &&
+              item.db_material_description !== item.material_description &&
+              !descriptions.includes(item.db_material_description)
+            ) {
+              descriptions.push(item.db_material_description);
+              aliasToDisplay.set(
+                item.db_material_description,
+                item.material_description,
+              );
             }
           }
         }
@@ -641,7 +659,29 @@ export default function MrLinesView({
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getInventoryStatus?materials=${encoded}`,
     )
       .then((res) => res.json())
-      .then((data) => setItemInventoryStatus(data))
+      .then((data: Record<string, InventoryMatch[]>) => {
+        // Merge any alias-key matches into their primary display-description key,
+        // then remove the alias key so the result is indexed by material_description.
+        for (const [alias, primaryDesc] of aliasToDisplay.entries()) {
+          const aliasMatches: InventoryMatch[] = data[alias] ?? [];
+          if (aliasMatches.length > 0) {
+            const primaryMatches: InventoryMatch[] = data[primaryDesc] ?? [];
+            const merged = [...primaryMatches];
+            for (const match of aliasMatches) {
+              if (
+                !merged.find(
+                  (m) => m.inventory_item_id === match.inventory_item_id,
+                )
+              ) {
+                merged.push(match);
+              }
+            }
+            data[primaryDesc] = merged;
+          }
+          delete data[alias];
+        }
+        setItemInventoryStatus(data);
+      })
       .catch((err) => console.error("getInventoryStatus error:", err));
   }, [mrHeader.progress_id, mrLines]);
 
@@ -2543,6 +2583,9 @@ export default function MrLinesView({
   return (
     <>
       <div className="mr-with-id">
+        <div className="mr-lines-mobile-header">
+          <h2>Material Requests</h2>
+        </div>
         <div
           className="category-grid"
           style={{
@@ -3208,6 +3251,7 @@ export default function MrLinesView({
                                                   borderColor="rgba(223, 223, 223, 1)"
                                                   textColor="black"
                                                   stageName={currentStageName}
+                                                  canEditItemDetails
                                                 >
                                                   <img
                                                     src={pencilIcon}
@@ -4547,6 +4591,7 @@ export default function MrLinesView({
                                               borderColor="rgba(223, 223, 223, 1)"
                                               textColor="black"
                                               stageName={currentStageName}
+                                              canEditItemDetails
                                             >
                                               <img
                                                 src={pencilIcon}
@@ -5912,49 +5957,111 @@ export default function MrLinesView({
             ),
           )}
 
-        {mrHeader.progress_id >= 10 && canSeePrice && (
-          <table
-            className="items-table two-toned fixed-layout"
-            style={{ tableLayout: "fixed", width: "100%" }}
-          >
-            <colgroup>
-              <col style={{ width: "40px" }} />
+        {/* ── Duplicate empty table (same columns as main table, no rows) ── */}
+        <table className="items-table two-toned fixed-layout" style={{ minHeight: 0 }}>
+          <colgroup>
+            {isQSReview && <col style={{ width: "24px" }} />}
+            {isProcurementQuotations && <col style={{ width: "24px" }} />}
+            {isManagerPriceApproval && <col style={{ width: "24px" }} />}
+            <col style={{ width: "40px" }} />
+            <col style={{ width: "130px" }} />
+            {mrHeader.progress_id === 1 && <col style={{ width: "150px" }} />}
+            {mrHeader.progress_id >= 9 ? (
+              <>
+                <col style={{ width: "80px" }} />
+                {hasAnyQtyStocks && <col style={{ width: "90px" }} />}
+                {hasAnyQtyStocks && <col style={{ width: "80px" }} />}
+              </>
+            ) : (
               <col style={{ width: "120px" }} />
-              <col style={{ width: "120px" }} />
-              <col style={{ width: "120px" }} />
-              {mrHeader.progress_id >= 9 ? (
-                <>
-                  <col style={{ width: "80px" }} />
-                  {hasAnyQtyStocks && <col style={{ width: "90px" }} />}
-                  {hasAnyQtyStocks && <col style={{ width: "80px" }} />}
-                </>
-              ) : (
-                <col style={{ width: "120px" }} />
-              )}
-              <col style={{ width: "90px" }} />
-              {hasAnyBrandSpecs && <col style={{ width: "110px" }} />}
-              {hasAnyAttachment && <col style={{ width: "90px" }} />}
-              {mrHeader.progress_id >= 10 && canSeePrice && (
-                <col style={{ width: "100px" }} />
-              )}
-              {mrHeader.progress_id >= 10 && canSeePrice && (
-                <col style={{ width: "100px" }} />
-              )}
-              {userInfo?.departmentID === 12 && mrHeader.progress_id === 21 && (
+            )}
+            <col style={{ width: "95px" }} />
+            {hasAnyBrandSpecs && <col style={{ width: "120px" }} />}
+            {hasAnyAttachment && <col style={{ width: "100px" }} />}
+            {((mrHeader.progress_id === 5 &&
+              (userInfo?.departmentID === mrHeader.department_id ||
+                userInfo?.departmentID === 8 ||
+                userInfo?.departmentID === 16)) ||
+              (mrHeader.progress_id === 3 &&
+                userInfo?.departmentID === mrHeader.department_id &&
+                userInfo?.departmentID !== 8) ||
+              (mrHeader.progress_id === 2 &&
+                userInfo?.departmentID === mrHeader.department_id &&
+                userInfo?.departmentID !== 16)) && (
+              <col style={{ width: "160px" }} />
+            )}
+            {(mrHeader.progress_id === 1 ||
+              mrHeader.progress_id === 5 ||
+              mrHeader.progress_id === 11) &&
+              userInfo?.departmentID === mrHeader.department_id && (
                 <col style={{ width: "160px" }} />
               )}
-              {mrHeader.progress_id === 24 && userInfo?.departmentID === 11 && (
-                <col style={{ width: "120px" }} />
+            {mrHeader.progress_id === 11 && userInfo?.departmentID === 9 && (
+              <col style={{ width: "160px" }} />
+            )}
+            {mrHeader.progress_id === 3 &&
+              (userInfo?.departmentID === 8 ||
+                userInfo?.departmentID === mrHeader.department_id) && (
+                <col style={{ width: "160px" }} />
               )}
-              {mrHeader.progress_id === 23 && userInfo?.departmentID === 9 && (
-                <col style={{ width: "140px" }} />
-              )}
-            </colgroup>
-            <tfoot style={{ borderTop: "1px solid rgba(200, 200, 200, 1)" }}>
-              <tr style={{ fontWeight: 600 }}>
-                <td colSpan={subtotalLabelColSpanByItem} />
-                <td>MR VALUE</td>
-                <td>
+            {mrHeader.progress_id === 3 && userInfo?.departmentID === 8 && (
+              <col style={{ width: "160px" }} />
+            )}
+            {mrHeader.progress_id === 2 && userInfo?.departmentID === 16 && (
+              <col style={{ width: "160px" }} />
+            )}
+            {mrHeader.progress_id >= 10 &&
+              (mrHeader.progress_id !== 11 || userInfo?.departmentID === 8) &&
+              !isManagerPriceApproval && <col style={{ width: "160px" }} />}
+            {mrHeader.progress_id === 7 && (
+              <>
+                <col style={{ width: "100px" }} />
+                <col style={{ width: "100px" }} />
+                <col style={{ width: "100px" }} />
+                {userInfo?.departmentID === 9 && <col style={{ width: "160px" }} />}
+              </>
+            )}
+            {mrHeader.progress_id === 9 && userInfo?.departmentID === 16 && (
+              <col style={{ width: "160px" }} />
+            )}
+            {mrHeader.progress_id >= 10 && canSeePrice && !isManagerPriceApproval && (
+              <col style={{ width: "100px" }} />
+            )}
+            {mrHeader.progress_id >= 10 && canSeePrice && !isManagerPriceApproval && (
+              <col style={{ width: "100px" }} />
+            )}
+            {isManagerPriceApproval && (
+              <>
+                <col style={{ width: "100px" }} />
+                <col style={{ width: "100px" }} />
+                <col style={{ width: "100px" }} />
+                <col style={{ width: "160px" }} />
+                <col style={{ width: "130px" }} />
+                <col style={{ width: "100px" }} />
+              </>
+            )}
+            {userInfo?.departmentID === 11 && mrHeader.progress_id === 4 && (
+              <col style={{ width: "160px" }} />
+            )}
+            {userInfo?.departmentID === 12 && mrHeader.progress_id === 21 && (
+              <col style={{ width: "160px" }} />
+            )}
+            {userInfo?.departmentID === 11 && mrHeader.progress_id === 24 && (
+              <col style={{ width: "120px" }} />
+            )}
+            {userInfo?.departmentID === 9 && mrHeader.progress_id === 23 && (
+              <col style={{ width: "140px" }} />
+            )}
+          </colgroup>
+          <tbody />
+          {mrHeader.progress_id >= 10 && canSeePrice && (
+            <tfoot
+              style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}
+            >
+              <tr>
+                <td colSpan={isManagerPriceApproval ? subtotalLabelColSpan + 4 : subtotalLabelColSpan} />
+                <td style={{ fontWeight: "600" }}>MR VALUE</td>
+                <td style={{ fontWeight: "600" }}>
                   {formatPriceAED(
                     calculateItemsTotalWithVat(getAllFlatItems()),
                   )}
@@ -5964,8 +6071,9 @@ export default function MrLinesView({
                 )}
               </tr>
             </tfoot>
-          </table>
-        )}
+          )}
+        </table>
+
       </div>
       {/* end mr-with-id */}
 
@@ -6304,13 +6412,19 @@ export default function MrLinesView({
           ? (() => {
               const row = priceHoverCache[desc]?.[type];
               if (row === null) return null;
-              const popupWidth = 420;
-              const spaceRight = window.innerWidth - rect.right;
-              const left =
-                spaceRight >= popupWidth + 10
-                  ? rect.right + 8
-                  : rect.left - popupWidth - 8;
-              const top = Math.min(rect.top, window.innerHeight - 200);
+              // Anchor just below the cell; flip above if too close to bottom.
+              const spaceBelow = window.innerHeight - rect.bottom;
+              const popupHeight = 90; // approximate
+              const top =
+                spaceBelow >= popupHeight + 8
+                  ? rect.bottom + 4
+                  : rect.top - popupHeight - 4;
+              // "lowest" aligns its left edge to the cell's left edge.
+              // "prev"   aligns its right edge to the cell's right edge (opens leftward).
+              const horizStyle =
+                type === "prev"
+                  ? { right: Math.max(8, window.innerWidth - rect.right) }
+                  : { left: Math.max(8, rect.left) };
               return (
                 <div
                   key={type}
@@ -6318,15 +6432,15 @@ export default function MrLinesView({
                   onMouseLeave={onHide}
                   style={{
                     position: "fixed",
-                    left: Math.max(8, left),
+                    ...horizStyle,
                     top: Math.max(8, top),
                     backgroundColor: "white",
                     border: "1px solid rgba(223,223,223,1)",
                     borderRadius: "10px",
                     boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                     zIndex: 10000,
-                    minWidth: `${popupWidth}px`,
-                    maxWidth: `${popupWidth}px`,
+                    width: "auto",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   <div style={{ padding: "12px" }}>
@@ -6344,7 +6458,7 @@ export default function MrLinesView({
                     ) : (
                       <table
                         className="items-table popup-hover"
-                        style={{ width: "100%" }}
+                        style={{ width: "auto" }}
                       >
                         <thead>
                           <tr>

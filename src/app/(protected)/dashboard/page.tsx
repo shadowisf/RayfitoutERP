@@ -30,6 +30,7 @@ import FinanceTopMaterialsBySpendWidget from "./components/finance/W_Finance_Top
 import FinanceTopVendorsBySpendWidget from "./components/finance/W_Finance_TopVendorsBySpend";
 import FinanceTotalSpentWidget from "./components/finance/W_Finance_TotalSpent";
 import DateRangeButton, { DateRange } from "@/app/components/_DateRangeButton";
+import DashboardNewRequestButton from "./components/_DashboardNewRequestButton";
 
 export default function Dashboard() {
   const bannerBackground = "/images/welcome-banner.jpg";
@@ -115,14 +116,19 @@ export default function Dashboard() {
           borderRadius: "10px",
         }}
       >
-        <h3 style={{ fontWeight: "100", marginBottom: "3px" }}>Welcome back</h3>
+        <div className="banner-content">
+          <div>
+            <h3 style={{ fontWeight: "100", marginBottom: "3px" }}>Welcome back</h3>
+            <h1>
+              <span style={{ fontWeight: "100" }}>Maestro</span>{" "}
+              <span style={{ fontWeight: "900" }}>
+                {userInfo?.name?.split(" ")[0]}
+              </span>
+            </h1>
+          </div>
 
-        <h1>
-          <span style={{ fontWeight: "100" }}>Maestro</span>{" "}
-          <span style={{ fontWeight: "900" }}>
-            {userInfo?.name?.split(" ")[0]}
-          </span>
-        </h1>
+          <DashboardNewRequestButton />
+        </div>
       </div>
 
       <br />
@@ -133,6 +139,7 @@ export default function Dashboard() {
       {userInfo?.departmentID === 8 && (
         <>
           <div
+            className="dashboard-section-header"
             style={{
               display: "flex",
               justifyContent: "space-between",
@@ -147,7 +154,7 @@ export default function Dashboard() {
             />
           </div>
           <br />
-          <div className="widget-grid overview five-col">
+          <div className="widget-grid overview five-col dashboard-first-grid">
             <ActiveMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
             <PendingApprovalMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
             <PendingPaymentMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
@@ -157,53 +164,66 @@ export default function Dashboard() {
           <br />
           <br />
           <br />
-          <h2>QUICK APPROVALS</h2>
-          <br />
-          <div className="widget-grid overview two-col">
-            {/* <QuickInitialApprovalWidget /> */}
-            <QuickPriceApprovalWidget />
-          </div>
-          <br />
-          <br />
-          <br />
-          <div className="widget-grid overview three-col">
-            <AlertsAndRiskMrsWidget />
-            <AvgTimeSpentPerStageWidget />
-            <MedianMRLifespanWidget />
+
+          {/* ── Mobile: one slider for Quick Approvals | Active Projects | Expected Deliveries ── */}
+          <div className="mobile-group-slider">
+
+            {/* Slide 1 — Quick Approvals */}
+            <div className="mobile-slide">
+              <h2>QUICK APPROVALS</h2>
+              <br />
+              <div className="widget-grid overview two-col">
+                {/* <QuickInitialApprovalWidget /> */}
+                <QuickPriceApprovalWidget />
+              </div>
+            </div>
+
+            {/* Slide 2 — Active Projects */}
+            <div className="mobile-slide">
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <h2>ACTIVE PROJECTS</h2>
+                <Button
+                  componentType={"link"}
+                  bgColor={"white"}
+                  borderColor={"white"}
+                  textColor={"black"}
+                  style={{ borderRadius: "50px" }}
+                  href="/project"
+                >
+                  View All Projects &gt;
+                </Button>
+              </div>
+              <br />
+              <div className="widget-grid active-projects">
+                {projects.slice(0, 3).map((proj: any, index) => (
+                  <ProjectCard project={proj} key={index} />
+                ))}
+              </div>
+            </div>
+
+            {/* Slide 3 — Expected Deliveries */}
+            <div className="mobile-slide">
+              <ExpectedDeliveriesWidget />
+            </div>
+
           </div>
 
           <br />
           <br />
           <br />
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <h2>ACTIVE PROJECTS</h2>
-            <Button
-              componentType={"link"}
-              bgColor={"white"}
-              borderColor={"white"}
-              textColor={"black"}
-              style={{ borderRadius: "50px" }}
-              href="/project"
-            >
-              View All Projects &gt;
-            </Button>
+
+          {/* ── Analytics: each is a separate scrollable slide on mobile ── */}
+          <div className="widget-grid overview three-col">
+            <AlertsAndRiskMrsWidget />
+            <AvgTimeSpentPerStageWidget />
+            <MedianMRLifespanWidget />
           </div>
-          <br />
-          <div className="widget-grid active-projects">
-            {projects.slice(0, 3).map((proj: any, index) => (
-              <ProjectCard project={proj} key={index} />
-            ))}
-          </div>
-          <br />
-          <br />
-          <br />
-          <ExpectedDeliveriesWidget />
         </>
       )}
 
@@ -211,6 +231,7 @@ export default function Dashboard() {
       {userInfo?.departmentID === 9 && (
         <>
           <div
+            className="dashboard-section-header"
             style={{
               display: "flex",
               justifyContent: "space-between",
@@ -225,7 +246,7 @@ export default function Dashboard() {
             />
           </div>
           <br />
-          <div className="widget-grid overview four-col">
+          <div className="widget-grid overview four-col dashboard-first-grid">
             <PendingQuotationsMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
             <PendingPaymentMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
             <PendingIncompleteDeliveriesWidget dateFrom={dateFrom} dateTo={dateTo} />
@@ -312,6 +333,7 @@ export default function Dashboard() {
       {DEPARTMENT_IDS.includes(Number(userInfo?.departmentID)) && (
         <>
           <div
+            className="dashboard-section-header"
             style={{
               display: "flex",
               justifyContent: "space-between",
@@ -326,7 +348,7 @@ export default function Dashboard() {
             />
           </div>
           <br />
-          <div className="widget-grid overview four-col">
+          <div className="widget-grid overview four-col dashboard-first-grid">
             <DraftMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
             <PendingPaymentMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
             <PendingApprovalMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
